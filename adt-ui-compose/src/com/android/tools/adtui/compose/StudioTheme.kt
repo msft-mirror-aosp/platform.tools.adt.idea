@@ -29,6 +29,7 @@ import org.jetbrains.jewel.intui.markdown.bridge.create
 import org.jetbrains.jewel.markdown.extensions.LocalMarkdownBlockRenderer
 import org.jetbrains.jewel.markdown.extensions.LocalMarkdownProcessor
 import org.jetbrains.jewel.markdown.extensions.LocalMarkdownStyling
+import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
 import org.jetbrains.jewel.markdown.rendering.MarkdownBlockRenderer
 
 @OptIn(ExperimentalJewelApi::class)
@@ -37,11 +38,11 @@ fun StudioTheme(content: @Composable () -> Unit) {
   SwingBridgeTheme {
     val provider = StudioMarkdownFactory
     val markdownStyling =
-      remember(JewelTheme.name, provider) {
-        provider.createDefaultStyling(retrieveDefaultTextStyle(), retrieveEditorTextStyle())
-      }
-    val markdownProcessor = remember { MarkdownProcessorReflectiveFactory.create() }
-    val blockRenderer = remember(markdownStyling) { MarkdownBlockRenderer.create(markdownStyling) }
+      remember(JewelTheme.name, provider) { provider.createDefaultStyling(retrieveDefaultTextStyle(), retrieveEditorTextStyle()) }
+    val processorExtensions = getDefaultMarkdownProcessors()
+    val markdownProcessor = remember { MarkdownProcessor(processorExtensions) }
+    val renderExtensions = getDefaultRenderExtensions(markdownStyling)
+    val blockRenderer = remember(markdownStyling) { MarkdownBlockRenderer.create(markdownStyling, renderExtensions) }
 
     CompositionLocalProvider(
       LocalMarkdownFactory provides provider,

@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.base.run.confighandler;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -34,11 +33,9 @@ import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.ExecutorType;
 import com.google.idea.blaze.base.run.smrunner.BlazeTestEventsHandler;
-import com.google.idea.blaze.base.run.smrunner.BlazeTestUiSession;
 import com.google.idea.blaze.base.run.smrunner.SmRunnerUtils;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFetcher;
-import com.google.idea.blaze.base.run.testlogs.BlazeTestResults;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.OutputSink;
 import com.google.idea.blaze.base.settings.Blaze;
@@ -141,9 +138,8 @@ public final class BlazeCommandGenericRunConfigurationRunner
           getBlazeCommand(
               project,
               ExecutorType.fromExecutor(getEnvironment().getExecutor()),
-              invoker,
-              ImmutableList.of(),
-              context);
+              ImmutableList.of()
+          );
       return isTest()
           ? getProcessHandlerForTests(project, invoker, blazeCommand, context)
           : getProcessHandlerForNonTests(project, invoker, blazeCommand, context);
@@ -247,21 +243,14 @@ public final class BlazeCommandGenericRunConfigurationRunner
         BuildInvoker invoker,
         BlazeCommand.Builder blazeCommandBuilder,
         BlazeContext context) {
-      final var testResultFinderStrategy = new BlazeTestResultFetcher();
-      BlazeTestUiSession testUiSession = null;
-      if (BlazeTestEventsHandler.targetsSupported(project, configuration.getTargets())) {
-        testUiSession =
-            BlazeTestUiSession.create(
-                ImmutableList.<String>builder()
-                    .add("--runs_per_test=1")
-                    .add("--flaky_test_attempts=1")
-                    .build(),
-                testResultFinderStrategy);
+      BlazeTestResultFetcher testResultFinderStrategy = null;
+      if (BlazeTestEventsHandler.targetsSupported(project, configuration.getTargetPatterns())) {
+        testResultFinderStrategy = new BlazeTestResultFetcher();
       }
-      if (testUiSession != null) {
+      if (testResultFinderStrategy != null) {
         ConsoleView consoleView =
             SmRunnerUtils.getConsoleView(
-              project, configuration, getEnvironment().getExecutor(), testUiSession.getTestResultFinderStrategy());
+              project, configuration, getEnvironment().getExecutor(), testResultFinderStrategy);
         setConsoleBuilder(
             new TextConsoleBuilderImpl(project) {
               @Override
@@ -322,11 +311,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
     private BlazeCommand.Builder getBlazeCommand(
         Project project,
         ExecutorType executorType,
-        BuildInvoker invoker,
-        ImmutableList<String> testHandlerFlags,
-        BlazeContext context) {
-      ProjectViewSet projectViewSet =
-          Preconditions.checkNotNull(ProjectViewManager.getInstance(project).getProjectViewSet());
+        ImmutableList<String> testHandlerFlags) {
 
       List<String> extraBlazeFlags = new ArrayList<>(testHandlerFlags);
       BlazeCommandName command = getCommand();
@@ -334,14 +319,12 @@ public final class BlazeCommandGenericRunConfigurationRunner
         command = BlazeCommandName.COVERAGE;
       }
 
-      return BlazeCommand.builder(invoker, command)
-          .addTargets(configuration.getTargets())
+      return BlazeCommand.builder(command)
+          .addTargetStrings(configuration.getTargetPatterns())
           .addBlazeFlags(
               BlazeFlags.blazeFlags(
                   project,
-                  projectViewSet,
                   getCommand(),
-                  context,
                   BlazeInvocationContext.runConfigContext(
                       executorType, configuration.getType(), false)))
           .addBlazeFlags(extraBlazeFlags)

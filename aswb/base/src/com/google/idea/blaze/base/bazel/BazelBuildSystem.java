@@ -19,7 +19,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.model.BlazeVersionData;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
-import com.google.idea.blaze.base.qsync.BazelQueryRunner;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.intellij.openapi.project.Project;
@@ -47,11 +46,6 @@ class BazelBuildSystem implements BuildSystem {
   }
 
   @Override
-  public SyncStrategy getSyncStrategy(Project project) {
-    return SyncStrategy.SERIAL;
-  }
-
-  @Override
   public void populateBlazeVersionData(WorkspaceRoot workspaceRoot, BlazeInfo blazeInfo, BlazeVersionData.Builder builder) {
     builder.setBazelVersion(BazelVersion.parseVersion(blazeInfo));
   }
@@ -59,11 +53,6 @@ class BazelBuildSystem implements BuildSystem {
   @Override
   public Optional<String> getBazelVersionString(BlazeInfo blazeInfo) {
     return Optional.ofNullable(BazelVersion.parseVersion(blazeInfo).toString());
-  }
-
-  @Override
-  public BazelQueryRunner createQueryRunner(Project project) {
-    return new BazelQueryRunner(project, this);
   }
 
   @Override

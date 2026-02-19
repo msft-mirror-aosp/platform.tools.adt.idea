@@ -19,11 +19,6 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.lint.detector.api.Desugaring
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.idea.blaze.base.model.BlazeProjectData
-import com.google.idea.blaze.base.settings.Blaze
-import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager
-import com.google.idea.blaze.base.sync.libraries.LintCollector
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import java.io.File
@@ -31,31 +26,30 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-/**
- * Contains Android-Blaze related state necessary for configuring an IDEA project based on a
- * user-selected build variant.
- */
-abstract class BlazeAndroidModelBase protected constructor(
+/** Contains Android-Blaze related state necessary for configuring an IDEA project based on a user-selected build variant. */
+abstract class BlazeAndroidModelBase
+protected constructor(
   protected val project: Project,
   rootDirPath: File,
   private val applicationIdFuture: ListenableFuture<String>,
-  private val minSdkVersionInt: Int
+  private val minSdkVersionInt: Int,
 ) : AndroidModel {
   override val applicationId: String
     get() {
-    try {
-      return applicationIdFuture.get(1, TimeUnit.SECONDS)
-    } catch (e: InterruptedException) {
-      Thread.currentThread().interrupt()
-    } catch (e: TimeoutException) {
-      Logger.getInstance(BlazeAndroidModelBase::class.java).warn("Application Id not initialized yet", e)
-    } catch (e: ExecutionException) {
-      Logger.getInstance(BlazeAndroidModelBase::class.java).warn("Application Id not initialized yet", e)
+      try {
+        return applicationIdFuture.get(1, TimeUnit.SECONDS)
+      } catch (e: InterruptedException) {
+        Thread.currentThread().interrupt()
+      } catch (e: TimeoutException) {
+        Logger.getInstance(BlazeAndroidModelBase::class.java).warn("Application Id not initialized yet", e)
+      } catch (e: ExecutionException) {
+        Logger.getInstance(BlazeAndroidModelBase::class.java).warn("Application Id not initialized yet", e)
+      }
+      return uninitializedApplicationId()
     }
-    return uninitializedApplicationId()
-  }
 
   protected abstract fun uninitializedApplicationId(): String
+
   override val allApplicationIds: Set<String>
     get() = setOf<String>(applicationId)
 
@@ -76,13 +70,5 @@ abstract class BlazeAndroidModelBase protected constructor(
   override val desugaring: Set<Desugaring>
     get() = Desugaring.FULL
 
-  override val lintRuleJarsOverride: Iterable<File>?
-    get() {
-      if (Blaze.getProjectType(project) !== ProjectType.ASPECT_SYNC) {
-        return listOf<File>()
-      }
-      val blazeProjectData: BlazeProjectData? =
-        BlazeProjectDataManager.getInstance(project).getBlazeProjectData()
-      return LintCollector.getLintJars(project, blazeProjectData)
-    }
+  override val lintRuleJarsOverride: Iterable<File> = listOf()
 }

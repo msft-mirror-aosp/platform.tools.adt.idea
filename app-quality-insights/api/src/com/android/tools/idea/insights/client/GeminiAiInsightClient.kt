@@ -23,8 +23,8 @@ import com.android.tools.idea.insights.ai.InsightSource
 import com.android.tools.idea.insights.ai.codecontext.CodeContext
 import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolver
-import com.android.tools.idea.insights.ai.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.ai.codecontext.ContextSharingState
+import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.issue.IssueId
@@ -38,38 +38,38 @@ import org.jetbrains.annotations.VisibleForTesting
 @VisibleForTesting
 private val GEMINI_PREAMBLE =
   """
-    Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
-    For headings, use H3 only. Initial explanation should not be under a heading.
-    Begin with the explanation directly. Do not add fillers at the start of response.
+  Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+  For headings, use H3 only. Initial explanation should not be under a heading.
+  Begin with the explanation directly. Do not add fillers at the start of response.
   """
     .trimIndent()
 
 private val SHORT_GEMINI_PREAMBLE =
   """
-    Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
-    Do no include headings. Begin with the explanation directly. Do not add fillers at the start of
-    response. Respond in no more than four sentences.
+  Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+  Do no include headings. Begin with the explanation directly. Do not add fillers at the start of
+  response. Respond in no more than four sentences.
   """
     .trimIndent()
 
 private val GEMINI_INSIGHT_PROMPT_FORMAT =
   """
-    Explain this exception from my app running on %s with Android version %s:
-    Exception:
-    ```
-    %s
-    ```
+  Explain this exception from my app running on %s with Android version %s:
+  Exception:
+  ```
+  %s
+  ```
   """
     .trimIndent()
 
 private val GEMINI_INSIGHT_WITH_CODE_CONTEXT_PROMPT_FORMAT =
   """
-    Explain this exception from my app running on %s with Android version %s.
-    Please reference the provided source code if they are helpful.
-    Exception:
-    ```
-    %s
-    ```
+  Explain this exception from my app running on %s with Android version %s.
+  Please reference the provided source code if they are helpful.
+  Exception:
+  ```
+  %s
+  ```
   """
     .trimIndent()
 
@@ -104,17 +104,17 @@ private val GEMINI_INSIGHT_CODE_CONTEXT_WITH_FIX_PROMPT =
 
 private val CONTEXT_PREAMBLE =
   """
-    Respond with a comma separated list of the paths of the files, in descending order of relevance.
-    If the file is a Java or Kotlin file, convert its package name to path.
+  Respond with a comma separated list of the paths of the files, in descending order of relevance.
+  If the file is a Java or Kotlin file, convert its package name to path.
   """
     .trimIndent()
 
 private val CONTEXT_PROMPT =
   """
-    What are the files relevant for fixing this exception?
-    ```
-    %s
-    ```
+  What are the files relevant for fixing this exception?
+  ```
+  %s
+  ```
   """
     .trimIndent()
 
@@ -125,14 +125,17 @@ private const val CONTEXT_WINDOW_PADDING = 150
 
 class GeminiAiInsightClient(
   private val project: Project,
-  private val cache: AppInsightsCache,
-  private val codeContextResolver: CodeContextResolver = CodeContextResolverImpl(project),
+  private val codeContextResolver: CodeContextResolver,
+  private val cache: AiInsightCache = AiInsightCache(),
 ) : AiInsightClient {
-  private val logger =
-    Logger.getInstance("com.android.tools.idea.insights.client.GeminiAiInsightClient")
+  private val logger = Logger.getInstance("com.android.tools.idea.insights.client.GeminiAiInsightClient")
 
   override suspend fun fetchCrashInsight(request: GeminiCrashInsightRequest): AiInsight =
-    if (StudioFlags.GEMINI_FETCH_REAL_INSIGHT.get()) {
+    if (java.lang.Boolean.getBoolean("appinsights.generate.fake.insight")) {
+      // Simulate a delay that would come generating an actual insight
+      delay(2000)
+      AiInsight(createPrompt(request, emptyList()), request.event, insightSource = InsightSource.STUDIO_BOT)
+    } else {
       getCachedInsight(request)?.let {
         return it
       }
@@ -149,67 +152,40 @@ class GeminiAiInsightClient(
       val finalPrompt =
         buildLlmPrompt(project) {
           // Enterprise GCA drops systemMessages, so this has to be a userMessage.
-          userMessage {
-            text(
-              if (StudioFlags.AQI_FIX_WITH_AGENT.get()) SHORT_GEMINI_PREAMBLE else GEMINI_PREAMBLE,
-              emptyList(),
-            )
-          }
+          userMessage { text(if (StudioFlags.AQI_FIX_WITH_AGENT.get()) SHORT_GEMINI_PREAMBLE else GEMINI_PREAMBLE, emptyList()) }
           userMessage { text(userPrompt, emptyList()) }
         }
       logger.debug("This is the final prompt:\n$userPrompt")
 
-      val response =
-        GeminiPluginApi.getInstance().generate(project, finalPrompt).toList().joinToString("\n")
+      val response = GeminiPluginApi.getInstance().generate(project, finalPrompt).toList().joinToString("\n")
 
-      AiInsight(
-          response,
-          request.event,
-          insightSource = InsightSource.STUDIO_BOT,
-          codeContextData = contextData,
-        )
-        .also { cache.putAiInsight(request.connection, request.issueId, request.variantId, it) }
-    } else {
-      // Simulate a delay that would come generating an actual insight
-      delay(2000)
-      AiInsight(
-        createPrompt(request, emptyList()),
-        request.event,
-        insightSource = InsightSource.STUDIO_BOT,
-      )
+      AiInsight(response, request.event, insightSource = InsightSource.STUDIO_BOT, codeContextData = contextData).also {
+        cache.putAiInsight(request.connection, request.issueId, request.variantId, it)
+      }
     }
+
+  override fun insightFeedbackUpdated(connection: Connection, issueId: IssueId, variantId: String?, feedback: InsightFeedback) {
+    val cachedInsight = getCachedInsight(GeminiCrashInsightRequest(connection, issueId, variantId, "", "", Event.EMPTY)) ?: return
+
+    cache.putAiInsight(connection, issueId, variantId, cachedInsight.copy(feedback = feedback))
+  }
 
   // Always prefer the insight generated with context regardless of current context sharing setting.
   private fun getCachedInsight(request: GeminiCrashInsightRequest): AiInsight? =
-    cache.getAiInsight(
-      request.connection,
-      request.issueId,
-      request.variantId,
-      ContextSharingState.ALLOWED,
-    )
+    cache.getAiInsight(request.connection, request.issueId, request.variantId, ContextSharingState.ALLOWED)
       ?: if (ContextSharingState.getContextSharingState(project) == ContextSharingState.DISABLED) {
-        cache.getAiInsight(
-          request.connection,
-          request.issueId,
-          request.variantId,
-          ContextSharingState.DISABLED,
-        )
+        cache.getAiInsight(request.connection, request.issueId, request.variantId, ContextSharingState.DISABLED)
       } else {
         null
       }
 
   private suspend fun queryForRelevantContext(request: GeminiCrashInsightRequest): CodeContextData {
-    if (
-      !GeminiPluginApi.getInstance().isAvailable() ||
-        !GeminiPluginApi.getInstance().isContextAllowed(project)
-    )
+    if (!GeminiPluginApi.getInstance().isAvailable() || !GeminiPluginApi.getInstance().isContextAllowed(project))
       return CodeContextData(emptyList())
     val prompt =
       buildLlmPrompt(project) {
         systemMessage { text(CONTEXT_PREAMBLE, emptyList()) }
-        userMessage {
-          text(String.format(CONTEXT_PROMPT, request.event.prettyStackTrace()), emptyList())
-        }
+        userMessage { text(String.format(CONTEXT_PROMPT, request.event.prettyStackTrace()), emptyList()) }
       }
 
     val response = GeminiPluginApi.getInstance().generate(project, prompt).toList().joinToString("")
@@ -218,9 +194,7 @@ class GeminiAiInsightClient(
     logger.debug("Gemini wants to see $fileNames")
 
     val contextData = codeContextResolver.getSource(fileNames)
-    logger.debug(
-      "AQI was able to find these context files: ${contextData.codeContext.joinToString { it.filePath }}"
-    )
+    logger.debug("AQI was able to find these context files: ${contextData.codeContext.joinToString { it.filePath }}")
 
     return contextData
   }
@@ -248,8 +222,7 @@ class GeminiAiInsightClient(
           request.event.prettyStackTrace(),
         )
         .trim()
-    var availableContextSpace =
-      GeminiPluginApi.getInstance().MAX_QUERY_CHARS - CONTEXT_WINDOW_PADDING - initialPrompt.count()
+    var availableContextSpace = GeminiPluginApi.getInstance().MAX_QUERY_CHARS - CONTEXT_WINDOW_PADDING - initialPrompt.count()
     val prompt =
       context
         .takeWhile { ctx ->
@@ -262,12 +235,7 @@ class GeminiAiInsightClient(
   }
 }
 
-fun createGeminiInsightRequest(
-  connection: Connection,
-  issueId: IssueId,
-  variantId: String?,
-  event: Event,
-) =
+fun createGeminiInsightRequest(connection: Connection, issueId: IssueId, variantId: String?, event: Event) =
   GeminiCrashInsightRequest(
     connection = connection,
     issueId = issueId,

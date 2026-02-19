@@ -19,8 +19,8 @@ import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
-import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.NotificationModel
@@ -56,8 +56,10 @@ import com.android.tools.idea.layoutinspector.resource.UI_MODE_NIGHT_NO
 import com.android.tools.idea.layoutinspector.resource.UI_MODE_TYPE_NORMAL
 import com.android.tools.idea.layoutinspector.view
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
+import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol.Screenshot
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.util.Disposer
 import java.awt.Dimension
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CompletableDeferred
@@ -68,8 +70,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 
-private val PROCESS =
-  MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
+private val PROCESS = DEVICE_1.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
 class AppInspectionSnapshotSupportTest {
   private val projectRule = AndroidProjectRule.withSdk()
@@ -77,23 +78,18 @@ class AppInspectionSnapshotSupportTest {
   private lateinit var inspectorClientSettings: InspectorClientSettings
   private val inspectorRule =
     LayoutInspectorRule(
-      listOf(
-        appInspectorRule.createInspectorClientProvider(
-          getClientSettings = { inspectorClientSettings }
-        )
-      ),
+      listOf(appInspectorRule.createInspectorClientProvider(getClientSettings = { inspectorClientSettings })),
       projectRule,
     ) {
       it.name == PROCESS.name
     }
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(appInspectorRule).around(inspectorRule)!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(appInspectorRule).around(inspectorRule)!!
 
   @Before
   fun setUp() {
     inspectorClientSettings = InspectorClientSettings(projectRule.project)
-    inspectorRule.attachDevice(MODERN_DEVICE)
+    inspectorRule.attachDevice(DEVICE_1)
   }
 
   private val savePath = createInMemoryFileSystemAndFolder("snapshot").resolve("snapshot.li")
@@ -106,9 +102,7 @@ class AppInspectionSnapshotSupportTest {
       appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
 
       appInspectorRule.viewInspector.connection.sendEvent { createLayoutEvent(layoutEventBuilder) }
-      appInspectorRule.viewInspector.connection.sendEvent {
-        createPropertiesEvent(propertiesEventBuilder)
-      }
+      appInspectorRule.viewInspector.connection.sendEvent { createPropertiesEvent(propertiesEventBuilder) }
 
       LayoutInspectorViewProtocol.Response.newBuilder()
         .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
@@ -119,19 +113,10 @@ class AppInspectionSnapshotSupportTest {
     inspectorRule.processes.selectedProcess = PROCESS
     waitForCondition(20, TimeUnit.SECONDS) { inspectorRule.inspectorModel.windows.isNotEmpty() }
 
-    inspectorRule.inspectorClient.saveSnapshot(
-      savePath,
-      LayoutInspectorViewProtocol.Screenshot.Type.SKP,
-    )
+    inspectorRule.inspectorClient.saveSnapshot(savePath, Screenshot.Type.SKP)
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel =
-      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
-    snapshotLoader.loadFile(
-      savePath,
-      newModel,
-      inspectorRule.notificationModel,
-      inspectorRule.inspectorClient.stats,
-    )
+    val newModel = InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
+    snapshotLoader.loadFile(savePath, newModel, inspectorRule.notificationModel, inspectorRule.inspectorClient.stats)
     checkSnapshot(newModel, snapshotLoader)
     assertThat(newModel.resourceLookup.dpi).isEqualTo(640)
     assertThat(newModel.resourceLookup.fontScale).isEqualTo(1.2f)
@@ -140,10 +125,39 @@ class AppInspectionSnapshotSupportTest {
   }
 
   @Test
+  fun saveAndLoadSnapshotWithSkiaImage() = runBlocking {
+  inspectorClientSettings.inLiveMode = false
+    runBlocking { inspectorRule.inspectorClient.stopFetching() }
+    appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
+      appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
+
+      appInspectorRule.viewInspector.connection.sendEvent {
+        createLayoutEvent(layoutEventBuilder.setScreenshot(Screenshot.newBuilder().setType(Screenshot.Type.SKP)))
+      }
+      appInspectorRule.viewInspector.connection.sendEvent { createPropertiesEvent(propertiesEventBuilder) }
+
+      LayoutInspectorViewProtocol.Response.newBuilder()
+        .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
+        .build()
+    }
+
+    inspectorRule.processNotifier.fireConnected(PROCESS)
+    inspectorRule.processes.selectedProcess = PROCESS
+    val model = inspectorRule.inspectorModel
+    waitForCondition(20, TimeUnit.SECONDS) { model.windows.isNotEmpty() }
+
+    inspectorRule.inspectorClient.saveSnapshot(savePath, Screenshot.Type.SKP)
+    val editor = LayoutInspectorFileEditor(inspectorRule.project, savePath)
+    Disposer.register(projectRule.testRootDisposable, editor)
+    val status = editor.component.getClientProperty(STATUS_TEXT_KEY)
+    assertThat(status.toString()).isEqualTo(
+      "Error loading snapshot\nSKP image type is no longer supported starting with Android Studio Panda 2")
+  }
+
+  @Test
   fun saveAndLoadLiveSnapshotWithDeepComposeNesting() = runBlocking {
     inspectorClientSettings.inLiveMode = true
-    val inspectorState =
-      FakeInspectorState(appInspectorRule.viewInspector, appInspectorRule.composeInspector)
+    val inspectorState = FakeInspectorState(appInspectorRule.viewInspector, appInspectorRule.composeInspector)
     inspectorState.createFakeViewTree()
     inspectorState.createFakeViewTreeAsSnapshot()
     inspectorState.createFakeLargeComposeTree()
@@ -151,22 +165,13 @@ class AppInspectionSnapshotSupportTest {
     inspectorRule.processes.selectedProcess = PROCESS
     waitForCondition(20, TimeUnit.SECONDS) { inspectorRule.inspectorModel.windows.isNotEmpty() }
 
-    inspectorRule.inspectorClient.saveSnapshot(
-      savePath,
-      LayoutInspectorViewProtocol.Screenshot.Type.SKP,
-    )
+    inspectorRule.inspectorClient.saveSnapshot(savePath, Screenshot.Type.SKP)
     inspectorRule.inspectorModel.resourceLookup.updateConfiguration(null, null)
 
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel =
-      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
+    val newModel = InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     val newNotificationModel = NotificationModel(inspectorRule.project)
-    snapshotLoader.loadFile(
-      savePath,
-      newModel,
-      newNotificationModel,
-      inspectorRule.inspectorClient.stats,
-    )
+    snapshotLoader.loadFile(savePath, newModel, newNotificationModel, inspectorRule.inspectorClient.stats)
 
     // Verify we have all 126 composables
     for (id in -300L downTo -425L) {
@@ -186,9 +191,7 @@ class AppInspectionSnapshotSupportTest {
       appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
 
       appInspectorRule.viewInspector.connection.sendEvent { createLayoutEvent(layoutEventBuilder) }
-      appInspectorRule.viewInspector.connection.sendEvent {
-        createPropertiesEvent(propertiesEventBuilder)
-      }
+      appInspectorRule.viewInspector.connection.sendEvent { createPropertiesEvent(propertiesEventBuilder) }
 
       LayoutInspectorViewProtocol.Response.newBuilder()
         .setStartFetchResponse(LayoutInspectorViewProtocol.StartFetchResponse.getDefaultInstance())
@@ -199,20 +202,11 @@ class AppInspectionSnapshotSupportTest {
     inspectorRule.processes.selectedProcess = PROCESS
     waitForCondition(20, TimeUnit.SECONDS) { inspectorRule.inspectorModel.windows.isNotEmpty() }
 
-    inspectorRule.inspectorClient.saveSnapshot(
-      savePath,
-      LayoutInspectorViewProtocol.Screenshot.Type.SKP,
-    )
+    inspectorRule.inspectorClient.saveSnapshot(savePath, Screenshot.Type.SKP)
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel =
-      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
+    val newModel = InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     val newNotificationModel = NotificationModel(inspectorRule.project)
-    snapshotLoader.loadFile(
-      savePath,
-      newModel,
-      newNotificationModel,
-      inspectorRule.inspectorClient.stats,
-    )
+    snapshotLoader.loadFile(savePath, newModel, newNotificationModel, inspectorRule.inspectorClient.stats)
     checkSnapshot(newModel, snapshotLoader)
     assertThat(newModel.resourceLookup.dpi).isEqualTo(640)
     assertThat(newModel.resourceLookup.fontScale).isEqualTo(1.2f)
@@ -272,10 +266,7 @@ class AppInspectionSnapshotSupportTest {
     // Try to save the snapshot right away, before we've gotten any events
     val snapshotJob = launch {
       deferred.complete(Unit)
-      inspectorRule.inspectorClient.saveSnapshot(
-        savePath,
-        LayoutInspectorViewProtocol.Screenshot.Type.SKP,
-      )
+      inspectorRule.inspectorClient.saveSnapshot(savePath, Screenshot.Type.SKP)
     }
 
     // Now send the events
@@ -283,24 +274,16 @@ class AppInspectionSnapshotSupportTest {
     appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
 
     appInspectorRule.viewInspector.connection.sendEvent { createLayoutEvent(layoutEventBuilder) }
-    appInspectorRule.viewInspector.connection.sendEvent {
-      createPropertiesEvent(propertiesEventBuilder)
-    }
+    appInspectorRule.viewInspector.connection.sendEvent { createPropertiesEvent(propertiesEventBuilder) }
 
     // Wait for saving to complete
     snapshotJob.join()
 
     // Ensure the snapshot was saved correctly
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel =
-      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
+    val newModel = InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     val newNotificationModel = NotificationModel(inspectorRule.project)
-    snapshotLoader.loadFile(
-      savePath,
-      newModel,
-      newNotificationModel,
-      inspectorRule.inspectorClient.stats,
-    )
+    snapshotLoader.loadFile(savePath, newModel, newNotificationModel, inspectorRule.inspectorClient.stats)
     checkSnapshot(newModel, snapshotLoader)
   }
 
@@ -310,9 +293,7 @@ class AppInspectionSnapshotSupportTest {
       view(ROOT, qualifiedName = "com.android.internal.policy.DecorView") {
         view(VIEW1, qualifiedName = "android.widget.RelativeLayout") {
           view(VIEW2, qualifiedName = "android.widget.TextView")
-          view(VIEW3, qualifiedName = "android.widget.RelativeLayout") {
-            view(VIEW4, qualifiedName = "android.widget.TextView")
-          }
+          view(VIEW3, qualifiedName = "android.widget.RelativeLayout") { view(VIEW4, qualifiedName = "android.widget.TextView") }
         }
       },
     )
@@ -331,14 +312,7 @@ class AppInspectionSnapshotSupportTest {
   private fun createPropertiesEvent(builder: LayoutInspectorViewProtocol.PropertiesEvent.Builder) {
     builder.apply {
       rootId = ROOT
-      addAllStrings(
-        listOf(
-          ViewString(1, "myInt"),
-          ViewString(3, "demo"),
-          ViewString(4, "layout"),
-          ViewString(12, "myapp"),
-        )
-      )
+      addAllStrings(listOf(ViewString(1, "myInt"), ViewString(3, "demo"), ViewString(4, "layout"), ViewString(12, "myapp")))
       addAllPropertyGroups(
         listOf(
           LayoutInspectorViewProtocol.PropertyGroup.newBuilder()
@@ -420,11 +394,7 @@ class AppInspectionSnapshotSupportTest {
           fontScale = 1.2f
           countryCode = 310
           networkCode = 410
-          screenLayout =
-            SCREENLAYOUT_SIZE_SMALL or
-              SCREENLAYOUT_LONG_YES or
-              SCREENLAYOUT_LAYOUTDIR_RTL or
-              SCREENLAYOUT_ROUND_YES
+          screenLayout = SCREENLAYOUT_SIZE_SMALL or SCREENLAYOUT_LONG_YES or SCREENLAYOUT_LAYOUTDIR_RTL or SCREENLAYOUT_ROUND_YES
           colorMode = COLOR_MODE_WIDE_COLOR_GAMUT_YES or COLOR_MODE_HDR_YES
           touchScreen = TOUCHSCREEN_STYLUS
           keyboard = KEYBOARD_QWERTY
@@ -440,13 +410,7 @@ class AppInspectionSnapshotSupportTest {
           screenHeightDp = 800
           grammaticalGender = GRAMMATICAL_GENDER_FEMININE
         }
-        val display =
-          LayoutInspectorViewProtocol.Display.newBuilder()
-            .setId(0)
-            .setWidth(800)
-            .setHeight(1600)
-            .setOrientation(90)
-            .build()
+        val display = LayoutInspectorViewProtocol.Display.newBuilder().setId(0).setWidth(800).setHeight(1600).setOrientation(90).build()
         addDisplayInfo(display)
         theme = ViewResource(13, 12, 11)
       }

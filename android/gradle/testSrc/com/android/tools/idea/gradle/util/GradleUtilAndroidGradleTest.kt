@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.util
 
-import com.android.SdkConstants
+import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.sdk.IdeSdks
@@ -23,6 +23,7 @@ import com.android.tools.idea.testing.AndroidGradleTests
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.findModule
+import com.android.tools.idea.testing.findModuleByFullName
 import com.android.utils.FileUtils
 import com.google.common.truth.Expect
 import com.google.common.truth.Truth
@@ -32,52 +33,40 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.RunsInEdt
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager
+import java.io.File
+import java.nio.file.Paths
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
-import java.nio.file.Paths
 
 @RunsInEdt
 class GradleUtilAndroidGradleTest {
 
-  @get:Rule
-  val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
+  @get:Rule val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
-  @get:Rule
-  val expect = Expect.createAndEnableStackTrace()!!
+  @get:Rule val expect = Expect.createAndEnableStackTrace()!!
 
   @Test
   fun testGetGradleBuildFileFromAppModule() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
-    preparedProject.open { project ->
-      verifyBuildFile(project, project.findAppModule(), "app", "build.gradle")
-    }
+    preparedProject.open { project -> verifyBuildFile(project, project.findAppModule(), "app", "build.gradle") }
   }
 
   @Test
   fun testGetGradleBuildFileFromProjectModule() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
-    preparedProject.open { project ->
-      verifyBuildFile(project, project.findModule(project.name), "build.gradle")
-    }
+    preparedProject.open { project -> verifyBuildFile(project, project.findModuleByFullName(project.name), "build.gradle") }
   }
 
   @Test
   fun testHasKtsBuildFilesKtsBasedProject() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.KOTLIN_GRADLE_DSL)
-    preparedProject.open(updateOptions = {
-      it.copy(
-        disableKtsRelatedIndexing = true
-      )
-    }
-    ) { project ->
-      assertTrue(
-        GradleProjectSystemUtil.projectBuildFilesTypes(project).contains(GradleProjectSystemUtil.BuildFileType.KOTLIN_SCRIPT))
+    preparedProject.open(updateOptions = { it.copy(disableKtsRelatedIndexing = true) }) { project ->
+      assertTrue(GradleProjectSystemUtil.projectBuildFilesTypes(project).contains(GradleProjectSystemUtil.BuildFileType.KOTLIN_SCRIPT))
     }
   }
 
@@ -85,30 +74,28 @@ class GradleUtilAndroidGradleTest {
   fun testHasKtsBuildFilesGroovyBasedProject() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedProject.open { project ->
-      assertFalse(
-        GradleProjectSystemUtil.projectBuildFilesTypes(project).contains(GradleProjectSystemUtil.BuildFileType.KOTLIN_SCRIPT))
+      assertFalse(GradleProjectSystemUtil.projectBuildFilesTypes(project).contains(GradleProjectSystemUtil.BuildFileType.KOTLIN_SCRIPT))
     }
   }
 
   @Test
-  fun testJdkPathFromProjectJava8() {
+  fun testJdkPathFromProjectJava8() = runBlocking {
     val jdk8Path = AndroidGradleTests.getEmbeddedJdk8Path()
     verifyJdkPathFromProject(jdk8Path)
   }
 
   @Test
-  fun testJdkPathFromProjectJavaCurrent() {
+  fun testJdkPathFromProjectJavaCurrent() = runBlocking {
     verifyJdkPathFromProject(IdeSdks.getInstance().jdkPath!!.toAbsolutePath().toString())
   }
 
   @Test
-  fun testUserGradlePropertiesFileDetectionForGradleHomeChangedInSettings() {
+  fun testUserGradlePropertiesFileDetectionForGradleHomeChangedInSettings() = runBlocking {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedProject.open { project ->
       val gradleHome = Paths.get(projectRule.getBaseTestPath(), "gradleHome").toString()
       ApplicationManager.getApplication().runWriteAction { GradleSettings.getInstance(project).serviceDirectoryPath = gradleHome }
-      val userGradlePropertiesFile =
-        GradleProjectSystemUtil.getUserGradlePropertiesFile(project)
+      val userGradlePropertiesFile = GradleProjectSystemUtil.getUserGradlePropertiesFile(project)
       assertThat(userGradlePropertiesFile).isEqualTo(File(gradleHome, "gradle.properties"))
     }
   }
@@ -132,10 +119,9 @@ class GradleUtilAndroidGradleTest {
       val basePath = project.basePath
       assertThat(basePath).isNotNull()
       assertThat(basePath).isNotEmpty()
-      val managerPath = GradleInstallationManager.getInstance().getGradleJvmPath(project, basePath!!)
+      val managerPath = runBlocking { AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(project, basePath!!) }
       assertThat(managerPath).isNotNull()
-      val settings = GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(
-        project)
+      val settings = GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project)
       val settingsPath = settings.javaHome
       assertThat(settingsPath).isNotNull()
       assertThat(settingsPath).isNotEmpty()

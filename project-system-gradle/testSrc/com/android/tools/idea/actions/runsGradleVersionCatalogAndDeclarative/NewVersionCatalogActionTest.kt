@@ -38,16 +38,15 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.RunsInEdt
+import java.lang.RuntimeException
+import org.jetbrains.kotlin.incremental.createDirectory
 import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
-import java.lang.RuntimeException
-import org.jetbrains.kotlin.incremental.createDirectory
 
 @RunsInEdt
 class NewVersionCatalogActionTest {
-  @get:Rule
-  val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
+  @get:Rule val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @Test
   fun testNewVersionCatalogActionDefault() {
@@ -103,8 +102,7 @@ class NewVersionCatalogActionTest {
       try {
         CommandProcessor.getInstance().executeCommand(p, { action.actionPerformed(event) }, "New Version Catalog", null)
         fail()
-      }
-      catch (e: RuntimeException) {
+      } catch (e: RuntimeException) {
         val x = p.baseDir?.findChild("gradle")?.findChild("x.versions.toml")
         assertThat(x).isNull()
         val settingsText = VfsUtil.loadText(p.baseDir?.findChild("settings.gradle")!!)
@@ -115,9 +113,12 @@ class NewVersionCatalogActionTest {
 
   @Test
   fun testNewVersionCatalogActionAlreadyExistsInFilesystem() {
-    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION.withAdditionalPatch { root ->
-      root.resolve("gradle").apply { createDirectory() }.resolve("libs.versions.toml").writeText("[libraries]\n")
-    })
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.SIMPLE_APPLICATION.withAdditionalPatch { root ->
+          root.resolve("gradle").apply { createDirectory() }.resolve("libs.versions.toml").writeText("[libraries]\n")
+        }
+      )
 
     preparedProject.open { p ->
       assertThat(p.baseDir?.findChild("gradle")?.findChild("libs.versions.toml")).isNotNull()
@@ -127,8 +128,7 @@ class NewVersionCatalogActionTest {
       try {
         CommandProcessor.getInstance().executeCommand(p, { action.actionPerformed(event) }, "New Version Catalog", null)
         fail()
-      }
-      catch (e: RuntimeException) {
+      } catch (e: RuntimeException) {
         val libs = p.baseDir?.findChild("gradle")?.findChild("libs.versions.toml")
         val libsText = VfsUtil.loadText(libs!!)
         assertThat(libsText).isEqualTo("[libraries]\n")
@@ -138,19 +138,27 @@ class NewVersionCatalogActionTest {
 
   @Test
   fun testNewVersionCatalogActionAlreadyExistsInSettings() {
-    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION.withAdditionalPatch { root ->
-      root.resolve("settings.gradle").appendText("""
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.SIMPLE_APPLICATION.withAdditionalPatch { root ->
+          root
+            .resolve("settings.gradle")
+            .appendText(
+              """
 
-        dependencyResolutionManagement {
-          versionCatalogs {
-            foo {
-              from files('gradle/bar.versions.toml')
-            }
-          }
+              dependencyResolutionManagement {
+                versionCatalogs {
+                  foo {
+                    from files('gradle/bar.versions.toml')
+                  }
+                }
+              }
+              """
+                .trimIndent()
+            )
+          root.resolve("gradle").apply { createDirectory() }.resolve("bar.versions.toml").writeText("[libraries]\n")
         }
-      """.trimIndent())
-      root.resolve("gradle").apply { createDirectory() }.resolve("bar.versions.toml").writeText("[libraries]\n")
-    })
+      )
 
     preparedProject.open { p ->
       assertThat(p.baseDir?.findChild("gradle")?.findChild("libs.versions.toml")).isNull()
@@ -168,7 +176,6 @@ class NewVersionCatalogActionTest {
       val settingsText = VfsUtil.loadText(p.baseDir?.findChild("settings.gradle")!!)
       assertThat(settingsText).containsMatch("files.*foo.versions.toml")
       assertThat(settingsText).contains("foo1")
-
     }
   }
 
@@ -205,11 +212,16 @@ class NewVersionCatalogActionTest {
   private fun PreparedTestProject.Context.createTestDataContext(project: Project, name: String): DataContext =
     SimpleDataContext.builder()
       .add(TestDialogBuilder.TestAnswers.KEY, TestDialogBuilder.TestAnswers(name, NewVersionCatalogAction.VERSION_CATALOG_TEMPLATE))
-      .add(LangDataKeys.IDE_VIEW, object : IdeView {
-        val directory = PsiManager.getInstance(project).findDirectory(project.baseDir)!!
-        override fun getDirectories(): Array<PsiDirectory> = Array(1) { directory }
-        override fun getOrChooseDirectory(): PsiDirectory? = directory
-      })
+      .add(
+        LangDataKeys.IDE_VIEW,
+        object : IdeView {
+          val directory = PsiManager.getInstance(project).findDirectory(project.baseDir)!!
+
+          override fun getDirectories(): Array<PsiDirectory> = Array(1) { directory }
+
+          override fun getOrChooseDirectory(): PsiDirectory? = directory
+        },
+      )
       .add(CommonDataKeys.PROJECT, project)
       .add(CommonDataKeys.EDITOR, fixture.editor)
       .build()

@@ -15,12 +15,6 @@
  */
 package com.android.build.attribution.ui.data
 
-import com.android.build.attribution.analyzers.DownloadsAnalyzer
-import com.android.build.attribution.analyzers.DownloadsAnalyzer.DownloadStatus.FAILURE
-import com.android.build.attribution.analyzers.DownloadsAnalyzer.DownloadStatus.MISSED
-import com.android.build.attribution.analyzers.DownloadsAnalyzer.DownloadStatus.SUCCESS
-import com.android.build.attribution.analyzers.DownloadsAnalyzer.KnownRepository.GOOGLE
-import com.android.build.attribution.analyzers.DownloadsAnalyzer.KnownRepository.MAVEN_CENTRAL
 import com.android.build.attribution.ui.mockDownloadsData
 import com.google.common.truth.Truth
 import org.junit.Test
@@ -31,16 +25,16 @@ class DownloadsSummaryUIDataTest {
 
   @Test
   fun testSumOfRequests() {
-    Truth.assertThat(DownloadsSummaryUIData (downloadsData).sumOfRequests).isEqualTo(5 + 1 + 1 + 1)
+    Truth.assertThat(DownloadsSummaryUIData(downloadsData).sumOfRequests).isEqualTo(5 + 1 + 1 + 1)
   }
 
   @Test
   fun testSumOfDataBytes() {
-    Truth.assertThat(DownloadsSummaryUIData (downloadsData).sumOfDataBytes).isEqualTo(300000 + 10000)
+    Truth.assertThat(DownloadsSummaryUIData(downloadsData).sumOfDataBytes).isEqualTo(300000 + 10000)
   }
 
   @Test
   fun testSumOfTimeMs() {
-    Truth.assertThat(DownloadsSummaryUIData (downloadsData).sumOfTimeMs).isEqualTo(1000 + 500 + 10 + 5)
+    Truth.assertThat(DownloadsSummaryUIData(downloadsData).sumOfTimeMs).isEqualTo(1000 + 500 + 10 + 5)
   }
 }

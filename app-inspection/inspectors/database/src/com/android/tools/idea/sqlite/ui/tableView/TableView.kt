@@ -22,6 +22,15 @@ import javax.swing.JComponent
 
 /** Interface used to abstract views that display the content of SQL tables. */
 interface TableView {
+  /** The type data being displayed */
+  enum class TableViewType {
+    /** A database table or view */
+    TABLE,
+
+    /** A generic query being evaluated */
+    EVALUATOR,
+  }
+
   /** The JComponent containing the view's UI. */
   val component: JComponent
 
@@ -63,8 +72,8 @@ interface TableView {
   /**
    * Reverts the last edit operation in the table's UI.
    *
-   * When we edit a cell we want to immediately show the new value in the UI (to avoid jumps) if the
-   * corresponding update operation fails in the database, we need to revert this UI change.
+   * When we edit a cell we want to immediately show the new value in the UI (to avoid jumps) if the corresponding update operation fails in
+   * the database, we need to revert this UI change.
    */
   fun revertLastTableCellEdit()
 
@@ -110,6 +119,8 @@ interface TableView {
 
     /** Invoked when the user wants to cancel the SQLite statement that is currently running. */
     fun cancelRunningStatementInvoked()
+
+    fun removeRowsInvoked(targetRowIndices: List<Int>)
   }
 }
 
@@ -122,8 +133,7 @@ sealed class OrderBy {
   object NotOrdered : OrderBy()
 
   /**
-   * Returns the next state cycling between not sorted, desc and asc. If the column changes the
-   * sorting starts from desc on the new column.
+   * Returns the next state cycling between not sorted, desc and asc. If the column changes the sorting starts from desc on the new column.
    */
   fun nextState(newColumnName: String): OrderBy {
     val column =
@@ -151,13 +161,9 @@ data class ViewColumn(val name: String, val inPrimaryKey: Boolean, val isNullabl
 /** Class that represents a generic rows diff operation */
 sealed class RowDiffOperation {
   /** Update operations are applied to the cells of existing rows */
-  data class UpdateCell(val newValue: SqliteColumnValue, val rowIndex: Int, val colIndex: Int) :
-    RowDiffOperation()
+  data class UpdateCell(val newValue: SqliteColumnValue, val rowIndex: Int, val colIndex: Int) : RowDiffOperation()
 
-  /**
-   * Add operations are applied after [UpdateCell] operations, therefore rows are added at the end
-   * of the table
-   */
+  /** Add operations are applied after [UpdateCell] operations, therefore rows are added at the end of the table */
   data class AddRow(val row: SqliteRow) : RowDiffOperation()
 
   /**

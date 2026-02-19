@@ -19,6 +19,7 @@ import com.intellij.ui.components.JBViewport
 import java.awt.Dimension
 import java.awt.Point
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** A viewport that scales the contained view relative to the center of the viewport. */
@@ -60,14 +61,15 @@ class CenterAnchoredViewport : JBViewport() {
       val minX = (width - viewPreferredSize.width).coerceAtLeast(0) / 2
       val minY = (height - viewPreferredSize.height).coerceAtLeast(0) / 2
       // This formula is intended to eliminate systematic bias that would cause position drift after many small resizes.
-      viewPosition.move((viewPosition.x + ((this.width - width + (viewPosition.x and 0x1)) shr 1)).coerceAtLeast(minX),
-                        (viewPosition.y + ((this.height - height + (viewPosition.y and 0x1)) shr 1)).coerceAtLeast(minY))
+      viewPosition.move(
+        (viewPosition.x + ((this.width - width + (viewPosition.x and 0x1)) shr 1)).coerceAtLeast(minX),
+        (viewPosition.y + ((this.height - height + (viewPosition.y and 0x1)) shr 1)).coerceAtLeast(minY),
+      )
       super.setViewPosition(viewPosition)
     }
     try {
       super.setBounds(x, y, width, height)
-    }
-    finally {
+    } finally {
       resizingUnderway = false
     }
   }
@@ -92,17 +94,21 @@ class CenterAnchoredViewport : JBViewport() {
     val oldContentOffsetY = (oldViewHeight - oldViewWidth * naturalAspectRatio).coerceAtLeast(0.0) / 2
     val newContentOffsetX = (newViewSize.width - newViewSize.height / naturalAspectRatio).coerceAtLeast(0.0) / 2
     val newContentOffsetY = (newViewSize.height - newViewSize.width * naturalAspectRatio).coerceAtLeast(0.0) / 2
-    val scaleFactor = max(newViewSize.width / oldViewWidth, newViewSize.height / oldViewHeight)
+    val scaleFactorX = newViewSize.width / oldViewWidth
+    val scaleFactorY = newViewSize.height / oldViewHeight
+    val scaleFactor = if (scaleFactorX * scaleFactorY < 1) min(scaleFactorX, scaleFactorY) else max(scaleFactorX, scaleFactorY)
     val viewportCenterX = width / 2.0
     val viewportCenterY = height / 2.0
     val oldFixedPointX = viewPosition.x + viewportCenterX - oldContentOffsetX
     val oldFixedPointY = viewPosition.y + viewportCenterY - oldContentOffsetY
     val newFixedPointX = oldFixedPointX * scaleFactor
     val newFixedPointY = oldFixedPointY * scaleFactor
-    val x = if (newViewSize.width == view.width) viewPosition.x
-            else (newFixedPointX - viewportCenterX + newContentOffsetX).roundToInt().coerceInLenient(0, newViewSize.width - width)
-    val y = if (newViewSize.height == view.height) viewPosition.y
-            else (newFixedPointY - viewportCenterY + newContentOffsetY).roundToInt().coerceInLenient(0, newViewSize.height - height)
+    val x =
+      if (newViewSize.width == view.width) viewPosition.x
+      else (newFixedPointX - viewportCenterX + newContentOffsetX).roundToInt().coerceInLenient(0, newViewSize.width - width)
+    val y =
+      if (newViewSize.height == view.height) viewPosition.y
+      else (newFixedPointY - viewportCenterY + newContentOffsetY).roundToInt().coerceInLenient(0, newViewSize.height - height)
     return Point(x, y)
   }
 
@@ -117,5 +123,4 @@ class CenterAnchoredViewport : JBViewport() {
 }
 
 /** Similar to [coerceIn], but doesn't throw an exception when [max] < [min], in which case returns [min]. */
-private fun Int.coerceInLenient(min: Int, max: Int): Int =
-    if (max < min) min else coerceIn(min, max)
+private fun Int.coerceInLenient(min: Int, max: Int): Int = if (max < min) min else coerceIn(min, max)

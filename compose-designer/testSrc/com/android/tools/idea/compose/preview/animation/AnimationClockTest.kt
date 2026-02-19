@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.compose.preview.animation
 
-import org.junit.Assert.*
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.fail
 import org.junit.Test
 
 class AnimationClockTest {
@@ -42,9 +43,7 @@ class AnimationClockTest {
     assertNotNull(animationClock.findClockFunction("getAnimatedVisibilityState"))
     try {
       animationClock.findClockFunction("getAnimatedVisibilityState-xga21d")
-      fail(
-        "Expected to fail, as `getAnimatedVisibilityState-xga21d` should not be found when looking for the mangled name."
-      )
+      fail("Expected to fail, as `getAnimatedVisibilityState-xga21d` should not be found when looking for the mangled name.")
     } catch (ignored: NullPointerException) {}
   }
 }

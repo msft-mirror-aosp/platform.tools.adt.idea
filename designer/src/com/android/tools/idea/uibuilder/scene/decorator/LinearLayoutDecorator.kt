@@ -25,7 +25,11 @@ import com.android.tools.idea.common.scene.draw.DisplayList
 import com.android.tools.idea.common.scene.draw.DrawComponentBackground
 import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager
 import com.android.tools.idea.uibuilder.handlers.linear.LinearLayoutHandler
-import java.awt.*
+import java.awt.Color
+import java.awt.GradientPaint
+import java.awt.Graphics2D
+import java.awt.Paint
+import java.awt.Rectangle
 
 class LinearLayoutDecorator : SceneDecorator() {
 
@@ -73,11 +77,7 @@ class LinearLayoutDecorator : SceneDecorator() {
     }
   }
 
-  override fun addBackground(
-    list: DisplayList,
-    sceneContext: SceneContext,
-    component: SceneComponent,
-  ) {
+  override fun addBackground(list: DisplayList, sceneContext: SceneContext, component: SceneComponent) {
     @AndroidDpCoordinate val rect = Rectangle()
     component.fillDrawRect(0, rect)
     @SwingCoordinate val l = sceneContext.getSwingXDip(rect.x.toFloat())
@@ -87,8 +87,7 @@ class LinearLayoutDecorator : SceneDecorator() {
 
     var vertical = false
     sceneContext.surface?.project?.let {
-      val handler =
-        ViewHandlerManager.get(it).getHandler(SdkConstants.LINEAR_LAYOUT) {} as LinearLayoutHandler
+      val handler = ViewHandlerManager.get(it).getHandler(SdkConstants.LINEAR_LAYOUT) {} as LinearLayoutHandler
       vertical = handler.isVertical(component.nlComponent)
     }
 

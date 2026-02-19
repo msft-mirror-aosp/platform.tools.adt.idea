@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.common.error
 
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
@@ -33,6 +32,7 @@ import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.TestActionEvent.createTestEvent
 import com.intellij.testFramework.assertInstanceOf
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -74,11 +74,7 @@ class IssuePanelViewOptionActionGroupTest {
       SeverityRegistrar.getSeverityRegistrar(rule.project)
         .allSeverities
         .reversed()
-        .filter {
-          it != HighlightSeverity.INFO &&
-            it > HighlightSeverity.INFORMATION &&
-            it < HighlightSeverity.ERROR
-        }
+        .filter { it != HighlightSeverity.INFO && it > HighlightSeverity.INFORMATION && it < HighlightSeverity.ERROR }
         .iterator()
 
     showWarningAction.let {
@@ -122,10 +118,7 @@ class SeverityFilterActionTest {
 
   @Before
   fun setUp() {
-    rule.projectRule.replaceProjectService(
-      DesignerCommonIssuePanelModelProvider::class.java,
-      TestIssuePanelModelProvider(),
-    )
+    rule.projectRule.replaceProjectService(DesignerCommonIssuePanelModelProvider::class.java, TestIssuePanelModelProvider())
   }
 
   @Test
@@ -176,18 +169,11 @@ class VisualLintFilterActionTest {
 
   @Test
   fun testPerform() {
-    ToolWindowManager.getInstance(rule.project)
-      .registerToolWindow(RegisterToolWindowTask(ProblemsView.ID))
-    runBlocking(workerThread) {
-      ProblemsViewToolWindowUtils.addTab(rule.project, SharedIssuePanelProvider(rule.project))
-    }
+    ToolWindowManager.getInstance(rule.project).registerToolWindow(RegisterToolWindowTask(ProblemsView.ID))
+    runBlocking(Dispatchers.Default) { ProblemsViewToolWindowUtils.addTab(rule.project, SharedIssuePanelProvider(rule.project)) }
     val panel = IssuePanelService.getDesignerCommonIssuePanel(rule.project)!!
     val visualLintIssue = mock<VisualLintRenderIssue>()
-    val dataContext =
-      SimpleDataContext.builder()
-        .add(DESIGNER_COMMON_ISSUE_PANEL, panel)
-        .add(CommonDataKeys.PROJECT, rule.project)
-        .build()
+    val dataContext = SimpleDataContext.builder().add(DESIGNER_COMMON_ISSUE_PANEL, panel).add(CommonDataKeys.PROJECT, rule.project).build()
 
     VisualLintSettings.getInstance(rule.project).isVisualLintFilterSelected = true
     val action = VisualLintFilterAction()

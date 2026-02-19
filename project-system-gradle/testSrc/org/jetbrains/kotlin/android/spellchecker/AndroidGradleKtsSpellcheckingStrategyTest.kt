@@ -18,8 +18,8 @@ package org.jetbrains.kotlin.android.spellchecker
 import com.google.common.truth.Truth
 import com.intellij.codeInsight.daemon.ProblemHighlightFilter
 import com.intellij.codeInsight.daemon.impl.analysis.DefaultHighlightingSettingProvider
+import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
-import com.intellij.spellchecker.inspections.SpellCheckingInspection
 import com.intellij.testFramework.ExtensionTestUtil.maskExtensions
 import org.jetbrains.android.AndroidTestCase
 
@@ -32,30 +32,40 @@ class AndroidGradleKtsSpellcheckingStrategyTest : AndroidTestCase() {
   }
 
   fun testNoTypoInDependencyCallExpression() {
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
-    val virtualFile = myFixture.addFileToProject(
-      "build.gradle.kts",
-      //language=kotlin
-      """
-        dependencies {
-          implementation("com.example:xyzy:1.0")
-        }
-      """.trimIndent()).virtualFile
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    val virtualFile =
+      myFixture
+        .addFileToProject(
+          "build.gradle.kts",
+          // language=kotlin
+          """
+          dependencies {
+            implementation("com.example:xyzy:1.0")
+          }
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     Truth.assertThat(typos).isEmpty()
   }
 
   fun testTypoInPrintCallExpression() {
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
-    val virtualFile = myFixture.addFileToProject(
-      "build.gradle.kts",
-      //language=kotlin
-      """
-        dependencies {
-          print("com.example:xyzy:1.0")
-        }
-      """.trimIndent()).virtualFile
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    val virtualFile =
+      myFixture
+        .addFileToProject(
+          "build.gradle.kts",
+          // language=kotlin
+          """
+          dependencies {
+            print("com.example:xyzy:1.0")
+          }
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     Truth.assertThat(typos).hasSize(1)

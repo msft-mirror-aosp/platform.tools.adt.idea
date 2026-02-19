@@ -17,11 +17,11 @@ package com.android.tools.idea.npw.model
 
 import com.android.annotations.concurrency.UiThread
 import com.android.annotations.concurrency.WorkerThread
-import com.android.ide.common.repository.AgpVersion
 import com.android.io.CancellableFileIo
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
+import com.android.tools.idea.gemini.buildLlmPrompt
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.project.AndroidNewProjectInitializationStartupActivity
 import com.android.tools.idea.gradle.project.importing.GradleNewProjectConfiguration
@@ -33,6 +33,7 @@ import com.android.tools.idea.npw.module.recipes.androidProject.androidProjectRe
 import com.android.tools.idea.npw.project.DomainToPackageExpression
 import com.android.tools.idea.npw.project.setGradleWrapperExecutable
 import com.android.tools.idea.npw.template.ProjectTemplateDataBuilder
+import com.android.tools.idea.npw.ui.FirebaseAiWizardLauncher
 import com.android.tools.idea.observable.core.BoolProperty
 import com.android.tools.idea.observable.core.BoolValueProperty
 import com.android.tools.idea.observable.core.ObjectValueProperty
@@ -68,6 +69,7 @@ import com.intellij.openapi.fileEditor.impl.NonProjectFileWritingAccessProvider
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.projectRoots.JavaSdk
 import com.intellij.openapi.projectRoots.JavaSdkVersion
@@ -86,6 +88,8 @@ import java.nio.file.Paths
 import java.util.Locale
 import java.util.Optional
 import java.util.regex.Pattern
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.android.util.AndroidBundle.message
 import org.jetbrains.android.util.AndroidUtils
 
@@ -112,41 +116,32 @@ interface ProjectModelData {
 }
 
 class NewProjectModel : WizardModel(), ProjectModelData {
-  override val projectSyncInvoker: ProjectSyncInvoker =
-    ProjectSyncInvoker.DefaultProjectSyncInvoker()
+  override val projectSyncInvoker: ProjectSyncInvoker = ProjectSyncInvoker.DefaultProjectSyncInvoker()
   override val applicationName = StringValueProperty("My Application")
   override val packageName = StringValueProperty()
   override val projectLocation = StringValueProperty()
   override val useGradleKts = BoolValueProperty()
   override val useVersionCatalog = BoolValueProperty(true)
   // We can assume this is true for a new project because View binding is supported from AGP 3.6+
-  override val viewBindingSupport =
-    OptionalValueProperty<ViewBindingSupport>(ViewBindingSupport.SUPPORTED_4_0_MORE)
+  override val viewBindingSupport = OptionalValueProperty<ViewBindingSupport>(ViewBindingSupport.SUPPORTED_4_0_MORE)
   override lateinit var project: Project
   override val isNewProject = true
   override val language = OptionalValueProperty<Language>()
-  override val agpVersionSelector =
-    ObjectValueProperty<AgpVersionSelector>(newProjectAgpVersionSelector())
+  override val agpVersionSelector = ObjectValueProperty<AgpVersionSelector>(newProjectAgpVersionSelector())
   override val additionalMavenRepos: ObjectValueProperty<List<URL>> =
     ObjectValueProperty(findAndroidStudioLocalMavenRepoPaths().map { it.toURI().toURL() })
   override val multiTemplateRenderer = MultiTemplateRenderer(::runRenderer)
   override val prompt = StringValueProperty("")
-  override val imageAttachments: ObjectValueProperty<List<VirtualFile>> =
-    ObjectValueProperty(listOf())
+  override val imageAttachments: ObjectValueProperty<List<VirtualFile>> = ObjectValueProperty(listOf())
+  val launchFirebaseWizard = BoolValueProperty(false)
 
   private fun runRenderer(renderer: (Project) -> Unit) {
-    object :
-        Task.Backgroundable(
-          null,
-          message("android.compile.messages.generating.r.java.content.name"),
-          false,
-        ) {
+    object : Task.Backgroundable(null, message("android.compile.messages.generating.r.java.content.name"), false) {
         override fun run(indicator: ProgressIndicator) {
           val projectName = applicationName.get()
           val projectBaseDirectory = File(projectLocation.get())
           val newProject =
-            GradleProjectImporter.getInstance()
-              .createProject(projectName, projectBaseDirectory, useDefaultProjectAsTemplate = true)
+            GradleProjectImporter.getInstance().createProject(projectName, projectBaseDirectory, useDefaultProjectAsTemplate = true)
 
           // Arguably some of these things should be in the OpenProjectTask's beforeOpen
           newProject.service<ProjectSystemService>().setProviderId(GradleProjectSystemProvider.ID)
@@ -154,31 +149,37 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
           this@NewProjectModel.project = newProject
 
-          newProject
-            .service<AndroidNewProjectInitializationStartupActivity.StartupService>()
-            .setProjectInitializer {
-              logger.info("Rendering a new project.")
-              NonProjectFileWritingAccessProvider.disableChecksDuring { renderer(newProject) }
+          newProject.service<AndroidNewProjectInitializationStartupActivity.StartupService>().setProjectInitializer {
+            logger.info("Rendering a new project.")
+            NonProjectFileWritingAccessProvider.disableChecksDuring { renderer(newProject) }
 
-              if (StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && !prompt.isEmpty.get()) {
-                // When the Gradle project is linked to the IDE project, the Gradle tool window is
-                // shown, and any existing tool window in the same area is hidden (see
-                // ExternalToolWindowManager). We want the Gemini window to be shown instead, so
-                // delay opening the Gemini window until after Gradle has finished.
-                ToolWindowManager.getInstance(newProject).invokeLater {
-                  GeminiPluginApi.getInstance()
-                    .launchNewProjectAgent(newProject, prompt.get(), imageAttachments.get())
-                }
+            if (StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && !prompt.isEmpty.get()) {
+              // When the Gradle project is linked to the IDE project, the Gradle tool window is
+              // shown, and any existing tool window in the same area is hidden (see
+              // ExternalToolWindowManager). We want the Gemini window to be shown instead, so
+              // delay opening the Gemini window until after Gradle has finished.
+              ToolWindowManager.getInstance(newProject).invokeLater {
+                GeminiPluginApi.getInstance().launchNewProjectAgent(newProject, prompt.get(), imageAttachments.get())
               }
             }
+
+            if (launchFirebaseWizard.get()) {
+              when (val launcher = FirebaseAiWizardLauncher.EP_NAME.extensions.firstOrNull()) {
+                null -> logger.warn("FirebaseAiWizardLauncher not found")
+                else ->
+                  ToolWindowManager.getInstance(newProject).invokeLater {
+                    launcher.onProjectCreated(newProject, packageName.get(), projectTemplateDataBuilder.build())
+                  }
+              }
+            }
+          }
 
           val openProjectTask = OpenProjectTask {
             project = newProject
             isNewProject = false
             forceOpenInNewFrame = true
           }
-          ProjectManagerEx.getInstanceEx()
-            .openProject(projectBaseDirectory.toPath(), openProjectTask)
+          ProjectManagerEx.getInstanceEx().openProject(projectBaseDirectory.toPath(), openProjectTask)
         }
       }
       .queue()
@@ -222,17 +223,11 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         // below is therefore a more narrow case than initially supposed (however it still needs to
         // be handled).
         try {
-          if (
-            VfsUtil.createDirectoryIfMissing(projectLocation) != null &&
-              CancellableFileIo.isWritable(Paths.get(projectLocation))
-          ) {
+          if (VfsUtil.createDirectoryIfMissing(projectLocation) != null && CancellableFileIo.isWritable(Paths.get(projectLocation))) {
             return@runWriteCommandAction true
           }
         } catch (e: Exception) {
-          logger.error(
-            "Exception thrown when creating target project location: $projectLocation",
-            e,
-          )
+          logger.error("Exception thrown when creating target project location: $projectLocation", e)
         }
 
         false
@@ -256,15 +251,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
     @WorkerThread
     override fun init() {
-      var resolvedAgpVersion =
-        this@NewProjectModel.agpVersionSelector
-          .get()
-          .resolveVersion(AgpVersions::getAvailableVersions)
-
-      // TODO(b/444641424): Remove when Hilt supports AGP 9.
-      if (prompt.get().isNotEmpty()) {
-        resolvedAgpVersion = resolvedAgpVersion.coerceAtMost(AgpVersion(8, 13, 1))
-      }
+      var resolvedAgpVersion = this@NewProjectModel.agpVersionSelector.get().resolveVersion(AgpVersions::getAvailableVersions)
 
       projectTemplateData =
         projectTemplateDataBuilder
@@ -292,10 +279,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
     @WorkerThread
     override fun onSourcesCreated() {
-      GradleProjectImporter.configureNewProject(
-        project,
-        GradleNewProjectConfiguration(useDefaultDaemonJvmCriteria = true),
-      )
+      GradleProjectImporter.configureNewProject(project, GradleNewProjectConfiguration(useDefaultDaemonJvmCriteria = true))
     }
 
     @WorkerThread
@@ -313,23 +297,13 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
     private fun performCreateProject(dryRun: Boolean) {
       val context =
-        RenderingContext(
-          project,
-          null,
-          "New Project",
-          projectTemplateData,
-          showErrors = true,
-          dryRun = dryRun,
-          moduleRoot = null,
-        )
-      val executor =
-        if (dryRun) FindReferencesRecipeExecutor(context) else DefaultRecipeExecutor(context)
+        RenderingContext(project, null, "New Project", projectTemplateData, showErrors = true, dryRun = dryRun, moduleRoot = null)
+      val executor = if (dryRun) FindReferencesRecipeExecutor(context) else DefaultRecipeExecutor(context)
       val recipe: Recipe = { data: TemplateData ->
         androidProjectRecipe(
           data = data as ProjectTemplateData,
           appTitle = applicationName.get(),
           language = language.value,
-          addAndroidXSupport = true,
           useGradleKts = useGradleKts.get(),
         )
       }
@@ -341,8 +315,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       val rootLocation = File(projectLocation.get())
       val wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation)
       try {
-        GradleWrapper.get(wrapperPropertiesFilePath, project)
-          .updateDistribution(projectTemplateData.gradleVersion)
+        GradleWrapper.get(wrapperPropertiesFilePath, project).updateDistribution(projectTemplateData.gradleVersion)
       } catch (e: IOException) {
         // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails
         // and the error message has a "quick fix".
@@ -360,9 +333,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
           // Java language level; should be 7 for L and above
           val initialLanguageLevel: LanguageLevel? =
             LanguageLevel.JDK_1_7.takeIf {
-              sdkData != null &&
-                sdk != null &&
-                jdk.getVersion(sdk)?.isAtLeast(JavaSdkVersion.JDK_1_7) == true
+              sdkData != null && sdk != null && jdk.getVersion(sdk)?.isAtLeast(JavaSdkVersion.JDK_1_7) == true
             }
 
           val request =
@@ -395,46 +366,64 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     return null
   }
 
+  /** Generates a project name based on user provided description of the project. */
+  fun generateAppNameAsync(onStart: Runnable, onFinish: Runnable) {
+    onStart.run()
+    ApplicationManager.getApplication().executeOnPooledThread {
+      try {
+        val project = ProjectManager.getInstance().defaultProject
+        val llmPrompt =
+          buildLlmPrompt(project) {
+            userMessage {
+              text(
+                "Generate a short, cool, and unique name for an Android application with the following description: ${prompt.get()} " +
+                  "\n" +
+                  "Only return the name, with no additional text.",
+                filesUsed = emptyList(),
+              )
+            }
+          }
+        val suggestedNameFlow = GeminiPluginApi.getInstance().generate(project, prompt = llmPrompt)
+        val suggestedName = runBlocking { suggestedNameFlow.toList().joinToString("") }
+        applicationName.set(suggestedName)
+      } catch (e: Exception) {
+        logger.warn("Failed to generate an application name.", e)
+        applicationName.set("My Application")
+      } finally {
+        onFinish.run()
+      }
+    }
+  }
+
   companion object {
     @VisibleForTesting const val PROPERTIES_ANDROID_PACKAGE_KEY = "SAVED_ANDROID_PACKAGE"
     @VisibleForTesting const val PROPERTIES_KOTLIN_SUPPORT_KEY = "SAVED_PROJECT_KOTLIN_SUPPORT"
     @VisibleForTesting const val PROPERTIES_NPW_LANGUAGE_KEY = "SAVED_ANDROID_NPW_LANGUAGE"
-    @VisibleForTesting
-    const val PROPERTIES_NPW_ASKED_LANGUAGE_KEY = "SAVED_ANDROID_NPW_ASKED_LANGUAGE"
+    @VisibleForTesting const val PROPERTIES_NPW_ASKED_LANGUAGE_KEY = "SAVED_ANDROID_NPW_ASKED_LANGUAGE"
 
     private const val EXAMPLE_DOMAIN = "example.com"
     private val DISALLOWED_IN_DOMAIN = Pattern.compile("[^a-zA-Z0-9_]")
-    private val MODULE_NAME_GROUP =
-      Pattern.compile(".*:") // Anything before ":" belongs to the module parent name
+    private val MODULE_NAME_GROUP = Pattern.compile(".*:") // Anything before ":" belongs to the module parent name
 
     /** Loads saved company domain, or generates a placeholder one if no domain has been saved. */
     @JvmStatic
     fun getInitialDomain(): String =
-      when (
-        val androidPackage =
-          PropertiesComponent.getInstance().getValue(PROPERTIES_ANDROID_PACKAGE_KEY)
-      ) {
-        is String ->
-          DomainToPackageExpression(StringValueProperty(androidPackage), StringValueProperty(""))
-            .get()
+      when (val androidPackage = PropertiesComponent.getInstance().getValue(PROPERTIES_ANDROID_PACKAGE_KEY)) {
+        is String -> DomainToPackageExpression(StringValueProperty(androidPackage), StringValueProperty("")).get()
         else -> EXAMPLE_DOMAIN
       }
 
-    /**
-     * Tries to get a valid package suggestion for the specifies Project using the saved user
-     * domain.
-     */
+    /** Tries to get a valid package suggestion for the specifies Project using the saved user domain. */
     @JvmStatic
     fun getSuggestedProjectPackage(): String =
-      DomainToPackageExpression(StringValueProperty(getInitialDomain()), StringValueProperty(""))
-        .get()
+      DomainToPackageExpression(StringValueProperty(getInitialDomain()), StringValueProperty("")).get()
 
     /**
      * Calculates the initial values for the language and updates the [PropertiesComponent]
      *
-     * @return If Language was previously saved, just return that saved value. If User used the old
-     *   UI check-box to select "Use Kotlin" or the User is using the Wizard for the first time =>
-     *   Kotlin otherwise Java (ie user used the wizards before, and un-ticked the check-box)
+     * @return If Language was previously saved, just return that saved value. If User used the old UI check-box to select "Use Kotlin" or
+     *   the User is using the Wizard for the first time => Kotlin otherwise Java (ie user used the wizards before, and un-ticked the
+     *   check-box)
      */
     @JvmStatic
     fun calculateInitialLanguage(props: PropertiesComponent): Optional<Language> {
@@ -457,25 +446,20 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       val askedBefore = props.getBoolean(PROPERTIES_NPW_ASKED_LANGUAGE_KEY)
       // After version 3.5, we force the user to select the language if we didn't ask before or if
       // the selection was not Kotlin.
-      return if (initialLanguage === Kotlin || askedBefore) Optional.of(initialLanguage)
-      else Optional.empty()
+      return if (initialLanguage === Kotlin || askedBefore) Optional.of(initialLanguage) else Optional.empty()
     }
 
-    @JvmStatic
-    fun sanitizeApplicationName(s: String): String = DISALLOWED_IN_DOMAIN.matcher(s).replaceAll("")
+    @JvmStatic fun sanitizeApplicationName(s: String): String = DISALLOWED_IN_DOMAIN.matcher(s).replaceAll("")
 
     /**
-     * Converts the name of a Module, Application or User to a valid java package name segment.
-     * Invalid characters are removed, and reserved Java language names are converted to valid
-     * values.
+     * Converts the name of a Module, Application or User to a valid java package name segment. Invalid characters are removed, and reserved
+     * Java language names are converted to valid values.
      */
     @JvmStatic
     fun nameToJavaPackage(name: String): String {
       val res =
         name.replace('-', '_').run {
-          MODULE_NAME_GROUP.matcher(this).replaceAll("").run {
-            DISALLOWED_IN_DOMAIN.matcher(this).replaceAll("").lowercase(Locale.US)
-          }
+          MODULE_NAME_GROUP.matcher(this).replaceAll("").run { DISALLOWED_IN_DOMAIN.matcher(this).replaceAll("").lowercase(Locale.US) }
         }
       if (res.isNotEmpty() && AndroidUtils.isReservedKeyword(res) != null) {
         return StringUtil.fixVariableNameDerivedFromPropertyName(res).lowercase(Locale.US)

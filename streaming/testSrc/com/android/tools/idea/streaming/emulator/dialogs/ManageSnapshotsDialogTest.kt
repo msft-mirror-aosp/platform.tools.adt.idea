@@ -33,6 +33,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.emulator.FakeEmulator.Companion.DEFAULT_CALL_FILTER
 import com.android.tools.idea.streaming.emulator.actions.findManageSnapshotDialog
+import com.android.tools.idea.streaming.testutil.newEmulatorView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.diagnostic.ThreadDumper
 import com.intellij.openapi.actionSystem.AnAction
@@ -51,11 +52,6 @@ import com.intellij.ui.CommonActionsPanel
 import com.intellij.ui.components.JBLoadingPanelListener
 import com.intellij.ui.table.TableView
 import com.intellij.util.ui.UIUtil
-import org.junit.Assert
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.Timeout
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
@@ -70,10 +66,13 @@ import javax.swing.JTextArea
 import javax.swing.JTextField
 import javax.swing.table.DefaultTableCellRenderer
 import kotlin.time.Duration.Companion.seconds
+import org.junit.Assert
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.Timeout
 
-/**
- * Tests for [ManageSnapshotsDialog].
- */
+/** Tests for [ManageSnapshotsDialog]. */
 @RunsInEdt
 class ManageSnapshotsDialogTest {
 
@@ -81,10 +80,8 @@ class ManageSnapshotsDialogTest {
   private val headlessDialogRule = HeadlessDialogRule()
   private val timeoutRule = Timeout.builder().withTimeout(60, SECONDS).withLookingForStuckThread(true).build()
 
-  @get:Rule
-  val ruleChain = RuleChain(timeoutRule, emulatorViewRule, EdtRule(), headlessDialogRule)
-  @get:Rule
-  val portableUiFontRule = PortableUiFontRule()
+  @get:Rule val ruleChain = RuleChain(timeoutRule, emulatorViewRule, EdtRule(), headlessDialogRule)
+  @get:Rule val portableUiFontRule = PortableUiFontRule()
 
   private lateinit var emulator: FakeEmulator
   private lateinit var emulatorView: EmulatorView
@@ -430,8 +427,7 @@ class ManageSnapshotsDialogTest {
     // Wait for the snapshot list to be populated.
     try {
       waitForCondition(10.seconds) { table.items.isNotEmpty() }
-    }
-    catch (e: TimeoutException) {
+    } catch (e: TimeoutException) {
       Assert.fail(e.javaClass.name + '\n' + ThreadDumper.dumpThreadsToString())
     }
     assertThat(table.items).hasSize(2) // The two incompatible snapshots were deleted automatically.
@@ -453,8 +449,7 @@ class ManageSnapshotsDialogTest {
     // Wait for the snapshot list to be populated.
     try {
       waitForCondition(10.seconds) { table.items.isNotEmpty() }
-    }
-    catch (e: TimeoutException) {
+    } catch (e: TimeoutException) {
       Assert.fail(e.javaClass.name + '\n' + ThreadDumper.dumpThreadsToString())
     }
     assertThat(table.items).hasSize(4) // No snapshots were deleted.
@@ -465,9 +460,7 @@ class ManageSnapshotsDialogTest {
   private fun showManageSnapshotsDialog(): DialogWrapper {
     emulatorViewRule.executeAction("android.emulator.snapshots", emulatorView)
     val dialog = findManageSnapshotDialog(emulatorView)!!
-    Disposer.register(testRootDisposable) {
-      dialog.close(CLOSE_EXIT_CODE)
-    }
+    Disposer.register(testRootDisposable) { dialog.close(CLOSE_EXIT_CODE) }
     return dialog
   }
 
@@ -525,18 +518,18 @@ class ManageSnapshotsDialogTest {
 
   private fun isPresentationEnabled(action: AnAction): Boolean {
     if (action is AnActionButton) {
-      val contextComponent = object : JLayeredPane() {
-        override fun isShowing(): Boolean {
-          return true
+      val contextComponent =
+        object : JLayeredPane() {
+          override fun isShowing(): Boolean {
+            return true
+          }
         }
-      }
       return action.withContextComponent(contextComponent) {
         val event = TestActionEvent.createTestEvent(action)
         action.update(event)
         event.presentation.isEnabled
       }
-    }
-    else {
+    } else {
       val event = TestActionEvent.createTestEvent(action)
       action.update(event)
       return event.presentation.isEnabled
@@ -548,8 +541,7 @@ class ManageSnapshotsDialogTest {
     try {
       contextComponent = component
       return function()
-    }
-    finally {
+    } finally {
       contextComponent = savedContextComponent
     }
   }
@@ -580,7 +572,7 @@ private const val USE_TO_BOOT_COLUMN_INDEX = 3
 
 private const val GOLDEN_FILE_PATH = "tools/adt/idea/streaming/testData/ManageSnapshotsDialogTest/golden"
 
-val GRPC_CALL_FILTER = DEFAULT_CALL_FILTER
-    .or("android.emulation.control.EmulatorController/streamClipboard")
+val GRPC_CALL_FILTER =
+  DEFAULT_CALL_FILTER.or("android.emulation.control.EmulatorController/streamClipboard")
     .or("android.emulation.control.EmulatorController/setClipboard")
     .or("android.emulation.control.SnapshotService/ListSnapshots")

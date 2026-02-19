@@ -19,21 +19,18 @@ import com.android.sdklib.devices.Device
 import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.idea.actions.SCENE_VIEW
 import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.preview.actions.findPreviewManager
+import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import icons.StudioIcons
 
 /**
- * A Dropdown action that contains preset backgrounds to be applied in a Compose Preview when the
- * device is AI glasses. The backgrounds will be blended into the preview by applying certain
- * heuristics used to simulate how Composables look like in AI Glasses environment.
+ * A Dropdown action that contains preset backgrounds to be applied in a Compose Preview when the device is AI glasses. The backgrounds will
+ * be blended into the preview by applying certain heuristics used to simulate how Composables look like in AI Glasses environment.
  */
 class GlassesBlendDropdownAction :
-  DropDownAction(
-    message("action.glasses.blend.title"),
-    message("action.glasses.blend.description"),
-    StudioIcons.Emulator.XR.ENVIRONMENT,
-  ) {
+  DropDownAction(message("action.glasses.blend.title"), message("action.glasses.blend.title"), StudioIcons.Emulator.XR.ENVIRONMENT) {
 
   init {
     GlassesBackground.entries.forEach { addAction(SetGlassesBackgroundAction(it)) }
@@ -41,8 +38,11 @@ class GlassesBlendDropdownAction :
 
   override fun update(e: AnActionEvent) {
     super.update(e)
+    // Glasses Background action should only be visible if the device is an AI glasses and
+    // if the preview is in Default or Focus modes.
     e.presentation.isEnabledAndVisible =
-      Device.isAiGlasses(e.getData(SCENE_VIEW)?.configuration?.device)
+      Device.isAiGlasses(e.getData(SCENE_VIEW)?.configuration?.device) &&
+        e.dataContext.findPreviewManager(PreviewModeManager.KEY)?.mode?.value?.isNormal == true
   }
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT

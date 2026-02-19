@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.whatsnew.assistant.actions
 
+import com.android.tools.idea.appinspection.ide.ui.AppInspectionToolWindow
 import com.android.tools.idea.assistant.AssistActionHandler
 import com.android.tools.idea.assistant.datamodel.ActionData
 import com.android.tools.idea.whatsnew.assistant.WhatsNewMetricsTracker
 import com.intellij.openapi.project.Project
-import com.android.tools.idea.appinspection.ide.ui.AppInspectionToolWindow
 
 class AppInspectionShowAction : AssistActionHandler {
   companion object {
@@ -27,6 +27,7 @@ class AppInspectionShowAction : AssistActionHandler {
   }
 
   override fun getId(): String = ACTION_KEY
+
   override fun handleAction(actionData: ActionData, project: Project) {
     WhatsNewMetricsTracker.getInstance().clickActionButton(project, ACTION_KEY)
     AppInspectionToolWindow.show(project)

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -68,9 +69,9 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.jewel.bridge.toComposeColor
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
+import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
 import org.jetbrains.jewel.foundation.lazy.SelectionMode
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
-import org.jetbrains.jewel.foundation.lazy.rememberSelectableLazyListState
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
@@ -88,16 +89,10 @@ fun ChooseAndroidProjectStepUI(model: ChooseAndroidProjectStepModel) {
   val entries by model::chooseAndroidProjectEntries
 
   if (isLoading) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-      CircularProgressIndicator()
-    }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
   } else if (entries.isNotEmpty()) {
     Row(modifier = Modifier.fillMaxSize()) {
-      LeftSidePanel(
-        entries = entries,
-        selectedEntry = selectedEntry,
-        updateEntrySelected = { entry -> model.updateSelectedCell(entry) },
-      )
+      LeftSidePanel(entries = entries, selectedEntry = selectedEntry, updateEntrySelected = { entry -> model.updateSelectedCell(entry) })
       Divider(Orientation.Vertical, thickness = 1.dp, modifier = Modifier.fillMaxHeight())
       RightSidePanel(selectedEntry)
     }
@@ -111,8 +106,16 @@ private fun LeftSidePanel(
   updateEntrySelected: (ChooseAndroidProjectEntry?) -> Unit,
 ) {
   val focusRequester = remember { FocusRequester() }
-  val stateList = rememberSelectableLazyListState()
-  stateList.lastActiveItemIndex = selectedEntry?.let { entries.indexOf(it) }
+  val stateList = remember {
+    SelectableLazyListState(lazyListState = LazyListState()).apply {
+      // Initialize state based on selectedEntry, i.e., restore previous selection state
+      val selectedEntryIndex = entries.indexOf(selectedEntry)
+      if (selectedEntryIndex >= 0) {
+        selectedKeys = setOf(selectedEntry!!)
+        lastActiveItemIndex = selectedEntryIndex
+      }
+    }
+  }
 
   Column {
     Text(
@@ -121,9 +124,7 @@ private fun LeftSidePanel(
       color = JBColor(0x999999, 0x787878).toComposeColor(),
     )
     SelectableLazyColumn(
-      modifier =
-        Modifier.testTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column)
-          .focusRequester(focusRequester),
+      modifier = Modifier.testTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column).focusRequester(focusRequester),
       selectionMode = SelectionMode.Single,
       onSelectedIndexesChange = { newSelectedList ->
         val newSelectedCell = newSelectedList.firstOrNull()
@@ -140,24 +141,13 @@ private fun LeftSidePanel(
 }
 
 @Composable
-fun ProjectEntryListCell(
-  text: String,
-  iconKey: IconKey? = null,
-  isSelected: Boolean,
-  isFocused: Boolean,
-) {
+fun ProjectEntryListCell(text: String, iconKey: IconKey? = null, isSelected: Boolean, isFocused: Boolean) {
   Row(
-    modifier =
-      Modifier.size(width = 260.dp, height = 32.dp)
-        .background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
+    modifier = Modifier.size(width = 260.dp, height = 32.dp).background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     if (iconKey != null) {
-      Icon(
-        key = iconKey,
-        contentDescription = "",
-        modifier = Modifier.padding(start = 20.dp, end = 8.dp),
-      )
+      Icon(key = iconKey, contentDescription = "", modifier = Modifier.padding(start = 20.dp, end = 8.dp))
     }
     Text(
       modifier = Modifier.padding(start = if (iconKey == null) 20.dp else 0.dp),
@@ -173,11 +163,7 @@ private fun RightSidePanel(selectedEntry: ChooseAndroidProjectEntry?) {
 }
 
 @Composable
-internal fun TemplateGrid(
-  templates: List<Template>,
-  selectedTemplate: Template?,
-  onTemplateClick: (Template?) -> Unit,
-) {
+internal fun TemplateGrid(templates: List<Template>, selectedTemplate: Template?, onTemplateClick: (Template?) -> Unit) {
   val scrollState = rememberLazyGridState()
   var hasFocus by remember { mutableStateOf(false) }
   val gridFocusRequester = remember { FocusRequester() }
@@ -209,9 +195,7 @@ internal fun TemplateGrid(
               val currentTemplateIndex = templates.indexOf(selectedTemplate)
 
               return@onKeyEvent when {
-                event.type == KeyEventType.KeyUp &&
-                  event.key == Key.DirectionUp &&
-                  currentTemplateIndex > columnCount - 1 -> {
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentTemplateIndex > columnCount - 1 -> {
                   onTemplateClick(templates[currentTemplateIndex - columnCount])
                   true
                 }
@@ -221,15 +205,11 @@ internal fun TemplateGrid(
                   onTemplateClick(templates[currentTemplateIndex + columnCount])
                   true
                 }
-                event.type == KeyEventType.KeyUp &&
-                  event.key == Key.DirectionLeft &&
-                  currentTemplateIndex > 0 -> {
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentTemplateIndex > 0 -> {
                   onTemplateClick(templates[currentTemplateIndex - 1])
                   true
                 }
-                event.type == KeyEventType.KeyUp &&
-                  event.key == Key.DirectionRight &&
-                  currentTemplateIndex < templates.size - 1 -> {
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentTemplateIndex < templates.size - 1 -> {
                   onTemplateClick(templates[currentTemplateIndex + 1])
                   true
                 }
@@ -257,12 +237,7 @@ internal fun TemplateGrid(
 }
 
 @Composable
-private fun Template(
-  template: Template,
-  isSelected: Boolean,
-  isFocused: Boolean,
-  onTemplateClick: () -> Unit,
-) {
+private fun Template(template: Template, isSelected: Boolean, isFocused: Boolean, onTemplateClick: () -> Unit) {
   Column(
     modifier =
       Modifier.fillMaxSize()
@@ -289,8 +264,7 @@ private fun TemplateImage(template: Template) {
           withContext(Dispatchers.Default) {
             val iconUrl = template.thumb().path()
             try {
-              val bytes =
-                withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
+              val bytes = withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
               bytes.decodeToImageBitmap()
             } catch (e: Exception) {
               fileLogger().error("Failed to load icon: $iconUrl", e)
@@ -310,9 +284,7 @@ private fun TemplateImage(template: Template) {
 @Composable
 private fun TemplateText(template: Template, isSelected: Boolean, isFocused: Boolean) {
   Box(
-    modifier =
-      Modifier.fillMaxWidth()
-        .background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
+    modifier = Modifier.fillMaxWidth().background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
     contentAlignment = Alignment.Center,
   ) {
     Text(

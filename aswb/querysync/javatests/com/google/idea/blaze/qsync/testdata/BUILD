@@ -1,4 +1,5 @@
 load("//tools/adt/idea/aswb/build_defs:build_defs.bzl", "aswb_library")
+load("//tools/adt/idea/aswb/build_defs:test_data_build_defs.bzl", "java_library_for_test_data")
 load(
     ":scope_util.bzl",
     "scopeForAndroidPackage",
@@ -207,7 +208,7 @@ genquery(
         scopeForJavaPackage("//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/testdata/symlinks/testdir:testlib"),
 )
 
-java_library(
+java_library_for_test_data(
     name = "testdata",
     srcs = ["TestData.java"],
     data = [
@@ -236,8 +237,8 @@ java_library(
     ],
     deps = [
         "//tools/adt/idea/aswb/shared",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@bazel_tools//tools/java/runfiles",
-        "@maven//:com.google.guava.guava",
     ],
 )
 
@@ -258,11 +259,11 @@ aswb_library(
         "//tools/adt/idea/aswb/shared:exception",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
-java_library(
+java_library_for_test_data(
     name = "build_graphs",
     testonly = 1,
     srcs = ["BuildGraphs.java"],
@@ -272,6 +273,6 @@ java_library(
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync:TestUtils",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

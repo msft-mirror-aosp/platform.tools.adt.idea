@@ -18,10 +18,9 @@ package com.android.tools.idea.vitals.client.grpc
 import com.android.tools.idea.insights.AppInsightsState
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
-import com.android.tools.idea.insights.client.AiInsightClient
+import com.android.tools.idea.insights.TEST_FILTERS
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
-import com.android.tools.idea.insights.client.FakeAiInsightClient
 import com.android.tools.idea.insights.client.Permission
 import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.model.stacktrace.StackTraceGroupParser
@@ -30,7 +29,6 @@ import com.android.tools.idea.insights.toIssueRequest
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.VitalsInsightsProvider
 import com.android.tools.idea.vitals.client.VitalsClient
-import com.android.tools.idea.vitals.createVitalsFilters
 import com.android.tools.idea.vitals.datamodel.VitalsConnection
 import com.studiogrpc.testutils.ForwardingInterceptor
 import io.grpc.Channel
@@ -43,7 +41,7 @@ const val DISTINCT_USERS = "distinctUsers"
 fun createIssueRequest(connection: VitalsConnection = TEST_CONNECTION_1, clock: Clock) =
   AppInsightsState(
       Selection(connection, listOf(connection)),
-      createVitalsFilters(),
+      TEST_FILTERS,
       LoadingState.Loading,
       LoadingState.Ready(null),
       LoadingState.Ready(null),
@@ -57,7 +55,6 @@ fun createIssueRequest(connection: VitalsConnection = TEST_CONNECTION_1, clock: 
 fun createVitalsClient(
   cache: AppInsightsCache = AppInsightsCacheImpl(VitalsInsightsProvider),
   grpcClient: VitalsGrpcClient? = null,
-  aiInsightClient: AiInsightClient = FakeAiInsightClient,
   stackTraceParser: StackTraceGroupParser = StubStackTraceGroupParser(),
   channelProvider: () -> Channel,
 ) =
@@ -66,6 +63,5 @@ fun createVitalsClient(
     cache,
     ForwardingInterceptor,
     grpcClient ?: VitalsGrpcClientImpl(channelProvider(), ForwardingInterceptor),
-    aiInsightClient,
     stackTraceParser,
   )

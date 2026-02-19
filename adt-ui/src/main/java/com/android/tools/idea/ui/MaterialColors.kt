@@ -355,8 +355,7 @@ object MaterialColors {
   @JvmStatic fun getColorSeries(name: Color) = table.row(name)
 
   /** Get the set of [java.awt.Color] by the given [Category]. */
-  @JvmStatic
-  fun getColorSet(category: Category): Map<Color?, java.awt.Color?> = table.column(category)
+  @JvmStatic fun getColorSet(category: Category): Map<Color?, java.awt.Color?> = table.column(category)
 
   // Keep these constants for back compatibility
 

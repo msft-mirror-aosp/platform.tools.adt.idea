@@ -45,13 +45,12 @@ data class IdeAndroidArtifactCoreImpl(
   override val abiFilters: Set<String>,
   override val buildInformation: IdeBuildTasksAndOutputInformationImpl,
   override val codeShrinker: CodeShrinker?,
-  override val privacySandboxSdkInfo: IdePrivacySandboxSdkInfoImpl?,
   override val desugaredMethodsFiles: List<FileImpl>,
   override val generatedClassPaths: Map<String, FileImpl>,
   override val bytecodeTransforms: List<IdeBytecodeTransformationImpl>?,
   override val generatedAssetFolders: List<FileImpl>,
-  override val mappingR8TextFile: File?,
-  override val mappingR8PartitionFile: File?,
+  override val mappingR8TextFile: FileImpl?,
+  override val mappingR8PartitionFile: FileImpl?,
 ) : IdeAndroidArtifactCore {
   constructor(
     name: IdeArtifactName,
@@ -75,14 +74,13 @@ data class IdeAndroidArtifactCoreImpl(
     abiFilters: Set<String>,
     buildInformation: IdeBuildTasksAndOutputInformationImpl,
     codeShrinker: CodeShrinker?,
-    privacySandboxSdkInfo: IdePrivacySandboxSdkInfoImpl?,
     desugaredMethodsFiles: List<File>,
     generatedClassPaths: Map<String, File>,
     bytecodeTransforms: List<IdeBytecodeTransformationImpl>?,
     generatedAssetFolders: List<File>,
     mappingR8TextFile: File?,
     mappingR8PartitionFile: File?,
-    unused: String = "" // to prevent clash
+    unused: String = "", // to prevent clash
   ) : this(
     name,
     compileTaskName,
@@ -105,20 +103,17 @@ data class IdeAndroidArtifactCoreImpl(
     abiFilters,
     buildInformation,
     codeShrinker,
-    privacySandboxSdkInfo,
     desugaredMethodsFiles.toImpl(),
     generatedClassPaths.toImpl(),
     bytecodeTransforms,
     generatedAssetFolders.toImpl(),
-    mappingR8TextFile,
-    mappingR8PartitionFile
+    mappingR8TextFile?.toImpl(),
+    mappingR8PartitionFile?.toImpl(),
   )
 }
 
-class IdeAndroidArtifactImpl(
-  private val core: IdeAndroidArtifactCoreImpl,
-  resolver: IdeLibraryModelResolverImpl
-) : IdeAndroidArtifact, IdeAndroidArtifactCore  {
+class IdeAndroidArtifactImpl(private val core: IdeAndroidArtifactCoreImpl, resolver: IdeLibraryModelResolverImpl) :
+  IdeAndroidArtifact, IdeAndroidArtifactCore {
   override val name: IdeArtifactName = core.name
   override val compileTaskName: String? = core.compileTaskName
   override val assembleTaskName: String? = core.assembleTaskName
@@ -141,13 +136,12 @@ class IdeAndroidArtifactImpl(
   override val abiFilters: Set<String> = core.abiFilters
   override val buildInformation: IdeBuildTasksAndOutputInformationImpl = core.buildInformation
   override val codeShrinker: CodeShrinker? = core.codeShrinker
-  override val privacySandboxSdkInfo: IdePrivacySandboxSdkInfoImpl? = core.privacySandboxSdkInfo
   override val compileClasspathCore: IdeDependenciesCoreImpl = core.compileClasspathCore
   override val runtimeClasspathCore: IdeDependenciesCoreImpl = core.runtimeClasspathCore
   override val desugaredMethodsFiles: List<FileImpl> = core.desugaredMethodsFiles
   override val generatedAssetFolders: List<FileImpl> = core.generatedAssetFolders
-  override val mappingR8TextFile: File? = core.mappingR8TextFile
-  override val mappingR8PartitionFile: File? = core.mappingR8PartitionFile
+  override val mappingR8TextFile: FileImpl? = core.mappingR8TextFile
+  override val mappingR8PartitionFile: FileImpl? = core.mappingR8PartitionFile
 
   override val compileClasspath: IdeDependencies = IdeDependencies(core.compileClasspathCore, resolver)
   override val runtimeClasspath: IdeDependencies = IdeDependencies(core.runtimeClasspathCore, resolver)

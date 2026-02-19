@@ -37,8 +37,7 @@ internal class DeviceManager2Action : DumbAwareAction() {
 
   override fun actionPerformed(event: AnActionEvent) {
     val project = event.project ?: return
-    val deviceManager =
-      ToolWindowManager.getInstance(project).getToolWindow(DeviceManager2ToolWindowFactory.ID)
+    val deviceManager = ToolWindowManager.getInstance(project).getToolWindow(DeviceManager2ToolWindowFactory.ID)
     deviceManager?.show(null)
   }
 }

@@ -79,8 +79,7 @@ abstract class DeprecationBanner(
     addComponentListener(
       object : ComponentAdapter() {
         override fun componentResized(e: ComponentEvent) {
-          this@DeprecationBanner.preferredSize =
-            JBDimension(this@DeprecationBanner.preferredWidth, getCorrectedPreferredHeight())
+          this@DeprecationBanner.preferredSize = JBDimension(this@DeprecationBanner.preferredWidth, getCorrectedPreferredHeight())
         }
       }
     )
@@ -88,10 +87,7 @@ abstract class DeprecationBanner(
     invokeLater { trackUserNotified() }
   }
 
-  /**
-   * Calculates the height of text label, links panel and their respective insets. Adds an extra
-   * buffer to the height for spacing.
-   */
+  /** Calculates the height of text label, links panel and their respective insets. Adds an extra buffer to the height for spacing. */
   fun getCorrectedPreferredHeight() =
     if (moveActions) {
       myLabel.getPreferredFullHeight() + myLinksPanel.getPreferredFullHeight() + 20.scaled
@@ -99,8 +95,7 @@ abstract class DeprecationBanner(
       myLabel.getPreferredFullHeight() + 20.scaled
     }
 
-  private fun JComponent.getPreferredFullHeight(): Int =
-    preferredHeight + insets.top + insets.bottom
+  private fun JComponent.getPreferredFullHeight(): Int = preferredHeight + insets.top + insets.bottom
 
   /**
    * Move the action labels to the south of the banner.
@@ -113,8 +108,7 @@ abstract class DeprecationBanner(
       myLabel.verticalTextPosition = SwingConstants.TOP
       parent.add(myLinksPanel, BorderLayout.SOUTH)
       // Align firstActionLabel vertically with myLabel.
-      myLinksPanel.border =
-        JBUI.Borders.empty(2, myLabel.icon.iconWidth + myLabel.iconTextGap - 2, 0, 0)
+      myLinksPanel.border = JBUI.Borders.empty(2, myLabel.icon.iconWidth + myLabel.iconTextGap - 2, 0, 0)
     }
   }
 

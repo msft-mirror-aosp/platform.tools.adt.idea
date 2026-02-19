@@ -17,8 +17,6 @@ package com.android.tools.idea.wear.dwf.dom.raw
 
 import com.android.SdkConstants.FN_ANDROID_MANIFEST_XML
 import com.android.testutils.TestUtils.resolveWorkspacePath
-import com.android.tools.idea.model.MergedManifestManager
-import com.android.tools.idea.model.MergedManifestSnapshot
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.createAndroidProjectBuilderForDefaultTestProjectStructure
@@ -26,17 +24,13 @@ import com.android.tools.wear.wff.WFFVersion
 import com.android.tools.wear.wff.WFFVersion.WFFVersion1
 import com.android.tools.wear.wff.WFFVersion.WFFVersion2
 import com.android.tools.wear.wff.WFFVersion.WFFVersion3
-import com.android.utils.concurrency.AsyncSupplier
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import org.mockito.Mockito.mock
-import org.mockito.kotlin.whenever
 
 @RunWith(Parameterized::class)
 class CurrentWFFVersionServiceTest(val minSdkVersion: Int, val expectedFallbackVersion: WFFVersion) {
@@ -45,63 +39,38 @@ class CurrentWFFVersionServiceTest(val minSdkVersion: Int, val expectedFallbackV
     @JvmStatic
     @Parameterized.Parameters(name = "minSdkVersion={0} expectedFallbackVersion={1}")
     fun data(): List<Array<Any>> =
-      listOf(
-        arrayOf(30, WFFVersion1),
-        arrayOf(33, WFFVersion1),
-        arrayOf(34, WFFVersion2),
-        arrayOf(36, WFFVersion2),
-      )
+      listOf(arrayOf(30, WFFVersion1), arrayOf(33, WFFVersion1), arrayOf(34, WFFVersion2), arrayOf(36, WFFVersion2))
   }
 
   @get:Rule
   val projectRule =
-    AndroidProjectRule.withAndroidModel(
-      createAndroidProjectBuilderForDefaultTestProjectStructure().withMinSdk({ minSdkVersion })
-    )
+    AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure().withMinSdk({ minSdkVersion }))
 
   private val mainModule
-    get() =
-      projectRule.module.getModuleSystem().getProductionAndroidModule()
-        ?: error("expected main module to exist")
+    get() = projectRule.module.getModuleSystem().getProductionAndroidModule() ?: error("expected main module to exist")
 
   private lateinit var service: CurrentWFFVersionService
 
   @Before
   fun setup() {
-    projectRule.fixture.testDataPath =
-      resolveWorkspacePath("tools/adt/idea/wear-dwf/testData/").toString()
-
+    projectRule.fixture.testDataPath = resolveWorkspacePath("tools/adt/idea/wear-dwf/testData/").toString()
     service = CurrentWFFVersionService.getInstance()
   }
 
   @Test
-  fun `getCurrentWFFVersion returns null if there is no manifest`() {
-    val mockMergedManifestManager = mock<MergedManifestManager>()
-    whenever(mockMergedManifestManager.mergedManifest)
-      .thenReturn(
-        object : AsyncSupplier<MergedManifestSnapshot> {
-          override val now: MergedManifestSnapshot?
-            get() = null
-
-          override fun get(): ListenableFuture<MergedManifestSnapshot> {
-            return Futures.immediateFuture(null)
-          }
-        }
-      )
-    projectRule.replaceService(MergedManifestManager::class.java, mockMergedManifestManager)
-
+  fun `getCurrentWFFVersion returns null if there is no manifest`() = runBlocking {
     assertThat(service.getCurrentWFFVersion(mainModule)).isNull()
   }
 
   @Test
-  fun `getCurrentWFFVersion returns the version from the manifest`() {
+  fun `getCurrentWFFVersion returns the version from the manifest`() = runBlocking {
     addManifestWithWFFVersion("3")
     val currentWFFVersion = service.getCurrentWFFVersion(mainModule)
     assertThat(currentWFFVersion).isEqualTo(CurrentWFFVersion(WFFVersion3, isFallback = false))
   }
 
   @Test
-  fun `getCurrentWFFVersion returns a fallback version if the manifest version is invalid`() {
+  fun `getCurrentWFFVersion returns a fallback version if the manifest version is invalid`() = runBlocking {
     addManifestWithWFFVersion("invalid")
     val currentWFFVersion = service.getCurrentWFFVersion(mainModule)
     assertThat(currentWFFVersion).isEqualTo(CurrentWFFVersion(expectedFallbackVersion, isFallback = true))
@@ -109,7 +78,5 @@ class CurrentWFFVersionServiceTest(val minSdkVersion: Int, val expectedFallbackV
 
   private fun addManifestWithWFFVersion(version: String) {
     projectRule.fixture.addFileToProject(FN_ANDROID_MANIFEST_XML, manifestWithWFFVersion(version))
-    // create the manifest snapshot
-    MergedManifestManager.getMergedManifest(mainModule).get()
   }
 }

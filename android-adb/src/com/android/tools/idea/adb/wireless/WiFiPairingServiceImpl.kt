@@ -19,15 +19,11 @@ import com.android.adblib.AdbFeatures.TRACK_MDNS_SERVICE
 import com.android.adblib.MdnsServices
 import com.android.adblib.ServerStatus.Companion.UNKNOWN
 import com.android.annotations.concurrency.AnyThread
-import com.android.repository.Revision
-import com.android.tools.idea.adb.AdbOptionsService
-import com.android.tools.idea.adb.AdbServerMdnsBackend
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.InvalidDataException
-import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.LineSeparator
 import java.awt.Color
 import java.net.InetAddress
@@ -39,10 +35,6 @@ import kotlinx.coroutines.withContext
 class WiFiPairingServiceImpl(
   private val randomProvider: RandomProvider,
   private val adbService: AdbServiceWrapper,
-  private val adbOptionMDNSSelected: () -> AdbServerMdnsBackend = {
-    AdbOptionsService.getInstance().adbServerMdnsBackend
-  },
-  private val isSystemMac: () -> Boolean = { SystemInfo.isMac },
 ) : WiFiPairingService {
   private val LOG = logger<WiFiPairingServiceImpl>()
   private val studioServiceNamePrefix = "studio-"
@@ -58,10 +50,8 @@ class WiFiPairingServiceImpl(
         when {
           result.errorCode != 0 -> {
             LOG.warn("`adb mdns check` returned a non-zero error code (${result.errorCode})")
-            val isUnknownCommand =
-              result.stderr.any { line -> line.contains(Regex("unknown.*command")) }
-            if (isUnknownCommand) MdnsSupportState.AdbVersionTooLow
-            else MdnsSupportState.AdbInvocationError
+            val isUnknownCommand = result.stderr.any { line -> line.contains(Regex("unknown.*command")) }
+            if (isUnknownCommand) MdnsSupportState.AdbVersionTooLow else MdnsSupportState.AdbInvocationError
           }
           result.stdout.isEmpty() -> {
             LOG.warn("`adb mdns check` returned an empty output (why?)")
@@ -75,11 +65,6 @@ class WiFiPairingServiceImpl(
           result.stdout.any { it.contains("mdns daemon version") } -> {
             LOG.info("`adb mdns check` (supported) result:")
             result.stdout.take(3).forEach { LOG.info("    $it") }
-
-            // There is a mdns client but it may not work on Mac
-            if (!macSetupCanWork()) {
-              return MdnsSupportState.AdbMacEnvironmentBroken
-            }
 
             MdnsSupportState.Supported
           }
@@ -101,37 +86,12 @@ class WiFiPairingServiceImpl(
     return adbService.getHostFeatures().contains(TRACK_MDNS_SERVICE)
   }
 
-  /** On Mac, the only mdns client able to work is openscreen starting with ADB 35.0.2 */
-  private suspend fun macSetupCanWork(): Boolean {
-    if (!isSystemMac()) {
-      return true
-    }
-
-    val serverStatus = adbService.getServerStatus()
-    if (serverStatus.version == UNKNOWN) {
-      return false
-    }
-
-    val currentRevision = Revision.parseRevision(serverStatus.version)
-    val requiredRevision = Revision.parseRevision("35.0.2")
-    if (currentRevision < requiredRevision) {
-      return false
-    }
-
-    if (adbOptionMDNSSelected() == AdbServerMdnsBackend.BONJOUR) {
-      return false
-    }
-
-    return true
-  }
-
   override suspend fun generateQrCode(backgroundColor: Color, foregroundColor: Color): QrCodeImage {
     return withContext(AndroidDispatchers.workerThread) {
-      val serviceName = studioServiceNamePrefix + randomProvider.createRandomString(10)
-      val password = randomProvider.createRandomString(12)
+      val serviceName = studioServiceNamePrefix + randomProvider.createRandomInstanceName()
+      val password = randomProvider.createRandomPassword()
       val pairingString = createPairingString(serviceName, password)
-      val image =
-        QrCodeGenerator.encodeQrCodeToImage(pairingString, backgroundColor, foregroundColor)
+      val image = QrCodeGenerator.encodeQrCodeToImage(pairingString, backgroundColor, foregroundColor)
       QrCodeImage(serviceName, password, pairingString, image)
     }
   }
@@ -160,11 +120,7 @@ class WiFiPairingServiceImpl(
     }
 
     if (result.stdout.isEmpty()) {
-      throw AdbCommandException(
-        "Empty output from \"adb mdns services\" command",
-        -1,
-        result.stderr,
-      )
+      throw AdbCommandException("Empty output from \"adb mdns services\" command", -1, result.stderr)
     }
 
     return result.stdout.drop(1).mapNotNull { line ->
@@ -174,9 +130,7 @@ class WiFiPairingServiceImpl(
           val serviceName = it.groupValues[1]
           val ipAddress = withContext(Dispatchers.IO) { InetAddress.getByName(it.groupValues[2]) }
           val port = it.groupValues[3].toInt()
-          val serviceType =
-            if (serviceName.startsWith(studioServiceNamePrefix)) ServiceType.QrCode
-            else ServiceType.PairingCode
+          val serviceType = if (serviceName.startsWith(studioServiceNamePrefix)) ServiceType.QrCode else ServiceType.PairingCode
           PairingMdnsService(serviceName, serviceType, ipAddress, port, null)
         } catch (ignored: Exception) {
           LOG.warn("mDNS service entry ignored due do invalid characters: ${line}")
@@ -190,10 +144,7 @@ class WiFiPairingServiceImpl(
     return adbService.trackMdnsServices()
   }
 
-  override suspend fun pairMdnsService(
-    pairingMdnsService: PairingMdnsService,
-    password: String,
-  ): PairingResult {
+  override suspend fun pairMdnsService(pairingMdnsService: PairingMdnsService, password: String): PairingResult {
     LOG.info("Start mDNS pairing: ${pairingMdnsService}")
 
     val deviceAddress = "${pairingMdnsService.ipAddress.hostAddress}:${pairingMdnsService.port}"
@@ -254,9 +205,20 @@ private fun createPairingString(service: String, password: String): String {
   return "WIFI:T:ADB;S:${service};P:${password};;"
 }
 
-private fun RandomProvider.createRandomString(charCount: Int): String {
+private fun RandomProvider.createRandomInstanceName(): String {
   @Suppress("SpellCheckingInspection")
-  val charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-+*/<>{}"
+  // From RFC-9521. A "name" string is made of characters from the alphabet (A-Z), digits (0-9),
+  // and minus sign (-).
+  val charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
+  return createRandomString(10, charSet)
+}
+
+private fun RandomProvider.createRandomPassword(): String {
+  @Suppress("SpellCheckingInspection") val charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-+*/<>{}"
+  return createRandomString(12, charSet)
+}
+
+private fun RandomProvider.createRandomString(charCount: Int, charSet: String): String {
   val sb = StringBuilder()
   for (i in 1..charCount) {
     val char = charSet[nextInt(charSet.length)]

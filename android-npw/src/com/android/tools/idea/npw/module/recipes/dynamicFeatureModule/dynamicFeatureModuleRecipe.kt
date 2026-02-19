@@ -34,7 +34,6 @@ import com.android.tools.idea.wizard.template.RecipeExecutor
 
 fun RecipeExecutor.generateDynamicFeatureModule(
   moduleData: ModuleTemplateData,
-  isInstantModule: Boolean,
   dynamicFeatureTitle: String,
   fusing: Boolean,
   downloadInstallKind: DownloadInstallKind,
@@ -42,8 +41,7 @@ fun RecipeExecutor.generateDynamicFeatureModule(
   useGradleKts: Boolean,
   useVersionCatalog: Boolean,
 ) {
-  val (projectData, srcOut, _, manifestOut, instrumentedTestOut, localTestOut, _, moduleOut) =
-    moduleData
+  val (projectData, srcOut, _, manifestOut, instrumentedTestOut, localTestOut, _, moduleOut) = moduleData
   val apis = moduleData.apis
   val (buildApi, targetApi, minApi, _) = apis
   val useAndroidX = moduleData.projectTemplateData.androidXSupport
@@ -53,14 +51,7 @@ fun RecipeExecutor.generateDynamicFeatureModule(
   val packageName = moduleData.packageName
   val baseFeature = moduleData.baseFeature!!
 
-  val manifestXml =
-    androidManifestXml(
-      fusing.toString(),
-      isInstantModule,
-      projectSimpleName,
-      downloadInstallKind,
-      deviceFeatures,
-    )
+  val manifestXml = androidManifestXml(fusing.toString(), projectSimpleName, downloadInstallKind, deviceFeatures)
 
   createDirectory(srcOut)
   addIncludeToSettings(name)
@@ -84,11 +75,7 @@ fun RecipeExecutor.generateDynamicFeatureModule(
   )
 
   addCompileSdk(buildApi)
-  addPlugin(
-    "com.android.dynamic-feature",
-    "com.android.tools.build:gradle",
-    projectData.agpVersion.toString(),
-  )
+  addPlugin("com.android.dynamic-feature", "com.android.tools.build:gradle", projectData.agpVersion.toString())
   addKotlinIfNeeded(projectData, targetApi = targetApi.apiLevel)
   setJavaKotlinCompileOptions(language == Language.Kotlin)
 
@@ -99,11 +86,5 @@ fun RecipeExecutor.generateDynamicFeatureModule(
   addTestDependencies()
 
   addDynamicFeature(moduleData.name, baseFeature.dir)
-  if (isInstantModule) {
-    mergeXml(baseAndroidManifestXml(), baseFeature.dir.resolve("src/main/$FN_ANDROID_MANIFEST_XML"))
-  }
-  mergeXml(
-    stringsXml(dynamicFeatureTitle, projectSimpleName),
-    baseFeature.resDir.resolve("values/strings.xml"),
-  )
+  mergeXml(stringsXml(dynamicFeatureTitle, projectSimpleName), baseFeature.resDir.resolve("values/strings.xml"))
 }

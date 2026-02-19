@@ -16,6 +16,7 @@
 
 #include "display_manager.h"
 
+#include <mutex>
 #include <vector>
 
 #include "accessors/display_listener_dispatcher.h"
@@ -136,7 +137,7 @@ void DisplayManager::RemoveDisplayListener(DisplayListener* listener) {
   }
 }
 
-void DisplayManager::RemoveAllDisplayListeners(Jni jni) {
+void DisplayManager::RemoveAllDisplayListeners() {
   {
     unique_lock lock(static_initialization_mutex);
     if (display_listener_dispatcher_ == nullptr) {

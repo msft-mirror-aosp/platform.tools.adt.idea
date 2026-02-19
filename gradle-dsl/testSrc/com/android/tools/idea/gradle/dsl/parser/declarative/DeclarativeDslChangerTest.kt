@@ -16,8 +16,8 @@
 package com.android.tools.idea.gradle.dsl.parser.declarative
 
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext
-import com.android.tools.idea.gradle.dsl.android.parser.android.AndroidDslElement
-import com.android.tools.idea.gradle.dsl.android.parser.android.DeclarativeAndroidDslElement
+import com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement
+import com.android.tools.idea.gradle.dsl.parser.android.DeclarativeAndroidDslElement
 import com.android.tools.idea.gradle.dsl.parser.compareWithExpectedPsi
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement
@@ -37,7 +37,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.testFramework.VfsTestUtil
 import com.jetbrains.rd.util.first
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -48,16 +47,20 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testUpdateAssignmentIntValue() {
-    val file = """
+    val file =
+      """
       androidApp {
         compileSdk = 33
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
         compileSdk = 34
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val literal = (elements.first().value as GradleDslBlockElement).elements.first().value as GradleDslLiteral
       literal.setValue(34)
@@ -66,16 +69,20 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testUpdateAssignmentStringValue() {
-    val file = """
+    val file =
+      """
       androidApp {
         namespace = "abc"
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
         namespace = "bcd"
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val literal = (elements.first().value as GradleDslBlockElement).elements.first().value as GradleDslLiteral
       literal.setValue("bcd")
@@ -84,20 +91,24 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testUpdateFactoryParameter() {
-    val file = """
+    val file =
+      """
       androidApp {
         dependenciesDcl {
           implementation("abc")
         }
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
         dependenciesDcl {
           implementation("bcd")
         }
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val dependencies = (elements["androidApp"] as DeclarativeAndroidDslElement).elements["dependenciesDcl"]
       val call = (dependencies as DependenciesDslElement).elements.first().value as GradleDslMethodCall
@@ -107,20 +118,24 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testUpdateFactoryName() {
-    val file = """
+    val file =
+      """
       androidApp {
         dependenciesDcl {
           implementation("abc")
         }
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
         dependenciesDcl {
           api("abc")
         }
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val dependencies = (elements["androidApp"] as DeclarativeAndroidDslElement).elements["dependenciesDcl"]
       val call = (dependencies as DependenciesDslElement).elements.first().value as GradleDslMethodCall
@@ -130,17 +145,21 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testDeleteAssignment() {
-    val file = """
+    val file =
+      """
       androidApp {
           namespace = "abc"
           compileSdk = 33
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
           compileSdk = 33
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val block = (elements.first().value as GradleDslBlockElement)
       block.removeProperty("mNamespace")
@@ -149,16 +168,20 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testUpdatePluginVersion() {
-    val file = """
+    val file =
+      """
       plugins {
           id("org.example").version("1.0")
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       plugins {
           id("com.android").version("2.0")
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doSettingsTest(file, expected) {
       val plugins = (elements.first().value as PluginsDslElement)
       val pluginDeclaration = (plugins.elements.first().value as GradleDslInfixExpression)
@@ -175,44 +198,51 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
 
   @Test
   fun testRemoveLastFunctionArgument() {
-    val file = """
-     androidApp {
-       dependenciesDcl {
-         compile("org.example:1.0")
-       }
-     }
-    """.trimIndent()
-    val expected = """
+    val file =
+      """
+      androidApp {
+        dependenciesDcl {
+          compile("org.example:1.0")
+        }
+      }
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val android = (elements.first().value as AndroidDslElement)
       val dependencies = (android.elements.first().value as DependenciesDslElement)
-      val compile =  (dependencies.elements.first().value as GradleDslMethodCall)
+      val compile = (dependencies.elements.first().value as GradleDslMethodCall)
       assertThat(compile.arguments).hasSize(1)
       compile.arguments[0].delete()
     }
   }
 
-
   @Test
-  fun testAppendDependencyToBlock(){
-    val file = """
+  fun testAppendDependencyToBlock() {
+    val file =
+      """
       androidApp {
           dependenciesDcl {
               api("someDependency")
           }
       }
-    """.trimIndent()
-    val expected = """
+      """
+        .trimIndent()
+    val expected =
+      """
       androidApp {
           dependenciesDcl {
               api("someDependency")
               implementation("newDependency")
           }
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     doTest(file, expected) {
       val dependencies = (elements["androidApp"] as DeclarativeAndroidDslElement).elements["dependenciesDcl"]
       val block = (dependencies as DependenciesDslElement)
@@ -222,11 +252,7 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
   }
 
   private fun doSettingsTest(text: String, expected: String, changer: GradleDslFile.() -> Unit) {
-    val declarativeFile = VfsTestUtil.createFile(
-      project.guessProjectDir()!!,
-      "settings.gradle.dcl",
-      text
-    )
+    val declarativeFile = VfsTestUtil.createFile(project.guessProjectDir()!!, "settings.gradle.dcl", text)
     val dslFile = object : GradleSettingsFile(declarativeFile, project, ":", BuildModelContext.create(project, Mockito.mock())) {}
     handleChangeAndVerification(dslFile, changer, declarativeFile, expected)
     compareWithExpectedPsi(project, dslFile, expected)
@@ -236,7 +262,7 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
     dslFile: GradleScriptFile,
     changer: GradleDslFile.() -> Unit,
     declarativeFile: VirtualFile,
-    expected: String
+    expected: String,
   ) {
     dslFile.parse()
     WriteCommandAction.runWriteCommandAction(project) {
@@ -249,11 +275,7 @@ class DeclarativeDslChangerTest : LightPlatformTestCase() {
   }
 
   private fun doTest(text: String, expected: String, changer: GradleDslFile.() -> Unit) {
-    val declarativeFile = VfsTestUtil.createFile(
-      project.guessProjectDir()!!,
-      "build.gradle.dcl",
-      text
-    )
+    val declarativeFile = VfsTestUtil.createFile(project.guessProjectDir()!!, "build.gradle.dcl", text)
     val dslFile = object : GradleBuildFile(declarativeFile, project, ":", BuildModelContext.create(project, Mockito.mock())) {}
     handleChangeAndVerification(dslFile, changer, declarativeFile, expected)
     compareWithExpectedPsi(project, dslFile, expected)

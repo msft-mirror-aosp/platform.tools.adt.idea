@@ -22,7 +22,6 @@ import com.android.tools.idea.gemini.formatForTests
 import com.android.tools.idea.insights.AI_INSIGHT_WITH_CODE_CONTEXT
 import com.android.tools.idea.insights.CONNECTION1
 import com.android.tools.idea.insights.DEFAULT_AI_INSIGHT
-import com.android.tools.idea.insights.FAKE_INSIGHTS_PROVIDER
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.FakeGeminiPluginApi
@@ -52,6 +51,7 @@ class GeminiAiInsightClientTest {
   val ruleChain: RuleChain =
     RuleChain.outerRule(projectRule)
       .around(FlagRule(StudioFlags.SUGGEST_A_FIX, false))
+      .around(FlagRule(StudioFlags.AQI_FIX_WITH_AGENT, false))
       .around(FlagRule(StudioFlags.STUDIOBOT_TRANSFORM_SESSION_DIFF_EDITOR_VIEWER_ENABLED, false))
 
   private var expectedPromptText: String = ""
@@ -61,23 +61,23 @@ class GeminiAiInsightClientTest {
       CodeContext(
         "a/b/c/HelloWorld1.kt",
         """
-      |package a.b.c
-      |
-      |fun helloWorld() {
-      |  println("Hello World")
-      |}
-      """
+        |package a.b.c
+        |
+        |fun helloWorld() {
+        |  println("Hello World")
+        |}
+        """
           .trimMargin(),
       ),
       CodeContext(
         "a/b/c/HelloWorld2.kt",
         """
-      |package a.b.c
-      |
-      |fun helloWorld2() {
-      |  println("Hello World 2")
-      |}
-      """
+        |package a.b.c
+        |
+        |fun helloWorld2() {
+        |  println("Hello World 2")
+        |}
+        """
           .trimMargin(),
       ),
     )
@@ -91,21 +91,12 @@ class GeminiAiInsightClientTest {
     fakeGeminiPluginApi.generateResponse = "a/b/c/HelloWorld1.kt,a/b/c/HelloWorld2.kt"
     codeContextResolver = FakeCodeContextResolver(codeContext)
 
-    ExtensionTestUtil.maskExtensions(
-      GeminiPluginApi.EP_NAME,
-      listOf(fakeGeminiPluginApi),
-      projectRule.disposable,
-    )
+    ExtensionTestUtil.maskExtensions(GeminiPluginApi.EP_NAME, listOf(fakeGeminiPluginApi), projectRule.disposable)
   }
 
   @Test
   fun `test gemini client without code context`() = runBlocking {
-    val client =
-      GeminiAiInsightClient(
-        projectRule.project,
-        AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-        codeContextResolver,
-      )
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
 
     val request =
       GeminiCrashInsightRequest(
@@ -133,7 +124,8 @@ class GeminiAiInsightClientTest {
       |retrofit2.HttpException: HTTP 401 
       |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.build(ResponseWrapper.kt:23)
       |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.fetchOrError(ResponseWrapper.kt:31)
-      |```"""
+      |```
+      """
         .trimMargin()
     val insight = client.fetchCrashInsight(request)
 
@@ -144,12 +136,7 @@ class GeminiAiInsightClientTest {
 
   @Test
   fun `test gemini client with code context`() = runBlocking {
-    val client =
-      GeminiAiInsightClient(
-        projectRule.project,
-        AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-        codeContextResolver,
-      )
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
 
     val request =
       GeminiCrashInsightRequest(
@@ -192,7 +179,8 @@ class GeminiAiInsightClientTest {
       |fun helloWorld2() {
       |  println("Hello World 2")
       |}
-      |```"""
+      |```
+      """
         .trimMargin()
     val insight = client.fetchCrashInsight(request)
 
@@ -205,9 +193,9 @@ class GeminiAiInsightClientTest {
   @Test
   fun `client reuses cached insights`() = runBlocking {
     fakeGeminiPluginApi.contextAllowed = false
-    val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
+    val cache = AiInsightCache()
     cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
-    val client = GeminiAiInsightClient(projectRule.project, cache, codeContextResolver)
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver, cache)
 
     (codeContextResolver as FakeCodeContextResolver).codeContext = emptyList()
 
@@ -221,14 +209,13 @@ class GeminiAiInsightClientTest {
         event = ISSUE1.sampleEvent,
       )
 
-    assertThat(client.fetchCrashInsight(request))
-      .isEqualTo(DEFAULT_AI_INSIGHT.copy(isCached = true))
+    assertThat(client.fetchCrashInsight(request)).isEqualTo(DEFAULT_AI_INSIGHT.copy(isCached = true))
   }
 
   @Test
   fun `client caches new insight`() = runBlocking {
-    val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
-    val client = GeminiAiInsightClient(projectRule.project, cache, codeContextResolver)
+    val cache = AiInsightCache()
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver, cache)
 
     (codeContextResolver as FakeCodeContextResolver).codeContext = emptyList()
     fakeGeminiPluginApi.generateResponse = ""
@@ -243,57 +230,51 @@ class GeminiAiInsightClientTest {
         event = ISSUE1.sampleEvent,
       )
 
-    assertThat(client.fetchCrashInsight(request))
-      .isEqualTo(AiInsight("", ISSUE1.sampleEvent, insightSource = InsightSource.STUDIO_BOT))
+    assertThat(client.fetchCrashInsight(request)).isEqualTo(AiInsight("", ISSUE1.sampleEvent, insightSource = InsightSource.STUDIO_BOT))
     assertThat(cache.getAiInsight(CONNECTION1, ISSUE1.id, null, ContextSharingState.DISABLED))
-      .isEqualTo(
-        AiInsight("", ISSUE1.sampleEvent, isCached = true, insightSource = InsightSource.STUDIO_BOT)
-      )
+      .isEqualTo(AiInsight("", ISSUE1.sampleEvent, isCached = true, insightSource = InsightSource.STUDIO_BOT))
   }
 
   @Test
-  fun `client prefers insight generated with code context regardless of context sharing setting`() =
-    runBlocking {
-      fakeGeminiPluginApi.contextAllowed = false
-      val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
-      cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
-      cache.putAiInsight(CONNECTION1, ISSUE1.id, null, AI_INSIGHT_WITH_CODE_CONTEXT)
-      val client = GeminiAiInsightClient(projectRule.project, cache, codeContextResolver)
+  fun `client prefers insight generated with code context regardless of context sharing setting`() = runBlocking {
+    fakeGeminiPluginApi.contextAllowed = false
+    val cache = AiInsightCache()
+    cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
+    cache.putAiInsight(CONNECTION1, ISSUE1.id, null, AI_INSIGHT_WITH_CODE_CONTEXT)
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver, cache)
 
-      val request =
-        GeminiCrashInsightRequest(
-          connection = CONNECTION1,
-          issueId = ISSUE1.id,
-          variantId = null,
-          deviceName = "DeviceName",
-          apiLevel = "ApiLevel",
-          event = ISSUE1.sampleEvent,
-        )
+    val request =
+      GeminiCrashInsightRequest(
+        connection = CONNECTION1,
+        issueId = ISSUE1.id,
+        variantId = null,
+        deviceName = "DeviceName",
+        apiLevel = "ApiLevel",
+        event = ISSUE1.sampleEvent,
+      )
 
-      assertThat(client.fetchCrashInsight(request))
-        .isEqualTo(AI_INSIGHT_WITH_CODE_CONTEXT.copy(isCached = true))
-    }
+    assertThat(client.fetchCrashInsight(request)).isEqualTo(AI_INSIGHT_WITH_CODE_CONTEXT.copy(isCached = true))
+  }
 
   @Test
-  fun `when context sharing is enabled, client does not serve cached insight generated without context`() =
-    runBlocking {
-      fakeGeminiPluginApi.contextAllowed = true
-      val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
-      cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
-      val client = GeminiAiInsightClient(projectRule.project, cache, codeContextResolver)
+  fun `when context sharing is enabled, client does not serve cached insight generated without context`() = runBlocking {
+    fakeGeminiPluginApi.contextAllowed = true
+    val cache = AiInsightCache()
+    cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver, cache)
 
-      val request =
-        GeminiCrashInsightRequest(
-          connection = CONNECTION1,
-          issueId = ISSUE1.id,
-          variantId = null,
-          deviceName = "DeviceName",
-          apiLevel = "ApiLevel",
-          event = ISSUE1.sampleEvent,
-        )
+    val request =
+      GeminiCrashInsightRequest(
+        connection = CONNECTION1,
+        issueId = ISSUE1.id,
+        variantId = null,
+        deviceName = "DeviceName",
+        apiLevel = "ApiLevel",
+        event = ISSUE1.sampleEvent,
+      )
 
-      expectedPromptText =
-        """
+    expectedPromptText =
+      """
       |USER
       |Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
       |For headings, use H3 only. Initial explanation should not be under a heading.
@@ -323,24 +304,20 @@ class GeminiAiInsightClientTest {
       |fun helloWorld2() {
       |  println("Hello World 2")
       |}
-      |```"""
-          .trimMargin()
-      val insight = client.fetchCrashInsight(request)
+      |```
+      """
+        .trimMargin()
+    val insight = client.fetchCrashInsight(request)
 
-      assertThat(fakeGeminiPluginApi.receivedPrompt?.formatForTests()).isEqualTo(expectedPromptText)
+    assertThat(fakeGeminiPluginApi.receivedPrompt?.formatForTests()).isEqualTo(expectedPromptText)
 
-      assertThat(insight.rawInsight).isEqualTo("a/b/c/HelloWorld1.kt,a/b/c/HelloWorld2.kt")
-      assertThat(insight.insightSource).isEqualTo(InsightSource.STUDIO_BOT)
-    }
+    assertThat(insight.rawInsight).isEqualTo("a/b/c/HelloWorld1.kt,a/b/c/HelloWorld2.kt")
+    assertThat(insight.insightSource).isEqualTo(InsightSource.STUDIO_BOT)
+  }
 
   @Test
   fun `client omits code context when connection does not match project`() = runBlocking {
-    val client =
-      GeminiAiInsightClient(
-        projectRule.project,
-        AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-        codeContextResolver,
-      )
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
     val connection = mock<Connection>()
     `when`(connection.isMatchingProject()).thenReturn(false)
 
@@ -368,7 +345,8 @@ class GeminiAiInsightClientTest {
       |retrofit2.HttpException: HTTP 401 
       |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.build(ResponseWrapper.kt:23)
       |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.fetchOrError(ResponseWrapper.kt:31)
-      |```"""
+      |```
+      """
         .trimMargin()
     val insight = client.fetchCrashInsight(request)
 
@@ -376,18 +354,12 @@ class GeminiAiInsightClientTest {
 
     assertThat(insight.rawInsight).isEqualTo("a/b/c/HelloWorld1.kt,a/b/c/HelloWorld2.kt")
     assertThat(insight.insightSource).isEqualTo(InsightSource.STUDIO_BOT)
-    assertThat(insight.codeContextData)
-      .isEqualTo(CodeContextData(emptyList(), contextSharingState = ContextSharingState.ALLOWED))
+    assertThat(insight.codeContextData).isEqualTo(CodeContextData(emptyList(), contextSharingState = ContextSharingState.ALLOWED))
   }
 
   @Test
   fun `create gemini insight request truncates at the context limit`() = runBlocking {
-    val client =
-      GeminiAiInsightClient(
-        projectRule.project,
-        AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-        codeContextResolver,
-      )
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
 
     val event = ISSUE1.sampleEvent
 
@@ -408,8 +380,8 @@ class GeminiAiInsightClientTest {
       |Exception:
       |```
       |retrofit2.HttpException: HTTP 401 
-	    |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.build(ResponseWrapper.kt:23)
-	    |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.fetchOrError(ResponseWrapper.kt:31)
+      |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.build(ResponseWrapper.kt:23)
+      |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.fetchOrError(ResponseWrapper.kt:31)
       |```
       |a/b/c/HelloWorld1.kt:
       |```
@@ -418,7 +390,8 @@ class GeminiAiInsightClientTest {
       |fun helloWorld() {
       |  println("Hello World")
       |}
-      |```"""
+      |```
+      """
         .trimMargin()
     val insight = client.fetchCrashInsight(request)
 
@@ -431,12 +404,7 @@ class GeminiAiInsightClientTest {
   @Test
   fun `gemini insight request with suggest a fix prompt`() = runBlocking {
     StudioFlags.SUGGEST_A_FIX.override(true)
-    val client =
-      GeminiAiInsightClient(
-        projectRule.project,
-        AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-        codeContextResolver,
-      )
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
 
     val request =
       GeminiCrashInsightRequest(
@@ -482,7 +450,8 @@ class GeminiAiInsightClientTest {
       |fun helloWorld2() {
       |  println("Hello World 2")
       |}
-      |```"""
+      |```
+      """
         .trimMargin()
     val insight = client.fetchCrashInsight(request)
 
@@ -493,29 +462,23 @@ class GeminiAiInsightClientTest {
   }
 
   @Test
-  fun `gemini insight request uses suggest a fix with multi file diff viewer prompt`() =
-    runBlocking {
-      StudioFlags.SUGGEST_A_FIX.override(true)
-      StudioFlags.STUDIOBOT_TRANSFORM_SESSION_DIFF_EDITOR_VIEWER_ENABLED.override(true)
-      val client =
-        GeminiAiInsightClient(
-          projectRule.project,
-          AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-          codeContextResolver,
-        )
+  fun `gemini insight request uses suggest a fix with multi file diff viewer prompt`() = runBlocking {
+    StudioFlags.SUGGEST_A_FIX.override(true)
+    StudioFlags.STUDIOBOT_TRANSFORM_SESSION_DIFF_EDITOR_VIEWER_ENABLED.override(true)
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
 
-      val request =
-        GeminiCrashInsightRequest(
-          connection = CONNECTION1,
-          issueId = ISSUE1.id,
-          variantId = null,
-          deviceName = "DeviceName",
-          apiLevel = "ApiLevel",
-          event = ISSUE1.sampleEvent,
-        )
+    val request =
+      GeminiCrashInsightRequest(
+        connection = CONNECTION1,
+        issueId = ISSUE1.id,
+        variantId = null,
+        deviceName = "DeviceName",
+        apiLevel = "ApiLevel",
+        event = ISSUE1.sampleEvent,
+      )
 
-      expectedPromptText =
-        """
+    expectedPromptText =
+      """
       |USER
       |Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
       |For headings, use H3 only. Initial explanation should not be under a heading.
@@ -549,15 +512,16 @@ class GeminiAiInsightClientTest {
       |fun helloWorld2() {
       |  println("Hello World 2")
       |}
-      |```"""
-          .trimMargin()
-      val insight = client.fetchCrashInsight(request)
+      |```
+      """
+        .trimMargin()
+    val insight = client.fetchCrashInsight(request)
 
-      assertThat(fakeGeminiPluginApi.receivedPrompt?.formatForTests()).isEqualTo(expectedPromptText)
+    assertThat(fakeGeminiPluginApi.receivedPrompt?.formatForTests()).isEqualTo(expectedPromptText)
 
-      assertThat(insight.rawInsight).isEqualTo("a/b/c/HelloWorld1.kt,a/b/c/HelloWorld2.kt")
-      assertThat(insight.insightSource).isEqualTo(InsightSource.STUDIO_BOT)
-    }
+    assertThat(insight.rawInsight).isEqualTo("a/b/c/HelloWorld1.kt,a/b/c/HelloWorld2.kt")
+    assertThat(insight.insightSource).isEqualTo(InsightSource.STUDIO_BOT)
+  }
 
   @Test
   fun `gemini insight response for filename is cleaned for newline and space`() = runBlocking {
@@ -566,17 +530,11 @@ class GeminiAiInsightClientTest {
     codeContextResolver =
       object : FakeCodeContextResolver(codeContext) {
         override suspend fun getSource(fileNames: List<String>): CodeContextData {
-          val context =
-            fileNames.mapNotNull { filePath -> codeContext.firstOrNull { it.filePath == filePath } }
+          val context = fileNames.mapNotNull { filePath -> codeContext.firstOrNull { it.filePath == filePath } }
           return CodeContextData(context)
         }
       }
-    val client =
-      GeminiAiInsightClient(
-        projectRule.project,
-        AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER),
-        codeContextResolver,
-      )
+    val client = GeminiAiInsightClient(projectRule.project, codeContextResolver)
     fakeGeminiPluginApi.generateResponse = "a /b /c /Hello World1 .kt,\na/b/c/Hello World 2.kt\n"
 
     val request =
@@ -623,7 +581,8 @@ class GeminiAiInsightClientTest {
       |fun helloWorld2() {
       |  println("Hello World 2")
       |}
-      |```"""
+      |```
+      """
         .trimMargin()
 
     val insight = client.fetchCrashInsight(request)

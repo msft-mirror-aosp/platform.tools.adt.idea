@@ -17,13 +17,17 @@ package com.android.tools.idea.apk.viewer.arsc;
 
 import com.android.tools.apk.analyzer.BinaryXmlParser;
 import com.google.common.collect.ImmutableList;
-import com.google.devrel.gmscore.tools.apk.arsc.*;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.table.AbstractTableModel;
+import com.google.devrel.gmscore.tools.apk.arsc.PackageChunk;
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceIdentifier;
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceValue;
+import com.google.devrel.gmscore.tools.apk.arsc.StringPoolChunk;
+import com.google.devrel.gmscore.tools.apk.arsc.TypeChunk;
+import com.google.devrel.gmscore.tools.apk.arsc.TypeSpecChunk;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.swing.table.AbstractTableModel;
+import org.jetbrains.annotations.NotNull;
 
 public class ResourceTypeTableModel extends AbstractTableModel {
   private final StringPoolChunk myStringPool;
@@ -51,8 +55,8 @@ public class ResourceTypeTableModel extends AbstractTableModel {
   @Override
   public Object getValueAt(int row, int col) {
     if (col == 0) { // resource id
-      BinaryResourceIdentifier id = BinaryResourceIdentifier.create(myPackageChunk.getId(), myTypeSpec.getId(), row);
-      return id.toString();
+      ResourceIdentifier id = ResourceIdentifier.create(myPackageChunk.getId(), myTypeSpec.getId(), row);
+      return id.asHexString();
     }
     else if (col == 1) { // resource name
       String key = "unknown";
@@ -69,11 +73,11 @@ public class ResourceTypeTableModel extends AbstractTableModel {
       TypeChunk typeChunk = myTypes.get(col - 2);
       if (typeChunk.getEntries().containsKey(row)) {
         TypeChunk.Entry entry = typeChunk.getEntries().get(row);
-        BinaryResourceValue value = entry.value();
+        ResourceValue value = entry.value();
         if (value != null) {
           return formatValue(value);
         }
-        Map<Integer, BinaryResourceValue> values = entry.values();
+        Map<Integer, ResourceValue> values = entry.values();
         if (values != null) {
           return values.values().stream().map(this::formatValue).collect(Collectors.joining(", "));
         }
@@ -86,8 +90,8 @@ public class ResourceTypeTableModel extends AbstractTableModel {
   }
 
   @NotNull
-  private String formatValue(@NotNull BinaryResourceValue value) {
-    if (value.type() == BinaryResourceValue.Type.STRING) {
+  private String formatValue(@NotNull ResourceValue value) {
+    if (value.type() == ResourceValue.Type.STRING) {
       return myStringPool.getString(value.data());
     }
     return BinaryXmlParser.formatValue(value, myStringPool);

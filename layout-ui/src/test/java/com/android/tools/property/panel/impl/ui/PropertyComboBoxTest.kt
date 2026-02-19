@@ -239,10 +239,7 @@ class PropertyComboBoxTest {
     assertThat(comboBox.editor.text).isEqualTo("invisible")
   }
 
-  private fun createFakeUiForComboBoxEditor(
-    comboBox: PropertyComboBox,
-    size: Dimension = Dimension(200, 20),
-  ): FakeUi {
+  private fun createFakeUiForComboBoxEditor(comboBox: PropertyComboBox, size: Dimension = Dimension(200, 20)): FakeUi {
     val editor = comboBox.editor
     editor.size = size
     val ui = FakeUi(editor)
@@ -261,12 +258,10 @@ class PropertyComboBoxTest {
   private fun getWrappedComboBox(comboBox: PropertyComboBox): CommonComboBox<EnumValue, *> {
     val editor = comboBox.editor
     @Suppress("UNCHECKED_CAST")
-    return (editor.parent ?: comboBox.components.single { it.isVisible })
-      as CommonComboBox<EnumValue, *>
+    return (editor.parent ?: comboBox.components.single { it.isVisible }) as CommonComboBox<EnumValue, *>
   }
 
-  private fun isPopupVisible(comboBox: PropertyComboBox): Boolean =
-    getWrappedComboBox(comboBox).isPopupVisible()
+  private fun isPopupVisible(comboBox: PropertyComboBox): Boolean = getWrappedComboBox(comboBox).isPopupVisible()
 
   private fun createComboBox(
     property: PropertyItem,
@@ -281,8 +276,7 @@ class PropertyComboBoxTest {
     return comboBox
   }
 
-  private fun wrapComboBoxInKeyboardConsumer(comboBox: PropertyComboBox): MyKeyboardConsumer =
-    MyKeyboardConsumer().apply { add(comboBox) }
+  private fun wrapComboBoxInKeyboardConsumer(comboBox: PropertyComboBox): MyKeyboardConsumer = MyKeyboardConsumer().apply { add(comboBox) }
 
   /** Container that may consume ESCAPE keyboard events. */
   private class MyKeyboardConsumer : JPanel() {
@@ -292,12 +286,7 @@ class PropertyComboBoxTest {
       get() = _keyCount
 
     init {
-      registerActionKey(
-        { _keyCount++ },
-        KeyStrokes.ESCAPE,
-        "escape",
-        condition = JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT,
-      )
+      registerActionKey({ _keyCount++ }, KeyStrokes.ESCAPE, "escape", condition = JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
     }
   }
 }

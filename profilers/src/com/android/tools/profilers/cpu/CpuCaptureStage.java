@@ -29,8 +29,6 @@ import com.android.tools.adtui.model.trackgroup.TrackGroupActionListener;
 import com.android.tools.adtui.model.trackgroup.TrackGroupModel;
 import com.android.tools.adtui.model.trackgroup.TrackModel;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
-import com.android.tools.idea.perfetto.PerfettoTraceWebLoader;
-import com.android.tools.idea.protobuf.ByteString;
 import com.android.tools.idea.transport.EventStreamServer;
 import com.android.tools.profiler.perfetto.proto.TraceProcessor;
 import com.android.tools.profiler.proto.Common;
@@ -49,7 +47,6 @@ import com.android.tools.profilers.cpu.analysis.CpuAnalyzable;
 import com.android.tools.profilers.cpu.analysis.CpuFullTraceAnalysisModel;
 import com.android.tools.profilers.cpu.analysis.FramesAnalysisModel;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
-import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameEventTooltip;
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameEventTrackModel;
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent;
@@ -84,15 +81,12 @@ import com.android.tools.profilers.event.UserEventTooltip;
 import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders;
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorModelKt;
 import com.android.tools.profilers.sessions.SessionsManager;
-import com.android.tools.profilers.tasks.TaskFinishedState;
+import com.android.tools.profilers.tasks.analytics.TaskFinishedState;
+import com.android.tools.profilers.tasks.analytics.TaskTracker;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.openapi.util.registry.Registry;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -114,7 +108,6 @@ import org.jetbrains.annotations.Nullable;
 import static com.android.tools.profilers.StringFormattingUtils.formatStringInTitleCase;
 import static com.android.tools.profilers.cpu.systemtrace.BatteryDrainTrackModel.getUnitFromTrackName;
 import static com.android.tools.profilers.cpu.systemtrace.BatteryDrainTrackModel.getFormattedBatteryDrainName;
-import static com.android.tools.profilers.tasks.TaskEventTrackerUtils.trackTaskFinished;
 
 /**
  * This class holds the models and capture data for the {@code com.android.tools.profilers.cpu.CpuCaptureStageView}.
@@ -164,7 +157,19 @@ public class CpuCaptureStage extends Stage<Timeline> {
     if (!captureFile.exists() || captureFile.length() == 0) {
       return null;
     }
-
+    // The existing flow creates a temporary file (e.g., "/private/var/folders/.../T/transport-bytes-....tmp").
+    // If Unified Preview is enabled, we need to convert/save this to a permanent trace file to be viewed in the editor.
+    // TODO(b/472627125): the transport-bytes...tmp can be renamed to a trace file instead of creating a new
+    //  one. Also getAndSaveCapture shouldn't be called if isSystemTraceInEditorEnabled is enabled
+    if (profilers.getIdeServices().getFeatureConfig().isSystemTraceInEditorEnabled()) {
+      File permanentFile = CpuCaptureStageUtils.getPermanentCaptureFile(
+        profilers.getIdeServices(),
+        captureFile,
+        "capture_" + traceId + ".trace");
+      if (permanentFile != null) {
+        return permanentFile;
+      }
+    }
     return captureFile;
   }
 
@@ -264,7 +269,6 @@ public class CpuCaptureStage extends Stage<Timeline> {
     super(profilers);
     myCpuCaptureHandler = new CpuCaptureHandler(
       profilers, captureFile, traceId, configuration, entryPoint, captureProcessNameHint, captureProcessIdHint);
-
     getMultiSelectionModel().addDependency(this)
       .onChange(MultiSelectionModel.Aspect.SELECTIONS_CHANGED, this::onSelectionChanged)
       .onChange(MultiSelectionModel.Aspect.ACTIVE_SELECTION_CHANGED, this::onActiveSelectionChanged);
@@ -334,8 +338,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
   }
 
   @Override
-  public void enter() {
-    logEnterStage();
+  public void onEnter() {
     getStudioProfilers().getUpdater().register(myCpuCaptureHandler);
     getStudioProfilers().getIdeServices().getFeatureTracker().trackEnterStage(getStageType());
 
@@ -366,8 +369,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
           onCaptureParsed(capture);
           setState(State.ANALYZING);
           if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-            trackTaskFinished(getStudioProfilers(), getStudioProfilers().getSessionsManager().isSessionAlive(),
-                              TaskFinishedState.COMPLETED);
+            myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED);
           }
         }
       }
@@ -375,15 +377,11 @@ public class CpuCaptureStage extends Stage<Timeline> {
         // Logging if an exception happens since setState may trigger various callbacks.
         Logger.getInstance(CpuCaptureStage.class).error(ex);
       }
-    }, finishedState -> {
-      if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-        trackTaskFinished(getStudioProfilers(), getStudioProfilers().getSessionsManager().isSessionAlive(), finishedState);
-      }
-    });
+    }, myTaskTracker);
   }
 
   @Override
-  public void exit() {
+  public void onExit() {
     getStudioProfilers().getUpdater().unregister(myCpuCaptureHandler);
   }
 
@@ -468,8 +466,10 @@ public class CpuCaptureStage extends Stage<Timeline> {
     myTrackGroupModels.clear();
 
     FeatureTracker featureTracker = getStudioProfilers().getIdeServices().getFeatureTracker();
+    boolean jvmtiEnabled = getStudioProfilers().getSessionsManager().getSelectedSessionMetaData().getJvmtiEnabled();
+
     // Interaction events, e.g. user interaction, app lifecycle. Recorded trace only.
-    if (getStudioProfilers().getSession().getPid() != 0) {
+    if (jvmtiEnabled) {
       myTrackGroupModels.add(createInteractionTrackGroup());
     }
 

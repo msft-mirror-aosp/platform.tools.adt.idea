@@ -28,7 +28,7 @@ import com.android.tools.adtui.swing.findModelessDialog
 import com.android.tools.asdriver.tests.AndroidSystem
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.streaming.core.StreamingDevicePanel
+import com.android.tools.idea.streaming.core.AbstractDevicePanel
 import com.android.tools.idea.streaming.device.DeviceClient
 import com.android.tools.idea.streaming.device.DeviceConfiguration
 import com.android.tools.idea.streaming.device.DeviceToolWindowPanel
@@ -72,21 +72,19 @@ private const val SETTINGS_BUTTON_TEXT = "Device UI Shortcuts"
 
 internal enum class TestDeviceType {
   EMULATOR,
-  DEVICE
+  DEVICE,
 }
 
-/**
- * Rule for setting up integration tests for UI Settings Shortcuts on an emulator or a device.
- */
+/** Rule for setting up integration tests for UI Settings Shortcuts on an emulator or a device. */
 internal class UiSettingsIntegrationRule : ExternalResource() {
   private val disposableRule = DisposableRule()
   private val timeoutRule = FlagRule(StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS, 30_000)
   private val headlessDialogRule = HeadlessDialogRule()
   private val initAdbLibApplicationServiceRule = InitAdbLibApplicationServiceRule()
-  private val projectRule = AndroidProjectRule.withAndroidModel(
-    createAndroidProjectBuilderForDefaultTestProjectStructure()
-      .copy(applicationIdFor = { APPLICATION_ID })
-  )
+  private val projectRule =
+    AndroidProjectRule.withAndroidModel(
+      createAndroidProjectBuilderForDefaultTestProjectStructure().copy(applicationIdFor = { APPLICATION_ID })
+    )
 
   private val root = Files.createTempDirectory("root")
   private val system: AndroidSystem = AndroidSystem.basic(root)
@@ -94,14 +92,16 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
 
   internal val project
     get() = projectRule.project
+
   internal val serialNumber: String
     get() = emulator.serialNumber
+
   private val testRootDisposable
     get() = disposableRule.disposable
 
   private lateinit var adb: Adb
   private lateinit var fakeUi: FakeUi
-  private lateinit var devicePanel: StreamingDevicePanel<*>
+  private lateinit var devicePanel: AbstractDevicePanel<*>
   private lateinit var emulator: Emulator
 
   fun onDevice(): UiSettingsIntegrationRule {
@@ -143,9 +143,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
   internal fun openUiSettings(): UiSettingsDialog {
     waitForCondition(60.seconds) {
       fakeUi.updateToolbarsIfNecessary()
-      val button = fakeUi.findComponent<ActionButton> {
-        it.action.templateText == SETTINGS_BUTTON_TEXT
-      }
+      val button = fakeUi.findComponent<ActionButton> { it.action.templateText == SETTINGS_BUTTON_TEXT }
       thisLogger().warn("Button found: $button, enabled: ${button?.isEnabled}, showing: ${button?.isShowing}")
       button?.isEnabled ?: false
     }
@@ -161,9 +159,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
   private fun installTestApplication() {
     val languagesApk = TestUtils.getBinPath("tools/adt/idea/streaming/integration/languages/languages.apk")
     executeWithRetries<InterruptedException>(3) {
-      adb.runCommand("install", languagesApk.toString(), emulator = emulator) {
-        waitForLog("Success", 20.seconds)
-      }
+      adb.runCommand("install", languagesApk.toString(), emulator = emulator) { waitForLog("Success", 20.seconds) }
     }
     addStringResources()
   }
@@ -175,7 +171,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
     runInEdtAndWait { fixture.copyDirectoryToProject("res", "res") }
   }
 
-  private fun createStreamingDevicePanel() : StreamingDevicePanel<*> {
+  private fun createStreamingDevicePanel(): AbstractDevicePanel<*> {
     return when (testType) {
       TestDeviceType.EMULATOR -> createEmulatorToolWindowPanel()
       TestDeviceType.DEVICE -> runBlocking { createDeviceToolWindowPanel() }
@@ -198,13 +194,14 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
   }
 
   private suspend fun createDeviceToolWindowPanel(): DeviceToolWindowPanel {
-    val emptyDeviceConfiguration = DeviceConfiguration(
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE
-        resolution = Resolution(1080, 1920)
-        density = 480
-      }
-    )
+    val emptyDeviceConfiguration =
+      DeviceConfiguration(
+        DeviceProperties.buildForTest {
+          icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE
+          resolution = Resolution(1080, 1920)
+          density = 480
+        }
+      )
     val deviceClient = DeviceClient(emulator.serialNumber, emptyDeviceConfiguration, "x86_64")
     Disposer.register(testRootDisposable, deviceClient)
     val deviceProvisioner = project.getService(DeviceProvisionerService::class.java).deviceProvisioner
@@ -215,11 +212,12 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
 
   private fun startRunningDeviceWindowUi() {
     runInEdtAndWait {
-      val scrollPane = JBScrollPane(devicePanel).apply {
-        border = null
-        isFocusable = true
-        size = Dimension(200, 300)
-      }
+      val scrollPane =
+        JBScrollPane(devicePanel).apply {
+          border = null
+          isFocusable = true
+          size = Dimension(200, 300)
+        }
       fakeUi = FakeUi(scrollPane, createFakeWindow = true, parentDisposable = testRootDisposable)
       devicePanel.createContent(true)
       fakeUi.layoutAndDispatchEvents()
@@ -230,7 +228,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
     }
   }
 
-  private fun waitForDeviceInitialization(streamingDevicePanel: StreamingDevicePanel<*>, fakeUi: FakeUi) {
+  private fun waitForDeviceInitialization(streamingDevicePanel: AbstractDevicePanel<*>, fakeUi: FakeUi) {
     val panel = streamingDevicePanel as DeviceToolWindowPanel
     val deviceView = panel.primaryDisplayView!!
     waitForCondition(30.seconds) { renderAndGetFrameNumber(fakeUi, deviceView) > 0u }
@@ -248,7 +246,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
       ApplicationManager.getApplication(),
       ProcessIOExecutorService.POOLED_THREAD_PREFIX,
       "JavaCPP Deallocator",
-      "InnocuousThread-"
+      "InnocuousThread-",
     )
   }
 

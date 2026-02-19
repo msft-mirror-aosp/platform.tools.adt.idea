@@ -41,6 +41,7 @@ fun buildGradle(
   enableCpp: Boolean = false,
   cppStandard: CppStandardType = CppStandardType.`Toolchain Default`,
   useVersionCatalog: Boolean,
+  hasCode: Boolean = true,
 ): String {
   val androidConfigBlock =
     androidConfig(
@@ -58,6 +59,7 @@ fun buildGradle(
       addLintOptions = addLintOptions,
       enableCpp = enableCpp,
       cppStandard = cppStandard,
+      hasCode = hasCode,
     )
 
   if (isDynamicFeature) {
@@ -71,8 +73,7 @@ dependencies {
       .gradleToKtsIfKts(isKts)
   }
 
-  val composeDependenciesBlock =
-    renderIf(isCompose) { "kotlinPlugin \"androidx.compose:compose-compiler:+\"" }
+  val composeDependenciesBlock = renderIf(isCompose) { "kotlinPlugin \"androidx.compose:compose-compiler:+\"" }
 
   val dependenciesBlock =
     """
@@ -98,8 +99,7 @@ private fun String.toKtsFunction(funcName: String): String =
     this
   }
 
-private fun String.toKtsProperty(funcName: String): String =
-  this.replace("$funcName ", "$funcName = ")
+private fun String.toKtsProperty(funcName: String): String = this.replace(Regex("$funcName\\s(?![={])"), "$funcName = ")
 
 internal fun String.gradleToKtsIfKts(isKts: Boolean): String =
   if (isKts) {
@@ -124,15 +124,14 @@ internal fun String.gradleToKtsIfKts(isKts: Boolean): String =
         .toKtsProperty("minifyEnabled")
         .toKtsFunction("proguardFiles")
         .toKtsFunction("consumerProguardFiles")
-        .toKtsFunction(
-          "implementation"
-        ) // For dynamic app: implementation project(":app") -> implementation(project(":app"))
+        .toKtsFunction("implementation") // For dynamic app: implementation project(":app") -> implementation(project(":app"))
         .replace("minifyEnabled", "isMinifyEnabled")
         .replace("debuggable", "isDebuggable")
         // The followings are for externalNativeBuild
         .toKtsFunction("cppFlags")
         .toKtsFunction("path")
         .toKtsProperty("version")
+        .toKtsProperty("enableKotlin")
     }
   } else {
     this

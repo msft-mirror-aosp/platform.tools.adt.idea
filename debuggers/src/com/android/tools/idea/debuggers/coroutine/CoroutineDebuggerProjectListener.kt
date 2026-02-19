@@ -22,13 +22,13 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XDebuggerManagerListener
+import com.intellij.xdebugger.impl.XDebugSessionImpl
+import com.intellij.xdebugger.impl.frame.XDebugManagerProxy
 import org.jetbrains.android.AndroidStartupManager.ProjectDisposableScope
 import org.jetbrains.kotlin.idea.debugger.coroutine.DebuggerConnection
 
-/**
- * Class responsible for setting up the coroutine debugger panel
- */
-class CoroutineDebuggerProjectActivity : ProjectActivity{
+/** Class responsible for setting up the coroutine debugger panel */
+class CoroutineDebuggerProjectActivity : ProjectActivity {
   override suspend fun execute(project: Project) {
     if (!FlagController.isCoroutineDebuggerEnabled) {
       return
@@ -43,7 +43,6 @@ private class CoroutineDebuggerListener(private val project: Project) : XDebugge
     // don't show coroutine debugger panel if disabled in settings
     if (!CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()) {
       return
-
     }
     // we check the process handler to differentiate between regular JVM processes and Android processes.
     // we don't want to create the panel if the process is regular JVM.
@@ -53,9 +52,12 @@ private class CoroutineDebuggerListener(private val project: Project) : XDebugge
 
     val debuggerConnection = DebuggerConnection(project, null, null, false, alwaysShowPanel = true)
 
+    val sessionId = (debugProcess.session as XDebugSessionImpl).id
+    val sessionProxy = XDebugManagerProxy.getInstance().findSessionProxy(project, sessionId) ?: return
+
     // creating the [DebuggerConnection] object does nothing on its own. In order for the panel to be created
     // we need to forward the "processStarted" call to the Kotlin plugin DebuggerConnection component,
     // which is responsible for creating the Coroutines Debugger panel
-    debuggerConnection.processStarted(debugProcess)
+    debuggerConnection.sessionStarted(sessionProxy)
   }
 }

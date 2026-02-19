@@ -3,10 +3,11 @@ load("//tools/adt/idea/aswb/testing:test_defs.bzl", "aswb_test")
 
 package(default_visibility = DEFAULT_TEST_VISIBILITY)
 
-java_test(
+aswb_test(
     name = "NewArtifactTrackerTest",
     size = "small",
     srcs = ["NewArtifactTrackerTest.java"],
+    test_class = "com.google.idea.blaze.qsync.deps.NewArtifactTrackerTest",
     deps = [
         "//tools/adt/idea/aswb/base:unit_test_utils",
         "//tools/adt/idea/aswb/common/experiments",
@@ -24,15 +25,16 @@ java_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@maven//:org.mockito.mockito-core",
     ],
 )
 
-java_test(
+aswb_test(
     name = "ArtifactTrackerStateSerializationTest",
     size = "small",
     srcs = ["ArtifactTrackerStateSerializationTest.java"],
+    test_class = "com.google.idea.blaze.qsync.deps.ArtifactTrackerStateSerializationTest",
     deps = [
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
@@ -45,7 +47,7 @@ java_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -63,7 +65,7 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "@maven//:com.google.guava.guava",
-        "@maven//:com.google.protobuf.protobuf-java",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:protobuf-java",
     ],
 )

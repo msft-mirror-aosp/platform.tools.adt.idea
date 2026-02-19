@@ -27,8 +27,8 @@ import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.openapi.wm.impl.InternalDecorator
 import com.intellij.testFramework.replaceService
-import org.mockito.kotlin.mock
 import javax.swing.Icon
+import org.mockito.kotlin.mock
 
 /** Creates a [FakeToolWindow] for testing. */
 fun createFakeToolWindow(
@@ -55,8 +55,10 @@ class FakeToolWindow(
 
   var tabActions: List<AnAction> = emptyList()
     private set
+
   var titleActions: List<AnAction> = emptyList()
     private set
+
   private var available = true
   private var visible = false
   private var active = false
@@ -127,16 +129,12 @@ class FakeToolWindow(
   }
 
   private fun notifyStateChanged(changeType: ToolWindowManagerListener.ToolWindowManagerEventType) {
-    project.messageBus.syncPublisher(ToolWindowManagerListener.TOPIC).stateChanged(manager, changeType)
+    project.messageBus.syncPublisher(ToolWindowManagerListener.TOPIC).stateChanged(manager, this, changeType)
   }
 }
 
-private class FakeToolWindowManager(
-  windowFactory: ToolWindowFactory,
-  private val toolWindowId: String,
-  icon: Icon,
-  project: Project,
-) : ToolWindowHeadlessManagerImpl(project) {
+private class FakeToolWindowManager(windowFactory: ToolWindowFactory, private val toolWindowId: String, icon: Icon, project: Project) :
+  ToolWindowHeadlessManagerImpl(project) {
   var toolWindow = FakeToolWindow(windowFactory, icon, this, project)
 
   override fun getToolWindow(id: String?): ToolWindow? {

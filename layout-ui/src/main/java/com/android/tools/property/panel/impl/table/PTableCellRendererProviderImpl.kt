@@ -15,8 +15,15 @@
  */
 package com.android.tools.property.panel.impl.table
 
-import com.android.tools.property.panel.api.*
-import com.android.tools.property.ptable.*
+import com.android.tools.property.panel.api.ControlTypeProvider
+import com.android.tools.property.panel.api.EditorProvider
+import com.android.tools.property.panel.api.NewPropertyItem
+import com.android.tools.property.panel.api.PropertyItem
+import com.android.tools.property.ptable.PTable
+import com.android.tools.property.ptable.PTableCellRenderer
+import com.android.tools.property.ptable.PTableCellRendererProvider
+import com.android.tools.property.ptable.PTableColumn
+import com.android.tools.property.ptable.PTableItem
 import com.intellij.util.ui.UIUtil
 
 /**
@@ -36,21 +43,9 @@ class PTableCellRendererProviderImpl<N : NewPropertyItem, P : PropertyItem>(
   private var defaultNameRenderer = DefaultNameTableCellRenderer()
   private var defaultValueRenderer = DefaultValueTableCellRenderer()
   private val nameRenderer =
-    EditorBasedTableCellRenderer(
-      nameType,
-      nameControlTypeProvider,
-      nameEditorProvider,
-      UIUtil.FontSize.SMALL,
-      defaultNameRenderer,
-    )
+    EditorBasedTableCellRenderer(nameType, nameControlTypeProvider, nameEditorProvider, UIUtil.FontSize.SMALL, defaultNameRenderer)
   private val valueRenderer =
-    EditorBasedTableCellRenderer(
-      valueType,
-      valueControlTypeProvider,
-      valueEditorProvider,
-      UIUtil.FontSize.NORMAL,
-      defaultValueRenderer,
-    )
+    EditorBasedTableCellRenderer(valueType, valueControlTypeProvider, valueEditorProvider, UIUtil.FontSize.NORMAL, defaultValueRenderer)
 
   override fun invoke(table: PTable, item: PTableItem, column: PTableColumn): PTableCellRenderer {
     return when (column) {

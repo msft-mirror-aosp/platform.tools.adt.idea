@@ -75,11 +75,6 @@ iml_module(
         "//tools/adt/idea/nav/safeargs/common/gradle:intellij.android.nav.safeargs.common.gradle",
         "//tools/adt/idea/native-symbolizer",
         "//tools/adt/idea/native-symbolizer/gradle:native-symbolizer.gradle",
-        "//tools/adt/idea/gradle-dsl-groovy:intellij.android.gradle.dsl.groovy",
-        "//tools/adt/idea/gradle-dsl-toml:intellij.android.gradle.dsl.toml",
-        "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
-        "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "//tools/adt/idea/gradle-dsl-android:intellij.android.gradle.dsl.android",
         "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
         "//tools/adt/idea/avd:intellij.android.avd",
@@ -95,6 +90,8 @@ iml_module(
         "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
         "//tools/vendor/google/marketing",
         "//tools/adt/idea/logcat/gradle:intellij.android.logcat.gradle",
+        "//tools/vendor/google/firebase-provisioning",
+        "//tools/adt/idea/tracer:intellij.android.tracer",
     ],
     # do not sort: must match IML order
     deps = [

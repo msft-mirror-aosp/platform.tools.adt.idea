@@ -33,11 +33,11 @@ import com.android.tools.idea.sqlite.model.SqliteValue
 import com.android.tools.idea.sqlite.ui.tableView.OrderBy
 import com.android.tools.idea.sqlite.utils.toSqliteValues
 import com.android.tools.idea.testing.runDispatching
+import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.LightPlatformTestCase
 import java.util.concurrent.Executor
-import org.jetbrains.concurrency.any
 import org.jetbrains.ide.PooledThreadExecutor
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -67,29 +67,20 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     databaseConnection2 = mock()
     databaseConnection3 = mock()
 
-    whenever(databaseConnection1.query(any()))
-      .thenReturn(Futures.immediateFuture(FakeSqliteResultSet()))
-    whenever(databaseConnection2.query(any()))
-      .thenReturn(Futures.immediateFuture(FakeSqliteResultSet()))
-    whenever(databaseConnection3.query(any()))
-      .thenReturn(Futures.immediateFuture(FakeSqliteResultSet()))
+    whenever(databaseConnection1.query(any())).thenReturn(Futures.immediateFuture(FakeSqliteResultSet()))
+    whenever(databaseConnection2.query(any())).thenReturn(Futures.immediateFuture(FakeSqliteResultSet()))
+    whenever(databaseConnection3.query(any())).thenReturn(Futures.immediateFuture(FakeSqliteResultSet()))
 
     whenever(databaseConnection1.execute(any())).thenReturn(Futures.immediateFuture(Unit))
     whenever(databaseConnection2.execute(any())).thenReturn(Futures.immediateFuture(Unit))
     whenever(databaseConnection3.execute(any())).thenReturn(Futures.immediateFuture(Unit))
 
     whenever(databaseConnection1.readSchema())
-      .thenReturn(
-        Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t1", emptyList(), null, false))))
-      )
+      .thenReturn(Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t1", emptyList(), null, false)))))
     whenever(databaseConnection2.readSchema())
-      .thenReturn(
-        Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t2", emptyList(), null, false))))
-      )
+      .thenReturn(Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t2", emptyList(), null, false)))))
     whenever(databaseConnection3.readSchema())
-      .thenReturn(
-        Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t3", emptyList(), null, false))))
-      )
+      .thenReturn(Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t3", emptyList(), null, false)))))
   }
 
   fun testQueryDatabase() {
@@ -99,39 +90,23 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       databaseRepository.addDatabaseConnection(databaseId2, databaseConnection2)
     }
 
-    val future1 =
-      databaseRepository.runQuery(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"),
-      )
-    val future2 =
-      databaseRepository.runQuery(
-        databaseId2,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"),
-      )
+    val future1 = databaseRepository.runQuery(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    val future2 = databaseRepository.runQuery(databaseId2, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
 
     pumpEventsAndWaitForFuture(future1)
     pumpEventsAndWaitForFuture(future2)
 
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection3) }
 
-    val future3 =
-      databaseRepository.runQuery(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"),
-      )
+    val future3 = databaseRepository.runQuery(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
 
     pumpEventsAndWaitForFuture(future3)
 
     // Assert
-    verify(databaseConnection1)
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
-    verify(databaseConnection2)
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
-    verify(databaseConnection1, times(0))
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
-    verify(databaseConnection3)
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
+    verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    verify(databaseConnection2).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
+    verify(databaseConnection1, times(0)).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
+    verify(databaseConnection3).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
   }
 
   fun testClosedDatabasesAreNotQueried() {
@@ -141,36 +116,21 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       databaseRepository.addDatabaseConnection(databaseId2, databaseConnection2)
     }
 
-    val future1 =
-      databaseRepository.runQuery(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"),
-      )
-    val future2 =
-      databaseRepository.runQuery(
-        databaseId2,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"),
-      )
+    val future1 = databaseRepository.runQuery(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    val future2 = databaseRepository.runQuery(databaseId2, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
 
     pumpEventsAndWaitForFuture(future1)
     pumpEventsAndWaitForFuture(future2)
 
     runDispatching { databaseRepository.closeDatabase(databaseId1) }
-    val future3 =
-      databaseRepository.runQuery(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"),
-      )
+    val future3 = databaseRepository.runQuery(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
 
     pumpEventsAndWaitForFutureException(future3)
 
     // Assert
-    verify(databaseConnection1)
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
-    verify(databaseConnection2)
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
-    verify(databaseConnection1, times(0))
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
+    verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    verify(databaseConnection2).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
+    verify(databaseConnection1, times(0)).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
   }
 
   fun testClosedDatabasesAreDisposed() {
@@ -186,8 +146,8 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     runDispatching { databaseRepository.closeDatabase(databaseId2) }
 
     // Assert
-    assertTrue(Disposer.isDisposed(databaseConnection1))
-    assertTrue(Disposer.isDisposed(databaseConnection2))
+    assertThat(Disposer.isDisposed(databaseConnection1)).isTrue()
+    assertThat(Disposer.isDisposed(databaseConnection2)).isTrue()
   }
 
   fun testFetchSchema() {
@@ -204,9 +164,9 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     val schema3 = runDispatching { databaseRepository.fetchSchema(databaseId1) }
 
     // Assert
-    assertEquals(schema1, SqliteSchema(listOf(SqliteTable("t1", emptyList(), null, false))))
-    assertEquals(schema2, SqliteSchema(listOf(SqliteTable("t2", emptyList(), null, false))))
-    assertEquals(schema3, SqliteSchema(listOf(SqliteTable("t3", emptyList(), null, false))))
+    assertThat(schema1).isEqualTo(SqliteSchema(listOf(SqliteTable("t1", emptyList(), null, false))))
+    assertThat(schema2).isEqualTo(SqliteSchema(listOf(SqliteTable("t2", emptyList(), null, false))))
+    assertThat(schema3).isEqualTo(SqliteSchema(listOf(SqliteTable("t3", emptyList(), null, false))))
   }
 
   fun testExecuteStatement() {
@@ -216,38 +176,22 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       databaseRepository.addDatabaseConnection(databaseId2, databaseConnection2)
     }
 
-    val future1 =
-      databaseRepository.executeStatement(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"),
-      )
-    val future2 =
-      databaseRepository.executeStatement(
-        databaseId2,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"),
-      )
+    val future1 = databaseRepository.executeStatement(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    val future2 = databaseRepository.executeStatement(databaseId2, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
 
     pumpEventsAndWaitForFuture(future1)
     pumpEventsAndWaitForFuture(future2)
 
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection3) }
 
-    val future3 =
-      databaseRepository.executeStatement(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"),
-      )
+    val future3 = databaseRepository.executeStatement(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
     pumpEventsAndWaitForFuture(future3)
 
     // Assert
-    verify(databaseConnection1)
-      .execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
-    verify(databaseConnection2)
-      .execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
-    verify(databaseConnection1, times(0))
-      .execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
-    verify(databaseConnection3)
-      .execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
+    verify(databaseConnection1).execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    verify(databaseConnection2).execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t2"))
+    verify(databaseConnection1, times(0)).execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
+    verify(databaseConnection3).execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
   }
 
   fun testUpdateTablePrimaryKey() {
@@ -255,34 +199,19 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     val targetTable =
       SqliteTable(
         "t1",
-        listOf(
-          SqliteColumn("c1", SqliteAffinity.TEXT, false, true),
-          SqliteColumn("c2", SqliteAffinity.TEXT, false, false),
-        ),
+        listOf(SqliteColumn("c1", SqliteAffinity.TEXT, false, true), SqliteColumn("c2", SqliteAffinity.TEXT, false, false)),
         null,
         false,
       )
     val targetRow =
-      SqliteRow(
-        listOf(
-          SqliteColumnValue("c1", SqliteValue.fromAny("0")),
-          SqliteColumnValue("c2", SqliteValue.fromAny("oldC2")),
-        )
-      )
+      SqliteRow(listOf(SqliteColumnValue("c1", SqliteValue.fromAny("0")), SqliteColumnValue("c2", SqliteValue.fromAny("oldC2"))))
     val targetColumnName = "c2"
     val newValue = SqliteValue.fromAny("new")
 
     // Act
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
 
-    val future1 =
-      databaseRepository.updateTable(
-        databaseId1,
-        targetTable,
-        targetRow,
-        targetColumnName,
-        newValue,
-      )
+    val future1 = databaseRepository.updateTable(databaseId1, targetTable, targetRow, targetColumnName, newValue)
     pumpEventsAndWaitForFuture(future1)
 
     // Assert
@@ -302,10 +231,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     val targetTable =
       SqliteTable(
         "t1",
-        listOf(
-          SqliteColumn("c1", SqliteAffinity.TEXT, false, false),
-          SqliteColumn("c2", SqliteAffinity.TEXT, false, false),
-        ),
+        listOf(SqliteColumn("c1", SqliteAffinity.TEXT, false, false), SqliteColumn("c2", SqliteAffinity.TEXT, false, false)),
         RowIdName.ROWID,
         false,
       )
@@ -323,14 +249,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     // Act
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
 
-    val future1 =
-      databaseRepository.updateTable(
-        databaseId1,
-        targetTable,
-        targetRow,
-        targetColumnName,
-        newValue,
-      )
+    val future1 = databaseRepository.updateTable(databaseId1, targetTable, targetRow, targetColumnName, newValue)
     pumpEventsAndWaitForFuture(future1)
 
     // Assert
@@ -345,27 +264,105 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       )
   }
 
+  fun testRemoveRows_oneRow() {
+    // Prepare
+    val targetTable =
+      SqliteTable(
+        "t1",
+        listOf(SqliteColumn("c1", SqliteAffinity.TEXT, false, false), SqliteColumn("c2", SqliteAffinity.TEXT, false, false)),
+        RowIdName.ROWID,
+        false,
+      )
+    val targetRow =
+      SqliteRow(
+        listOf(
+          SqliteColumnValue("rowid", SqliteValue.fromAny("0")),
+          SqliteColumnValue("c1", SqliteValue.fromAny("oldC1")),
+          SqliteColumnValue("c2", SqliteValue.fromAny("oldC2")),
+        )
+      )
+
+    // Act
+    runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
+
+    val future1 = databaseRepository.removeRows(databaseId1, targetTable, listOf(targetRow))
+    pumpEventsAndWaitForFuture(future1)
+
+    // Assert
+    verify(databaseConnection1)
+      .execute(
+        SqliteStatement(
+          SqliteStatementType.DELETE,
+          "DELETE FROM t1 WHERE (rowid = ?)",
+          listOf("0").toSqliteValues(),
+          "DELETE FROM t1 WHERE (rowid = '0')",
+        )
+      )
+  }
+
+  fun testRemoveRows_multipleRows() {
+    // Prepare
+    val targetTable =
+      SqliteTable(
+        "t1",
+        listOf(SqliteColumn("c1", SqliteAffinity.TEXT, false, false), SqliteColumn("c2", SqliteAffinity.TEXT, false, false)),
+        RowIdName.ROWID,
+        false,
+      )
+    val targetRows =
+      listOf(
+        SqliteRow(
+          listOf(
+            SqliteColumnValue("rowid", SqliteValue.fromAny("0")),
+            SqliteColumnValue("c1", SqliteValue.fromAny("c01")),
+            SqliteColumnValue("c2", SqliteValue.fromAny("c02")),
+          )
+        ),
+        SqliteRow(
+          listOf(
+            SqliteColumnValue("rowid", SqliteValue.fromAny("2")),
+            SqliteColumnValue("c1", SqliteValue.fromAny("c21")),
+            SqliteColumnValue("c2", SqliteValue.fromAny("c22")),
+          )
+        ),
+        SqliteRow(
+          listOf(
+            SqliteColumnValue("rowid", SqliteValue.fromAny("4")),
+            SqliteColumnValue("c1", SqliteValue.fromAny("c41")),
+            SqliteColumnValue("c2", SqliteValue.fromAny("c42")),
+          )
+        ),
+      )
+
+    // Act
+    runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
+
+    val future1 = databaseRepository.removeRows(databaseId1, targetTable, targetRows)
+    pumpEventsAndWaitForFuture(future1)
+
+    // Assert
+    verify(databaseConnection1)
+      .execute(
+        SqliteStatement(
+          SqliteStatementType.DELETE,
+          "DELETE FROM t1 WHERE (rowid = ?) OR (rowid = ?) OR (rowid = ?)",
+          listOf("0", "2", "4").toSqliteValues(),
+          "DELETE FROM t1 WHERE (rowid = '0') OR (rowid = '2') OR (rowid = '4')",
+        )
+      )
+  }
+
   fun testSelectOrderedAsc() {
     // Prepare
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
 
     // Act
     val future =
-      databaseRepository.selectOrdered(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"),
-        OrderBy.Asc("c1"),
-      )
+      databaseRepository.selectOrdered(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"), OrderBy.Asc("c1"))
     pumpEventsAndWaitForFuture(future)
 
     // Assert
-    verify(databaseConnection1)
-      .query(
-        SqliteStatement(
-          SqliteStatementType.SELECT,
-          "SELECT * FROM (SELECT * FROM t1) ORDER BY c1 ASC",
-        )
-      )
+    verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM (SELECT * FROM t1) ORDER BY c1 ASC"))
   }
 
   fun testSelectOrderedDesc() {
@@ -374,21 +371,11 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
 
     // Act
     val future =
-      databaseRepository.selectOrdered(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"),
-        OrderBy.Desc("c1"),
-      )
+      databaseRepository.selectOrdered(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"), OrderBy.Desc("c1"))
     pumpEventsAndWaitForFuture(future)
 
     // Assert
-    verify(databaseConnection1)
-      .query(
-        SqliteStatement(
-          SqliteStatementType.SELECT,
-          "SELECT * FROM (SELECT * FROM t1) ORDER BY c1 DESC",
-        )
-      )
+    verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM (SELECT * FROM t1) ORDER BY c1 DESC"))
   }
 
   fun testSelectOrderedNotOrder() {
@@ -397,16 +384,11 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
 
     // Act
     val future =
-      databaseRepository.selectOrdered(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"),
-        OrderBy.NotOrdered,
-      )
+      databaseRepository.selectOrdered(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"), OrderBy.NotOrdered)
     pumpEventsAndWaitForFuture(future)
 
     // Assert
-    verify(databaseConnection1)
-      .query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
+    verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
   }
 
   fun testClear() {
@@ -423,20 +405,14 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection1).close()
     verify(databaseConnection2).close()
 
-    assertTrue(Disposer.isDisposed(databaseConnection1))
-    assertTrue(Disposer.isDisposed(databaseConnection2))
+    assertThat(Disposer.isDisposed(databaseConnection1)).isTrue()
+    assertThat(Disposer.isDisposed(databaseConnection2)).isTrue()
 
     pumpEventsAndWaitForFutureException(
-      databaseRepository.runQuery(
-        databaseId1,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"),
-      )
+      databaseRepository.runQuery(databaseId1, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
     )
     pumpEventsAndWaitForFutureException(
-      databaseRepository.runQuery(
-        databaseId2,
-        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"),
-      )
+      databaseRepository.runQuery(databaseId2, SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
     )
   }
 }

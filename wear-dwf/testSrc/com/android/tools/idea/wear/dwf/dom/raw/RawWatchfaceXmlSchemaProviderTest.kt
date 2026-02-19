@@ -18,29 +18,21 @@ package com.android.tools.idea.wear.dwf.dom.raw
 import com.android.SdkConstants.FD_RES
 import com.android.SdkConstants.FD_RES_RAW
 import com.android.SdkConstants.FN_ANDROID_MANIFEST_XML
-import com.android.sdklib.AndroidVersion
 import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.model.AndroidModel
-import com.android.tools.idea.model.MergedManifestManager
-import com.android.tools.idea.model.MergedManifestSnapshot
-import com.android.tools.idea.model.TestAndroidModel
-import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.AndroidDomRule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.createAndroidProjectBuilderForDefaultTestProjectStructure
 import com.android.tools.idea.testing.flags.overrideForTest
-import com.android.tools.idea.util.androidFacet
 import com.android.tools.idea.wear.dwf.analytics.DeclarativeWatchFaceUsageTracker
 import com.android.tools.wear.wff.WFFVersion.WFFVersion1
 import com.android.tools.wear.wff.WFFVersion.WFFVersion3
-import com.android.utils.concurrency.AsyncSupplier
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.project.DumbService
 import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.replaceService
 import kotlin.test.assertEquals
@@ -69,31 +61,22 @@ abstract class RawWatchfaceXmlSchemaProviderTest {
 
   protected val domRule = AndroidDomRule(RES_RAW_FOLDER) { projectRule.fixture }
 
-  @get:Rule
-  val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(domRule)
-
-  protected val mainModule
-    get() =
-      projectRule.module.getModuleSystem().getProductionAndroidModule()
-      ?: error("expected main module to exist")
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(domRule)
 
   protected val fixture
     get() = projectRule.fixture
 
   @Before
   fun setup() {
-    projectRule.fixture.testDataPath =
-      resolveWorkspacePath("tools/adt/idea/wear-dwf/testData/${RES_RAW_FOLDER}").toString()
+    projectRule.fixture.testDataPath = resolveWorkspacePath("tools/adt/idea/wear-dwf/testData/${RES_RAW_FOLDER}").toString()
   }
 
   protected fun addManifestWithWFFVersion(version: String) {
     projectRule.fixture.addFileToProject(FN_ANDROID_MANIFEST_XML, manifestWithWFFVersion(version))
-    // create the manifest snapshot
-    MergedManifestManager.getMergedManifest(mainModule).get()
   }
 }
 
-class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest() {
+class RawWatchfaceXmlSchemaProviderSdk33Test : RawWatchfaceXmlSchemaProviderTest() {
   override val minSdk = 33
 
   @Test
@@ -107,7 +90,7 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
         // language=xml
         """
         <WatchFace />
-      """
+        """
           .trimIndent(),
       ) as XmlFile
     val rawResourceFile =
@@ -116,17 +99,14 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
         // language=xml
         """
         <resource />
-      """
+        """
           .trimIndent(),
       ) as XmlFile
 
     assertTrue(provider.isAvailable(watchFaceFile))
     assertFalse(provider.isAvailable(rawResourceFile))
 
-    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_XML_EDITOR_SUPPORT.overrideForTest(
-      false,
-      projectRule.testRootDisposable,
-    )
+    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_XML_EDITOR_SUPPORT.overrideForTest(false, projectRule.testRootDisposable)
     assertFalse(provider.isAvailable(watchFaceFile))
   }
 
@@ -134,10 +114,7 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
   fun `test tag autocompletion`() {
     addManifestWithWFFVersion("1")
 
-    domRule.testCompletion(
-      "watch_face_completion_metadata_tag.xml",
-      "watch_face_completion_metadata_tag_after.xml",
-    )
+    domRule.testCompletion("watch_face_completion_metadata_tag.xml", "watch_face_completion_metadata_tag_after.xml")
   }
 
   @Test
@@ -145,10 +122,7 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
     addManifestWithWFFVersion("1")
 
     // The tag should not be autocompleted as it's part of the version 2 features
-    domRule.testCompletion(
-      "watch_face_completion_flavor_tag.xml",
-      "watch_face_completion_flavor_tag_after_version_1.xml",
-    )
+    domRule.testCompletion("watch_face_completion_flavor_tag.xml", "watch_face_completion_flavor_tag_after_version_1.xml")
   }
 
   @Test
@@ -156,20 +130,14 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
     addManifestWithWFFVersion("2")
 
     // The tag should be autocompleted as it's part of the version 2 features
-    domRule.testCompletion(
-      "watch_face_completion_flavor_tag.xml",
-      "watch_face_completion_flavor_tag_after_version_2.xml",
-    )
+    domRule.testCompletion("watch_face_completion_flavor_tag.xml", "watch_face_completion_flavor_tag_after_version_2.xml")
   }
 
   @Test
   fun `test attribute autocompletion`() {
     addManifestWithWFFVersion("1")
 
-    assertEquals(
-      listOf("CIRCLE", "NONE", "RECTANGLE"),
-      domRule.getCompletionResults("watch_face_completion_attribute.xml"),
-    )
+    assertEquals(listOf("CIRCLE", "NONE", "RECTANGLE"), domRule.getCompletionResults("watch_face_completion_attribute.xml"))
   }
 
   @Test
@@ -206,43 +174,24 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
       FN_ANDROID_MANIFEST_XML,
       // language=XML
       """
-<?xml version="1.0" encoding="utf-8"?>
-<manifest />
-"""
+      <?xml version="1.0" encoding="utf-8"?>
+      <manifest />
+      """
         .trimIndent(),
     )
-    // create the manifest snapshot
-    MergedManifestManager.getMergedManifest(mainModule).get()
 
-    domRule.testCompletion(
-      "watch_face_completion_metadata_tag.xml",
-      "watch_face_completion_metadata_tag_after.xml",
-    )
+    domRule.testCompletion("watch_face_completion_metadata_tag.xml", "watch_face_completion_metadata_tag_after.xml")
   }
 
   @Test
-  fun `test the provider returns null if there is no merged manifest`() {
-    val mockMergedManifestManager = mock<MergedManifestManager>()
-    whenever(mockMergedManifestManager.mergedManifest)
-      .thenReturn(
-        object : AsyncSupplier<MergedManifestSnapshot> {
-          override val now: MergedManifestSnapshot?
-            get() = null
-
-          override fun get(): ListenableFuture<MergedManifestSnapshot> {
-            return Futures.immediateFuture(null)
-          }
-        }
-      )
-    projectRule.replaceService(MergedManifestManager::class.java, mockMergedManifestManager)
-
+  fun `test the provider returns null if there is no manifest`() {
     val watchFaceFile =
       projectRule.fixture.addFileToProject(
         "${RES_RAW_FOLDER}/watch_face.xml",
         // language=xml
         """
         <WatchFace />
-      """
+        """
           .trimIndent(),
       ) as XmlFile
 
@@ -255,21 +204,14 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
   fun `test the provider falls back to WFF version 1 when the version is invalid with minSdk 33`() {
     addManifestWithWFFVersion("invalid")
 
-    domRule.testCompletion(
-      "watch_face_completion_metadata_tag.xml",
-      "watch_face_completion_metadata_tag_after.xml",
-    )
+    domRule.testCompletion("watch_face_completion_metadata_tag.xml", "watch_face_completion_metadata_tag_after.xml")
   }
 
   @Test
   fun `test the provider tracks usage of the XML schema`() {
     val mockTracker = mock<DeclarativeWatchFaceUsageTracker>()
     ApplicationManager.getApplication()
-      .replaceService(
-        DeclarativeWatchFaceUsageTracker::class.java,
-        mockTracker,
-        projectRule.testRootDisposable,
-      )
+      .replaceService(DeclarativeWatchFaceUsageTracker::class.java, mockTracker, projectRule.testRootDisposable)
     addManifestWithWFFVersion("3")
 
     domRule.testHighlighting("watch_face_completion_metadata_tag_after.xml")
@@ -281,11 +223,7 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
   fun `test the provider tracks usage of the XML schema version fallbacks`() {
     val mockTracker = mock<DeclarativeWatchFaceUsageTracker>()
     ApplicationManager.getApplication()
-      .replaceService(
-        DeclarativeWatchFaceUsageTracker::class.java,
-        mockTracker,
-        projectRule.testRootDisposable,
-      )
+      .replaceService(DeclarativeWatchFaceUsageTracker::class.java, mockTracker, projectRule.testRootDisposable)
 
     // invalid to force use of a fallback version
     addManifestWithWFFVersion("invalid")
@@ -303,24 +241,19 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
         "res/raw/watchface.xml",
         // language=XML
         """
-       <WatchFace
-           clipShape="<caret>">
-       </WatchFace>
-     """
+        <WatchFace
+            clipShape="<caret>">
+        </WatchFace>
+        """
           .trimIndent(),
       )
     fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
 
-    // the merged manifest is not yet loaded
+    // With AndroidManifestIndex, we should already have data here
     fixture.addFileToProject(FN_ANDROID_MANIFEST_XML, manifestWithWFFVersion("1"))
-    assertThat(fixture.complete(CompletionType.BASIC)).isEmpty()
 
-    // wait for it to load
-    MergedManifestManager.getMergedManifest(mainModule).get()
-
-    // the schema should be updated now
-    assertThat(fixture.complete(CompletionType.BASIC).map { it.lookupString }.toList())
-      .containsExactly("CIRCLE", "NONE", "RECTANGLE")
+    // the schema should be available now
+    assertThat(fixture.complete(CompletionType.BASIC).map { it.lookupString }.toList()).containsExactly("CIRCLE", "NONE", "RECTANGLE")
   }
 
   @Test
@@ -331,13 +264,13 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
         "res/raw/watchface.xml",
         // language=XML
         """
-       <WatchFace clipShape="CIRCLE" height="450" width="450">
-        <UserConfigurations>
-          <!-- available from version 2 onwards -->
-          <Flavors defaultValue="" />
-        </UserConfigurations>
-      </WatchFace>
-     """
+         <WatchFace clipShape="CIRCLE" height="450" width="450">
+          <UserConfigurations>
+            <!-- available from version 2 onwards -->
+            <Flavors defaultValue="" />
+          </UserConfigurations>
+        </WatchFace>
+        """
           .trimIndent(),
       )
     fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
@@ -345,19 +278,41 @@ class RawWatchfaceXmlSchemaProviderSdk33Test: RawWatchfaceXmlSchemaProviderTest(
     // initially we're using the wrong version
     addManifestWithWFFVersion("1")
 
-    assertThat(fixture.doHighlighting(HighlightSeverity.ERROR).map { it.text })
-      .containsExactly("Flavors")
+    assertThat(fixture.doHighlighting(HighlightSeverity.ERROR).map { it.text }).containsExactly("Flavors")
 
-    // override manifest with the correct version and wait for the merged manifest to update
+    // override manifest with the correct version
     addManifestWithWFFVersion("2")
 
     // the highlighting should now be ok
     assertThat(fixture.doHighlighting(HighlightSeverity.ERROR)).isEmpty()
   }
+
+  @Test
+  fun `test the provider works in dumb mode`() {
+    addManifestWithWFFVersion("1")
+    val mockDumbService = mock<DumbService>()
+    whenever(mockDumbService.isDumb).thenReturn(true)
+    projectRule.replaceService(DumbService::class.java, mockDumbService)
+
+    val watchFaceFile =
+      projectRule.fixture.addFileToProject(
+        "${RES_RAW_FOLDER}/watch_face_dumb.xml",
+        // language=xml
+        """
+        <WatchFace />
+        """
+          .trimIndent(),
+      ) as XmlFile
+
+    val provider = RawWatchfaceXmlSchemaProvider()
+    val schema = runReadAction { provider.getSchema("", projectRule.module, watchFaceFile) }
+
+    // AndroidManifestIndex works in dumb mode
+    assertThat(schema).isNotNull()
+  }
 }
 
-
-class RawWatchfaceXmlSchemaProviderSdk34Test: RawWatchfaceXmlSchemaProviderTest() {
+class RawWatchfaceXmlSchemaProviderSdk34Test : RawWatchfaceXmlSchemaProviderTest() {
   override val minSdk = 34
 
   @Test
@@ -365,9 +320,6 @@ class RawWatchfaceXmlSchemaProviderSdk34Test: RawWatchfaceXmlSchemaProviderTest(
     addManifestWithWFFVersion("invalid")
 
     // The tag should be autocompleted as it's part of the version 2 features
-    domRule.testCompletion(
-      "watch_face_completion_flavor_tag.xml",
-      "watch_face_completion_flavor_tag_after_version_2.xml",
-    )
+    domRule.testCompletion("watch_face_completion_flavor_tag.xml", "watch_face_completion_flavor_tag_after_version_2.xml")
   }
 }

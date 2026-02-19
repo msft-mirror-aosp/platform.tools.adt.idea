@@ -23,13 +23,10 @@ import org.jetbrains.uast.UClassLiteralExpression
 import org.jetbrains.uast.UExpression
 
 /** [AnnotationAttributesProvider] implementation based on [UAnnotation]. */
-class UastAnnotationAttributesProvider(
-  private val annotation: UAnnotation,
-  private val defaultValues: Map<String, String?>,
-) : AnnotationAttributesProvider {
+class UastAnnotationAttributesProvider(private val annotation: UAnnotation, private val defaultValues: Map<String, String?>) :
+  AnnotationAttributesProvider {
 
-  override fun <T> getAttributeValue(attributeName: String): T? =
-    annotation.findAttributeValue(attributeName)?.getValueOfType()
+  override fun <T> getAttributeValue(attributeName: String): T? = annotation.findAttributeValue(attributeName)?.getValueOfType()
 
   override fun getIntAttribute(attributeName: String): Int? {
     return getAttributeValue(attributeName) ?: defaultValues[attributeName]?.toInt()

@@ -35,21 +35,21 @@ class SafeArgsCacheTest {
       "res/navigation/nav_main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/main_fragment" >
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/main_fragment" >
 
-          <fragment
-              android:id="@+id/main_fragment"
-              android:name="test.safeargs.MainFragment"
-              android:label="MainFragment">
+        <fragment
+            android:id="@+id/main_fragment"
+            android:name="test.safeargs.MainFragment"
+            android:label="MainFragment">
 
-              <action
-                android:id="@+id/action_main_fragment_to_main"
-                app:destination="@id/main" />
-          </fragment>
-        </navigation>
+            <action
+              android:id="@+id/action_main_fragment_to_main"
+              app:destination="@id/main" />
+        </fragment>
+      </navigation>
       """
         .trimIndent(),
     )

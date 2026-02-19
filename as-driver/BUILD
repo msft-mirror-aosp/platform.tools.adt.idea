@@ -43,19 +43,6 @@ intellij_plugin(
     ],
 )
 
-# TODO: Switch to use full Sherlock (i.e., Sherlock Platform + Sherlock Plugin).
-# This is currently using the Sherlock Platform. It doesn't have Sherlock Plugin,
-# and it also doesn't have bundled plugins (performanceTesting is not included either).
-alias(
-    name = "sherlock_zips",
-    actual = select({
-        "@platforms//os:linux": "//prebuilts/studio/intellij-sdk:sherlock-sdk.linux.zip",
-        "//tools/base/bazel/platforms:macos-x86_64": "//prebuilts/studio/intellij-sdk:sherlock-sdk.mac.zip",
-        "//tools/base/bazel/platforms:macos-arm64": "//prebuilts/studio/intellij-sdk:sherlock-sdk.mac_arm.zip",
-        "@platforms//os:windows": "//prebuilts/studio/intellij-sdk:sherlock-sdk.win.zip",
-    }),
-)
-
 # managed by go/iml_to_build
 iml_module(
     name = "as-driver.utils",
@@ -65,13 +52,7 @@ iml_module(
         "//tools/base/threading-agent:threading_agent.jar",
     ] + select({
         "@intellij//:studio-sdk": ["//tools/adt/idea/studio:android-studio_files"],
-        "@intellij//:sherlock-sdk": [
-            ":sherlock_zips",
-            # TODO: remove performanceTesting zip from here. When we switch sherlock_zip from pure
-            # sherlock-platform to full Sherlock distributables, then the performanceTesting plugin
-            # will already be included in the zip.
-            "//prebuilts/studio/intellij-sdk:sherlock_performanceTesting.zip",
-        ],
+        "@intellij//:sherlock-sdk": ["//tools/profiler/sherlock-plugin:sherlock"],
         "//conditions:default": ["@intellij//:distribution-zip"],
     }),
     iml_files = ["utils/as-driver.utils.iml"],
@@ -117,10 +98,12 @@ iml_module(
         "//tools/adt/idea/as-driver:as-driver.utils",
         "@intellij//:intellij-sdk",
         "//tools/emulator/testlib:android.sdktools.testlib",
-        "//tools/vendor/google/directaccess-client",
+        "//tools/adt/idea/as-driver:directaccess-client-base",
         "//tools/base/adblib:studio.android.sdktools.adblib",
-        "@intellij//:intellij.libraries.grpc",
-        "@intellij//:intellij.libraries.grpc.netty.shaded",
+        "//prebuilts/tools/common/m2:grpc",
+        "//tools/adt/idea/as-driver:directaccess_client_proto",
+        "//tools/adt/idea/as-driver:adb-proxy",
+        "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
     ],
     test_srcs = ["integration/testSrc"],
     visibility = ["//visibility:public"],
@@ -157,5 +140,30 @@ iml_module(
 jvm_import(
     name = "librunfiles",
     jars = ["//tools/base/bazel:librunfiles.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "directaccess-client-base",
+    jars = ["//tools/vendor/google/directaccess-client:libdirectaccess-client-base.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "adb-proxy",
+    jars = ["//tools/base/adb-proxy:libadb-proxy.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "directaccess_client_proto",
+    # do not sort: must match IML order
+    jars = [
+        "//tools/vendor/google/directaccess-client/proto:device_streaming_kt_proto.jar",
+        "//tools/vendor/google/directaccess-client/proto/legacy:ftl_client_kt_proto.jar",
+    ],
     visibility = ["//visibility:public"],
 )

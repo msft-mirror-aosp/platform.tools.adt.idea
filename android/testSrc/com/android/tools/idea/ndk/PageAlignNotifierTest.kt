@@ -17,16 +17,17 @@ package com.android.tools.idea.ndk
 
 import com.android.ide.common.pagealign.PageAlignUtilsTest.ZipBuilder
 import com.android.ide.common.pagealign.PageAlignUtilsTest.ZipBuilder.ZipEntryOptions
-import com.android.ide.common.pagealign.PageAlignUtilsTest.ZipBuilder.ZipEntryOptions.*
+import com.android.ide.common.pagealign.PageAlignUtilsTest.ZipBuilder.ZipEntryOptions.AlignedUncompressed
+import com.android.ide.common.pagealign.PageAlignUtilsTest.ZipBuilder.ZipEntryOptions.UnalignedUncompressed
 import com.android.ide.common.pagealign.SO_FILE_16K_ALIGNED
 import com.android.ide.common.pagealign.SO_FILE_NOT_16K_ALIGNED
 import com.android.tools.idea.run.ApkFileUnit
 import com.android.tools.idea.run.ApkInfo
-import com.google.protobuf.TextFormat
 import com.android.tools.idea.serverflags.ServerFlagService
 import com.android.tools.idea.serverflags.protos.PageAlign16kb
 import com.android.tools.idea.testing.registerServiceInstance
 import com.google.common.truth.Truth.assertThat
+import com.google.protobuf.TextFormat
 import com.google.wireless.android.sdk.stats.Align16kbEvent.AlignNative16kbEventType
 import com.google.wireless.android.sdk.stats.Align16kbEvent.AlignNative16kbEventType.ALIGN_NATIVE_BUBBLE_LOAD_SECTIONS_DEPLOYED
 import com.google.wireless.android.sdk.stats.Align16kbEvent.AlignNative16kbEventType.ALIGN_NATIVE_BUBBLE_ZIP_OFFSET_DEPLOYED
@@ -49,15 +50,19 @@ class PageAlignNotifierTest {
   @get:Rule val disposableRule = DisposableRule()
 
   // This is the currently planned server flag.
-  val configWithMessages = parseServerFlag("""
-    play_store_deadline_date: "November 2026"
-    message_url: "developer.android.com/16kb-page-size"
-    so_unaligned_in_apk_message: "The following native libraries are not aligned at 16 KB boundary inside [APK]:"
-    unaligned_load_segments_message: "The following native libraries have segments that are not aligned at 16 KB boundary inside [APK]:"
-    message_postscript: "Beginning [DATE] the Google Play Store requires that all apps must be 16 KB compatible. For more information, visit [URL]."
-  """.trimIndent())
+  val configWithMessages =
+    parseServerFlag(
+      """
+      play_store_deadline_date: "November 2026"
+      message_url: "developer.android.com/16kb-page-size"
+      so_unaligned_in_apk_message: "The following native libraries are not aligned at 16 KB boundary inside [APK]:"
+      unaligned_load_segments_message: "The following native libraries have segments that are not aligned at 16 KB boundary inside [APK]:"
+      message_postscript: "Beginning [DATE] the Google Play Store requires that all apps must be 16 KB compatible. For more information, visit [URL]."
+      """
+        .trimIndent()
+    )
 
-  fun parseServerFlag(textProto : String) : PageAlign16kb {
+  fun parseServerFlag(textProto: String): PageAlign16kb {
     val builder = PageAlign16kb.newBuilder()
     TextFormat.getParser().merge(textProto, builder)
     return builder.build()
@@ -66,11 +71,12 @@ class PageAlignNotifierTest {
   @Test
   fun `multiple APKs are reported`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = null,
-      Apk(SO_FILE_NOT_16K_ALIGNED to AlignedUncompressed),
-      Apk(SO_FILE_16K_ALIGNED to UnalignedUncompressed))
+        serverFlag = configWithMessages,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = null,
+        Apk(SO_FILE_NOT_16K_ALIGNED to AlignedUncompressed),
+        Apk(SO_FILE_16K_ALIGNED to UnalignedUncompressed),
+      )
       .assertHasBalloonCount(2)
       .assertHasLoadSegmentBalloon()
       .assertHasUnalignedInZipBalloon()
@@ -81,22 +87,14 @@ class PageAlignNotifierTest {
 
   @Test
   fun `APK with no so files`() {
-    testNotifier(
-      serverFlag = configWithMessages,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = null,
-      Apk())
+    testNotifier(serverFlag = configWithMessages, productCpuAbiList = "arm64-v8a", buildCharacteristics = null, Apk())
       .assertHasBalloonCount(0)
       .assertHasEventCount(0)
   }
 
   @Test
   fun `16 KB compliant so with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+    testNotifier(serverFlag = null, so = SO_FILE_16K_ALIGNED, zipLayout = AlignedUncompressed, productCpuAbiList = "arm64-v8a")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "arm64-v8a")
@@ -104,11 +102,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB non-compliant so with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+    testNotifier(serverFlag = null, so = SO_FILE_NOT_16K_ALIGNED, zipLayout = AlignedUncompressed, productCpuAbiList = "arm64-v8a")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -117,10 +111,11 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so with server flag on`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
@@ -129,10 +124,11 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant so with server flag on`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+      )
       .assertHasBalloonCount(1)
       .assertHasLoadSegmentBalloon()
       .assertHasEventCount(2)
@@ -142,11 +138,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB compliant so unaligned in APK with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+    testNotifier(serverFlag = null, so = SO_FILE_16K_ALIGNED, zipLayout = UnalignedUncompressed, productCpuAbiList = "arm64-v8a")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -154,11 +146,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB non-compliant so unaligned in APK with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+    testNotifier(serverFlag = null, so = SO_FILE_NOT_16K_ALIGNED, zipLayout = UnalignedUncompressed, productCpuAbiList = "arm64-v8a")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -167,10 +155,11 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so unaligned in APK with server flag on`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+      )
       .assertHasBalloonCount(1)
       .assertHasUnalignedInZipBalloon()
       .assertHasEventCount(2)
@@ -181,10 +170,11 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant so unaligned in APK with server flag on`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+      )
       .assertHasBalloonCount(2)
       .assertHasLoadSegmentBalloon()
       .assertHasUnalignedInZipBalloon()
@@ -196,11 +186,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB compliant x86_64 so with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64")
+    testNotifier(serverFlag = null, so = SO_FILE_16K_ALIGNED, zipLayout = AlignedUncompressed, productCpuAbiList = "x86_64")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "x86_64")
@@ -208,11 +194,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB non-compliant x86_64 so with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64")
+    testNotifier(serverFlag = null, so = SO_FILE_NOT_16K_ALIGNED, zipLayout = AlignedUncompressed, productCpuAbiList = "x86_64")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -220,11 +202,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB compliant x86_64 so with server flag on`() {
-    testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64")
+    testNotifier(serverFlag = configWithMessages, so = SO_FILE_16K_ALIGNED, zipLayout = AlignedUncompressed, productCpuAbiList = "x86_64")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
@@ -233,10 +211,11 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant x86_64 so with server flag on`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -244,11 +223,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB compliant x86_64 so unaligned in APK with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64")
+    testNotifier(serverFlag = null, so = SO_FILE_16K_ALIGNED, zipLayout = UnalignedUncompressed, productCpuAbiList = "x86_64")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -256,11 +231,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB non-compliant x86_64 so unaligned in APK with server flag off`() {
-    testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64")
+    testNotifier(serverFlag = null, so = SO_FILE_NOT_16K_ALIGNED, zipLayout = UnalignedUncompressed, productCpuAbiList = "x86_64")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -268,11 +239,7 @@ class PageAlignNotifierTest {
 
   @Test
   fun `16 KB compliant x86_64 so unaligned in APK with server flag on`() {
-    testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64")
+    testNotifier(serverFlag = configWithMessages, so = SO_FILE_16K_ALIGNED, zipLayout = UnalignedUncompressed, productCpuAbiList = "x86_64")
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -281,10 +248,11 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant x86_64 so unaligned in APK with server flag on`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -294,11 +262,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "arm64-v8a")
@@ -307,11 +276,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant so with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -320,11 +290,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
@@ -333,11 +304,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant so with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -346,11 +318,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so unaligned in APK with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -359,11 +332,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant so unaligned in APK with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -372,11 +346,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so unaligned in APK with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -385,11 +360,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant so unaligned in APK with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -398,11 +374,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant x86_64 so with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "x86_64")
@@ -411,11 +388,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant x86_64 so with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -424,11 +402,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant x86_64 so with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
@@ -437,11 +416,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant x86_64 so with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -450,11 +430,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant x86_64 so unaligned in APK with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -463,11 +444,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant x86_64 so unaligned in APK with server flag off on Wear OS`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -476,11 +458,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant x86_64 so unaligned in APK with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -489,11 +472,12 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB non-compliant x86_64 so unaligned in APK with server flag on on Wear OS`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "watch")
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "watch",
+      )
       .assertHasBalloonCount(0)
       .assertHasEventCount(1)
       .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
@@ -503,256 +487,269 @@ class PageAlignNotifierTest {
   @Test
   fun `16 KB compliant so with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "arm64-v8a")
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "arm64-v8a")
   }
 
   @Test
   fun `16 KB non-compliant so with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant so with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB non-compliant so with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant so unaligned in APK with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB non-compliant so unaligned in APK with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant so unaligned in APK with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB non-compliant so unaligned in APK with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "arm64-v8a",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "arm64-v8a",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant x86_64 so with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "x86_64")
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED, productCpuAbilist = "x86_64")
   }
 
   @Test
   fun `16 KB non-compliant x86_64 so with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant x86_64 so with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB non-compliant x86_64 so with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = AlignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = AlignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant x86_64 so unaligned in APK with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = null,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB non-compliant x86_64 so unaligned in APK with server flag off on Android Auto`() {
     testNotifier(
-      serverFlag = null,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = null,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB compliant x86_64 so unaligned in APK with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
   @Test
   fun `16 KB non-compliant x86_64 so unaligned in APK with server flag on on Android Auto`() {
     testNotifier(
-      serverFlag = configWithMessages,
-      so = SO_FILE_NOT_16K_ALIGNED,
-      zipLayout = UnalignedUncompressed,
-      productCpuAbiList = "x86_64",
-      buildCharacteristics = "automotive")
-        .assertHasBalloonCount(0)
-        .assertHasEventCount(1)
-        .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
+        serverFlag = configWithMessages,
+        so = SO_FILE_NOT_16K_ALIGNED,
+        zipLayout = UnalignedUncompressed,
+        productCpuAbiList = "x86_64",
+        buildCharacteristics = "automotive",
+      )
+      .assertHasBalloonCount(0)
+      .assertHasEventCount(1)
+      .assertHasEvent(ALIGN_NATIVE_NON_COMPLIANT_APP_DEPLOYED)
   }
 
-  class Apk(
-    vararg val sos : Pair<ByteArray, ZipEntryOptions>
-  )
+  class Apk(vararg val sos: Pair<ByteArray, ZipEntryOptions>)
 
   fun testNotifier(
-    serverFlag : PageAlign16kb?,
-    productCpuAbiList : String,
-    buildCharacteristics : String? = null,
-    vararg apks : Apk)  : TestablePageAlignNotifier {
+    serverFlag: PageAlign16kb?,
+    productCpuAbiList: String,
+    buildCharacteristics: String? = null,
+    vararg apks: Apk,
+  ): TestablePageAlignNotifier {
 
-    val apkFiles = apks.mapIndexed { apkIndex, apk ->
-      val builder = ZipBuilder()
-      apk.sos.forEachIndexed { index, (so, zipLayout) ->
-        builder.addFile("elf-${index+1}.so", so, zipLayout)
+    val apkFiles =
+      apks.mapIndexed { apkIndex, apk ->
+        val builder = ZipBuilder()
+        apk.sos.forEachIndexed { index, (so, zipLayout) -> builder.addFile("elf-${index+1}.so", so, zipLayout) }
+        ApkFileUnit("module.name-${apkIndex+1}", builder.toByteArray().toFile())
       }
-      ApkFileUnit("module.name-${apkIndex+1}", builder.toByteArray().toFile())
-    }
     val apkInfo = ApkInfo(apkFiles, "application.id")
 
     val service = Mockito.mock(ServerFlagService::class.java)
     whenever(service.getProtoOrNull<PageAlign16kb>("cxx/page_align_16kb", PageAlignConfig.PROTO_TEMPLATE)).thenReturn(serverFlag)
-    ApplicationManager.getApplication()
-      .registerServiceInstance(ServerFlagService::class.java, service, disposableRule.disposable)
+    ApplicationManager.getApplication().registerServiceInstance(ServerFlagService::class.java, service, disposableRule.disposable)
     val notifier = TestablePageAlignNotifier()
-    
+
     notifier.notify16kbAlignmentViolations(apkInfo, productCpuAbiList.split(","), buildCharacteristics)
     return notifier
   }
 
   fun testNotifier(
-    so : ByteArray,
-    serverFlag : PageAlign16kb?,
-    zipLayout : ZipEntryOptions,
-    productCpuAbiList : String,
-    buildCharacteristics : String? = null
-  ) : TestablePageAlignNotifier {
+    so: ByteArray,
+    serverFlag: PageAlign16kb?,
+    zipLayout: ZipEntryOptions,
+    productCpuAbiList: String,
+    buildCharacteristics: String? = null,
+  ): TestablePageAlignNotifier {
     return testNotifier(
       serverFlag = serverFlag,
       productCpuAbiList = productCpuAbiList,
       buildCharacteristics = buildCharacteristics,
-      Apk(so to zipLayout)
+      Apk(so to zipLayout),
     )
   }
 
-  fun ByteArray.toFile() : File {
+  fun ByteArray.toFile(): File {
     val file = temporaryFolder.newFolder().resolve("test.apk")
     file.writeBytes(this)
     return file
@@ -762,46 +759,45 @@ class PageAlignNotifierTest {
     val events = mutableListOf<AndroidStudioEvent>()
     val balloons = mutableListOf<String>()
 
-    override fun showBalloon(text: String) { balloons.add(text) }
-    override fun logUsage(event: AndroidStudioEvent.Builder) { events.add(event.build()) }
+    override fun showBalloon(text: String) {
+      balloons.add(text)
+    }
 
-    fun assertHasBalloonCount(count : Int) : TestablePageAlignNotifier {
+    override fun logUsage(event: AndroidStudioEvent.Builder) {
+      events.add(event.build())
+    }
+
+    fun assertHasBalloonCount(count: Int): TestablePageAlignNotifier {
       assertThat(balloons).hasSize(count)
       return this
     }
 
-    fun assertHasLoadSegmentBalloon() : TestablePageAlignNotifier {
-      assertThat(balloons.any { it.contains("native libraries have segments that are not aligned at 16 KB boundary")})
-        .isTrue()
+    fun assertHasLoadSegmentBalloon(): TestablePageAlignNotifier {
+      assertThat(balloons.any { it.contains("native libraries have segments that are not aligned at 16 KB boundary") }).isTrue()
       return this
     }
 
-    fun assertHasUnalignedInZipBalloon() : TestablePageAlignNotifier {
-      assertThat(balloons.any { it.contains("native libraries are not aligned at 16 KB boundary")})
-        .isTrue()
+    fun assertHasUnalignedInZipBalloon(): TestablePageAlignNotifier {
+      assertThat(balloons.any { it.contains("native libraries are not aligned at 16 KB boundary") }).isTrue()
       return this
     }
 
-    fun assertHasEventCount(count : Int) : TestablePageAlignNotifier {
+    fun assertHasEventCount(count: Int): TestablePageAlignNotifier {
       assertThat(events).hasSize(count)
       return this
     }
 
-    fun assertHasEvent(
-      type : AlignNative16kbEventType,
-      productCpuAbilist : String = "ignore") : TestablePageAlignNotifier {
+    fun assertHasEvent(type: AlignNative16kbEventType, productCpuAbilist: String = "ignore"): TestablePageAlignNotifier {
       assertThat(events).isNotEmpty()
       var matched = false
-      for(event in events) {
+      for (event in events) {
         assertThat(event.kind == AndroidStudioEvent.EventKind.ALIGN16KB_EVENT).isTrue()
         val alignEvent = event.align16KbEvent
         if (alignEvent.type != type) continue
         if (productCpuAbilist != "ignore" && alignEvent.productCpuAbilist != productCpuAbilist) continue
         matched = true
       }
-      assertThat(matched)
-        .named(events.joinToString("\n"))
-        .isTrue()
+      assertThat(matched).named(events.joinToString("\n")).isTrue()
       return this
     }
   }

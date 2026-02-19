@@ -23,19 +23,19 @@ import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.LintFix
 import com.intellij.psi.PsiElement
 
-
 class KotlinAndroidQuickFixProvider : LintIdeQuickFixProvider {
     override fun getQuickFixes(
-            issue: Issue,
-            startElement: PsiElement,
-            endElement: PsiElement,
-            message: String,
-            fixData: LintFix?
+        issue: Issue,
+        startElement: PsiElement,
+        endElement: PsiElement,
+        message: String,
+        fixData: LintFix?,
     ): Array<LintIdeQuickFix> {
-        val fixes: Array<LintIdeQuickFix> = when (issue) {
-            ParcelDetector.ISSUE -> arrayOf(ParcelableQuickFix())
-            else -> emptyArray()
-        }
+        val fixes: Array<LintIdeQuickFix> =
+            when (issue) {
+                ParcelDetector.ISSUE -> arrayOf(ParcelableQuickFix())
+                else -> emptyArray()
+            }
 
         return fixes
     }

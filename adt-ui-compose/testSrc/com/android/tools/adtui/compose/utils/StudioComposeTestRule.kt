@@ -15,25 +15,29 @@
  */
 package com.android.tools.adtui.compose.utils
 
+import androidx.compose.foundation.ComposeFoundationFlags
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.android.tools.adtui.compose.StudioTestTheme
 
-abstract class StudioComposeTestRule(
-  val composeTestRule: ComposeContentTestRule = createComposeRule()
-) : ComposeContentTestRule by composeTestRule {
+abstract class StudioComposeTestRule(val composeTestRule: ComposeContentTestRule = createComposeRule()) :
+  ComposeContentTestRule by composeTestRule {
+  @OptIn(ExperimentalFoundationApi::class)
   companion object {
+    // b/460309655 - remove this once Context Menus are fixed in CfD
+    init {
+      ComposeFoundationFlags.isNewContextMenuEnabled = false
+    }
+
     fun createStudioComposeTestRule(): StudioComposeTestRule = StudioComposeTestRuleImpl()
   }
 
   abstract fun setContent(darkMode: Boolean, composable: @Composable () -> Unit)
 }
 
-/**
- * Functionally equivalent to the test rule created by `createComposeRule`, but overrides the
- * behavior of setContent to include a theme.
- */
+/** Functionally equivalent to the test rule created by `createComposeRule`, but overrides the behavior of setContent to include a theme. */
 private class StudioComposeTestRuleImpl : StudioComposeTestRule() {
   override fun setContent(darkMode: Boolean, composable: @Composable () -> Unit) {
     super.setContent { StudioTestTheme(darkMode) { composable() } }

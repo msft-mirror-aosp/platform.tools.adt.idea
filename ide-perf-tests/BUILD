@@ -8,17 +8,6 @@ iml_module(
     name = "intellij.android.ide-perf-tests",
     iml_files = ["intellij.android.ide-perf-tests.iml"],
     split_test_targets = {
-        "JetNewsBenchmark": {
-            "test_filter": "com.android.tools.idea.benchmarks.JetNewsBenchmark",
-            "tags": [
-                "cpu:3",
-                "noci:studio-win",
-                "noci:studio-linux",
-                "ci:perfgate-linux",
-                "ci:perfgate-win",
-            ],
-            "additional_jvm_args": ["-Didea.kotlin.plugin.use.k2=false"],
-        },
         "JetNewsBenchmark_k2": {
             "test_filter": "com.android.tools.idea.benchmarks.JetNewsK2Benchmark",
             "tags": [
@@ -28,18 +17,6 @@ iml_module(
                 "ci:perfgate-linux",
                 "ci:perfgate-win",
             ],
-            "additional_jvm_args": ["-Didea.kotlin.plugin.use.k2=true"],
-        },
-        "SantaTrackerKotlinBenchmark": {
-            "test_filter": "com.android.tools.idea.benchmarks.SantaTrackerKotlinBenchmark",
-            "tags": [
-                "cpu:3",
-                "noci:studio-win",
-                "noci:studio-linux",
-                "ci:perfgate-linux",
-                "ci:perfgate-win",
-            ],
-            "additional_jvm_args": ["-Didea.kotlin.plugin.use.k2=false"],
         },
         "SantaTrackerKotlinBenchmark_k2": {
             "test_filter": "com.android.tools.idea.benchmarks.SantaTrackerKotlinK2Benchmark",
@@ -50,7 +27,6 @@ iml_module(
                 "ci:perfgate-linux",
                 "ci:perfgate-win",
             ],
-            "additional_jvm_args": ["-Didea.kotlin.plugin.use.k2=true"],
         },
         "JetNewsProjectCheck": {
             "test_filter": "com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest",
@@ -202,7 +178,8 @@ maven_repository(
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.2.0",  # Used by com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest
-        "@maven//:org.jetbrains.kotlin.plugin.parcelize.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin_2.3.0-RC2",  # Used by com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.2.21",  # Used by com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest
+        "@maven//:org.jetbrains.kotlin.plugin.parcelize.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin_2.3.20-Beta1",  # Used by com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest
         "@maven//:org.mockito.mockito-core_5.12.0",
     ],
 )

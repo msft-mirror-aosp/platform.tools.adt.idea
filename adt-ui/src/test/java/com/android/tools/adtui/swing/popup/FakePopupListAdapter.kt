@@ -40,8 +40,7 @@ import javax.swing.ListCellRenderer
 import javax.swing.border.Border
 
 // The code here is copied from the package-private class com.intellij.ui.popup.PopupListAdapter
-class FakePopupListAdapter<T>(val builder: PopupChooserBuilder<T>, val list: JList<T>) :
-  PopupComponentAdapter<T> {
+class FakePopupListAdapter<T>(val builder: PopupChooserBuilder<T>, val list: JList<T>) : PopupComponentAdapter<T> {
   private lateinit var listWithFilter: ListWithFilter<T>
 
   override fun getComponent() = list
@@ -55,9 +54,7 @@ class FakePopupListAdapter<T>(val builder: PopupChooserBuilder<T>, val list: JLi
   }
 
   override fun setItemsChosenCallback(callback: Consumer<in MutableSet<T>>) {
-    builder.setItemChoosenCallback {
-      callback.consume(list.selectedValuesList?.toMutableSet() ?: mutableSetOf())
-    }
+    builder.setItemChoosenCallback { callback.consume(list.selectedValuesList?.toMutableSet() ?: mutableSetOf()) }
   }
 
   override fun createScrollPane(): JScrollPane {
@@ -111,8 +108,7 @@ class FakePopupListAdapter<T>(val builder: PopupChooserBuilder<T>, val list: JLi
   }
 }
 
-private class ListWrapper<T>(builder: PopupChooserBuilder<T>, private val list: JList<T>) :
-  JBScrollPane(-1), DataProvider {
+private class ListWrapper<T>(builder: PopupChooserBuilder<T>, private val list: JList<T>) : JBScrollPane(-1), DataProvider {
   init {
     list.visibleRowCount = builder.visibleRowCount
     setViewportView(list)
@@ -134,9 +130,7 @@ private class ListWrapper<T>(builder: PopupChooserBuilder<T>, private val list: 
   }
 
   override fun requestFocus() {
-    IdeFocusManager.getGlobalInstance().doWhenFocusSettlesDown {
-      IdeFocusManager.getGlobalInstance().requestFocus(list, true)
-    }
+    IdeFocusManager.getGlobalInstance().doWhenFocusSettlesDown { IdeFocusManager.getGlobalInstance().requestFocus(list, true) }
   }
 
   @Synchronized

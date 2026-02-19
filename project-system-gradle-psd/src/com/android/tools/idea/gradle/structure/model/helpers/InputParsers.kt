@@ -25,94 +25,75 @@ import com.android.tools.idea.gradle.structure.model.meta.DslText
 import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.gradle.structure.model.meta.annotateWithError
 import com.android.tools.idea.gradle.structure.model.meta.annotated
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.pom.java.LanguageLevel
 import java.io.File
 
 fun parseAny(text: String): Annotated<ParsedValue<Any>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else
-    ParsedValue.Set.Parsed(text.toIntOrNull() ?: text.toBigDecimalOrNull() ?: text.toBooleanOrNull() ?: text,
-                           DslText.Literal).annotated()
+    ParsedValue.Set.Parsed(text.toIntOrNull() ?: text.toBigDecimalOrNull() ?: text.toBooleanOrNull() ?: text, DslText.Literal).annotated()
 
 fun parseString(text: String): Annotated<ParsedValue<String>> =
-  if (text.isEmpty())
-    ParsedValue.NotSet.annotated()
-  else
-    ParsedValue.Set.Parsed(text, DslText.Literal).annotated()
+  if (text.isEmpty()) ParsedValue.NotSet.annotated() else ParsedValue.Set.Parsed(text, DslText.Literal).annotated()
 
 fun parseFile(text: String): Annotated<ParsedValue<File>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
-  else
-    ParsedValue.Set.Parsed(File(text), DslText.Literal).annotated()
+  if (text == "") ParsedValue.NotSet.annotated() else ParsedValue.Set.Parsed(File(text), DslText.Literal).annotated()
 
 inline fun <reified T : Any> parseEnum(text: String, parser: (String) -> T?): Annotated<ParsedValue<T>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else {
     val parsed = parser(text)
-    if (parsed != null)
-      ParsedValue.Set.Parsed(parsed, DslText.Literal).annotated()
+    if (parsed != null) ParsedValue.Set.Parsed(parsed, DslText.Literal).annotated()
     else
       ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text))
         .annotateWithError("'${text}' is not a valid value of type ${T::class.simpleName}")
   }
 
-private fun String.toBooleanOrNull() = when {
-  this.equals("true", ignoreCase = true) -> true
-  this.equals("false", ignoreCase = true) -> false
-  else -> null
-}
+private fun String.toBooleanOrNull() =
+  when {
+    this.equals("true", ignoreCase = true) -> true
+    this.equals("false", ignoreCase = true) -> false
+    else -> null
+  }
 
 fun parseBoolean(text: String): Annotated<ParsedValue<Boolean>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else {
     val parsed = text.toBooleanOrNull()
-    if (parsed != null)
-      ParsedValue.Set.Parsed(parsed, DslText.Literal).annotated()
+    if (parsed != null) ParsedValue.Set.Parsed(parsed, DslText.Literal).annotated()
     else
       ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text))
         .annotateWithError("Unknown boolean value: '$text'. Expected 'true' or 'false'")
   }
 
 fun parseInt(text: String): Annotated<ParsedValue<Int>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else {
     try {
       ParsedValue.Set.Parsed(text.toInt(), DslText.Literal).annotated()
-    }
-    catch (ex: NumberFormatException) {
-      ParsedValue.Set.Parsed<Int>(null, DslText.OtherUnparsedDslText(text))
-        .annotateWithError("'$text' is not a valid integer value")
+    } catch (ex: NumberFormatException) {
+      ParsedValue.Set.Parsed<Int>(null, DslText.OtherUnparsedDslText(text)).annotateWithError("'$text' is not a valid integer value")
     }
   }
 
 fun parseLanguageLevel(text: String): Annotated<ParsedValue<LanguageLevel>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else
     parseFromGradleString(text)?.let { ParsedValue.Set.Parsed(it, DslText.Literal).annotated() }
-    ?: ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text))
-      .annotateWithError("'$text' is not a valid language level")
+      ?: ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text)).annotateWithError("'$text' is not a valid language level")
 
 fun parseGradleVersion(text: String): Annotated<ParsedValue<Version>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else
     try {
       ParsedValue.Set.Parsed(Version.parse(text), DslText.Literal).annotated()
-    }
-    catch (ex: IllegalArgumentException) {
-      ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text))
-        .annotateWithError("'$text' is not a valid version specification")
+    } catch (ex: IllegalArgumentException) {
+      ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text)).annotateWithError("'$text' is not a valid version specification")
     }
 
 fun parseReferenceOnly(text: String): Annotated<ParsedValue<Unit>> =
-  if (text == "")
-    ParsedValue.NotSet.annotated()
+  if (text == "") ParsedValue.NotSet.annotated()
   else
     ParsedValue.Set.Parsed(null, DslText.OtherUnparsedDslText(text))
       .annotateWithError("A signing config reference should be in a form of '\$configName'")
@@ -121,10 +102,7 @@ fun formatLanguageLevel(value: LanguageLevel): String = value.toJavaVersion().to
 
 fun formatAny(value: Any): String {
   if (value !is String) return value.toString()
-  val text = value.toString()
-  return if ((text.toIntOrNull() ?: text.toBigDecimalOrNull() ?: text.toBooleanOrNull()) != null)
-    "\"$text\""
-  else text
+  return if ((value.toIntOrNull() ?: value.toBigDecimalOrNull() ?: value.toBooleanOrNull()) != null) "\"$value\"" else value
 }
 
 fun formatUnit(value: Unit): String = ""
@@ -135,6 +113,6 @@ fun matchHashStrings(parsed: String?, resolved: String) =
 fun matchHashStrings(model: Any?, parsed: String?, resolved: String) = matchHashStrings(parsed, resolved)
 
 fun matchFiles(rootDir: File?, parsed: File?, resolved: File): Boolean =
-  parsed?.let { rootDir?.resolve(parsed) } == resolved
+  FileUtil.filesEqual(parsed?.let { rootDir?.resolve(parsed) }, resolved)
 
 fun String.toIntOrString(): Any = this.toIntOrNull() ?: this

@@ -31,6 +31,7 @@ import org.toml.lang.psi.TomlFile
 @OptIn(KaImplementationDetail::class)
 class K10KtsAndroidReferenceProviderContributor : KotlinReferenceProviderContributor {
   val contributor = KtFe10KotlinReferenceProviderContributor()
+
   override fun registerReferenceProviders(registrar: KotlinPsiReferenceRegistrar) {
     contributor.registerReferenceProviders(registrar)
     registerProvider(registrar)
@@ -41,14 +42,15 @@ class K10KtsAndroidReferenceProviderContributor : KotlinReferenceProviderContrib
 @Suppress("INVISIBLE_REFERENCE", "INVISIBLE_MEMBER") // TODO(b/349906318): avoid accessing internal class KotlinFirReferenceContributor.
 class FirKtsAndroidReferenceProviderContributor : KotlinReferenceProviderContributor {
   private val contributor = org.jetbrains.kotlin.analysis.api.fir.references.KotlinFirReferenceContributor()
+
   override fun registerReferenceProviders(registrar: KotlinPsiReferenceRegistrar) {
     contributor.registerReferenceProviders(registrar)
     registerProvider(registrar)
   }
 }
 
-class KtsDotExpressionVersionCatalogReference(private val refExpr: KtDotQualifiedExpression, val file: TomlFile)
-  : PsiReferenceBase<KtDotQualifiedExpression>(refExpr) {
+class KtsDotExpressionVersionCatalogReference(private val refExpr: KtDotQualifiedExpression, val file: TomlFile) :
+  PsiReferenceBase<KtDotQualifiedExpression>(refExpr) {
   override fun resolve(): PsiElement? {
     return findCatalogKey(file, refExpr.text.substringAfter("."))
   }
@@ -56,7 +58,7 @@ class KtsDotExpressionVersionCatalogReference(private val refExpr: KtDotQualifie
 
 fun KtDotQualifiedExpression.isEndOfDotExpression() =
   (this.parent !is KtDotQualifiedExpression || this.parent.children.lastOrNull() !is KtNameReferenceExpression) &&
-  this.hasOnlyNameReferences()
+    this.hasOnlyNameReferences()
 
 private fun KtDotQualifiedExpression.hasOnlyNameReferences(): Boolean =
   this.children.all {
@@ -67,15 +69,16 @@ private fun KtDotQualifiedExpression.hasOnlyNameReferences(): Boolean =
     }
   }
 
-fun hasLiveCatalogReference(element: KtDotQualifiedExpression) = element.references.any { ref ->
-  ref is KtsDotExpressionVersionCatalogReference && ref.resolve()?.let { it.containingFile is TomlFile } == true
-}
+fun hasLiveCatalogReference(element: KtDotQualifiedExpression) =
+  element.references.any { ref ->
+    ref is KtsDotExpressionVersionCatalogReference && ref.resolve()?.let { it.containingFile is TomlFile } == true
+  }
 
 private fun registerProvider(registrar: KotlinPsiReferenceRegistrar) {
   registrar.registerProvider<KtDotQualifiedExpression> provider@{ element: KtDotQualifiedExpression ->
     if (!element.containingFile.name.endsWith(".gradle.kts")) return@provider null
     if (element.isEndOfDotExpression()) {
-      val file = findVersionCatalog(element.text, element.project) ?: return@provider null
+      val file = findVersionCatalog(element.text, element) ?: return@provider null
       return@provider KtsDotExpressionVersionCatalogReference(element, file)
     }
 

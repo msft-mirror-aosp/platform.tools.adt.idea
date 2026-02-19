@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.CountDownLatch
 import org.junit.Rule
@@ -40,14 +41,8 @@ class EmulatorProcessHandlerTest {
   fun testLogProcessing() {
     val avdDir = Paths.get("/users/user/.android/avd")
     val avdId = "Pixel_9_API_34"
-    val avd =
-      AvdInfo(
-        iniFile = avdDir.resolve("$avdId.ini"),
-        dataFolderPath = avdDir.resolve("$avdId.avd"),
-        systemImage = null,
-      )
-    val commandLine =
-      "/users/user/Android/Sdk/emulator/emulator -avd $avdId -qt-hide-window -grpc-use-token"
+    val avd = AvdInfo(iniFile = avdDir.resolve("$avdId.ini"), dataFolderPath = avdDir.resolve("$avdId.avd"), systemImage = null)
+    val commandLine = "/users/user/Android/Sdk/emulator/emulator -avd $avdId -qt-hide-window -grpc-use-token"
     val logMessages =
       arrayOf(
         "INFO         | Informational message",
@@ -63,20 +58,19 @@ class EmulatorProcessHandlerTest {
     val logCapturer =
       object : EmulatorLogListener {
         override fun messageLogged(
-          avd: AvdInfo,
+          sourceProcess: ProcessHandle,
+          avdFolder: Path,
           severity: Severity,
           notifyUser: Boolean,
           message: String,
         ) {
-          capturedLogEntries.add(LogEntry(avd, severity, notifyUser, message))
+          capturedLogEntries.add(LogEntry(sourceProcess, avdFolder, severity, notifyUser, message))
         }
       }
-    ApplicationManager.getApplication()
-      .messageBus
-      .connect()
-      .subscribe(EmulatorLogListener.TOPIC, logCapturer)
+    ApplicationManager.getApplication().messageBus.connect().subscribe(EmulatorLogListener.TOPIC, logCapturer)
+    val process = FakeProcess(12345, logMessages, 0)
+    val processHandle = process.toHandle()
     val loggedMessages = executeCapturingLoggedErrorsAndWarnings {
-      val process = FakeProcess(logMessages, 0)
       val processHandler = EmulatorProcessHandler(process, commandLine, avd)
       processHandler.startNotify()
       processHandler.waitFor()
@@ -93,24 +87,24 @@ class EmulatorProcessHandlerTest {
     assertThat(loggedMessages.errors).isEmpty()
     assertThat(capturedLogEntries)
       .containsExactly(
-        LogEntry(avd, Severity.INFO, false, commandLine),
-        LogEntry(avd, Severity.INFO, false, "Informational message"),
-        LogEntry(avd, Severity.INFO, true, "Informational message with user notification"),
-        LogEntry(avd, Severity.WARNING, false, "Warning message"),
-        LogEntry(avd, Severity.WARNING, true, "Warning message with user notification"),
-        LogEntry(avd, Severity.ERROR, false, "Error message"),
-        LogEntry(avd, Severity.ERROR, true, "Error message with user notification"),
-        LogEntry(avd, Severity.FATAL, false, "Fatal error message"),
-        LogEntry(avd, Severity.INFO, false, "Process finished with exit code 0"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.INFO, false, commandLine),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.INFO, false, "Informational message"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.INFO, true, "Informational message with user notification"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.WARNING, false, "Warning message"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.WARNING, true, "Warning message with user notification"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.ERROR, false, "Error message"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.ERROR, true, "Error message with user notification"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.FATAL, false, "Fatal error message"),
+        LogEntry(processHandle, avd.dataFolderPath, Severity.INFO, false, "Process finished with exit code 0"),
       )
   }
 
-  private class FakeProcess(output: Array<String>, private val exitCode: Int) : Process() {
+  private class FakeProcess(pid: Long, output: Array<String>, private val exitCode: Int) : Process() {
 
     private val stdin = ByteArrayOutputStream()
     private val stdout = CountDownByteArrayInputStream(output.joinToString("\n").toByteArray())
     private val stderr = ByteArray(0).inputStream()
-    private val handle = FakeProcessHandle(12345)
+    private val handle = FakeProcessHandle(pid)
 
     override fun destroy() {
       handle.destroy()
@@ -135,8 +129,7 @@ class EmulatorProcessHandlerTest {
     }
   }
 
-  private class CountDownByteArrayInputStream(data: ByteArray) :
-    FilterInputStream(data.inputStream()) {
+  private class CountDownByteArrayInputStream(data: ByteArray) : FilterInputStream(data.inputStream()) {
 
     private val latch = CountDownLatch(data.size)
 
@@ -174,7 +167,8 @@ class EmulatorProcessHandlerTest {
   }
 
   private data class LogEntry(
-    val avd: AvdInfo,
+    val sourceProcess: ProcessHandle,
+    val avdFolder: Path,
     val severity: Severity,
     val notifyUser: Boolean,
     val message: String,

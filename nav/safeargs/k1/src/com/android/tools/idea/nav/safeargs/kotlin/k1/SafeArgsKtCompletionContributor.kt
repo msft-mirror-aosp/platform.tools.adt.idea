@@ -44,8 +44,7 @@ import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import org.jetbrains.kotlin.resolve.source.getPsi
 
 /**
- * This provides completions for generated [LightArgsKtClass] and [LightDirectionsKtClass] from
- * modules with dependencies.
+ * This provides completions for generated [LightArgsKtClass] and [LightDirectionsKtClass] from modules with dependencies.
  *
  * This comes after [KotlinCompletionContributor]
  */
@@ -55,11 +54,7 @@ class SafeArgsKtCompletionContributor : CompletionContributor() {
       CompletionType.BASIC,
       PlatformPatterns.psiElement(),
       object : CompletionProvider<CompletionParameters>() {
-        override fun addCompletions(
-          parameters: CompletionParameters,
-          context: ProcessingContext,
-          result: CompletionResultSet,
-        ) {
+        override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
 
           val position = parameters.position
           val facet = position.androidFacet ?: return
@@ -81,20 +76,13 @@ class SafeArgsKtCompletionContributor : CompletionContributor() {
                 it
               }
               .filter { element.containingKtFile.packageFqName != it.fqName }
-              .mapNotNull {
-                it
-                  .getMemberScope()
-                  .getContributedDescriptors(DescriptorKindFilter.CLASSIFIERS) { true }
-                  .firstOrNull()
-              }
+              .mapNotNull { it.getMemberScope().getContributedDescriptors(DescriptorKindFilter.CLASSIFIERS) { true }.firstOrNull() }
               .filterIsInstance<ClassDescriptor>()
               .filter { it.importableFqName != null }
               .filter { descriptor ->
                 // Classes in imported packages are already autocompleted, and we don't want to add
                 // duplicate results.
-                importedDirectives.none { importPath ->
-                  descriptor.importableFqName!!.isImported(importPath)
-                }
+                importedDirectives.none { importPath -> descriptor.importableFqName!!.isImported(importPath) }
               }
               .mapNotNull { createLookUpElement(it) }
               .toList()
@@ -107,13 +95,11 @@ class SafeArgsKtCompletionContributor : CompletionContributor() {
             object : DeclarationLookupObjectImpl(classDescriptor) {
               override val psiElement = classDescriptor.source.getPsi()
 
-              override fun getIcon(flags: Int) =
-                KotlinDescriptorIconProvider.getIcon(classDescriptor, psiElement, flags)
+              override fun getIcon(flags: Int) = KotlinDescriptorIconProvider.getIcon(classDescriptor, psiElement, flags)
             }
 
           var element =
-            LookupElementBuilder.create(lookupObject, classDescriptor.name.asString())
-              .withInsertHandler(KotlinClassifierInsertHandler)
+            LookupElementBuilder.create(lookupObject, classDescriptor.name.asString()).withInsertHandler(KotlinClassifierInsertHandler)
 
           val classFqName = classDescriptor.fqNameSafe.takeUnless { it.isRoot } ?: return null
 

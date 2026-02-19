@@ -17,8 +17,8 @@ package com.android.tools.idea.layoutinspector.pipeline.appinspection.compose
 
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
+import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
-import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model.COMPOSE2
 import com.android.tools.idea.layoutinspector.model.COMPOSE3
@@ -36,29 +36,25 @@ import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StateRe
 import org.junit.Rule
 import org.junit.Test
 
-private val PROCESS =
-  MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
+private val PROCESS = DEVICE_1.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 
 class RecompositionStateReadCacheTest {
   private val projectRule = AndroidProjectRule.inMemory()
   private val inspectionRule = AppInspectionInspectorRule(projectRule)
   private val inspectorRule =
-    LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider()), projectRule) {
-      it.name == PROCESS.name
-    }
+    LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider()), projectRule) { it.name == PROCESS.name }
 
   @get:Rule val rule = RuleChain(projectRule, inspectionRule, inspectorRule)
 
   @Test
   fun testSettingsUpdated() {
-    inspectorRule.attachDevice(MODERN_DEVICE)
+    inspectorRule.attachDevice(DEVICE_1)
     val startFetchReceived = ReportingCountDownLatch(1)
     inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) { command ->
       assertThat(command.startFetchCommand.continuous).isTrue()
       startFetchReceived.countDown()
     }
-    val inspectorState =
-      FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
+    val inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
     inspectorState.createAllResponses()
 
     inspectorRule.processNotifier.fireConnected(PROCESS)
@@ -69,29 +65,21 @@ class RecompositionStateReadCacheTest {
     inspectionRule.composeInspector.listenWhen({ true }) { command -> lastCommand = command }
 
     model.stateReadsModel.observeAll()
-    waitForCondition(10.seconds) {
-      lastCommand?.specializedCase == Command.SpecializedCase.UPDATE_SETTINGS_COMMAND
-    }
+    waitForCondition(10.seconds) { lastCommand?.specializedCase == Command.SpecializedCase.UPDATE_SETTINGS_COMMAND }
     assertThat(lastCommand!!.updateSettingsCommand.stateReadSettings)
       .isEqualTo(StateReadSettings.newBuilder().apply { allBuilder.maxStateReads = 5000 }.build())
     lastCommand = null
 
     model.stateReadsModel.observeNone()
-    waitForCondition(10.seconds) {
-      lastCommand?.specializedCase == Command.SpecializedCase.UPDATE_SETTINGS_COMMAND
-    }
+    waitForCondition(10.seconds) { lastCommand?.specializedCase == Command.SpecializedCase.UPDATE_SETTINGS_COMMAND }
     assertThat(lastCommand!!.updateSettingsCommand.stateReadSettings)
       .isEqualTo(StateReadSettings.newBuilder().apply { noneBuilder }.build())
     lastCommand = null
 
     model.stateReadsModel.observeNode(model[COMPOSE2] as ComposeViewNode)
     model.stateReadsModel.observeNode(model[COMPOSE3] as ComposeViewNode)
-    waitForCondition(10.seconds) {
-      lastCommand?.specializedCase == Command.SpecializedCase.UPDATE_SETTINGS_COMMAND
-    }
-    assertThat(lastCommand!!.updateSettingsCommand.stateReadSettings.byId.composableToObserveList)
-      .containsExactly(103, 104)
-    assertThat(lastCommand!!.updateSettingsCommand.stateReadSettings.byId.maxStateReads)
-      .isEqualTo(5000)
+    waitForCondition(10.seconds) { lastCommand?.specializedCase == Command.SpecializedCase.UPDATE_SETTINGS_COMMAND }
+    assertThat(lastCommand!!.updateSettingsCommand.stateReadSettings.byId.composableToObserveList).containsExactly(103, 104)
+    assertThat(lastCommand!!.updateSettingsCommand.stateReadSettings.byId.maxStateReads).isEqualTo(5000)
   }
 }

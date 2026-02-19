@@ -21,7 +21,6 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
 import com.android.tools.idea.streaming.core.findComponentForAction
 import com.android.tools.idea.streaming.emulator.EMULATOR_CONTROLLER_KEY
@@ -41,17 +40,12 @@ import com.intellij.ui.awt.RelativePoint
 import javax.swing.JComponent
 import kotlinx.coroutines.CoroutineScope
 
-private val PANEL_CONTROLLER_KEY =
-  Key.create<WearHealthServicesPanelController>("WearHealthServicesPanelController")
+private val PANEL_CONTROLLER_KEY = Key.create<WearHealthServicesPanelController>("WearHealthServicesPanelController")
 
 /** Opens the Wear Health Services Tool Window */
 class OpenWearHealthServicesPanelAction :
   AbstractEmulatorAction(
-    configFilter = {
-      StudioFlags.WEAR_HEALTH_SERVICES_PANEL.get() &&
-        it.deviceType == DeviceType.WEAR &&
-        it.api >= 33
-    }
+    configFilter = { StudioFlags.WEAR_HEALTH_SERVICES_PANEL.get() && it.deviceType == DeviceType.WEAR && it.api >= 33 }
   ) {
 
   override fun isEnabled(event: AnActionEvent): Boolean {
@@ -87,18 +81,15 @@ class OpenWearHealthServicesPanelAction :
             Disposer.register(emulatorController, it)
             it.serialNumber = serialNumber
           }
-        WearHealthServicesPanelController(
-          stateManager = stateManager,
-          workerScope = workerScope,
-          uiScope = uiScope,
-        )
+        WearHealthServicesPanelController(stateManager = stateManager, workerScope = workerScope, uiScope = uiScope)
       }
 
     // Show the UI settings popup relative to the ActionButton.
     // If such a component is not found use the displayView. The action was likely activated from
     // the keyboard.
-    val component = event.findComponentForAction(action) as? JComponent ?: displayView
-    val position = findRelativePoint(component, displayView)
+    val displayViewComponent = displayView.component
+    val component = event.findComponentForAction(action) as? JComponent ?: displayViewComponent
+    val position = findRelativePoint(component, displayViewComponent)
 
     panelController.showWearHealthServicesToolPopup(displayView, position)
   }
@@ -106,16 +97,14 @@ class OpenWearHealthServicesPanelAction :
 
 /**
  * Returns the point for displaying the balloon.
- * - If [component] is a DeviceView or EmulatorView (ex: when action is invoked from the keyboard)
- *   returns the point NW of the [component]
- * - If [component] is in a popup itself, converts the point relative to the [displayView]
+ * - If [component] is a DeviceView or EmulatorView (ex: when action is invoked from the keyboard) returns the point NW of the [component]
+ * - If [component] is in a popup itself, converts the point relative to the [displayViewComponent]
  * - Otherwise, returns the center of the button that was pressed
  */
-fun findRelativePoint(component: JComponent, displayView: AbstractDisplayView): RelativePoint {
+fun findRelativePoint(component: JComponent, displayViewComponent: JComponent): RelativePoint {
   return when {
-    component is AbstractDisplayView -> RelativePoint.getNorthWestOf(component)
-    PopupUtil.getPopupContainerFor(component) != null ->
-      RelativePoint.getCenterOf(component).getPointOn(displayView)
+    component === displayViewComponent -> RelativePoint.getNorthWestOf(component)
+    PopupUtil.getPopupContainerFor(component) != null -> RelativePoint.getCenterOf(component).getPointOn(displayViewComponent)
     else -> RelativePoint.getCenterOf(component)
   }
 }

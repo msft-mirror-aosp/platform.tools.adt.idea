@@ -15,17 +15,16 @@
  */
 package com.android.tools.idea.welcome.wizard
 
-import com.android.tools.idea.welcome.wizard.deprecated.AehdUninstallInfoStepForm
+import com.android.tools.idea.welcome.wizard.forms.AehdUninstallInfoStepForm
 import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.google.wireless.android.sdk.stats.SetupWizardEvent
 import com.intellij.openapi.util.SystemInfo
 import javax.swing.JComponent
 
 /**
- * This is to be shown as the first AEHD Wizard step just to inform the user that AEHD
- * uninstallation is about to start. It is here just to make sure we don't run uninstallation
- * operations straight away as the first wizard step, as this would not be in line with common
- * wizard conventions.
+ * This is to be shown as the first AEHD Wizard step just to inform the user that AEHD uninstallation is about to start. It is here just to
+ * make sure we don't run uninstallation operations straight away as the first wizard step, as this would not be in line with common wizard
+ * conventions.
  */
 class AehdUninstallInfoStep(private val tracker: FirstRunWizardTracker) :
   ModelWizardStep.WithoutModel("Uninstalling Android Emulator hypervisor driver") {

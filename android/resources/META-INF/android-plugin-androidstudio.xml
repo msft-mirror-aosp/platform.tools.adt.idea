@@ -188,6 +188,7 @@
         class="com.android.tools.idea.actions.ResetUserIdAction"
         text="Reset Data Sharing User Identifier"
         description="Reset Data Sharing User Identifier"/>
+    <action internal="true" id="Internal.TestDuplicateClasses" class="com.android.tools.idea.actions.internal.TestDuplicateClassesAction"/>
     <group overrides="true" class="com.intellij.openapi.actionSystem.EmptyActionGroup" id="Java.ProjectTemplate.Group"/>
     <action overrides="true" class="com.intellij.openapi.actionSystem.EmptyAction" id="SaveProjectAsTemplate"/>
     <action overrides="true" class="com.intellij.openapi.actionSystem.EmptyAction" id="ManageProjectTemplates"/>
@@ -221,10 +222,6 @@
                              id="memory.settings"/>
 
     <statistic.eventLog.eventLoggerProvider implementation="com.android.tools.idea.stats.AndroidStudioStatisticsEventLoggerProvider"/>
-    <projectService serviceInterface="com.intellij.codeInsight.NullableNotNullManager"
-                    serviceImplementation="com.android.tools.idea.lang.AndroidNullableNotNullManagerImpl"
-                    overrides="true"
-    />
 
     <postStartupActivity implementation="com.android.tools.idea.startup.ProjectMetricsInitializer$MyStartupActivity"/>
     <postStartupActivity implementation="com.android.tools.idea.diagnostics.commit.GitCommitTrackerActivity"/>

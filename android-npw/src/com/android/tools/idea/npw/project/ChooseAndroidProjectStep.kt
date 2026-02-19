@@ -29,6 +29,7 @@ import com.android.tools.idea.wizard.model.ModelWizard.Facade
 import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.Template
+import com.android.tools.idea.wizard.template.TemplateFlag
 import com.android.tools.idea.wizard.template.WizardUiContext
 import com.google.common.base.Suppliers
 import java.util.function.Supplier
@@ -38,8 +39,8 @@ import kotlinx.coroutines.launch
 import org.jetbrains.android.util.AndroidBundle.message
 
 /**
- * First page in the New Project wizard that allows user to select the [FormFactor] (Mobile, Wear,
- * TV, etc.) and its template ("Empty Activity", "Basic", "Navigation Drawer", etc.)
+ * First page in the New Project wizard that allows user to select the [FormFactor] (Mobile, Wear, TV, etc.) and its template ("Empty
+ * Activity", "Basic", "Navigation Drawer", etc.)
  */
 class ChooseAndroidProjectStep(model: NewProjectModel) :
   ModelWizardStep<NewProjectModel>(model, message("android.wizard.project.new.choose")) {
@@ -55,11 +56,7 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
     val renderModel = newProjectModuleModel!!.extraRenderTemplateModel
     return listOf(
       ConfigureAndroidProjectStep(newProjectModuleModel!!, model),
-      ConfigureTemplateParametersStep(
-        renderModel,
-        message("android.wizard.config.activity.title"),
-        listOf(),
-      ),
+      ConfigureTemplateParametersStep(renderModel, message("android.wizard.config.activity.title"), listOf()),
     )
   }
 
@@ -94,9 +91,7 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
         this.getNewProjectTemplates()
       }
 
-    /**
-     * Indicates which form factor in the Project Chooser this form factor should be grouped under.
-     */
+    /** Indicates which form factor in the Project Chooser this form factor should be grouped under. */
     private fun FormFactor.projectChooserCategory() =
       when (this) {
         FormFactor.AiGlasses -> FormFactor.XR
@@ -107,11 +102,9 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
       TemplateResolver.getAllTemplates().filter {
         WizardUiContext.NewProject in it.uiContexts &&
           it.formFactor.projectChooserCategory() == this &&
-          (it.name !in setOf("Architecture Sample", "AI Starter") ||
-            StudioFlags.NPW_ENABLE_ARCHITECTURE_SAMPLE_TEMPLATE.get())
+          (!it.flags.contains(TemplateFlag.NewProjectAgent) || StudioFlags.NPW_SHOW_NPA_TEMPLATES.get())
       }
 
-    private fun createFormFactors(): List<FormFactor> =
-      FormFactor.values().filterNot { it.getProjectTemplates().isEmpty() }
+    private fun createFormFactors(): List<FormFactor> = FormFactor.values().filterNot { it.getProjectTemplates().isEmpty() }
   }
 }

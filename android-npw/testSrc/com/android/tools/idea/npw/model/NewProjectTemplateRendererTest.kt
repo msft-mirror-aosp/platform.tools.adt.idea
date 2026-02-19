@@ -18,6 +18,7 @@ package com.android.tools.idea.npw.model
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.extensions.getPropertyPath
+import com.android.tools.idea.gradle.jdk.GradleDefaultJvmCriteriaStore
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.project.importing.GradleJdkConfigurationInitializer
 import com.android.tools.idea.gradle.toolchain.GradleDaemonJvmCriteriaTemplatesManager
@@ -25,7 +26,6 @@ import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.npw.project.DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS
 import com.android.tools.idea.observable.core.BoolValueProperty
 import com.android.tools.idea.observable.core.StringValueProperty
-import com.android.tools.idea.gradle.jdk.GradleDefaultJvmCriteriaStore
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.testing.AndroidGradleTests
 import com.android.tools.idea.testing.AndroidGradleTests.getLocalRepositoriesForGroovy
@@ -39,6 +39,15 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.util.lang.JavaVersion
+import java.io.File
+import java.nio.file.Files
+import kotlin.io.path.Path
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.exists
+import kotlin.io.path.readText
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.FOOJAY_RESOLVER_CONVENTION_NAME
 import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.getTopLevelBuildScriptSettingsPsiFile
@@ -53,29 +62,20 @@ import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.spy
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.whenever
-import java.io.File
-import java.nio.file.Files
-import kotlin.io.path.Path
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.exists
-import kotlin.io.path.readText
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class NewProjectTemplateRendererTest {
 
-  @get:Rule
-  val projectRule = AndroidProjectRule.onDisk()
+  @get:Rule val projectRule = AndroidProjectRule.onDisk()
 
   private val projectBasePath by lazy { projectRule.project.basePath!! }
   private val multiTemplateRenderer: MultiTemplateRenderer
     get() = MultiTemplateRenderer { renderer ->
       object : Task.Modal(projectRule.project, "Test", false) {
-        override fun run(indicator: ProgressIndicator) {
-          renderer(project)
+          override fun run(indicator: ProgressIndicator) {
+            renderer(project)
+          }
         }
-      }.queue()
+        .queue()
     }
 
   @Before
@@ -107,7 +107,7 @@ class NewProjectTemplateRendererTest {
 
   @Test
   fun `Given gradle version with toolchain as default When create project using KTS Then Foojay plugin and Daemon JVM criteria are defined`() {
-    val render = createNewProjectTemplateRender("9.2.0", true)
+    val render = createNewProjectTemplateRender("9.2.0", useGradleKts = true)
     multiTemplateRenderer.requestRender(render)
 
     assertFoojayPlugin(true)
@@ -116,7 +116,7 @@ class NewProjectTemplateRendererTest {
 
   @Test
   fun `Given gradle version with toolchain as default When create project not using KTS Then Foojay plugin and Daemon JVM criteria are defined`() {
-    val render = createNewProjectTemplateRender("9.2.1", true)
+    val render = createNewProjectTemplateRender("9.2.1", useGradleKts = true)
     multiTemplateRenderer.requestRender(render)
 
     assertFoojayPlugin(true)
@@ -140,15 +140,16 @@ class NewProjectTemplateRendererTest {
 
     // Using version of Gradle that doesn't generate the download URLs when executing updateDaemonJvm task that's
     // because 'foojay-resolver' plugin requires to access 'api.foojay.io' host which will fail when running from bazel
-    val render = createNewProjectTemplateRender("8.11.1", false)
+    val render = createNewProjectTemplateRender("8.11.1", removeFoojayPlugin = true, useGradleKts = false)
     multiTemplateRenderer.requestRender(render)
 
     assertBasicGradleDaemonJvmCriteria(17, "tencent")
   }
 
   private fun createNewProjectTemplateRender(
-    gradleVersion: String, useGradleKts: Boolean = false
+    gradleVersionString: String, removeFoojayPlugin: Boolean = false, useGradleKts: Boolean = false,
   ) : NewProjectModel.ProjectTemplateRenderer {
+    val gradleVersion = GradleVersion.version(gradleVersionString)
     val newProjectModel = spy(NewProjectModel())
     val render = spy(newProjectModel.ProjectTemplateRenderer())
     val projectTemplateDataBuilder = spy(newProjectModel.projectTemplateDataBuilder)
@@ -160,32 +161,44 @@ class NewProjectTemplateRendererTest {
     doReturn(projectTemplateDataBuilder).whenever(newProjectModel).projectTemplateDataBuilder
     doReturn(BoolValueProperty(useGradleKts)).whenever(newProjectModel).useGradleKts
     doAnswer {
-      addLocalRepositoriesToResolveFoojayPlugin(useGradleKts)
-      it.callRealMethod()
-    }.whenever(render).onSourcesCreated()
+        withGradleSettings {
+        if (removeFoojayPlugin) {
+          removeTemplateFoojayPluginDefinition()
+        } else {
+          addTemplateLocalRepositoriesToResolveFoojayPlugin(useGradleKts)
+        }
+      }
+        it.callRealMethod()
+      }
+      .whenever(render)
+      .onSourcesCreated()
     return render
   }
 
-  private fun createSimpleProjectTemplateData(gradleVersion: String) = ProjectTemplateData(
-    false,
-    AgpVersions.newProject,
-    GradleVersion.version(gradleVersion),
-    listOf(),
-    null,
-    Language.Java,
-    DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS,
-    projectRule.project.guessProjectDir()!!.toIoFile(),
-    "com.test.packagename",
-    mapOf(),
-    null,
-    null,
-    true,
-  )
+  private fun createSimpleProjectTemplateData(gradleVersion: GradleVersion) =
+    ProjectTemplateData(
+      false,
+      AgpVersions.newProject,
+      gradleVersion,
+      listOf(),
+      null,
+      Language.Java,
+      DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS,
+      projectRule.project.guessProjectDir()!!.toIoFile(),
+      "com.test.packagename",
+      mapOf(),
+      null,
+      null,
+      true,
+    )
 
   private fun assertFoojayPlugin(isApplied: Boolean) {
-    assertEquals(isApplied, ProjectBuildModel.get(projectRule.project).projectSettingsModel!!.plugins().declaredProperties.any {
-      it.valueAsString()!!.contains(FOOJAY_RESOLVER_CONVENTION_NAME)
-    })
+    assertEquals(
+      isApplied,
+      ProjectBuildModel.get(projectRule.project).projectSettingsModel!!.plugins().declaredProperties.any {
+        it.valueAsString()!!.contains(FOOJAY_RESOLVER_CONVENTION_NAME)
+      },
+    )
   }
 
   private fun assertGradleDaemonJvmCriteriaNotDefined() {
@@ -205,20 +218,33 @@ class NewProjectTemplateRendererTest {
   private fun assertBasicGradleDaemonJvmCriteria(expectedVersion: Int, expectedVendor: String?) {
     val daemonJvmCriteriaFile = GradleDaemonJvmPropertiesFile.getProperties(Path(projectBasePath))
 
-    assertEquals(expectedVersion.toString(), daemonJvmCriteriaFile?.version?.value)
-    assertEquals(expectedVendor, daemonJvmCriteriaFile?.vendor?.value)
+    assertEquals(expectedVersion.toString(), daemonJvmCriteriaFile.version?.value)
+    assertEquals(expectedVendor, daemonJvmCriteriaFile.vendor?.value)
   }
 
-  private fun addLocalRepositoriesToResolveFoojayPlugin(useGradleKts: Boolean) {
+  private fun withGradleSettings(action: StringBuilder.() -> Unit) {
     val gradleSettings = getTopLevelBuildScriptSettingsPsiFile(projectRule.project, projectBasePath)?.virtualFile?.toIoFile()
-    val localRepositories = if (useGradleKts) {
-      getLocalRepositoriesForKotlin(listOf<File>())
-    } else {
-      getLocalRepositoriesForGroovy(listOf<File>())
-    }
+    val gradleSettingsBuilder = StringBuilder(gradleSettings!!.readText())
 
-    val gradleSettingsContent = gradleSettings!!.readText()
-    val newGradleSettingsContent = AndroidGradleTests.updateLocalRepositories(gradleSettingsContent, localRepositories)
-    Files.writeString(gradleSettings.toPath(), newGradleSettingsContent)
+    action.invoke(gradleSettingsBuilder)
+    Files.writeString(gradleSettings.toPath(), gradleSettingsBuilder.toString())
+  }
+
+  private fun StringBuilder.addTemplateLocalRepositoriesToResolveFoojayPlugin(useGradleKts: Boolean) {
+    val localRepositories =
+      if (useGradleKts) {
+        getLocalRepositoriesForKotlin(listOf<File>())
+      } else {
+        getLocalRepositoriesForGroovy(listOf<File>())
+      }
+
+    AndroidGradleTests.updateLocalRepositories(toString(), localRepositories).also {
+      clear()
+      append(it)
+    }
+  }
+
+  private fun StringBuilder.removeTemplateFoojayPluginDefinition() {
+    clear()
   }
 }

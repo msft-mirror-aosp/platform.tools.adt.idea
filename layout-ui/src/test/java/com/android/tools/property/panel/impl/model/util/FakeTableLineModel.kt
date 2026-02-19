@@ -23,11 +23,8 @@ import com.android.tools.property.ptable.PTableModel
 import com.google.common.truth.Truth
 import kotlin.properties.Delegates
 
-class FakeTableLineModel(
-  override val tableModel: PTableModel,
-  val tableUI: TableUIProvider,
-  override val isSearchable: Boolean,
-) : FakeInspectorLineModel(FakeLineType.TABLE), TableLineModel {
+class FakeTableLineModel(override val tableModel: PTableModel, val tableUI: TableUIProvider, override val isSearchable: Boolean) :
+  FakeInspectorLineModel(FakeLineType.TABLE), TableLineModel {
 
   override var selectedItem: PTableItem? = null
 
@@ -47,7 +44,7 @@ class FakeTableLineModel(
     pendingEditingAction = {}
   }
 
-  override fun refresh() {
+  override fun refresh(childElementChanges: Boolean) {
     tableModel.refresh()
   }
 

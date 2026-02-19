@@ -67,21 +67,25 @@ int32_t GetRemoteSubmixDeviceId(Jni jni) {
 }  // namespace
 
 RemoteSubmixReader::RemoteSubmixReader(int32_t num_channels, int32_t sample_rate)
-    : AudioReader(num_channels, sample_rate) {
+    : AudioReader(num_channels, sample_rate),
+      reader_stopped_(true) {
 }
 
 RemoteSubmixReader::~RemoteSubmixReader() {
   Stop();
 }
 
-void RemoteSubmixReader::Start(CodecHandle* codec_handle) {
+bool RemoteSubmixReader::Start(CodecHandle* codec_handle) {
   if (reader_stopped_.exchange(false)) {
     codec_handle_ = codec_handle;
     if (!StartAudioStream()) {
+      reader_stopped_ = true;
       codec_handle_->Stop();
       fprintf(stderr, "NOTIFICATION Unable start the audio stream\n");
+      return false;
     }
   }
+  return true;
 }
 
 bool RemoteSubmixReader::StartAudioStream() {

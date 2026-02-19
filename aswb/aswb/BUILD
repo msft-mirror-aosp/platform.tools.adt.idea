@@ -65,7 +65,7 @@ java_library(
         "//tools/adt/idea/aswb/base",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -90,7 +90,7 @@ java_library(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",  # unuseddeps: keep
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -102,7 +102,6 @@ aswb_library(
             "src/**/*.kt",
         ],
     ),
-    lint_enabled = False,  # TODO: b/414804974 - Enable when violations resolved.
     resources = glob(
         [
             "resources/**/*",
@@ -133,17 +132,21 @@ aswb_library(
 intellij_unit_test_suite(
     name = "unit_tests",
     srcs = glob(
-        ["tests/unittests/**/*.java"],
+        [
+            "tests/unittests/**/*.java",
+            "tests/unittests/**/*.kt",
+        ],
         exclude = [
             "tests/unittests/com/google/idea/blaze/android/sync/model/idea/BlazeClassJarProviderTest.java",  # b/145809318
         ],
     ),
     tags = ["noci:studio-win"],
-    test_package_root = "com.google.idea.blaze.android",
+    test_package_root = "com",
     visibility = DEFAULT_TEST_VISIBILITY,
     deps = [
         ":aswb_lib",
         ":unit_test_utils",
+        "//tools/adt/idea/aswb/aswb/tests/unittests/com/android/tools/idea/rendering/tokens:helloworld",
         "//tools/adt/idea/aswb/base",
         "//tools/adt/idea/aswb/base:unit_test_utils",
         "//tools/adt/idea/aswb/common/experiments",
@@ -157,7 +160,7 @@ intellij_unit_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -191,6 +194,7 @@ intellij_integration_test_suite(
     srcs = glob(
         [
             "tests/integrationtests/com/google/idea/blaze/android/**/*.java",
+            "tests/integrationtests/com/google/idea/blaze/android/**/*.kt",
         ],
         exclude = [
             "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",  # Extracted to separate target
@@ -231,7 +235,7 @@ intellij_integration_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 

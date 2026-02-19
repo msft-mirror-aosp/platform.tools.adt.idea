@@ -30,12 +30,10 @@ import com.android.tools.property.ptable.PTableModelUpdateListener
 /**
  * Implementation of [FilteredPTableModel].
  *
- * A [PTableModel] implementation created for handling variable length tables in the property
- * editor.
+ * A [PTableModel] implementation created for handling variable length tables in the property editor.
  *
- * The items are populated from the properties in [model] that satisfies [itemFilter]. If
- * [keepNewAfterFlyAway] is true then the [refresh] method will keep a [NewPropertyItem] at the end
- * of the table when the previous new item was entered such that it appears in this table.
+ * The items are populated from the properties in [model] that satisfies [itemFilter]. If [keepNewAfterFlyAway] is true then the [refresh]
+ * method will keep a [NewPropertyItem] at the end of the table when the previous new item was entered such that it appears in this table.
  */
 class FilteredPTableModelImpl<P : PropertyItem>(
   private val valueType: Class<P>,
@@ -56,10 +54,7 @@ class FilteredPTableModelImpl<P : PropertyItem>(
   /** The items in this table model */
   override val items = mutableListOf<PTableItem>()
 
-  /**
-   * The item that is currently being edited in the table. The table implementation must provide
-   * this value.
-   */
+  /** The item that is currently being edited in the table. The table implementation must provide this value. */
   override var editedItem: PTableItem? = null
 
   init {
@@ -79,15 +74,14 @@ class FilteredPTableModelImpl<P : PropertyItem>(
       newItems.add(item)
       editedItem = item
     } else {
-      val index =
-        newItems.indexOfFirst { it is NewPropertyItem || itemComparator.compare(it, item) >= 0 }
+      val index = newItems.indexOfFirst { it is NewPropertyItem || itemComparator.compare(it, item) >= 0 }
       if (index < 0) {
         newItems.add(item)
       } else {
         newItems.add(index, item)
       }
     }
-    updateItems(newItems, lastItem(items))
+    updateItems(childElementChanges = false, newItems, lastItem(items))
     return item
   }
 
@@ -98,7 +92,8 @@ class FilteredPTableModelImpl<P : PropertyItem>(
   }
 
   override fun addItem(item: PTableItem): PTableItem {
-    @Suppress("UNCHECKED_CAST") return addNewItem(item as P)
+    @Suppress("UNCHECKED_CAST")
+    return addNewItem(item as P)
   }
 
   override fun removeItem(item: PTableItem) {
@@ -108,7 +103,7 @@ class FilteredPTableModelImpl<P : PropertyItem>(
       return
     }
     @Suppress("UNCHECKED_CAST") delete(item as P)
-    updateItems(newItems, null)
+    updateItems(childElementChanges = false, newItems, null)
   }
 
   @Suppress("UNCHECKED_CAST")
@@ -134,13 +129,12 @@ class FilteredPTableModelImpl<P : PropertyItem>(
   /**
    * Refresh the items in the table.
    *
-   * This [refresh] method should be called when a change to the property values in the model is
-   * known to have changed. Since a property value change may affect which items should appear in
-   * the table, we recompute the wanted items and ask the table to update.
+   * This [refresh] method should be called when a change to the property values in the model is known to have changed. Since a property
+   * value change may affect which items should appear in the table, we recompute the wanted items and ask the table to update.
    *
    * There is special logic in this method for handling a [NewPropertyItem] at the end of the table.
    */
-  override fun refresh() {
+  override fun refresh(childElementChanges: Boolean) {
     val last = lastItem(items)
     val newItems = mutableListOf<PTableItem>()
     groupAndSort(findParticipatingItems(), newItems)
@@ -153,27 +147,29 @@ class FilteredPTableModelImpl<P : PropertyItem>(
         newItems.add(last)
       }
     }
-    updateItems(newItems, last)
+    updateItems(childElementChanges, newItems, last)
   }
 
   /**
    * Update the items in the table.
    *
-   * If the existing [items] are the same as the [newItems] this is a noop. Otherwise replace the
-   * content of [items] and notify the table.
+   * If the existing [items] are the same as the [newItems] this is a noop. Otherwise replace the content of [items] and notify the table.
    *
-   * If [newItem] is specified then a [NewPropertyItem] was found at the end of the table before
-   * this change. Use this for computing which item the table should be editing after this
-   * operation.
+   * If [newItem] is specified then a [NewPropertyItem] was found at the end of the table before this change. Use this for computing which
+   * item the table should be editing after this operation.
+   *
+   * Propagate the change to the TableModel. Notify the model of data changes in the items if the items were changed here or if there are
+   * childElementChanges.
    */
-  private fun updateItems(newItems: List<PTableItem>, newItem: PTableItem?): PTableItem? {
+  private fun updateItems(childElementChanges: Boolean, newItems: List<PTableItem>, newItem: PTableItem?): PTableItem? {
     var nextItemToEdit = editedItem
-    val modelChanged = items != newItems
-    if (modelChanged) {
+    val itemsChanged = items != newItems
+    if (itemsChanged) {
       nextItemToEdit = findNextItemToEdit(newItems, newItem)
       items.clear()
       items.addAll(newItems)
     }
+    val modelChanged = itemsChanged || childElementChanges
     listeners.toTypedArray().forEach { it.itemsUpdated(modelChanged, nextItemToEdit) }
     return nextItemToEdit
   }

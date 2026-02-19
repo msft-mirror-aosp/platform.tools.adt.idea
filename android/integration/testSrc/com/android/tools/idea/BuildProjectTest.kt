@@ -19,29 +19,29 @@ import com.android.tools.asdriver.tests.AndroidProject
 import com.android.tools.asdriver.tests.AndroidSystem
 import com.android.tools.asdriver.tests.MavenRepo
 import com.android.tools.asdriver.tests.MemoryDashboardNameProviderWatcher
+import java.nio.file.Paths
 import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 
 class BuildProjectTest {
-  @JvmField @Rule
-  val system: AndroidSystem = AndroidSystem.standard()
+  @JvmField @Rule val system: AndroidSystem = AndroidSystem.standardWithTmpDir()
 
-  @JvmField
-  @Rule
-  var watcher = MemoryDashboardNameProviderWatcher()
+  @JvmField @Rule var watcher = MemoryDashboardNameProviderWatcher()
 
   @Test
   fun buildProjectTest() {
     // Create a new android project, and set a fixed distribution
-    val project = AndroidProject("tools/adt/idea/android/integration/testData/minapp")
+    val projectArtifactsPath = Paths.get("tools/adt/idea/android/integration/minapp_project_model")
+    val project = AndroidProject(projectArtifactsPath.resolve("minapp").toString())
 
     // Create a maven repo and set it up in the installation and environment
     system.installRepo(MavenRepo("tools/adt/idea/android/integration/buildproject_deps.manifest"))
 
+    system.getInstallation().copySystemDir(projectArtifactsPath)
     system.runStudio(project, watcher.dashboardName) { studio ->
-      studio.waitForSync()
-      studio.waitForIndex()
+      studio.waitForSyncSkippedLog()
+      studio.waitForIndexingSkippedLog()
       studio.executeAction("MakeGradleProject")
       studio.waitForBuild()
       verifyBuildAnalyzerDidNotFail()

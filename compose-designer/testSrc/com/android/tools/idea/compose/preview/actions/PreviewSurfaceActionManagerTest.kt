@@ -37,7 +37,6 @@ import java.awt.event.MouseEvent
 import javax.swing.JPanel
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
-import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -86,13 +85,6 @@ class PreviewSurfaceActionManagerTest {
     actionManager = PreviewSurfaceActionManager(surface, mock())
   }
 
-  @After
-  fun tearDown() {
-    StudioFlags.COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI.clearOverride()
-    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.clearOverride()
-    StudioFlags.COMPOSE_PREVIEW_AI_AGENTS_DROPDOWN.clearOverride()
-  }
-
   @Test
   fun testCoordinateConversion() {
     val interactionPane = JPanel().apply { bounds = java.awt.Rectangle(0, 0, 500, 800) }
@@ -110,19 +102,12 @@ class PreviewSurfaceActionManagerTest {
   }
 
   @Test
-  fun testAvailableActionsOnPreviewContextMenuWithDropdownEnabled() {
-    testAvailableActionsOnPreviewContextMenu(true)
-  }
+  fun testAvailableActionsOnPreviewContextMenu() {
+    StudioFlags.COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI_AGENTIC.overrideForTest(true, projectRule.testRootDisposable)
+    StudioFlags.COMPOSE_PREVIEW_MATCH_UI_AGENT.overrideForTest(true, projectRule.testRootDisposable)
+    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.overrideForTest(true, projectRule.testRootDisposable)
 
-  @Test
-  fun testAvailableActionsOnPreviewContextMenuWithDropdownDisabled() {
-    testAvailableActionsOnPreviewContextMenu(false)
-  }
-
-  fun testAvailableActionsOnPreviewContextMenu(aiActionsDropdownEnabled: Boolean) {
-    StudioFlags.COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI.override(true)
-    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.override(true)
-    StudioFlags.COMPOSE_PREVIEW_AI_AGENTS_DROPDOWN.override(aiActionsDropdownEnabled)
+    // Simulate multiple actions
     ExtensionTestUtil.maskExtensions(
       ComposeStudioBotActionFactory.EP_NAME,
       listOf(FakeStudioBotActionFactory()),
@@ -148,10 +133,8 @@ class PreviewSurfaceActionManagerTest {
         .map { it.delegate as EnableUnderConditionWrapper }
         .map { it.delegate }
 
-    assertThat(sceneViewContextActions.size)
-      .isEqualTo(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS)
-    assertThat((sceneViewContextActions[0] as AnActionWrapper).delegate)
-      .isInstanceOf(SavePreviewInNewSizeAction::class.java)
+    assertThat(sceneViewContextActions.size).isEqualTo(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS)
+    assertThat((sceneViewContextActions[0] as AnActionWrapper).delegate).isInstanceOf(SavePreviewInNewSizeAction::class.java)
     assertThat(sceneViewContextActions[1]).isInstanceOf(EnableUiCheckAction::class.java)
     assertThat(sceneViewContextActions[2]).isInstanceOf(AnimationInspectorAction::class.java)
     assertThat(sceneViewContextActions[3]).isInstanceOf(EnableInteractiveAction::class.java)
@@ -159,26 +142,23 @@ class PreviewSurfaceActionManagerTest {
 
     // The back navigation action is wrapped into the EnableUnderConditionWrapper and then into
     // the visibleOnlyInInteractive wrapper.
-    val backNavigationAction =
-      ((actions[6] as AnActionWrapper).delegate as AnActionWrapper).delegate
+    val backNavigationAction = ((actions[6] as AnActionWrapper).delegate as AnActionWrapper).delegate
     assertThat(backNavigationAction).isInstanceOf(BackNavigationAction::class.java)
 
-    // AI actions
-    val aiActionsDefaultGroup =
-      (actions[7] as ShowGroupUnderConditionWrapper).getChildren(null).single()
-    assertThat(aiActionsDefaultGroup.templatePresentation.text)
-      .isEqualTo(if (aiActionsDropdownEnabled) "previewAgents" else "transformPreview")
+    // AI actions - Multiple actions should be in dropdown
+    val aiActionsDefaultGroup = (actions[7] as ShowGroupUnderConditionWrapper).getChildren(null).single() as DefaultActionGroup
+    assertThat(aiActionsDefaultGroup.templatePresentation.text).isEqualTo("previewAgents")
     assertThat(aiActionsDefaultGroup is DefaultActionGroup)
+    val children = aiActionsDefaultGroup.getChildren(null)
+    assertThat(children.size).isAtLeast(2)
   }
 
   @Test
   fun testToolbarActionsDisabledWhenPreviewHasErrors() {
     // Simulate different preview statuses
     val errorStatus = Status(hasRenderErrors = true, hasSyntaxErrors = true, isRefreshing = false)
-    val refreshingStatus =
-      Status(hasRenderErrors = false, hasSyntaxErrors = false, isRefreshing = true)
-    val noErrorStatus =
-      Status(hasRenderErrors = false, hasSyntaxErrors = false, isRefreshing = false)
+    val refreshingStatus = Status(hasRenderErrors = false, hasSyntaxErrors = false, isRefreshing = true)
+    val noErrorStatus = Status(hasRenderErrors = false, hasSyntaxErrors = false, isRefreshing = false)
 
     val statusesToEnable =
       mapOf(
@@ -191,18 +171,11 @@ class PreviewSurfaceActionManagerTest {
       val (isEnabled, description) = expectedResult
 
       val dataContext =
-        SimpleDataContext.builder()
-          .add(CommonDataKeys.PROJECT, projectRule.project)
-          .add(PREVIEW_VIEW_MODEL_STATUS, status)
-          .build()
+        SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).add(PREVIEW_VIEW_MODEL_STATUS, status).build()
       val testEvent = createTestEvent(dataContext)
 
       val actions =
-        (actionManager
-            .getSceneViewContextToolbarOverflowActions()
-            .filterIsInstance<ActionGroup>()
-            .single())
-          .getChildren(testEvent)
+        (actionManager.getSceneViewContextToolbarOverflowActions().filterIsInstance<ActionGroup>().single()).getChildren(testEvent)
 
       assertEquals(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS, actions.size)
 
@@ -237,20 +210,14 @@ class PreviewSurfaceActionManagerTest {
     whenever(projectSystemService.projectSystem).thenReturn(androidProjectSystem)
     whenever(androidProjectSystem.getBuildManager()).thenReturn(buildManager)
 
-    val noErrorStatus =
-      Status(hasRenderErrors = false, hasSyntaxErrors = false, isRefreshing = false)
+    val noErrorStatus = Status(hasRenderErrors = false, hasSyntaxErrors = false, isRefreshing = false)
     val dataContext =
-      SimpleDataContext.builder()
-        .add(CommonDataKeys.PROJECT, projectRule.project)
-        .add(PREVIEW_VIEW_MODEL_STATUS, noErrorStatus)
-        .build()
+      SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).add(PREVIEW_VIEW_MODEL_STATUS, noErrorStatus).build()
     val testEvent = createTestEvent(dataContext)
     val actions =
-      (actionManager
-          .getSceneViewContextToolbarOverflowActions()
-          .filterIsInstance<ActionGroup>()
-          .single())
-        .getChildren(createTestEvent(dataContext))
+      (actionManager.getSceneViewContextToolbarOverflowActions().filterIsInstance<ActionGroup>().single()).getChildren(
+        createTestEvent(dataContext)
+      )
     assertEquals(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS, actions.size)
 
     // project needs build
@@ -300,28 +267,14 @@ class PreviewSurfaceActionManagerTest {
 
   @Test
   fun `verify actions contain glasses dropdown action if flag is enabled`() {
-    StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(
-      true,
-      projectRule.testRootDisposable,
-    )
-    assertTrue(
-      actionManager.sceneViewContextToolbarActions
-        .filterIsInstance<GlassesBlendDropdownAction>()
-        .isNotEmpty()
-    )
+    StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(true, projectRule.testRootDisposable)
+    assertTrue(actionManager.sceneViewContextToolbarActions.filterIsInstance<GlassesBlendDropdownAction>().isNotEmpty())
   }
 
   @Test
   fun `verify actions doesn't contain glasses dropdown action if flag is disabled`() {
-    StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(
-      false,
-      projectRule.testRootDisposable,
-    )
-    assertTrue(
-      actionManager.sceneViewContextToolbarActions
-        .filterIsInstance<GlassesBlendDropdownAction>()
-        .isEmpty()
-    )
+    StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(false, projectRule.testRootDisposable)
+    assertTrue(actionManager.sceneViewContextToolbarActions.filterIsInstance<GlassesBlendDropdownAction>().isEmpty())
   }
 
   private val fakeMouseEvent = MouseEvent(JPanel(), 0, 0L, 0, 0, 0, 1, true)

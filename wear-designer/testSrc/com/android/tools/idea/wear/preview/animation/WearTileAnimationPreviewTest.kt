@@ -20,7 +20,6 @@ import com.android.testutils.delayUntilCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.SyncNlModel
 import com.android.tools.idea.common.model.NlDataProvider
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.preview.animation.DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
 import com.android.tools.idea.preview.animation.SupportedAnimationManager
@@ -40,10 +39,12 @@ import com.android.tools.rendering.RenderLogger
 import com.android.tools.rendering.RenderResult
 import com.android.tools.wear.preview.WearTilePreviewElement
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import javax.swing.JComponent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -78,9 +79,7 @@ class WearTileAnimationPreviewTest {
       configuration = PreviewConfiguration.cleanAndGet(device = "id:wearos_small_round"),
     )
 
-  private suspend fun WearTileAnimationPreview.updateAnimations(
-    animations: List<TestDynamicTypeAnimator>
-  ) {
+  private suspend fun WearTileAnimationPreview.updateAnimations(animations: List<TestDynamicTypeAnimator>) {
     val tileServiceViewAdapter =
       object {
         fun getAnimations(): List<Any> = animations
@@ -88,12 +87,8 @@ class WearTileAnimationPreviewTest {
 
     wearTilePreviewElement.tileServiceViewAdapter.value = tileServiceViewAdapter
     val terminal = animations.filter { it.isTerminal() }
-    val maxTime =
-      terminal.maxOfOrNull { it.startDelay + it.duration }
-        ?: DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
-    delayUntilCondition(200) {
-      this.animations.size == terminal.size && this.maxDurationPerIteration.value == maxTime
-    }
+    val maxTime = terminal.maxOfOrNull { it.startDelay + it.duration } ?: DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
+    delayUntilCondition(200) { this.animations.size == terminal.size && this.maxDurationPerIteration.value == maxTime }
   }
 
   private fun createAnimator(
@@ -122,8 +117,7 @@ class WearTileAnimationPreviewTest {
 
     model.dataProvider =
       object : NlDataProvider(PREVIEW_ELEMENT_INSTANCE) {
-        override fun getData(dataId: String): Any? =
-          wearTilePreviewElement.takeIf { dataId == PREVIEW_ELEMENT_INSTANCE.name }
+        override fun getData(dataId: String): Any? = wearTilePreviewElement.takeIf { dataId == PREVIEW_ELEMENT_INSTANCE.name }
       }
 
     val successfulRenderResult =
@@ -195,8 +189,7 @@ class WearTileAnimationPreviewTest {
     assertThat(animation1.currentTime).isEqualTo(500L)
 
     // Freeze the second animation at 500ms
-    val animation2Manager =
-      animationPreview.animations.find { it.animation.name == "INT Animation" }!!
+    val animation2Manager = animationPreview.animations.find { it.animation.name == "INT Animation" }!!
     animation2Manager.frozenState.value = SupportedAnimationManager.FrozenState(true, 500)
 
     animationPreview.clockControl.incrementClockBy(1500)
@@ -219,8 +212,7 @@ class WearTileAnimationPreviewTest {
   fun updateMaxDuration_emptyAnimations() = runTest {
     animationPreview.updateAnimations(emptyList())
 
-    assertThat(animationPreview.maxDurationPerIteration.value)
-      .isEqualTo(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS)
+    assertThat(animationPreview.maxDurationPerIteration.value).isEqualTo(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS)
   }
 
   @Test
@@ -241,8 +233,7 @@ class WearTileAnimationPreviewTest {
 
     animationPreview.updateAnimations(animations)
 
-    assertThat(animationPreview.animations.map { it.animation.durationMs })
-      .containsExactly(1000L, 5000L)
+    assertThat(animationPreview.animations.map { it.animation.durationMs }).containsExactly(1000L, 5000L)
   }
 
   @Test
@@ -256,10 +247,7 @@ class WearTileAnimationPreviewTest {
     val newAnimations = listOf(newAnimation)
     animationPreview.updateAnimations(newAnimations)
 
-    delayUntilCondition(200) {
-      animationPreview.animations.size == 1 &&
-        animationPreview.animations[0].animation.name == "FLOAT Animation"
-    }
+    delayUntilCondition(200) { animationPreview.animations.size == 1 && animationPreview.animations[0].animation.name == "FLOAT Animation" }
 
     assertThat(animationPreview.maxDurationPerIteration.value).isEqualTo(500L)
   }
@@ -277,8 +265,7 @@ class WearTileAnimationPreviewTest {
         RenderLogger(),
       )
 
-    (animationPreview.sceneManagerProvider() as SyncLayoutlibSceneManager).renderResult =
-      errorRenderResult
+    (animationPreview.sceneManagerProvider() as SyncLayoutlibSceneManager).renderResult = errorRenderResult
 
     // trigger collect
     wearTilePreviewElement.tileServiceViewAdapter.value =
@@ -288,9 +275,7 @@ class WearTileAnimationPreviewTest {
 
     delayUntilCondition(200) {
       val errorPanel =
-        withContext(uiThread) {
-          FakeUi(animationPreview.component).findComponent<JComponent> { it.name == "Error Panel" }
-        }
+        withContext(Dispatchers.EDT) { FakeUi(animationPreview.component).findComponent<JComponent> { it.name == "Error Panel" } }
       errorPanel != null && errorPanel.isVisible
     }
   }

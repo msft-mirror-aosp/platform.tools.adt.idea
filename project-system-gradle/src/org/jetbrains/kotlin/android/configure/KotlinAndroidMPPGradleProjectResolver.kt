@@ -13,6 +13,9 @@ import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
+import com.android.tools.idea.gradle.model.IdeSourceProvider
+import com.android.tools.idea.gradle.model.IdeSourceProviderContainer
+import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.ANDROID_TEST
@@ -20,9 +23,6 @@ import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.MAIN
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.TEST_FIXTURES
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.UNIT_TEST
-import com.android.tools.idea.gradle.model.IdeSourceProvider
-import com.android.tools.idea.gradle.model.IdeSourceProviderContainer
-import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.project.sync.IdeAndroidModels
 import com.android.utils.appendCapitalized
@@ -35,6 +35,7 @@ import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemConstants
 import com.intellij.openapi.externalSystem.util.Order
+import java.io.File
 import org.gradle.tooling.model.idea.IdeaModule
 import org.jetbrains.kotlin.idea.gradle.configuration.KotlinSourceSetData
 import org.jetbrains.kotlin.idea.gradleJava.configuration.KotlinMppGradleProjectResolver
@@ -48,7 +49,6 @@ import org.jetbrains.kotlin.idea.projectModel.KotlinSourceSet
 import org.jetbrains.kotlin.idea.projectModel.KotlinTarget
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.AbstractProjectResolverExtension
-import java.io.File
 
 @Order(ExternalSystemConstants.UNORDERED - 1)
 class KotlinAndroidMPPGradleProjectResolver : AbstractProjectResolverExtension() {
@@ -75,7 +75,8 @@ class KotlinAndroidMPPGradleProjectResolver : AbstractProjectResolverExtension()
     return super.createModule(gradleModule, projectDataNode)!!.also { ideModule ->
       val sourceSetByName = ideModule.sourceSetsByName()
       for ((sourceSetDesc, compilation) in mppModel.androidCompilationsForVariant(selectedVariantName)) {
-        val kotlinSourceSetInfo = KotlinMppGradleProjectResolver.createSourceSetInfo(mppModel, compilation, gradleModule, resolverCtx) ?: continue
+        val kotlinSourceSetInfo =
+          KotlinMppGradleProjectResolver.createSourceSetInfo(mppModel, compilation, gradleModule, resolverCtx) ?: continue
         val androidGradleSourceSetDataNode = sourceSetByName[sourceSetDesc.sourceSetName] ?: continue
 
         androidGradleSourceSetDataNode.createChild(KotlinSourceSetData.KEY, KotlinSourceSetData(kotlinSourceSetInfo))
@@ -100,7 +101,7 @@ class KotlinAndroidMPPGradleProjectResolver : AbstractProjectResolverExtension()
         val dependsOnGradleSourceSet = sourceSetByName[dependsOn.name] ?: continue
         androidGradleSourceSetDataNode.createChild(
           ProjectKeys.MODULE_DEPENDENCY,
-          ModuleDependencyData(androidGradleSourceSetDataNode.data, dependsOnGradleSourceSet.data)
+          ModuleDependencyData(androidGradleSourceSetDataNode.data, dependsOnGradleSourceSet.data),
         )
       }
     }
@@ -110,26 +111,32 @@ class KotlinAndroidMPPGradleProjectResolver : AbstractProjectResolverExtension()
 /**
  * Populates Android variant IDE model with source directories present in the MPP model but absent in the variant model.
  *
- * This is a temporary workaround needed to handle additional Android source sets created by MPP, which we remove from the MPP model
- * since they are not true KMP fragments are just source directories compiled together with all other Android sources.
+ * This is a temporary workaround needed to handle additional Android source sets created by MPP, which we remove from the MPP model since
+ * they are not true KMP fragments are just source directories compiled together with all other Android sources.
  *
  * This method is supposed to receive an already patched [mppModel], i.e. where all android source sets are already merged into the root
  * source sets of each Android compilation.
  */
-fun IdeVariantCoreImpl.patchFromMppModel(
-  androidProject: IdeAndroidProjectImpl,
-  mppModel: KotlinMPPGradleModel
-): IdeVariantCoreImpl {
+fun IdeVariantCoreImpl.patchFromMppModel(androidProject: IdeAndroidProjectImpl, mppModel: KotlinMPPGradleModel): IdeVariantCoreImpl {
   val variantName = this.name
 
   fun sourceProvidersFor(artifact: IdeModuleWellKnownSourceSet): List<IdeSourceProvider> {
     return listOfNotNull(
       this.artifact(artifact)?.variantSourceProvider,
       this.artifact(artifact)?.multiFlavorSourceProvider,
-      *(androidProject.multiVariantData?.productFlavors.orEmpty().filter { it.productFlavor.name in this.productFlavors }
-        .mapNotNull { it.sourceProvider(artifact) }).toTypedArray(),
-      *(androidProject.multiVariantData?.buildTypes.orEmpty().filter { it.buildType.name == this.buildType }.mapNotNull { it.sourceProvider(artifact) }).toTypedArray(),
-      androidProject.defaultSourceProvider.sourceProvider(artifact)
+      *(androidProject.multiVariantData
+          ?.productFlavors
+          .orEmpty()
+          .filter { it.productFlavor.name in this.productFlavors }
+          .mapNotNull { it.sourceProvider(artifact) })
+        .toTypedArray(),
+      *(androidProject.multiVariantData
+          ?.buildTypes
+          .orEmpty()
+          .filter { it.buildType.name == this.buildType }
+          .mapNotNull { it.sourceProvider(artifact) })
+        .toTypedArray(),
+      androidProject.defaultSourceProvider.sourceProvider(artifact),
     )
   }
 
@@ -147,60 +154,56 @@ fun IdeVariantCoreImpl.patchFromMppModel(
     val sourceSets = sourceSetsFor(artifact)
     val sourceProviders = sourceProvidersFor(artifact)
 
-    val missingSourceDirs = sourceSets.flatMap { it.sourceDirs }.toSet() -
-      sourceProviders.flatMap { it.javaDirectories + it.kotlinDirectories }.toSet()
+    val missingSourceDirs =
+      sourceSets.flatMap { it.sourceDirs }.toSet() - sourceProviders.flatMap { it.javaDirectories + it.kotlinDirectories }.toSet()
 
-    val missingResourceDirs = sourceSets.flatMap { it.resourceDirs }.toSet() -
-      sourceProviders.flatMap { it.resourcesDirectories }.toSet()
+    val missingResourceDirs = sourceSets.flatMap { it.resourceDirs }.toSet() - sourceProviders.flatMap { it.resourcesDirectories }.toSet()
 
     if (missingSourceDirs.isEmpty() && missingResourceDirs.isEmpty()) return this
 
-    val thisOrNewProvider = this
-      ?: IdeSourceProvider(
-        // We cannot use [variantName] directly because it is likely to clash with its build type if the variant specific source provider
-        // is null
-        name = "${variantName}_KotlinMPP",
-        // The location of this root folder does not really matter. It is used as an anchor for relative paths stored inside the object,
-        // but paths returned are absolute anyway. Redirecting it to a non-existent subdirectory allows us to avoid conflicting content
-        // roots set up for non-existent manifest files.
-        folder = root?.resolve("__KotlinMPP__"),
+    val thisOrNewProvider =
+      this
+        ?: IdeSourceProvider(
+          // We cannot use [variantName] directly because it is likely to clash with its build type if the variant specific source provider
+          // is null
+          name = "${variantName}_KotlinMPP",
+          // The location of this root folder does not really matter. It is used as an anchor for relative paths stored inside the object,
+          // but paths returned are absolute anyway. Redirecting it to a non-existent subdirectory allows us to avoid conflicting content
+          // roots set up for non-existent manifest files.
+          folder = root?.resolve("__KotlinMPP__"),
 
-        // This is unfortunately a required property, and it is already meaningless in unit test artifacts. Here, we return a second copy
-        // of the same file returned by the default configuration to avoid NPEs in various places.
-        manifestFile = "AndroidManifest.xml",
-        javaDirectories = emptyList(),
-        kotlinDirectories = emptyList(),
-        resourcesDirectories = emptyList(),
-        aidlDirectories = emptyList(),
-        renderscriptDirectories = emptyList(),
-        resDirectories = emptyList(),
-        assetsDirectories = emptyList(),
-        jniLibsDirectories = emptyList(),
-        shadersDirectories = emptyList(),
-        mlModelsDirectories = emptyList(),
-        customSourceDirectories = emptyList(),
-        baselineProfileDirectories = emptyList()
-      )
+          // This is unfortunately a required property, and it is already meaningless in unit test artifacts. Here, we return a second copy
+          // of the same file returned by the default configuration to avoid NPEs in various places.
+          manifestFile = "AndroidManifest.xml",
+          javaDirectories = emptyList(),
+          kotlinDirectories = emptyList(),
+          resourcesDirectories = emptyList(),
+          aidlDirectories = emptyList(),
+          renderscriptDirectories = emptyList(),
+          resDirectories = emptyList(),
+          assetsDirectories = emptyList(),
+          jniLibsDirectories = emptyList(),
+          shadersDirectories = emptyList(),
+          mlModelsDirectories = emptyList(),
+          customSourceDirectories = emptyList(),
+          baselineProfileDirectories = emptyList(),
+          keepRulesDirectoriesField = emptyList(),
+        )
 
     return thisOrNewProvider.appendDirectories(
       javaDirectories = missingSourceDirs.toList(),
-      resourcesDirectories = missingResourceDirs.toList()
+      resourcesDirectories = missingResourceDirs.toList(),
     )
   }
 
   return this.copy(
-    mainArtifact = mainArtifact.copy(
-      variantSourceProvider = mainArtifact.variantSourceProvider.patch(MAIN)
-    ),
-    deviceTestArtifacts = deviceTestArtifacts.map {
-      it.copy(variantSourceProvider = it.variantSourceProvider?.patch(it.name.toWellKnownSourceSet()))
-                                                  },
-    hostTestArtifacts = hostTestArtifacts.map {
-      it.copy( variantSourceProvider = it.variantSourceProvider.patch(it.name.toWellKnownSourceSet()))
-                                              } ,
-    testFixturesArtifact = testFixturesArtifact?.copy(
-      variantSourceProvider = testFixturesArtifact?.variantSourceProvider.patch(TEST_FIXTURES)
-    )
+    mainArtifact = mainArtifact.copy(variantSourceProvider = mainArtifact.variantSourceProvider.patch(MAIN)),
+    deviceTestArtifacts =
+      deviceTestArtifacts.map { it.copy(variantSourceProvider = it.variantSourceProvider?.patch(it.name.toWellKnownSourceSet())) },
+    hostTestArtifacts =
+      hostTestArtifacts.map { it.copy(variantSourceProvider = it.variantSourceProvider.patch(it.name.toWellKnownSourceSet())) },
+    testFixturesArtifact =
+      testFixturesArtifact?.copy(variantSourceProvider = testFixturesArtifact?.variantSourceProvider.patch(TEST_FIXTURES)),
   )
 }
 
@@ -215,28 +218,29 @@ private fun IdeVariantCoreImpl.artifact(artifact: IdeModuleWellKnownSourceSet): 
 }
 
 private val IdeModuleWellKnownSourceSet.artifactName: String
-  get() = when (this) {
-    MAIN -> ARTIFACT_NAME_MAIN
-    ANDROID_TEST -> ARTIFACT_NAME_ANDROID_TEST
-    UNIT_TEST -> ARTIFACT_NAME_UNIT_TEST
-    SCREENSHOT_TEST -> ARTIFACT_NAME_SCREENSHOT_TEST
-    TEST_FIXTURES -> ARTIFACT_NAME_TEST_FIXTURES
-  }
+  get() =
+    when (this) {
+      MAIN -> ARTIFACT_NAME_MAIN
+      ANDROID_TEST -> ARTIFACT_NAME_ANDROID_TEST
+      UNIT_TEST -> ARTIFACT_NAME_UNIT_TEST
+      SCREENSHOT_TEST -> ARTIFACT_NAME_SCREENSHOT_TEST
+      TEST_FIXTURES -> ARTIFACT_NAME_TEST_FIXTURES
+    }
 
 private fun IdeSourceProviderContainer.sourceProvider(artifact: IdeModuleWellKnownSourceSet): IdeSourceProvider? {
   return when (artifact) {
     MAIN -> sourceProvider
     TEST_FIXTURES -> extraSourceProviders.singleOrNull { it.artifactName == TEST_FIXTURES.artifactName }?.sourceProvider
     UNIT_TEST -> extraSourceProviders.singleOrNull { it.artifactName == UNIT_TEST.artifactName }?.sourceProvider
-    SCREENSHOT_TEST -> extraSourceProviders.singleOrNull{ it.artifactName == SCREENSHOT_TEST.artifactName }?.sourceProvider
+    SCREENSHOT_TEST -> extraSourceProviders.singleOrNull { it.artifactName == SCREENSHOT_TEST.artifactName }?.sourceProvider
     ANDROID_TEST -> extraSourceProviders.singleOrNull { it.artifactName == ANDROID_TEST.artifactName }?.sourceProvider
   }
 }
 
-/**
- * Returns all Android compilations for the given [variant].
- */
-private fun KotlinMPPGradleModel.androidCompilationsForVariant(variant: String): List<Pair<IdeModuleWellKnownSourceSet, KotlinCompilation>> {
+/** Returns all Android compilations for the given [variant]. */
+private fun KotlinMPPGradleModel.androidCompilationsForVariant(
+  variant: String
+): List<Pair<IdeModuleWellKnownSourceSet, KotlinCompilation>> {
   return targets
     .asSequence()
     .flatMap { it.androidCompilations() }
@@ -258,21 +262,16 @@ private fun KotlinMPPGradleModel.removeWrongCompilationsAndMergeNonNeededSourceS
 
   androidTargets.forEach { androidTarget ->
     val wrongCompilations: List<KotlinCompilation> =
-      androidTarget
-        .androidCompilations()
-        .filter { androidCompilation -> IdeModuleWellKnownSourceSet.findFor(variant, androidCompilation) == null }
+      androidTarget.androidCompilations().filter { androidCompilation ->
+        IdeModuleWellKnownSourceSet.findFor(variant, androidCompilation) == null
+      }
 
     androidTarget.removeCompilations(wrongCompilations)
   }
 
-  val validAndroidSourceSets = androidTargets.asSequence()
-    .flatMap { it.androidCompilations() }
-    .flatMap { it.androidSourceSets() }
-    .toList()
+  val validAndroidSourceSets = androidTargets.asSequence().flatMap { it.androidCompilations() }.flatMap { it.androidSourceSets() }.toList()
 
-  val validAndroidSourceSetNames = validAndroidSourceSets
-    .map { it.name }
-    .toSet()
+  val validAndroidSourceSetNames = validAndroidSourceSets.map { it.name }.toSet()
 
   val pureAndroidSourceSetNames =
     sourceSetsByName.values
@@ -283,15 +282,8 @@ private fun KotlinMPPGradleModel.removeWrongCompilationsAndMergeNonNeededSourceS
       .toSet()
 
   val orphanAndroidSourceSetNames =
-    sourceSetsByName.values
-      .filter { sourceSet -> sourceSet.actualPlatforms.any { it == KotlinPlatform.ANDROID} }
-      .map { it.name }
-      .toSet() -
-      targets
-        .flatMap { it.compilations }
-        .flatMap { it.allSourceSets }
-        .map { it.name }
-        .toSet()
+    sourceSetsByName.values.filter { sourceSet -> sourceSet.actualPlatforms.any { it == KotlinPlatform.ANDROID } }.map { it.name }.toSet() -
+      targets.flatMap { it.compilations }.flatMap { it.allSourceSets }.map { it.name }.toSet()
 
   val wrongSourceSetNames = pureAndroidSourceSetNames - validAndroidSourceSetNames + orphanAndroidSourceSetNames
 
@@ -313,71 +305,76 @@ private fun IdeModuleWellKnownSourceSet.getRootKotlinSourceSet(compilation: Kotl
   return compilation.declaredSourceSets.singleOrNull { it.name in sourceSetNames }
 }
 
-private fun IdeModuleWellKnownSourceSet.androidCompilationNameSuffix() = when (this) {
-  MAIN -> ""
-  ANDROID_TEST -> "AndroidTest"
-  UNIT_TEST -> "UnitTest"
-  SCREENSHOT_TEST -> "ScreenshotTest"
-  TEST_FIXTURES -> "TestFixtures"
-}
+private fun IdeModuleWellKnownSourceSet.androidCompilationNameSuffix() =
+  when (this) {
+    MAIN -> ""
+    ANDROID_TEST -> "AndroidTest"
+    UNIT_TEST -> "UnitTest"
+    SCREENSHOT_TEST -> "ScreenshotTest"
+    TEST_FIXTURES -> "TestFixtures"
+  }
 
 // TODO(b/246924347): Add an integration test for KMP v2 source layout.
-private fun IdeModuleWellKnownSourceSet.kmpSourceSetSuffix() = when (this) {
-  MAIN -> setOf("main")
-  ANDROID_TEST -> setOf("androidTest", "instrumentedTest")
-  UNIT_TEST -> setOf("test", "unitTest")
-  // TODO (karimai): verify this when screenshotTest support is enabled for KMP.
-  SCREENSHOT_TEST -> setOf("screenshotTest")
-  TEST_FIXTURES -> setOf("testFixtures")
-}
+private fun IdeModuleWellKnownSourceSet.kmpSourceSetSuffix() =
+  when (this) {
+    MAIN -> setOf("main")
+    ANDROID_TEST -> setOf("androidTest", "instrumentedTest")
+    UNIT_TEST -> setOf("test", "unitTest")
+    // TODO (karimai): verify this when screenshotTest support is enabled for KMP.
+    SCREENSHOT_TEST -> setOf("screenshotTest")
+    TEST_FIXTURES -> setOf("testFixtures")
+  }
 
-private fun KotlinMPPGradleModel.androidTargets() =
-  targets.filter { it.platform == KotlinPlatform.ANDROID }
+private fun KotlinMPPGradleModel.androidTargets() = targets.filter { it.platform == KotlinPlatform.ANDROID }
 
-private fun KotlinTarget.androidCompilations(): List<KotlinCompilation> =
-  compilations.filter { it.platform == KotlinPlatform.ANDROID }
+private fun KotlinTarget.androidCompilations(): List<KotlinCompilation> = compilations.filter { it.platform == KotlinPlatform.ANDROID }
 
 private fun KotlinCompilation.androidSourceSets(): List<KotlinSourceSet> =
   IdeModuleWellKnownSourceSet.values().mapNotNull { it.getRootKotlinSourceSet(this) }
 
 private fun KotlinTarget.removeCompilations(compilationsToRemove: Collection<KotlinCompilation>) {
   val mutableCompilations = compilations as? MutableCollection<KotlinCompilation> ?: return
-  kotlin.runCatching { compilationsToRemove.forEach(mutableCompilations::remove) }
+  kotlin
+    .runCatching { compilationsToRemove.forEach(mutableCompilations::remove) }
     .onFailure {
-      Logger.getInstance(KotlinAndroidMPPGradleProjectResolver::class.java)
-        .error("Failed to remove not necessary Kotlin compilations", it)
+      Logger.getInstance(KotlinAndroidMPPGradleProjectResolver::class.java).error("Failed to remove not necessary Kotlin compilations", it)
     }
 }
 
 private fun KotlinMPPGradleModel.mergeSourceSets(sourceSetsToRemove: Set<String>, validAndroidSourceSets: List<KotlinSourceSet>) {
-  kotlin.runCatching {
-    val validAndroidSourceSetNames = validAndroidSourceSets.map { it.name }.toSet()
-    androidTargets().flatMap { it.androidCompilations() }.forEach { androidCompilation ->
-      val compilationRemovedSourceSets = androidCompilation.allSourceSets.filter { it.name in sourceSetsToRemove }.toSet()
-      androidCompilation.allSourceSets
-        .filter { it.name in validAndroidSourceSetNames }
-        .forEach { compilationSourceSet ->
-          compilationSourceSet.sourceDirs.castTo<MutableSet<File>>().addAll(compilationRemovedSourceSets.flatMap { it.sourceDirs })
-          compilationSourceSet.resourceDirs.castTo<MutableSet<File>>().addAll(compilationRemovedSourceSets.flatMap { it.resourceDirs })
+  kotlin
+    .runCatching {
+      val validAndroidSourceSetNames = validAndroidSourceSets.map { it.name }.toSet()
+      androidTargets()
+        .flatMap { it.androidCompilations() }
+        .forEach { androidCompilation ->
+          val compilationRemovedSourceSets = androidCompilation.allSourceSets.filter { it.name in sourceSetsToRemove }.toSet()
+          androidCompilation.allSourceSets
+            .filter { it.name in validAndroidSourceSetNames }
+            .forEach { compilationSourceSet ->
+              compilationSourceSet.sourceDirs.castTo<MutableSet<File>>().addAll(compilationRemovedSourceSets.flatMap { it.sourceDirs })
+              compilationSourceSet.resourceDirs.castTo<MutableSet<File>>().addAll(compilationRemovedSourceSets.flatMap { it.resourceDirs })
+            }
+          androidCompilation.allSourceSets
+            .takeUnless { it.isEmpty() }
+            ?.castTo<MutableSet<KotlinSourceSet>>()
+            ?.removeAll(compilationRemovedSourceSets)
+          androidCompilation.declaredSourceSets
+            .takeUnless { it.isEmpty() }
+            ?.castTo<MutableSet<KotlinSourceSet>>()
+            ?.removeAll(compilationRemovedSourceSets)
         }
-      androidCompilation.allSourceSets.takeUnless { it.isEmpty() }
-        ?.castTo<MutableSet<KotlinSourceSet>>()
-        ?.removeAll(compilationRemovedSourceSets)
-      androidCompilation.declaredSourceSets.takeUnless { it.isEmpty() }
-        ?.castTo<MutableSet<KotlinSourceSet>>()
-        ?.removeAll(compilationRemovedSourceSets)
-    }
 
-    val mutableSourceSetsByName = sourceSetsByName as? MutableMap<String, KotlinSourceSet> ?: return
-    sourceSetsToRemove.forEach { nameToRemove ->
-      mutableSourceSetsByName.remove(nameToRemove)
-      validAndroidSourceSets.forEach { valid ->
-        valid.declaredDependsOnSourceSets.takeUnless { it.isEmpty() }?.castTo<MutableSet<String>>()?.remove(nameToRemove)
-        valid.allDependsOnSourceSets.takeUnless { it.isEmpty() }?.castTo<MutableSet<String>>()?.remove(nameToRemove)
-        valid.additionalVisibleSourceSets.takeUnless { it.isEmpty() }?.castTo<MutableSet<String>>()?.remove(nameToRemove)
+      val mutableSourceSetsByName = sourceSetsByName as? MutableMap<String, KotlinSourceSet> ?: return
+      sourceSetsToRemove.forEach { nameToRemove ->
+        mutableSourceSetsByName.remove(nameToRemove)
+        validAndroidSourceSets.forEach { valid ->
+          valid.declaredDependsOnSourceSets.takeUnless { it.isEmpty() }?.castTo<MutableSet<String>>()?.remove(nameToRemove)
+          valid.allDependsOnSourceSets.takeUnless { it.isEmpty() }?.castTo<MutableSet<String>>()?.remove(nameToRemove)
+          valid.additionalVisibleSourceSets.takeUnless { it.isEmpty() }?.castTo<MutableSet<String>>()?.remove(nameToRemove)
+        }
       }
     }
-  }
     .onFailure {
       Logger.getInstance(KotlinAndroidMPPGradleProjectResolver::class.java)
         .error("Failed to merge and remove not necessary Kotlin source sets", it)

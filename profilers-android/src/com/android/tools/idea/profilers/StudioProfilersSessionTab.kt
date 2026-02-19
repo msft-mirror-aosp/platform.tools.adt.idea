@@ -27,25 +27,27 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import icons.StudioIcons
 
-/**
- * A tab in the Profiler window containing a [SessionProfilersView].
- */
-class StudioProfilersSessionTab(private val profilers: StudioProfilers,
-                                private val window: ToolWindowWrapper,
-                                ideProfilerComponents: IdeProfilerComponents,
-                                project: Project) : AspectObserver(), StudioProfilersTab {
+/** A tab in the Profiler window containing a [SessionProfilersView]. */
+class StudioProfilersSessionTab(
+  private val profilers: StudioProfilers,
+  private val window: ToolWindowWrapper,
+  ideProfilerComponents: IdeProfilerComponents,
+  project: Project,
+) : AspectObserver(), StudioProfilersTab {
 
   override val view: StudioProfilersView
 
   init {
-    profilers.sessionsManager.addDependency(this)
+    profilers.sessionsManager
+      .addDependency(this)
       .onChange(SessionAspect.SELECTED_SESSION) { selectedSessionChanged() }
       .onChange(SessionAspect.PROFILING_SESSION) { profilingSessionChanged() }
 
     view = SessionProfilersView(profilers, ideProfilerComponents, this)
 
-    project.messageBus.connect(this).subscribe(ToolWindowManagerListener.TOPIC,
-                                               AndroidProfilerWindowManagerListener(project, profilers, view))
+    project.messageBus
+      .connect(this)
+      .subscribe(ToolWindowManagerListener.TOPIC, AndroidProfilerWindowManagerListener(project, profilers, view))
   }
 
   override fun dispose() {}
@@ -60,10 +62,12 @@ class StudioProfilersSessionTab(private val profilers: StudioProfilers,
   private fun profilingSessionChanged() {
     val profilingSession = profilers.sessionsManager.profilingSession
 
-    window.setIcon(if (SessionsManager.isSessionAlive(profilingSession)) {
-      ExecutionUtil.getLiveIndicator(StudioIcons.Shell.ToolWindows.ANDROID_PROFILER)
-    } else {
-      StudioIcons.Shell.ToolWindows.ANDROID_PROFILER
-    })
+    window.setIcon(
+      if (SessionsManager.isSessionAlive(profilingSession)) {
+        ExecutionUtil.getLiveIndicator(StudioIcons.Shell.ToolWindows.ANDROID_PROFILER)
+      } else {
+        StudioIcons.Shell.ToolWindows.ANDROID_PROFILER
+      }
+    )
   }
 }

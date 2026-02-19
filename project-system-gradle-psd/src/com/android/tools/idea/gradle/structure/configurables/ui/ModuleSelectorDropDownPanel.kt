@@ -18,17 +18,18 @@ package com.android.tools.idea.gradle.structure.configurables.ui
 import com.android.tools.idea.gradle.structure.configurables.BasePerspectiveConfigurable
 import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.actionSystem.*
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionToolbar
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.ui.IdeBorderFactory
 import com.intellij.ui.SideBorder
 import java.awt.BorderLayout
 import javax.swing.JPanel
 
-class ModuleSelectorDropDownPanel(
-  context: PsContext,
-  perspective: BasePerspectiveConfigurable
-) : JPanel(BorderLayout()) {
+class ModuleSelectorDropDownPanel(context: PsContext, perspective: BasePerspectiveConfigurable) : JPanel(BorderLayout()) {
 
   private val actions = createToolbarActions(context, perspective)
   private val toolbar = createToolbar(actions)
@@ -55,11 +56,11 @@ private fun createToolbarActions(context: PsContext, perspective: BasePerspectiv
           MODULES_LIST_MINIMIZE = false
           fireUISettingsChanged()
         }
-    })
+    },
+  )
 
 private fun createToolbar(actions: ActionGroup) =
   ActionManager.getInstance().createActionToolbar("TOP", actions, true).apply {
     setTargetComponent(null)
     component.border = IdeBorderFactory.createBorder(SideBorder.BOTTOM)
   }
-

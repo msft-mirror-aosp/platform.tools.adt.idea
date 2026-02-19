@@ -36,10 +36,8 @@ class DesignerUsageTrackerManager<T, K : Disposable>(
   private val nopTracker: T,
 ) {
 
-  private val sTrackersCache =
-    CacheBuilder.newBuilder().weakKeys().expireAfterAccess(5, TimeUnit.MINUTES).build<K, T>()
-  private val ourExecutorService =
-    ThreadPoolExecutor(0, 1, 1, TimeUnit.MINUTES, LinkedBlockingQueue(10))
+  private val sTrackersCache = CacheBuilder.newBuilder().weakKeys().expireAfterAccess(5, TimeUnit.MINUTES).build<K, T>()
+  private val ourExecutorService = ThreadPoolExecutor(0, 1, 1, TimeUnit.MINUTES, LinkedBlockingQueue(10))
 
   /** Returns an UsageTracker for the given surface or a no-op tracker if the surface is null */
   @VisibleForTesting
@@ -60,15 +58,13 @@ class DesignerUsageTrackerManager<T, K : Disposable>(
   }
 
   /**
-   * Returns an usage tracker for the given surface or a no-op tracker if the surface is null or
-   * stats tracking is disabled. The stats are also disabled during unit testing.
+   * Returns an usage tracker for the given surface or a no-op tracker if the surface is null or stats tracking is disabled. The stats are
+   * also disabled during unit testing.
    */
   fun getInstance(key: K?): T {
     // If we are in unit testing mode, do not allow creating new instances.
     // Test instances should be used.
-    return if (AnalyticsSettings.optedIn)
-      getInstanceInner(key, !ApplicationManager.getApplication().isUnitTestMode)
-    else nopTracker
+    return if (AnalyticsSettings.optedIn) getInstanceInner(key, !ApplicationManager.getApplication().isUnitTestMode) else nopTracker
   }
 
   /** Sets the corresponding usage tracker for a [DesignSurface] in tests. */

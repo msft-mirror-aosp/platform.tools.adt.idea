@@ -41,42 +41,28 @@ internal fun contextLabel(text: String, contextHelpText: String): JLabel {
 // TODO: parentej needs to be updated to 4.0.0 when released
 internal const val COMPOSE_MIN_AGP_VERSION = "4.0.0-alpha02"
 
-/**
- * Checks if the project's AGP version is new enough to support Compose. If we can't determine it,
- * assume that it is.
- */
+/** Checks if the project's AGP version is new enough to support Compose. If we can't determine it, assume that it is. */
 internal fun hasComposeMinAgpVersion(project: Project): Boolean {
   return hasMinAgpVersion(project, COMPOSE_MIN_AGP_VERSION)
 }
 
-/**
- * Checks if the project's AGP version is new enough to support Test Suite. If we can't determine
- * it, assume that it is.
- */
+/** Checks if the project's AGP version is new enough to support Test Suite. If we can't determine it, assume that it is. */
 fun hasTestSuiteMinAgpVersion(project: Project): Boolean {
   return hasMinAgpVersion(project, getMinimumAgpVersionForTestSuiteSupport())
 }
 
-/**
- * Test suites in AGP are supported from AGP 9.0.0-alpha13 onwards. However, if there is a more
- * recent alpha version available, or a stable 9.0.0 version, we should use that instead.
- */
-fun getMinimumAgpVersionForTestSuiteSupport(
-  latestKnownVersion: AgpVersion = AgpVersions.latestKnown
-): String {
+/** Test suites in AGP are supported from AGP 9.0.0 onwards */
+fun getMinimumAgpVersionForTestSuiteSupport(latestKnownVersion: AgpVersion = AgpVersions.latestKnown): String {
   return if (latestKnownVersion >= AgpVersion.parse("9.0.0")) {
     "9.0.0"
-  } else if (latestKnownVersion >= AgpVersion.parse("9.0.0-alpha13")) {
-    latestKnownVersion.toString()
   } else {
-    "9.0.0-alpha13"
+    // When the latest known version is less than 9.0.0, we should recommend the latest known
+    // published AGP release
+    "9.0.0-beta05"
   }
 }
 
-/**
- * Checks if the project's AGP version is new enough to support a given feature. If we can't
- * determine it, assume that it is.
- */
+/** Checks if the project's AGP version is new enough to support a given feature. If we can't determine it, assume that it is. */
 private fun hasMinAgpVersion(project: Project, minAgpVersion: String): Boolean {
   val androidPluginInfo = AndroidPluginInfo.findFromModel(project) ?: return true
   val agpVersion = androidPluginInfo.pluginVersion ?: return true
@@ -84,9 +70,8 @@ private fun hasMinAgpVersion(project: Project, minAgpVersion: String): Boolean {
 }
 
 /**
- * Utility method used to create a URL from its String representation without throwing a
- * [MalformedURLException]. Callers should use this if they're absolutely certain their URL is well
- * formatted.
+ * Utility method used to create a URL from its String representation without throwing a [MalformedURLException]. Callers should use this if
+ * they're absolutely certain their URL is well formatted.
  */
 internal fun toUrl(urlAsString: String): URL {
   val url: URL =

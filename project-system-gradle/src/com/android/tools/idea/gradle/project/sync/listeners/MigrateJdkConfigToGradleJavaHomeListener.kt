@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync.listeners
 
 import com.android.tools.idea.flags.StudioFlags.MIGRATE_PROJECT_TO_GRADLE_LOCAL_JAVA_HOME
 import com.android.tools.idea.gradle.extensions.isProjectUsingDaemonJvmCriteria
+import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.ProjectMigrationsPersistentState
 import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot
 import com.android.tools.idea.gradle.project.sync.hyperlink.OpenUrlHyperlink
@@ -30,25 +31,26 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil.USE_INTERNAL_JAVA
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil.USE_JAVA_HOME
 import com.intellij.openapi.project.Project
+import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.annotations.SystemIndependent
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.util.USE_GRADLE_JAVA_HOME
 import org.jetbrains.plugins.gradle.util.USE_GRADLE_LOCAL_JAVA_HOME
-import java.io.File
 
 /**
- * This [GradleSyncListenerWithRoot] is responsible given Gradle root project to migrate the current JDK configuration
- * to [USE_GRADLE_LOCAL_JAVA_HOME] macro after a successful Gradle sync, populating [GradleConfigProperties] with the current JDK path
+ * This [GradleSyncListenerWithRoot] is responsible given Gradle root project to migrate the current JDK configuration to
+ * [USE_GRADLE_LOCAL_JAVA_HOME] macro after a successful Gradle sync, populating [GradleConfigProperties] with the current JDK path
  *
  * NOTE: Projects using [Gradle Daemon JVM criteria](https://docs.gradle.org/current/userguide/gradle_daemon.html#sec:daemon_jvm_criteria)
  * will skip this given that defined criteria will take precedence over the Gradle JDK configuration.
  */
 @Suppress("UnstableApiUsage")
-class MigrateJdkConfigToGradleJavaHomeListener : GradleSyncListenerWithRoot {
+class MigrateJdkConfigToGradleJavaHomeListener(private val coroutineScope: CoroutineScope) : GradleSyncListenerWithRoot {
 
   override fun syncSucceeded(project: Project, rootProjectPath: @SystemIndependent String) {
     if (!MIGRATE_PROJECT_TO_GRADLE_LOCAL_JAVA_HOME.get()) return
@@ -60,22 +62,26 @@ class MigrateJdkConfigToGradleJavaHomeListener : GradleSyncListenerWithRoot {
 
     val gradleSettings = GradleSettings.getInstance(project).getLinkedProjectSettings(rootProjectPath)
     when (gradleSettings?.gradleJvm) {
-      USE_GRADLE_LOCAL_JAVA_HOME, USE_GRADLE_JAVA_HOME, USE_JAVA_HOME, USE_INTERNAL_JAVA, JDK_LOCATION_ENV_VARIABLE_NAME -> return
+      USE_GRADLE_LOCAL_JAVA_HOME,
+      USE_GRADLE_JAVA_HOME,
+      USE_JAVA_HOME,
+      USE_INTERNAL_JAVA,
+      JDK_LOCATION_ENV_VARIABLE_NAME -> return
       else -> {
         if (IdeSdks.getInstance().isUsingEnvVariableJdk) return
 
-        migrateToGradleLocalJavaHome(project, rootProjectPath, projectMigrations, gradleSettings)
+        coroutineScope.launch { migrateToGradleLocalJavaHome(project, rootProjectPath, projectMigrations, gradleSettings) }
       }
     }
   }
 
-  private fun migrateToGradleLocalJavaHome(
+  private suspend fun migrateToGradleLocalJavaHome(
     project: Project,
     rootProjectPath: @SystemIndependent String,
     projectMigrations: ProjectMigrationsPersistentState,
-    gradleSettings: GradleProjectSettings?
+    gradleSettings: GradleProjectSettings?,
   ) {
-    GradleInstallationManager.getInstance().getGradleJvmPath(project, rootProjectPath)?.let { gradleJdkPath ->
+    AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(project, rootProjectPath)?.let { gradleJdkPath ->
       GradleConfigProperties(File(rootProjectPath)).apply {
         javaHome = File(gradleJdkPath)
         save()
@@ -87,27 +93,26 @@ class MigrateJdkConfigToGradleJavaHomeListener : GradleSyncListenerWithRoot {
     }
   }
 
-  private fun showMigratedJdkConfigNotification(
-    project: Project,
-    rootProjectPath: @SystemIndependent String,
-  ) {
-    val hyperlinks: List<NotificationHyperlink> = listOfNotNull(
-      OpenUrlHyperlink(
-        AndroidBundle.message("project.migrated.to.gradle.local.java.home.info.url"),
-        AndroidBundle.message("project.migrated.to.gradle.local.java.home.info")
-      ),
-      SelectJdkFromFileSystemHyperlink.create(
-        project,
-        rootProjectPath,
-        text = AndroidBundle.message("project.migrated.to.gradle.local.java.home.button")
+  private fun showMigratedJdkConfigNotification(project: Project, rootProjectPath: @SystemIndependent String) {
+    val hyperlinks: List<NotificationHyperlink> =
+      listOfNotNull(
+        OpenUrlHyperlink(
+          AndroidBundle.message("project.migrated.to.gradle.local.java.home.info.url"),
+          AndroidBundle.message("project.migrated.to.gradle.local.java.home.info"),
+        ),
+        SelectJdkFromFileSystemHyperlink.create(
+          project,
+          rootProjectPath,
+          text = AndroidBundle.message("project.migrated.to.gradle.local.java.home.button"),
+        ),
       )
-    )
 
-    AndroidNotification.getInstance(project).showBalloon(
-      AndroidBundle.message("project.migrated.to.gradle.local.java.home.title"),
-      AndroidBundle.message("project.migrated.to.gradle.local.java.home.message", File(rootProjectPath).name),
-      NotificationType.INFORMATION,
-      *hyperlinks.toTypedArray()
-    )
+    AndroidNotification.getInstance(project)
+      .showBalloon(
+        AndroidBundle.message("project.migrated.to.gradle.local.java.home.title"),
+        AndroidBundle.message("project.migrated.to.gradle.local.java.home.message", File(rootProjectPath).name),
+        NotificationType.INFORMATION,
+        *hyperlinks.toTypedArray(),
+      )
   }
 }

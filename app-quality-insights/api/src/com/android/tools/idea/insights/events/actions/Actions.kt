@@ -16,6 +16,8 @@
 package com.android.tools.idea.insights.events.actions
 
 import com.android.tools.idea.insights.client.FetchSource
+import com.android.tools.idea.insights.experiments.InsightFeedback
+import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.issue.FailureType
 import com.android.tools.idea.insights.model.issue.IssueId
@@ -26,8 +28,7 @@ import kotlin.reflect.KClass
 /**
  * Describes all the actions available in App Insights.
  *
- * Notably, actions are just values and have no inherent semantics, instead they need to be
- * interpreted, see [ActionDispatcher].
+ * Notably, actions are just values and have no inherent semantics, instead they need to be interpreted, see [ActionDispatcher].
  */
 sealed class Action {
   /** Denotes a single(non-composite) action. */
@@ -41,8 +42,8 @@ sealed class Action {
   /**
    * Conditionally cancels the [Action], returns null if cancellation succeeds.
    *
-   * Otherwise, the returned action can be either returned unmodified or partially cancelled in the
-   * case where some actions of a [composite][Multiple] action are cancelled.
+   * Otherwise, the returned action can be either returned unmodified or partially cancelled in the case where some actions of a
+   * [composite][Multiple] action are cancelled.
    */
   fun maybeCancel(other: Action): Action? =
     when (other) {
@@ -62,8 +63,8 @@ sealed class Action {
   /**
    * Fetch data.
    *
-   * Notes: it's different from [Refresh] in that it does not indicate an explicit intent to make a
-   * "remote" fetch, cache can be used instead.
+   * Notes: it's different from [Refresh] in that it does not indicate an explicit intent to make a "remote" fetch, cache can be used
+   * instead.
    */
   data class Fetch(val reason: FetchSource) : Single() {
 
@@ -72,19 +73,16 @@ sealed class Action {
 
   /** Fetch issue details. */
   data class FetchDetails(override val id: IssueId, val variantId: String? = null) : IssueAction() {
-    override fun maybeDoCancel(reasons: List<Single>) =
-      cancelIf(reasons) { it is FetchDetails || shouldCancelFetch(it) }
+    override fun maybeDoCancel(reasons: List<Single>) = cancelIf(reasons) { it is FetchDetails || shouldCancelFetch(it) }
   }
 
   /** Fetch an issue's variants. */
   data class FetchIssueVariants(override val id: IssueId) : IssueAction() {
-    override fun maybeDoCancel(reasons: List<Single>) =
-      cancelIf(reasons) { it is FetchIssueVariants || shouldCancelFetch(it) }
+    override fun maybeDoCancel(reasons: List<Single>) = cancelIf(reasons) { it is FetchIssueVariants || shouldCancelFetch(it) }
   }
 
   /** Fetch the sample events of an issue. */
-  data class ListEvents(override val id: IssueId, val variantId: String?, val token: String?) :
-    IssueAction() {
+  data class ListEvents(override val id: IssueId, val variantId: String?, val token: String?) : IssueAction() {
     override fun maybeDoCancel(reasons: List<Single>) =
       cancelIf(reasons) { it is ListEvents || it is FetchIssueVariants || shouldCancelFetch(it) }
   }
@@ -115,8 +113,7 @@ sealed class Action {
 
   /** Fetch notes for an issue. */
   data class FetchNotes(override val id: IssueId) : IssueAction() {
-    override fun maybeDoCancel(reasons: List<Single>) =
-      cancelIf(reasons) { it is FetchNotes || shouldCancelFetch(it) }
+    override fun maybeDoCancel(reasons: List<Single>) = cancelIf(reasons) { it is FetchNotes || shouldCancelFetch(it) }
   }
 
   /** Add a note to an issue. */
@@ -130,19 +127,22 @@ sealed class Action {
   data class DeleteNote(val noteId: NoteId) : IssueAction() {
     override val id = noteId.issueId
 
-    override fun maybeDoCancel(reasons: List<Single>) =
-      cancelIf(reasons) { it is DeleteNote && it.noteId == noteId }
+    override fun maybeDoCancel(reasons: List<Single>) = cancelIf(reasons) { it is DeleteNote && it.noteId == noteId }
   }
 
   /** Fetch AI generated insight */
-  data class FetchInsight(
+  data class FetchInsight(override val id: IssueId, val variantId: String?, val issueFatality: FailureType, val event: Event) :
+    IssueAction() {
+    override fun maybeDoCancel(reasons: List<Single>) = cancelIf(reasons) { it is FetchInsight || shouldCancelFetch(it) }
+  }
+
+  data class UpdateInsightFeedback(
     override val id: IssueId,
+    val connection: Connection,
     val variantId: String?,
-    val issueFatality: FailureType,
-    val event: Event,
+    val feedback: InsightFeedback,
   ) : IssueAction() {
-    override fun maybeDoCancel(reasons: List<Single>) =
-      cancelIf(reasons) { it is FetchInsight || shouldCancelFetch(it) }
+    override fun maybeDoCancel(reasons: List<Single>) = null
   }
 
   data class DisableAction(val action: KClass<out Action>) : Single() {
@@ -163,14 +163,11 @@ sealed class Action {
   /**
    * Composite action that contains 0+ actions.
    *
-   * Note: while composition order is preserved for deduplication purposes(see [ActionDispatcher]),
-   * execution is not guaranteed to happen in that order and can be done concurrently.
+   * Note: while composition order is preserved for deduplication purposes(see [ActionDispatcher]), execution is not guaranteed to happen in
+   * that order and can be done concurrently.
    */
   data class Multiple
-  @Deprecated(
-    "This is an internal constructor. Use and() to compose actions",
-    level = DeprecationLevel.ERROR,
-  )
+  @Deprecated("This is an internal constructor. Use and() to compose actions", level = DeprecationLevel.ERROR)
   internal constructor(val actions: List<Single>) : Action() {
 
     override fun toString(): String = "Multiple(${actions.joinToString()}"
@@ -222,8 +219,7 @@ sealed class Action {
     }
   }
 
-  infix fun and(others: Collection<Action>): Action =
-    others.fold(this) { acc, next -> acc and next }
+  infix fun and(others: Collection<Action>): Action = others.fold(this) { acc, next -> acc and next }
 
   val isNoop: Boolean
     get() = this is Multiple && this.actions.isEmpty()
@@ -232,12 +228,9 @@ sealed class Action {
     /** Action that does not do anything */
     @Suppress("DEPRECATION_ERROR") val NONE: Action = Multiple(listOf())
 
-    private fun shouldCancelFetch(reason: Action): Boolean =
-      reason is Fetch || reason is Refresh || reason is CancelFetches
+    private fun shouldCancelFetch(reason: Action): Boolean = reason is Fetch || reason is Refresh || reason is CancelFetches
 
-    private fun Action.cancelIf(
-      reasons: Iterable<Single>,
-      predicate: (Action) -> Boolean,
-    ): Action? = if (reasons.any(predicate)) null else this
+    private fun Action.cancelIf(reasons: Iterable<Single>, predicate: (Action) -> Boolean): Action? =
+      if (reasons.any(predicate)) null else this
   }
 }

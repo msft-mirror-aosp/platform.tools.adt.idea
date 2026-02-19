@@ -23,52 +23,38 @@ import com.google.idea.blaze.qsync.query.PackageSet
 import java.nio.file.Path
 
 interface BuildGraphData {
-  /**
-   * The language classes supported by the query sync.
-   */
+  /** The language classes supported by the query sync. */
   enum class LanguageClass {
-    JVM, CC
+    JVM,
+    CC,
   }
 
-  data class ProtoRules(
-    val fullModeRuleNames: Set<String>,
-    val liteModeRuleNames: Set<String>
-  ) {
+  data class ProtoRules(val fullModeRuleNames: Set<String>, val liteModeRuleNames: Set<String>) {
     companion object {
-      @VisibleForTesting
-      @JvmStatic
-      fun forTests(): ProtoRules = ProtoRules(
-        setOf("java_proto_library"),
-        setOf("java_lite_proto_library")
-      )
+      @VisibleForTesting @JvmStatic fun forTests(): ProtoRules = ProtoRules(setOf("java_proto_library"), setOf("java_lite_proto_library"))
     }
   }
 
-  /**
-   * A protobuf runtime variant.
-   */
-  enum class ProtoMode { FULL, LITE }
+  /** A protobuf runtime variant. */
+  enum class ProtoMode {
+    FULL,
+    LITE,
+  }
 
   /**
    * The protobuf runtime modes the target is used in.
    *
-   * For java targets it is the variant of the runtime it depends on and for proto_library-like
-   * targets it is the set of modes of tergets that depend on it.
+   * For java targets it is the variant of the runtime it depends on and for proto_library-like targets it is the set of modes of tergets
+   * that depend on it.
    */
   fun getProtoModes(label: Label): Set<ProtoMode>
 
-  /** A set of all the BUILD files  */
+  /** A set of all the BUILD files */
   fun packages(): PackageSet
 
   /**
-   * Returns a [Label] representing the given path in the workspace with the current build packages. The file does not need to exist.
-   */
-  @VisibleForTesting
-  fun pathToLabel(file: Path): Label?
-
-  /**
-   * If the given path represents a currently known source file returns a [Label] representing the given path in the workspace with
-   * the current build packages.
+   * If the given path represents a currently known source file returns a [Label] representing the given path in the workspace with the
+   * current build packages.
    */
   fun sourceFileToLabel(sourceFile: Path): Label?
 
@@ -79,24 +65,18 @@ interface BuildGraphData {
    */
   fun allLoadedTargets(): Collection<Label>
 
-  /**
-   * Returns the project target info for the given label, if it is supported and built (code analysis enabled).
-   */
+  /** Returns the project target info for the given label, if it is supported and built (code analysis enabled). */
   fun getProjectTarget(label: Label): ProjectTarget?
 
-  /**
-   * Calculates the set of direct reverse dependencies for a set of targets (including the targets
-   * themselves).
-   */
+  /** Calculates the set of direct reverse dependencies for a set of targets (including the targets themselves). */
   fun getSameLanguageTargetsDependingOn(targets: Set<Label>): Set<Label>
 
   /**
-   * Returns all in project targets that depend on the source file at `sourcePath` via an
-   * in-project dependency chain. Used to determine possible test targets for a given file.
+   * Returns all in project targets that depend on the source file at `sourcePath` via an in-project dependency chain. Used to determine
+   * possible test targets for a given file.
    *
-   *
-   * If project target A depends on external target B, and external target B depends on project
-   * target C, target A is *not* included in `getReverseDeps` for a source file in target C.
+   * If project target A depends on external target B, and external target B depends on project target C, target A is *not* included in
+   * `getReverseDeps` for a source file in target C.
    */
   fun getReverseDepsForSource(sourcePath: Path): Collection<ProjectTarget>
 
@@ -107,80 +87,52 @@ interface BuildGraphData {
 
   fun getSourceFileOwners(label: Label): Set<Label>
 
-  @Deprecated(
-    """Choosing a target based on the number of deps it has is not a good strategy, as we
-        could end up selecting one that doesn't build in the current config. Allow the user to
-        choose, or require the projects source -> target mapping to be unambiguous instead."""
-  )
-  fun selectLabelWithLeastDeps(candidates: Collection<Label>): Label?
-
-  /** Returns a list of all the java source files of the project, relative to the workspace root.  */
+  /** Returns a list of all the java source files of the project, relative to the workspace root. */
   fun getJavaSourceFiles(): List<Path>
 
-  /**
-   * Returns targets matching the given predicate that have any source files of the given types.
-   */
+  /** Returns targets matching the given predicate that have any source files of the given types. */
   fun getSourceFilesByRuleKindAndType(
-    ruleKindPredicate: (String) -> Boolean, vararg sourceTypes: ProjectTarget.SourceType
+    ruleKindPredicate: (String) -> Boolean,
+    vararg sourceTypes: ProjectTarget.SourceType,
   ): Map<Label, List<Path>>
-
-  /**
-   * Returns a list of regular (java/kt) source files owned by an Android target, relative to the
-   * workspace root.
-   */
-  fun getAndroidSourceFiles(): List<Path>
 
   fun getAndroidResourceFiles(): List<Path>
 
-  /** Returns a list of custom_package fields that used by current project.  */
+  /** Returns a list of custom_package fields that used by current project. */
   fun getAllCustomPackages(): Set<String>
 
   /**
    * Returns the list of project targets related to the given workspace file.
    *
-   * @param workspaceRelativePath Workspace relative file path to find targets for. This may be a
-   * source file, directory or BUILD file.
-   * @return Corresponding project targets. For a source file, this is the targets that build that
-   * file. For a BUILD file, it's the set or targets defined in that file. For a directory, it's
-   * the set of all targets defined in all build packages within the directory (recursively).
+   * @param workspaceRelativePath Workspace relative file path to find targets for. This may be a source file, directory or BUILD file.
+   * @return Corresponding project targets. For a source file, this is the targets that build that file. For a BUILD file, it's the set or
+   *   targets defined in that file. For a directory, it's the set of all targets defined in all build packages within the directory
+   *   (recursively).
    */
   fun getProjectTargets(workspaceRelativePath: Path): TargetsToBuild
 
-  /**
-   * Returns the set of [target languages][ProjectTarget.languages] for a set of project
-   * targets.
-   */
-  fun getTargetLanguages(targets: Set<Label>): Set<QuerySyncLanguage>
+  /** Calculates the [RequestedTargets] for a project target. */
+  fun computeRequestedTargets(
+    projectTargets: Collection<Label>,
+    replaceNativeTargetsWithAndroidTransitionTriggeringTargets: Boolean,
+  ): RequestedTargets
 
-  /**
-   * Calculates the [RequestedTargets] for a project target.
-   */
-  fun computeRequestedTargets(projectTargets: Collection<Label>, replaceNativeTargetsWithAndroidTransitionTriggeringTargets: Boolean): RequestedTargets
-
-  /**
-   * Calculates the [RequestedTargets] for the whole project.
-   */
+  /** Calculates the [RequestedTargets] for the whole project. */
   fun computeWholeProjectTargets(): RequestedTargets
 
-  /** Output stats about the the project to the context (and thus normally to the console).  */
+  /** Output stats about the the project to the context (and thus normally to the console). */
   fun outputStats(context: Context<*>)
 
-  /**
-   * Returns the number of external dependencies of the project for the purpose of stats reporting.
-   */
+  /** Returns the number of external dependencies of the project for the purpose of stats reporting. */
   val externalDependencyCountForStatsOnly: Int
 
-  /**
-   * Returns the number of supported targets of the project for the purpose of stats reporting.
-   */
+  /** Returns the number of supported targets of the project for the purpose of stats reporting. */
   val projectSupportedTargetCountForStatsOnly: Int
 
-  /**
-   * Returns an approximate size of the project's target map for the purpose of stats reporting.
-   */
+  /** Returns an approximate size of the project's target map for the purpose of stats reporting. */
   val targetMapSizeForStatsOnly: Int
 
-  /** Returns the language classes for which code analysis is currently enabled in this project.  */
+  /** Returns the language classes for which code analysis is currently enabled in this project. */
   fun getActiveLanguages(): Set<QuerySyncLanguage>
 
   companion object {
@@ -191,7 +143,7 @@ interface BuildGraphData {
           projectDefinitionTargetPatterns = TargetPatternCollection.create(emptyList()),
           alwaysBuildRules = emptySet(),
           supportedBuildRules = emptySet(),
-          protoRules = ProtoRules(emptySet(), emptySet())
+          protoRules = ProtoRules(emptySet(), emptySet()),
         )
   }
 }

@@ -7,6 +7,8 @@ import com.android.tools.idea.gradle.project.build.invoker.GradleMultiInvocation
 import com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder
 import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.gradle.util.isAndroidProject
+import com.android.tools.idea.projectsystem.getProjectSystem
+import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors.directExecutor
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -17,36 +19,38 @@ import com.intellij.task.ProjectTask
 import com.intellij.task.ProjectTaskContext
 import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
+import java.nio.file.Path
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.concurrency.Promise
 import org.jetbrains.concurrency.resolvedPromise
 import org.jetbrains.kotlin.idea.base.facet.isMultiPlatformModule
 import org.jetbrains.plugins.gradle.util.GradleConstants
-import java.nio.file.Path
 
 class AndroidProjectTaskRunner : ProjectTaskRunner() {
   private val isAndroidStudio = IdeInfo.getInstance().isAndroidStudio
+
   override fun run(project: Project, context: ProjectTaskContext, vararg tasks: ProjectTask): Promise<Result> {
     return executeTasks(project, tasks.filterIsInstance<ModuleBuildTask>())
+  }
+
+  override fun canRun(project: Project, projectTask: ProjectTask, context: ProjectTaskContext?): Boolean {
+    if (project.getProjectSystem() !is GradleProjectSystem) return false
+    return canRun(projectTask)
   }
 
   override fun canRun(projectTask: ProjectTask): Boolean {
     return if (!isAndroidStudio || (projectTask is ModuleBuildTask && projectTask.module.isMultiPlatformModule)) {
       projectTask is ModuleBuildTask && AndroidFacet.getInstance(projectTask.module) != null
-    }
-    else {
+    } else {
       projectTask is ModuleBuildTask &&
-      projectTask.module.project.isAndroidProject &&
-      ExternalSystemApiUtil.isExternalSystemAwareModule(GradleConstants.SYSTEM_ID, projectTask.module)
+        projectTask.module.project.isAndroidProject &&
+        ExternalSystemApiUtil.isExternalSystemAwareModule(GradleConstants.SYSTEM_ID, projectTask.module)
     }
   }
 
   @Suppress("UnstableApiUsage")
-  private fun executeTasks(
-    project: Project,
-    tasks: List<ModuleBuildTask>
-  ): Promise<Result> {
+  private fun executeTasks(project: Project, tasks: List<ModuleBuildTask>): Promise<Result> {
     val taskFinder = GradleTaskFinder.getInstance()
     val gradleBuildInvoker = GradleBuildInvoker.getInstance(project)
 
@@ -55,10 +59,7 @@ class AndroidProjectTaskRunner : ProjectTaskRunner() {
     fun ModuleBuildTask.getBuildMode() = if (isIncrementalBuild) BuildMode.COMPILE_JAVA else BuildMode.REBUILD
 
     fun findTasks(buildMode: BuildMode, modules: List<Module>): Map<TaskGroup, Collection<String>> {
-      return taskFinder
-        .findTasksToExecute(modules.toTypedArray(), buildMode)
-        .asMap()
-        .mapKeys { TaskGroup(buildMode, it.key) }
+      return taskFinder.findTasksToExecute(modules.toTypedArray(), buildMode).asMap().mapKeys { TaskGroup(buildMode, it.key) }
     }
 
     val tasksGroups: Map<TaskGroup, Collection<String>> =
@@ -72,13 +73,9 @@ class AndroidProjectTaskRunner : ProjectTaskRunner() {
     }
 
     val requests =
-      tasksGroups
-        .map { (taskGroup, tasks) ->
-          GradleBuildInvoker.Request
-            .builder(project, taskGroup.gradleProjectRoot.toFile(), tasks)
-            .setMode(taskGroup.buildMode)
-            .build()
-        }
+      tasksGroups.map { (taskGroup, tasks) ->
+        GradleBuildInvoker.Request.builder(project, taskGroup.gradleProjectRoot.toFile(), tasks).setMode(taskGroup.buildMode).build()
+      }
 
     return gradleBuildInvoker.executeTasks(requests).toPromise { it.toTaskRunnerResults() }
   }
@@ -93,14 +90,12 @@ private fun GradleMultiInvocationResult.toTaskRunnerResults(): ProjectTaskRunner
   }
 }
 
-private fun <T: Any, R> ListenableFuture<T>.toPromise(transform: (T) -> R): AsyncPromise<R> {
+private fun <T : Any, R> ListenableFuture<T>.toPromise(transform: (T) -> R): AsyncPromise<R> {
   val result = AsyncPromise<R>()
   this.addCallback(
     directExecutor(),
-    success = { invocationResult ->
-      result.setResult(invocationResult?.let(transform))
-    },
-    failure = { result.setError(it ?: error("Unknown error")) }
+    success = { invocationResult -> result.setResult(invocationResult?.let(transform)) },
+    failure = { result.setError(it ?: error("Unknown error")) },
   )
   return result
 }

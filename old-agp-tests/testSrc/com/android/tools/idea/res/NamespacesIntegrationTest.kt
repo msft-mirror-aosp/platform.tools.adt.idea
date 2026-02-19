@@ -22,7 +22,7 @@ import com.android.resources.ResourceType
 import com.android.testutils.junit4.OldAgpTest
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.projectsystem.gradle.getMainModule
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.*
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_8_13
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.findAppModule
@@ -47,8 +47,7 @@ class NamespacesIntegrationTest {
   val AGP_VERSION = AGP_8_13
 
   val projectRule = AndroidGradleProjectRule(AGP_VERSION)
-  @get:Rule
-  val rule = RuleChain.outerRule(projectRule).around(EdtRule())
+  @get:Rule val rule = RuleChain.outerRule(projectRule).around(EdtRule())
   val project by lazy { projectRule.project }
   val fixture by lazy { projectRule.fixture }
 
@@ -96,8 +95,7 @@ class NamespacesIntegrationTest {
   fun testResolver() {
     projectRule.loadProject(TestProjectPaths.NAMESPACES)
     val layout = VfsUtil.findRelativeFile(fixture.project.baseDir, "app", "src", "main", "res", "layout", "simple_strings.xml")!!
-    val resourceResolver = ConfigurationManager.getOrCreateInstance(getMainAndroidFacet().module)
-      .getConfiguration(layout).resourceResolver
+    val resourceResolver = ConfigurationManager.getOrCreateInstance(getMainAndroidFacet().module).getConfiguration(layout).resourceResolver
     val appNs = StudioResourceRepositoryManager.getInstance(getMainAndroidFacet()).namespace
 
     fun check(reference: String, resolvesTo: String) {
@@ -118,11 +116,12 @@ class NamespacesIntegrationTest {
     projectRule.loadProject(TestProjectPaths.NAMESPACES)
     val appResources = StudioResourceRepositoryManager.getInstance(getMainAndroidFacet()).appResources
 
-    assertThat(appResources.namespaces).containsExactly(
-      ResourceNamespace.fromPackageName(appPackageName),
-      ResourceNamespace.fromPackageName(libPackageName),
-      ResourceNamespace.fromPackageName(otherLibPackageName),
-      ResourceNamespace.TOOLS
-    )
+    assertThat(appResources.namespaces)
+      .containsExactly(
+        ResourceNamespace.fromPackageName(appPackageName),
+        ResourceNamespace.fromPackageName(libPackageName),
+        ResourceNamespace.fromPackageName(otherLibPackageName),
+        ResourceNamespace.TOOLS,
+      )
   }
 }

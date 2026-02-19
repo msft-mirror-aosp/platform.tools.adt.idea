@@ -22,12 +22,11 @@ import com.android.tools.idea.npw.module.ModuleGalleryEntry
 import com.android.tools.idea.wizard.model.SkippableWizardStep
 import com.intellij.openapi.project.Project
 import icons.StudioIcons
-import org.jetbrains.android.util.AndroidBundle.message
 import javax.swing.Icon
+import org.jetbrains.android.util.AndroidBundle.message
 
 class NewDynamicAppModuleDescriptionProvider : ModuleDescriptionProvider {
-  override fun getDescriptions(project: Project): Collection<ModuleGalleryEntry> =
-    listOf(FeatureTemplateGalleryEntry(), InstantFeatureTemplateGalleryEntry())
+  override fun getDescriptions(project: Project): Collection<ModuleGalleryEntry> = listOf(FeatureTemplateGalleryEntry())
 
   private class FeatureTemplateGalleryEntry : ModuleGalleryEntry {
     override val icon: Icon = StudioIcons.Wizards.Modules.DYNAMIC_FEATURE
@@ -35,27 +34,10 @@ class NewDynamicAppModuleDescriptionProvider : ModuleDescriptionProvider {
     override val description: String = message("android.wizard.module.new.dynamic.module.description")
 
     override fun toString() = name
+
     override fun createStep(project: Project, moduleParent: String, projectSyncInvoker: ProjectSyncInvoker): SkippableWizardStep<*> {
       val basePackage = getSuggestedProjectPackage()
-      return ConfigureDynamicModuleStep(
-        DynamicFeatureModel(project, moduleParent, projectSyncInvoker, false, name, description),
-        basePackage
-      )
-    }
-  }
-
-  private class InstantFeatureTemplateGalleryEntry : ModuleGalleryEntry {
-    override val icon: Icon = StudioIcons.Wizards.Modules.INSTANT_DYNAMIC_FEATURE
-    override val name: String = message("android.wizard.module.new.dynamic.module.instant")
-    override val description: String = message("android.wizard.module.new.dynamic.module.instant.description")
-
-    override fun toString() = name
-    override fun createStep(project: Project, moduleParent: String, projectSyncInvoker: ProjectSyncInvoker): SkippableWizardStep<*> {
-      val basePackage = getSuggestedProjectPackage()
-      return ConfigureDynamicModuleStep(
-        DynamicFeatureModel(project, moduleParent, projectSyncInvoker, true, name, description),
-        basePackage
-      )
+      return ConfigureDynamicModuleStep(DynamicFeatureModel(project, moduleParent, projectSyncInvoker, name, description), basePackage)
     }
   }
 }

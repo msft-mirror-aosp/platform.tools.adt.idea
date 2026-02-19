@@ -16,8 +16,6 @@
 package com.android.tools.idea.streaming.uisettings.binding
 
 import com.google.common.truth.Truth.assertThat
-import com.intellij.openapi.Disposable
-import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import org.junit.Rule
 import org.junit.Test
@@ -26,8 +24,7 @@ class DefaultTwoWayPropertyTest {
   private var uiChangeCount = 0
   private var uiChangeLastValue = ""
 
-  @get:Rule
-  val disposableRule = DisposableRule()
+  @get:Rule val disposableRule = DisposableRule()
 
   @Test
   fun testSetValueFromUi() {
@@ -65,12 +62,13 @@ class DefaultTwoWayPropertyTest {
     assertThat(property.value).isEqualTo("CTRL-2")
   }
 
-  private fun createProperty() = DefaultTwoWayProperty(initialValue = "initial-value").apply {
-    uiChangeListener = ChangeListener { newValue ->
-      uiChangeCount++
-      uiChangeLastValue = newValue
+  private fun createProperty() =
+    DefaultTwoWayProperty(initialValue = "initial-value").apply {
+      uiChangeListener = ChangeListener { newValue ->
+        uiChangeCount++
+        uiChangeLastValue = newValue
+      }
     }
-  }
 
   private fun TwoWayProperty<String>.createAndAddListener(): Ui {
     val ui = Ui()

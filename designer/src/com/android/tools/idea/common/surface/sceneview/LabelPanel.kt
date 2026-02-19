@@ -18,13 +18,14 @@ package com.android.tools.idea.common.surface.sceneview
 import com.android.tools.adtui.common.AdtUiUtils
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.model.DisplaySettings
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.intellij.ide.ui.UISettingsListener
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.merge
@@ -34,9 +35,9 @@ import kotlinx.coroutines.withContext
 /**
  * This label displays the [SceneView] model label.
  *
- * If [partOfOrganizationGroup] then label will display [DisplaySettings.parameterName] (or
- * modelDisplayName if [DisplaySettings.parameterName] is null). If [partOfOrganizationGroup] is not
- * enabled then [DisplaySettings.modelDisplayName] is displayed.
+ * If [partOfOrganizationGroup] then label will display [DisplaySettings.parameterName] (or modelDisplayName if
+ * [DisplaySettings.parameterName] is null). If [partOfOrganizationGroup] is not enabled then [DisplaySettings.modelDisplayName] is
+ * displayed.
  */
 open class LabelPanel(
   private val displaySettings: DisplaySettings,
@@ -53,10 +54,7 @@ open class LabelPanel(
       val parameter = displaySettings.parameterName.value
       val display = displaySettings.modelDisplayName.value
       val name =
-        parameter?.takeIf { partOfOrganizationGroup.value }
-          ?: displaySettings.fileName.value?.let { "$it.$display" }
-          ?: display
-          ?: ""
+        parameter?.takeIf { partOfOrganizationGroup.value } ?: displaySettings.fileName.value?.let { "$it.$display" } ?: display ?: ""
       text = name
       toolTipText = displaySettings.tooltip.value ?: name
       isVisible = text.isNotBlank()
@@ -76,17 +74,14 @@ open class LabelPanel(
         )
         .conflate()
         .collect {
-          withContext(uiThread) {
+          withContext(Dispatchers.EDT) {
             updateUi()
             invalidate()
           }
         }
 
       val messageBusConnection = ApplicationManager.getApplication().messageBus.connect(this)
-      messageBusConnection.subscribe(
-        UISettingsListener.TOPIC,
-        UISettingsListener { font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL) },
-      )
+      messageBusConnection.subscribe(UISettingsListener.TOPIC, UISettingsListener { font = UIUtil.getLabelFont(UIUtil.FontSize.SMALL) })
     }
   }
 

@@ -15,10 +15,12 @@
  */
 package com.android.tools.idea.uibuilder.handlers.frame
 
-import com.android.SdkConstants.*
+import com.android.SdkConstants.FRAME_LAYOUT
+import com.android.SdkConstants.TEXT_VIEW
 import com.android.tools.idea.common.fixtures.ModelBuilder
 import com.android.tools.idea.common.util.NlTreeDumper
-import com.android.tools.idea.uibuilder.model.SegmentType.*
+import com.android.tools.idea.uibuilder.model.SegmentType.RIGHT
+import com.android.tools.idea.uibuilder.model.SegmentType.TOP
 import com.android.tools.idea.uibuilder.scene.SceneTest
 import com.android.tools.idea.uibuilder.scene.target.ResizeBaseTarget
 
@@ -26,24 +28,12 @@ class FrameLayoutHandlerTest : SceneTest() {
 
   // needs to be rewritten for the Target architecture
   fun ignore_testDragNothing() {
-    screen(myModel)
-      .get("@id/myText1")
-      .resize(TOP, RIGHT)
-      .drag(0, 0)
-      .release()
-      .expectWidth("100dp")
-      .expectHeight("100dp")
+    screen(myModel).get("@id/myText1").resize(TOP, RIGHT).drag(0, 0).release().expectWidth("100dp").expectHeight("100dp")
   }
 
   // needs to be rewritten for the Target architecture
   fun ignore_testCancel() {
-    screen(myModel)
-      .get("@id/myText1")
-      .resize(TOP)
-      .drag(20, 30)
-      .cancel()
-      .expectWidth("100dp")
-      .expectHeight("100dp")
+    screen(myModel).get("@id/myText1").resize(TOP).drag(20, 30).cancel().expectWidth("100dp").expectHeight("100dp")
   }
 
   fun testResize() {
@@ -82,20 +72,13 @@ class FrameLayoutHandlerTest : SceneTest() {
           .withBounds(0, 0, 1000, 1000)
           .matchParentWidth()
           .matchParentHeight()
-          .children(
-            component(TEXT_VIEW)
-              .withBounds(100, 100, 100, 100)
-              .id("@id/myText1")
-              .width("100dp")
-              .height("100dp")
-          ),
+          .children(component(TEXT_VIEW).withBounds(100, 100, 100, 100).id("@id/myText1").width("100dp").height("100dp")),
       )
 
     val model = builder.build()
     assertEquals(1, model.treeReader.components.size)
     assertEquals(
-      "NlComponent{tag=<FrameLayout>, bounds=[0,0:1000x1000}\n" +
-        "    NlComponent{tag=<TextView>, bounds=[100,100:100x100}",
+      "NlComponent{tag=<FrameLayout>, bounds=[0,0:1000x1000}\n" + "    NlComponent{tag=<TextView>, bounds=[100,100:100x100}",
       NlTreeDumper.dumpTree(model.treeReader.components),
     )
     format(model.file)

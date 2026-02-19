@@ -23,7 +23,6 @@ import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.idea.async.process.CommandLineTask;
-import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.BlazeScope;
@@ -42,6 +41,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
@@ -59,7 +59,6 @@ public interface ExternalTask {
     @Nullable public BlazeContext context;
     @Nullable public OutputStream stdout;
     @Nullable public OutputStream stderr;
-    @Nullable BlazeCommand blazeCommand;
     boolean redirectErrorStream = false;
     boolean ignoreExitCode = false;
 
@@ -95,30 +94,10 @@ public interface ExternalTask {
       return this;
     }
 
-    @CanIgnoreReturnValue
-    public Builder addBlazeCommand(BlazeCommand blazeCommand) {
-      this.blazeCommand = blazeCommand;
-      command.addAll(blazeCommand.toList());
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    public Builder maybeArg(boolean b, String arg) {
-      if (b) {
-        command.add(arg);
-      }
-      return this;
-    }
 
     @CanIgnoreReturnValue
     public Builder context(@Nullable BlazeContext context) {
       this.context = context;
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    public Builder redirectStderr(boolean redirectStderr) {
-      this.redirectErrorStream = redirectStderr;
       return this;
     }
 
@@ -242,7 +221,7 @@ public interface ExternalTask {
     }
 
     private static void outputCommand(BlazeContext context, List<String> command) {
-      String logMessage = "Command: " + ParametersListUtil.join(command);
+      String logMessage = "Command: " + formatCommandForLogOutput(command);
 
       context.output(
           PrintOutput.log(
@@ -279,6 +258,10 @@ public interface ExternalTask {
       }
       return actualCommand;
     }
+  }
+
+  public static String formatCommandForLogOutput(List<String> command) {
+    return command.stream().map(ParametersListUtil::escape).collect(Collectors.joining("\\\n    "));
   }
 
   static Builder builder() {

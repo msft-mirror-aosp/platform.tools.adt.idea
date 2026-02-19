@@ -51,15 +51,12 @@ import org.junit.runners.Parameterized
 @OptIn(KaExperimentalApi::class)
 @RunWith(Parameterized::class)
 @RunsInEdt
-class DirectionsClassResolveExtensionTest(
-  @Suppress("UNUSED_PARAMETER") navVersionName: String,
-  private val navVersion: Version,
-) : AbstractSafeArgsResolveExtensionTest() {
+class DirectionsClassResolveExtensionTest(@Suppress("UNUSED_PARAMETER") navVersionName: String, private val navVersion: Version) :
+  AbstractSafeArgsResolveExtensionTest() {
   companion object {
     @JvmStatic
     @Parameterized.Parameters(name = "{0} ({1})")
-    fun parameters(): Collection<Array<Any>> =
-      KNOWN_SAFE_ARGS_VERSIONS.map { (name, version) -> arrayOf(name, version) }
+    fun parameters(): Collection<Array<Any>> = KNOWN_SAFE_ARGS_VERSIONS.map { (name, version) -> arrayOf(name, version) }
   }
 
   @Before
@@ -75,29 +72,29 @@ class DirectionsClassResolveExtensionTest(
   fun createsFunctionsForDestinations() {
     addNavXml(
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          android:id="@+id/main"
+          app:startDestination="@id/fragment1">
+        <action
+            android:id="@+id/action_inherited"/>
+        <fragment
+            android:id="@+id/fragment1"
+            android:name=".Fragment1"
+            android:label="Fragment1">
           <action
-              android:id="@+id/action_inherited"/>
-          <fragment
-              android:id="@+id/fragment1"
-              android:name=".Fragment1"
-              android:label="Fragment1">
-            <action
-                android:id="@+id/action_fragment1_to_fragment2"
-                app:destination="@+id/fragment2"/>
-            <action
-                android:id="@+id/action_fragment1_to_main"
-                app:popUpTo="@+id/main"/>
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2">
-          </fragment>
-        </navigation>
+              android:id="@+id/action_fragment1_to_fragment2"
+              app:destination="@+id/fragment2"/>
+          <action
+              android:id="@+id/action_fragment1_to_main"
+              app:popUpTo="@+id/main"/>
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2">
+        </fragment>
+      </navigation>
       """
         .trimIndent()
     )
@@ -112,8 +109,7 @@ class DirectionsClassResolveExtensionTest(
     ) { symbol: KaNamedClassSymbol ->
       assertThat(symbol.psi<KtElement>().isFromResolveExtension).isTrue()
       assertThat(symbol.classId?.asFqNameString()).isEqualTo("test.safeargs.Fragment1Directions")
-      assertThat(getPrimaryConstructorSymbol(symbol).visibility)
-        .isEqualTo(KaSymbolVisibility.PRIVATE)
+      assertThat(getPrimaryConstructorSymbol(symbol).visibility).isEqualTo(KaSymbolVisibility.PRIVATE)
       assertThat(getRenderedMemberFunctions(symbol, RENDERER)).isEmpty()
       assertThat(getRenderedMemberFunctions(symbol.companionObject!!, RENDERER))
         .containsExactly(
@@ -152,7 +148,7 @@ class DirectionsClassResolveExtensionTest(
               android:id="@+id/fragment2">
           </fragment>
         </navigation>
-      """
+        """
           .trimIndent()
       )
 
@@ -168,11 +164,7 @@ class DirectionsClassResolveExtensionTest(
     }
 
     WriteCommandAction.runWriteCommandAction(safeArgsRule.project) {
-      xmlFile.virtualFile.replaceWithoutSaving(
-        "@+id/action_fragment1_to_fragment2",
-        "@+id/some_other_action",
-        safeArgsRule.project,
-      )
+      xmlFile.virtualFile.replaceWithoutSaving("@+id/action_fragment1_to_fragment2", "@+id/some_other_action", safeArgsRule.project)
     }
     safeArgsRule.waitForPendingUpdates()
 
@@ -216,7 +208,7 @@ class DirectionsClassResolveExtensionTest(
               android:id="@+id/fragment2">
           </fragment>
         </navigation>
-      """
+        """
           .trimIndent()
       )
 
@@ -248,11 +240,7 @@ class DirectionsClassResolveExtensionTest(
 
     // Change should be picked up after we change modes again.
     WriteCommandAction.runWriteCommandAction(safeArgsRule.project) {
-      xmlFile.virtualFile.replaceWithoutSaving(
-        "@+id/action_fragment1_to_fragment2",
-        "@+id/some_other_action",
-        safeArgsRule.project,
-      )
+      xmlFile.virtualFile.replaceWithoutSaving("@+id/action_fragment1_to_fragment2", "@+id/some_other_action", safeArgsRule.project)
     }
     safeArgsRule.waitForPendingUpdates()
     safeArgsRule.androidFacet.safeArgsMode = SafeArgsMode.KOTLIN
@@ -273,85 +261,85 @@ class DirectionsClassResolveExtensionTest(
   fun mapsArguments() {
     addKotlinSource(
       """
-        package other
+      package other
 
-        enum class ArgEnum { FOO, BAR }
+      enum class ArgEnum { FOO, BAR }
       """
         .trimIndent()
     )
     addNavXml(
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:id="@+id/main"
-            app:startDestination="@id/fragment1">
-          <fragment
-              android:id="@+id/fragment1"
-              android:name=".Fragment1"
-              android:label="Fragment1">
-            <action
-                android:id="@+id/action_scalar"
-                app:destination="@+id/fragment2">
-              <argument
-                  android:name="string_arg"
-                  app:argType="string"/>
-              <argument
-                  android:name="int_arg"
-                  app:argType="integer"/>
-              <argument
-                  android:name="reference_arg"
-                  app:argType="reference"/>
-              <argument
-                  android:name="long_arg"
-                  app:argType="long"/>
-              <argument
-                  android:name="float_arg"
-                  app:argType="float"/>
-              <argument
-                  android:name="boolean_arg"
-                  app:argType="boolean"/>
-              <argument
-                  android:name="in_package_enum_arg"
-                  app:argType=".ArgEnum"/>
-              <argument
-                  android:name="out_of_package_enum_arg"
-                  app:argType="other.ArgEnum"/>
-            </action>
-            <action
-                android:id="@+id/action_array"
-                app:destination="@+id/fragment2">
-              <argument
-                  android:name="string_array"
-                  app:argType="string[]"/>
-              <argument
-                  android:name="int_array"
-                  app:argType="integer[]"/>
-              <argument
-                  android:name="reference_array"
-                  app:argType="reference[]"/>
-              <argument
-                  android:name="long_array"
-                  app:argType="long[]"/>
-              <argument
-                  android:name="float_array"
-                  app:argType="float[]"/>
-              <argument
-                  android:name="boolean_array"
-                  app:argType="boolean[]"/>
-              <argument
-                  android:name="in_package_enum_array"
-                  app:argType=".ArgEnum[]"/>
-              <argument
-                  android:name="out_of_package_enum_array"
-                  app:argType="other.ArgEnum[]"/>
-            </action>
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2">
-          </fragment>
-        </navigation>
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          android:id="@+id/main"
+          app:startDestination="@id/fragment1">
+        <fragment
+            android:id="@+id/fragment1"
+            android:name=".Fragment1"
+            android:label="Fragment1">
+          <action
+              android:id="@+id/action_scalar"
+              app:destination="@+id/fragment2">
+            <argument
+                android:name="string_arg"
+                app:argType="string"/>
+            <argument
+                android:name="int_arg"
+                app:argType="integer"/>
+            <argument
+                android:name="reference_arg"
+                app:argType="reference"/>
+            <argument
+                android:name="long_arg"
+                app:argType="long"/>
+            <argument
+                android:name="float_arg"
+                app:argType="float"/>
+            <argument
+                android:name="boolean_arg"
+                app:argType="boolean"/>
+            <argument
+                android:name="in_package_enum_arg"
+                app:argType=".ArgEnum"/>
+            <argument
+                android:name="out_of_package_enum_arg"
+                app:argType="other.ArgEnum"/>
+          </action>
+          <action
+              android:id="@+id/action_array"
+              app:destination="@+id/fragment2">
+            <argument
+                android:name="string_array"
+                app:argType="string[]"/>
+            <argument
+                android:name="int_array"
+                app:argType="integer[]"/>
+            <argument
+                android:name="reference_array"
+                app:argType="reference[]"/>
+            <argument
+                android:name="long_array"
+                app:argType="long[]"/>
+            <argument
+                android:name="float_array"
+                app:argType="float[]"/>
+            <argument
+                android:name="boolean_array"
+                app:argType="boolean[]"/>
+            <argument
+                android:name="in_package_enum_array"
+                app:argType=".ArgEnum[]"/>
+            <argument
+                android:name="out_of_package_enum_array"
+                app:argType="other.ArgEnum[]"/>
+          </action>
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2">
+        </fragment>
+      </navigation>
       """
         .trimIndent()
     )
@@ -396,33 +384,33 @@ class DirectionsClassResolveExtensionTest(
   fun combinesArgumentsFromActionAndDestination() {
     addNavXml(
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:id="@+id/main"
-            app:startDestination="@id/fragment1">
-          <fragment
-              android:id="@+id/fragment1"
-              android:name=".Fragment1"
-              android:label="Fragment1">
-            <action
-                android:id="@+id/action_fragment1_to_fragment2"
-                app:destination="@+id/fragment2">
-              <argument
-                  android:name="argument_from_action"
-                  app:argType="integer"/>
-            </action>
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2"
-              android:name=".Fragment2"
-              android:label="Fragment2">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          android:id="@+id/main"
+          app:startDestination="@id/fragment1">
+        <fragment
+            android:id="@+id/fragment1"
+            android:name=".Fragment1"
+            android:label="Fragment1">
+          <action
+              android:id="@+id/action_fragment1_to_fragment2"
+              app:destination="@+id/fragment2">
             <argument
-                android:name="argument_from_destination"
+                android:name="argument_from_action"
                 app:argType="integer"/>
-          </fragment>
-        </navigation>
+          </action>
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2"
+            android:name=".Fragment2"
+            android:label="Fragment2">
+          <argument
+              android:name="argument_from_destination"
+              app:argType="integer"/>
+        </fragment>
+      </navigation>
       """
         .trimIndent()
     )
@@ -449,34 +437,34 @@ class DirectionsClassResolveExtensionTest(
   fun overridesDefaultArgumentsFromDestinationWithAction() {
     addNavXml(
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:id="@+id/main"
-            app:startDestination="@id/fragment1">
-          <fragment
-              android:id="@+id/fragment1"
-              android:name=".Fragment1"
-              android:label="Fragment1">
-            <action
-                android:id="@+id/action_fragment1_to_fragment2"
-                app:destination="@+id/fragment2">
-              <argument
-                  android:name="argument"
-                  app:argType="integer"
-                  android:defaultValue="42"/>
-            </action>
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2"
-              android:name=".Fragment2"
-              android:label="Fragment2">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          android:id="@+id/main"
+          app:startDestination="@id/fragment1">
+        <fragment
+            android:id="@+id/fragment1"
+            android:name=".Fragment1"
+            android:label="Fragment1">
+          <action
+              android:id="@+id/action_fragment1_to_fragment2"
+              app:destination="@+id/fragment2">
             <argument
                 android:name="argument"
-                app:argType="integer"/>
-          </fragment>
-        </navigation>
+                app:argType="integer"
+                android:defaultValue="42"/>
+          </action>
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2"
+            android:name=".Fragment2"
+            android:label="Fragment2">
+          <argument
+              android:name="argument"
+              app:argType="integer"/>
+        </fragment>
+      </navigation>
       """
         .trimIndent()
     )
@@ -490,9 +478,7 @@ class DirectionsClassResolveExtensionTest(
         .trimIndent()
     ) { symbol: KaNamedFunctionSymbol ->
       assertThat(symbol.render(RENDERER))
-        .isEqualTo(
-          "fun actionFragment1ToFragment2(argument: kotlin.Int = ...): androidx.navigation.NavDirections"
-        )
+        .isEqualTo("fun actionFragment1ToFragment2(argument: kotlin.Int = ...): androidx.navigation.NavDirections")
     }
   }
 
@@ -500,37 +486,37 @@ class DirectionsClassResolveExtensionTest(
   fun adjustsDefaultArgumentOrder() {
     addNavXml(
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:id="@+id/main"
-            app:startDestination="@id/fragment1">
-          <fragment
-              android:id="@+id/fragment1"
-              android:name=".Fragment1"
-              android:label="Fragment1">
-            <action
-                android:id="@+id/action_fragment1_to_fragment2"
-                app:destination="@+id/fragment2">
-              <argument
-                  android:name="argument_before"
-                  app:argType="integer"/>
-              <argument
-                  android:name="argument_with_default"
-                  app:argType="integer"
-                  android:defaultValue="42"/>
-              <argument
-                  android:name="argument_after"
-                  app:argType="integer"/>
-            </action>
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2"
-              android:name=".Fragment2"
-              android:label="Fragment2">
-          </fragment>
-        </navigation>
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          android:id="@+id/main"
+          app:startDestination="@id/fragment1">
+        <fragment
+            android:id="@+id/fragment1"
+            android:name=".Fragment1"
+            android:label="Fragment1">
+          <action
+              android:id="@+id/action_fragment1_to_fragment2"
+              app:destination="@+id/fragment2">
+            <argument
+                android:name="argument_before"
+                app:argType="integer"/>
+            <argument
+                android:name="argument_with_default"
+                app:argType="integer"
+                android:defaultValue="42"/>
+            <argument
+                android:name="argument_after"
+                app:argType="integer"/>
+          </action>
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2"
+            android:name=".Fragment2"
+            android:label="Fragment2">
+        </fragment>
+      </navigation>
       """
         .trimIndent()
     )
@@ -549,10 +535,7 @@ class DirectionsClassResolveExtensionTest(
         } else {
           "argumentBefore: kotlin.Int, argumentWithDefault: kotlin.Int = ..., argumentAfter: kotlin.Int"
         }
-      assertThat(symbol.render(RENDERER))
-        .isEqualTo(
-          "fun actionFragment1ToFragment2($argumentBody): androidx.navigation.NavDirections"
-        )
+      assertThat(symbol.render(RENDERER)).isEqualTo("fun actionFragment1ToFragment2($argumentBody): androidx.navigation.NavDirections")
     }
   }
 
@@ -561,37 +544,37 @@ class DirectionsClassResolveExtensionTest(
   fun handlesKeywordsInNames() {
     addNavXml(
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:id="@+id/main"
-            app:startDestination="@id/fragment1">
-          <fragment
-              android:id="@+id/fragment1"
-              android:name=".Fragment1"
-              android:label="Fragment1">
-            <action
-                android:id="@+id/object"
-                app:destination="@+id/fragment2">
-              <argument
-                  android:name="class"
-                  app:argType=".ArgEnum"/>
-              <argument
-                  android:name="interface"
-                  app:argType=".ArgEnum[]"/>
-              <argument
-                  android:name="default"
-                  app:argType="string"
-                  android:defaultValue="foo&#xA;`If you can see this, escaping has failed`: Nothing?,"/>
-            </action>
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2"
-              android:name=".Fragment2"
-              android:label="Fragment2">
-          </fragment>
-        </navigation>
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation
+          xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          android:id="@+id/main"
+          app:startDestination="@id/fragment1">
+        <fragment
+            android:id="@+id/fragment1"
+            android:name=".Fragment1"
+            android:label="Fragment1">
+          <action
+              android:id="@+id/object"
+              app:destination="@+id/fragment2">
+            <argument
+                android:name="class"
+                app:argType=".ArgEnum"/>
+            <argument
+                android:name="interface"
+                app:argType=".ArgEnum[]"/>
+            <argument
+                android:name="default"
+                app:argType="string"
+                android:defaultValue="foo&#xA;`If you can see this, escaping has failed`: Nothing?,"/>
+          </action>
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2"
+            android:name=".Fragment2"
+            android:label="Fragment2">
+        </fragment>
+      </navigation>
       """
         .trimIndent()
     )
@@ -659,26 +642,22 @@ class DirectionsClassResolveExtensionTest(
                 android:defaultValue="@null"/>
           </fragment>
         </navigation>
-      """
+        """
           .trimIndent()
       )
 
     val fragment1Tag = xmlFile.findXmlTagById("fragment1")!!
     val actionTag = fragment1Tag.findChildTagElementById("action", "some_action")!!
-    val argOverriddenInActionTag =
-      actionTag.findChildTagElementByNameAttr("argument", "overridden")!!
+    val argOverriddenInActionTag = actionTag.findChildTagElementByNameAttr("argument", "overridden")!!
     val argFromActionTag = actionTag.findChildTagElementByNameAttr("argument", "from_action")!!
     val fragment2Tag = xmlFile.findXmlTagById("fragment2")!!
-    val argFromDestinationTag =
-      fragment2Tag.findChildTagElementByNameAttr("argument", "from_destination")!!
+    val argFromDestinationTag = fragment2Tag.findChildTagElementByNameAttr("argument", "from_destination")!!
 
     "val x: ${caret}Fragment1Directions" navigatesTo fragment1Tag
     "val x = Fragment1Directions.${caret}someAction()" navigatesTo actionTag
     "val x = Fragment1Directions.someAction(${caret}fromAction = 42)" navigatesTo argFromActionTag
-    "val x = Fragment1Directions.someAction(${caret}overridden = 42)" navigatesTo
-      argOverriddenInActionTag
-    "val x = Fragment1Directions.someAction(${caret}fromDestination = 42)" navigatesTo
-      argFromDestinationTag
+    "val x = Fragment1Directions.someAction(${caret}overridden = 42)" navigatesTo argOverriddenInActionTag
+    "val x = Fragment1Directions.someAction(${caret}fromDestination = 42)" navigatesTo argFromDestinationTag
   }
 
   private infix fun @receiver:Language("kotlin") String.navigatesTo(target: PsiElement?) {
@@ -690,8 +669,7 @@ class DirectionsClassResolveExtensionTest(
       """
         .trimIndent()
     ) { symbol: KaSymbol ->
-      assertThat(getResolveExtensionPsiNavigationTargets(symbol))
-        .containsExactlyElementsIn(listOfNotNull(target))
+      assertThat(getResolveExtensionPsiNavigationTargets(symbol)).containsExactlyElementsIn(listOfNotNull(target))
     }
   }
 }

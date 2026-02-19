@@ -46,12 +46,10 @@ import org.mockito.kotlin.whenever
 internal class FakeDeviceHandle(
   override val scope: CoroutineScope,
   override val sourceTemplate: DeviceTemplate? = null,
-  initialProperties: DeviceProperties =
-    DeviceProperties.buildForTest { icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE },
+  initialProperties: DeviceProperties = DeviceProperties.buildForTest { icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE },
 ) : DeviceHandle {
   override val id = DeviceId("Fake", false, initialProperties.title)
-  override val stateFlow =
-    MutableStateFlow<DeviceState>(DeviceState.Disconnected(initialProperties))
+  override val stateFlow = MutableStateFlow<DeviceState>(DeviceState.Disconnected(initialProperties))
   override val activationAction = FakeActivationAction()
   override val deactivationAction = FakeDeactivationAction()
   override val repairDeviceAction = FakeRepairDeviceAction()
@@ -70,8 +68,7 @@ internal class FakeDeviceHandle(
    */
   fun connectToMockDevice(): ConnectedDevice =
     mock<ConnectedDevice>().also { mockDevice ->
-      whenever(mockDevice.deviceInfoFlow)
-        .thenReturn(MutableStateFlow(DeviceInfo("SN1234", com.android.adblib.DeviceState.ONLINE)))
+      whenever(mockDevice.deviceInfoFlow).thenReturn(MutableStateFlow(DeviceInfo("SN1234", com.android.adblib.DeviceState.ONLINE)))
       stateFlow.update { DeviceState.Connected(it.properties, mockDevice) }
     }
 
@@ -87,8 +84,7 @@ internal class FakeDeviceHandle(
       } else throw DeviceActionDisabledException(this)
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakeColdBootAction : com.android.sdklib.deviceprovisioner.ColdBootAction {
@@ -98,8 +94,7 @@ internal class FakeDeviceHandle(
       invoked++
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakeDeactivationAction : DeactivationAction {
@@ -110,14 +105,12 @@ internal class FakeDeviceHandle(
       stateFlow.update { DeviceState.Disconnected(it.properties) }
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakeRepairDeviceAction : RepairDeviceAction {
     var invoked = 0
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
 
     override suspend fun repair() {
       invoked++
@@ -131,8 +124,7 @@ internal class FakeDeviceHandle(
       invoked++
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakeWipeDataAction : com.android.sdklib.deviceprovisioner.WipeDataAction {
@@ -142,8 +134,7 @@ internal class FakeDeviceHandle(
       invoked++
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakeDeleteAction : com.android.sdklib.deviceprovisioner.DeleteAction {
@@ -153,8 +144,7 @@ internal class FakeDeviceHandle(
       invoked++
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakeDuplicateAction : com.android.sdklib.deviceprovisioner.DuplicateAction {
@@ -164,16 +154,14 @@ internal class FakeDeviceHandle(
       invoked++
     }
 
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
   inner class FakePairGlassesAction : PairGlassesAction {
     var invoked = 0
-    override val presentation =
-      MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
 
-    override suspend fun pairGlasses(parent: Component?, glassesHandle: DeviceHandle) {
+    override suspend fun pairGlasses(parent: Component?) {
       invoked++
     }
   }
@@ -183,26 +171,17 @@ internal class SingleFakeDeviceFixture(testScope: TestScope) {
   val handleScope = testScope.createChildScope()
   val handle = FakeDeviceHandle(handleScope)
   val actionEvent
-    get() =
-      actionEvent(
-        dataContext(device = handle, deviceRowData = DeviceRowData.create(handle, emptyList()))
-      )
+    get() = actionEvent(dataContext(device = handle, deviceRowData = DeviceRowData.create(handle, emptyList())))
 }
 
-internal suspend fun TestScope.runWithSingleFakeDevice(
-  block: suspend SingleFakeDeviceFixture.() -> Unit
-) {
+internal suspend fun TestScope.runWithSingleFakeDevice(block: suspend SingleFakeDeviceFixture.() -> Unit) {
   val fixture = SingleFakeDeviceFixture(this)
   fixture.block()
   fixture.handleScope.cancel()
 }
 
 internal fun UsageTrackerRule.deviceManagerEvents(): List<AndroidStudioEvent> =
-  usages.mapNotNull {
-    it.studioEvent.takeIf { it.kind == AndroidStudioEvent.EventKind.DEVICE_MANAGER }
-  }
+  usages.mapNotNull { it.studioEvent.takeIf { it.kind == AndroidStudioEvent.EventKind.DEVICE_MANAGER } }
 
 fun UsageTrackerRule.deviceManagerEventKinds() =
-  usages.mapNotNull {
-    it.studioEvent.deviceManagerEvent.kind.takeIf { it != DeviceManagerEvent.EventKind.UNSPECIFIED }
-  }
+  usages.mapNotNull { it.studioEvent.deviceManagerEvent.kind.takeIf { it != DeviceManagerEvent.EventKind.UNSPECIFIED } }

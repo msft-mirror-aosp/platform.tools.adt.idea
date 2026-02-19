@@ -18,13 +18,13 @@ package com.android.tools.property.panel.impl.model
 import com.android.tools.adtui.model.stdui.ValueChangedListener
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import org.mockito.Mockito.*
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 
 class GenericInspectorLineModelTest {
 
-  private fun createModel(
-    hidden: Boolean = false
-  ): Pair<GenericInspectorLineModel, ValueChangedListener> {
+  private fun createModel(hidden: Boolean = false): Pair<GenericInspectorLineModel, ValueChangedListener> {
     val model = GenericInspectorLineModel()
     model.hidden = hidden
     val listener = mock(ValueChangedListener::class.java)
@@ -71,8 +71,7 @@ class GenericInspectorLineModelTest {
     assertThat(listener.called).isTrue()
   }
 
-  private class RecursiveValueChangedListener(private val model: GenericInspectorLineModel) :
-    ValueChangedListener {
+  private class RecursiveValueChangedListener(private val model: GenericInspectorLineModel) : ValueChangedListener {
     var called = false
 
     override fun valueChanged() {

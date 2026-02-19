@@ -35,9 +35,9 @@ class WrapLogicTest {
 
     originalContainer.add(component)
 
-    val wrapLogic = WrapLogic(disposableRule.disposable, component, originalContainer)
+    val wrapLogic = WrapLogic(disposableRule.disposable, component)
 
-    wrapLogic.wrapComponent { disposable, component ->
+    wrapLogic.wrapContent { disposable, component ->
       newContainer.add(component)
       newContainer
     }
@@ -65,9 +65,9 @@ class WrapLogicTest {
 
     originalContainer.add(component)
 
-    val wrapLogic = WrapLogic(disposableRule.disposable, component, originalContainer)
+    val wrapLogic = WrapLogic(disposableRule.disposable, component)
 
-    wrapLogic.wrapComponent { disposable, component ->
+    wrapLogic.wrapContent { disposable, component ->
       newContainer.add(component)
       newContainer
     }
@@ -79,7 +79,7 @@ class WrapLogicTest {
     assertThat(originalContainer.components.toList()).isEqualTo(listOf(newContainer))
 
     try {
-      wrapLogic.wrapComponent { _, _ -> JPanel() }
+      wrapLogic.wrapContent { _, _ -> JPanel() }
       fail("Expected exception not thrown")
     } catch (_: IllegalStateException) {}
   }
@@ -91,7 +91,7 @@ class WrapLogicTest {
 
     originalContainer.add(component)
 
-    val wrapLogic = WrapLogic(disposableRule.disposable, component, originalContainer)
+    val wrapLogic = WrapLogic(disposableRule.disposable, component)
     // Should not throw
     Disposer.dispose(wrapLogic)
   }

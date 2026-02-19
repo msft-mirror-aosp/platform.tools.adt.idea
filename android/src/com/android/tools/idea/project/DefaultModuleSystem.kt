@@ -70,87 +70,92 @@ import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.text.nullize
-import org.jetbrains.android.facet.AndroidFacet
-import org.kxml2.io.KXmlParser
-import org.xmlpull.v1.XmlPullParser
 import java.io.StringReader
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
+import org.jetbrains.android.facet.AndroidFacet
+import org.kxml2.io.KXmlParser
+import org.xmlpull.v1.XmlPullParser
 
 private val PACKAGE_NAME_KEY = Key.create<CachedValue<String?>>("main.manifest.package.name")
-private val LOG: Logger get() = Logger.getInstance("DefaultModuleSystem.kt")
+private val LOG: Logger
+  get() = Logger.getInstance("DefaultModuleSystem.kt")
 
 class DefaultModuleSystem(override val module: Module) :
-  AndroidModuleSystem,
-  SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(module) {
+  AndroidModuleSystem, SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(module) {
 
   override val moduleClassFileFinder: ClassFileFinder = ProductionModuleClassFileFinder(module)
 
   override fun hasResolvedDependency(id: WellKnownMavenArtifactId, scope: DependencyScopeType): Boolean = false
 
-  override fun getResourceModuleDependencies() = AndroidDependenciesCache.getAllAndroidDependencies(module, true).map(AndroidFacet::getModule)
+  override fun getResourceModuleDependencies() =
+    AndroidDependenciesCache.getAllAndroidDependencies(module, true).map(AndroidFacet::getModule)
 
-  override fun getDirectResourceModuleDependents(): List<Module> = ModuleManager.getInstance(module.project).getModuleDependentModules(module)
+  override fun getDirectResourceModuleDependents(): List<Module> =
+    ModuleManager.getInstance(module.project).getModuleDependentModules(module)
 
   override fun getAndroidLibraryDependencies(scope: DependencyScopeType): Collection<ExternalAndroidLibrary> {
     val libraries = mutableListOf<ExternalAndroidLibrary>()
 
-    ModuleRootManager.getInstance(module)
-      .orderEntries()
-      .librariesOnly()
-      .recursively()
-      .forEachLibrary { library ->
-        // Typically, a library xml looks like the following:
-        //     <CLASSES>
-        //      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/appcompat-v7-27.1.1.aar/e2434af65905ee37277d482d7d20865d/res" />
-        //      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/appcompat-v7-27.1.1.aar/e2434af65905ee37277d482d7d20865d/jars/classes.jar!/" />
-        //    </CLASSES>
-        val roots = library.getFiles(OrderRootType.CLASSES)
+    ModuleRootManager.getInstance(module).orderEntries().librariesOnly().recursively().forEachLibrary { library ->
+      // Typically, a library xml looks like the following:
+      //     <CLASSES>
+      //      <root
+      // url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/appcompat-v7-27.1.1.aar/e2434af65905ee37277d482d7d20865d/res" />
+      //      <root
+      // url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/appcompat-v7-27.1.1.aar/e2434af65905ee37277d482d7d20865d/jars/classes.jar!/" />
+      //    </CLASSES>
+      val roots = library.getFiles(OrderRootType.CLASSES)
 
-        // all libraries are assumed to have a non-empty name
-        val classesJar = roots.firstOrNull { it.name == SdkConstants.FN_CLASSES_JAR }?.toPathString()
-        val libraryName = library.name ?: return@forEachLibrary true
+      // all libraries are assumed to have a non-empty name
+      val classesJar = roots.firstOrNull { it.name == SdkConstants.FN_CLASSES_JAR }?.toPathString()
+      val libraryName = library.name ?: return@forEachLibrary true
 
-        // For testing purposes we create libraries with a res.apk root (legacy projects don't have those). Recognize them here and
-        // create ExternalLibrary as necessary.
-        val resFolderRoot = roots.firstOrNull { it.name == FD_RES }?.toPathString()
-        val resApkRoot = roots.firstOrNull { it.name == FN_RESOURCE_STATIC_LIBRARY }?.toPathString()
-        val (resFolder, resApk) = when {
+      // For testing purposes we create libraries with a res.apk root (legacy projects don't have those). Recognize them here and
+      // create ExternalLibrary as necessary.
+      val resFolderRoot = roots.firstOrNull { it.name == FD_RES }?.toPathString()
+      val resApkRoot = roots.firstOrNull { it.name == FN_RESOURCE_STATIC_LIBRARY }?.toPathString()
+      val (resFolder, resApk) =
+        when {
           resApkRoot != null -> Pair(resApkRoot.parentOrRoot.resolve(FD_RES), resApkRoot)
           resFolderRoot != null -> Pair(resFolderRoot, resFolderRoot.parentOrRoot.resolve(FN_RESOURCE_STATIC_LIBRARY))
           else -> return@forEachLibrary true
         }
 
-        libraries.add(ExternalLibraryImpl(
+      libraries.add(
+        ExternalLibraryImpl(
           address = libraryName,
           manifestFile = resFolder.parentOrRoot.resolve(FN_ANDROID_MANIFEST_XML),
           resFolder = RecursiveResourceFolder(resFolder),
           symbolFile = resFolder.parentOrRoot.resolve(FN_RESOURCE_TEXT),
-          resApkFile = resApk
-        ))
+          resApkFile = resApk,
+        )
+      )
 
-        true // continue processing.
-      }
+      true // continue processing.
+    }
 
     return ImmutableList.copyOf(libraries)
   }
 
-  override fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate> =
-    listOf(
+  override fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate> {
+    val srcRoot = ModuleRootManager.getInstance(module).sourceRoots.firstOrNull() ?: return emptyList()
+    return listOf(
       NamedModuleTemplate(
         "main",
         AndroidModulePathsImpl(
-          ModuleRootManager.getInstance(module).sourceRoots.first().parent.toIoFile(),
-          null,
-          ModuleRootManager.getInstance(module).sourceRoots.first().toIoFile(),
-          null,
-          null,
-          null,
-          emptyList(),
-          emptyList()
-        )
+          moduleRoot = srcRoot.parent.toIoFile(),
+          manifestDirectory = null,
+          srcRoot = srcRoot.toIoFile(),
+          unitTestRoot = null,
+          testRoot = null,
+          aidlRoot = null,
+          resDirectories = emptyList(),
+          mlModelsDirectories = emptyList(),
+        ),
       )
     )
+  }
 
   override fun getPackageName(): String? {
     return getPackageName(module)
@@ -158,7 +163,8 @@ class DefaultModuleSystem(override val module: Module) :
 
   override fun getApplicationIdProvider(): ApplicationIdProvider {
     return NonGradleApplicationIdProvider(
-      AndroidFacet.getInstance(module) ?: throw IllegalStateException("Cannot find AndroidFacet. Module: ${module.name}"))
+      AndroidFacet.getInstance(module) ?: throw IllegalStateException("Cannot find AndroidFacet. Module: ${module.name}")
+    )
   }
 
   override fun getManifestOverrides(): ManifestOverrides {
@@ -166,10 +172,15 @@ class DefaultModuleSystem(override val module: Module) :
   }
 
   override fun getResolveScope(scopeType: ScopeType): GlobalSearchScope {
-    val includeTests = when (scopeType) {
-      ScopeType.MAIN -> false
-      ScopeType.ANDROID_TEST, ScopeType.UNIT_TEST, ScopeType.SCREENSHOT_TEST, ScopeType.TEST_FIXTURES, ScopeType.TEST_SUITE -> true
-    }
+    val includeTests =
+      when (scopeType) {
+        ScopeType.MAIN -> false
+        ScopeType.ANDROID_TEST,
+        ScopeType.UNIT_TEST,
+        ScopeType.SCREENSHOT_TEST,
+        ScopeType.TEST_FIXTURES,
+        ScopeType.TEST_SUITE -> true
+      }
     return module.getModuleWithDependenciesAndLibrariesScope(includeTests)
   }
 
@@ -195,10 +206,11 @@ class DefaultModuleSystem(override val module: Module) :
   override var isMlModelBindingEnabled: Boolean by UserData(Keys.isMlModelBindingEnabled, false)
 
   override val isDebuggable: Boolean
-    get() = when {
-      ENABLE_APK_PROJECT_SYSTEM.get() -> false
-      else -> ApkFacet.getInstance(module)?.configuration?.DEBUGGABLE == "true"
-    }
+    get() =
+      when {
+        ENABLE_APK_PROJECT_SYSTEM.get() -> false
+        else -> ApkFacet.getInstance(module)?.configuration?.DEBUGGABLE == "true"
+      }
 
   override var applicationRClassConstantIds: Boolean by UserData(Keys.applicationRClassConstantIds, true)
 
@@ -216,10 +228,7 @@ class DefaultModuleSystem(override val module: Module) :
  * During testing, this allows us to enable IDE features which are not supported by JPS builds but can still be tested without relying on
  * the Gradle model.
  */
-private class UserData<T>(
-  val key: Key<T>,
-  val defaultValue: T
-) : ReadWriteProperty<DefaultModuleSystem, T> {
+private class UserData<T>(val key: Key<T>, val defaultValue: T) : ReadWriteProperty<DefaultModuleSystem, T> {
 
   override fun getValue(thisRef: DefaultModuleSystem, property: KProperty<*>): T {
     return thisRef.module.androidFacet?.getUserData(key) ?: defaultValue
@@ -236,8 +245,7 @@ fun getPackageName(module: Module): String? {
   // Reading from indexes may be slow and in non-blocking read actions we prefer to give priority to
   // write actions.
   ProgressManager.checkCanceled()
-  return uiSafeRunReadActionInSmartMode(module.project) { getPackageNameFromIndex(facet) }
-         ?: getPackageNameByParsingPrimaryManifest(facet)
+  return uiSafeRunReadActionInSmartMode(module.project) { getPackageNameFromIndex(facet) } ?: getPackageNameByParsingPrimaryManifest(facet)
 }
 
 private fun getPackageNameFromIndex(facet: AndroidFacet): String? {
@@ -246,8 +254,7 @@ private fun getPackageNameFromIndex(facet: AndroidFacet): String? {
   }
   return try {
     facet.queryPackageNameFromManifestIndex()
-  }
-  catch (e: IndexNotReadyException) {
+  } catch (e: IndexNotReadyException) {
     // TODO(147116755): runReadActionInSmartMode doesn't work if we already have read access.
     //                  We need to refactor the callers of this to require a *smart* read
     //                  action, at which point we can remove this try-catch.
@@ -258,35 +265,35 @@ private fun getPackageNameFromIndex(facet: AndroidFacet): String? {
 
 private fun getPackageNameByParsingPrimaryManifest(facet: AndroidFacet): String? {
   val manifestFile = SourceProviderManager.getInstance(facet).mainManifestFile ?: return null
-  val cachedValue: CachedValue<String?> = CachedValuesManager.getManager(facet.module.project).createCachedValue {
-    val packageName = readPackageNameFromManifest(manifestFile)
-    return@createCachedValue CachedValueProvider.Result.create(packageName, manifestFile)
-  }
+  val cachedValue: CachedValue<String?> =
+    CachedValuesManager.getManager(facet.module.project).createCachedValue {
+      val packageName = readPackageNameFromManifest(manifestFile)
+      return@createCachedValue CachedValueProvider.Result.create(packageName, manifestFile)
+    }
   return facet.putUserDataIfAbsent(PACKAGE_NAME_KEY, cachedValue).value
 }
 
 private fun readPackageNameFromManifest(manifestFile: VirtualFile): String? {
   try {
-    val parser = KXmlParser().apply {
-      setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
-      setInput(StringReader(runCancellableReadAction { getText(manifestFile) }))
-    }
+    val parser =
+      KXmlParser().apply {
+        setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
+        setInput(StringReader(runCancellableReadAction { getText(manifestFile) }))
+      }
     if (parser.nextTag() == XmlPullParser.START_TAG) {
       return parser.getAttributeValue(null, "package").nullize(nullizeSpaces = true)
     }
-  }
-  catch (e: Exception) {
+  } catch (e: Exception) {
     LOG.warn(e)
   }
   return null
 }
 
-/**
- * Returns potentially unsaved contents of [manifestFile].
- */
+/** Returns potentially unsaved contents of [manifestFile]. */
 private fun getText(manifestFile: VirtualFile): String {
-  val document = FileDocumentManager.getInstance().getCachedDocument(manifestFile)
-                 ?: return getTextByBinaryPresentation(manifestFile.contentsToByteArray(), manifestFile).toString()
+  val document =
+    FileDocumentManager.getInstance().getCachedDocument(manifestFile)
+      ?: return getTextByBinaryPresentation(manifestFile.contentsToByteArray(), manifestFile).toString()
   return document.text
 }
 

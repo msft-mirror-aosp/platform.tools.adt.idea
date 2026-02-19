@@ -45,14 +45,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.ui.components.BorderLayoutPanel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 
-@VisibleForTesting
-const val UI_CONFIGURATION_KEY =
-  "com.android.tools.idea.layoutinspector.runningdevices.ui.uiconfigkey"
+@VisibleForTesting const val UI_CONFIGURATION_KEY = "com.android.tools.idea.layoutinspector.runningdevices.ui.uiconfigkey"
 
 private val logger = Logger.getInstance(SelectedTabState::class.java)
 
@@ -61,9 +58,8 @@ private val logger = Logger.getInstance(SelectedTabState::class.java)
  *
  * @param deviceId The id of selected tab.
  * @param tabComponents The components of the selected tab.
- * @param renderingComponents The components required for the rendering of Layout Inspector UI on
- *   the selected tab. It's a list because a tab can have multiple displays, in which case each
- *   display has its on [RenderingComponents].
+ * @param renderingComponents The components required for the rendering of Layout Inspector UI on the selected tab. It's a list because a
+ *   tab can have multiple displays, in which case each display has its on [RenderingComponents].
  */
 @UiThread
 data class SelectedTabState(
@@ -72,7 +68,6 @@ data class SelectedTabState(
   val deviceId: DeviceId,
   val tabComponents: TabComponents,
   val layoutInspector: LayoutInspector,
-  val coroutineScope: CoroutineScope = disposable.createCoroutineScope(),
 ) : Disposable {
 
   private var uiConfig = UiConfig.HORIZONTAL
@@ -104,6 +99,8 @@ data class SelectedTabState(
   init {
     Disposer.register(disposable, this)
 
+    val coroutineScope = createCoroutineScope()
+
     // Try to restore UI config
     val uiConfigString = PropertiesComponent.getInstance().getValue(UI_CONFIGURATION_KEY)
     uiConfig = uiConfigString?.let { UiConfig.valueOf(uiConfigString) } ?: UiConfig.HORIZONTAL
@@ -111,31 +108,21 @@ data class SelectedTabState(
     coroutineScope.launch(Dispatchers.EDT) {
       tabComponents.displayList.collect { displayViews ->
         val newRenderingComponents =
-          createRenderingComponents(
-            disposable = this@SelectedTabState,
-            displayList = displayViews,
-            layoutInspector = layoutInspector,
-          )
+          createRenderingComponents(disposable = this@SelectedTabState, displayList = displayViews, layoutInspector = layoutInspector)
         renderingComponents = newRenderingComponents
       }
     }
 
     coroutineScope.launch(Dispatchers.EDT) {
-      toolbarState.isDeepInspectEnabled.collect {
-        renderingComponents.forEach { comp -> comp.model.setInterceptClicks(it) }
-      }
+      toolbarState.isDeepInspectEnabled.collect { renderingComponents.forEach { comp -> comp.model.setInterceptClicks(it) } }
     }
 
     coroutineScope.launch(Dispatchers.EDT) {
-      toolbarState.overlayImage.collect {
-        renderingComponents.forEach { comp -> comp.model.setOverlay(it) }
-      }
+      toolbarState.overlayImage.collect { renderingComponents.forEach { comp -> comp.model.setOverlay(it) } }
     }
 
     coroutineScope.launch(Dispatchers.EDT) {
-      toolbarState.overlayTransparency.collect {
-        renderingComponents.forEach { comp -> comp.model.setOverlayTransparency(it) }
-      }
+      toolbarState.overlayTransparency.collect { renderingComponents.forEach { comp -> comp.model.setOverlayTransparency(it) } }
     }
   }
 
@@ -152,10 +139,7 @@ data class SelectedTabState(
     wrapUi(uiConfig)
     renderingComponents.forEach { it.addRenderer() }
 
-    layoutInspector.processModel?.addSelectedProcessListeners(
-      EdtExecutorService.getInstance(),
-      selectedProcessListener,
-    )
+    layoutInspector.processModel?.addSelectedProcessListeners(EdtExecutorService.getInstance(), selectedProcessListener)
 
     logger.debug("Embedded Layout Inspector successfully enabled.")
   }
@@ -164,19 +148,11 @@ data class SelectedTabState(
   private fun wrapUi(uiConfig: UiConfig) {
     PropertiesComponent.getInstance().setValue(UI_CONFIGURATION_KEY, uiConfig.name)
 
-    wrapLogic =
-      WrapLogic(
-        parentDisposable = this,
-        component = tabComponents.tabContentPanel,
-        container = tabComponents.tabContentPanelContainer,
-      )
+    wrapLogic = WrapLogic(parentDisposable = this, content = tabComponents.tabContentPanel)
 
-    wrapLogic?.wrapComponent { disposable, component ->
+    wrapLogic?.wrapContent { disposable, component ->
       val processPicker =
-        TargetSelectionActionFactory.getSingleDeviceProcessPicker(
-          layoutInspector,
-          targetDeviceSerialNumber = deviceId.serialNumber,
-        )
+        TargetSelectionActionFactory.getSingleDeviceProcessPicker(layoutInspector, targetDeviceSerialNumber = deviceId.serialNumber)
 
       val gearAction =
         GearAction(
@@ -196,7 +172,7 @@ data class SelectedTabState(
         ToggleDeepInspectAction(
           isSelected = { toolbarState.isDeepInspectEnabled.value },
           setSelected = { toolbarState.setDeepInspectEnabled(it) },
-          isRendering = { layoutInspector.renderModel.isActive },
+          isRendering = { !layoutInspector.inspectorModel.isEmpty },
           connectedClientProvider = { layoutInspector.currentClient },
         )
 
@@ -255,14 +231,14 @@ data class SelectedTabState(
     ApplicationManager.getApplication().assertIsDispatchThread()
 
     isEnabled = false
-    unwrapUi()
 
     renderingComponents.forEach { it.removeRenderer() }
+    unwrapUi()
 
     layoutInspector.processModel?.removeSelectedProcessListener(selectedProcessListener)
 
-    tabComponents.tabContentPanelContainer.revalidate()
-    tabComponents.tabContentPanelContainer.repaint()
+    tabComponents.tabContentPanel.revalidate()
+    tabComponents.tabContentPanel.repaint()
   }
 
   private val selectedProcessListener = {

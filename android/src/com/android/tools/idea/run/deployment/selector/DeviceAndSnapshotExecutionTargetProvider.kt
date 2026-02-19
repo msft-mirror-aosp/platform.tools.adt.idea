@@ -26,18 +26,10 @@ internal constructor(
   private val devicesSelectedService: (Project) -> DevicesSelectedService = Project::service,
   private val devicesService: (Project) -> DeploymentTargetDevicesService = Project::service,
 ) : ExecutionTargetProvider() {
-  override fun getTargets(
-    project: Project,
-    configuration: RunConfiguration,
-  ): List<ExecutionTarget> {
+  override fun getTargets(project: Project, configuration: RunConfiguration): List<ExecutionTarget> {
     // TODO: Should we be using the configuration parameter here? The original code didn't; the
     // DevicesSelectedService implicitly uses the currently selected run configuration, which is
     // presumably the same.
-    return listOf(
-      DeviceAndSnapshotComboBoxExecutionTarget(
-        devicesSelectedService(project).getSelectedTargets(),
-        devicesService(project),
-      )
-    )
+    return listOf(DeviceAndSnapshotComboBoxExecutionTarget(devicesSelectedService(project).getSelectedTargets(), devicesService(project)))
   }
 }

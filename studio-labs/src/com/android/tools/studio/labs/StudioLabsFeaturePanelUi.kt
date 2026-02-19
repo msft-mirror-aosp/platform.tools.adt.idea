@@ -43,10 +43,10 @@ import com.intellij.openapi.application.invokeLater
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Typography
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icon.newUiChecker
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
+import org.jetbrains.jewel.ui.typography
 
 /** Class representing a Studio Labs Feature Panel. */
 open class StudioLabsFeaturePanelUi(
@@ -77,14 +77,11 @@ open class StudioLabsFeaturePanelUi(
       FeatureImage(imageKey, imageDescription, modifier = Modifier.fillMaxWidth().height(200.dp))
 
       Column(modifier = Modifier.padding(16.dp)) {
-        Text(heading, style = Typography.h2TextStyle(), fontWeight = FontWeight.Bold)
+        Text(heading, style = JewelTheme.typography.h2TextStyle, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.size(12.dp))
         Text(description)
         Spacer(modifier = Modifier.size(16.dp))
-        OutlinedButton(
-          onClick = { currentState.value = !currentState.value },
-          modifier = Modifier.testTag("enable_disable_button"),
-        ) {
+        OutlinedButton(onClick = { currentState.value = !currentState.value }, modifier = Modifier.testTag("enable_disable_button")) {
           Text(if (currentState.value) "Disable" else "Enable")
         }
       }
@@ -92,11 +89,7 @@ open class StudioLabsFeaturePanelUi(
   }
 
   @Composable
-  private fun FeatureImage(
-    key: IconKey,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-  ) {
+  private fun FeatureImage(key: IconKey, contentDescription: String, modifier: Modifier = Modifier) {
     val isNewUi = JewelTheme.newUiChecker.isNewUi()
     val path = remember(key, isNewUi) { key.path(isNewUi) }
     val painterProvider = rememberResourcePainterProvider(path, key.iconClass)
@@ -118,13 +111,7 @@ open class StudioLabsFeaturePanelUi(
 }
 
 /**
- * This class should be used only for creating feature panels for internal testing. Use
- * [StudioLabsFeaturePanelUi] for production use-cases.
+ * This class should be used only for creating feature panels for internal testing. Use [StudioLabsFeaturePanelUi] for production use-cases.
  */
-class FakeStudioLabsFeaturePanelUi(
-  flag: Flag<Boolean>,
-  heading: String,
-  description: String,
-  imageKey: IconKey,
-  imageDescription: String,
-) : StudioLabsFeaturePanelUi(flag, heading, description, imageKey, imageDescription)
+class FakeStudioLabsFeaturePanelUi(flag: Flag<Boolean>, heading: String, description: String, imageKey: IconKey, imageDescription: String) :
+  StudioLabsFeaturePanelUi(flag, heading, description, imageKey, imageDescription)

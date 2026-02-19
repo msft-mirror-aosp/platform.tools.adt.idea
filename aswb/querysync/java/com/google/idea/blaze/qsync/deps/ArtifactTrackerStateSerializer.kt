@@ -25,11 +25,12 @@ import com.google.idea.blaze.qsync.project.ProjectPath.AbsoluteProjectPath
 import com.google.idea.blaze.qsync.project.ProjectPath.ProjectRelativeProjectPath
 import com.google.idea.blaze.qsync.project.ProjectPath.WorkspaceRelativeProjectPath
 
-/** Serializes [NewArtifactTracker] state to a proto.  */
+/** Serializes [NewArtifactTracker] state to a proto. */
 class ArtifactTrackerStateSerializer {
   companion object {
     const val VERSION: Int = 7
   }
+
   private val proto = ArtifactTrackerProto.ArtifactTrackerState.newBuilder().setVersion(VERSION)
   private val buildIdsSeen: MutableSet<String> = Sets.newHashSet()
 
@@ -70,14 +71,17 @@ class ArtifactTrackerStateSerializer {
 
   private fun visitJavaInfo(javaInfo: JavaArtifactInfo, builder: ArtifactTrackerProto.TargetBuildInfo.Builder) {
     val artifactTrackerProtoBuilder = builder.getJavaArtifactsBuilder()
-    javaInfo.ideAar()?.let {artifactTrackerProtoBuilder.setIdeAar(toProto(it))}
+    javaInfo.ideAar()?.let { artifactTrackerProtoBuilder.setIdeAar(toProto(it)) }
     artifactTrackerProtoBuilder
       .addAllGenSrcs(toProtos(javaInfo.genSrcs()))
+      .addAllGenAndroidRes(toProtos(javaInfo.genAndroidRes()))
       .addAllProtoSrcjars(toProtos(javaInfo.protoSrcjars()))
       .addAllJars(toProtos(javaInfo.jars()))
       .addAllSources(javaInfo.sources().map { projectPathToProto(it) })
       .addAllSrcJars(javaInfo.srcJars().map { projectPathToProto(it) })
       .setAndroidResourcesPackage(javaInfo.androidResourcesPackage())
+      .addAllKotlinCompilerFlags(javaInfo.kotlinCompilerFlags())
+      .setIsKotlinToolchain(javaInfo.isKotlinToolchain)
   }
 
   private fun toProtos(artifacts: Collection<BuildArtifact>): List<ArtifactTrackerProto.Artifact> {
@@ -149,6 +153,7 @@ class ArtifactTrackerStateSerializer {
         .addAllBuiltInIncludeDirectories(toolchain.builtInIncludeDirectories().map { projectPathToProto(it) })
         .addAllCOptions(toolchain.cOptions())
         .addAllCppOptions(toolchain.cppOptions())
-        .build())
+        .build(),
+    )
   }
 }

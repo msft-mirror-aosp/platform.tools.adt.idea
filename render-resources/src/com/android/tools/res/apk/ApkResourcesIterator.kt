@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 @file:JvmName("ApkResourcesIterator")
+
 package com.android.tools.res.apk
 
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.ResourceType
-import com.google.devrel.gmscore.tools.apk.arsc.BinaryResourceFile
-import com.google.devrel.gmscore.tools.apk.arsc.BinaryResourceIdentifier
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceFile
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceIdentifier
 import com.google.devrel.gmscore.tools.apk.arsc.ResourceTableChunk
-import java.lang.RuntimeException
 import java.util.zip.ZipFile
 
 internal fun forEveryResource(apkPath: String, processor: ResourceEntryProcessor) {
   ZipFile(apkPath).use { zipFile ->
     val zipEntry = zipFile.getEntry("resources.arsc") ?: return@use
-    val resourceFile = BinaryResourceFile.fromInputStream(zipFile.getInputStream(zipEntry))
+    val resourceFile = ResourceFile.fromInputStream(zipFile.getInputStream(zipEntry))
     (resourceFile.chunks.firstOrNull() as? ResourceTableChunk)?.let { resourceTable ->
       val stringPool = resourceTable.stringPool
       for (pkg in resourceTable.packages) {
@@ -35,21 +35,19 @@ internal fun forEveryResource(apkPath: String, processor: ResourceEntryProcessor
           val resType = ResourceType.fromXmlTagName(typeSpec.typeName)!!
           for (typeChunk in pkg.getTypeChunks(typeSpec.id)) {
             val binResConfig = typeChunk.configuration
-            val qualifierString =
-              binResConfig.toString().let { if (it == "default") "" else it }
+            val qualifierString = binResConfig.toString().let { if (it == "default") "" else it }
             val folderConfig =
-              FolderConfiguration.getConfigForQualifierString(qualifierString) ?:
-              throw RuntimeException("Unrecognized configuration $qualifierString")
+              FolderConfiguration.getConfigForQualifierString(qualifierString)
+                ?: throw RuntimeException("Unrecognized configuration $qualifierString")
 
             typeChunk.entries.forEach { (rowId, typeChunkEntry) ->
-              val binaryId =
-                BinaryResourceIdentifier.create(pkg.id, typeSpec.id, rowId)
+              val binaryId = ResourceIdentifier.create(pkg.id, typeSpec.id, rowId)
               processor.onResourceEntry(
                 stringPool,
                 resType,
                 folderConfig,
-                binaryId.resourceId(),
-                typeChunkEntry
+                ResourceIdentifier.asInt(binaryId.packageId(), binaryId.typeId(), binaryId.entryId()),
+                typeChunkEntry,
               )
             }
           }

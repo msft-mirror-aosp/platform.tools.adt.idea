@@ -36,11 +36,10 @@ import kotlinx.datetime.Instant
 /**
  * An abstraction of a device (or device template) used by the deployment target selector.
  *
- * It is itself immutable, although it holds a DeviceProvisionerAndroidDevice which can change
- * state. It is mostly a wrapper of that handle, however, it adds the connection time and launch
- * compatibility (relative to the current run configuration). It is ephemeral; it will be recreated
- * whenever any of its inputs changes (e.g. changing the run configuration from a Wear app to a
- * mobile app affects the launch compatibility).
+ * It is itself immutable, although it holds a DeviceProvisionerAndroidDevice which can change state. It is mostly a wrapper of that handle,
+ * however, it adds the connection time and launch compatibility (relative to the current run configuration). It is ephemeral; it will be
+ * recreated whenever any of its inputs changes (e.g. changing the run configuration from a Wear app to a mobile app affects the launch
+ * compatibility).
  */
 internal class DeploymentTargetDevice(
   val androidDevice: DeviceProvisionerAndroidDevice,
@@ -54,16 +53,9 @@ internal class DeploymentTargetDevice(
       connectionTime: Instant?,
       launchCompatibilityChecker: LaunchCompatibilityChecker,
     ): DeploymentTargetDevice {
-      val snapshots =
-        (androidDevice as? DeviceHandleAndroidDevice)?.deviceHandle?.bootSnapshotAction?.snapshots()
-          ?: emptyList()
+      val snapshots = (androidDevice as? DeviceHandleAndroidDevice)?.deviceHandle?.bootSnapshotAction?.snapshots() ?: emptyList()
 
-      return DeploymentTargetDevice(
-        androidDevice,
-        connectionTime,
-        snapshots,
-        launchCompatibilityChecker.validate(androidDevice),
-      )
+      return DeploymentTargetDevice(androidDevice, connectionTime, snapshots, launchCompatibilityChecker.validate(androidDevice))
     }
   }
 
@@ -72,9 +64,8 @@ internal class DeploymentTargetDevice(
     get() = androidDevice.id
 
   /**
-   * The [DeviceId] of the template that this device was created from. This is null if the device
-   * was not created from a template. If the device *is* a template, [templateId] is the same as
-   * [id].
+   * The [DeviceId] of the template that this device was created from. This is null if the device was not created from a template. If the
+   * device *is* a template, [templateId] is the same as [id].
    */
   val templateId: DeviceId?
     get() =
@@ -91,8 +82,7 @@ internal class DeploymentTargetDevice(
       }
       return when (launchCompatibility.state) {
         LaunchCompatibility.State.OK -> baseIcon
-        LaunchCompatibility.State.WARNING ->
-          LayeredIcon(baseIcon, AllIcons.General.WarningDecorator)
+        LaunchCompatibility.State.WARNING -> LayeredIcon(baseIcon, AllIcons.General.WarningDecorator)
         LaunchCompatibility.State.ERROR -> LayeredIcon(baseIcon, StudioIcons.Common.ERROR_DECORATOR)
       }
     }
@@ -129,19 +119,15 @@ internal class DeploymentTargetDevice(
 }
 
 /**
- * Given the full set of devices that are present, returns a unique name for this device by adding
- * its disambiguator if there is a different device with the same name.
+ * Given the full set of devices that are present, returns a unique name for this device by adding its disambiguator if there is a different
+ * device with the same name.
  */
-internal fun DeploymentTargetDevice.disambiguatedName(
-  otherDevices: List<DeploymentTargetDevice> = emptyList()
-): String =
+internal fun DeploymentTargetDevice.disambiguatedName(otherDevices: List<DeploymentTargetDevice> = emptyList()): String =
   if (disambiguator != null && otherDevices.any { it.id != id && it.name == name }) {
     "$name [$disambiguator]"
   } else name
 
 internal object DeviceComparator :
-  Comparator<DeploymentTargetDevice> by (compareBy<DeploymentTargetDevice> {
-      it.launchCompatibility.state
-    }
+  Comparator<DeploymentTargetDevice> by (compareBy<DeploymentTargetDevice> { it.launchCompatibility.state }
     .thenByDescending(nullsFirst()) { it.connectionTime }
     .thenBy(Collator.getInstance()) { it.name })

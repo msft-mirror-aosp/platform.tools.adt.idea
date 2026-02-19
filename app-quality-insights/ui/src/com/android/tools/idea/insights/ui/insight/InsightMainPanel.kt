@@ -18,6 +18,7 @@ package com.android.tools.idea.insights.ui.insight
 import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.LoadingState
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.ui.AppInsightsStatusText
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TEXT_FORMAT
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TITLE_FORMAT
@@ -38,16 +39,12 @@ private const val EMPTY_CARD = "empty"
 /**
  * Main tool window panel for [InsightToolWindow].
  *
- * Shows the insight if it is available; otherwise shows [AppInsightsStatusText] with appropriate
- * message
+ * Shows the insight if it is available; otherwise shows [AppInsightsStatusText] with appropriate message
  */
-class InsightMainPanel(
-  controller: AppInsightsProjectLevelController,
-  parentDisposable: Disposable,
-) : JPanel() {
+class InsightMainPanel(controller: AppInsightsProjectLevelController, tracker: AppInsightsTracker, parentDisposable: Disposable) :
+  JPanel() {
 
-  private val scope =
-    controller.coroutineScope.createChildScope(parentDisposable = parentDisposable)
+  private val scope = controller.coroutineScope.createChildScope(parentDisposable = parentDisposable)
 
   private var isShowingInsight = false
 
@@ -55,9 +52,8 @@ class InsightMainPanel(
     InsightContentPanel(
       controller,
       scope,
-      controller.state
-        .map { it.currentInsight }
-        .stateIn(scope, SharingStarted.Eagerly, LoadingState.Ready(null)),
+      controller.state.map { it.currentInsight }.stateIn(scope, SharingStarted.Eagerly, LoadingState.Ready(null)),
+      tracker,
       parentDisposable,
     )
 

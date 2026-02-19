@@ -196,19 +196,16 @@ private val handCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
 private val textCursor = Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR)
 
 /**
- * To make the logcat window accessible to Game Tools while not changing the protection level of the
- * logcat window, we use this factory that'll return a JComponent. Game Tools just needs a UI
- * component, so a JComponent is enough. If we were to change LogcatMainPanel to public, a lot more
- * classes would need to become public - and it's not worth it.
+ * To make the logcat window accessible to Game Tools while not changing the protection level of the logcat window, we use this factory
+ * that'll return a JComponent. Game Tools just needs a UI component, so a JComponent is enough. If we were to change LogcatMainPanel to
+ * public, a lot more classes would need to become public - and it's not worth it.
  */
 class LogcatMainPanelFactory {
   companion object {
     /**
-     * This HyperlinkDetector detector is to work around a null-pointer exception that will break
-     * the logcat when running in game tools. Right now Game Tools can't do anything with
-     * hyperlinks, so there is no need to detect them. The failure was coming from resolving PSI
-     * links, which is not something Game Tools needs to handle since AGDE doesn't focus on Java
-     * development.
+     * This HyperlinkDetector detector is to work around a null-pointer exception that will break the logcat when running in game tools.
+     * Right now Game Tools can't do anything with hyperlinks, so there is no need to detect them. The failure was coming from resolving PSI
+     * links, which is not something Game Tools needs to handle since AGDE doesn't focus on Java development.
      */
     class NoopHyperlinkDetector : HyperlinkDetector {
       override fun detectHyperlinks(startLine: Int, endLine: Int, sdk: AndroidApiLevel?) {}
@@ -222,14 +219,10 @@ class LogcatMainPanelFactory {
 
     fun create(project: Project): JComponent {
       if (!IdeInfo.isGameTool()) {
-        throw IllegalAccessException(
-          "LogcatMainPanelFactory can only be used by GameTools. Please use LogcatMainPanel directly."
-        )
+        throw IllegalAccessException("LogcatMainPanelFactory can only be used by GameTools. Please use LogcatMainPanel directly.")
       }
 
-      ApplicationManager.getApplication().executeOnPooledThread {
-        project.getService(ProcessNameMonitor::class.java).start()
-      }
+      ApplicationManager.getApplication().executeOnPooledThread { project.getService(ProcessNameMonitor::class.java).start() }
 
       return LogcatMainPanel(
         project = project,
@@ -249,8 +242,7 @@ class LogcatMainPanelFactory {
  * The top level Logcat panel.
  *
  * @param project the [Project]
- * @param splitterPopupActionGroup An [ActionGroup] to add to the right-click menu of the panel and
- *   the toolbar
+ * @param splitterPopupActionGroup An [ActionGroup] to add to the right-click menu of the panel and the toolbar
  * @param logcatColors Provides colors for rendering messages
  * @param state State to restore or null to use the default state
  * @param hyperlinkDetector A [HyperlinkDetector] or null to create the default one. For testing.
@@ -308,15 +300,12 @@ constructor(
 
   private val messageFormatter = MessageFormatter(project, logcatColors, zoneId)
 
-  @VisibleForTesting
-  internal val messageBacklog = AtomicReference(MessageBacklog(logcatSettings.bufferSize))
+  @VisibleForTesting internal val messageBacklog = AtomicReference(MessageBacklog(logcatSettings.bufferSize))
   private val tags = MostRecentlyAddedSet<String>(MAX_TAGS)
   private val packages = MostRecentlyAddedSet<String>(MAX_PACKAGE_NAMES)
   private val processNames = MostRecentlyAddedSet<String>(MAX_PROCESS_NAMES)
-  private val packageNamesProvider: ProjectApplicationIdsProvider =
-    ProjectApplicationIdsProvider.getInstance(project)
-  private val logcatFilterParser =
-    LogcatFilterParser(project, packageNamesProvider, androidProjectDetector)
+  private val packageNamesProvider: ProjectApplicationIdsProvider = ProjectApplicationIdsProvider.getInstance(project)
+  private val logcatFilterParser = LogcatFilterParser(project, packageNamesProvider, androidProjectDetector)
 
   @VisibleForTesting
   val headerPanel =
@@ -333,26 +322,16 @@ constructor(
 
   @VisibleForTesting
   internal val messageProcessor =
-    MessageProcessor(
-      this,
-      ::formatMessages,
-      logcatFilterParser.parse(headerPanel.filter, headerPanel.filterMatchCase),
-    )
+    MessageProcessor(this, ::formatMessages, logcatFilterParser.parse(headerPanel.filter, headerPanel.filterMatchCase))
 
-  private val toolbar =
-    ActionManager.getInstance()
-      .createActionToolbar("LogcatMainPanel", createToolbarActions(project), false)
-  private val hyperlinkDetector =
-    hyperlinkDetector
-      ?: EditorHyperlinkDetector(project, editor, this, ModalityState.stateForComponent(this))
+  private val toolbar = ActionManager.getInstance().createActionToolbar("LogcatMainPanel", createToolbarActions(project), false)
+  private val hyperlinkDetector = hyperlinkDetector ?: EditorHyperlinkDetector(project, editor, this, ModalityState.stateForComponent(this))
   private val foldingDetector = foldingDetector ?: EditorFoldingDetector(project, editor)
   private val logcatService = LogcatService.getInstance(project)
-  private var ignoreCaretAtBottom =
-    false // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
+  private var ignoreCaretAtBottom = false // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
   private val connectedDevice = AtomicReference<Device?>()
   private val logcatServiceChannel = Channel<LogcatServiceEvent>(1)
-  private val projectAppMonitor =
-    ProjectAppMonitor(project.getService(ProcessNameMonitor::class.java), packageNamesProvider)
+  private val projectAppMonitor = ProjectAppMonitor(project.getService(ProcessNameMonitor::class.java), packageNamesProvider)
 
   @Volatile @VisibleForTesting internal var logcatServiceJob: Job? = null
   private var editorWidth = 0
@@ -421,21 +400,14 @@ constructor(
     }
     noApplicationIdsBanner.apply {
       text = LogcatBundle.message("logcat.main.panel.no.application.ids.banner.text")
-      createActionLabel(
-        LogcatBundle.message("logcat.main.panel.no.application.ids.banner.sync.now")
-      ) {
-        ProjectSystemService.getInstance(project)
-          .projectSystem
-          .getSyncManager()
-          .requestSyncProject(USER_REQUEST)
+      createActionLabel(LogcatBundle.message("logcat.main.panel.no.application.ids.banner.sync.now")) {
+        ProjectSystemService.getInstance(project).projectSystem.getSyncManager().requestSyncProject(USER_REQUEST)
       }
       isVisible = isMissingApplicationIds()
     }
     noLogsBanner.apply {
       noLogsBanner.text = LogcatBundle.message("logcat.main.panel.no.logs.banner.text")
-      createActionLabel(LogcatBundle.message("logcat.main.panel.no.logs.banner.clear.filter")) {
-        setFilter("")
-      }
+      createActionLabel(LogcatBundle.message("logcat.main.panel.no.logs.banner.clear.filter")) { setFilter("") }
       isVisible = isLogsMissing()
     }
     val centerPanel =
@@ -469,12 +441,7 @@ constructor(
         .setPanelAdded(
           LogcatPanelEvent.newBuilder()
             .setIsRestored(state != null)
-            .setFilter(
-              logcatFilterParser.getUsageTrackingEvent(
-                headerPanel.filter,
-                headerPanel.filterMatchCase,
-              )
-            )
+            .setFilter(logcatFilterParser.getUsageTrackingEvent(headerPanel.filter, headerPanel.filterMatchCase))
             .setFormatConfiguration(state?.formattingConfig.toUsageTracking())
             .setBufferSize(logcatSettings.bufferSize)
         )
@@ -532,10 +499,7 @@ constructor(
               } catch (e: Exception) {
                 LOGGER.warn("Failed to load Logcat from file ${item.path}", e)
                 withContext(Dispatchers.EDT) {
-                  deviceComboBox.handleItemError(
-                    item,
-                    LogcatBundle.message("logcat.device.combo.error.load.file", item.path),
-                  )
+                  deviceComboBox.handleItemError(item, LogcatBundle.message("logcat.device.combo.error.load.file", item.path))
                 }
                 null
               }
@@ -571,11 +535,7 @@ constructor(
 
   private fun getPopupActionGroup(actions: Array<AnAction>): ActionGroup {
     return DefaultActionGroup().apply {
-      add(
-        CopyAction()
-          .withText(ActionsBundle.message("action.EditorCopy.text"))
-          .withIcon(AllIcons.Actions.Copy)
-      )
+      add(CopyAction().withText(ActionsBundle.message("action.EditorCopy.text")).withIcon(AllIcons.Actions.Copy))
       add(CopyMessageTextAction())
       add(SearchWebAction().withText(ActionsBundle.message("action.\$SearchWeb.text")))
       add(LogcatFoldLinesLikeThisAction(editor))
@@ -585,15 +545,10 @@ constructor(
       add(CreateScratchFileAction())
       add(Separator.create())
       actions.forEach { add(it) }
-      if (
-        StudioFlags.ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER.get() &&
-          StudioFlags.LOGCAT_TERMINATE_APP_ACTIONS_ENABLED.get()
-      ) {
-        add(Separator.getInstance())
-        add(TerminateAppActions.ForceStopAppAction())
-        add(TerminateAppActions.KillAppAction())
-        add(TerminateAppActions.CrashAppAction())
-      }
+      add(Separator.getInstance())
+      add(TerminateAppActions.ForceStopAppAction())
+      add(TerminateAppActions.KillAppAction())
+      add(TerminateAppActions.CrashAppAction())
       add(Separator.create())
       add(ClearLogcatAction())
       add(Separator.create())
@@ -611,16 +566,14 @@ constructor(
   /**
    * Derived from similar code in ConsoleViewImpl.
    *
-   * The purpose of this code is to 'not scroll to end' when the caret is at the end **but** the
-   * user has scrolled away from the bottom of the file.
+   * The purpose of this code is to 'not scroll to end' when the caret is at the end **but** the user has scrolled away from the bottom of
+   * the file.
    *
-   * aalbert: In theory, it seems like it should be possible to determine the state of the scroll
-   * bar directly and see if it's at the bottom, but when I attempted that, it did not quite work.
-   * The code in `isScrollAtBottom()` doesn't always return the expected result.
+   * aalbert: In theory, it seems like it should be possible to determine the state of the scroll bar directly and see if it's at the
+   * bottom, but when I attempted that, it did not quite work. The code in `isScrollAtBottom()` doesn't always return the expected result.
    *
-   * Specifically, on the second batch of text appended to the document, the expression
-   * "`scrollBar.maximum - scrollBar.visibleAmount`" is equal to "`position + <some small number>`"
-   * rather than to "`position`" exactly.
+   * Specifically, on the second batch of text appended to the document, the expression "`scrollBar.maximum - scrollBar.visibleAmount`" is
+   * equal to "`position + <some small number>`" rather than to "`position`" exactly.
    */
   private fun initScrollToEndStateHandling() {
     val mouseListener: MouseAdapter =
@@ -662,9 +615,7 @@ constructor(
       LogcatPanelConfig(
         device = deviceComboBox.getSelectedDevice()?.copy(isOnline = false),
         file = deviceComboBox.getSelectedFile()?.pathString,
-        formattingConfig =
-          if (formattingOptionsStyle == null) Custom(formattingOptions)
-          else Preset(formattingOptionsStyle),
+        formattingConfig = if (formattingOptionsStyle == null) Custom(formattingOptions) else Preset(formattingOptionsStyle),
         filter = headerPanel.filter,
         filterMatchCase = headerPanel.filterMatchCase,
         isSoftWrap = isSoftWrapEnabled(),
@@ -685,12 +636,10 @@ constructor(
 
       // Derived from similar code in ConsoleViewImpl. See initScrollToEndStateHandling()
       val shouldStickToEnd = !ignoreCaretAtBottom && isCaretAtBottom()
-      ignoreCaretAtBottom =
-        false // The 'ignore' only needs to last for one update. Next time, isCaretAtBottom() will
+      ignoreCaretAtBottom = false // The 'ignore' only needs to last for one update. Next time, isCaretAtBottom() will
       // be false.
       // Mark the end for post-processing. Adding text changes the lines due to the cyclic buffer.
-      val endMarker: RangeMarker =
-        document.createRangeMarker(document.textLength, document.textLength)
+      val endMarker: RangeMarker = document.createRangeMarker(document.textLength, document.textLength)
 
       documentAppender.appendToDocument(textAccumulator)
       noLogsBanner.isVisible = isLogsMissing()
@@ -698,11 +647,7 @@ constructor(
       val startLine = if (endMarker.isValid) document.getLineNumber(endMarker.endOffset) else 0
       endMarker.dispose()
       val endLine = max(0, document.lineCount - 1)
-      hyperlinkDetector.detectHyperlinks(
-        startLine,
-        endLine,
-        deviceComboBox.getSelectedDevice()?.apiLevel,
-      )
+      hyperlinkDetector.detectHyperlinks(startLine, endLine, deviceComboBox.getSelectedDevice()?.apiLevel)
       if (shouldStickToEnd) {
         scrollToEnd()
       }
@@ -764,10 +709,7 @@ constructor(
   override fun getSelectedItem(): DeviceComboItem? = deviceComboBox.item
 
   override fun countFilterMatches(filter: LogcatFilter?): Int {
-    return LogcatMasterFilter(filter)
-      .filter(messageBacklog.get().messages)
-      .filter { it.header != SYSTEM_HEADER }
-      .size
+    return LogcatMasterFilter(filter).filter(messageBacklog.get().messages).filter { it.header != SYSTEM_HEADER }.size
   }
 
   override fun getTags(): Set<String> = tags
@@ -815,7 +757,7 @@ constructor(
       proguardPath = path
     } catch (e: InvalidMappingFileException) {
       DialogBuilder()
-        .title(CommonBundle.message("dialog.error.title"))
+        .title(CommonBundle.message("title.error"))
         .apply {
           setCenterPanel(
             panel {
@@ -880,17 +822,13 @@ constructor(
           // current project but across all projects.
           // A much easier and safer workaround is to not send a "logcat -c" command on this
           // particular API level.
-          systemMessages.add(
-            LogcatMessage(SYSTEM_HEADER, LogcatBundle.message("logcat.clear.skipped"))
-          )
+          systemMessages.add(LogcatMessage(SYSTEM_HEADER, LogcatBundle.message("logcat.clear.skipped")))
         } else {
           try {
             logcatService.clearLogcat(device.serialNumber)
           } catch (_: TimeoutException) {
             LOGGER.warn("Timed out executing logcat -c")
-            systemMessages.add(
-              LogcatMessage(SYSTEM_HEADER, LogcatBundle.message("logcat.clear.timeout"))
-            )
+            systemMessages.add(LogcatMessage(SYSTEM_HEADER, LogcatBundle.message("logcat.clear.timeout")))
           }
         }
       }
@@ -929,13 +867,7 @@ constructor(
 
     sink[ScreenRecordingParameters.DATA_KEY] =
       device?.let {
-        ScreenRecordingParameters(
-          it.serialNumber,
-          it.name,
-          it.featureLevel,
-          this,
-          if (it.isEmulator) Paths.get(it.deviceId) else null,
-        )
+        ScreenRecordingParameters(it.serialNumber, it.name, it.featureLevel, this, if (it.isEmulator) Paths.get(it.deviceId) else null)
       }
     sink[CONNECTED_DEVICE] = device
     // Using CommonDataKeys.EDITOR causes the IJ framework to interfere with some components in
@@ -959,8 +891,7 @@ constructor(
 
     return coroutineScope.launch(Dispatchers.IO) {
       val logcatFlow = logcatService.readLogcat(device).map { LogcatMessagesEvent(it) }
-      val processMonitorFlow =
-        projectAppMonitor.monitorDevice(device.serialNumber).map { LogcatMessagesEvent(listOf(it)) }
+      val processMonitorFlow = projectAppMonitor.monitorDevice(device.serialNumber).map { LogcatMessagesEvent(listOf(it)) }
 
       connectedDevice.set(device)
 
@@ -1038,8 +969,7 @@ constructor(
           if (e.isControlDown && e.button == BUTTON1) {
             val filterHint = e.getFilterHint()
             if (filterHint != null) {
-              val newFilter =
-                toggleFilterTerm(logcatFilterParser, headerPanel.filter, filterHint.getFilter())
+              val newFilter = toggleFilterTerm(logcatFilterParser, headerPanel.filter, filterHint.getFilter())
               if (newFilter != null) {
                 headerPanel.filter = newFilter
               }
@@ -1053,17 +983,12 @@ constructor(
         override fun mouseMoved(e: MouseEvent) {
           val filterHint = e.getFilterHint()
           if (e.isControlDown) {
-            if (
-              filterHint != null &&
-                toggleFilterTerm(logcatFilterParser, headerPanel.filter, filterHint.getFilter()) !=
-                  null
-            ) {
+            if (filterHint != null && toggleFilterTerm(logcatFilterParser, headerPanel.filter, filterHint.getFilter()) != null) {
               contentComponent.cursor = handCursor
               return
             }
           }
-          contentComponent.toolTipText =
-            if (filterHint?.isElided() == true) filterHint.text else null
+          contentComponent.toolTipText = if (filterHint?.isElided() == true) filterHint.text else null
 
           contentComponent.cursor = textCursor
         }
@@ -1093,8 +1018,7 @@ constructor(
 
   private class WarningNotificationPanel : EditorNotificationPanel(Status.Warning) {
     init {
-      border =
-        BorderFactory.createCompoundBorder(Borders.customLine(JBColor.border(), 1, 1, 0, 0), border)
+      border = BorderFactory.createCompoundBorder(Borders.customLine(JBColor.border(), 1, 1, 0, 0), border)
     }
   }
 }
@@ -1108,8 +1032,7 @@ private fun LogcatPanelConfig.getInitialItem(): DeviceComboItem? {
 }
 
 private fun LogcatPanelConfig?.getFormattingOptions(): FormattingOptions =
-  this?.formattingConfig?.toFormattingOptions()
-    ?: AndroidLogcatFormattingOptions.getDefaultOptions()
+  this?.formattingConfig?.toFormattingOptions() ?: AndroidLogcatFormattingOptions.getDefaultOptions()
 
 private fun FormattingConfig?.toUsageTracking(): LogcatFormatConfiguration {
   val builder = LogcatFormatConfiguration.newBuilder()
@@ -1132,9 +1055,7 @@ private fun FormattingConfig?.toUsageTracking(): LogcatFormatConfiguration {
     .setIsShowTimestamp(formattingOptions.timestampFormat.enabled)
     .setIsShowDate(formattingOptions.timestampFormat.style == TimestampFormat.Style.DATETIME)
     .setIsShowProcessId(formattingOptions.processThreadFormat.enabled)
-    .setIsShowThreadId(
-      formattingOptions.processThreadFormat.style == ProcessThreadFormat.Style.BOTH
-    )
+    .setIsShowThreadId(formattingOptions.processThreadFormat.style == ProcessThreadFormat.Style.BOTH)
     .setIsShowTags(formattingOptions.tagFormat.enabled)
     .setIsShowRepeatedTags(!formattingOptions.tagFormat.hideDuplicates)
     .setTagWidth(formattingOptions.tagFormat.maxLength)
@@ -1144,8 +1065,7 @@ private fun FormattingConfig?.toUsageTracking(): LogcatFormatConfiguration {
     .build()
 }
 
-private fun FormattingOptions.Style.toUsageTracking() =
-  if (this == FormattingOptions.Style.STANDARD) STANDARD else COMPACT
+private fun FormattingOptions.Style.toUsageTracking() = if (this == FormattingOptions.Style.STANDARD) STANDARD else COMPACT
 
 private fun AnAction.withText(text: String): AnAction {
   templatePresentation.text = text

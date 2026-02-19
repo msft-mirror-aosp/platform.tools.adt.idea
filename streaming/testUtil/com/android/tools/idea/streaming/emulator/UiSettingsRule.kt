@@ -45,12 +45,11 @@ const val DEFAULT_DENSITY = 480
 const val CUSTOM_DENSITY = 560
 const val APPLICATION_ID1 = "com.example.test.app1"
 const val APPLICATION_ID2 = "com.example.test.app2"
+const val MAGNIFICATION_SERVICE_NAME = "com.android.server.accessibility.MagnificationController"
 
 private val API_REGEX = "(.+)Api(\\d+)$".toRegex()
 
-/**
- * Supplies fakes for UI settings tests
- */
+/** Supplies fakes for UI settings tests */
 class UiSettingsRule : ExternalResource() {
   private val appLanguageServices = AppLanguageService { context ->
     when (context.applicationId) {
@@ -86,8 +85,7 @@ class UiSettingsRule : ExternalResource() {
     configureAdbShellCommands()
   }
 
-  private fun configureAdbShellCommands() =
-    configureUiSettings()
+  private fun configureAdbShellCommands() = configureUiSettings()
 
   fun configureUiSettings(
     darkMode: Boolean = false,
@@ -98,15 +96,17 @@ class UiSettingsRule : ExternalResource() {
     talkBackInstalled: Boolean = false,
     talkBackOn: Boolean = false,
     selectToSpeakOn: Boolean = false,
+    magnificationOn: Boolean = false,
     fontScale: Int = DEFAULT_FONT_SCALE,
     physicalDensity: Int = DEFAULT_DENSITY,
     overrideDensity: Int = DEFAULT_DENSITY,
     debugLayout: Boolean = false,
-    deviceSelector: DeviceSelector = emulatorDeviceSelector
+    deviceSelector: DeviceSelector = emulatorDeviceSelector,
   ) {
     val overrideLine = if (physicalDensity != overrideDensity) "\n      Override density: $overrideDensity" else ""
     val command = POPULATE_COMMAND
-    val response = """
+    val response =
+      """
       -- Dark Mode --
       Night mode: ${if (darkMode) "yes" else "no"}
       -- Gestures --
@@ -114,9 +114,9 @@ class UiSettingsRule : ExternalResource() {
       -- List Packages --
       ${if (talkBackInstalled) "package:com.google.android.marvin.talkback" else ""}
       -- Accessibility Services --
-      ${formatAccessibilityServices(talkBackOn, selectToSpeakOn)}
+      ${formatAccessibilityServices(talkBackOn, selectToSpeakOn, magnificationOn = false)}
       -- Accessibility Button Targets --
-      ${formatAccessibilityServices(talkBackOn = false, selectToSpeakOn)}
+      ${formatAccessibilityServices(talkBackOn = false, selectToSpeakOn, magnificationOn)}
       -- Font Scale --
       ${(fontScale.toFloat() / 100f)}
       -- Density --
@@ -125,18 +125,31 @@ class UiSettingsRule : ExternalResource() {
       $debugLayout
       -- Foreground Application --
         mFocusedApp=ActivityRecord{64d5519 u0 $applicationId/com.example.test.MainActivity t8}
-    """.trimIndent().replace("\n\n", "\n") // trim spaces and remove all empty lines
+    """
+        .trimIndent()
+        .replace("\n\n", "\n") // trim spaces and remove all empty lines
     adb.configureShellCommand(deviceSelector, command, response)
 
-    adb.configureShellCommand(deviceSelector, POPULATE_LANGUAGE_COMMAND.format(applicationId), """
+    adb.configureShellCommand(
+      deviceSelector,
+      POPULATE_LANGUAGE_COMMAND.format(applicationId),
+      """
       -- App Language --
       Locales for $applicationId for user 0 are [$appLocales]"
-    """.trimIndent())
+    """
+        .trimIndent(),
+    )
 
-    adb.configureShellCommand(deviceSelector, "settings get secure $ENABLED_ACCESSIBILITY_SERVICES",
-                              formatAccessibilityServices(talkBackOn, selectToSpeakOn))
-    adb.configureShellCommand(deviceSelector, "settings get secure $ACCESSIBILITY_BUTTON_TARGETS",
-                              formatAccessibilityServices(talkBackOn = false, selectToSpeakOn))
+    adb.configureShellCommand(
+      deviceSelector,
+      "settings get secure $ENABLED_ACCESSIBILITY_SERVICES",
+      formatAccessibilityServices(talkBackOn, selectToSpeakOn, magnificationOn = false),
+    )
+    adb.configureShellCommand(
+      deviceSelector,
+      "settings get secure $ACCESSIBILITY_BUTTON_TARGETS",
+      formatAccessibilityServices(talkBackOn = false, selectToSpeakOn, magnificationOn),
+    )
   }
 
   private fun createAndStartEmulator(): FakeEmulator {
@@ -166,11 +179,21 @@ class UiSettingsRule : ExternalResource() {
     return emulatorController
   }
 
-  private fun formatAccessibilityServices(talkBackOn: Boolean, selectToSpeakOn: Boolean): String = when {
-    talkBackOn && selectToSpeakOn -> "$TALK_BACK_SERVICE_NAME:$SELECT_TO_SPEAK_SERVICE_NAME"
-    talkBackOn && !selectToSpeakOn -> TALK_BACK_SERVICE_NAME
-    !talkBackOn && selectToSpeakOn -> SELECT_TO_SPEAK_SERVICE_NAME
-    else -> "null"
+  private fun formatAccessibilityServices(talkBackOn: Boolean, selectToSpeakOn: Boolean, magnificationOn: Boolean): String {
+    val value = StringBuilder()
+    value.addAccessibilityService(TALK_BACK_SERVICE_NAME, talkBackOn)
+    value.addAccessibilityService(SELECT_TO_SPEAK_SERVICE_NAME, selectToSpeakOn)
+    value.addAccessibilityService(MAGNIFICATION_SERVICE_NAME, magnificationOn)
+    return value.toString()
+  }
+
+  private fun StringBuilder.addAccessibilityService(serviceName: String, on: Boolean) {
+    if (on) {
+      if (!isEmpty()) {
+        append(':')
+      }
+      append(serviceName)
+    }
   }
 
   /**
@@ -181,18 +204,18 @@ class UiSettingsRule : ExternalResource() {
    * - @Test fun testAnotherWearApi33()
    */
   private fun getDeviceTypeFromTestName(): DeviceType {
-      val name = nameRule.methodName
-      val match = API_REGEX.matchEntire(name)
-      val methodNameWithoutApiLevel = match?.groupValues[1] ?: name
-      return when {
-        methodNameWithoutApiLevel.endsWith("Wear") -> DeviceType.WEAR
-        methodNameWithoutApiLevel.endsWith("Tv") -> DeviceType.TV
-        methodNameWithoutApiLevel.endsWith("Automotive") -> DeviceType.AUTOMOTIVE
-        methodNameWithoutApiLevel.endsWith("Desktop") -> DeviceType.DESKTOP
-        methodNameWithoutApiLevel.endsWith("Xr") -> DeviceType.XR_HEADSET
-        else -> DeviceType.HANDHELD
-      }
+    val name = nameRule.methodName
+    val match = API_REGEX.matchEntire(name)
+    val methodNameWithoutApiLevel = match?.groupValues[1] ?: name
+    return when {
+      methodNameWithoutApiLevel.endsWith("Wear") -> DeviceType.WEAR
+      methodNameWithoutApiLevel.endsWith("Tv") -> DeviceType.TV
+      methodNameWithoutApiLevel.endsWith("Automotive") -> DeviceType.AUTOMOTIVE
+      methodNameWithoutApiLevel.endsWith("Desktop") -> DeviceType.DESKTOP
+      methodNameWithoutApiLevel.endsWith("Xr") -> DeviceType.XR_HEADSET
+      else -> DeviceType.HANDHELD
     }
+  }
 
   /**
    * A test can specify the API level by adding it to the end of the test method name.
@@ -202,17 +225,19 @@ class UiSettingsRule : ExternalResource() {
    * - @Test fun testAnotherApi36()
    */
   private fun getApiLevelFromTestName(): Int {
-      val match = API_REGEX.matchEntire(nameRule.methodName)
-      match?.groupValues[2]?.toIntOrNull()?.let { return it }
-      return when (getDeviceTypeFromTestName()) {
-        DeviceType.WEAR -> SdkVersionInfo.HIGHEST_KNOWN_API_WEAR
-        DeviceType.TV -> SdkVersionInfo.HIGHEST_KNOWN_API_TV
-        DeviceType.AUTOMOTIVE -> SdkVersionInfo.HIGHEST_KNOWN_API_AUTO
-        DeviceType.DESKTOP -> SdkVersionInfo.HIGHEST_KNOWN_API_DESKTOP
-        DeviceType.XR_HEADSET -> SdkVersionInfo.HIGHEST_KNOWN_API_XR
-        else -> SdkVersionInfo.HIGHEST_KNOWN_STABLE_API
-      }
+    val match = API_REGEX.matchEntire(nameRule.methodName)
+    match?.groupValues[2]?.toIntOrNull()?.let {
+      return it
     }
+    return when (getDeviceTypeFromTestName()) {
+      DeviceType.WEAR -> SdkVersionInfo.HIGHEST_KNOWN_API_WEAR
+      DeviceType.TV -> SdkVersionInfo.HIGHEST_KNOWN_API_TV
+      DeviceType.AUTOMOTIVE -> SdkVersionInfo.HIGHEST_KNOWN_API_AUTO
+      DeviceType.DESKTOP -> SdkVersionInfo.HIGHEST_KNOWN_API_DESKTOP
+      DeviceType.XR_HEADSET -> SdkVersionInfo.HIGHEST_KNOWN_API_XR
+      else -> SdkVersionInfo.HIGHEST_KNOWN_STABLE_API
+    }
+  }
 
   override fun apply(base: Statement, description: Description): Statement =
     apply(base, description, nameRule, projectRule, emulatorRule, fakeAdbSessionRule, appServiceRule)

@@ -42,26 +42,26 @@ class ArgsClassKtDescriptorsTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
-          <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1">
-            <argument
-                android:name="arg_one"
-                app:argType="string" />
-            <argument
-                android:name="arg_two"
-                app:argType="integer[]" />
-            <argument
-                android:name="arg_three"
-                app:argType=".Fragment1" />
-          </fragment>
-        </navigation>
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1">
+          <argument
+              android:name="arg_one"
+              app:argType="string" />
+          <argument
+              android:name="arg_two"
+              app:argType="integer[]" />
+          <argument
+              android:name="arg_three"
+              app:argType=".Fragment1" />
+        </fragment>
+      </navigation>
       """
         .trimIndent(),
     )
@@ -70,9 +70,7 @@ class ArgsClassKtDescriptorsTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -89,29 +87,19 @@ class ArgsClassKtDescriptorsTest {
       ) as SafeArgsSyntheticPackageProvider
 
     val argsClassMetadata =
-      fragmentProvider
-        .getPackageFragments(FqName("test.safeargs"))
-        .flatMap { it.getMemberScope().classesInScope() }
-        .single()
+      fragmentProvider.getPackageFragments(FqName("test.safeargs")).flatMap { it.getMemberScope().classesInScope() }.single()
 
     assertThat(argsClassMetadata.fqcn).isEqualTo("test.safeargs.Fragment1Args")
     assertThat(argsClassMetadata.constructors.map { it.toString() })
-      .containsExactly(
-        "Fragment1Args(argOne: kotlin.String, argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1)"
-      )
+      .containsExactly("Fragment1Args(argOne: kotlin.String, argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1)")
 
-    assertThat(argsClassMetadata.classifiers.map { it.toString() })
-      .containsExactly("test.safeargs.Fragment1Args.Companion")
+    assertThat(argsClassMetadata.classifiers.map { it.toString() }).containsExactly("test.safeargs.Fragment1Args.Companion")
 
     assertThat(argsClassMetadata.companionObject!!.functions.map { it.toString() })
       .containsExactly("fromBundle(bundle: android.os.Bundle): test.safeargs.Fragment1Args")
 
     assertThat(argsClassMetadata.properties.map { it.toString() })
-      .containsExactly(
-        "val argOne: kotlin.String",
-        "val argTwo: kotlin.IntArray",
-        "val argThree: test.safeargs.Fragment1",
-      )
+      .containsExactly("val argOne: kotlin.String", "val argTwo: kotlin.IntArray", "val argThree: test.safeargs.Fragment1")
 
     assertThat(argsClassMetadata.functions.map { it.toString() })
       .containsExactly(
@@ -133,27 +121,27 @@ class ArgsClassKtDescriptorsTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
-          <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1">
-            <argument
-                android:name="arg_one"
-                app:argType="string"
-                android:defaultValue="foo" />
-            <argument
-                android:name="arg_two"
-                app:argType="integer[]" />
-            <argument
-                android:name="arg_three"
-                app:argType=".Fragment1" />
-          </fragment>
-        </navigation>
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1">
+          <argument
+              android:name="arg_one"
+              app:argType="string"
+              android:defaultValue="foo" />
+          <argument
+              android:name="arg_two"
+              app:argType="integer[]" />
+          <argument
+              android:name="arg_three"
+              app:argType=".Fragment1" />
+        </fragment>
+      </navigation>
       """
         .trimIndent(),
     )
@@ -162,9 +150,7 @@ class ArgsClassKtDescriptorsTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -181,19 +167,13 @@ class ArgsClassKtDescriptorsTest {
       ) as SafeArgsSyntheticPackageProvider
 
     val argsClassMetadata =
-      fragmentProvider
-        .getPackageFragments(FqName("test.safeargs"))
-        .flatMap { it.getMemberScope().classesInScope() }
-        .single()
+      fragmentProvider.getPackageFragments(FqName("test.safeargs")).flatMap { it.getMemberScope().classesInScope() }.single()
 
     assertThat(argsClassMetadata.fqcn).isEqualTo("test.safeargs.Fragment1Args")
     assertThat(argsClassMetadata.constructors.map { it.toString() })
-      .containsExactly(
-        "Fragment1Args(argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1, argOne: kotlin.String)"
-      )
+      .containsExactly("Fragment1Args(argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1, argOne: kotlin.String)")
 
-    assertThat(argsClassMetadata.classifiers.map { it.toString() })
-      .containsExactly("test.safeargs.Fragment1Args.Companion")
+    assertThat(argsClassMetadata.classifiers.map { it.toString() }).containsExactly("test.safeargs.Fragment1Args.Companion")
 
     assertThat(argsClassMetadata.companionObject!!.functions.map { it.toString() })
       .containsExactly(
@@ -202,11 +182,7 @@ class ArgsClassKtDescriptorsTest {
       )
 
     assertThat(argsClassMetadata.properties.map { it.toString() })
-      .containsExactly(
-        "val argOne: kotlin.String",
-        "val argTwo: kotlin.IntArray",
-        "val argThree: test.safeargs.Fragment1",
-      )
+      .containsExactly("val argOne: kotlin.String", "val argTwo: kotlin.IntArray", "val argThree: test.safeargs.Fragment1")
 
     assertThat(argsClassMetadata.functions.map { it.toString() })
       .containsExactly(
@@ -229,26 +205,26 @@ class ArgsClassKtDescriptorsTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
-          <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1">
-            <argument
-                android:name="arg_one"
-                app:argType="string" />
-            <argument
-                android:name="arg_two"
-                app:argType="integer[]" />
-            <argument
-                android:name="arg_three"
-                app:argType=".Fragment1" />
-          </fragment>
-        </navigation>
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1">
+          <argument
+              android:name="arg_one"
+              app:argType="string" />
+          <argument
+              android:name="arg_two"
+              app:argType="integer[]" />
+          <argument
+              android:name="arg_three"
+              app:argType=".Fragment1" />
+        </fragment>
+      </navigation>
       """
         .trimIndent(),
     )
@@ -257,9 +233,7 @@ class ArgsClassKtDescriptorsTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -276,19 +250,13 @@ class ArgsClassKtDescriptorsTest {
       ) as SafeArgsSyntheticPackageProvider
 
     val argsClassMetadata =
-      fragmentProvider
-        .getPackageFragments(FqName("test.safeargs"))
-        .flatMap { it.getMemberScope().classesInScope() }
-        .single()
+      fragmentProvider.getPackageFragments(FqName("test.safeargs")).flatMap { it.getMemberScope().classesInScope() }.single()
 
     assertThat(argsClassMetadata.fqcn).isEqualTo("test.safeargs.Fragment1Args")
     assertThat(argsClassMetadata.constructors.map { it.toString() })
-      .containsExactly(
-        "Fragment1Args(argOne: kotlin.String, argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1)"
-      )
+      .containsExactly("Fragment1Args(argOne: kotlin.String, argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1)")
 
-    assertThat(argsClassMetadata.classifiers.map { it.toString() })
-      .containsExactly("test.safeargs.Fragment1Args.Companion")
+    assertThat(argsClassMetadata.classifiers.map { it.toString() }).containsExactly("test.safeargs.Fragment1Args.Companion")
 
     assertThat(argsClassMetadata.companionObject!!.functions.map { it.toString() })
       .containsExactly(
@@ -297,11 +265,7 @@ class ArgsClassKtDescriptorsTest {
       )
 
     assertThat(argsClassMetadata.properties.map { it.toString() })
-      .containsExactly(
-        "val argOne: kotlin.String",
-        "val argTwo: kotlin.IntArray",
-        "val argThree: test.safeargs.Fragment1",
-      )
+      .containsExactly("val argOne: kotlin.String", "val argTwo: kotlin.IntArray", "val argThree: test.safeargs.Fragment1")
 
     assertThat(argsClassMetadata.functions.map { it.toString() })
       .containsExactly(
@@ -324,26 +288,26 @@ class ArgsClassKtDescriptorsTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
-          <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1">
-            <argument
-                android:name="arg_one"
-                app:argType="string" />
-            <argument
-                android:name="arg_two"
-                app:argType="integer[]" />
-            <argument
-                android:name="arg_three"
-                app:argType=".Fragment1" />
-          </fragment>
-        </navigation>
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1">
+          <argument
+              android:name="arg_one"
+              app:argType="string" />
+          <argument
+              android:name="arg_two"
+              app:argType="integer[]" />
+          <argument
+              android:name="arg_three"
+              app:argType=".Fragment1" />
+        </fragment>
+      </navigation>
       """
         .trimIndent(),
     )
@@ -352,9 +316,7 @@ class ArgsClassKtDescriptorsTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -371,19 +333,13 @@ class ArgsClassKtDescriptorsTest {
       ) as SafeArgsSyntheticPackageProvider
 
     val argsClassMetadata =
-      fragmentProvider
-        .getPackageFragments(FqName("test.safeargs"))
-        .flatMap { it.getMemberScope().classesInScope() }
-        .single()
+      fragmentProvider.getPackageFragments(FqName("test.safeargs")).flatMap { it.getMemberScope().classesInScope() }.single()
 
     assertThat(argsClassMetadata.fqcn).isEqualTo("test.safeargs.Fragment1Args")
     assertThat(argsClassMetadata.constructors.map { it.toString() })
-      .containsExactly(
-        "Fragment1Args(argOne: kotlin.String, argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1)"
-      )
+      .containsExactly("Fragment1Args(argOne: kotlin.String, argTwo: kotlin.IntArray, argThree: test.safeargs.Fragment1)")
 
-    assertThat(argsClassMetadata.classifiers.map { it.toString() })
-      .containsExactly("test.safeargs.Fragment1Args.Companion")
+    assertThat(argsClassMetadata.classifiers.map { it.toString() }).containsExactly("test.safeargs.Fragment1Args.Companion")
 
     assertThat(argsClassMetadata.companionObject!!.functions.map { it.toString() })
       .containsExactly(
@@ -392,11 +348,7 @@ class ArgsClassKtDescriptorsTest {
       )
 
     assertThat(argsClassMetadata.properties.map { it.toString() })
-      .containsExactly(
-        "val argOne: kotlin.String",
-        "val argTwo: kotlin.IntArray",
-        "val argThree: test.safeargs.Fragment1",
-      )
+      .containsExactly("val argOne: kotlin.String", "val argTwo: kotlin.IntArray", "val argThree: test.safeargs.Fragment1")
 
     assertThat(argsClassMetadata.functions.map { it.toString() })
       .containsExactly(

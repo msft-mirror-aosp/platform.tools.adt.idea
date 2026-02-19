@@ -46,6 +46,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_STALE_CHANGES
 import com.intellij.compiler.CompilerConfiguration
 import com.intellij.compiler.CompilerManagerImpl
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
@@ -80,6 +81,13 @@ import com.intellij.util.ArrayUtil
 import com.intellij.util.ExceptionUtil
 import com.intellij.util.Function
 import com.intellij.util.ui.UIUtil
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import org.gradle.tooling.BuildAction
 import org.gradle.tooling.BuildActionExecuter
 import org.gradle.tooling.BuildCancelledException
@@ -89,25 +97,19 @@ import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.events.OperationType
+import org.gradle.tooling.model.build.BuildEnvironment
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
-import org.jetbrains.plugins.gradle.service.project.GradleProjectResolver
+import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper.AUTO_JAVA_HOME
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
-import java.util.Locale
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 
 internal class GradleTasksExecutorImpl : GradleTasksExecutor {
   override fun execute(
     request: GradleBuildInvoker.Request,
     buildAction: BuildAction<*>?,
     buildStopper: BuildStopper,
-    listener: ExternalSystemTaskNotificationListener
+    listener: ExternalSystemTaskNotificationListener,
   ): ListenableFuture<GradleInvocationResult> {
     val resultFuture = SettableFuture.create<GradleInvocationResult>()
     TaskImpl(request, buildAction, buildStopper, listener, resultFuture).queue()
@@ -129,18 +131,17 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     return false
   }
 
-  private class TaskImpl constructor(
+  private class TaskImpl
+  constructor(
     private val myRequest: GradleBuildInvoker.Request,
     private val myBuildAction: BuildAction<*>?,
     private val myBuildStopper: BuildStopper,
     private val myListener: ExternalSystemTaskNotificationListener,
-    private val myResultFuture: SettableFuture<GradleInvocationResult>
+    private val myResultFuture: SettableFuture<GradleInvocationResult>,
   ) : Task.Backgroundable(myRequest.project, "Gradle Build Running", true) {
-    @Volatile
-    private var myErrorCount = 0
+    @Volatile private var myErrorCount = 0
 
-    @Volatile
-    private var myProgressIndicator: ProgressIndicator = EmptyProgressIndicator()
+    @Volatile private var myProgressIndicator: ProgressIndicator = EmptyProgressIndicator()
 
     override fun run(indicator: ProgressIndicator) {
       try {
@@ -181,7 +182,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     private fun setUpBuildAttributionManager(
       operation: LongRunningOperation,
       buildAttributionManager: BuildAttributionManager?,
-      skipIfNull: Boolean
+      skipIfNull: Boolean,
     ) {
       if (skipIfNull && buildAttributionManager == null) {
         return
@@ -191,21 +192,21 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         OperationType.PROJECT_CONFIGURATION,
         OperationType.TASK,
         OperationType.TEST,
-        OperationType.FILE_DOWNLOAD
+        OperationType.FILE_DOWNLOAD,
       )
       buildAttributionManager!!.onBuildStart(myRequest)
     }
 
     private fun invokeGradleTasks(buildAction: BuildAction<*>?): GradleInvocationResult {
       val project = myRequest.project
-      val executionSettings = myRequest.data.executionSettings ?: GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(
-        project
-      ).apply {
-        this.withVmOptions(myRequest.jvmArguments)
-          .withArguments(myRequest.commandLineArguments)
-          .withEnvironmentVariables(myRequest.env)
-          .passParentEnvs(myRequest.isPassParentEnvs)
-      }
+      val executionSettings =
+        myRequest.data.executionSettings
+          ?: GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project).apply {
+            this.withVmOptions(myRequest.jvmArguments)
+              .withArguments(myRequest.commandLineArguments)
+              .withEnvironmentVariables(myRequest.env)
+              .passParentEnvs(myRequest.isPassParentEnvs)
+          }
       val model = AtomicReference<Any?>(null)
       val gradleRootProjectPath = myRequest.rootProjectPath.path
       val executeTasksFunction = Function { connection: ProjectConnection ->
@@ -220,120 +221,124 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
         myBuildStopper.register(id, cancellationTokenSource)
         taskListener.onStart(gradleRootProjectPath, id)
-        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), true)
+        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), ProcessOutputType.STDOUT)
         val buildState = GradleBuildState.getInstance(project)
         val buildCompleter = buildState.buildStarted(BuildContext(myRequest))
         var buildAttributionManager: BuildAttributionManager? = null
         val enableBuildAttribution = isBuildAttributionEnabledForProject(project)
-        val listener = object : ExternalSystemTaskNotificationListener {
-          override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) {
-            if (myBuildStopper.contains(id)) {
-              taskListener.onStatusChange(event)
-            }
-          }
-
-          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
-            // For test use only: save the logs to a file. Note that if there are multiple tasks at once
-            // the output will be interleaved.
-            if (StudioFlags.GRADLE_SAVE_LOG_TO_FILE.get()) {
-              try {
-                val path = Paths.get(PathManager.getLogPath(), "gradle.log")
-                Files.writeString(path, text, StandardOpenOption.APPEND, StandardOpenOption.CREATE)
-              } catch (e: IOException) {
-                // Ignore
+        val listener =
+          object : ExternalSystemTaskNotificationListener {
+            override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) {
+              if (myBuildStopper.contains(id)) {
+                taskListener.onStatusChange(event)
               }
             }
-            if (myBuildStopper.contains(id)) {
-              taskListener.onTaskOutput(id, text, stdOut)
+
+            override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
+              // For test use only: save the logs to a file. Note that if there are multiple tasks at once
+              // the output will be interleaved.
+              if (StudioFlags.GRADLE_SAVE_LOG_TO_FILE.get()) {
+                try {
+                  val path = Paths.get(PathManager.getLogPath(), "gradle.log")
+                  Files.writeString(path, text, StandardOpenOption.APPEND, StandardOpenOption.CREATE)
+                } catch (e: IOException) {
+                  // Ignore
+                }
+              }
+              if (myBuildStopper.contains(id)) {
+                taskListener.onTaskOutput(id, text, processOutputType)
+              }
             }
           }
-        }
-        val context = GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
-        context.buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context)
-        val invocationResult = try {
-          val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
-          val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
-          if (!commandLineArguments.contains(GradleBuilds.PARALLEL_BUILD_OPTION) &&
-            CompilerConfiguration.getInstance(project).isParallelCompilationEnabled
-          ) {
-            commandLineArguments.add(GradleBuilds.PARALLEL_BUILD_OPTION)
-          }
-          commandLineArguments.add(AndroidGradleSettings.createProjectProperty(PROPERTY_INVOKED_FROM_IDE, true))
-          addAndroidStudioPluginVersion(commandLineArguments)
-          if (enableBuildAttribution) {
-            val attributionFileDir = getAgpAttributionFileDir(myRequest.data)
-            commandLineArguments.add(
-              AndroidGradleSettings.createProjectProperty(
-                PROPERTY_ATTRIBUTION_FILE_LOCATION,
-                attributionFileDir.absolutePath
+        var buildEnvironment: BuildEnvironment? = null
+        val invocationResult =
+          try {
+            val context =
+              GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
+            buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context).also { context.buildEnvironment = it }
+            val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
+            val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
+            if (
+              !commandLineArguments.contains(GradleBuilds.PARALLEL_BUILD_OPTION) &&
+                CompilerConfiguration.getInstance(project).isParallelCompilationEnabled
+            ) {
+              commandLineArguments.add(GradleBuilds.PARALLEL_BUILD_OPTION)
+            }
+            commandLineArguments.add(AndroidGradleSettings.createProjectProperty(PROPERTY_INVOKED_FROM_IDE, true))
+            addAndroidStudioPluginVersion(commandLineArguments)
+            if (enableBuildAttribution) {
+              val attributionFileDir = getAgpAttributionFileDir(myRequest.data)
+              commandLineArguments.add(
+                AndroidGradleSettings.createProjectProperty(PROPERTY_ATTRIBUTION_FILE_LOCATION, attributionFileDir.absolutePath)
               )
-            )
-          }
+            }
 
-          // Inject embedded repository if it's enabled by user.
-          if (!GuiTestingService.isInTestingMode()) {
-            GradleInitScripts.getInstance().addLocalMavenRepoInitScriptCommandLineArg(commandLineArguments)
-            GradleProjectSystemUtil.attemptToUseEmbeddedGradle(project)
-          }
+            // Inject embedded repository if it's enabled by user.
+            if (!GuiTestingService.isInTestingMode()) {
+              GradleInitScripts.getInstance().addLocalMavenRepoInitScriptCommandLineArg(commandLineArguments)
+              GradleProjectSystemUtil.attemptToUseEmbeddedGradle(project)
+            }
 
-          // Don't include passwords in the log
-          var logMessage = "Build command line options: $commandLineArguments"
-          if (logMessage.contains(PASSWORD_KEY_SUFFIX)) {
-            val replaced: MutableList<String?> = ArrayList(commandLineArguments.size)
-            for (option in commandLineArguments) {
-              // -Pandroid.injected.signing.store.password=, -Pandroid.injected.signing.key.password=
-              val index = option!!.indexOf(".password=")
-              if (index == -1) {
-                replaced.add(option)
-              } else {
-                replaced.add(option.substring(0, index + PASSWORD_KEY_SUFFIX.length) + "*********")
+            // Don't include passwords in the log
+            var logMessage = "Build command line options: $commandLineArguments"
+            if (logMessage.contains(PASSWORD_KEY_SUFFIX)) {
+              val replaced: MutableList<String?> = ArrayList(commandLineArguments.size)
+              for (option in commandLineArguments) {
+                // -Pandroid.injected.signing.store.password=, -Pandroid.injected.signing.key.password=
+                val index = option!!.indexOf(".password=")
+                if (index == -1) {
+                  replaced.add(option)
+                } else {
+                  replaced.add(option.substring(0, index + PASSWORD_KEY_SUFFIX.length) + "*********")
+                }
               }
+              logMessage = replaced.toString()
             }
-            logMessage = replaced.toString()
-          }
-          logger.info(logMessage)
-          val traceJvmArgs: List<String> = emptyList()
-          // Add trace arguments to jvmArguments.
-          Trace.addVmArgs(traceJvmArgs)
-          executionSettings
-            .withVmOptions(traceJvmArgs)
-            .withArguments(commandLineArguments)
-          val operation: LongRunningOperation = if (isRunBuildAction) connection.action(buildAction) else connection.newBuild()
-          val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
-          GradleTaskManager.configureTasks(myRequest.rootProjectPath.path, myRequest.taskId, executionSettings, gradleVersion)
-          GradleExecutionHelper.prepareForExecution(operation, context)
-          if (enableBuildAttribution) {
-            buildAttributionManager = project.getService(BuildAttributionManager::class.java)
-            setUpBuildAttributionManager(
-              operation, buildAttributionManager,  // In some tests we don't care about build attribution being setup
-              ApplicationManager.getApplication().isUnitTestMode
-            )
-          }
-          if (isRunBuildAction) {
-            (operation as BuildActionExecuter<*>).forTasks(*ArrayUtil.toStringArray(gradleTasks))
-          } else {
-            (operation as BuildLauncher).forTasks(*ArrayUtil.toStringArray(gradleTasks))
-          }
-          if (isRunBuildAction) {
-            model.set((operation as BuildActionExecuter<*>).run())
-          } else {
-            (operation as BuildLauncher).run()
-          }
-          val buildInfo = buildAttributionManager?.onBuildSuccess(myRequest)
-          if (buildInfo?.agpVersion != null) {
-            reportAgpVersionMismatch(project, buildInfo)
-          }
-          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, null, model.get())
-        } catch (e: Throwable) {
-          val failure = runCatching {
-            buildAttributionManager?.onBuildFailure(myRequest)
-            if (e !is BuildException) {
-              handleTaskExecutionError(e)
+            logger.info(logMessage)
+            val traceJvmArgs: List<String> = emptyList()
+            // Add trace arguments to jvmArguments.
+            Trace.addVmArgs(traceJvmArgs)
+            executionSettings.withVmOptions(traceJvmArgs).withArguments(commandLineArguments)
+            val operation: LongRunningOperation = if (isRunBuildAction) connection.action(buildAction) else connection.newBuild()
+            val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
+            GradleTaskManager.configureTasks(myRequest.rootProjectPath.path, myRequest.taskId, executionSettings, gradleVersion)
+            GradleExecutionHelper.prepareForExecution(operation, context)
+            if (enableBuildAttribution) {
+              buildAttributionManager = project.getService(BuildAttributionManager::class.java)
+              setUpBuildAttributionManager(
+                operation,
+                buildAttributionManager, // In some tests we don't care about build attribution being setup
+                ApplicationManager.getApplication().isUnitTestMode,
+              )
             }
-          }.exceptionOrNull() ?: e
-          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), context.buildEnvironment)
-        }
-
+            if (isRunBuildAction) {
+              (operation as BuildActionExecuter<*>).forTasks(*ArrayUtil.toStringArray(gradleTasks))
+            } else {
+              (operation as BuildLauncher).forTasks(*ArrayUtil.toStringArray(gradleTasks))
+            }
+            if (isRunBuildAction) {
+              model.set((operation as BuildActionExecuter<*>).run())
+            } else {
+              (operation as BuildLauncher).run()
+            }
+            val buildInfo = buildAttributionManager?.onBuildSuccess(myRequest)
+            val invokedByAgent = executionSettings.arguments.contains("-Pandroid.studio.agent=true")
+            val isJavaHomeOperation = executionSettings.getUserData(AUTO_JAVA_HOME) ?: false
+            if (buildInfo?.agpVersion != null && !invokedByAgent && !isJavaHomeOperation) {
+              reportAgpVersionMismatch(project, buildInfo)
+            }
+            GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, null, model.get())
+          } catch (e: Throwable) {
+            val failure =
+              runCatching {
+                  buildAttributionManager?.onBuildFailure(myRequest)
+                  if (e !is BuildException) {
+                    handleTaskExecutionError(e)
+                  }
+                }
+                .exceptionOrNull() ?: e
+            GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), buildEnvironment)
+          }
 
         executeWithoutProcessCanceledException {
           val application = ApplicationManager.getApplication()
@@ -377,10 +382,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         }
       }
       return try {
-        GradleExecutionHelper.execute(
-          gradleRootProjectPath, executionSettings,
-          myRequest.taskId, myListener, null, executeTasksFunction
-        )
+        GradleExecutionHelper.execute(gradleRootProjectPath, executionSettings, myRequest.taskId, myListener, null, executeTasksFunction)
       } catch (e: ExternalSystemException) {
         if (e.originalReason.startsWith("com.intellij.openapi.progress.ProcessCanceledException")) {
           logger.info("Gradle execution cancelled.", e)
@@ -399,9 +401,11 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         NotificationGroupManager.getInstance()
           .getNotificationGroup("Android Gradle Sync Issues")
           .createNotification("Gradle sync needed", incompatibilityMessage, NotificationType.ERROR)
-          .addAction(NotificationAction.createSimpleExpiring("Sync project") {
-            project.getSyncManager().requestSyncProject(TRIGGER_USER_STALE_CHANGES.toReason())
-          })
+          .addAction(
+            NotificationAction.createSimpleExpiring("Sync project") {
+              project.getSyncManager().requestSyncProject(TRIGGER_USER_STALE_CHANGES.toReason())
+            }
+          )
           .setImportant(true)
           .notify(project)
         throw ProcessCanceledException()
@@ -412,8 +416,11 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
       if (builtAgpVersion == null || syncedAgpVersions.isEmpty()) {
         "Unable to determine project Android Gradle Plugin (AGP) version."
       } else {
-        String.format("Project was built with Android Gradle Plugin (AGP) %s but it is synced with %s.",
-                      builtAgpVersion, syncedAgpVersions.joinToString(", ") { it.toString() })
+        String.format(
+          "Project was built with Android Gradle Plugin (AGP) %s but it is synced with %s.",
+          builtAgpVersion,
+          syncedAgpVersions.joinToString(", ") { it.toString() },
+        )
       }
 
     private fun handleTaskExecutionError(e: Throwable) {
@@ -468,6 +475,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     private inner class CloseListener : ContentManagerListener, VetoableProjectManagerListener {
       private var myIsApplicationExitingOrProjectClosing = false
       private var myUserAcceptedCancel = false
+
       override fun canClose(project: Project): Boolean {
         if (project != myProject) {
           return true
@@ -500,10 +508,8 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
       }
     }
 
-    private inner class ProgressIndicatorStateDelegate internal constructor(
-      taskId: ExternalSystemTaskId,
-      buildStopper: BuildStopper
-    ) : TaskExecutionProgressIndicator(taskId, buildStopper) {
+    private inner class ProgressIndicatorStateDelegate internal constructor(taskId: ExternalSystemTaskId, buildStopper: BuildStopper) :
+      TaskExecutionProgressIndicator(taskId, buildStopper) {
       public override fun onCancel() {
         stopAppIconProgress()
       }
@@ -537,6 +543,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
       private val APP_ICON_ID: String? = "compiler"
       private const val GRADLE_RUNNING_MSG_TITLE = "Gradle Running"
       private const val PASSWORD_KEY_SUFFIX = ".password="
+
       private fun wasBuildCanceled(buildError: Throwable): Boolean {
         return hasCause(buildError, BuildCancelledException::class.java) || hasCause(buildError, ProcessCanceledException::class.java)
       }
@@ -564,4 +571,3 @@ private inline fun <T> executeWithoutProcessCanceledException(crossinline action
   @Suppress("UNCHECKED_CAST")
   return result as T
 }
-

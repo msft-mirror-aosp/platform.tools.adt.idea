@@ -16,17 +16,13 @@
 package com.android.tools.idea.sdk.wizard
 
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.welcome.install.AehdSdkComponentTreeNode
 import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker
 import com.google.wireless.android.sdk.stats.SetupWizardEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 
-/**
- * A service responsible for showing the wizard which configures the Android Emulator hypervisor
- * driver (AEHD).
- */
+/** A service responsible for showing the wizard which configures the Android Emulator hypervisor driver (AEHD). */
 @Service(Service.Level.APP)
 class AehdWizardService {
 
@@ -37,16 +33,9 @@ class AehdWizardService {
    */
   @UiThread
   fun showAndGet(installationIntention: AehdSdkComponentTreeNode.InstallationIntention): Boolean {
-    val showDeprecatedWizard = !StudioFlags.AEHD_CONFIGURATION_MIGRATED_WIZARD_ENABLED.get()
-    val tracker = FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.AEHD_WIZARD, showDeprecatedWizard)
-    if (showDeprecatedWizard) {
-      val wizard = AehdWizard(installationIntention, AehdWizardController(), tracker)
-      wizard.init()
-      return wizard.showAndGet()
-    } else {
-      val wizard = AehdModelWizard(installationIntention, AehdWizardController(), tracker)
-      return wizard.showAndGet()
-    }
+    val tracker = FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.AEHD_WIZARD, false)
+    val wizard = AehdModelWizard(installationIntention, AehdWizardController(), tracker)
+    return wizard.showAndGet()
   }
 
   companion object {

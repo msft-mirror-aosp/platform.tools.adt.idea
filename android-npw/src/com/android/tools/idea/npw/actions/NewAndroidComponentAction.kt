@@ -16,25 +16,20 @@
 package com.android.tools.idea.npw.actions
 
 import com.android.AndroidProjectTypes
-import com.android.tools.idea.gradle.dsl.android.model.android.android
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
-import com.android.tools.idea.gradle.project.model.GradleAndroidModel
+import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.npw.COMPOSE_MIN_AGP_VERSION
-import com.android.tools.idea.npw.getMinimumAgpVersionForTestSuiteSupport
 import com.android.tools.idea.npw.hasComposeMinAgpVersion
-import com.android.tools.idea.npw.hasTestSuiteMinAgpVersion
 import com.android.tools.idea.npw.model.ProjectSyncInvoker.DefaultProjectSyncInvoker
 import com.android.tools.idea.npw.model.RenderTemplateModel.Companion.fromFacet
 import com.android.tools.idea.npw.project.getModuleTemplates
 import com.android.tools.idea.npw.project.getPackageForPath
 import com.android.tools.idea.npw.template.ConfigureTemplateParametersStep
 import com.android.tools.idea.npw.template.TemplateResolver
-import com.android.tools.idea.projectsystem.AndroidModulePathsImpl
 import com.android.tools.idea.projectsystem.NamedModuleTemplate
 import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.testartifacts.testsuite.runconfiguration.TestSuiteUtils
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.template.Category
 import com.android.tools.idea.wizard.template.TemplateConstraint
@@ -42,14 +37,12 @@ import com.android.tools.idea.wizard.template.WizardUiContext
 import com.android.tools.idea.wizard.ui.SimpleStudioWizardLayout
 import com.android.tools.idea.wizard.ui.StudioWizardDialogBuilder
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.TemplatesUsage.TemplateComponent.WizardUiContext.MENU_GALLERY
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import icons.StudioIcons
@@ -59,19 +52,11 @@ import org.jetbrains.android.refactoring.isAndroidx
 import org.jetbrains.android.util.AndroidBundle
 
 // These categories will be using a new wizard
-val NEW_WIZARD_CATEGORIES =
-  setOf(Category.Activity, Category.Google, Category.Car, Category.Compose)
+val NEW_WIZARD_CATEGORIES = setOf(Category.Activity, Category.Google, Category.Car, Category.Compose)
 @JvmField val CREATED_FILES = DataKey.create<MutableList<File>>("CreatedFiles")
 
-private fun defaultShowWizardDialog(
-  modelWizard: ModelWizard,
-  dialogTitle: String,
-  project: Project,
-): Unit =
-  StudioWizardDialogBuilder(modelWizard, dialogTitle)
-    .setProject(project)
-    .build(SimpleStudioWizardLayout())
-    .show()
+private fun defaultShowWizardDialog(modelWizard: ModelWizard, dialogTitle: String, project: Project): Unit =
+  StudioWizardDialogBuilder(modelWizard, dialogTitle).setProject(project).build(SimpleStudioWizardLayout()).show()
 
 /** An action to launch a wizard to create a component from a template. */
 // TODO(qumeric): consider accepting [Template] instead?
@@ -83,12 +68,7 @@ constructor(
   private val minSdkApi: Int,
   private val templateConstraints: Collection<TemplateConstraint> = setOf(),
   private val showWizardDialog: (ModelWizard, String, Project) -> Unit = ::defaultShowWizardDialog,
-) :
-  AnAction(
-    templateName,
-    AndroidBundle.message("android.wizard.action.new.component", templateName),
-    null,
-  ) {
+) : AnAction(templateName, AndroidBundle.message("android.wizard.action.new.component", templateName), null) {
 
   @Deprecated("Please use the main constructor")
   constructor(
@@ -102,14 +82,10 @@ constructor(
   private val isActivityTemplate: Boolean
     get() = NEW_WIZARD_CATEGORIES.contains(category)
 
-  private val isJourneysTemplate: Boolean
-    get() = templateName == "Journey File"
-
   init {
     templatePresentation.icon =
       when {
         isActivityTemplate -> StudioIcons.Shell.Filetree.ACTIVITY
-        isJourneysTemplate -> AllIcons.FileTypes.Xml
         else -> StudioIcons.Shell.Filetree.ANDROID_FILE
       }
   }
@@ -134,52 +110,26 @@ constructor(
     presentation.isVisible = true
     when {
       minSdkApi > moduleInfo.minSdkVersion.featureLevel -> {
-        presentation.text =
-          AndroidBundle.message("android.wizard.action.requires.minsdk", templateName, minSdkApi)
+        presentation.text = AndroidBundle.message("android.wizard.action.requires.minsdk", templateName, minSdkApi)
         presentation.isEnabled = false
       }
       templateConstraints.contains(TemplateConstraint.AndroidX) && !module.project.isAndroidx() -> {
-        presentation.text =
-          AndroidBundle.message("android.wizard.action.requires.androidx", templateName)
+        presentation.text = AndroidBundle.message("android.wizard.action.requires.androidx", templateName)
         presentation.isEnabled = false
       }
-      templateConstraints.contains(TemplateConstraint.Compose) &&
-        !hasComposeMinAgpVersion(module.project) -> {
-        presentation.text =
-          AndroidBundle.message(
-            "android.wizard.action.requires.new.agp",
-            templateName,
-            COMPOSE_MIN_AGP_VERSION,
-          )
+      templateConstraints.contains(TemplateConstraint.Compose) && !hasComposeMinAgpVersion(module.project) -> {
+        presentation.text = AndroidBundle.message("android.wizard.action.requires.new.agp", templateName, COMPOSE_MIN_AGP_VERSION)
         presentation.isEnabled = false
       }
       templateConstraints.contains(TemplateConstraint.Aidl) &&
-        ProjectBuildModel.get(module.project)
-          .getModuleBuildModel(module)
-          ?.android()
-          ?.buildFeatures()
-          ?.aidl()
-          ?.toBoolean() != true -> {
-        presentation.text =
-          AndroidBundle.message("android.wizard.action.requires.aidlEnabled", templateName)
-        presentation.isEnabled = false
-      }
-      templateConstraints.contains(TemplateConstraint.TestSuite) &&
-        !hasTestSuiteMinAgpVersion(module.project) -> {
-        presentation.text =
-          AndroidBundle.message(
-            "android.wizard.action.requires.new.agp",
-            templateName,
-            getMinimumAgpVersionForTestSuiteSupport(),
-          )
+        ProjectBuildModel.get(module.project).getModuleBuildModel(module)?.android()?.buildFeatures()?.aidl()?.toBoolean() != true -> {
+        presentation.text = AndroidBundle.message("android.wizard.action.requires.aidlEnabled", templateName)
         presentation.isEnabled = false
       }
       else -> {
         val facet = AndroidFacet.getInstance(module)
         val isProjectReady =
-          facet != null &&
-            AndroidModel.get(facet) != null &&
-            facet.configuration.projectType != AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP
+          facet != null && AndroidModel.get(facet) != null && facet.configuration.projectType != AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP
         presentation.isEnabled = isProjectReady
       }
     }
@@ -201,18 +151,11 @@ constructor(
     val activityDescription = e.presentation.text // e.g. "Empty Activity", "Tabbed Activity"
 
     // TODO(qumeric): always show all available templates but preselect a good default
-    val moduleTemplates =
-      getModuleTemplates(
-        facet,
-        targetDirectory,
-        includeTemplatesWithoutSourceRoot = isJourneysTemplate,
-      )
+    val moduleTemplates = getModuleTemplates(facet, targetDirectory)
     assert(moduleTemplates.isNotEmpty())
 
     val initialPackageSuggestion =
-      if (targetDirectory == null) facet.getModuleSystem().getPackageName()
-      else facet.getPackageForPath(moduleTemplates, targetDirectory)
-    val testSuiteNameSuggestion = suggestTestSuiteName(module, targetDirectory)
+      if (targetDirectory == null) facet.getModuleSystem().getPackageName() else facet.getPackageForPath(moduleTemplates, targetDirectory)
 
     val templateModel =
       fromFacet(
@@ -223,12 +166,9 @@ constructor(
         DefaultProjectSyncInvoker(),
         shouldOpenFiles,
         MENU_GALLERY,
-        testSuiteNameSuggestion,
       )
     val newActivity =
-      TemplateResolver.getAllTemplates()
-        .filter { WizardUiContext.MenuEntry in it.uiContexts }
-        .find { it.name == templateName }
+      TemplateResolver.getAllTemplates().filter { WizardUiContext.MenuEntry in it.uiContexts }.find { it.name == templateName }
 
     templateModel.newTemplate = newActivity!!
 
@@ -236,7 +176,6 @@ constructor(
       AndroidBundle.message(
         when {
           isActivityTemplate -> "android.wizard.new.activity.title"
-          isJourneysTemplate -> "android.wizard.new.journey.title"
           else -> "android.wizard.new.component.title"
         }
       )
@@ -244,79 +183,21 @@ constructor(
       AndroidBundle.message(
         when {
           isActivityTemplate -> "android.wizard.config.activity.title"
-          isJourneysTemplate -> "android.wizard.config.journey.title"
           else -> "android.wizard.config.component.title"
         }
       )
-    val wizardBuilder =
-      ModelWizard.Builder().apply {
-        // TODO: Allow the template to configure whether to show the target source set picker
-        // Journey tests are not compiled against any particular build variant
-        // and can be run against any variant, so showing this option doesn't make sense
-        val showTargetSourceSetPicker = !isJourneysTemplate
-        addStep(
-          ConfigureTemplateParametersStep(
-            templateModel,
-            stepTitle,
-            moduleTemplates,
-            showTargetSourceSetPicker,
-          )
-        )
-      }
+    val wizardBuilder = ModelWizard.Builder().apply { addStep(ConfigureTemplateParametersStep(templateModel, stepTitle, moduleTemplates)) }
 
     showWizardDialog(wizardBuilder.build(), dialogTitle, module.project)
     e.dataContext.getData(CREATED_FILES)?.addAll(templateModel.createdFiles)
   }
 
-  private fun getModuleTemplates(
-    facet: AndroidFacet,
-    targetDirectory: VirtualFile?,
-    includeTemplatesWithoutSourceRoot: Boolean,
-  ): List<NamedModuleTemplate> {
-    val templates = facet.getModuleTemplates(targetDirectory)
-
-    return if (includeTemplatesWithoutSourceRoot) {
-      templates.map {
-        // The [ModuleTemplateDataBuilder] class expects non-null `srcRoot` and `resDirectories`
-        // values. We hardcode them here to ensure the Journeys template doesn't crash when adding
-        // Journeys to an existing test suite module.
-        // TODO(455814541): Undo these changes once Journeys has been moved out of
-        // [NewAndroidComponentAction]
-        NamedModuleTemplate(
-          it.name,
-          AndroidModulePathsImpl(
-            moduleRoot = it.paths.moduleRoot,
-            manifestDirectory = it.paths.manifestDirectory,
-            srcRoot = it.paths.getSrcDirectory(null) ?: File(it.paths.moduleRoot, "src"),
-            unitTestRoot = it.paths.getUnitTestDirectory(null),
-            testRoot = it.paths.getTestDirectory(null),
-            aidlRoot = it.paths.getAidlDirectory(null),
-            resDirectories =
-              it.paths.resDirectories.ifEmpty { listOf(File(it.paths.moduleRoot, "res")) },
-            mlModelsDirectories = it.paths.mlModelsDirectories,
-          ),
-        )
-      }
-    } else {
-      templates.filter {
-        // Do not allow to create Android Components from the templates into source sets without a
-        // source root.
-        // This will filter out androidTest and unit tests source sets.
-        it.paths.getSrcDirectory(null) != null
-      }
+  private fun getModuleTemplates(facet: AndroidFacet, targetDirectory: VirtualFile?): List<NamedModuleTemplate> {
+    return facet.getModuleTemplates(targetDirectory).filter {
+      // Do not allow to create Android Components from the templates into source sets without a
+      // source root.
+      // This will filter out androidTest and unit tests source sets.
+      it.paths.getSrcDirectory(null) != null
     }
-  }
-
-  /**
-   * This function first attempts to find a test suite whose source root contains the
-   * [targetDirectory]. If no specific suite is found, it falls back to using the name of the first
-   * test suite defined in the [module].
-   */
-  private fun suggestTestSuiteName(module: Module?, targetDirectory: VirtualFile?): String? {
-    val model = module?.let(GradleAndroidModel::get) ?: return null
-    val suite =
-      targetDirectory?.let { TestSuiteUtils.getTestSuiteAtRoot(model.testSuites, it) }
-        ?: model.testSuites.firstOrNull()
-    return suite?.name
   }
 }

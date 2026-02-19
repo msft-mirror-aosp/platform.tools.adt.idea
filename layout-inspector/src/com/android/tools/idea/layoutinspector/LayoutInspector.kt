@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.layoutinspector
 
+import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
+import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.layoutinspector.common.MostRecentExecutor
@@ -31,8 +33,6 @@ import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetectio
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.layoutinspector.ui.EditorRenderSettings
 import com.android.tools.idea.layoutinspector.ui.InspectorRenderSettings
-import com.android.tools.idea.layoutinspector.ui.RenderLogic
-import com.android.tools.idea.layoutinspector.ui.RenderModel
 import com.android.tools.idea.layoutinspector.ui.RenderSettings
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorState
@@ -52,6 +52,20 @@ val NO_COMPOSE_SOURCE_INFO_APP_KEY = "no.compose.source.info.app"
 
 private val logger = Logger.getInstance(LayoutInspector::class.java)
 
+const val MIN_SUPPORTED_VERSION = AndroidVersion.VersionCodes.Q
+
+/** Sets app inspection [selectedProcess] only if the process is supported by Layout Inspector */
+fun ProcessesModel.setLayoutInspectorSelectedProcess(process: ProcessDescriptor?) {
+  if (process == null) {
+    selectedProcess = null
+    return
+  }
+
+  if (process.device.apiLevel.majorVersion >= MIN_SUPPORTED_VERSION) {
+    selectedProcess = process
+  }
+}
+
 /** Top level class which manages the high level state of layout inspection. */
 class LayoutInspector
 private constructor(
@@ -68,13 +82,9 @@ private constructor(
   val launcher: InspectorClientLauncher?,
   private val currentClientProvider: () -> InspectorClient,
   workerExecutor: Executor = AndroidExecutors.getInstance().workerThreadExecutor,
-  val renderModel: RenderModel,
-  val renderLogic: RenderLogic,
 ) {
 
-  /**
-   * Construct a LayoutInspector that can launch new [InspectorClient]s as needed using [launcher].
-   */
+  /** Construct a LayoutInspector that can launch new [InspectorClient]s as needed using [launcher]. */
   constructor(
     coroutineScope: CoroutineScope,
     processModel: ProcessesModel,
@@ -87,9 +97,6 @@ private constructor(
     treeSettings: TreeSettings,
     renderSettings: RenderSettings = InspectorRenderSettings(),
     executor: Executor = AndroidExecutors.getInstance().workerThreadExecutor,
-    renderModel: RenderModel =
-      RenderModel(layoutInspectorModel, notificationModel, treeSettings) { launcher.activeClient },
-    renderLogic: RenderLogic = RenderLogic(renderModel, renderSettings),
   ) : this(
     layoutInspectorModel,
     notificationModel,
@@ -104,16 +111,11 @@ private constructor(
     launcher,
     { launcher.activeClient },
     executor,
-    renderModel,
-    renderLogic,
   ) {
     launcher.addClientChangedListener(::onClientChanged)
   }
 
-  /**
-   * Construct a LayoutInspector tied to a specific [InspectorClient], e.g. for viewing a snapshot
-   * file.
-   */
+  /** Construct a LayoutInspector tied to a specific [InspectorClient], e.g. for viewing a snapshot file. */
   constructor(
     coroutineScope: CoroutineScope,
     layoutInspectorClientSettings: InspectorClientSettings,
@@ -123,9 +125,6 @@ private constructor(
     treeSettings: TreeSettings,
     renderSettings: RenderSettings = EditorRenderSettings(),
     executor: Executor = AndroidExecutors.getInstance().workerThreadExecutor,
-    renderModel: RenderModel =
-      RenderModel(layoutInspectorModel, notificationModel, treeSettings) { client },
-    renderLogic: RenderLogic = RenderLogic(renderModel, renderSettings),
   ) : this(
     inspectorModel = layoutInspectorModel,
     notificationModel = notificationModel,
@@ -140,8 +139,6 @@ private constructor(
     launcher = null,
     currentClientProvider = { client },
     workerExecutor = executor,
-    renderModel,
-    renderLogic,
   ) {
     onClientChanged(client)
   }
@@ -149,10 +146,7 @@ private constructor(
   init {
     // refresh the rendering each time the inspector model changes
     inspectorModel.addModificationListener { _, newAndroidWindow, _ ->
-      coroutineScope.launch {
-        newAndroidWindow?.refreshImages(renderLogic.renderSettings.scaleFraction)
-        renderModel.refresh()
-      }
+      coroutineScope.launch { newAndroidWindow?.refreshImages(renderSettings.scaleFraction) }
     }
   }
 
@@ -168,8 +162,8 @@ private constructor(
   val stopInspectorListeners: MutableList<() -> Unit> = mutableListOf()
 
   /**
-   * Stops LayoutInspector. If a device is selected, stops foreground process detection. If a device
-   * is not selected, stops process inspection by setting the selected process to null.
+   * Stops LayoutInspector. If a device is selected, stops foreground process detection. If a device is not selected, stops process
+   * inspection by setting the selected process to null.
    *
    * A process can be selected when a device does not support foreground process detection.
    */
@@ -180,7 +174,7 @@ private constructor(
         foregroundProcessDetection?.stopPollingSelectedDevice()
       } else {
         processModel?.stop()
-        processModel?.selectedProcess = null
+        processModel?.setLayoutInspectorSelectedProcess(null)
       }
 
       stopInspectorListeners.forEach { it() }
@@ -192,12 +186,8 @@ private constructor(
       client.registerErrorCallback(::showErrorMessage)
       client.registerRootsEventCallback(::adjustRoots)
       client.registerTreeEventCallback(::loadComponentTree)
-      client.registerStateCallback { state ->
-        if (state == InspectorClient.State.CONNECTED) updateConnection(client)
-      }
-      client.registerConnectionTimeoutCallback { state ->
-        inspectorModel.fireAttachStateEvent(state)
-      }
+      client.registerStateCallback { state -> if (state == InspectorClient.State.CONNECTED) updateConnection(client) }
+      client.registerConnectionTimeoutCallback { state -> inspectorModel.fireAttachStateEvent(state) }
       client.stats.start()
     } else {
       // If disconnected, e.g. stopped, force models to clear their state and, by association, the
@@ -233,9 +223,7 @@ private constructor(
       val time = System.currentTimeMillis()
       val treeLoader = currentClient.treeLoader
       val allIds = treeLoader.getAllWindowIds(event)
-      val data =
-        treeLoader.loadComponentTree(event, inspectorModel.resourceLookup, currentClient.process)
-          ?: return@execute
+      val data = treeLoader.loadComponentTree(event, inspectorModel.resourceLookup, currentClient.process) ?: return@execute
       currentClient.updateProgress(AttachErrorState.PARSED_COMPONENT_TREE)
       currentClient.addDynamicCapabilities(data.dynamicCapabilities)
       if (allIds != null) {
@@ -250,9 +238,7 @@ private constructor(
               currentClient.updateProgress(AttachErrorState.MODEL_UPDATED)
               if (logger.isDebugEnabled) {
                 // This logger.debug statement is for integration tests
-                logger.debug(
-                  "g:${data.generation} Model Updated for process: ${currentClient.process.name}"
-                )
+                logger.debug("g:${data.generation} Model Updated for process: ${currentClient.process.name}")
               }
             }
             if (
@@ -282,12 +268,9 @@ private constructor(
     notificationModel.addNotification(errorMessage, errorMessage, Status.Error)
 
     if (SHOW_ERROR_MESSAGES_IN_DIALOG) {
-      invokeLater {
-        Messages.showErrorDialog(inspectorModel.project, errorMessage, "Inspector Error")
-      }
+      invokeLater { Messages.showErrorDialog(inspectorModel.project, errorMessage, "Inspector Error") }
     }
   }
 }
 
-fun LayoutInspector?.hasCapability(capability: Capability): Boolean =
-  this?.currentClient?.capabilities?.contains(capability) ?: false
+fun LayoutInspector?.hasCapability(capability: Capability): Boolean = this?.currentClient?.capabilities?.contains(capability) ?: false

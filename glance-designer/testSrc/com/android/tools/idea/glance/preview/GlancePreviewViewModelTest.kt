@@ -18,7 +18,6 @@ package com.android.tools.idea.glance.preview
 import com.android.ide.common.rendering.api.Bridge
 import com.android.tools.adtui.stdui.ActionData
 import com.android.tools.adtui.stdui.UrlData
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.build.RenderingBuildStatusManager
 import com.android.tools.idea.preview.CommonPreviewRefreshType
@@ -26,12 +25,14 @@ import com.android.tools.idea.preview.PreviewRefreshManager
 import com.android.tools.idea.preview.RefreshType
 import com.android.tools.idea.preview.mvvm.PreviewView
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -48,11 +49,7 @@ private class TestPreviewView : PreviewView {
   var showContentCalls = 0
   var updateToolbarCalls = 0
 
-  override fun showErrorMessage(
-    message: String,
-    recoveryUrl: UrlData?,
-    actionToRecover: ActionData?,
-  ) {
+  override fun showErrorMessage(message: String, recoveryUrl: UrlData?, actionToRecover: ActionData?) {
     errorMessages.add(message)
   }
 
@@ -81,8 +78,7 @@ class GlancePreviewViewModelTest {
   private val statusManager =
     object : RenderingBuildStatusManager {
       override var isBuilding: Boolean = false
-      override var statusFlow: MutableStateFlow<RenderingBuildStatus> =
-        MutableStateFlow(RenderingBuildStatus.NotReady)
+      override var statusFlow: MutableStateFlow<RenderingBuildStatus> = MutableStateFlow(RenderingBuildStatus.NotReady)
     }
 
   private val refreshManager = mock<PreviewRefreshManager>()
@@ -105,15 +101,7 @@ class GlancePreviewViewModelTest {
     file = fixture.configureByText("foo.txt", "")
     val filePtr = runReadAction { SmartPointerManager.createPointer(file) }
 
-    viewModel =
-      GlancePreviewViewModel(
-        testView,
-        statusManager,
-        refreshManager,
-        project,
-        filePtr,
-        hasRenderErrors,
-      )
+    viewModel = GlancePreviewViewModel(testView, statusManager, refreshManager, project, filePtr, hasRenderErrors)
   }
 
   @After
@@ -123,35 +111,26 @@ class GlancePreviewViewModelTest {
 
   @Test
   fun testRefreshWhenNeedsBuild() =
-    runBlocking(uiThread) {
+    runBlocking(Dispatchers.EDT) {
       statusManager.statusFlow.value = RenderingBuildStatus.NeedsBuild
 
       viewModel.activate()
 
-      Assert.assertEquals(
-        "A successful build is needed before the preview can be displayed",
-        testView.errorMessages.last(),
-      )
+      Assert.assertEquals("A successful build is needed before the preview can be displayed", testView.errorMessages.last())
       Assert.assertTrue(testView.loadingMessages.isEmpty())
       Assert.assertEquals(0, testView.showContentCalls)
       Assert.assertEquals(1, testView.updateToolbarCalls)
 
       viewModel.onEnterSmartMode()
 
-      Assert.assertEquals(
-        "A successful build is needed before the preview can be displayed",
-        testView.errorMessages.last(),
-      )
+      Assert.assertEquals("A successful build is needed before the preview can be displayed", testView.errorMessages.last())
       Assert.assertTrue(testView.loadingMessages.isEmpty())
       Assert.assertEquals(0, testView.showContentCalls)
       Assert.assertEquals(2, testView.updateToolbarCalls)
 
       viewModel.refreshCompleted(false, 10)
 
-      Assert.assertEquals(
-        "A successful build is needed before the preview can be displayed",
-        testView.errorMessages.last(),
-      )
+      Assert.assertEquals("A successful build is needed before the preview can be displayed", testView.errorMessages.last())
       Assert.assertTrue(testView.loadingMessages.isEmpty())
       Assert.assertEquals(0, testView.showContentCalls)
       Assert.assertEquals(3, testView.updateToolbarCalls)
@@ -159,7 +138,7 @@ class GlancePreviewViewModelTest {
 
   @Test
   fun testRefreshWithBuildNotReady() =
-    runBlocking(uiThread) {
+    runBlocking(Dispatchers.EDT) {
       viewModel.activate()
 
       Assert.assertTrue(testView.errorMessages.isEmpty())
@@ -245,7 +224,7 @@ class GlancePreviewViewModelTest {
 
   @Test
   fun testNativeCrash() =
-    runBlocking(uiThread) {
+    runBlocking(Dispatchers.EDT) {
       Bridge.setNativeCrash(false)
 
       viewModel.checkForNativeCrash {}
@@ -288,9 +267,7 @@ class GlancePreviewViewModelTest {
     Assert.assertFalse(viewModel.isRefreshing)
 
     // The view model is refreshing while in dumb mode
-    DumbModeTestUtils.runInDumbModeSynchronously(project) {
-      Assert.assertTrue(viewModel.isRefreshing)
-    }
+    DumbModeTestUtils.runInDumbModeSynchronously(project) { Assert.assertTrue(viewModel.isRefreshing) }
 
     DumbModeTestUtils.waitForSmartMode(project)
     Assert.assertFalse(viewModel.isRefreshing)

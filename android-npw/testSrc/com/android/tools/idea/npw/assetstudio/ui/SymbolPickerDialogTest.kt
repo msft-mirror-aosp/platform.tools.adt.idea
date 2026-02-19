@@ -20,7 +20,11 @@ import com.android.tools.idea.material.icons.common.MaterialSymbolsUrlProvider
 import com.android.tools.idea.material.icons.common.Symbols
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.util.androidFacet
+import com.google.common.truth.Truth.assertThat
+import com.intellij.ide.DataManager
+import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.ui.SearchTextField
 import com.intellij.ui.table.JBTable
 import com.intellij.util.WaitFor
 import com.intellij.util.io.createDirectories
@@ -61,17 +65,16 @@ class SymbolPickerDialogTest {
           )
         )
 
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java)
-        .forEach { box ->
-          if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
-            box.selectedIndex = 1
-            assertEquals("Category1", box.selectedItem?.toString())
-            box.selectedIndex = 2
-            assertEquals("Category2", box.selectedItem?.toString())
-            box.selectedIndex = 3
-            assertEquals("Category3", box.selectedItem?.toString())
-          }
+      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
+        if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
+          box.selectedIndex = 1
+          assertEquals("Category1", box.selectedItem?.toString())
+          box.selectedIndex = 2
+          assertEquals("Category2", box.selectedItem?.toString())
+          box.selectedIndex = 3
+          assertEquals("Category3", box.selectedItem?.toString())
         }
+      }
     }
 
   @Test
@@ -88,15 +91,14 @@ class SymbolPickerDialogTest {
           )
         )
 
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java)
-        .forEach { box ->
-          if (Objects.requireNonNull(box.selectedItem).toString() == "Material Symbols Outlined") {
-            box.selectedIndex = 1
-            assertEquals("Material Symbols Rounded", box.selectedItem?.toString())
-            box.selectedIndex = 2
-            assertEquals("Material Symbols Sharp", box.selectedItem?.toString())
-          }
+      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
+        if (Objects.requireNonNull(box.selectedItem).toString() == "Material Symbols Outlined") {
+          box.selectedIndex = 1
+          assertEquals("Material Symbols Rounded", box.selectedItem?.toString())
+          box.selectedIndex = 2
+          assertEquals("Material Symbols Sharp", box.selectedItem?.toString())
         }
+      }
     }
 
   @Test
@@ -113,8 +115,7 @@ class SymbolPickerDialogTest {
           )
         )
 
-      UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table
-        ->
+      UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table ->
         assertNotNull(table)
         assertNotNull(table.getValueAt(0, 0))
         assertNotNull(table.getValueAt(0, 1))
@@ -136,20 +137,41 @@ class SymbolPickerDialogTest {
           )
         )
 
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java)
-        .forEach { box ->
-          if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
-            box.selectedIndex = 2
-            assertEquals("Category2", box.selectedItem?.toString())
-          }
+      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
+        if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
+          box.selectedIndex = 2
+          assertEquals("Category2", box.selectedItem?.toString())
         }
+      }
 
-      UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table
-        ->
+      UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table ->
         assertNotNull(table)
         assertNotNull(table.getValueAt(0, 0))
         assertNull(table.getValueAt(0, 1))
       }
+    }
+
+  @Test
+  fun testSearchFieldConfiguredInPanelContext() =
+    runBlocking(Dispatchers.Main) {
+      HeadlessDataManager.fallbackToProductionDataManager(projectRule.fixture.testRootDisposable)
+
+      val testDirectory = createTempDirectory()
+      val dialog =
+        getInitializedIconPickerDialog(
+          SymbolPickerDialog(
+            projectRule.fixture.module.androidFacet!!,
+            projectRule.fixture.testRootDisposable,
+            TestSymbolsUrlProvider(testDirectory),
+            TestSymbolsMetadataUrlProvider,
+          )
+        )
+
+      val centerPanel = dialog.createCenterPanel()
+      val context = DataManager.getInstance().getDataContext(centerPanel)
+      val providedField = context.getData(SearchTextField.KEY)
+
+      assertThat(providedField).isNotNull()
     }
 
   private fun getInitializedIconPickerDialog(dialog: SymbolPickerDialog): SymbolPickerDialog {
@@ -219,9 +241,6 @@ private class TestSymbolsUrlProvider(private val testDirectory: Path) : Material
 private object TestSymbolsMetadataUrlProvider : MaterialIconsMetadataUrlProvider {
 
   override fun getMetadataUrl(): URL? {
-    return IconPickerDialogTest::class
-      .java
-      .getClassLoader()
-      .getResource("images/material/icons/icons_metadata_test.txt")
+    return IconPickerDialogTest::class.java.getClassLoader().getResource("images/material/icons/icons_metadata_test.txt")
   }
 }

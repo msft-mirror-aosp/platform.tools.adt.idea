@@ -21,10 +21,8 @@ import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.MemoryDataProvider
 import com.android.tools.profilers.memory.adapters.classifiers.HeapSet
 import com.android.tools.profilers.tasks.ProfilerTaskType
-import com.android.tools.profilers.tasks.TaskEventTrackerUtils.trackProcessingTaskFailed
-import com.android.tools.profilers.tasks.TaskEventTrackerUtils.trackTaskFinished
-import com.android.tools.profilers.tasks.TaskFinishedState
-import com.android.tools.profilers.tasks.TaskProcessingFailedMetadata
+import com.android.tools.profilers.tasks.analytics.TaskFinishedState
+import com.android.tools.profilers.tasks.analytics.TaskProcessingFailedMetadata
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent
 import com.intellij.openapi.diagnostic.Logger
@@ -33,14 +31,14 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 
-
-abstract class BaseMemoryProfilerStage(profilers: StudioProfilers, protected val loader: CaptureObjectLoader)
-      : StreamingStage(profilers) {
+abstract class BaseMemoryProfilerStage(profilers: StudioProfilers, protected val loader: CaptureObjectLoader) : StreamingStage(profilers) {
 
   val captureSelection = MemoryCaptureSelection(profilers.ideServices)
   protected var pendingCaptureStartTime = INVALID_START_TIME
   protected var updateCaptureOnSelection = true
-  val isPendingCapture get() = pendingCaptureStartTime != INVALID_START_TIME
+  val isPendingCapture
+    get() = pendingCaptureStartTime != INVALID_START_TIME
+
   private var hasExited = false
 
   companion object {
@@ -50,7 +48,7 @@ abstract class BaseMemoryProfilerStage(profilers: StudioProfilers, protected val
       get() = Logger.getInstance(BaseMemoryProfilerStage::class.java)
   }
 
-  override fun exit() {
+  override fun onExit() {
     hasExited = true
   }
 
@@ -101,7 +99,8 @@ abstract class BaseMemoryProfilerStage(profilers: StudioProfilers, protected val
 
       // TODO: (revisit) - do we want to pass in data range to loadCapture as well?
       val future = loader.loadCapture(captureObject, queryRange, joiner)
-      future.addListener(Runnable {
+      future.addListener(
+        Runnable {
           try {
             val loadedCaptureObject = future.get()
             if (captureSelection.finishSelectingCaptureObject(loadedCaptureObject)) {
@@ -111,57 +110,53 @@ abstract class BaseMemoryProfilerStage(profilers: StudioProfilers, protected val
               val isJavaKotlinAllocationsTask = studioProfilers.sessionsManager.currentTaskType == ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS
               val isLegacy = !MemoryDataProvider.getIsLiveAllocationTrackingSupported(studioProfilers)
               if ((!isJavaKotlinAllocationsTask || isLegacy) && isTaskBasedUxEnabled) {
-                trackTaskFinished(studioProfilers, isSessionAlive, TaskFinishedState.COMPLETED)
+                myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
               }
-            }
-            else {
+            } else {
               // Capture loading failed.
               // TODO: loading has somehow failed - we need to inform users about the error status.
               doSelectCaptureDuration(null, null)
               if (isTaskBasedUxEnabled) {
-                trackProcessingTaskFailed(studioProfilers, studioProfilers.sessionsManager.isSessionAlive,
-                                          TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
+                myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
               }
             }
             // Triggers the aspect to inform listeners that the heap content/filter has changed.
             captureSelection.refreshSelectedHeap()
-          }
-          catch (exception: InterruptedException) {
+          } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             doSelectCaptureDuration(null, null)
             if (isTaskBasedUxEnabled) {
-              trackProcessingTaskFailed(studioProfilers, studioProfilers.sessionsManager.isSessionAlive,
-                                        TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
+              myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
             }
-          }
-          catch (exception: ExecutionException) {
+          } catch (exception: ExecutionException) {
             doSelectCaptureDuration(null, null)
             logger.error(exception)
             if (isTaskBasedUxEnabled) {
-              trackProcessingTaskFailed(studioProfilers, studioProfilers.sessionsManager.isSessionAlive,
-                                        TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
+              myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
             }
-          }
-          catch (ignored: CancellationException) {
+          } catch (_: CancellationException) {
             // No-op: a previous load-capture task is canceled due to another capture being selected and loaded.
           }
         },
-        joiner ?: MoreExecutors.directExecutor())
+        joiner ?: MoreExecutors.directExecutor(),
+      )
     }
 
-    studioProfilers.ideServices.runAsync(captureObject::canSafelyLoad) { canLoad -> when {
-      canLoad -> load.run()
-      else -> studioProfilers.ideServices.openYesNoDialog(
-        "The hprof file is large, and Android Studio may become unresponsive while " +
-        "it parses the data and afterwards. Do you want to continue?",
-        "Heap Dump File Too Large",
-        load, clear)
-    } }
+    studioProfilers.ideServices.runAsync(captureObject::canSafelyLoad) { canLoad ->
+      when {
+        canLoad -> load.run()
+        else ->
+          studioProfilers.ideServices.openYesNoDialog(
+            "The hprof file is large, and Android Studio may become unresponsive while " +
+              "it parses the data and afterwards. Do you want to continue?",
+            "Heap Dump File Too Large",
+            load,
+            clear,
+          )
+      }
+    }
   }
 }
 
 private fun Collection<HeapSet>.getDefault(): HeapSet? =
-  find { it.name == "app" } ?:
-  find { it.name == "default" } ?:
-  if (!isEmpty()) toTypedArray()[0]
-  else null
+  find { it.name == "app" } ?: find { it.name == "default" } ?: if (!isEmpty()) toTypedArray()[0] else null

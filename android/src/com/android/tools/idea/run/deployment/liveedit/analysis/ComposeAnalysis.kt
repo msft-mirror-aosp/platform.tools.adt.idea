@@ -20,7 +20,9 @@ import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrClass
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrMethod
 import com.intellij.openapi.util.TextRange
 import org.jetbrains.kotlin.psi.KtFile
-import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.Opcodes.INVOKEINTERFACE
+import org.objectweb.asm.Opcodes.INVOKESTATIC
+import org.objectweb.asm.Opcodes.INVOKEVIRTUAL
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.FieldInsnNode
@@ -34,9 +36,7 @@ import org.objectweb.asm.tree.analysis.BasicValue
 import org.objectweb.asm.tree.analysis.Frame
 
 interface GroupTable {
-  /**
-   * Map of @Composable methods to their corresponding group
-   */
+  /** Map of @Composable methods to their corresponding group */
   val groups: Map<IrMethod, ComposeGroup>
 
   /**
@@ -45,9 +45,7 @@ interface GroupTable {
    */
   val restartLambdas: Map<IrClass, IrMethod>
 
-  /**
-   * Map of @Composable lambda classes to the method where they are instantiated
-   */
+  /** Map of @Composable lambda classes to the method where they are instantiated */
   val lambdaParents: Map<IrClass, IrMethod>
 
   /**
@@ -60,10 +58,10 @@ interface GroupTable {
 
   /**
    * A method is associated with a group key if:
-   *  - it is a @Composable method associated with a group key
-   *  - it is defined in an inner class of a method associated with a group key
+   * - it is a @Composable method associated with a group key
+   * - it is defined in an inner class of a method associated with a group key
    *
-   *  These rules apply recursively; an inner class of an inner class of a @Composable lambda group is treated as being in that group
+   *   These rules apply recursively; an inner class of an inner class of a @Composable lambda group is treated as being in that group
    */
   fun getComposeGroup(method: IrMethod): ComposeGroup? {
     if (method in groups) {
@@ -155,18 +153,14 @@ fun GroupTable.toStringWithLineInfo(sourceFile: KtFile): String {
 }
 
 private data class IntValue(val value: Int) : BasicValue(Type.INT_TYPE)
+
 private data class ComposableLambdaValue(val key: Int, val block: Type) : BasicValue(COMPOSABLE_LAMBDA_TYPE)
 
 private val COMPOSABLE_LAMBDA_TYPE = Type.getObjectType("androidx/compose/runtime/internal/ComposableLambda")
 private val COMPOSABLE_LAMBDA_N_TYPE = Type.getObjectType("androidx/compose/runtime/internal/ComposableLambdaN")
 private val COMPOSABLE_LAMBDA_TYPES = setOf(COMPOSABLE_LAMBDA_TYPE, COMPOSABLE_LAMBDA_N_TYPE)
 
-private fun analyzeMethod(
-  analyzer: ComposeAnalyzer,
-  method: IrMethod,
-  classesByName: Map<String, IrClass>,
-  groupTable: MutableGroupTable
-) {
+private fun analyzeMethod(analyzer: ComposeAnalyzer, method: IrMethod, classesByName: Map<String, IrClass>, groupTable: MutableGroupTable) {
   val frames = analyzer.analyze(method.clazz.name, method.node)
 
   val keyMeta = method.annotations.singleOrNull { it.desc == "Landroidx/compose/runtime/internal/FunctionKeyMeta;" }
@@ -196,11 +190,16 @@ private fun analyzeMethod(
 
       INVOKESTATIC -> {
         val methodInstr = instr as MethodInsnNode
-        if (methodInstr.owner == "androidx/compose/runtime/internal/ComposableLambdaKt" && Type.getReturnType(
-            methodInstr.desc) in COMPOSABLE_LAMBDA_TYPES) {
+        if (
+          methodInstr.owner == "androidx/compose/runtime/internal/ComposableLambdaKt" &&
+            Type.getReturnType(methodInstr.desc) in COMPOSABLE_LAMBDA_TYPES
+        ) {
           val lambda = frames[i + 1].getStackValue(0) as ComposableLambdaValue
-          val clazz = classesByName[lambda.block.internalName] ?: throw RuntimeException(
-            "Unknown class type in ComposableLambda in $method: ${lambda.block} associated with key ${lambda.key}")
+          val clazz =
+            classesByName[lambda.block.internalName]
+              ?: throw RuntimeException(
+                "Unknown class type in ComposableLambda in $method: ${lambda.block} associated with key ${lambda.key}"
+              )
           groupTable.lambdaParents[clazz] = method
         }
       }
@@ -268,7 +267,8 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
 
       // I'm not sure if "proper" Compose code will ever use these to load a group key, but I've caused it to happen in tests; thus,
       // adding a branch to handle this case so we don't get unexpected casting errors in the future.
-      BIPUSH, SIPUSH -> {
+      BIPUSH,
+      SIPUSH -> {
         val value = (instr as IntInsnNode).operand
         return IntValue(value)
       }
@@ -316,7 +316,8 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
               return ComposableLambdaValue(key, block)
             }
 
-            "composableLambdaInstance", "rememberComposableLambda" -> {
+            "composableLambdaInstance",
+            "rememberComposableLambda" -> {
               // fun composableLambdaInstance(key: Int, tracked: Boolean, block: Any)
               // @Composable fun rememberComposableLambda(key: Int, tracked: Boolean, block: Any)
               val key = (values[0] as IntValue).value
@@ -335,7 +336,8 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
               return ComposableLambdaValue(key, block)
             }
 
-            "composableLambdaNInstance", "rememberComposableLambdaN" -> {
+            "composableLambdaNInstance",
+            "rememberComposableLambdaN" -> {
               // fun composableLambdaInstance(key: Int, tracked: Boolean, arity: Int, block: Any)
               // @Composable fun rememberComposableLambda(key: Int, tracked: Boolean, arity: Int, block: Any)
               val key = (values[0] as IntValue).value
@@ -370,9 +372,9 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
 
 private fun isComposableSingleton(typeInternalName: String): Boolean {
   val classInternalName = typeInternalName.split('/').last()
-  return classInternalName.split(
-    '$'
-  ).let { // Ensure we don't accidentally treat com/my/package/ComposableSingletons$MyActivity$lambda-1 as a singleton parent class
-    it.size == 2 && it.first() == "ComposableSingletons"
-  }
+  return classInternalName
+    .split('$')
+    .let { // Ensure we don't accidentally treat com/my/package/ComposableSingletons$MyActivity$lambda-1 as a singleton parent class
+      it.size == 2 && it.first() == "ComposableSingletons"
+    }
 }

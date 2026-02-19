@@ -22,7 +22,7 @@ import com.android.ide.common.rendering.api.ResourceReference
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.ResourceType
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.layoutinspector.MODERN_DEVICE
+import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.properties.InspectorPropertyItem
@@ -53,7 +53,7 @@ class ResourceLookupTest {
     AndroidFacet.getInstance(projectRule.module)!!.setApplicationIdForTest("com.example.test")
     val resourceLookup = ResourceLookup(projectRule.project)
     val theme = ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "Theme.Hole.Light")
-    val process = MODERN_DEVICE.createProcess("com.example.test")
+    val process = DEVICE_1.createProcess("com.example.test")
     resourceLookup.updateConfiguration(
       FolderConfiguration(),
       theme,
@@ -71,7 +71,7 @@ class ResourceLookupTest {
     AndroidFacet.getInstance(projectRule.module)!!.setApplicationIdForTest("com.example.test.debug")
     val resourceLookup = ResourceLookup(projectRule.project)
     val theme = ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "Theme.Hole.Light")
-    val process = MODERN_DEVICE.createProcess("com.example.test.debug")
+    val process = DEVICE_1.createProcess("com.example.test.debug")
     resourceLookup.updateConfiguration(
       FolderConfiguration(),
       theme,
@@ -84,7 +84,7 @@ class ResourceLookupTest {
 
   @Test
   fun testSingleColorIcon() = runBlocking {
-    val title = ViewNode(1, "TextView", null, Rectangle(30, 60, 300, 100), null, "Hello Folks", 0)
+    val title = ViewNode(1, "TextView", null, Rectangle(30, 60, 300, 100), null, "Hello Folks", 0, false)
     val context =
       object : ViewNodeAndResourceLookup {
         override val resourceLookup = ResourceLookup(projectRule.project)
@@ -107,7 +107,6 @@ class ResourceLookupTest {
         context,
       )
     val icon = context.resourceLookup.resolveAsIcon(property.value, title)
-    assertThat(icon)
-      .isEqualTo(JBUIScale.scaleIcon(ColorIcon(RESOURCE_ICON_SIZE, Color(0xCC0000), false)))
+    assertThat(icon).isEqualTo(JBUIScale.scaleIcon(ColorIcon(RESOURCE_ICON_SIZE, Color(0xCC0000), false)))
   }
 }

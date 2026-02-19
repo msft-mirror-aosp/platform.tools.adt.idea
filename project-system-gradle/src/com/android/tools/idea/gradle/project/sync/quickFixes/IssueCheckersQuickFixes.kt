@@ -22,9 +22,12 @@ import com.android.repository.impl.meta.RepositoryPackages
 import com.android.sdklib.repository.meta.DetailsTypes
 import com.android.tools.idea.Projects
 import com.android.tools.idea.Projects.getBaseDirPath
+import com.android.tools.idea.concurrency.coroutineScope
+import com.android.tools.idea.gradle.extensions.getRecommendedJavaVersion
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.project.sync.idea.issues.DescribedBuildIssueQuickFix
 import com.android.tools.idea.gradle.project.sync.issues.processor.FixBuildToolsProcessor
+import com.android.tools.idea.gradle.project.sync.jdk.GradleJdkConfigurationUtils
 import com.android.tools.idea.gradle.util.GradleProjectSettingsFinder
 import com.android.tools.idea.gradle.util.GradleWrapper
 import com.android.tools.idea.gradle.util.LocalProperties
@@ -45,6 +48,8 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
+import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
@@ -54,11 +59,19 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.net.HttpProxyConfigurable
-import org.jetbrains.plugins.gradle.settings.DistributionType
-import org.jetbrains.plugins.gradle.settings.GradleSettings
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.future.asCompletableFuture
+import kotlinx.coroutines.launch
+import org.gradle.util.GradleVersion
+import org.jetbrains.plugins.gradle.issue.quickfix.GradleOpenDaemonJvmSettingsQuickFix
+import org.jetbrains.plugins.gradle.jvmcompat.GradleJvmSupportMatrix
+import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmCriteria
+import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
+import org.jetbrains.plugins.gradle.settings.DistributionType
+import org.jetbrains.plugins.gradle.settings.GradleSettings
+import org.jetbrains.plugins.gradle.util.GradleConstants
 
 class CreateGradleWrapperQuickFix : BuildIssueQuickFix {
   override val id = "migrate.gradle.wrapper"
@@ -76,8 +89,7 @@ class CreateGradleWrapperQuickFix : BuildIssueQuickFix {
 
         project.getSyncManager().requestSyncProject(GradleSyncStats.Trigger.TRIGGER_QF_WRAPPER_CREATED.toReason())
         future.complete(null)
-      }
-      catch (e: IOException) {
+      } catch (e: IOException) {
         Messages.showErrorDialog(project, "Failed to create Gradle wrapper: " + e.message, "Quick Fix")
         future.completeExceptionally(e)
       }
@@ -86,9 +98,11 @@ class CreateGradleWrapperQuickFix : BuildIssueQuickFix {
   }
 }
 
-class InstallBuildToolsQuickFix(private val version: String,
-                                private val buildFiles: List<VirtualFile>,
-                                private val removeBuildTools: Boolean): BuildIssueQuickFix {
+class InstallBuildToolsQuickFix(
+  private val version: String,
+  private val buildFiles: List<VirtualFile>,
+  private val removeBuildTools: Boolean,
+) : BuildIssueQuickFix {
   override val id = "install.build.tools"
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
@@ -101,8 +115,7 @@ class InstallBuildToolsQuickFix(private val version: String,
           val processor = FixBuildToolsProcessor(project, buildFiles, version, true, removeBuildTools)
           processor.setPreviewUsages(true)
           processor.run()
-        }
-        else {
+        } else {
           project.getSyncManager().requestSyncProject(GradleSyncStats.Trigger.TRIGGER_QF_BUILD_TOOLS_INSTALLED.toReason())
         }
       }
@@ -113,9 +126,8 @@ class InstallBuildToolsQuickFix(private val version: String,
 }
 
 /**
- * QuickFix to install a CMake version from the SDK.
- * If the version [myCmakeVersion] is passed to the quickfix, then it will be installed; otherwise, the latest version included in
- * the SDK should be installed.
+ * QuickFix to install a CMake version from the SDK. If the version [myCmakeVersion] is passed to the quickfix, then it will be installed;
+ * otherwise, the latest version included in the SDK should be installed.
  */
 class InstallCmakeQuickFix(cmakeVersion: Revision?) : BuildIssueQuickFix {
   override val id = "INSTALL_CMAKE"
@@ -129,42 +141,38 @@ class InstallCmakeQuickFix(cmakeVersion: Revision?) : BuildIssueQuickFix {
     val sdkManager = sdkHandler.getRepoManager(progressIndicator)
     val progressRunner = StudioProgressRunner(false, "Loading Remote SDK", project)
 
-    val onComplete = RepoManager.RepoLoadedListener { packages: RepositoryPackages ->
-      invokeLater(ModalityState.any()) {
-        val cmakePackages = packages.getRemotePackagesForPrefix(SdkConstants.FD_CMAKE)
-        val cmakePackage = if (myCmakeVersion == null) {
-          // Install the latest version from the SDK.
-          if (cmakePackages.size == 1) {
-            ContainerUtil.getFirstItem(cmakePackages)
-          }
-          else {
-            sdkHandler.getLatestRemotePackageForPrefix(
-              SdkConstants.FD_CMAKE, null, false /* do not allow preview */, progressIndicator)
-          }
-        }
-        else {
-          // Install the version the user requested.
-          cmakePackages.stream()
-            .filter { remotePackage -> remotePackage!!.version == myCmakeVersion }
-            .findFirst()
-            .orElse(null)
-        }
+    val onComplete =
+      RepoManager.RepoLoadedListener { packages: RepositoryPackages ->
+        invokeLater(ModalityState.any()) {
+          val cmakePackages = packages.getRemotePackagesForPrefix(SdkConstants.FD_CMAKE)
+          val cmakePackage =
+            if (myCmakeVersion == null) {
+              // Install the latest version from the SDK.
+              if (cmakePackages.size == 1) {
+                ContainerUtil.getFirstItem(cmakePackages)
+              } else {
+                sdkHandler.getLatestRemotePackageForPrefix(SdkConstants.FD_CMAKE, null, false /* do not allow preview */, progressIndicator)
+              }
+            } else {
+              // Install the version the user requested.
+              cmakePackages.stream().filter { remotePackage -> remotePackage!!.version == myCmakeVersion }.findFirst().orElse(null)
+            }
 
-        if (cmakePackage != null) {
-          // Found: Trigger installation of the package.
-          val dialog = SdkQuickfixUtils.createDialogForPaths(project, ImmutableList.of(cmakePackage.path), true)
-          if (dialog != null && dialog.showAndGet()) {
-            project.getSyncManager().requestSyncProject(GradleSyncStats.Trigger.TRIGGER_QF_CMAKE_INSTALLED.toReason())
+          if (cmakePackage != null) {
+            // Found: Trigger installation of the package.
+            val dialog = SdkQuickfixUtils.createDialogForPaths(project, ImmutableList.of(cmakePackage.path), true)
+            if (dialog != null && dialog.showAndGet()) {
+              project.getSyncManager().requestSyncProject(GradleSyncStats.Trigger.TRIGGER_QF_CMAKE_INSTALLED.toReason())
+            }
+            future.complete(null)
+            return@invokeLater
           }
+
+          // Either no CMake versions were found, or the requested CMake version was not found.
+          notifyCmakePackageNotFound(project)
           future.complete(null)
-          return@invokeLater
         }
-
-        // Either no CMake versions were found, or the requested CMake version was not found.
-        notifyCmakePackageNotFound(project)
-        future.complete(null)
       }
-    }
 
     val onError = Runnable {
       invokeLater(ModalityState.any()) {
@@ -172,15 +180,21 @@ class InstallCmakeQuickFix(cmakeVersion: Revision?) : BuildIssueQuickFix {
         future.complete(null)
       }
     }
-    sdkManager.load(cacheExpirationMs = RepoManager.DEFAULT_EXPIRATION_PERIOD_MS,
-                    onSuccess = onComplete, onError = onError, runner = progressRunner,
-                    downloader = StudioDownloader(), settings = StudioSettingsController.getInstance())
+    sdkManager.load(
+      cacheExpirationMs = RepoManager.DEFAULT_EXPIRATION_PERIOD_MS,
+      onSuccess = onComplete,
+      onError = onError,
+      runner = progressRunner,
+      downloader = StudioDownloader(),
+      settings = StudioSettingsController.getInstance(),
+    )
 
     return future
   }
 
   /**
    * display error message to notify the user that a CMake package was not found.
+   *
    * @param project: the current Intellij project.
    */
   private fun notifyCmakePackageNotFound(project: Project) {
@@ -212,6 +226,7 @@ class OpenFileAtLocationQuickFix(val myFilePosition: FilePosition) : BuildIssueQ
 
 class OpenLinkQuickFix(val link: String) : BuildIssueQuickFix {
   override val id = "open.more.details"
+
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val future = CompletableFuture<Any>()
 
@@ -304,7 +319,7 @@ class ToggleOfflineModeQuickFix(val enableOfflineMode: Boolean) : BuildIssueQuic
   }
 }
 
-class OpenStudioProxySettingsQuickFix: BuildIssueQuickFix {
+class OpenStudioProxySettingsQuickFix : BuildIssueQuickFix {
   override val id = "open.proxy.settings"
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
@@ -318,7 +333,7 @@ class OpenStudioProxySettingsQuickFix: BuildIssueQuickFix {
 }
 
 class SelectJdkFromFileSystemQuickFix : DescribedBuildIssueQuickFix {
-  override val description: String = "Change Gradle JDK..."
+  override val description: String = "Change Gradle JDK configuration"
   override val id: String = "select.jdk.from.gradle.settings"
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
@@ -327,5 +342,51 @@ class SelectJdkFromFileSystemQuickFix : DescribedBuildIssueQuickFix {
       service.chooseJdkLocation(project.basePath)
     }
     return CompletableFuture.completedFuture(null)
+  }
+}
+
+object OpenGradleDaemonJvmSettingsQuickFix : DescribedBuildIssueQuickFix {
+  override val description: String = "Modify Daemon JVM criteria"
+  override val id: String = "open.gradle.daemon.jvm.settings"
+
+  override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
+    return GradleOpenDaemonJvmSettingsQuickFix.runQuickFix(project, dataContext)
+  }
+}
+
+class UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix(
+  private val gradleVersion: GradleVersion,
+  private val externalProjectPath: String,
+) : DescribedBuildIssueQuickFix {
+  override val description: String = "Apply compatible Daemon JVM criteria and sync"
+  override val id: String = "apply.compatible.daemon.jvm.criteria"
+
+  override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
+    val targetJavaVersion = GradleJvmSupportMatrix.getRecommendedJavaVersion(project, gradleVersion)
+    val daemonJvmCriteria = GradleDaemonJvmCriteria(targetJavaVersion.feature.toString(), null)
+    return GradleDaemonJvmHelper.updateProjectDaemonJvmCriteria(project, externalProjectPath, daemonJvmCriteria).thenAccept {
+      if (it) {
+        ExternalSystemUtil.refreshProject(externalProjectPath, ImportSpecBuilder(project, GradleConstants.SYSTEM_ID))
+      }
+    }
+  }
+}
+
+class UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix(
+  private val gradleVersion: GradleVersion,
+  private val externalProjectPath: String,
+) : DescribedBuildIssueQuickFix {
+  override val description: String = "Apply compatible Gradle JDK configuration and sync"
+  override val id: String = "apply.compatible.gradle.jdk.configuration"
+
+  override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
+    return project.coroutineScope
+      .launch {
+        val targetJavaVersion = GradleJvmSupportMatrix.getRecommendedJavaVersion(project, gradleVersion)
+        GradleJdkConfigurationUtils.tryConfigureGradleJdkWithVersion(project, externalProjectPath, targetJavaVersion.feature) {
+          ExternalSystemUtil.refreshProject(externalProjectPath, ImportSpecBuilder(project, GradleConstants.SYSTEM_ID))
+        }
+      }
+      .asCompletableFuture()
   }
 }

@@ -101,14 +101,7 @@ fun updateAndGetActionPresentation(
   place: String = ActionPlaces.KEYBOARD_SHORTCUT,
   extra: DataSnapshotProvider? = null,
 ): Presentation {
-  val event =
-    createTestEvent(
-      source,
-      project,
-      place,
-      presentation = action.templatePresentation.clone(),
-      extra = extra,
-    )
+  val event = createTestEvent(source, project, place, presentation = action.templatePresentation.clone(), extra = extra)
   return updateAndGetActionPresentation(action, event)
 }
 
@@ -127,21 +120,14 @@ fun createTestEvent(
   presentation: Presentation = Presentation(),
   extra: DataSnapshotProvider? = null,
 ): AnActionEvent {
-  val inputEvent =
-    KeyEvent(
-      source ?: JPanel(),
-      KEY_RELEASED,
-      System.currentTimeMillis(),
-      modifiers,
-      VK_E,
-      CHAR_UNDEFINED,
-    )
+  val inputEvent = KeyEvent(source ?: JPanel(), KEY_RELEASED, System.currentTimeMillis(), modifiers, VK_E, CHAR_UNDEFINED)
   val rootContext = extra.toDataContext(project?.let { getProjectContext(it) } ?: EMPTY_CONTEXT)
   val dataContext = createDataContext(source, rootContext)
   return AnActionEvent.createEvent(dataContext, presentation, place, ActionUiKind.NONE, inputEvent)
 }
 
-private fun createDataContext(component: Component?, rootContext: DataContext): DataContext {
+/** Creates a data context with [component] and with [rootContext] as the parent. */
+fun createDataContext(component: Component?, rootContext: DataContext): DataContext {
   val c = findParentByCondition(component) { it is UiDataProvider } ?: return rootContext
   val parentContext = createDataContext(c.parent, rootContext)
   return (c as UiDataProvider).toDataSnapshotProvider().toDataContext(parentContext)
@@ -150,17 +136,13 @@ private fun createDataContext(component: Component?, rootContext: DataContext): 
 private fun DataSnapshotProvider?.toDataContext(parent: DataContext): DataContext =
   this?.let { CustomizedDataContext.withSnapshot(parent, this) } ?: parent
 
-private fun UiDataProvider.toDataSnapshotProvider(): DataSnapshotProvider =
-  DataSnapshotProvider { sink ->
-    sink.uiDataSnapshot(this@UiDataProvider)
-  }
+private fun UiDataProvider.toDataSnapshotProvider(): DataSnapshotProvider = DataSnapshotProvider { sink ->
+  sink.uiDataSnapshot(this@UiDataProvider)
+}
 
 const val SEPARATOR_TEXT = "------------------------------------------------------"
 
-/**
- * Helper function to convert action to string for testing purpose. Use [filter] to ignore the
- * actions if needed.
- */
+/** Helper function to convert action to string for testing purpose. Use [filter] to ignore the actions if needed. */
 @JvmOverloads
 fun prettyPrintActions(
   action: AnAction,
@@ -198,12 +180,7 @@ private fun prettyPrintActions(
   }
 }
 
-private fun appendActionText(
-  sb: StringBuilder,
-  action: AnAction,
-  depth: Int,
-  dataContext: DataContext,
-) {
+private fun appendActionText(sb: StringBuilder, action: AnAction, depth: Int, dataContext: DataContext) {
   val text = action.toText(dataContext)
   for (i in 0 until depth) {
     sb.append("    ")
@@ -223,11 +200,7 @@ private fun AnAction.toText(dataContext: DataContext): String {
 
 /** Creates an [AnActionEvent] for testing purpose. */
 @JvmOverloads
-fun createTestActionEvent(
-  action: AnAction,
-  inputEvent: InputEvent? = null,
-  dataContext: DataContext = EMPTY_CONTEXT,
-): AnActionEvent {
+fun createTestActionEvent(action: AnAction, inputEvent: InputEvent? = null, dataContext: DataContext = EMPTY_CONTEXT): AnActionEvent {
   val presentation = action.templatePresentation.clone()
   return AnActionEvent.createEvent(dataContext, presentation, "", ActionUiKind.NONE, inputEvent)
 }
@@ -243,7 +216,5 @@ suspend fun DefaultActionGroup.findActionByText(text: String): AnAction? {
 
 /** Returns all the [AnAction] contains in the [DefaultActionGroup] and any sub-groups. */
 private fun DefaultActionGroup.allChildActionsOrStubs(): Collection<AnAction> {
-  return childActionsOrStubs.flatMap {
-    if (it is DefaultActionGroup) it.allChildActionsOrStubs().asSequence() else sequenceOf(it)
-  }
+  return childActionsOrStubs.flatMap { if (it is DefaultActionGroup) it.allChildActionsOrStubs().asSequence() else sequenceOf(it) }
 }

@@ -16,51 +16,66 @@
 package org.jetbrains.android.spellchecker
 
 import com.google.common.truth.Truth.assertThat
+import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
-import com.intellij.spellchecker.inspections.SpellCheckingInspection
 import org.jetbrains.android.AndroidTestCase
 
 class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
   fun testNoTypoInDependencyApplicationStatement() {
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
-    val virtualFile = myFixture.addFileToProject(
-      "build.gradle",
-      //language=Groovy
-      """
-        dependencies {
-          implementation 'com.example:xyzy:1.0'
-        }
-      """.trimIndent()).virtualFile
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    val virtualFile =
+      myFixture
+        .addFileToProject(
+          "build.gradle",
+          // language=Groovy
+          """
+          dependencies {
+            implementation 'com.example:xyzy:1.0'
+          }
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).isEmpty()
   }
 
   fun testNoTypoInDependencyCallExpression() {
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
-    val virtualFile = myFixture.addFileToProject(
-      "build.gradle",
-      //language=Groovy
-      """
-        dependencies {
-          implementation('com.example:xyzy:1.0')
-        }
-      """.trimIndent()).virtualFile
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    val virtualFile =
+      myFixture
+        .addFileToProject(
+          "build.gradle",
+          // language=Groovy
+          """
+          dependencies {
+            implementation('com.example:xyzy:1.0')
+          }
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).isEmpty()
   }
 
   fun testTypoInPrintApplicationStatement() {
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
-    val virtualFile = myFixture.addFileToProject(
-      "build.gradle",
-      //language=Groovy
-      """
-        dependencies {
-          print 'com.example:xyzy:1.0'
-        }
-      """.trimIndent()).virtualFile
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    val virtualFile =
+      myFixture
+        .addFileToProject(
+          "build.gradle",
+          // language=Groovy
+          """
+          dependencies {
+            print 'com.example:xyzy:1.0'
+          }
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).hasSize(1)
@@ -68,15 +83,20 @@ class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
   }
 
   fun testTypoInPrintCallExpression() {
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
-    val virtualFile = myFixture.addFileToProject(
-      "build.gradle",
-      //language=Groovy
-      """
-        dependencies {
-          print('com.example:xyzy:1.0')
-        }
-      """.trimIndent()).virtualFile
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    val virtualFile =
+      myFixture
+        .addFileToProject(
+          "build.gradle",
+          // language=Groovy
+          """
+          dependencies {
+            print('com.example:xyzy:1.0')
+          }
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     myFixture.configureFromExistingVirtualFile(virtualFile)
     val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).hasSize(1)

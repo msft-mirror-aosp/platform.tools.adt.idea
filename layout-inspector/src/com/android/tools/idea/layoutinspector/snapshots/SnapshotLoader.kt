@@ -30,8 +30,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Mechanism for loading saved layout inspector snapshots. [SnapshotLoader.createSnapshotLoader]
- * will create an appropriate concrete [SnapshotLoader] given a snapshot file as input.
+ * Mechanism for loading saved layout inspector snapshots. [SnapshotLoader.createSnapshotLoader] will create an appropriate concrete
+ * [SnapshotLoader] given a snapshot file as input.
  */
 interface SnapshotLoader {
 
@@ -79,12 +79,7 @@ interface SnapshotLoader {
 
   val capabilities: MutableCollection<InspectorClient.Capability>
 
-  fun loadFile(
-    file: Path,
-    model: InspectorModel,
-    notificationModel: NotificationModel,
-    stats: SessionStatistics,
-  ): SnapshotMetadata?
+  fun loadFile(file: Path, model: InspectorModel, notificationModel: NotificationModel, stats: SessionStatistics): SnapshotMetadata?
 
   companion object {
     fun createSnapshotLoader(file: Path): SnapshotLoader? {
@@ -96,8 +91,9 @@ interface SnapshotLoader {
       }
       return when (options.version) {
         ProtocolVersion.Version1,
-        ProtocolVersion.Version3 -> LegacySnapshotLoader()
-        ProtocolVersion.Version2 -> null // Seems like version 2 was never implemented?
+        ProtocolVersion.Version2,
+        // We don't support versions older than 4.
+        ProtocolVersion.Version3 -> null
         ProtocolVersion.Version4 -> AppInspectionSnapshotLoader()
       }
     }
@@ -116,10 +112,7 @@ enum class ProtocolVersion(val value: String) {
 private const val VERSION = "version"
 private const val TITLE = "title"
 
-class LayoutInspectorCaptureOptions(
-  var version: ProtocolVersion = ProtocolVersion.Version1,
-  var title: String = "",
-) {
+class LayoutInspectorCaptureOptions(var version: ProtocolVersion = ProtocolVersion.Version1, var title: String = "") {
 
   override fun toString(): String {
     return serialize()
@@ -137,9 +130,7 @@ class LayoutInspectorCaptureOptions(
     try {
       version = ProtocolVersion.valueOf("Version${obj.get(VERSION).asString}")
     } catch (exception: IllegalArgumentException) {
-      throw SnapshotLoaderException(
-        "This version of Studio doesn't support version ${obj.get(VERSION).asString} snapshots."
-      )
+      throw SnapshotLoaderException("This version of Studio doesn't support version ${obj.get(VERSION).asString} snapshots.")
     }
     title = obj.get(TITLE).asString
   }

@@ -16,14 +16,11 @@
 package com.android.tools.idea.layoutinspector.properties
 
 import com.android.SdkConstants.ATTR_HEIGHT
-import com.android.SdkConstants.ATTR_ID
-import com.android.SdkConstants.ATTR_NAME
 import com.android.SdkConstants.ATTR_WIDTH
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.properties.PropertySection.DIMENSION
 import com.android.tools.idea.layoutinspector.properties.PropertySection.RECOMPOSITIONS
-import com.android.tools.idea.layoutinspector.properties.PropertySection.VIEW
 import com.android.tools.property.panel.api.PropertiesTable
 import com.google.common.util.concurrent.Futures
 import java.util.concurrent.Future
@@ -34,11 +31,7 @@ const val ATTR_X = "x"
 const val ATTR_Y = "y"
 
 fun interface ResultListener {
-  fun onResult(
-    propertiesProvider: PropertiesProvider,
-    viewNode: ViewNode,
-    propertiesTable: PropertiesTable<InspectorPropertyItem>,
-  )
+  fun onResult(propertiesProvider: PropertiesProvider, viewNode: ViewNode, propertiesTable: PropertiesTable<InspectorPropertyItem>)
 }
 
 /** A [PropertiesProvider] provides properties to registered listeners.. */
@@ -53,8 +46,7 @@ interface PropertiesProvider {
   /**
    * Requests properties for the specified [view].
    *
-   * This is potentially an asynchronous request. The associated [InspectorPropertiesModel] is
-   * notified when the table is ready.
+   * This is potentially an asynchronous request. The associated [InspectorPropertiesModel] is notified when the table is ready.
    */
   fun requestProperties(view: ViewNode): Future<*>
 }
@@ -71,79 +63,20 @@ object EmptyPropertiesProvider : PropertiesProvider {
 }
 
 /** Add a few fabricated internal attributes. */
-fun addInternalProperties(
-  table: PropertiesTable<InspectorPropertyItem>,
-  view: ViewNode,
-  attrId: String?,
-  lookup: ViewNodeAndResourceLookup,
-) {
-  add(table, ATTR_NAME, PropertyType.STRING, view.qualifiedName, VIEW, view.drawId, lookup)
-  add(
-    table,
-    ATTR_X,
-    PropertyType.DIMENSION,
-    view.layoutBounds.x.toString(),
-    DIMENSION,
-    view.drawId,
-    lookup,
-  )
-  add(
-    table,
-    ATTR_Y,
-    PropertyType.DIMENSION,
-    view.layoutBounds.y.toString(),
-    DIMENSION,
-    view.drawId,
-    lookup,
-  )
-  add(
-    table,
-    ATTR_WIDTH,
-    PropertyType.DIMENSION,
-    view.layoutBounds.width.toString(),
-    DIMENSION,
-    view.drawId,
-    lookup,
-  )
-  add(
-    table,
-    ATTR_HEIGHT,
-    PropertyType.DIMENSION,
-    view.layoutBounds.height.toString(),
-    DIMENSION,
-    view.drawId,
-    lookup,
-  )
-  attrId?.let { add(table, ATTR_ID, PropertyType.STRING, it, VIEW, view.drawId, lookup) }
-
+fun addInternalProperties(table: PropertiesTable<InspectorPropertyItem>, view: ViewNode, lookup: ViewNodeAndResourceLookup) {
+  add(table, ATTR_X, PropertyType.DIMENSION, view.layoutBounds.x.toString(), DIMENSION, view.drawId, lookup)
+  add(table, ATTR_Y, PropertyType.DIMENSION, view.layoutBounds.y.toString(), DIMENSION, view.drawId, lookup)
+  add(table, ATTR_WIDTH, PropertyType.DIMENSION, view.layoutBounds.width.toString(), DIMENSION, view.drawId, lookup)
+  add(table, ATTR_HEIGHT, PropertyType.DIMENSION, view.layoutBounds.height.toString(), DIMENSION, view.drawId, lookup)
   (view as? ComposeViewNode)?.addComposeProperties(table, lookup)
 }
 
-private fun ComposeViewNode.addComposeProperties(
-  table: PropertiesTable<InspectorPropertyItem>,
-  lookup: ViewNodeAndResourceLookup,
-) {
+private fun ComposeViewNode.addComposeProperties(table: PropertiesTable<InspectorPropertyItem>, lookup: ViewNodeAndResourceLookup) {
   if (!recompositions.isEmpty) {
     // Do not show the "Recomposition" section in the properties panel for nodes without any counts.
     // This includes inlined composables for which we are unable to get recomposition counts for.
-    add(
-      table,
-      "count",
-      PropertyType.INT32,
-      recompositions.count.toString(),
-      RECOMPOSITIONS,
-      drawId,
-      lookup,
-    )
-    add(
-      table,
-      "skips",
-      PropertyType.INT32,
-      recompositions.skips.toString(),
-      RECOMPOSITIONS,
-      drawId,
-      lookup,
-    )
+    add(table, "count", PropertyType.INT32, recompositions.count.toString(), RECOMPOSITIONS, drawId, lookup)
+    add(table, "skips", PropertyType.INT32, recompositions.skips.toString(), RECOMPOSITIONS, drawId, lookup)
   }
 }
 

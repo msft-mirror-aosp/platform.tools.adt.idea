@@ -20,6 +20,7 @@ import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEdit
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
+import java.util.concurrent.Semaphore
 import org.jetbrains.kotlin.analyzer.AnalysisResult
 import org.jetbrains.kotlin.backend.jvm.FacadeClassSourceShimForFragmentCompilation
 import org.jetbrains.kotlin.backend.jvm.JvmGeneratorExtensionsImpl
@@ -41,7 +42,6 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.source.PsiSourceFile
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedContainerSource
-import java.util.concurrent.Semaphore
 
 private fun handleCompilerErrors(e: Throwable): Nothing {
   // These should be rethrown as per the javadoc for ProcessCanceledException. This allows the
@@ -79,32 +79,27 @@ private fun handleCompilerErrors(e: Throwable): Nothing {
         val nameEnd = message.indexOf("'", nameStart)
         val name = message.substring(nameStart, nameEnd)
 
-        throw LiveEditUpdateException.inlineFailure("Unable to update function that references" +
-                                                    " an inline function from another source file: $name")
+        throw LiveEditUpdateException.inlineFailure(
+          "Unable to update function that references" + " an inline function from another source file: $name"
+        )
       }
     }
   }
-  throw LiveEditUpdateException.compilationError(
-    listOf(CompilerErrorSource("ERROR", "$e ${e.message ?: " No error message"}", null, -1)))
+  throw LiveEditUpdateException.compilationError(listOf(CompilerErrorSource("ERROR", "$e ${e.message ?: " No error message"}", null, -1)))
 }
 
-/**
- * Scope containing the different phases of the compilation that can be executed under
- * with [runWithCompileLock].
- */
+/** Scope containing the different phases of the compilation that can be executed under with [runWithCompileLock]. */
 interface CompileScope {
-  /**
-   * Fetch the resolution based on the cached service.
-   */
+  /** Fetch the resolution based on the cached service. */
   fun fetchResolution(project: Project, input: List<KtFile>): ResolutionFacade
 
   /**
    * Given a source file A.kt and an initial analysis result, compute a list of source files (A.kt included) need in order to correctly
    * compile the A.kt and any inline functions it needs from another source file.
    */
-  fun performInlineSourceDependencyAnalysis(resolution: ResolutionFacade, file: KtFile, bindingContext: BindingContext) : List<KtFile>
+  fun performInlineSourceDependencyAnalysis(resolution: ResolutionFacade, file: KtFile, bindingContext: BindingContext): List<KtFile>
 
-    /**
+  /**
    * Compute the BindingContext of the input file that can be used for code generation.
    *
    * This function needs to be done in a read action.
@@ -112,8 +107,8 @@ interface CompileScope {
   fun analyze(input: List<KtFile>, resolution: ResolutionFacade): AnalysisResult
 
   /**
-   * Invoke the Kotlin compiler that is part of the plugin. The compose plugin is also attached by
-   * the extension point to generate code for @composable functions.
+   * Invoke the Kotlin compiler that is part of the plugin. The compose plugin is also attached by the extension point to generate code
+   * for @composable functions.
    */
   fun backendCodeGen(
     applicationLiveEditServices: ApplicationLiveEditServices,
@@ -121,14 +116,12 @@ interface CompileScope {
     analysisResult: AnalysisResult,
     input: List<KtFile>,
     moduleForAllInputs: Module,
-    inlineClassRequest: Set<SourceInlineCandidate>?
+    inlineClassRequest: Set<SourceInlineCandidate>?,
   ): GenerationState
 }
 
 private object CompileScopeImpl : CompileScope {
-  /**
-   * Lock that ensures that [runWithCompileLock] only allows one execution at a time.
-   */
+  /** Lock that ensures that [runWithCompileLock] only allows one execution at a time. */
   val compileLock = Semaphore(1)
 
   override fun fetchResolution(project: Project, input: List<KtFile>): ResolutionFacade {
@@ -137,7 +130,11 @@ private object CompileScopeImpl : CompileScope {
     return kotlinCacheService.getResolutionFacadeWithForcedPlatform(input, androidModule?.platform ?: JvmPlatforms.defaultJvmPlatform)
   }
 
-  override fun performInlineSourceDependencyAnalysis(resolution: ResolutionFacade, file: KtFile, bindingContext: BindingContext) : List<KtFile> {
+  override fun performInlineSourceDependencyAnalysis(
+    resolution: ResolutionFacade,
+    file: KtFile,
+    bindingContext: BindingContext,
+  ): List<KtFile> {
     return analyzeInlinedFunctions(resolution, file, false)
   }
 
@@ -145,13 +142,14 @@ private object CompileScopeImpl : CompileScope {
     val trace = com.android.tools.tracer.Trace.begin("analyzeWithAllCompilerChecks")
     try {
       var exception: LiveEditUpdateException? = null
-      val analysisResult = resolution.analyzeWithAllCompilerChecks(input) {
-        if (it.severity == Severity.ERROR) {
-          if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get() || input.contains(it.psiFile)) {
-            exception = LiveEditUpdateException.analysisError("Analyze Error. $it", it.psiFile)
+      val analysisResult =
+        resolution.analyzeWithAllCompilerChecks(input) {
+          if (it.severity == Severity.ERROR) {
+            if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get() || input.contains(it.psiFile)) {
+              exception = LiveEditUpdateException.analysisError("Analyze Error. $it", it.psiFile)
+            }
           }
         }
-      }
       if (exception != null) {
         throw exception!!
       }
@@ -169,16 +167,19 @@ private object CompileScopeImpl : CompileScope {
       }
 
       return analysisResult
-    }
-    finally {
+    } finally {
       trace.close()
     }
   }
 
   override fun backendCodeGen(
     applicationLiveEditServices: ApplicationLiveEditServices,
-    project: Project, analysisResult: AnalysisResult, input: List<KtFile>, moduleForAllInputs: Module,
-    inlineClassRequest : Set<SourceInlineCandidate>?): GenerationState {
+    project: Project,
+    analysisResult: AnalysisResult,
+    input: List<KtFile>,
+    moduleForAllInputs: Module,
+    inlineClassRequest: Set<SourceInlineCandidate>?,
+  ): GenerationState {
     // Ideally, we want to make sure that each compilation only contains files of a single module.
     // However, the current algorithm would fail if a file depends on an inline function that is in another module.
     // If we are unable to pull the binary version of the inline function from the .class directories, we would need to include the .kt
@@ -198,17 +199,18 @@ private object CompileScopeImpl : CompileScope {
 
     val compilerConfiguration = applicationLiveEditServices.getKotlinCompilerConfiguration(input.first())
 
-    val codegenFactory = JvmIrCodegenFactory(
-      compilerConfiguration,
-      jvmGeneratorExtensions = object : JvmGeneratorExtensionsImpl(compilerConfiguration) {
-        override fun getContainerSource(descriptor: DeclarationDescriptor): DeserializedContainerSource? {
-          val psiSourceFile =
-            descriptor.toSourceElement.containingFile as? PsiSourceFile ?: return super.getContainerSource(descriptor)
-          return FacadeClassSourceShimForFragmentCompilation(psiSourceFile)
-        }
-      },
-      ideCodegenSettings = JvmIrCodegenFactory.IdeCodegenSettings(shouldStubAndNotLinkUnboundSymbols = true),
-    )
+    val codegenFactory =
+      JvmIrCodegenFactory(
+        compilerConfiguration,
+        jvmGeneratorExtensions =
+          object : JvmGeneratorExtensionsImpl(compilerConfiguration) {
+            override fun getContainerSource(descriptor: DeclarationDescriptor): DeserializedContainerSource? {
+              val psiSourceFile = descriptor.toSourceElement.containingFile as? PsiSourceFile ?: return super.getContainerSource(descriptor)
+              return FacadeClassSourceShimForFragmentCompilation(psiSourceFile)
+            }
+          },
+        ideCodegenSettings = JvmIrCodegenFactory.IdeCodegenSettings(shouldStubAndNotLinkUnboundSymbols = true),
+      )
     val generationState = GenerationState(project, analysisResult.moduleDescriptor, compilerConfiguration)
     inlineClassRequest?.forEach {
       it.fetchByteCodeFromBuildIfNeeded(applicationLiveEditServices)
@@ -226,15 +228,14 @@ private object CompileScopeImpl : CompileScope {
 }
 
 /**
- * Executes the given [callable] in the context of a [CompileScope] that allows running the different compilation
- * phases.
- * Only one caller of this method will have access to the [CompileScope] at the moment.
+ * Executes the given [callable] in the context of a [CompileScope] that allows running the different compilation phases. Only one caller of
+ * this method will have access to the [CompileScope] at the moment.
  */
-fun <T> runWithCompileLock(callable: CompileScope.() -> T) : T {
+fun <T> runWithCompileLock(callable: CompileScope.() -> T): T {
   try {
     CompileScopeImpl.compileLock.acquire()
     return CompileScopeImpl.callable()
-  } finally{
+  } finally {
     CompileScopeImpl.compileLock.release()
   }
 }

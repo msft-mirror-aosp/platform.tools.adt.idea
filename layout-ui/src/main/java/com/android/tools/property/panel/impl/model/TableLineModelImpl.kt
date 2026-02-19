@@ -58,8 +58,8 @@ class TableLineModelImpl(override val tableModel: PTableModel, override val isSe
     fireEditRequest(TableEditingRequest.SELECT, next)
   }
 
-  override fun refresh() {
-    tableModel.refresh()
+  override fun refresh(childElementChanges: Boolean) {
+    tableModel.refresh(childElementChanges)
   }
 
   private fun nextSelectedItem(item: PTableItem): PTableItem? {
@@ -74,8 +74,6 @@ class TableLineModelImpl(override val tableModel: PTableModel, override val isSe
   }
 
   private fun fireEditRequest(request: TableEditingRequest, item: PTableItem? = null) {
-    listeners.toTypedArray().filterIsInstance<TableRowEditListener>().forEach {
-      it.editRequest(request, item)
-    }
+    listeners.toTypedArray().filterIsInstance<TableRowEditListener>().forEach { it.editRequest(request, item) }
   }
 }

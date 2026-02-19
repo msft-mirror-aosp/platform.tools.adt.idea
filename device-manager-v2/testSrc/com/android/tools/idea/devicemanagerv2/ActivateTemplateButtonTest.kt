@@ -42,9 +42,7 @@ class ActivateTemplateButtonTest {
     SwingUtilities.invokeAndWait { button.doClick() }
     advanceUntilIdle()
 
-    SwingUtilities.invokeAndWait {
-      assertThat(dialog.displayedMessage).isEqualTo("Device is unavailable")
-    }
+    SwingUtilities.invokeAndWait { assertThat(dialog.displayedMessage).isEqualTo("Device is unavailable") }
     buttonScope.cancel()
   }
 }

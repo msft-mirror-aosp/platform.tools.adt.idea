@@ -25,13 +25,6 @@ import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker
 import com.android.tools.idea.welcome.wizard.InstallComponentsProgressStep
 import com.android.tools.idea.welcome.wizard.InstallSummaryStep
 import com.android.tools.idea.welcome.wizard.SdkComponentsStep
-import com.android.tools.idea.welcome.wizard.deprecated.ConsolidatedProgressStep
-import com.android.tools.idea.welcome.wizard.deprecated.InstallComponentsPath
-import com.android.tools.idea.wizard.WizardConstants
-import com.android.tools.idea.wizard.dynamic.DialogWrapperHost
-import com.android.tools.idea.wizard.dynamic.DynamicWizard
-import com.android.tools.idea.wizard.dynamic.DynamicWizardHost
-import com.android.tools.idea.wizard.dynamic.SingleStepPath
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.model.ModelWizard.WizardListener
 import com.android.tools.idea.wizard.model.ModelWizard.WizardResult
@@ -49,8 +42,8 @@ import java.io.File
 typealias SdkUpdatedCallback = (sdkPath: File) -> Unit
 
 /**
- * A service responsible for showing the SDK setup wizard. This wizard guides the user through the
- * process of downloading and installing the Android SDK.
+ * A service responsible for showing the SDK setup wizard. This wizard guides the user through the process of downloading and installing the
+ * Android SDK.
  */
 @Service(Service.Level.APP)
 class SetupSdkApplicationService : Disposable {
@@ -59,104 +52,40 @@ class SetupSdkApplicationService : Disposable {
    * Displays the SDK setup wizard.
    *
    * @param sdkPathString The initial SDK path to use. If empty, a default location is used.
-   * @param sdkUpdatedCallback A callback invoked when the SDK setup is complete, providing the
-   *   final SDK path.
+   * @param sdkUpdatedCallback A callback invoked when the SDK setup is complete, providing the final SDK path.
    */
   @UiThread
-  fun showSdkSetupWizard(sdkPathString: String,
-                         sdkUpdatedCallback: SdkUpdatedCallback?,
-                         sdkComponentInstaller: SdkComponentInstaller = SdkComponentInstaller(),
-                         tracker: FirstRunWizardTracker,
-                         useDeprecatedWizard: Boolean) {
+  fun showSdkSetupWizard(
+    sdkPathString: String,
+    sdkUpdatedCallback: SdkUpdatedCallback?,
+    sdkComponentInstaller: SdkComponentInstaller = SdkComponentInstaller(),
+    tracker: FirstRunWizardTracker,
+  ) {
     val sdkPath: File =
       if (StringUtil.isEmpty(sdkPathString)) {
         // getInitialSdkLocation creates a non-blocking read action
         // (in AndroidSdksImpl.getAllAndroidSdks()), which is not allowed on the EDT, so wrap it in
         // a blocking read action.
-        ReadAction.compute<File, Throwable> {
-          getInitialSdkLocation(FirstRunWizardMode.MISSING_SDK)
-        }
+        ReadAction.compute<File, Throwable> { getInitialSdkLocation(FirstRunWizardMode.MISSING_SDK) }
       } else {
         File(sdkPathString)
       }
 
     tracker.trackWizardStarted()
 
-    if (useDeprecatedWizard) {
-      showOldWizard(sdkPath, sdkUpdatedCallback, sdkComponentInstaller, tracker)
-    }
-    else {
-      showNewWizard(sdkPath, sdkUpdatedCallback, sdkComponentInstaller, tracker)
-    }
+    showWizard(sdkPath, sdkUpdatedCallback, sdkComponentInstaller, tracker)
   }
 
   override fun dispose() {}
 
-  private fun showOldWizard(sdkPath: File,
-                            sdkUpdatedCallback: SdkUpdatedCallback?,
-                            sdkComponentInstaller: SdkComponentInstaller,
-                            tracker: FirstRunWizardTracker) {
-    val host: DynamicWizardHost = DialogWrapperHost(null)
-    val wizard: DynamicWizard =
-      object : DynamicWizard(null, null, "SDK Setup", host) {
-        override fun init() {
-          val progressStep = DownloadingComponentsStep(myHost.disposable, myHost, tracker)
-
-          val path =
-            InstallComponentsPath(
-              FirstRunWizardMode.MISSING_SDK,
-              sdkPath,
-              progressStep,
-              sdkComponentInstaller,
-              false,
-              tracker
-            )
-
-          progressStep.setInstallComponentsPath(path)
-
-          addPath(path)
-          addPath(SingleStepPath(progressStep))
-          super.init()
-        }
-
-        override fun performFinishingActions() {
-          val stateSdkLocationPath = myState[WizardConstants.KEY_SDK_INSTALL_LOCATION]
-          checkNotNull(stateSdkLocationPath)
-
-          val stateSdkLocation = File(stateSdkLocationPath)
-          sdkUpdatedCallback?.invoke(stateSdkLocation)
-        }
-
-        override fun getProgressTitle(): String {
-          return "Setting up SDK..."
-        }
-
-        override fun getWizardActionDescription(): String {
-          return "Setting up SDK..."
-        }
-
-        override fun doCancelAction() {
-          super.doCancelAction()
-
-          tracker.trackWizardFinished(SetupWizardEvent.CompletionStatus.CANCELED)
-        }
-
-        override fun doFinishAction() {
-          super.doFinishAction()
-
-          tracker.trackWizardFinished(SetupWizardEvent.CompletionStatus.FINISHED)
-        }
-      }
-    wizard.init()
-    wizard.show()
-  }
-
-  private fun showNewWizard(sdkPath: File,
-                            sdkUpdatedCallback: SdkUpdatedCallback?,
-                            sdkComponentInstaller: SdkComponentInstaller,
-                            tracker: FirstRunWizardTracker) {
-    val model = FirstRunWizardModel(FirstRunWizardMode.MISSING_SDK, sdkPath.toPath(), installUpdates = false, sdkComponentInstaller,
-                                    tracker)
+  private fun showWizard(
+    sdkPath: File,
+    sdkUpdatedCallback: SdkUpdatedCallback?,
+    sdkComponentInstaller: SdkComponentInstaller,
+    tracker: FirstRunWizardTracker,
+  ) {
+    val model =
+      FirstRunWizardModel(FirstRunWizardMode.MISSING_SDK, sdkPath.toPath(), installUpdates = false, sdkComponentInstaller, tracker)
 
     val supplier = model.getPackagesToInstallSupplier()
     val licenseAgreementModel = LicenseAgreementModel(model.sdkInstallLocationProperty)
@@ -177,9 +106,7 @@ class SetupSdkApplicationService : Disposable {
       }
 
     val builder = ModelWizard.Builder()
-    builder.addStep(
-      SdkComponentsStep(model, null, FirstRunWizardMode.MISSING_SDK, licenseAgreementStep, tracker)
-    )
+    builder.addStep(SdkComponentsStep(model, null, FirstRunWizardMode.MISSING_SDK, licenseAgreementStep, tracker))
     builder.addStep(InstallSummaryStep(model, supplier, tracker))
     builder.addStep(licenseAgreementStep)
     builder.addStep(progressStep)
@@ -197,8 +124,7 @@ class SetupSdkApplicationService : Disposable {
       object : WizardListener {
         override fun onWizardFinished(result: WizardResult) {
           tracker.trackWizardFinished(
-            if (result == WizardResult.FINISHED) SetupWizardEvent.CompletionStatus.FINISHED
-            else SetupWizardEvent.CompletionStatus.CANCELED
+            if (result == WizardResult.FINISHED) SetupWizardEvent.CompletionStatus.FINISHED else SetupWizardEvent.CompletionStatus.CANCELED
           )
 
           if (!result.isFinished) {
@@ -223,19 +149,5 @@ class SetupSdkApplicationService : Disposable {
     @JvmStatic
     val instance: SetupSdkApplicationService
       get() = ApplicationManager.getApplication().getService(SetupSdkApplicationService::class.java)
-  }
-
-  private class DownloadingComponentsStep(disposable: Disposable, host: DynamicWizardHost, tracker: FirstRunWizardTracker) :
-    ConsolidatedProgressStep(disposable, host, tracker) {
-    private var myInstallComponentsPath: InstallComponentsPath? = null
-
-    fun setInstallComponentsPath(installComponentsPath: InstallComponentsPath) {
-      setPaths(listOf(installComponentsPath))
-      myInstallComponentsPath = installComponentsPath
-    }
-
-    override fun isStepVisible(): Boolean {
-      return myInstallComponentsPath!!.shouldDownloadingComponentsStepBeShown()
-    }
   }
 }

@@ -38,8 +38,7 @@ class StringReplaceTransformTest {
 
     val classReader = ClassReader(testClassBytes)
     val outputTrace = StringWriter()
-    val classOutputWriter =
-      TraceClassVisitor(ClassWriter(ClassWriter.COMPUTE_MAXS), PrintWriter(outputTrace))
+    val classOutputWriter = TraceClassVisitor(ClassWriter(ClassWriter.COMPUTE_MAXS), PrintWriter(outputTrace))
     val repackageTransform =
       StringReplaceTransform(
         classOutputWriter,
@@ -52,16 +51,11 @@ class StringReplaceTransformTest {
 
     assertEquals(
       """
-        LDC "RenamedPropertyValue"
-        LDC "RenamedMethodValue"
+      LDC "RenamedPropertyValue"
+      LDC "RenamedMethodValue"
       """
         .trimIndent(),
-      outputTrace
-        .toString()
-        .lines()
-        .filter { it.trimStart().startsWith("LDC") }
-        .map { it.trim() }
-        .joinToString("\n"),
+      outputTrace.toString().lines().filter { it.trimStart().startsWith("LDC") }.map { it.trim() }.joinToString("\n"),
     )
   }
 }

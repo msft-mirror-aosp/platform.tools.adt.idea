@@ -16,9 +16,9 @@
 package com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.graph
 
 import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.AbstractDependencyNode
-import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.ModuleDependencyNode
 import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.JarDependencyNode
 import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.LibraryDependencyNode
+import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.ModuleDependencyNode
 import com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings
 import com.android.tools.idea.gradle.structure.configurables.ui.treeview.AbstractPsResettableNode
 import com.android.tools.idea.gradle.structure.model.PsBaseDependency
@@ -39,14 +39,15 @@ import java.util.Comparator
 import java.util.function.Consumer
 
 sealed class DependencyKey
+
 data class LibraryKey(val library: PsLibraryKey) : DependencyKey()
+
 data class ModuleKey(val modulePath: String) : DependencyKey()
+
 data class JarLibraryKey(val path: String) : DependencyKey()
 
-class DependenciesTreeRootNode(
-  model: PsProject,
-  uiSettings: PsUISettings
-) : AbstractPsResettableNode<DependencyKey, AbstractDependencyNode<*, PsBaseDependency>, PsProject>(uiSettings) {
+class DependenciesTreeRootNode(model: PsProject, uiSettings: PsUISettings) :
+  AbstractPsResettableNode<DependencyKey, AbstractDependencyNode<*, PsBaseDependency>, PsProject>(uiSettings) {
 
   override val models: List<PsProject> = listOf(model)
 
@@ -61,12 +62,11 @@ class DependenciesTreeRootNode(
     firstModel.forEachModule(Consumer { module -> collectDependencies(module, collector) })
 
     return (collector.libraryDependenciesBySpec.keys.map { LibraryKey(it) } +
-            collector.moduleDependenciesByGradlePath.keys.map { ModuleKey(it) } +
-            collector.jarDependenciesByPath.keys.map { JarLibraryKey(it) })
+        collector.moduleDependenciesByGradlePath.keys.map { ModuleKey(it) } +
+        collector.jarDependenciesByPath.keys.map { JarLibraryKey(it) })
       .sortedWith(DependencyKeyComparator)
       .toSet()
   }
-
 
   override fun create(key: DependencyKey): AbstractDependencyNode<*, PsBaseDependency> =
     @Suppress("UNCHECKED_CAST") // Create/update types always match.
@@ -74,7 +74,8 @@ class DependenciesTreeRootNode(
       is LibraryKey -> LibraryDependencyNode(this@DependenciesTreeRootNode)
       is ModuleKey -> ModuleDependencyNode(this@DependenciesTreeRootNode)
       is JarLibraryKey -> JarDependencyNode(this@DependenciesTreeRootNode)
-    } as AbstractDependencyNode<*, PsBaseDependency>)
+    }
+      as AbstractDependencyNode<*, PsBaseDependency>)
 
   override fun update(key: DependencyKey, node: AbstractDependencyNode<*, PsBaseDependency>) =
     node.init(
@@ -90,11 +91,10 @@ class DependenciesTreeRootNode(
     module.dependencies.forEachJarDependency { collector.add(it) }
     module.dependencies.forEachModuleDependency { collector.add(it) }
     when (module) {
-      is PsAndroidModule -> module.resolvedVariants.forEach { variant ->
-        variant.forEachArtifact { artifact ->
-          artifact.dependencies.forEachLibraryDependency { collector.add(it) }
+      is PsAndroidModule ->
+        module.resolvedVariants.forEach { variant ->
+          variant.forEachArtifact { artifact -> artifact.dependencies.forEachLibraryDependency { collector.add(it) } }
         }
-      }
       is PsJavaModule -> module.resolvedDependencies.forEachLibraryDependency { collector.add(it) }
     }
   }
@@ -140,18 +140,19 @@ class DependenciesTreeRootNode(
 
 private object DependencyKeyComparator : Comparator<DependencyKey> {
 
-  private fun DependencyKey.getTypePriority() = when (this) {
-    is ModuleKey -> 0
-    is LibraryKey -> 1
-    is JarLibraryKey -> 2
-  }
+  private fun DependencyKey.getTypePriority() =
+    when (this) {
+      is ModuleKey -> 0
+      is LibraryKey -> 1
+      is JarLibraryKey -> 2
+    }
 
-  private fun DependencyKey.getSortText() = when (this) {
-    is ModuleKey -> modulePath.split(':').lastOrNull().orEmpty()
-    is LibraryKey -> library.group + ":" + library.name
-    is JarLibraryKey -> path
-  }
+  private fun DependencyKey.getSortText() =
+    when (this) {
+      is ModuleKey -> modulePath.split(':').lastOrNull().orEmpty()
+      is LibraryKey -> library.group + ":" + library.name
+      is JarLibraryKey -> path
+    }
 
-  override fun compare(d1: DependencyKey, d2: DependencyKey): Int =
-    compareValuesBy(d1, d2, { it.getTypePriority() }, { it.getSortText() })
+  override fun compare(d1: DependencyKey, d2: DependencyKey): Int = compareValuesBy(d1, d2, { it.getTypePriority() }, { it.getSortText() })
 }

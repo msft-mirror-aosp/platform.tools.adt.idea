@@ -25,6 +25,7 @@ import static com.intellij.psi.util.PsiTreeUtil.findChildOfType;
 import static com.intellij.psi.util.PsiTreeUtil.getChildOfType;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOLON;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOMMA;
+import static org.jetbrains.plugins.groovy.lang.psi.impl.GroovyPsiElementImpl.findExpressionChild;
 import static org.jetbrains.plugins.groovy.lang.psi.util.GrStringUtil.addQuotes;
 import static org.jetbrains.plugins.groovy.lang.psi.util.GrStringUtil.escapeStringCharacters;
 
@@ -44,6 +45,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslInfixExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainContainer;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSettableExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSimpleExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
@@ -78,6 +80,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
@@ -887,6 +890,16 @@ public final class GroovyDslUtil {
     return null;
   }
 
+
+  @Nullable
+  static GrExpression extractInjectedElement(@NotNull GrStringInjection injection) {
+    GrClosableBlock closableBlock = injection.getClosableBlock();
+    if (closableBlock != null) {
+      return findExpressionChild(closableBlock);
+    }
+    return null;
+  }
+
   @Nullable
   static String getInjectionName(@NotNull GrStringInjection injection) {
     String variableName = null;
@@ -1130,6 +1143,10 @@ public final class GroovyDslUtil {
       namedElement.setName(newName);
       newElement = namedElement;
     }
+    else if (element instanceof GradleDslNamedDomainElement && ((GradleDslNamedDomainElement)element).getMethodName() != null) {
+      PsiElement psiElement = getPsiElementFactory(element).createLiteralFromValue(newName);
+      newElement = oldName.replace(psiElement);
+    }
     else {
       PsiElement psiElement = createNameElement(element, quotePartIfNecessary(newName));
       if (psiElement == null) {
@@ -1211,6 +1228,17 @@ public final class GroovyDslUtil {
       return ImmutableList.of(new GradleReferenceInjection(context, element, psiElement, name));
     }
 
+    if (psiElement instanceof GrMethodCallExpression expression) {
+      GrExpression stripped = extractCatalogReference(expression);
+      if (stripped != null) {
+        String name = context.getDslFile().getParser().convertReferencePsi(context, stripped);
+        GradleDslElement referenceElement = context.resolveInternalSyntaxReference(name, true);
+        if (includeUnresolved || referenceElement != null) {
+          return ImmutableList.of(new GradleReferenceInjection(context, referenceElement, stripped, name));
+        }
+      }
+    }
+
     if (!(psiElement instanceof GrString)) {
       return Collections.emptyList();
     }
@@ -1227,6 +1255,21 @@ public final class GroovyDslUtil {
           //  nevertheless be better to integrate that into psiToName rather than special-case getInjectionName, if only to be able
           //  to remove this call to the String form of resolveExternalSyntaxReference.
           GradleDslElement referenceElement = context.resolveExternalSyntaxReference(name, true);
+          if (referenceElement == null) {
+            // try reference like libs.versions.version.get().toInt()
+            GrExpression expression = extractInjectedElement(injection);
+            if (expression instanceof GrMethodCallExpression callExpression) {
+              GrExpression stripped = extractCatalogReference(callExpression);
+              if (stripped != null) {
+                String referenceName = context.getDslFile().getParser().convertReferencePsi(context, stripped);
+                GradleDslElement catalogElement = context.resolveInternalSyntaxReference(referenceName, true);
+                if (catalogElement != null) {
+                  injections.add(new GradleReferenceInjection(context, catalogElement, injection, referenceName));
+                  continue;
+                }
+              }
+            }
+          }
           if (includeUnresolved || referenceElement != null) {
             injections.add(new GradleReferenceInjection(context, referenceElement, injection, name));
           }
@@ -1274,4 +1317,91 @@ public final class GroovyDslUtil {
     // be prevented from recreating these elements.
     removePsiIfInvalid(context);
   }
+
+  /**
+   * Returns list of parts where last call as first element so for
+   * `libs.version.get().toInteger()` will be:
+   * - libs.version.get.toInteger
+   * - libs.version.get
+   * - libs.version
+   * - libs
+   */
+  static List<GrReferenceExpression> collectReferenceParts(@NotNull GrExpression expression) {
+    List<GrReferenceExpression> parts = new ArrayList<>();
+    PsiElement current = expression;
+    while (current instanceof GrMethodCallExpression || current instanceof GrReferenceExpression) {
+      if (current instanceof GrMethodCallExpression) {
+        GrExpression invoked = ((GrMethodCallExpression)current).getInvokedExpression();
+        if (invoked instanceof GrReferenceExpression referenceExpression) {
+          parts.add(referenceExpression);
+          current = (referenceExpression).getQualifierExpression();
+        }
+        else {
+          break;
+        }
+      }
+      else {
+        parts.add((GrReferenceExpression)current);
+        current = ((GrReferenceExpression)current).getQualifierExpression();
+      }
+    }
+    return parts;
+  }
+
+  public static boolean isTypedExtractor(GrReferenceExpression expression) {
+    return transformers.contains(expression.getNode().getLastChildNode().getText())
+           && isMethodCall(expression);
+  }
+
+  public static boolean isCall(String methodName, GrReferenceExpression expression){
+    return methodName.equals(expression.getReferenceName())
+           && isMethodCall(expression);
+  }
+
+  public static boolean isMethodCall(GrReferenceExpression expression){
+    return expression.getNextSibling() instanceof GrArgumentList;
+  }
+
+  @Nullable
+  private static GrExpression extractCatalogReference(@NotNull GrMethodCallExpression callExpression){
+    if(isTransformReference(callExpression)) {
+      List<GrReferenceExpression> parts = collectReferenceParts(callExpression);
+
+      // search for first non function item
+      // so in `libs.versions.version.get().toInteger()` it will have one with ref `libs.versions.version`
+      Optional<GrReferenceExpression> foundItem = parts.stream()
+        .filter(part -> !isMethodCall(part))
+        .findFirst();
+
+      return foundItem.orElse(null);
+    }
+    return null;
+  }
+
+  static List<String> transformers = List.of("toInteger", "toString");
+
+  /**
+   * Checking case like libs.versions.version.get().toInteger()
+   * @param propertyExpression
+   * @return
+   */
+  public static boolean isTransformReference(GrMethodCallExpression propertyExpression){
+    List<GrReferenceExpression> parts = collectReferenceParts(propertyExpression);
+    if (parts.size() < 2) return false;
+    int start;
+    // first two element may be get() or get().toInteger()
+    if (isCall("get", parts.get(0))) {
+      start = 1;
+    } else if (isTypedExtractor(parts.get(0)) && isCall("get", parts.get(1))) {
+      start = 2;
+    } else {
+      return false;
+    }
+    // all others suppose to be just references
+    for (int i = start; i < parts.size(); i++) {
+      if (isMethodCall(parts.get(i))) return false;
+    }
+    return true;
+  }
+
 }

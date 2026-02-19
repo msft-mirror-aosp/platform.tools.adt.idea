@@ -17,18 +17,25 @@ package com.android.tools.idea.lang.proguardR8
 
 import com.android.tools.idea.testing.moveCaret
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.testFramework.fixtures.CodeInsightTestUtil
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class ProguardR8AnnotatorTest : ProguardR8TestCase() {
+@RunWith(Parameterized::class)
+class ProguardR8AnnotatorTest(private val fileType: LanguageFileType) : ProguardR8TestCase() {
+  @Test
   fun testAnnotator() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
-        -keep class class.interface.myClass {
-          int foo;
-          int void;
-        }
-      """.trimIndent()
+      -keep class class.interface.myClass {
+        int foo;
+        int void;
+      }
+      """
+        .trimIndent(),
     )
     var element = myFixture.moveCaret("interf|ace")
     var annotations = CodeInsightTestUtil.testAnnotator(ProguardR8Annotator(), element)

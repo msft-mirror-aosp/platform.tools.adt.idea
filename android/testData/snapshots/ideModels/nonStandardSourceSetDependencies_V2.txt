@@ -9,9 +9,7 @@ MODULE                        : NonStandardSourceSetDependencies
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/NonStandardSourceSetDependencies [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    : <ROOT>/.idea/modules/NonStandardSourceSetDependencies.iml [-]
-    ModuleTypeName                : JAVA_MODULE
-    CONENT_ENTRY                  : file://<ROOT>
+    CONTENT_ENTRY                 : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -804,8 +802,6 @@ MODULE                        : NonStandardSourceSetDependencies
                     - taskArtifacts               : <ROOT>/common/build/libs/common-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/common/build/libs/common-jvm.jar [-]
                     configurationArtifacts
-                        - archives                    : <ROOT>/common/build/libs/common-jvm.jar [-]
-                        - archives                    : <ROOT>/common/build/libs/common-metadata.jar [-]
                         - jvmApiElements              : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmApiElements-published    : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmRuntimeElements          : <ROOT>/common/build/libs/common-jvm.jar [-]
@@ -1003,7 +999,6 @@ MODULE                        : NonStandardSourceSetDependencies
                     configurationArtifacts
                         - androidDebugArchives        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - androidReleaseArchives      : <ROOT>/feature-b/build/outputs/aar/feature-b-release.aar [-]
-                        - archives                    : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                         - debugApiElements-published  : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - debugRuntimeElements-published        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - debugSourcesElements        : <ROOT>/feature-b/build/libs/feature-b-android-debug-sources.jar [-]
@@ -1179,8 +1174,6 @@ MODULE                        : NonStandardSourceSetDependencies
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                             configurationArtifacts
-                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
-                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                                 - jvmApiElements              : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmApiElements-published    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmRuntimeElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
@@ -1483,6 +1476,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1497,6 +1491,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1510,6 +1505,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -1531,6 +1527,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1545,6 +1542,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1559,6 +1557,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]
@@ -1581,6 +1580,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1764,24 +1764,24 @@ MODULE                        : NonStandardSourceSetDependencies.app
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         module                        : <ROOT>-:feature-a-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
                             module                        : <ROOT>-:common-commonMain
+                            module                        : <ROOT>-:common-commonMain
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:feature-b-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
+                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:javaLibrary-MAIN
                         module                        : <ROOT>-:javaLibrary-testEnv
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
+                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
                         javaLibrary                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
@@ -2049,24 +2049,24 @@ MODULE                        : NonStandardSourceSetDependencies.app
                             javaLibrary                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
                         module                        : <ROOT>-:feature-a-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
                             module                        : <ROOT>-:common-commonMain
+                            module                        : <ROOT>-:common-commonMain
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:feature-b-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
+                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:javaLibrary-MAIN
                         module                        : <ROOT>-:javaLibrary-testEnv
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
+                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
                         javaLibrary                   : <ROOT>/jarWrapperLib/JarWrappedLib.jar
@@ -2380,7 +2380,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/common/build/libs/common-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
@@ -2569,6 +2568,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             AssetsDirectories             : <ROOT>/feature-a/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/feature-a/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature-a/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/feature-a/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2583,6 +2583,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     AssetsDirectories             : <ROOT>/feature-a/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-a/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2596,6 +2597,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     AssetsDirectories             : <ROOT>/feature-a/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-a/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -2617,6 +2619,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             AssetsDirectories             : <ROOT>/feature-a/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/feature-a/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature-a/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/feature-a/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2631,6 +2634,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     AssetsDirectories             : <ROOT>/feature-a/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-a/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2645,6 +2649,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     AssetsDirectories             : <ROOT>/feature-a/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-a/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -2665,6 +2670,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             AssetsDirectories             : <ROOT>/feature-a/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/feature-a/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature-a/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/feature-a/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2802,15 +2808,15 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.collection:collection:1.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
@@ -3055,8 +3061,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         module                        : <ROOT>-:feature-a-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
@@ -3177,12 +3183,12 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         module                        : <ROOT>-:feature-a-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
                             module                        : <ROOT>-:common-commonMain
+                            module                        : <ROOT>-:common-commonMain
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 ProvidedDependencies
@@ -3321,8 +3327,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         module                        : <ROOT>-:feature-a-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
@@ -3443,12 +3449,12 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         module                        : <ROOT>-:feature-a-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
                             module                        : <ROOT>-:common-commonMain
+                            module                        : <ROOT>-:common-commonMain
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 ProvidedDependencies
@@ -3638,6 +3644,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             JniLibsDirectories            : <ROOT>/feature-b/src/main/jniLibs [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/androidMain/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature-b/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/feature-b/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3657,6 +3664,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidTest/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidInstrumentedTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-b/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3675,6 +3683,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     JniLibsDirectories            : <ROOT>/feature-b/src/test/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidUnitTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-b/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -3701,6 +3710,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             JniLibsDirectories            : <ROOT>/feature-b/src/debug/jniLibs [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/androidDebug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature-b/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/feature-b/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3720,6 +3730,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidTestDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidInstrumentedTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-b/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -3739,6 +3750,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     JniLibsDirectories            : <ROOT>/feature-b/src/testDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidUnitTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/feature-b/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -3764,6 +3776,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             JniLibsDirectories            : <ROOT>/feature-b/src/release/jniLibs [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/androidRelease/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature-b/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/feature-b/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -3808,15 +3821,15 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
@@ -3845,11 +3858,11 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:common-commonMain
+                        module                        : <ROOT>-:feature-b-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:common-jvmMain
                         module                        : <ROOT>-:common-commonMain
-                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        module                        : <ROOT>-:feature-b-MAIN
+                        module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -3857,11 +3870,11 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:feature-b-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
                             module                        : <ROOT>-:common-commonMain
-                        module                        : <ROOT>-:common-commonMain
+                            module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 ApplicationId                 : me.monori.feature.b.test
@@ -3900,11 +3913,11 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:common-commonMain
+                        module                        : <ROOT>-:feature-b-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:common-jvmMain
                         module                        : <ROOT>-:common-commonMain
-                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        module                        : <ROOT>-:feature-b-MAIN
+                        module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -3912,11 +3925,11 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:feature-b-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            module                        : <ROOT>-:common-commonMain
                             module                        : <ROOT>-:common-jvmMain
                             module                        : <ROOT>-:common-commonMain
-                        module                        : <ROOT>-:common-commonMain
+                            module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-jvmMain
+                        module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
@@ -4053,6 +4066,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4499,7 +4513,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
@@ -4604,6 +4617,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4618,6 +4632,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -4631,6 +4646,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -4652,6 +4668,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4666,6 +4683,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4680,6 +4698,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -4700,6 +4719,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/kmp-java/sample-test/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -4904,6 +4924,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             AssetsDirectories             : <ROOT>/lib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/lib/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4918,6 +4939,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     AssetsDirectories             : <ROOT>/lib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/lib/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -4931,6 +4953,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     AssetsDirectories             : <ROOT>/lib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/lib/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -4952,6 +4975,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             AssetsDirectories             : <ROOT>/lib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/lib/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4966,6 +4990,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     AssetsDirectories             : <ROOT>/lib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/lib/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4980,6 +5005,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     AssetsDirectories             : <ROOT>/lib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/lib/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/lib/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]
@@ -5002,6 +5028,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             AssetsDirectories             : <ROOT>/lib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/lib/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug

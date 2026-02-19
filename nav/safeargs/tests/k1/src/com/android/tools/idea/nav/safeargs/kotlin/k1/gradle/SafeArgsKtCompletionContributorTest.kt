@@ -57,8 +57,8 @@ class SafeArgsKtCompletionContributorTest {
         writeText(
           // language=kotlin
           """
-            package com.example.myapplication
-            class FooClass
+          package com.example.myapplication
+          class FooClass
           """
             .trimIndent()
         )
@@ -71,18 +71,14 @@ class SafeArgsKtCompletionContributorTest {
   /**
    * Check args and directions classes shown up in the completions
    *
-   * Test Project structure: base app module(safe arg mode is on) --> lib dep module(safe arg mode
-   * is on)
+   * Test Project structure: base app module(safe arg mode is on) --> lib dep module(safe arg mode is on)
    */
   @Test
   fun testBasicCompletion() {
     projectRule.requestSyncAndWait()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val file =
-      fixture.project
-        .findAppModule()
-        .fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = fixture.project.findAppModule().fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     WriteCommandAction.runWriteCommandAction(fixture.project) {
       file!!.replaceWithSaving(
         "class FooClass",
@@ -95,7 +91,7 @@ class SafeArgsKtCompletionContributorTest {
                 val generatedClass = 
             }
         }
-      """
+        """
           .trimIndent(),
         fixture.project,
       )
@@ -172,10 +168,7 @@ class SafeArgsKtCompletionContributorTest {
     projectRule.requestSyncAndWait()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val file =
-      fixture.project
-        .findAppModule()
-        .fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = fixture.project.findAppModule().fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     WriteCommandAction.runWriteCommandAction(fixture.project) {
       file!!.replaceWithSaving(
         "class FooClass",
@@ -184,7 +177,7 @@ class SafeArgsKtCompletionContributorTest {
         import com.
         import com.example.mylibrary.
         class FooClass
-      """
+        """
           .trimIndent(),
         fixture.project,
       )
@@ -232,10 +225,7 @@ class SafeArgsKtCompletionContributorTest {
     projectRule.requestSyncAndWait()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val file =
-      fixture.project
-        .findAppModule()
-        .fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = fixture.project.findAppModule().fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     WriteCommandAction.runWriteCommandAction(fixture.project) {
       file!!.replaceWithSaving(
         "class FooClass",
@@ -245,7 +235,7 @@ class SafeArgsKtCompletionContributorTest {
           val a = com.
           val b = com.example.mylibrary.
         }
-      """
+        """
           .trimIndent(),
         fixture.project,
       )

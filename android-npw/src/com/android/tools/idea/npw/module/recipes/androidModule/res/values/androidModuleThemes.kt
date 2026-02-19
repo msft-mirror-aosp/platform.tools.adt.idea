@@ -16,7 +16,12 @@
 package com.android.tools.idea.npw.module.recipes.androidModule.res.values
 
 import com.android.sdklib.AndroidMajorVersion
-import com.android.tools.idea.wizard.template.MaterialColor.*
+import com.android.tools.idea.wizard.template.MaterialColor.BLACK
+import com.android.tools.idea.wizard.template.MaterialColor.PURPLE_500
+import com.android.tools.idea.wizard.template.MaterialColor.PURPLE_700
+import com.android.tools.idea.wizard.template.MaterialColor.TEAL_200
+import com.android.tools.idea.wizard.template.MaterialColor.TEAL_700
+import com.android.tools.idea.wizard.template.MaterialColor.WHITE
 
 const val DARK_ACTION_BAR_MATERIAL_COMPONENTS = "Theme.MaterialComponents.DayNight.DarkActionBar"
 const val DARK_ACTION_BAR_APPCOMPAT = "Theme.AppCompat.Light.DarkActionBar"
@@ -34,11 +39,7 @@ fun androidModuleThemesMaterial3(themeName: String) =
   <style name="$themeName" parent="Base.${themeName}" />
 </resources>"""
 
-fun androidModuleThemes(
-  useAndroidX: Boolean,
-  minSdk: AndroidMajorVersion,
-  themeName: String = "Theme.App",
-) =
+fun androidModuleThemes(useAndroidX: Boolean, minSdk: AndroidMajorVersion, themeName: String = "Theme.App") =
   if (useAndroidX)
     """<resources xmlns:tools="http://schemas.android.com/tools">
   <!-- Base application theme. -->

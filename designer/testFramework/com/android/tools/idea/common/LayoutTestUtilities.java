@@ -33,7 +33,6 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.surface.ScreenView;
 import com.google.common.collect.ImmutableList;
-import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
 import com.intellij.openapi.actionSystem.Shortcut;
@@ -281,7 +280,7 @@ public class LayoutTestUtilities {
     settings.setOptedIn(true);
     AnalyticsSettings.setInstanceForTest(settings);
 
-    UsageTrackerWriter<AndroidStudioEvent.Builder> tracker = new TestUsageTracker(new VirtualTimeScheduler());
+    UsageTrackerWriter tracker = new TestUsageTracker(new VirtualTimeScheduler());
     UsageTracker.setWriterForTest(tracker);
 
     NlUsageTracker usageTracker = mock(NlUsageTracker.class);

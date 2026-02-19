@@ -29,19 +29,19 @@ open class FakeStudioBotActionFactory : ComposeStudioBotActionFactory {
     }
   }
 
-  private fun fakeDefaultActionGroup(text: String): DefaultActionGroup {
-    return DefaultActionGroup(text, listOf(fakeAction(text)))
+  private fun fakeDefaultActionGroup(): DefaultActionGroup {
+    return DefaultActionGroup("previewAgents", listOf(transformPreviewAction(), fakeAction("Match UI"), fakeAction("Fix UI")))
   }
 
-  private fun fakeDropDownAction(text: String): DropDownAction {
-    return object : DropDownAction(text, null, null) {
+  private fun fakeDropDownAction(): DropDownAction {
+    return object : DropDownAction("previewAgents", null, null) {
       init {
-        add(fakeAction(text))
+        listOf(transformPreviewAction(), fakeAction("Match UI"), fakeAction("Fix UI")).forEach { add(it) }
       }
     }
   }
 
-  override fun createPreviewGenerator(): AnAction? = fakeAction("previewGenerator")
+  override fun createPreviewGenerator(): AnAction = fakeAction("previewGenerator")
 
   override fun transformPreviewAction() = fakeAction("transformPreview")
 
@@ -49,14 +49,17 @@ open class FakeStudioBotActionFactory : ComposeStudioBotActionFactory {
 
   override fun fixComposeRenderIssueAction() = fakeAction("fixComposeRender")
 
-  override fun previewAgentsDropDownAction(): DropDownAction = fakeDropDownAction("previewAgents")
+  override fun previewAgentsDropDownAction(): DropDownAction {
+    return fakeDropDownAction()
+  }
 
-  override fun previewAgentsActionGroup() = fakeDefaultActionGroup("previewAgents")
+  override fun previewAgentsActionGroup(): DefaultActionGroup {
+    return fakeDefaultActionGroup()
+  }
 
   override fun screenshotToCodeAction(): AnAction {
     return fakeAction("Generate Code From Screenshot")
   }
 
-  override fun previewAgentsToolbarAction(): DropDownAction? =
-    fakeDropDownAction("previewAgentsToolbar")
+  override fun previewAgentsToolbarAction(): DropDownAction = fakeDropDownAction()
 }

@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea
 
+import com.android.tools.idea.diagnostics.InstallationId
 import com.intellij.openapi.application.ApplicationInfo
-import com.intellij.openapi.application.PermanentInstallationID
 import com.intellij.openapi.application.ex.ApplicationInfoEx
 import com.intellij.openapi.updateSettings.impl.ExternalUpdateManager
 import com.intellij.openapi.util.BuildNumber
@@ -24,6 +24,7 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.platform.ide.customization.ExternalProductResourceUrls
 import com.intellij.util.Url
 import com.intellij.util.Urls
+import com.intellij.util.system.CpuArch
 import org.jetbrains.annotations.VisibleForTesting
 
 class AndroidStudioResourceUrls : ExternalProductResourceUrls {
@@ -38,7 +39,7 @@ class AndroidStudioResourceUrls : ExternalProductResourceUrls {
 
   init {
     parameters["build"] = ApplicationInfo.getInstance().build.asString()
-    parameters["uid"] = PermanentInstallationID.get()
+    parameters["uid"] = InstallationId.get()
     parameters["os"] = SystemInfo.OS_NAME + ' ' + SystemInfo.OS_VERSION
     val updateManager = ExternalUpdateManager.ACTUAL
     if (updateManager != null) {
@@ -58,8 +59,8 @@ class AndroidStudioResourceUrls : ExternalProductResourceUrls {
   }
 
   private fun getPatchFileName(from: BuildNumber, to: BuildNumber): String {
-    val suffix = getPatchSuffix(isMac = SystemInfo.isMac, isWindows = SystemInfo.isWindows, isUnix = SystemInfo.isUnix,
-                                isAarch64 = SystemInfo.isAarch64)
+    val suffix =
+      getPatchSuffix(isMac = SystemInfo.isMac, isWindows = SystemInfo.isWindows, isUnix = SystemInfo.isUnix, isAarch64 = CpuArch.isArm64())
     // Explicitly add AI prefix to fix chain updates (b/369642379)
     return "AI-${from.asStringWithoutProductCode()}-${to.asStringWithoutProductCode()}-patch-$suffix"
   }

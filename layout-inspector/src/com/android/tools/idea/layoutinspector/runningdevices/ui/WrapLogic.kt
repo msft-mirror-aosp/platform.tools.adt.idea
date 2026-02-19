@@ -16,58 +16,61 @@
 package com.android.tools.idea.layoutinspector.runningdevices.ui
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.ui.isFocusAncestor
 import com.intellij.openapi.util.Disposer
-import java.awt.Container
+import java.awt.Component
+import java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager
 import javax.swing.JComponent
+import javax.swing.SwingUtilities
 
 /**
- * Class used to wrap and unwrap [component] inside another component. When unwrapped, [container]
- * is the parent of [component]. When wrapped, [container] is the parent of the wrapper and the
- * wrapper contains [component].
+ * Class used to wrap and unwrap [content] inside another component. When unwrapped, the parent of [content] is the original parent. When
+ * wrapped, [content] is a descendant of wrapper. And the parent of wrapper is the original parent of [content].
  *
- * If wrapped, [component] is unwrapped on disposal.
+ * If wrapped, [content] is unwrapped on disposal.
  */
-class WrapLogic(
-  parentDisposable: Disposable,
-  private val component: JComponent,
-  private val container: Container,
-) : Disposable {
-  private var newContainer: JComponent? = null
+class WrapLogic(parentDisposable: Disposable, private val content: JComponent) : Disposable {
+  private var wrapper: JComponent? = null
 
   init {
     Disposer.register(parentDisposable, this)
   }
 
   /**
-   * Wraps [component] into a new container.
+   * Wraps [content] into a new container.
    *
-   * @param wrap A function that takes [component] and wraps it into a new container. Returns a new
-   *   [JComponent] that contains [component].
+   * @param wrap A function that takes [content] and wraps it into a new container. Returns a new [JComponent] that contains [content].
    */
-  fun wrapComponent(wrap: (Disposable, JComponent) -> JComponent) {
-    check(newContainer == null) { "Can't wrap, component is already wrapped" }
+  fun wrapContent(wrap: (Disposable, JComponent) -> JComponent) {
+    check(wrapper == null) { "Can't wrap, content is already wrapped" }
 
-    container.remove(component)
-    newContainer = wrap(this, component)
-    container.add(newContainer)
+    val container = content.parent ?: throw IllegalStateException("Parent can't be null")
+    val index = container.components.indexOf(content)
+    val focusOwner = content.getContainedFocusOwner()
+    container.remove(index)
+    wrapper = wrap(this, content)
+    assert(SwingUtilities.isDescendingFrom(content, wrapper))
+    container.add(wrapper, index)
+    focusOwner?.requestFocusInWindow()
   }
 
   override fun dispose() {
     try {
-      unwrapComponent()
+      unwrapContent()
     } catch (_: IllegalStateException) {}
   }
 
-  private fun unwrapComponent() {
-    val newContainer = checkNotNull(newContainer) { "Can't unwrap, component is not wrapped" }
+  private fun unwrapContent() {
+    val wrapper = wrapper ?: return
 
-    newContainer.remove(component)
-    container.remove(newContainer)
-    this.newContainer = null
-
-    container.add(component)
-
-    container.invalidate()
-    container.repaint()
+    val container = wrapper.parent ?: throw IllegalStateException("Parent can't be null")
+    val index = container.components.indexOf(wrapper)
+    val focusOwner = content.getContainedFocusOwner()
+    container.remove(index)
+    container.add(content, index)
+    focusOwner?.requestFocusInWindow()
+    this.wrapper = null
   }
 }
+
+private fun Component.getContainedFocusOwner(): Component? = if (isFocusAncestor()) getCurrentKeyboardFocusManager().focusOwner else null

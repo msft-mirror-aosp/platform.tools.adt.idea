@@ -16,7 +16,6 @@
 package com.android.tools.idea.sdk
 
 import com.android.sdklib.repository.AndroidSdkHandler
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.wizard.SetupSdkApplicationService
 import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker
@@ -24,14 +23,13 @@ import com.google.wireless.android.sdk.stats.SetupWizardEvent
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageDialogBuilder
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
- * Attempts to get an AndroidSdkHandler. If it does not have a valid location, asks the user if they
- * want to configure the SDK, and if so, shows a dialog to configure / download the SDK. If this
- * succeeds, the chosen SDK is returned.
+ * Attempts to get an AndroidSdkHandler. If it does not have a valid location, asks the user if they want to configure the SDK, and if so,
+ * shows a dialog to configure / download the SDK. If this succeeds, the chosen SDK is returned.
  */
 suspend fun getOrSetupValidSdk(project: Project?, missingSdkMessage: String): AndroidSdkHandler? {
   val sdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler()
@@ -41,24 +39,15 @@ suspend fun getOrSetupValidSdk(project: Project?, missingSdkMessage: String): An
   val wasUpdated =
     withContext(Dispatchers.EDT) {
       var sdkPath: File? = null
-      if (
-        MessageDialogBuilder.yesNo("Missing SDK", missingSdkMessage)
-          .yesText("Configure SDK")
-          .noText("Cancel")
-          .ask(project)
-      ) {
-        val useDeprecatedWizard = !StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED.get()
+      if (MessageDialogBuilder.yesNo("Missing SDK", missingSdkMessage).yesText("Configure SDK").noText("Cancel").ask(project)) {
         SetupSdkApplicationService.instance.showSdkSetupWizard(
           "",
           { sdkPath = it },
           SdkComponentInstaller(),
-          FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.MISSING_SDK, useDeprecatedWizard),
-          useDeprecatedWizard,
+          FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.MISSING_SDK, false),
         )
       }
       sdkPath != null
     }
-  return if (wasUpdated)
-    AndroidSdks.getInstance().tryToChooseSdkHandler().takeIf { it.location != null }
-  else null
+  return if (wasUpdated) AndroidSdks.getInstance().tryToChooseSdkHandler().takeIf { it.location != null } else null
 }

@@ -24,23 +24,18 @@ import com.intellij.psi.PsiType
 import com.intellij.psi.search.GlobalSearchScope
 import java.io.DataInput
 import java.io.DataOutput
-import org.jetbrains.kotlin.idea.core.util.readString
-import org.jetbrains.kotlin.idea.core.util.writeString
+import org.jetbrains.kotlin.idea.core.script.v1.readString
+import org.jetbrains.kotlin.idea.core.script.v1.writeString
 import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 import org.jetbrains.kotlin.name.ClassId
 
 /**
  * Returns the list of index keys to search for a given type in priority order.
  *
- * The index stores values using the type name as the key, but that type might be fully-qualified,
- * just a simple name, or in some cases the "unknown" type represented by an empty string.
- * Additionally, Kotlin allows type aliases that need to be looked at as well.
+ * The index stores values using the type name as the key, but that type might be fully-qualified, just a simple name, or in some cases the
+ * "unknown" type represented by an empty string. Additionally, Kotlin allows type aliases that need to be looked at as well.
  */
-internal fun getIndexKeys(
-  psiType: PsiType,
-  project: Project,
-  scope: GlobalSearchScope,
-): List<String> {
+internal fun getIndexKeys(psiType: PsiType, project: Project, scope: GlobalSearchScope): List<String> {
   // Treat unboxed types as equivalent to boxed types
   PsiPrimitiveType.getUnboxedType(psiType)?.let {
     return getIndexKeys(it, project, scope)
@@ -76,9 +71,7 @@ internal fun getIndexKeys(
         // since Dagger treats arrays of boxed primitives as distinct from arrays of unboxed
         // primitives.
         simpleNamesCanHaveAlias.add("Array")
-        simpleNamesCannotHaveAlias.add(
-          "${fqNameWithoutGenerics(psiType.componentType).substringAfterLast(".")}[]"
-        )
+        simpleNamesCannotHaveAlias.add("${fqNameWithoutGenerics(psiType.componentType).substringAfterLast(".")}[]")
       }
     }
     else -> {
@@ -110,15 +103,8 @@ internal fun getIndexKeys(
     .distinct()
 }
 
-/**
- * Given a simple name, returns the simple names of any Kotlin type aliases that might correspond to
- * it.
- */
-internal fun getAliasSimpleNames(
-  baseTypeSimpleName: String,
-  project: Project,
-  scope: GlobalSearchScope,
-) =
+/** Given a simple name, returns the simple names of any Kotlin type aliases that might correspond to it. */
+internal fun getAliasSimpleNames(baseTypeSimpleName: String, project: Project, scope: GlobalSearchScope) =
   KotlinTypeAliasByExpansionShortNameIndex.get(baseTypeSimpleName, project, scope).mapNotNull {
     it.fqName?.asString()?.substringAfterLast(".")
   }

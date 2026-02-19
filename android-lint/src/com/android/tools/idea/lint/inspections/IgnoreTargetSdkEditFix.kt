@@ -31,28 +31,17 @@ class IgnoreTargetSdkEditFix :
   // such that it doesn't show up first
   DefaultLintQuickFix("Override warning; I know what I'm doing") {
 
-  override fun isApplicable(
-    startElement: PsiElement,
-    endElement: PsiElement,
-    contextType: AndroidQuickfixContexts.ContextType,
-  ): Boolean = IdeInfo.getInstance().isAndroidStudio
+  override fun isApplicable(startElement: PsiElement, endElement: PsiElement, contextType: AndroidQuickfixContexts.ContextType): Boolean =
+    IdeInfo.getInstance().isAndroidStudio
 
-  override fun apply(
-    startElement: PsiElement,
-    endElement: PsiElement,
-    context: AndroidQuickfixContexts.Context,
-  ) {
+  override fun apply(startElement: PsiElement, endElement: PsiElement, context: AndroidQuickfixContexts.Context) {
     stopFlaggingTargetSdkEditsForSession(startElement.project)
   }
 
-  override fun generatePreview(
-    project: Project,
-    editor: Editor,
-    file: PsiFile,
-  ): IntentionPreviewInfo = IntentionPreviewInfo.EMPTY
+  override fun generatePreview(project: Project, editor: Editor, file: PsiFile): IntentionPreviewInfo = IntentionPreviewInfo.EMPTY
 }
 
 fun stopFlaggingTargetSdkEditsForSession(project: Project) {
   GradleDetector.Companion.stopFlaggingTargetSdkEdits()
-  DaemonCodeAnalyzer.getInstance(project).restart()
+  DaemonCodeAnalyzer.getInstance(project).restart("IgnoreTargetSdkEditFixKt.stopFlaggingTargetSdkEditsForSession")
 }

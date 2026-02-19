@@ -16,8 +16,8 @@
 package com.android.tools.idea.ndk
 
 import com.android.SdkConstants
-import com.android.ide.common.pagealign.AlignmentProblems.ElfLoadSectionsNot16kAligned
-import com.android.ide.common.pagealign.AlignmentProblems.ElfNot16kAlignedInZip
+import com.android.ide.common.pagealign.AlignmentProblem.LoadSectionNotAligned
+import com.android.ide.common.pagealign.AlignmentProblem.ZipEntryNotAligned
 import com.android.ide.common.pagealign.findElfFile16kAlignmentInfo
 import com.android.tools.idea.ndk.PageAlignConfig.createSoNotAlignedInZipMessage
 import com.android.tools.idea.ndk.PageAlignConfig.createSoUnalignedLoadSegmentsMessage
@@ -40,27 +40,26 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import java.io.File
 import javax.swing.event.HyperlinkEvent
 
-/**
- * Encapsulates the logic of when to show a warning bubble and when to log events for the 16 KB page alignment check.
- */
-abstract class PageAlignNotifier(
-  val balloonsEnabled : Boolean = PageAlignConfig.isPageAlignMessageEnabled()) {
-  abstract fun showBalloon(text : String)
-  abstract fun logUsage(event : AndroidStudioEvent.Builder)
+/** Encapsulates the logic of when to show a warning bubble and when to log events for the 16 KB page alignment check. */
+abstract class PageAlignNotifier(val balloonsEnabled: Boolean = PageAlignConfig.isPageAlignMessageEnabled()) {
+  abstract fun showBalloon(text: String)
+
+  abstract fun logUsage(event: AndroidStudioEvent.Builder)
 
   fun notify16kbAlignmentViolations(apkInfo: ApkInfo, productCpuAbiList: List<String>, buildCharacteristics: String?) {
-    fun logEvent(type : AlignNative16kbEventType) {
-      val event = Align16kbEvent.newBuilder()
-        .setType(type)
+    fun logEvent(type: AlignNative16kbEventType) {
+      val event = Align16kbEvent.newBuilder().setType(type)
       event.productCpuAbilist = productCpuAbiList.joinToString(",")
       if (buildCharacteristics != null) {
         event.buildCharacteristics = buildCharacteristics
       }
-      logUsage(AndroidStudioEvent.newBuilder()
-                         .setKind(AndroidStudioEvent.EventKind.ALIGN16KB_EVENT)
-                         .setProjectId(AnonymizerUtil.anonymizeUtf8(apkInfo.applicationId))
-                         .setRawProjectId(apkInfo.applicationId)
-                         .setAlign16KbEvent(event))
+      logUsage(
+        AndroidStudioEvent.newBuilder()
+          .setKind(AndroidStudioEvent.EventKind.ALIGN16KB_EVENT)
+          .setProjectId(AnonymizerUtil.anonymizeUtf8(apkInfo.applicationId))
+          .setRawProjectId(apkInfo.applicationId)
+          .setAlign16KbEvent(event)
+      )
     }
     // Determine whether this is an ARM64 device or emulator.
     val deviceIsArm64 = productCpuAbiList.contains(SdkConstants.ABI_ARM64_V8A)
@@ -93,30 +92,33 @@ abstract class PageAlignNotifier(
 
       // Show a warning balloon for the SO files that aren't aligned at a 16 KB boundary within the APK
       val apkLink = "<a href='$apkFile'>${apkFile.name}</a>"
-      problems.filter { it.value.contains(ElfNot16kAlignedInZip) }.map { it.key }.let { files ->
-        if (files.isNotEmpty()) {
-          logEvent(ALIGN_NATIVE_BUBBLE_ZIP_OFFSET_DEPLOYED)
-          val message = createSoNotAlignedInZipMessage(apkLink, files)
-          showBalloon(message)
+      problems
+        .filter { entry -> entry.value.any { it is ZipEntryNotAligned } }
+        .map { it.key }
+        .let { files ->
+          if (files.isNotEmpty()) {
+            logEvent(ALIGN_NATIVE_BUBBLE_ZIP_OFFSET_DEPLOYED)
+            val message = createSoNotAlignedInZipMessage(apkLink, files)
+            showBalloon(message)
+          }
         }
-      }
 
       // Show a warning balloon for SO files that have LOAD sections not aligned on 16 KB boundary
-      problems.filter { it.value.contains(ElfLoadSectionsNot16kAligned) }.map { it.key }.let { files ->
-        if (files.isNotEmpty()) {
-          logEvent(ALIGN_NATIVE_BUBBLE_LOAD_SECTIONS_DEPLOYED)
-          val message = createSoUnalignedLoadSegmentsMessage(apkLink, files)
-          showBalloon(message)
+      problems
+        .filter { entry -> entry.value.any { it is LoadSectionNotAligned } }
+        .map { it.key }
+        .let { files ->
+          if (files.isNotEmpty()) {
+            logEvent(ALIGN_NATIVE_BUBBLE_LOAD_SECTIONS_DEPLOYED)
+            val message = createSoUnalignedLoadSegmentsMessage(apkLink, files)
+            showBalloon(message)
+          }
         }
-      }
     }
   }
 
-  /**
-   * Listen for hyperlink activations and open a browser with the url from href
-   * or the referenced APK.
-   */
-  class HyperlinkListener(private val project : Project): NotificationListener.Adapter() {
+  /** Listen for hyperlink activations and open a browser with the url from href or the referenced APK. */
+  class HyperlinkListener(private val project: Project) : NotificationListener.Adapter() {
     override fun hyperlinkActivated(notification: Notification, e: HyperlinkEvent) {
       if (e.eventType == HyperlinkEvent.EventType.ACTIVATED) {
         val url = e.url

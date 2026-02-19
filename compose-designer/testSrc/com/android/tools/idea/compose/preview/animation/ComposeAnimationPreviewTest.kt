@@ -63,16 +63,16 @@ import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Ignore
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class ComposeAnimationPreviewTest : InspectorTests() {
+class ComposeAnimationPreviewTest : AnimationPreviewTests() {
 
-  private val animations =
-    ComposeAnimationType.values().map { createComposeAnimation(it.toString(), type = it) }
+  private val animations = ComposeAnimationType.values().map { createComposeAnimation(it.toString(), type = it) }
 
   private suspend fun subscribeAnimations(animations: List<ComposeAnimation>) {
     surface.sceneManagers.forEach { it.requestRenderAndWait() }
@@ -224,19 +224,13 @@ class ComposeAnimationPreviewTest : InspectorTests() {
 
     withContext(Dispatchers.EDT) {
       // We can get any of the combo boxes, since "from" and "to" states should be the same.
-      val sliders =
-        TreeWalker(animationPreview.component)
-          .descendantStream()
-          .filter { it is JSlider }
-          .collect(Collectors.toList())
+      val sliders = TreeWalker(animationPreview.component).descendantStream().filter { it is JSlider }.collect(Collectors.toList())
       assertEquals(1, sliders.size) //
       val timelineSlider = sliders[0] as JSlider
       timelineSlider.value = 100
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
       timelineSlider.value = 200
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
     }
   }
 
@@ -261,30 +255,24 @@ class ComposeAnimationPreviewTest : InspectorTests() {
       // Press loop
       val loopAction = actions[0] as ToggleAction
       loopAction.setSelected(actionEvent, true)
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
       // Play and pause
       val playAction = actions[2]
       playAction.actionPerformed(actionEvent)
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
       playAction.actionPerformed(actionEvent)
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
       // Go to start.
       val goToStart = actions[1]
       goToStart.actionPerformed(actionEvent)
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
       // Go to end.
       val toToEnd = actions[3]
       toToEnd.actionPerformed(actionEvent)
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
       // Un-press loop
       loopAction.setSelected(actionEvent, false)
-      PlatformTestUtil
-        .dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() // Wait for all changes in UI thread
     }
   }
 
@@ -292,10 +280,7 @@ class ComposeAnimationPreviewTest : InspectorTests() {
   fun resizeInspector() = runTest {
     subscribeAnimations(listOf(createTransitionAnimation()))
 
-    animationPreview.component.setSize(
-      animationPreview.component.size.width * 2,
-      animationPreview.component.size.height * 2,
-    )
+    animationPreview.component.setSize(animationPreview.component.size.width * 2, animationPreview.component.size.height * 2)
   }
 
   @Test
@@ -317,10 +302,7 @@ class ComposeAnimationPreviewTest : InspectorTests() {
     // Assertions
     assertEquals(5, animationCardToolbar.componentCount)
     assertEquals("true", animationCardToolbar.components[2].findComboBox().text) // From state
-    assertEquals(
-      "false",
-      animationCardToolbar.components[4].findComboBox().text,
-    ) // To state (inferred)
+    assertEquals("false", animationCardToolbar.components[4].findComboBox().text) // To state (inferred)
 
     withContext(Dispatchers.EDT) {
       // Simulate clicking the "Swap" button
@@ -338,14 +320,11 @@ class ComposeAnimationPreviewTest : InspectorTests() {
 
     val animationWithSameLabel = createComposeAnimation("repeatedLabel")
 
-    val animatedValueWithNullLabel =
-      createComposeAnimation(type = ComposeAnimationType.ANIMATED_VALUE)
+    val animatedValueWithNullLabel = createComposeAnimation(type = ComposeAnimationType.ANIMATED_VALUE)
 
-    val transitionAnimationWithNullLabel =
-      createComposeAnimation(type = ComposeAnimationType.TRANSITION_ANIMATION)
+    val transitionAnimationWithNullLabel = createComposeAnimation(type = ComposeAnimationType.TRANSITION_ANIMATION)
 
-    val animatedVisibilityWithNullLabel =
-      createComposeAnimation(type = ComposeAnimationType.ANIMATED_VISIBILITY)
+    val animatedVisibilityWithNullLabel = createComposeAnimation(type = ComposeAnimationType.ANIMATED_VISIBILITY)
 
     subscribeAnimations(
       listOf(
@@ -359,22 +338,10 @@ class ComposeAnimationPreviewTest : InspectorTests() {
 
     assertEquals(5, animationPreview.animations.size)
     assertEquals("repeatedLabel", animationPreview.getAnimationTitleAt(0))
-    assertEquals(
-      "repeatedLabel (1)",
-      animationPreview.getAnimationTitleAt(1),
-    ) // repeated titles get their index incremented
-    assertEquals(
-      "Animated Value",
-      animationPreview.getAnimationTitleAt(2),
-    ) // null labels use default title
-    assertEquals(
-      "Transition Animation",
-      animationPreview.getAnimationTitleAt(3),
-    ) // null labels use default title
-    assertEquals(
-      "Animated Visibility",
-      animationPreview.getAnimationTitleAt(4),
-    ) // null labels use default title
+    assertEquals("repeatedLabel (1)", animationPreview.getAnimationTitleAt(1)) // repeated titles get their index incremented
+    assertEquals("Animated Value", animationPreview.getAnimationTitleAt(2)) // null labels use default title
+    assertEquals("Transition Animation", animationPreview.getAnimationTitleAt(3)) // null labels use default title
+    assertEquals("Animated Visibility", animationPreview.getAnimationTitleAt(4)) // null labels use default title
   }
 
   @Test
@@ -449,6 +416,7 @@ class ComposeAnimationPreviewTest : InspectorTests() {
     assertEquals(0, animationPreview.animationPreviewCardsCount())
   }
 
+  @Ignore("b/463308626")
   @OptIn(ExperimentalCoroutinesApi::class)
   @Test
   fun addAndRemoveAllAnimations() = runTest {
@@ -502,8 +470,7 @@ class ComposeAnimationPreviewTest : InspectorTests() {
   @Test
   fun childrenAreDisposed() = runTest {
     val scope = backgroundScope.createChildScope()
-    val animationPreview =
-      createAnimationPreview(scope).apply { this.component.size = Dimension(200, 200) }
+    val animationPreview = createAnimationPreview(scope).apply { this.component.size = Dimension(200, 200) }
     animationPreview.addAnimation(createComposeAnimation("1")).join()
     animationPreview.addAnimation(createComposeAnimation("2")).join()
     animationPreview.addAnimation(createComposeAnimation("3")).join()
@@ -518,9 +485,7 @@ class ComposeAnimationPreviewTest : InspectorTests() {
 
     var disposeCount = 0
 
-    animationPreview.component.findDescendant<AllTabPanel>()!!.let {
-      it.whenDisposed { disposeCount++ }
-    }
+    animationPreview.component.findDescendant<AllTabPanel>()!!.let { it.whenDisposed { disposeCount++ } }
     animationPreview.component.findDescendant<TimelinePanel>()!!.let {
       it.sliderUI.elements.forEach { element -> element.whenDisposed { disposeCount++ } }
     }
@@ -539,9 +504,7 @@ class ComposeAnimationPreviewTest : InspectorTests() {
     val sceneManager =
       mock<LayoutlibSceneManager>().apply {
         whenever(this.requestRenderAndWait()).then { calls.value++ }
-        whenever(this.executeInRenderSessionAsync(any(), any(), any())).then {
-          CompletableFuture.completedFuture(null)
-        }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).then { CompletableFuture.completedFuture(null) }
 
         val configuration =
           mock<LayoutlibSceneRenderConfiguration>().apply {
@@ -552,19 +515,11 @@ class ComposeAnimationPreviewTest : InspectorTests() {
       }
 
     val animationPreview =
-      ComposeAnimationPreview(
-          backgroundScope,
-          surface.project,
-          NoopComposeAnimationTracker,
-          { sceneManager },
-          surface,
-          psiFilePointer,
-        )
-        .also { it.animationClock = AnimationClock(TestClock()) }
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(TestClock())
+      }
 
-    animationPreview
-      .addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION))
-      .join()
+    animationPreview.addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)).join()
     runCurrent()
     val animationManager = animationPreview.animations.first() as SupportedAnimationManager
 
@@ -576,14 +531,10 @@ class ComposeAnimationPreviewTest : InspectorTests() {
     delayUntilCondition(100, 5.seconds) { calls.value > previousCalls }
   }
 
-  private fun ComposeAnimationPreview.getAnimationTitleAt(index: Int): String =
-    findAllCards(this.component)[index].findLabel().text
+  private fun ComposeAnimationPreview.getAnimationTitleAt(index: Int): String = findAllCards(this.component)[index].findLabel().text
 
   private fun ComposeAnimationPreview.noAnimationsPanel() =
-    TreeWalker(this.component)
-      .descendantStream()
-      .filter { it.name == "Loading Animations Panel" }
-      .getIfSingle()
+    TreeWalker(this.component).descendantStream().filter { it.name == "Loading Animations Panel" }.getIfSingle()
 
   private fun ComposeAnimationPreview.animationPreviewCardsCount(): Int = coordinationTab.cards.size
 }

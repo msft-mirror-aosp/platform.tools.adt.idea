@@ -100,6 +100,7 @@ public final class StudioIcons {
     /** 16x16 */ public static final @NotNull Icon CROP = load("studio/icons/common/crop.svg", 1868859328, 2);
     /** 16x16 */ public static final @NotNull Icon DELETE = load("studio/icons/common/delete.svg", -2052248004, 2);
     /** 16x16 */ public static final @NotNull Icon DISLIKE = load("studio/icons/common/dislike.svg", -1062610438, 2);
+    /** 16x16 */ public static final @NotNull Icon DOWN_RIGHT_ARROW = load("studio/icons/common/down-right-arrow.svg", 605649798, 2);
     /** 16x16 */ public static final @NotNull Icon EDIT = load("studio/icons/common/edit.svg", -1523029447, 2);
     /** 16x16 */ public static final @NotNull Icon ERROR_DECORATOR = load("studio/icons/common/error-decorator.svg", 679206806, 2);
     /** 16x16 */ public static final @NotNull Icon ERROR_INLINE = load("studio/icons/common/error-inline.svg", 462246295, 2);
@@ -134,13 +135,11 @@ public final class StudioIcons {
     /** 16x16 */ public static final @NotNull Icon REMOVE = load("studio/icons/common/remove.svg", -858817730, 2);
     /** 16x16 */ public static final @NotNull Icon REORDER = load("studio/icons/common/reorder.svg", 914778934, 2);
     /** 16x16 */ public static final @NotNull Icon RESET_ZOOM = load("studio/icons/common/reset-zoom.svg", -788191351, 2);
-    /** 16x16 */ public static final @NotNull Icon SCREENSHOT = load("studio/icons/common/screenshot.svg", -1973062777, 2);
     /** 16x16 */ public static final @NotNull Icon SEARCH = load("studio/icons/common/search.svg", -1880693038, 2);
     /** 16x16 */ public static final @NotNull Icon SETTINGS = load("studio/icons/common/settings.svg", -2027334274, 2);
     /** 16x16 */ public static final @NotNull Icon SUCCESS_INLINE = load("studio/icons/common/success-inline.svg", 1028930380, 2);
     /** 16x16 */ public static final @NotNull Icon SUCCESS = load("studio/icons/common/success.svg", 388106321, 2);
     /** 16x16 */ public static final @NotNull Icon TYPO_STACK = load("studio/icons/common/typo-stack.svg", 1524992740, 2);
-    /** 16x16 */ public static final @NotNull Icon VIDEO_CAPTURE = load("studio/icons/common/video-capture.svg", 1301157087, 2);
     /** 16x16 */ public static final @NotNull Icon VISIBILITY_INLINE = load("studio/icons/common/visibility-inline.svg", -1785148697, 2);
     /** 16x16 */ public static final @NotNull Icon WARNING_INLINE = load("studio/icons/common/warning-inline.svg", -1381373094, 2);
     /** 16x16 */ public static final @NotNull Icon WARNING_STACK = load("studio/icons/common/warning-stack.svg", 1085911095, 2);
@@ -258,10 +257,6 @@ public final class StudioIcons {
   }
 
   public static final class Emulator {
-    public static final class Glasses {
-      /** 16x16 */ public static final @NotNull Icon BUTTON_1 = load("studio/icons/emulator/glasses/button-1.svg", -90572414, 2);
-    }
-
     public static final class Menu {
       /** 16x16 */ public static final @NotNull Icon MODE_DESKTOP = load("studio/icons/emulator/menu/mode-desktop.svg", 1667783545, 2);
       /** 16x16 */ public static final @NotNull Icon MODE_FOLDABLE = load("studio/icons/emulator/menu/mode-foldable.svg", -1080940418, 2);
@@ -274,6 +269,7 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon POSTURE_OPEN = load("studio/icons/emulator/menu/posture-open.svg", -1102094041, 2);
       /** 16x16 */ public static final @NotNull Icon POSTURE_REAR_DISPLAY = load("studio/icons/emulator/menu/posture-rear-display.svg", -1179940746, 2);
       /** 16x16 */ public static final @NotNull Icon POSTURE_TENT = load("studio/icons/emulator/menu/posture-tent.svg", -854201469, 2);
+      /** 16x16 */ public static final @NotNull Icon VIRTUAL_SENSORS = load("studio/icons/emulator/menu/virtual_sensors.svg", 773940485, 2);
     }
 
     public static final class Snapshots {
@@ -296,7 +292,8 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon RESIZE_TABLET = load("studio/icons/emulator/toolbar/resize-tablet.svg", 469166195, 2);
       /** 16x16 */ public static final @NotNull Icon ROTATE_LEFT = load("studio/icons/emulator/toolbar/rotate-left.svg", 2102345878, 2);
       /** 16x16 */ public static final @NotNull Icon ROTATE_RIGHT = load("studio/icons/emulator/toolbar/rotate-right.svg", -1134724488, 2);
-      /** 16x16 */ public static final @NotNull Icon SCREENSHOT = load("studio/icons/emulator/toolbar/screenshot.svg", -1973062777, 2);
+      /** 16x16 */ public static final @NotNull Icon SCREEN_RECORD = load("studio/icons/emulator/toolbar/screen-record.svg", 68018541, 2);
+      /** 16x16 */ public static final @NotNull Icon SCREENSHOT = load("studio/icons/emulator/toolbar/screenshot.svg", 12840901, 2);
       /** 16x16 */ public static final @NotNull Icon SESSION = load("studio/icons/emulator/toolbar/session.svg", -1082551209, 2);
       /** 16x16 */ public static final @NotNull Icon SNAPSHOTS = load("studio/icons/emulator/toolbar/snapshots.svg", 1160622617, 2);
       /** 16x16 */ public static final @NotNull Icon VOLUME_DOWN = load("studio/icons/emulator/toolbar/volume-down.svg", -1222349156, 2);
@@ -317,9 +314,10 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon ENVIRONMENT_NIGHT = load("studio/icons/emulator/xr/environment-night.svg", -951642188, 2);
       /** 16x16 */ public static final @NotNull Icon ENVIRONMENT = load("studio/icons/emulator/xr/environment.svg", 1722745446, 2);
       /** 16x16 */ public static final @NotNull Icon EYE_GAZE = load("studio/icons/emulator/xr/eye-gaze.svg", -1318900624, 2);
-      /** 16x16 */ public static final @NotNull Icon GLASSES_BUTTON_1 = load("studio/icons/emulator/xr/glasses-button-1.svg", 881126089, 2);
-      /** 16x16 */ public static final @NotNull Icon GLASSES_BUTTON_2 = load("studio/icons/emulator/xr/glasses-button-2.svg", -841242706, 2);
+      /** 16x16 */ public static final @NotNull Icon GLASSES_CAMERA = load("studio/icons/emulator/xr/glasses-camera.svg", 517867713, 2);
+      /** 16x16 */ public static final @NotNull Icon GLASSES_TOUCHBAR = load("studio/icons/emulator/xr/glasses-touchbar.svg", -211952753, 2);
       /** 16x16 */ public static final @NotNull Icon HAND_TRACKING = load("studio/icons/emulator/xr/hand-tracking.svg", -1757146482, 2);
+      /** 16x16 */ public static final @NotNull Icon INTERACT = load("studio/icons/emulator/xr/interact.svg", -1981662969, 2);
       /** 16x16 */ public static final @NotNull Icon MOUSE_KEYBOARD_MODE = load("studio/icons/emulator/xr/mouse-keyboard-mode.svg", -1943290912, 2);
       /** 16x16 */ public static final @NotNull Icon PAN = load("studio/icons/emulator/xr/pan.svg", 626074429, 2);
       /** 16x16 */ public static final @NotNull Icon PASSTHROUGH_OFF = load("studio/icons/emulator/xr/passthrough-off.svg", -1838712925, 2);

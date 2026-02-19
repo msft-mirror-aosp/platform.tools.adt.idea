@@ -22,6 +22,7 @@
 #include "flags.h"
 #include "jvm.h"
 #include "log.h"
+#include "ndk_types.h"
 #include "remote_submix_reader.h"
 #include "string_printf.h"
 
@@ -89,39 +90,26 @@ AudioStreamer::AudioStreamer(SocketWriter* writer)
 }
 
 AudioStreamer::~AudioStreamer() {
-  Stop();
 }
 
 void AudioStreamer::Start() {
-  if (streamer_stopped_.exchange(false)) {
-    Log::D("Audio: starting streaming");
-    thread_ = thread([this]() {
-      Jvm::AttachCurrentThread("AudioStreamer");
-      Run();
-      Jvm::DetachCurrentThread();
-      Log::D("Audio: streaming terminated");
-    });
-  }
+  thread_handle_.Start("AudioStreamer", [this]() { Run(); });
 }
 
 void AudioStreamer::Stop() {
-  if (!streamer_stopped_.exchange(true)) {
-    Log::D("Audio: stopping streaming");
-    StopCodec();
-    if (thread_.get_id() != this_thread::get_id() && thread_.joinable()) {
-      thread_.join();
-    }
-  }
+  thread_handle_.Stop();
+  StopCodec();
 }
 
 void AudioStreamer::Run() {
   if (!StartAudioCapture()) {
+    fprintf(stderr, "NOTIFICATION Unable to start audio streaming\n");
     return;
   }
 
   bool continue_streaming = true;
   consequent_deque_error_count_ = 0;
-  while (continue_streaming && !streamer_stopped_ && !codec_handle_->IsStopped()) {
+  while (continue_streaming && !thread_handle_.IsStopping() && !codec_handle_->IsStopped()) {
     CodecOutputBuffer codec_buffer(codec_handle_->codec(), "Audio: ");
     if (!codec_buffer.Deque(-1)) {
       if (codec_handle_->IsStopped()) {
@@ -157,23 +145,14 @@ void AudioStreamer::StopCodec() {
 }
 
 bool AudioStreamer::StartAudioCapture() {
-  if ((Agent::feature_level() >= 34 || (Agent::feature_level() == 33 && Agent::device_manufacturer() == GOOGLE)) &&
-      (Agent::flags() & USE_REMOTE_SUBMIX) == 0) {
-    Log::D("Audio: using AudioRecordReader");
-    audio_reader_ = new AudioRecordReader(CHANNEL_COUNT, AUDIO_SAMPLE_RATE);
-  } else {
-    Log::D("Audio: using RemoteSubmixReader");
-    audio_reader_ = new RemoteSubmixReader(CHANNEL_COUNT, AUDIO_SAMPLE_RATE);
-  }
-
-  AMediaCodec* codec = AMediaCodec_createEncoderByType(MIME_TYPE);
-  if (codec == nullptr) {
+  MediaCodec codec = AMediaCodec_createEncoderByType(MIME_TYPE);
+  if (codec.IsNull()) {
     Log::W("Audio: unable to create %s encoder", CODEC_NAME);
     return false;
   }
-  codec_handle_ = new CodecHandle(codec, "Audio: ");
+  codec_handle_ = new CodecHandle(std::move(codec), "Audio: ");
   media_format_ = CreateMediaFormat();
-  media_status_t status = AMediaCodec_configure(codec, media_format_, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
+  media_status_t status = AMediaCodec_configure(codec_handle_->codec(), media_format_, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
   if (status != AMEDIA_OK) {
     Log::W("Audio: error configuring encoder: %d", status);
     return false;
@@ -182,17 +161,38 @@ bool AudioStreamer::StartAudioCapture() {
   if (!codec_handle_->Start()) {
     return false;
   }
-  audio_reader_->Start(codec_handle_);
-  return true;
+
+  bool use_audio_record = Agent::feature_level() >= 34;
+  for (;;) {
+    if (use_audio_record) {
+      Log::D("Audio: using AudioRecordReader");
+      audio_reader_ = new AudioRecordReader(CHANNEL_COUNT, AUDIO_SAMPLE_RATE);
+    } else {
+      Log::D("Audio: using RemoteSubmixReader");
+      audio_reader_ = new RemoteSubmixReader(CHANNEL_COUNT, AUDIO_SAMPLE_RATE);
+    }
+
+    if (audio_reader_->Start(codec_handle_)) {
+      return true;
+    }
+    if (!use_audio_record) {
+      return false;
+    }
+    use_audio_record = false;
+    Log::W("Audio: falling back to RemoteSubmixReader");
+  }
 }
 
 void AudioStreamer::StopAudioCapture() {
+  thread_handle_.Stop();
+  if (audio_reader_ != nullptr) {
+    audio_reader_->Stop();
+  }
   delete audio_reader_;
   audio_reader_ = nullptr;
   delete codec_handle_;
   codec_handle_ = nullptr;
-  AMediaFormat_delete(media_format_);
-  media_format_ = nullptr;
+  media_format_.Reset();
   consequent_deque_error_count_ = 0;
 }
 

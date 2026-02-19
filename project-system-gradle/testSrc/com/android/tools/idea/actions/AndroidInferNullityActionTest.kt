@@ -15,9 +15,7 @@
  */
 package com.android.tools.idea.actions
 
-import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.ProjectSystemService
-import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.testing.getTextForFile
 import com.google.common.truth.Truth
@@ -47,49 +45,43 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
     super.setUp()
     myFixture.addClass(
       """
-import android.graphics.Color;
+      import android.graphics.Color;
 
-public class TestNullity {
-    public Color myMethod() {
-        Color color = null;
-        return color;
-    }
+      public class TestNullity {
+          public Color myMethod() {
+              Color color = null;
+              return color;
+          }
 
-    public Color myMethod1() {
-        Color color = new Color();
-        return color;
-    }
-}
-""".trimIndent())
+          public Color myMethod1() {
+              Color color = new Color();
+              return color;
+          }
+      }
+      """
+        .trimIndent()
+    )
     myNullityManager = NullableNotNullManager.getInstance(project)
   }
 
-  fun testSupportLibAnnotations() {
-    (myModule.getModuleSystem() as DefaultModuleSystem).useAndroidX = false
-
-    runInferNullityAction()
-    Truth.assertThat(myNullityManager.defaultNullable).isEqualTo("android.support.annotation.Nullable")
-    Truth.assertThat(myNullityManager.defaultNotNull).isEqualTo("android.support.annotation.NonNull")
-  }
-
-  fun testAndroidxAnnotations() {
-    (myModule.getModuleSystem() as DefaultModuleSystem).useAndroidX = true
-    
-    runInferNullityAction()
-    Truth.assertThat(myNullityManager.defaultNullable).isEqualTo("androidx.annotation.Nullable")
-    Truth.assertThat(myNullityManager.defaultNotNull).isEqualTo("androidx.annotation.NonNull")
-  }
-
   fun testFoundCatalogDependency() {
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       dependencies{
       implementation libs.support
       }
-    """.trimIndent())
-    myFixture.addFileToProject("gradle/libs.versions.toml", """
+      """
+        .trimIndent(),
+    )
+    myFixture.addFileToProject(
+      "gradle/libs.versions.toml",
+      """
       [libraries]
       support = "com.android.support:support-annotations:+"
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
 
     executeWithoutApplyRunnable {
@@ -105,22 +97,28 @@ public class TestNullity {
 
         // system should not suggest adding dependency via dialog
         verify(testDialog, never()).show(any())
-      }
-      finally {
+      } finally {
         TestDialogManager.setTestDialog(TestDialog.DEFAULT)
       }
     }
   }
 
-
   fun testAddDependencyWithCatalog() {
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       dependencies{
       }
-    """.trimIndent())
-    myFixture.addFileToProject("gradle/libs.versions.toml", """
+      """
+        .trimIndent(),
+    )
+    myFixture.addFileToProject(
+      "gradle/libs.versions.toml",
+      """
       [libraries]
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
 
     try {
@@ -140,22 +138,29 @@ public class TestNullity {
       val catalogContent = project.getTextForFile("gradle/libs.versions.toml")
       Truth.assertThat(catalogContent).contains("group = \"androidx.annotation\"")
       Truth.assertThat(catalogContent).contains("name = \"annotation\"")
-    }
-    finally {
+    } finally {
       TestDialogManager.setTestDialog(TestDialog.DEFAULT)
     }
   }
 
-  fun testAddAnnotationWithCatalogFull() {
-    myFixture.addFileToProject("build.gradle", """
+  fun testAddAndroidAnnotationWithCatalogFull() {
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       dependencies{
          implementation libs.support.annotation
       }
-    """.trimIndent())
-    myFixture.addFileToProject("gradle/libs.versions.toml", """
+      """
+        .trimIndent(),
+    )
+    myFixture.addFileToProject(
+      "gradle/libs.versions.toml",
+      """
       [libraries]
       support-annotation = "com.android.support:support-annotations:+"
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
 
     val action = AndroidInferNullityAnnotationAction()
@@ -164,37 +169,60 @@ public class TestNullity {
 
     action.analyze(project, scope)
 
-    val javaClass = project.getTextForFile("src/TestNullity.java")
-    Truth.assertThat(javaClass).contains("@androidx.annotation.Nullable")
-    Truth.assertThat(javaClass).contains("@androidx.annotation.NonNull")
+    assertAddedAnnotations("android")
   }
 
-  fun testAddAnnotationNoCatalogFull() {
+  fun testAddAndroidAnnotationNoCatalogFull() {
     TestDialogManager.setTestDialog(TestDialog.YES)
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       dependencies{
          implementation "com.android.support:support-annotations:+"
       }
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
     val action = AndroidInferNullityAnnotationAction()
     val scope = AnalysisScope(project)
     action.getAdditionalActionSettings(project, null)
     try {
       action.analyze(project, scope)
-    }
-    finally {
+    } finally {
       TestDialogManager.setTestDialog(TestDialog.DEFAULT)
     }
 
-    val javaClass = project.getTextForFile("src/TestNullity.java")
-    Truth.assertThat(javaClass).contains("@androidx.annotation.NonNull")
-    Truth.assertThat(javaClass).contains("@androidx.annotation.Nullable")
+    assertAddedAnnotations("android")
+  }
+
+  fun testAddAndroidXAnnotationNoCatalogFull() {
+    TestDialogManager.setTestDialog(TestDialog.YES)
+    ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
+    myFixture.addClass(
+      """
+      package androidx.annotation;
+      public @interface Nullable {}
+      public @interface NonNull {}
+      """
+        .trimIndent()
+    )
+
+    val action = AndroidInferNullityAnnotationAction()
+    val scope = AnalysisScope(project)
+    action.getAdditionalActionSettings(project, null)
+    try {
+      action.analyze(project, scope)
+    } finally {
+      TestDialogManager.setTestDialog(TestDialog.DEFAULT)
+    }
+
+    assertAddedAnnotations("androidx")
   }
 
   /**
-   * ApplyRunnable contains all code/annotation changes. To isolate tests from this functionality
-   * we can mock this method to not call existing business logic.
+   * ApplyRunnable contains all code/annotation changes. To isolate tests from this functionality we can mock this method to not call
+   * existing business logic.
    */
   private fun executeWithoutApplyRunnable(f: () -> Unit) {
     Mockito.mockStatic(AndroidInferNullityAnnotationAction::class.java, Mockito.CALLS_REAL_METHODS).use { _ ->
@@ -214,9 +242,16 @@ public class TestNullity {
     TestDialogManager.setTestDialog { NO } // Ignore suggestion to add JetBrains annotations lib.
     try {
       action.analyze(this.project, scope)
-    }
-    finally {
+    } finally {
       TestDialogManager.setTestDialog(DEFAULT)
     }
+  }
+
+  private fun assertAddedAnnotations(annotationPackage: String) {
+    val javaClass = project.getTextForFile("src/TestNullity.java")
+    Truth.assertThat(javaClass).contains("import $annotationPackage.annotation.NonNull;")
+    Truth.assertThat(javaClass).contains("@NonNull")
+    Truth.assertThat(javaClass).contains("import $annotationPackage.annotation.Nullable;")
+    Truth.assertThat(javaClass).contains("@Nullable")
   }
 }

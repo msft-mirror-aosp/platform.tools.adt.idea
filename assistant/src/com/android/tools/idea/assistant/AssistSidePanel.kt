@@ -51,8 +51,7 @@ class AssistSidePanel(private val project: Project) : JPanel(BorderLayout()) {
     // Add an error message to show when there is an error while loading
     errorPanel = JPanel(BorderLayout())
     val message = "Error loading assistant panel. Please check idea.log for detailed error message."
-    val htmlText =
-      "<html><div style='text-align: center;'>${StringUtil.escapeXmlEntities(message)}</div></html>"
+    val htmlText = "<html><div style='text-align: center;'>${StringUtil.escapeXmlEntities(message)}</div></html>"
     errorText = JBLabel(htmlText)
     errorText.horizontalAlignment = JBLabel.CENTER
     errorPanel.add(errorText, BorderLayout.CENTER)
@@ -60,11 +59,7 @@ class AssistSidePanel(private val project: Project) : JPanel(BorderLayout()) {
     errorPanel.isVisible = false
   }
 
-  fun showBundle(
-    bundleId: String,
-    defaultTutorialId: String? = null,
-    onBundleCreated: ((TutorialBundleData) -> Unit)? = null,
-  ) {
+  fun showBundle(bundleId: String, defaultTutorialId: String? = null, onBundleCreated: ((TutorialBundleData) -> Unit)? = null) {
     featuresPanel?.let { remove(it) }
     loadingPanel.startLoading()
     errorPanel.isVisible = false
@@ -97,11 +92,7 @@ class AssistSidePanel(private val project: Project) : JPanel(BorderLayout()) {
         )
         .queue()
     } else {
-      AssistantGetBundleTask(
-          project,
-          bundleCreator,
-          AssistantLoadingCallback(bundleId, bundleCreator, defaultTutorialId, onBundleCreated),
-        )
+      AssistantGetBundleTask(project, bundleCreator, AssistantLoadingCallback(bundleId, bundleCreator, defaultTutorialId, onBundleCreated))
         .queue()
     }
   }

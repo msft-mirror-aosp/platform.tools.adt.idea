@@ -16,33 +16,24 @@
 package com.android.tools.idea.npw.platform
 
 import com.android.AndroidProjectTypes
-import com.android.AndroidProjectTypes.PROJECT_TYPE_APP
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.SdkVersionInfo
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_MAIN
 import com.android.tools.idea.gradle.model.IdeSourceProvider
-import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.npw.actions.NewAndroidComponentAction
-import com.android.tools.idea.testartifacts.testsuite.TestSuiteTestUtils.createAssetsTestSuiteSource
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaModuleModelBuilder
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.template.Category
 import com.android.tools.idea.wizard.template.TemplateConstraint
 import com.android.tools.module.AndroidModuleInfo
 import com.google.common.collect.ImmutableSet
-import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.Presentation
@@ -58,7 +49,6 @@ import com.intellij.testFramework.TestActionEvent
 import com.intellij.util.ui.UIUtil
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Before
@@ -98,43 +88,8 @@ class NewAndroidComponentActionTest {
                   shadersDirectories = emptyList(),
                   customSourceDirectories = emptyList(),
                   baselineProfileDirectories = emptyList(),
+                  keepRulesDirectoriesField = emptyList(),
                 )
-              },
-              testSuites = {
-                listOf(
-                  IdeTestSuiteImpl(
-                    name = "journeysTest",
-                    sources =
-                      listOf(
-                        createAssetsTestSuiteSource(
-                          testSuitePath = moduleBasePath.resolve("src/journeysTest")
-                        )
-                      ),
-                    junitEngineInfo =
-                      IdeJUnitEngineInfoImpl(includedEngines = setOf("journeys-test-engine")),
-                    targetedVariants = listOf("debug"),
-                  )
-                )
-              },
-              testSuiteArtifactsStub = { variant ->
-                when (variant) {
-                  "debug" ->
-                    listOf(
-                      IdeTestSuiteVariantTargetImpl(
-                        suiteName = "journeysTest",
-                        targetedVariantName = "debug",
-                        targets =
-                          listOf(
-                            IdeTestSuiteTargetImpl(
-                              targetName = "connectedTest",
-                              testTaskName = "journeysTestTaskName",
-                              targetedDevices = emptyList(),
-                            )
-                          ),
-                      )
-                    )
-                  else -> emptyList()
-                }
               },
             ),
         ),
@@ -143,8 +98,7 @@ class NewAndroidComponentActionTest {
 
   @Before
   fun setUp() {
-    val file =
-      projectRule.fixture.addFileToProject("app/src/kotlin/Test.kt", "fun a() {}").virtualFile
+    val file = projectRule.fixture.addFileToProject("app/src/kotlin/Test.kt", "fun a() {}").virtualFile
     val srcDirectory = file.parent.parent
     val module = ModuleUtilCore.findModuleForFile(srcDirectory, projectRule.project)!!
 
@@ -168,10 +122,7 @@ class NewAndroidComponentActionTest {
     return facet
   }
 
-  private fun createTestActionEventForFile(
-    virtualFile: VirtualFile,
-    module: Module,
-  ): AnActionEvent {
+  private fun createTestActionEventForFile(virtualFile: VirtualFile, module: Module): AnActionEvent {
     val dataContext =
       SimpleDataContext.builder()
         .add<Module>(PlatformCoreDataKeys.MODULE, module)
@@ -188,8 +139,7 @@ class NewAndroidComponentActionTest {
 
     assertThat(actionEvent.presentation.isVisible).isFalse()
     assertThat(actionEvent.presentation.isEnabled).isFalse()
-    assertThat(actionEvent.presentation.text)
-      .isEqualTo("templateName (Disabled - No Android module found)")
+    assertThat(actionEvent.presentation.text).isEqualTo("templateName (Disabled - No Android module found)")
   }
 
   @Test
@@ -201,8 +151,7 @@ class NewAndroidComponentActionTest {
 
   @Test
   fun lowMinSdkApiPresentationShouldBeDisabled() {
-    NewAndroidComponentAction(Category.Other, "templateName", SdkVersionInfo.HIGHEST_KNOWN_API + 1)
-      .update(myActionEvent)
+    NewAndroidComponentAction(Category.Other, "templateName", SdkVersionInfo.HIGHEST_KNOWN_API + 1).update(myActionEvent)
 
     assertThat(myActionEvent.presentation.isEnabled).isFalse()
     assertThat(myActionEvent.presentation.text).contains("Requires minSdk")
@@ -268,10 +217,8 @@ class NewAndroidComponentActionTest {
 
     val modelWizardReference = AtomicReference<ModelWizard?>(null)
     val action =
-      NewAndroidComponentAction(Category.Other, "Empty Activity", 0, ImmutableSet.of()) {
-        modelWizard: ModelWizard?,
-        _: String?,
-        _: Project? ->
+      NewAndroidComponentAction(Category.Other, "Empty Activity", 0, ImmutableSet.of()) { modelWizard: ModelWizard?, _: String?, _: Project?
+        ->
         modelWizardReference.set(modelWizard)
       }
     action.update(myActionEvent)
@@ -289,49 +236,11 @@ class NewAndroidComponentActionTest {
 
       // There should only be 3 compatible templates (_main_, debug, release) since the file is in
       // the "app/src" directory and the templates without source roots are filtered out.
-      val comboBox =
-        fakeUi.findComponent(ComboBox::class.java) { combo: ComboBox<*> ->
-          "ModuleTemplateCombo" == combo.getName()
-        }
+      val comboBox = fakeUi.findComponent(ComboBox::class.java) { combo: ComboBox<*> -> "ModuleTemplateCombo" == combo.getName() }
       assertNotNull(comboBox)
       assertThat(comboBox.itemCount).isEqualTo(3)
     }
 
     Disposer.dispose(modelWizard)
-  }
-
-  @Test
-  fun verifyTemplateDialog_journeys() {
-    StudioFlags.JOURNEYS_WITH_GEMINI_NEW_WIZARD.overrideForTest(
-      false,
-      projectRule.testRootDisposable,
-    )
-
-    val testSuiteFile =
-      projectRule.fixture.addFileToProject("app/src/journeysTest/test.journey.xml", "").virtualFile
-    val testSuiteModule = ModuleUtilCore.findModuleForFile(testSuiteFile, projectRule.project)!!
-
-    val facet = setupFacetForModule(testSuiteModule)
-    facet.configuration.projectType = PROJECT_TYPE_APP
-
-    val testEvent = createTestActionEventForFile(testSuiteFile, testSuiteModule)
-
-    val modelWizardReference = AtomicReference<ModelWizard>(null)
-    val action =
-      NewAndroidComponentAction(
-        Category.Other,
-        "Journey File", // Template name for Journey
-        0,
-        emptyList(),
-        { modelWizard, _, _ -> modelWizardReference.set(modelWizard) },
-      )
-
-    action.update(testEvent)
-    assertThat(testEvent.presentation.isEnabled).isTrue()
-
-    ApplicationManager.getApplication().invokeAndWait { action.actionPerformed(testEvent) }
-
-    assertTrue(modelWizardReference.get() != null)
-    Disposer.dispose(modelWizardReference.get())
   }
 }

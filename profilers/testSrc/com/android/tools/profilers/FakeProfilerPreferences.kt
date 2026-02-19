@@ -15,8 +15,6 @@
  */
 package com.android.tools.profilers
 
-import java.util.*
-
 class FakeProfilerPreferences : ProfilerPreferences {
 
   private val myMap = HashMap<String, String>()
@@ -48,8 +46,7 @@ class FakeProfilerPreferences : ProfilerPreferences {
   override fun setFloat(name: String, value: Float, defaultValue: Float) {
     if (java.lang.Float.compare(value, defaultValue) == 0) {
       myMap.remove(name)
-    }
-    else {
+    } else {
       myMap.put(name, java.lang.Float.toString(value))
     }
   }
@@ -61,8 +58,7 @@ class FakeProfilerPreferences : ProfilerPreferences {
   override fun setInt(name: String, value: Int, defaultValue: Int) {
     if (value == defaultValue) {
       myMap.remove(name)
-    }
-    else {
+    } else {
       myMap.put(name, Integer.toString(value))
     }
   }

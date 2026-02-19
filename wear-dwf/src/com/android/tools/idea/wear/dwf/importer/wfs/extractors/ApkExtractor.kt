@@ -26,8 +26,8 @@ import com.android.tools.apk.analyzer.ResourceIdResolver
 import com.android.tools.apk.analyzer.internal.ApkArchive
 import com.android.tools.idea.res.DEFAULT_STRING_RESOURCE_FILE_NAME
 import com.android.tools.res.ids.apk.ApkResourceIdManager
-import com.google.devrel.gmscore.tools.apk.arsc.BinaryResourceConfiguration
-import com.google.devrel.gmscore.tools.apk.arsc.BinaryResourceFile
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceConfiguration
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceFile
 import com.google.devrel.gmscore.tools.apk.arsc.ResourceTableChunk
 import java.nio.file.Path
 import kotlin.io.path.inputStream
@@ -47,48 +47,31 @@ class ApkExtractor(private val ioDispatcher: CoroutineDispatcher) : WatchFaceStu
 
   override suspend fun extract(apkFilePath: Path) =
     flow {
-        val apkResourceIdManager =
-          ApkResourceIdManager().apply { loadApkResources(apkFilePath.pathString) }
+        val apkResourceIdManager = ApkResourceIdManager().apply { loadApkResources(apkFilePath.pathString) }
 
-        val resourceIdResolver = ResourceIdResolver { id ->
-          apkResourceIdManager.findById(id)?.resourceUrl?.toString()
-        }
+        val resourceIdResolver = ResourceIdResolver { id -> apkResourceIdManager.findById(id)?.resourceUrl?.toString() }
 
         Archives.open(apkFilePath).use { archiveContext ->
-          val archive =
-            checkNotNull(archiveContext.archive as? ApkArchive) {
-              "The $apkFilePath file is expected to be an APK archive"
-            }
+          val archive = checkNotNull(archiveContext.archive as? ApkArchive) { "The $apkFilePath file is expected to be an APK archive" }
 
-          emit(
-            ExtractedItem.Manifest(
-              readXmlContent(
-                archive,
-                archive.contentRoot.resolve(FN_ANDROID_MANIFEST_XML),
-                resourceIdResolver,
-              )
-            )
-          )
+          emit(ExtractedItem.Manifest(readXmlContent(archive, archive.contentRoot.resolve(FN_ANDROID_MANIFEST_XML), resourceIdResolver)))
 
           val resourceTable =
             archive.contentRoot
               .resolve(RESOURCES_ARSC_PATH)
               .inputStream()
-              .use { BinaryResourceFile.fromInputStream(it) }
+              .use { ResourceFile.fromInputStream(it) }
               .chunks
               .filterIsInstance<ResourceTableChunk>()
               .single()
 
           for (pkg in resourceTable.packages) {
             for (typeSpec in pkg.typeSpecChunks) {
-              val resourceType =
-                ResourceType.fromXmlTagName(typeSpec.typeName)
-                  ?: error("Expected resource type to be valid")
+              val resourceType = ResourceType.fromXmlTagName(typeSpec.typeName) ?: error("Expected resource type to be valid")
               for (typeChunk in pkg.getTypeChunks(typeSpec.id)) {
                 for (entry in typeChunk.entries) {
                   val value = entry.value.value() ?: error("Expected entry value to be non-null")
-                  val formattedValue =
-                    BinaryXmlParser.formatValue(value, resourceTable.stringPool, resourceIdResolver)
+                  val formattedValue = BinaryXmlParser.formatValue(value, resourceTable.stringPool, resourceIdResolver)
 
                   val name = entry.value.key()
                   val resource =
@@ -104,12 +87,7 @@ class ApkExtractor(private val ioDispatcher: CoroutineDispatcher) : WatchFaceStu
                         ExtractedItem.TextResource(
                           name = name,
                           filePath = Path.of(formattedValue),
-                          text =
-                            readXmlContent(
-                              archive,
-                              archive.contentRoot.resolve(formattedValue),
-                              resourceIdResolver,
-                            ),
+                          text = readXmlContent(archive, archive.contentRoot.resolve(formattedValue), resourceIdResolver),
                         )
                       ResourceType.STRING ->
                         ExtractedItem.StringResource(
@@ -128,11 +106,7 @@ class ApkExtractor(private val ioDispatcher: CoroutineDispatcher) : WatchFaceStu
       }
       .flowOn(ioDispatcher)
 
-  private fun readXmlContent(
-    archive: ApkArchive,
-    sourcePath: Path,
-    resourceIdResolver: ResourceIdResolver,
-  ): String {
+  private fun readXmlContent(archive: ApkArchive, sourcePath: Path, resourceIdResolver: ResourceIdResolver): String {
     val bytes = sourcePath.readBytes()
     val decodedBytes =
       if (archive.isBinaryXml(sourcePath, bytes)) {
@@ -143,16 +117,11 @@ class ApkExtractor(private val ioDispatcher: CoroutineDispatcher) : WatchFaceStu
     return decodedBytes.toString(Charsets.UTF_8)
   }
 
-  private fun stringResourcePath(configuration: BinaryResourceConfiguration): Path {
+  private fun stringResourcePath(configuration: ResourceConfiguration): Path {
     val folderConfiguration =
-      FolderConfiguration.getConfigForQualifierString(
-        if (configuration.isDefault) "" else configuration.toString()
-      ) ?: error("Unexpected invalid resource configuration $configuration")
+      FolderConfiguration.getConfigForQualifierString(if (configuration.isDefault) "" else configuration.toString())
+        ?: error("Unexpected invalid resource configuration $configuration")
 
-    return Path.of(
-      RES_FOLDER,
-      folderConfiguration.getFolderName(ResourceFolderType.VALUES),
-      DEFAULT_STRING_RESOURCE_FILE_NAME,
-    )
+    return Path.of(RES_FOLDER, folderConfiguration.getFolderName(ResourceFolderType.VALUES), DEFAULT_STRING_RESOURCE_FILE_NAME)
   }
 }

@@ -18,8 +18,6 @@ package com.google.idea.blaze.base.command;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import java.util.Arrays;
 import java.util.List;
 import javax.annotation.concurrent.Immutable;
@@ -28,17 +26,14 @@ import javax.annotation.concurrent.Immutable;
 @Immutable
 public final class BlazeCommand {
 
-  private final List<String> invokeCommand;
   private final BlazeCommandName name;
   private final ImmutableList<String> blazeCmdlineFlags;
   private final ImmutableList<String> blazeStartupFlags;
 
   private BlazeCommand(
-      List<String> invokeCommand,
       BlazeCommandName name,
       ImmutableList<String> blazeStartupFlags,
       ImmutableList<String> blazeCmdlineFlags) {
-    this.invokeCommand = invokeCommand;
     this.name = name;
     this.blazeCmdlineFlags = blazeCmdlineFlags;
     this.blazeStartupFlags = blazeStartupFlags;
@@ -56,24 +51,10 @@ public final class BlazeCommand {
         .build();
   }
 
-  public ImmutableList<String> toList() {
-    return ImmutableList.<String>builder()
-        .addAll(invokeCommand)
-        .addAll(blazeStartupFlags)
-        .add(name.toString())
-        .addAll(blazeCmdlineFlags)
-        .build();
-  }
-
   @Override
   public String toString() {
-    return Joiner.on(' ').join(toList());
+    return Joiner.on(' ').join(toArgumentList());
   }
-
-  public static Builder builder(BuildInvoker invoker, BlazeCommandName name) {
-    return new Builder(invoker.getInvokeCommand(), name);
-  }
-
 
   /**
    * Returns a [BlazeCommand.Builder] with the given blaze binary path.
@@ -81,24 +62,20 @@ public final class BlazeCommand {
    * This Builder is used by run configs where the user specifies a single blazeBinaryPath which is used instead of the invoker's
    * default binary path (if the invoker supports path overrides, i.e. canOverrideBinaryPath).
    */
-  public static Builder builder(BuildInvoker invoker, BlazeCommandName name, String blazeBinaryPath) {
-    return new Builder(invoker.getInvokeCommandForBinaryPath(blazeBinaryPath), name);
+  public static Builder builder(BlazeCommandName name) {
+    return new Builder(name);
   }
 
   /** Builder for a blaze command */
   public static class Builder {
-    private final List<String> invokeCommand;
     private final BlazeCommandName name;
-    private boolean invokeParallel;
     private final ImmutableList.Builder<String> blazeStartupFlags = ImmutableList.builder();
-    private final ImmutableList.Builder<TargetExpression> targets = ImmutableList.builder();
+    private final ImmutableList.Builder<String> targets = ImmutableList.builder();
     private final ImmutableList.Builder<String> blazeCmdlineFlags = ImmutableList.builder();
     private final ImmutableList.Builder<String> exeFlags = ImmutableList.builder();
 
-    public Builder(List<String> invokeCommand, BlazeCommandName name) {
-      this.invokeCommand = invokeCommand;
+    public Builder(BlazeCommandName name) {
       this.name = name;
-      this.invokeParallel = false;
       // Tell forge what tool we used to call blaze so we can track usage.
       addBlazeFlags(BlazeFlags.getToolTagFlag());
     }
@@ -111,35 +88,24 @@ public final class BlazeCommand {
       arguments.add("--");
 
       // Trust the user's ordering of the targets since order matters to blaze
-      for (TargetExpression targetExpression : targets.build()) {
-        arguments.add(targetExpression.toString());
-      }
+      arguments.addAll(targets.build());
 
       arguments.addAll(exeFlags.build());
       return arguments.build();
     }
 
     public BlazeCommand build() {
-      return new BlazeCommand(invokeCommand, name, blazeStartupFlags.build(), getArguments());
+      return new BlazeCommand(name, blazeStartupFlags.build(), getArguments());
     }
 
-    public boolean isInvokeParallel() {
-      return invokeParallel;
+
+    @CanIgnoreReturnValue
+    public Builder addTargetStrings(String... targets) {
+      return addTargetStrings(Arrays.asList(targets));
     }
 
     @CanIgnoreReturnValue
-    public Builder setInvokeParallel(boolean invokeParallel) {
-      this.invokeParallel = invokeParallel;
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    public Builder addTargets(TargetExpression... targets) {
-      return this.addTargets(Arrays.asList(targets));
-    }
-
-    @CanIgnoreReturnValue
-    public Builder addTargets(List<? extends TargetExpression> targets) {
+    public Builder addTargetStrings(List<? extends String> targets) {
       this.targets.addAll(targets);
       return this;
     }

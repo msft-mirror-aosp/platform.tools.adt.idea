@@ -37,6 +37,7 @@ import com.android.tools.idea.compose.pickers.preview.property.DeviceParameterPr
 import com.android.tools.idea.compose.pickers.preview.utils.addNewValueArgument
 import com.android.tools.idea.compose.pickers.preview.utils.getArgumentForParameter
 import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.idea.kotlin.tryEvaluateConstantAsText
 import com.android.tools.idea.preview.find.findPreviewDefaultValues
 import com.android.tools.idea.preview.util.AvailableDevicesKey
 import com.android.tools.idea.preview.util.getSdkDevices
@@ -97,8 +98,7 @@ private constructor(
     tracker = tracker,
   ) {
 
-  override val inspectorBuilder: PsiPropertiesInspectorBuilder =
-    PreviewPropertiesInspectorBuilder(valuesProvider)
+  override val inspectorBuilder: PsiPropertiesInspectorBuilder = PreviewPropertiesInspectorBuilder(valuesProvider)
 
   private val availableDevices = getSdkDevices(module)
 
@@ -106,11 +106,9 @@ private constructor(
     when (dataId) {
       CurrentDeviceKey.name -> {
         val currentDeviceValue = properties.getOrNull("", PARAMETER_HARDWARE_DEVICE)?.value
-        val deviceFromParameterValue =
-          currentDeviceValue?.let(availableDevices::findOrParseFromDefinition)
+        val deviceFromParameterValue = currentDeviceValue?.let(availableDevices::findOrParseFromDefinition)
 
-        deviceFromParameterValue
-          ?: ConfigurationManager.findExistingInstance(module)?.getDefaultPreviewDevice()
+        deviceFromParameterValue ?: ConfigurationManager.findExistingInstance(module)?.getDefaultPreviewDevice()
       }
       AvailableDevicesKey.name -> {
         availableDevices
@@ -129,27 +127,18 @@ private constructor(
       val libraryDefaultValues: Map<String, String?> =
         (annotationEntry.toUElement() as? UAnnotation)?.findPreviewDefaultValues()
           ?: kotlin.run {
-            Logger.getInstance(PsiCallPropertiesModel::class.java)
-              .warn("Could not obtain default values")
+            Logger.getInstance(PsiCallPropertiesModel::class.java).warn("Could not obtain default values")
             emptyMap()
           }
       val valuesProvider =
-        PreviewPickerValuesProvider.createPreviewValuesProvider(
-          module = module,
-          containingFile = previewElementDefinitionPsi?.virtualFile,
-        )
-      val defaultApiLevel =
-        ConfigurationManager.findExistingInstance(module)
-          ?.defaultTarget
-          ?.version
-          ?.apiLevel
-          ?.toString()
+        PreviewPickerValuesProvider.createPreviewValuesProvider(module = module, containingFile = previewElementDefinitionPsi?.virtualFile)
+      val defaultApiLevel = ConfigurationManager.findExistingInstance(module)?.defaultTarget?.version?.apiLevel?.toString()
 
       /**
        * Contains the default values for each parameter of the Preview annotation.
        *
-       * This either makes the existing default values of the @Preview Class presentable, or changes
-       * the value based on what the value actually represents on the preview.
+       * This either makes the existing default values of the @Preview Class presentable, or changes the value based on what the value
+       * actually represents on the preview.
        */
       val defaultValues =
         libraryDefaultValues.mapValues { entry ->
@@ -159,26 +148,18 @@ private constructor(
             PARAMETER_WIDTH_DP,
             PARAMETER_HEIGHT,
             PARAMETER_HEIGHT_DP -> entry.value?.sizeToReadable()
-            PARAMETER_BACKGROUND_COLOR ->
-              null // We ignore background color, as the default value is set by Studio
-            PARAMETER_UI_MODE ->
-              UiMode.entries.firstOrNull { it.resolvedValue == entry.value }?.display
-                ?: UiMode.UNDEFINED.display
-            PARAMETER_DEVICE ->
-              Device.entries.firstOrNull { it.resolvedValue == entry.value }?.display
-                ?: Device.DEFAULT.display
+            PARAMETER_BACKGROUND_COLOR -> null // We ignore background color, as the default value is set by Studio
+            PARAMETER_UI_MODE -> UiMode.entries.firstOrNull { it.resolvedValue == entry.value }?.display ?: UiMode.UNDEFINED.display
+            PARAMETER_DEVICE -> Device.entries.firstOrNull { it.resolvedValue == entry.value }?.display ?: Device.DEFAULT.display
             PARAMETER_LOCALE -> entry.value?.takeIf { it.isNotEmpty() } ?: "Default (en-US)"
-            PARAMETER_WALLPAPER ->
-              Wallpaper.entries.firstOrNull { it.resolvedValue == entry.value }?.display
-                ?: Wallpaper.NONE.display
+            PARAMETER_WALLPAPER -> Wallpaper.entries.firstOrNull { it.resolvedValue == entry.value }?.display ?: Wallpaper.NONE.display
             PARAMETER_FONT_SCALE -> entry.value?.removeSuffix("f")
             else -> entry.value
           }
         }
 
       if (annotationEntry == null) {
-        Logger.getInstance(PsiCallPropertiesModel::class.java)
-          .error("Non-null value is expected for annotation entry")
+        Logger.getInstance(PsiCallPropertiesModel::class.java).error("Non-null value is expected for annotation entry")
       }
 
       return PreviewPickerPropertiesModel(
@@ -191,27 +172,17 @@ private constructor(
       )
     }
 
-    private fun String.sizeToReadable(): String? =
-      this.takeIf { it.toInt() != UNDEFINED_DIMENSION }?.toString()
+    private fun String.sizeToReadable(): String? = this.takeIf { it.toInt() != UNDEFINED_DIMENSION }?.toString()
 
-    private fun String.apiToReadable(): String? =
-      this.takeIf { it.toInt() != UNDEFINED_API_LEVEL }?.toString()
+    private fun String.apiToReadable(): String? = this.takeIf { it.toInt() != UNDEFINED_API_LEVEL }?.toString()
   }
 }
 
-/**
- * [PsiPropertiesProvider] for the Preview annotation. Provides specific implementations for known
- * parameters of the annotation.
- */
-private class PreviewPropertiesProvider(
-  private val defaultValues: Map<String, String?>,
-  private val annotationEntry: KtAnnotationEntry,
-) : PsiPropertiesProvider {
+/** [PsiPropertiesProvider] for the Preview annotation. Provides specific implementations for known parameters of the annotation. */
+private class PreviewPropertiesProvider(private val defaultValues: Map<String, String?>, private val annotationEntry: KtAnnotationEntry) :
+  PsiPropertiesProvider {
 
-  override fun invoke(
-    project: Project,
-    model: PsiCallPropertiesModel,
-  ): Collection<PsiPropertyItem> {
+  override fun invoke(project: Project, model: PsiCallPropertiesModel): Collection<PsiPropertyItem> {
     val properties = mutableListOf<PsiPropertyItem>()
     ReadAction.run<Throwable> { collectParameterPropertyItemsForK2(project, model, properties) }
     return properties
@@ -226,13 +197,12 @@ private class PreviewPropertiesProvider(
     argumentExpression: KtExpression?,
     defaultValue: String?,
     callElement: KtCallElement?,
+    initialValue: String?,
   ) {
     fun addNewValueArgument(newValueArgument: KtValueArgument, psiFactory: KtPsiFactory) =
       callElement?.addNewValueArgument(newValueArgument, psiFactory)
 
-    when (
-      parameterName.asString()
-    ) { // TODO(b/197021783): Capitalize the displayed name of the parameters, without affecting
+    when (parameterName.asString()) { // TODO(b/197021783): Capitalize the displayed name of the parameters, without affecting
       // the output of the model or hardcoding the names
       PARAMETER_FONT_SCALE ->
         FloatPsiCallParameter(
@@ -243,6 +213,7 @@ private class PreviewPropertiesProvider(
           parameterTypeNameIfStandard,
           argumentExpression,
           defaultValue,
+          initialValue,
         )
       PARAMETER_BACKGROUND_COLOR ->
         ColorPsiCallParameter(
@@ -253,6 +224,7 @@ private class PreviewPropertiesProvider(
           parameterTypeNameIfStandard,
           argumentExpression,
           defaultValue,
+          initialValue,
         )
       PARAMETER_WIDTH,
       PARAMETER_WIDTH_DP,
@@ -267,6 +239,7 @@ private class PreviewPropertiesProvider(
           argumentExpression,
           defaultValue,
           IntegerNormalValidator,
+          initialValue,
         )
       PARAMETER_API_LEVEL ->
         PsiCallParameterPropertyItem(
@@ -278,6 +251,7 @@ private class PreviewPropertiesProvider(
           argumentExpression,
           defaultValue,
           IntegerStrictValidator,
+          initialValue,
         )
       PARAMETER_DEVICE -> { // Note that DeviceParameterPropertyItem sets its own name to
         // PARAMETER_HARDWARE_DEVICE
@@ -289,6 +263,7 @@ private class PreviewPropertiesProvider(
             parameterTypeNameIfStandard,
             argumentExpression,
             defaultValue,
+            initialValue,
           )
           .also { properties.addAll(it.innerProperties) }
       }
@@ -302,6 +277,7 @@ private class PreviewPropertiesProvider(
           parameterTypeNameIfStandard,
           argumentExpression,
           defaultValue,
+          initialValue,
         )
       PARAMETER_SHOW_SYSTEM_UI,
       PARAMETER_SHOW_BACKGROUND ->
@@ -313,6 +289,7 @@ private class PreviewPropertiesProvider(
           parameterTypeNameIfStandard,
           argumentExpression,
           defaultValue,
+          initialValue,
         )
       else ->
         PsiCallParameterPropertyItem(
@@ -323,6 +300,7 @@ private class PreviewPropertiesProvider(
           parameterTypeNameIfStandard,
           argumentExpression,
           defaultValue,
+          initialValue = initialValue,
         )
     }.also { properties.add(it) }
   }
@@ -334,12 +312,12 @@ private class PreviewPropertiesProvider(
     properties: MutableCollection<PsiPropertyItem>,
   ) = allowAnalysisOnEdt {
     analyze(annotationEntry) {
-      val resolvedFunctionCall =
-        annotationEntry.resolveToCall()?.singleFunctionCallOrNull() ?: return
+      val resolvedFunctionCall = annotationEntry.resolveToCall()?.singleFunctionCallOrNull() ?: return
       val callableSymbol = resolvedFunctionCall.symbol
       callableSymbol.valueParameters.forEach { parameter ->
         val argument = getArgumentForParameter(resolvedFunctionCall, parameter)
         val defaultValue = defaultValues[parameter.name.asString()]
+        val initialValue = argument?.tryEvaluateConstantAsText(this)
         collectParameterPropertyItems(
           project,
           model,
@@ -349,6 +327,7 @@ private class PreviewPropertiesProvider(
           argument,
           defaultValue,
           annotationEntry,
+          initialValue,
         )
       }
     }

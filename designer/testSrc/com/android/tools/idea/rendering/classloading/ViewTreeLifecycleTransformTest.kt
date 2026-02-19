@@ -30,7 +30,6 @@ import org.junit.Test
 private const val LOADER_WORKSPACE_PATH = "tools/adt/idea/designer/testData/classloader"
 private const val CLASSES_TO_LOAD_JAR_NAME = "viewtreelifecycleowner.jar"
 
-@org.junit.Ignore("b/456507959")
 class ViewTreeLifecycleTransformTest {
 
   @Test
@@ -73,10 +72,7 @@ class ViewTreeLifecycleTransformTest {
 
   /** Calls the [methodName] method from the class passing null value for every argument */
   private fun Class<*>.callMethod(methodName: String, vararg arguments: Any?): Any? =
-    declaredMethods
-      .firstOrNull { it.name == methodName }
-      ?.apply { isAccessible = true }
-      ?.invoke(this, *arguments)
+    declaredMethods.firstOrNull { it.name == methodName }?.apply { isAccessible = true }?.invoke(this, *arguments)
 
   /**
    * Loads the jar containing all the class to be tested:
@@ -97,12 +93,7 @@ class ViewTreeLifecycleTransformTest {
       AsmTransformingLoader(
         toClassTransform({ ViewTreeLifecycleTransform(it) }),
         ClassLoaderLoader(
-          createUrlClassLoader(
-            listOf(
-              TestUtils.resolveWorkspacePath(LOADER_WORKSPACE_PATH)
-                .resolve(CLASSES_TO_LOAD_JAR_NAME)
-            )
-          )
+          createUrlClassLoader(listOf(TestUtils.resolveWorkspacePath(LOADER_WORKSPACE_PATH).resolve(CLASSES_TO_LOAD_JAR_NAME)))
         ),
         NopClassLocator,
       ),

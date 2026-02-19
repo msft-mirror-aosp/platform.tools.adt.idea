@@ -19,8 +19,6 @@ import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.projectsystem.DependencyScopeType
 import com.android.tools.idea.projectsystem.GradleToken
 import com.android.tools.idea.projectsystem.LibraryDependenciesTroubleInfoCollectorToken
-import com.android.tools.idea.projectsystem.gradle.isAndroidTestModule
-import com.android.tools.idea.projectsystem.gradle.isScreenshotTestModule
 import com.intellij.openapi.module.Module
 
 class LibraryDependenciesTroubleInfoCollectorGradleToken : LibraryDependenciesTroubleInfoCollectorToken<GradleModuleSystem>, GradleToken {
@@ -31,7 +29,8 @@ class LibraryDependenciesTroubleInfoCollectorGradleToken : LibraryDependenciesTr
     """ isAndroidTest=${module.isAndroidTestModule()} isUnitTest=${module.isUnitTestModule()}
   scopeType=${getScopeType(module)}"""
 
-  private fun getScopeType(module: Module) = when {
+  private fun getScopeType(module: Module) =
+    when {
       module.isAndroidTestModule() -> DependencyScopeType.ANDROID_TEST
       module.isUnitTestModule() -> DependencyScopeType.UNIT_TEST
       module.isTestFixturesModule() -> DependencyScopeType.TEST_FIXTURES

@@ -24,13 +24,13 @@ import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.TestComposePreviewView
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.compose.preview.waitForAllRefreshesToFinish
-import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.UiCheckInstance
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.model.w
 import com.android.tools.idea.uibuilder.model.y
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -45,6 +45,7 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JPanel
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
@@ -54,8 +55,8 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Returns a string with the form "file line:column" for the given [RangeMarker]. This is easier to
- * maintain in tests that using the absolute offset.
+ * Returns a string with the form "file line:column" for the given [RangeMarker]. This is easier to maintain in tests that using the
+ * absolute offset.
  */
 private fun OpenFileDescriptor.toFileLineAndColumn(): String {
   val line = rangeMarker.document.getLineNumber(this.offset)
@@ -84,7 +85,7 @@ class AccessibilityModelUpdaterTest {
     previewView = TestComposePreviewView(fixture.testRootDisposable, project)
     composePreviewRepresentation = createComposePreviewRepresentation(psiMainFile, previewView)
 
-    withContext(AndroidDispatchers.uiThread) {
+    withContext(Dispatchers.EDT) {
       fakeUi =
         FakeUi(
           JPanel().apply {
@@ -109,12 +110,8 @@ class AccessibilityModelUpdaterTest {
     return runReadAction { PsiManager.getInstance(project).findFile(vFile)!! }
   }
 
-  private fun createComposePreviewRepresentation(
-    psiFile: PsiFile,
-    view: TestComposePreviewView,
-  ): ComposePreviewRepresentation {
-    val previewRepresentation =
-      ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> view }
+  private fun createComposePreviewRepresentation(psiFile: PsiFile, view: TestComposePreviewView): ComposePreviewRepresentation {
+    val previewRepresentation = ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> view }
     Disposer.register(fixture.testRootDisposable, previewRepresentation)
 
     return previewRepresentation
@@ -122,19 +119,14 @@ class AccessibilityModelUpdaterTest {
 
   @Test
   fun testNlComponentTreeCreation() {
-    val twoElementsPreviewModel =
-      previewView.mainSurface.models.first {
-        it.displaySettings.modelDisplayName.value == "TwoElementsPreview"
-      }
+    val twoElementsPreviewModel = previewView.mainSurface.models.first { it.displaySettings.modelDisplayName.value == "TwoElementsPreview" }
 
     val uiCheckElement = twoElementsPreviewModel.dataProvider?.previewElement()!!
 
     runBlocking {
       waitForAllRefreshesToFinish(30.seconds)
       val onRefreshCompletable = previewView.getOnRefreshCompletable()
-      composePreviewRepresentation.setMode(
-        PreviewMode.UiCheck(UiCheckInstance(uiCheckElement, isWearPreview = false))
-      )
+      composePreviewRepresentation.setMode(PreviewMode.UiCheck(UiCheckInstance(uiCheckElement, isWearPreview = false)))
       onRefreshCompletable.join()
     }
 

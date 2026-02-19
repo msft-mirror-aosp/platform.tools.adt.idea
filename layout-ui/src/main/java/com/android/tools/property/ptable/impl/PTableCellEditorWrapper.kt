@@ -15,7 +15,8 @@
  */
 package com.android.tools.property.ptable.impl
 
-import com.android.tools.property.ptable.*
+import com.android.tools.property.ptable.DefaultPTableCellEditor
+import com.android.tools.property.ptable.PTableCellEditor
 import com.intellij.util.ui.AbstractTableCellEditor
 import java.awt.Component
 import javax.swing.JTable
@@ -23,20 +24,13 @@ import javax.swing.JTable
 /**
  * A TableCellEditor that delegates to a [PTableCellEditor].
  *
- * A thin wrapper around a [PTableCellEditor] that can be used in a [JTable]. By default a
- * [DefaultPTableCellEditor] is used, but it can be overridden with a different implementation by
- * setting the [editor] property.
+ * A thin wrapper around a [PTableCellEditor] that can be used in a [JTable]. By default a [DefaultPTableCellEditor] is used, but it can be
+ * overridden with a different implementation by setting the [editor] property.
  */
 class PTableCellEditorWrapper : AbstractTableCellEditor() {
   var editor: PTableCellEditor = DefaultPTableCellEditor()
 
-  override fun getTableCellEditorComponent(
-    table: JTable,
-    value: Any?,
-    isSelected: Boolean,
-    row: Int,
-    column: Int,
-  ): Component? {
+  override fun getTableCellEditorComponent(table: JTable, value: Any?, isSelected: Boolean, row: Int, column: Int): Component? {
     return editor.editorComponent
   }
 

@@ -28,26 +28,18 @@ object JdkConstants {
   val JDK_EMBEDDED by lazy { JavaSdk.getInstance().suggestSdkName(null, JDK_EMBEDDED_PATH) }
 
   val JDK_INVALID_PATH by lazy { JDK_EMBEDDED_PATH.plus("-invalid-path") }
-  val JDK_21_PATH by lazy {
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jbr-next")
-      .toString()
-  }
-  val JDK_17_PATH by lazy {
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk17").toString()
-  }
-  val JDK_11_PATH by lazy {
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk11").toString()
-  }
-  val JDK_1_8_PATH by lazy {
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk8").toString()
-  }
+  val JDK_21_PATH by lazy { EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jbr-next").toString() }
+  val JDK_17_PATH by lazy { EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk17").toString() }
+  val JDK_11_PATH by lazy { EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk11").toString() }
+  val JDK_1_8_PATH by lazy { EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk8").toString() }
   val JDK_EMBEDDED_PATH by lazy { IdeSdks.getInstance().embeddedJdkPath.absolutePathString() }
 
-  val JDK_EMBEDDED_VERSION by lazy {
-    JdkVersionDetector.getInstance()
-      .detectJdkVersionInfo(JDK_EMBEDDED_PATH)!!
-      .version
-      .feature
-      .toString()
-  }
+  val JDK_11_VERSION by lazy { JDK_11_PATH.jdkFeatureVersion }
+
+  val JDK_21_VERSION by lazy { JDK_21_PATH.jdkFeatureVersion }
+
+  val JDK_EMBEDDED_VERSION by lazy { JDK_EMBEDDED_PATH.jdkFeatureVersion }
+
+  private val String.jdkFeatureVersion: String
+    get() = JdkVersionDetector.getInstance().detectJdkVersionInfo(this)?.version?.feature?.toString() ?: "Unknown"
 }

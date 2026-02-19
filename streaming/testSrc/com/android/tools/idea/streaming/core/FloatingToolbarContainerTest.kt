@@ -66,8 +66,8 @@ class FloatingToolbarContainerTest {
 
   @Test
   fun testCollapsibleVertical() {
-    val toolbar = FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.5, collapsedStateSelector = { it.isSelected },
-                                           activateOnHover = true)
+    val toolbar =
+      FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.5, collapsedStateSelector = { it.isSelected }, activateOnHover = true)
     toolbar.createTestToolbars()
     panel.add(toolbar, BorderLayout.EAST)
     assertAppearance("CollapsibleVerticalInactive")
@@ -108,13 +108,31 @@ class FloatingToolbarContainerTest {
 
   @Test
   fun testEmptyToolbar() {
-    val toolbar = FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.8).apply {
-      addToolbar("FloatingToolbar", DefaultActionGroup())
-      addToolbar("FloatingToolbar", DefaultActionGroup())
-    }
+    val toolbar =
+      FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.8).apply {
+        addToolbar("FloatingToolbar", DefaultActionGroup())
+        addToolbar("FloatingToolbar", DefaultActionGroup())
+      }
     panel.add(toolbar, BorderLayout.EAST)
     fakeUi.updateToolbarsIfNecessary()
     // Empty toolbar should not be visible.
+    val image = fakeUi.render()
+    for (y in 0 until image.height) {
+      for (x in 0 until image.width) {
+        assertThat(image.getRGB(x, y)).isEqualTo(panel.background.rgb)
+      }
+    }
+  }
+
+  @Test
+  fun testToolbarWithOnlyCollapserButton() {
+    val toolbar =
+      FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.8, initiallyActive = true).apply {
+        addToolbar("FloatingToolbar", DefaultActionGroup(FloatingToolbarContainer.CollapserAction()))
+      }
+    panel.add(toolbar, BorderLayout.EAST)
+    fakeUi.updateToolbarsIfNecessary()
+    // A toolbar containing no other buttons other than collapser should not be visible.
     val image = fakeUi.render()
     for (y in 0 until image.height) {
       for (x in 0 until image.width) {
@@ -133,17 +151,16 @@ class FloatingToolbarContainerTest {
   }
 
   private fun FloatingToolbarContainer.createTestToolbars() {
-    val actionGroup1 = DefaultActionGroup().apply {
-      add(TestToggleAction("Left Top", AllIcons.Actions.MoveToLeftTop))
-      add(TestToggleAction("Right Top", AllIcons.Actions.MoveToRightTop))
-      add(TestToggleAction("Right Bottom", AllIcons.Actions.MoveToRightBottom))
-      add(TestToggleAction("Left Bottom", AllIcons.Actions.MoveToLeftBottom))
-    }
+    val actionGroup1 =
+      DefaultActionGroup().apply {
+        add(TestToggleAction("Left Top", AllIcons.Actions.MoveToLeftTop))
+        add(TestToggleAction("Right Top", AllIcons.Actions.MoveToRightTop))
+        add(TestToggleAction("Right Bottom", AllIcons.Actions.MoveToRightBottom))
+        add(TestToggleAction("Left Bottom", AllIcons.Actions.MoveToLeftBottom))
+      }
     addToolbar("FloatingToolbar", actionGroup1)
 
-    val actionGroup2 = DefaultActionGroup().apply {
-      add(TestAction("Fit Content", AllIcons.General.FitContent))
-    }
+    val actionGroup2 = DefaultActionGroup().apply { add(TestAction("Fit Content", AllIcons.General.FitContent)) }
     addToolbar("FloatingToolbar", actionGroup2)
   }
 
@@ -154,19 +171,16 @@ class FloatingToolbarContainerTest {
     ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), image, 0.0)
   }
 
-  private fun getGoldenFile(name: String): Path =
-      TestUtils.resolveWorkspacePathUnchecked("$GOLDEN_FILE_PATH/$name.png")
+  private fun getGoldenFile(name: String): Path = TestUtils.resolveWorkspacePathUnchecked("$GOLDEN_FILE_PATH/$name.png")
 
   private class TestAction(name: String, icon: Icon) : AnAction(name, name, icon) {
 
-    override fun actionPerformed(event: AnActionEvent) {
-    }
+    override fun actionPerformed(event: AnActionEvent) {}
   }
 
   private class TestToggleAction(name: String, icon: Icon) : ToggleAction(name, name, icon) {
 
-    override fun isSelected(event: AnActionEvent): Boolean =
-      toggleState == templateText
+    override fun isSelected(event: AnActionEvent): Boolean = toggleState == templateText
 
     override fun setSelected(event: AnActionEvent, state: Boolean) {
       if (state) {

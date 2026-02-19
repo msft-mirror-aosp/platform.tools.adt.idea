@@ -36,31 +36,20 @@ import java.nio.file.Path
 import org.junit.Rule
 import org.junit.Test
 
-class AndroidDeclarativeWatchFaceConfigurationExecutorTest :
-  AndroidConfigurationExecutorBaseTest() {
+class AndroidDeclarativeWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBaseTest() {
 
   @get:Rule val usageTrackerRule = UsageTrackerRule()
 
-  private val checkVersion =
-    "broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation version"
+  private val checkVersion = "broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation version"
   private val setWatchFace =
     "broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation set-watchface --es watchFaceId com.example.app"
-  private val showWatchFace =
-    "broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface"
+  private val showWatchFace = "broadcast -a com.google.android.wearable.app.DEBUG_SYSUI --es operation show-watchface"
 
   private fun getExecutionEnvironment(executorInstance: Executor): ExecutionEnvironment {
     val configSettings =
       RunManager.getInstance(project)
-        .createConfiguration(
-          "run WatchFace",
-          AndroidDeclarativeWatchFaceConfigurationType().configurationFactories.single(),
-        )
-    return ExecutionEnvironment(
-      executorInstance,
-      AndroidDeclarativeWatchFaceProgramRunner(),
-      configSettings,
-      project,
-    )
+        .createConfiguration("run WatchFace", AndroidDeclarativeWatchFaceConfigurationType().configurationFactories.single())
+    return ExecutionEnvironment(executorInstance, AndroidDeclarativeWatchFaceProgramRunner(), configSettings, project)
   }
 
   @Test
@@ -111,10 +100,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutorTest :
       .subscribe(
         ShowLogcatListener.TOPIC,
         object : ShowLogcatListener {
-          override fun showLogcat(
-            deviceInfo: ShowLogcatListener.DeviceInfo,
-            applicationId: String?,
-          ) {
+          override fun showLogcat(deviceInfo: ShowLogcatListener.DeviceInfo, applicationId: String?) {
             shownLogcatDeviceInfo = deviceInfo
             shownLogcatAppId = applicationId
           }
@@ -139,11 +125,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutorTest :
 
     // Verify that the app component type is set in the run event
     RunStats.from(env).success()
-    val runEvent =
-      usageTrackerRule.usages
-        .find { it.studioEvent.kind == AndroidStudioEvent.EventKind.RUN_EVENT }
-        ?.studioEvent
-        ?.runEvent
+    val runEvent = usageTrackerRule.usages.find { it.studioEvent.kind == AndroidStudioEvent.EventKind.RUN_EVENT }?.studioEvent?.runEvent
     assertThat(runEvent).isNotNull()
     assertThat(runEvent?.appComponentType).isEqualTo(RunEvent.AppComponent.DECLARATIVE_WATCH_FACE)
   }

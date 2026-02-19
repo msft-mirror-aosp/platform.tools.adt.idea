@@ -35,12 +35,12 @@ import com.android.tools.idea.testing.updateTestProjectFromAndroidModel
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
 import org.jetbrains.android.AndroidTestCase
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.rules.TestName
-import java.io.File
 
 /**
  * A test case that ensures the correct behavior of [AndroidProjectRule.withAndroidModels] way to set up test projects.
@@ -49,13 +49,11 @@ import java.io.File
  */
 @RunsInEdt
 class LightSyncBasedTestsWithGradleLikeStructureTest : SnapshotComparisonTest {
-  @get:Rule
-  var testName = TestName()
+  @get:Rule var testName = TestName()
 
   val projectRule = AndroidProjectRule.withAndroidModel(AndroidProjectBuilder()).named(this::class.simpleName)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
 
   override fun getName(): String = testName.methodName
 
@@ -63,7 +61,7 @@ class LightSyncBasedTestsWithGradleLikeStructureTest : SnapshotComparisonTest {
 
   @Test
   fun testLightTestsWithGradleLikeStructure() {
-    val dump = projectRule.project.saveAndDump()
+    val dump = projectRule.project.saveAndDump(ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 }
@@ -75,17 +73,12 @@ class LightSyncBasedTestsWithGradleLikeStructureTest : SnapshotComparisonTest {
  */
 @RunsInEdt
 class LightSyncBasedTestsWithCMakeLikeStructureTest : SnapshotComparisonTest {
-  @get:Rule
-  var testName = TestName()
+  @get:Rule var testName = TestName()
 
-  val projectRule = AndroidProjectRule.withAndroidModel(
-    AndroidProjectBuilder(
-      ndkModel = { buildNdkModelStub() }
-    )
-  ).named(this::class.simpleName)
+  val projectRule =
+    AndroidProjectRule.withAndroidModel(AndroidProjectBuilder(ndkModel = { buildNdkModelStub() })).named(this::class.simpleName)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
 
   override fun getName(): String = testName.methodName
 
@@ -93,21 +86,19 @@ class LightSyncBasedTestsWithCMakeLikeStructureTest : SnapshotComparisonTest {
 
   @Test
   fun testLightTestsWithCMakeLikeStructure() {
-    val dump = projectRule.project.saveAndDump()
+    val dump = projectRule.project.saveAndDump(ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 }
 
 @RunsInEdt
 class LightSyncBasedTestsWithDefaultTestProjectStructureTest : SnapshotComparisonTest {
-  @get:Rule
-  var testName = TestName()
+  @get:Rule var testName = TestName()
 
   val projectRule =
     AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure()).named(this::class.simpleName)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
 
   override fun getName(): String = testName.methodName
 
@@ -115,21 +106,19 @@ class LightSyncBasedTestsWithDefaultTestProjectStructureTest : SnapshotCompariso
 
   @Test
   fun testLightTestsWithDefaultTestProjectStructure() {
-    val dump = projectRule.project.saveAndDump()
+    val dump = projectRule.project.saveAndDump(ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 }
 
 @RunsInEdt
 class LightSyncBasedTestsWithMultipleModulesTestProjectStructureTest : SnapshotComparisonTest {
-  @get:Rule
-  var testName = TestName()
+  @get:Rule var testName = TestName()
 
   val projectRule =
     AndroidProjectRule.withAndroidModels(rootModuleBuilder, appModuleBuilder, libModuleBuilder).named(this::class.simpleName)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
 
   override fun getName(): String = testName.methodName
 
@@ -137,7 +126,7 @@ class LightSyncBasedTestsWithMultipleModulesTestProjectStructureTest : SnapshotC
 
   @Test
   fun testLightTestsWithMultipleModulesTestProjectStructure() {
-    val dump = projectRule.project.saveAndDump()
+    val dump = projectRule.project.saveAndDump(ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 }
@@ -150,31 +139,24 @@ class LightSyncForAndroidTestCaseTest : AndroidTestCase(), SnapshotComparisonTes
     setupTestProjectFromAndroidModel(
       project,
       File(myFixture.tempDirPath),
-      AndroidModuleModelBuilder(":", "debug", createAndroidProjectBuilderForDefaultTestProjectStructure())
+      AndroidModuleModelBuilder(":", "debug", createAndroidProjectBuilderForDefaultTestProjectStructure()),
     )
-    val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to File(myFixture.tempDirPath)))
+    val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to File(myFixture.tempDirPath)), ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 
   @Test
   fun testLightTestsWithMultipleModulesTestProjectStructureInAndroidTestCase() {
-    setupTestProjectFromAndroidModel(
-      project, File(myFixture.tempDirPath), rootModuleBuilder, appModuleBuilder, libModuleBuilder)
-    val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to File(myFixture.tempDirPath)))
+    setupTestProjectFromAndroidModel(project, File(myFixture.tempDirPath), rootModuleBuilder, appModuleBuilder, libModuleBuilder)
+    val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to File(myFixture.tempDirPath)), ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 
   @Test
   fun testLightTestsWithMultipleModulesTestProjectStructureInAndroidTestCase_resyncing() {
     val tempRoot = File(myFixture.tempDirPath)
-    setupTestProjectFromAndroidModel(
-      project,
-      tempRoot,
-      rootModuleBuilder,
-      appModuleBuilder,
-      libModuleBuilder
-    )
-    val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to tempRoot))
+    setupTestProjectFromAndroidModel(project, tempRoot, rootModuleBuilder, appModuleBuilder, libModuleBuilder)
+    val dump = project.saveAndDump(additionalRoots = mapOf("TEMP" to tempRoot), ignoreModuleFileAndType = true)
 
     // Do not request before setup as it replaces the project system implementation.
     val syncModificationTracker = ProjectSyncModificationTracker.getInstance(project)
@@ -184,29 +166,29 @@ class LightSyncForAndroidTestCaseTest : AndroidTestCase(), SnapshotComparisonTes
       tempRoot,
       rootModuleBuilder,
       appModuleBuilder,
-      libModuleBuilderWithLib(tempRoot.resolve(".gradle"))
+      libModuleBuilderWithLib(tempRoot.resolve(".gradle")),
     )
     assertThat(syncModificationTracker.modificationCount).isGreaterThan(syncStamp)
-    val dumpAfter = project.saveAndDump(additionalRoots = mapOf("TEMP" to tempRoot))
+    val dumpAfter = project.saveAndDump(additionalRoots = mapOf("TEMP" to tempRoot), ignoreModuleFileAndType = true)
 
     assertAreEqualToSnapshots(dump to ".before", dumpAfter to ".after")
   }
 }
 
-private val appModuleBuilder = AndroidModuleModelBuilder(
-  ":app",
-  "debug",
-  AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":lib", "debug")) })
-)
+private val appModuleBuilder =
+  AndroidModuleModelBuilder(
+    ":app",
+    "debug",
+    AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":lib", "debug")) }),
+  )
 
 private val libModuleBuilder = AndroidModuleModelBuilder(":lib", "debug", AndroidProjectBuilder())
+
 private fun libModuleBuilderWithLib(gradleCacheRoot: File) =
   AndroidModuleModelBuilder(
     ":lib",
     "debug",
-    AndroidProjectBuilder(
-      androidLibraryDependencyList = { listOf(ideAndroidLibrary(gradleCacheRoot, "com.example:library:1.0")) }
-    )
+    AndroidProjectBuilder(androidLibraryDependencyList = { listOf(ideAndroidLibrary(gradleCacheRoot, "com.example:library:1.0")) }),
   )
 
 private fun ideAndroidLibrary(gradleCacheRoot: File, artifactAddress: String) =
@@ -233,6 +215,6 @@ private fun ideAndroidLibrary(gradleCacheRoot: File, artifactAddress: String) =
       publicResources = "publicResources",
       artifact = gradleCacheRoot.resolve(File("artifactFile")),
       symbolFile = "symbolFile",
-      deduplicate = { this }
+      deduplicate = { this },
     )
   )

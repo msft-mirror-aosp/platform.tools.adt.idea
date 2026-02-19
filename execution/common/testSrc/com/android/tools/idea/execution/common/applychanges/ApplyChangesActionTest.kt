@@ -50,12 +50,11 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+class ApplyChangesActionTest {
+  @get:Rule val projectRule = AndroidProjectRule.testProject(AndroidCoreTestProject.SIMPLE_APPLICATION).onEdt()
 
-class ApplyChangesActionTest  {
-  @get:Rule
-  val projectRule = AndroidProjectRule.testProject(AndroidCoreTestProject.SIMPLE_APPLICATION).onEdt()
-
-  val project get() = projectRule.project
+  val project
+    get() = projectRule.project
 
   private val device = createMockDevice()
 
@@ -63,15 +62,14 @@ class ApplyChangesActionTest  {
 
   @Before
   fun setup() {
-    val service = mock<DeploymentApplicationService>().also {
-      whenever(it.findClient(device, APPLICATION_ID)).thenReturn(listOf(mock<Client>()))
-    }
+    val service =
+      mock<DeploymentApplicationService>().also { whenever(it.findClient(device, APPLICATION_ID)).thenReturn(listOf(mock<Client>())) }
     ApplicationManager.getApplication().replaceService(DeploymentApplicationService::class.java, service, projectRule.testRootDisposable)
     setExecutionTargetForConfiguration(
       project,
       device,
       RunManager.getInstance(project).selectedConfiguration!!.configuration,
-      projectRule.testRootDisposable
+      projectRule.testRootDisposable,
     )
   }
 
@@ -89,12 +87,18 @@ class ApplyChangesActionTest  {
     val executionEnvironment = createFakeExecutionEnvironment(project, "fake env")
 
     // Start debug session
-    XDebuggerManager.getInstance(project).startSession(executionEnvironment, object : XDebugProcessStarter() {
-      override fun start(session: XDebugSession) = object : XDebugProcess(session) {
-        override fun getEditorsProvider() = mock<XDebuggerEditorsProvider>()
-        override fun doGetProcessHandler() = debugProcessHandler
-      }
-    })
+    XDebuggerManager.getInstance(project)
+      .startSession(
+        executionEnvironment,
+        object : XDebugProcessStarter() {
+          override fun start(session: XDebugSession) =
+            object : XDebugProcess(session) {
+              override fun getEditorsProvider() = mock<XDebuggerEditorsProvider>()
+
+              override fun doGetProcessHandler() = debugProcessHandler
+            }
+        },
+      )
 
     // Update
     val action = ApplyChangesAction()
@@ -103,7 +107,8 @@ class ApplyChangesActionTest  {
 
     // Assert
     assertThat(event.presentation.isEnabled).isFalse()
-    assertThat(event.presentation.description).isEqualTo("Apply Changes and Restart Activity is disabled for this device because it is currently not allowed during debugging.")
+    assertThat(event.presentation.description)
+      .isEqualTo("Apply Changes and Restart Activity is disabled for this device because it is currently not allowed during debugging.")
   }
 
   @Ignore("b/311215061")
@@ -130,7 +135,6 @@ class ApplyChangesActionTest  {
     // Assert
     assertThat(applyChangesExecuted).isTrue()
   }
-
 
   private fun createMockDevice(): IDevice {
     val mockDevice = mock<IDevice>()

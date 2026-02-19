@@ -34,9 +34,7 @@ import org.junit.rules.RuleChain
 class TwoLineLabelTest {
   private val themeManagerRule = ThemeManagerRule()
 
-  @get:Rule
-  val ruleChain =
-    RuleChain.outerRule(ApplicationRule()).around(themeManagerRule).around(EdtRule())!!
+  @get:Rule val ruleChain = RuleChain.outerRule(ApplicationRule()).around(themeManagerRule).around(EdtRule())!!
 
   @Test
   fun changeTheme() {
@@ -66,9 +64,8 @@ class TwoLineLabelTest {
 }
 
 /**
- * Rule for testing changes between light and dark themes. Actually changing the themes the way the
- * IDE does it is highly problematic in headless unit tests; this changes the relevant bits needed
- * for this class.
+ * Rule for testing changes between light and dark themes. Actually changing the themes the way the IDE does it is highly problematic in
+ * headless unit tests; this changes the relevant bits needed for this class.
  */
 class ThemeManagerRule : ExternalResource() {
 

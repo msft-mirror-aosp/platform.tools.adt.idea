@@ -20,12 +20,8 @@ import com.android.tools.idea.insights.FAKE_50_DAYS_AGO
 import com.android.tools.idea.insights.FakeTimeProvider
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.ai.AiInsight
-import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
-import com.android.tools.idea.insights.client.FakeAiInsightClient
-import com.android.tools.idea.insights.client.GeminiCrashInsightRequest
 import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.client.Permission
@@ -47,12 +43,7 @@ import com.android.tools.idea.insights.model.issue.FailureType
 import com.android.tools.idea.insights.model.issue.IssueDetails
 import com.android.tools.idea.insights.model.issue.IssueId
 import com.android.tools.idea.insights.model.issue.SignalType
-import com.android.tools.idea.insights.model.stacktrace.Caption
-import com.android.tools.idea.insights.model.stacktrace.ExceptionStack
-import com.android.tools.idea.insights.model.stacktrace.Frame
 import com.android.tools.idea.insights.model.stacktrace.StackTraceGroupParser
-import com.android.tools.idea.insights.model.stacktrace.Stacktrace
-import com.android.tools.idea.insights.model.stacktrace.StacktraceGroup
 import com.android.tools.idea.insights.zeroCounts
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_ISSUE1
@@ -71,10 +62,6 @@ import com.android.tools.idea.vitals.datamodel.DimensionsAndMetrics
 import com.android.tools.idea.vitals.datamodel.Freshness
 import com.android.tools.idea.vitals.datamodel.MetricType
 import com.android.tools.idea.vitals.datamodel.TimeGranularity
-import com.google.api.client.googleapis.json.GoogleJsonError
-import com.google.api.client.googleapis.json.GoogleJsonResponseException
-import com.google.api.client.http.HttpHeaders
-import com.google.api.client.http.HttpResponseException
 import com.google.common.truth.Truth.assertThat
 import com.google.type.DateTime
 import com.studiogrpc.testutils.ForwardingInterceptor
@@ -93,12 +80,7 @@ class VitalsClientTest {
 
   @get:Rule
   val grpcConnectionRule =
-    GrpcConnectionRule(
-      listOf(
-        FakeErrorsService(TEST_CONNECTION_1, database, FakeClock()),
-        FakeReportingService(TEST_CONNECTION_1),
-      )
-    )
+    GrpcConnectionRule(listOf(FakeErrorsService(TEST_CONNECTION_1, database, FakeClock()), FakeReportingService(TEST_CONNECTION_1)))
 
   init {
     database.addIssue(TEST_ISSUE1)
@@ -107,22 +89,11 @@ class VitalsClientTest {
 
   @Test
   fun checkAggregationUtils() {
-    val list =
-      listOf(
-        Pair("a", 1L),
-        Pair("b", 0L),
-        Pair("c", 2L),
-        Pair("a", 1L),
-        Pair("b", 0L),
-        Pair("c", 100L),
-        Pair("d", 0L),
-      )
+    val list = listOf(Pair("a", 1L), Pair("b", 0L), Pair("c", 2L), Pair("a", 1L), Pair("b", 0L), Pair("c", 100L), Pair("d", 0L))
 
     val aggregated = list.aggregateToWithCount()
     assertThat(aggregated)
-      .containsExactlyElementsIn(
-        listOf(WithCount(2L, "a"), WithCount(0L, "b"), WithCount(102L, "c"), WithCount(0L, "d"))
-      )
+      .containsExactlyElementsIn(listOf(WithCount(2L, "a"), WithCount(0L, "b"), WithCount(102L, "c"), WithCount(0L, "d")))
   }
 
   @Test
@@ -147,15 +118,7 @@ class VitalsClientTest {
         )
       )
       .isEqualTo(
-        LoadingState.Ready(
-          IssueResponse(
-            listOf(TEST_ISSUE1.zeroCounts()),
-            emptyList(),
-            emptyList(),
-            emptyList(),
-            Permission.FULL,
-          )
-        )
+        LoadingState.Ready(IssueResponse(listOf(TEST_ISSUE1.zeroCounts()), emptyList(), emptyList(), emptyList(), Permission.FULL))
       )
   }
 
@@ -196,10 +159,7 @@ class VitalsClientTest {
       (client.listTopOpenIssues(
           IssueRequest(
             TEST_CONNECTION_1,
-            QueryFilters(
-              interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now),
-              eventTypes = listOf(FailureType.FATAL),
-            ),
+            QueryFilters(interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now), eventTypes = listOf(FailureType.FATAL)),
           ),
           null,
           ConnectionMode.ONLINE,
@@ -214,10 +174,7 @@ class VitalsClientTest {
       (client.listTopOpenIssues(
           IssueRequest(
             TEST_CONNECTION_1,
-            QueryFilters(
-              interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now),
-              eventTypes = listOf(FailureType.FATAL),
-            ),
+            QueryFilters(interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now), eventTypes = listOf(FailureType.FATAL)),
           ),
           null,
           ConnectionMode.OFFLINE,
@@ -228,10 +185,7 @@ class VitalsClientTest {
 
     assertThat(offlineResponse)
       .isEqualTo(
-        ISSUE1.copy(
-          issueDetails = ISSUE1.issueDetails.copy(impactedDevicesCount = 0L, eventsCount = 0L),
-          source = VitalsInsightsProvider,
-        )
+        ISSUE1.copy(issueDetails = ISSUE1.issueDetails.copy(impactedDevicesCount = 0L, eventsCount = 0L), source = VitalsInsightsProvider)
       )
   }
 
@@ -255,10 +209,7 @@ class VitalsClientTest {
       (client.listTopOpenIssues(
           IssueRequest(
             TEST_CONNECTION_1,
-            QueryFilters(
-              interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now),
-              eventTypes = listOf(FailureType.FATAL),
-            ),
+            QueryFilters(interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now), eventTypes = listOf(FailureType.FATAL)),
           ),
           null,
           ConnectionMode.ONLINE,
@@ -267,8 +218,7 @@ class VitalsClientTest {
         .issues
         .single()
 
-    assertThat(responseIssue)
-      .isEqualTo(ISSUE1.copy(sampleEvent = Event.EMPTY, source = VitalsInsightsProvider))
+    assertThat(responseIssue).isEqualTo(ISSUE1.copy(sampleEvent = Event.EMPTY, source = VitalsInsightsProvider))
   }
 
   @Test
@@ -300,10 +250,7 @@ class VitalsClientTest {
       client.listTopOpenIssues(
         IssueRequest(
           TEST_CONNECTION_1,
-          QueryFilters(
-            interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now),
-            eventTypes = listOf(FailureType.FATAL),
-          ),
+          QueryFilters(interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now), eventTypes = listOf(FailureType.FATAL)),
         ),
         null,
         ConnectionMode.ONLINE,
@@ -348,10 +295,7 @@ class VitalsClientTest {
       client.listTopOpenIssues(
         IssueRequest(
           TEST_CONNECTION_1,
-          QueryFilters(
-            interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now),
-            eventTypes = listOf(FailureType.FATAL),
-          ),
+          QueryFilters(interval = Interval(FAKE_50_DAYS_AGO, FakeTimeProvider.now), eventTypes = listOf(FailureType.FATAL)),
         ),
         null,
         ConnectionMode.ONLINE,
@@ -371,8 +315,7 @@ class VitalsClientTest {
       assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
       val value = (result as LoadingState.Ready).value
 
-      assertThat(value.issues.map { it.issueDetails })
-        .containsExactly(TEST_ISSUE1.issueDetails, TEST_ISSUE2.issueDetails)
+      assertThat(value.issues.map { it.issueDetails }).containsExactly(TEST_ISSUE1.issueDetails, TEST_ISSUE2.issueDetails)
 
       assertThat(value.devices)
         .containsExactly(
@@ -381,16 +324,10 @@ class VitalsClientTest {
         )
 
       assertThat(value.operatingSystems)
-        .containsExactly(
-          WithCount(3, OperatingSystemInfo("33", "Android 13")),
-          WithCount(2, OperatingSystemInfo("28", "Android 9")),
-        )
+        .containsExactly(WithCount(3, OperatingSystemInfo("33", "Android 13")), WithCount(2, OperatingSystemInfo("28", "Android 9")))
 
       assertThat(value.versions)
-        .containsExactly(
-          WithCount(10, Version("6", "6", "6")),
-          WithCount(5, Version("5", "5", "5", setOf(PlayTrack.OPEN_TESTING))),
-        )
+        .containsExactly(WithCount(10, Version("6", "6", "6")), WithCount(5, Version("5", "5", "5", setOf(PlayTrack.OPEN_TESTING))))
     }
 
   @Test
@@ -407,16 +344,11 @@ class VitalsClientTest {
       assertThat(deviceStats.groups).hasSize(1)
       assertThat(deviceStats.groups.single().groupName).isEqualTo("samsung")
       assertThat(deviceStats.groups.single().percentage).isEqualTo(100.0)
-      assertThat(deviceStats.groups.single().breakdown)
-        .containsExactly(DataPoint("a32", 60.0), DataPoint("greatlte", 40.0))
+      assertThat(deviceStats.groups.single().breakdown).containsExactly(DataPoint("a32", 60.0), DataPoint("greatlte", 40.0))
 
       val osStats = value.osStats
       assertThat(osStats.topValue).isEqualTo("Android 13")
-      assertThat(osStats.groups)
-        .containsExactly(
-          StatsGroup("Android 13", 60.0, emptyList()),
-          StatsGroup("Android 9", 40.0, emptyList()),
-        )
+      assertThat(osStats.groups).containsExactly(StatsGroup("Android 13", 60.0, emptyList()), StatsGroup("Android 9", 40.0, emptyList()))
     }
 
   @Test
@@ -476,140 +408,23 @@ class VitalsClientTest {
 
     // Verify list connections returns expected result
     val result = client.listConnections()
-    assertThat((result as LoadingState.Ready).value)
-      .containsExactly(AppConnection(TEST_CONNECTION_1.appId, TEST_CONNECTION_1.displayName))
+    assertThat((result as LoadingState.Ready).value).containsExactly(AppConnection(TEST_CONNECTION_1.appId, TEST_CONNECTION_1.displayName))
 
     // Verify list top open issues returns expected result
     assertThat(client.listTopOpenIssues(issueRequest, null, ConnectionMode.ONLINE))
       .isEqualTo(
         LoadingState.Ready(
-          IssueResponse(
-            listOf(ISSUE1.copy(source = VitalsInsightsProvider)),
-            emptyList(),
-            emptyList(),
-            emptyList(),
-            Permission.READ_ONLY,
-          )
+          IssueResponse(listOf(ISSUE1.copy(source = VitalsInsightsProvider)), emptyList(), emptyList(), emptyList(), Permission.READ_ONLY)
         )
       )
 
     // Verify the cache contains both connections and issues computed in the previous steps
     assertThat(cache.getRecentConnections()).containsExactly(TEST_CONNECTION_1)
-    assertThat(cache.getTopIssues(issueRequest))
-      .containsExactly(ISSUE1.zeroCounts().copy(source = VitalsInsightsProvider))
-  }
-
-  @Test
-  fun `fetch insight populates proto fields correctly`() = runBlocking {
-    val client = createClient()
-
-    val insight =
-      client.fetchInsight(
-        TEST_CONNECTION_1,
-        ISSUE1.id,
-        null,
-        ISSUE1.issueDetails.fatality,
-        ISSUE1.sampleEvent,
-      )
-
-    val rawInsight = (insight as LoadingState.Ready).value.rawInsight
-    val expectedRequest =
-      GeminiCrashInsightRequest(
-        connection = TEST_CONNECTION_1,
-        issueId = ISSUE1.id,
-        variantId = null,
-        deviceName = "Google Pixel 4a",
-        apiLevel = "12",
-        event = ISSUE1.sampleEvent,
-      )
-    assertThat(rawInsight).isEqualTo(expectedRequest.toString())
-  }
-
-  @Test
-  fun `test fetch insight on ANR returns unsupported operation`() = runBlocking {
-    val client = createClient()
-
-    val insight =
-      client.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, FailureType.ANR, ISSUE1.sampleEvent)
-
-    assertThat(insight)
-      .isEqualTo(LoadingState.UnsupportedOperation("Insights are currently not available for ANRs"))
-  }
-
-  @Test
-  fun `test fetch insight on native crash returns unsupported operation`() = runBlocking {
-    val client = createClient()
-
-    val stackTraceGroup =
-      StacktraceGroup(
-        listOf(
-          ExceptionStack(
-            Stacktrace(Caption("*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***")),
-            "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***",
-            "",
-            "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***",
-          ),
-          ExceptionStack(
-            Stacktrace(Caption("pid", "0, tid: 2526 >>> com.android.vending <<<")),
-            "pid",
-            "0, tid: 2526 >>> com.android.vending <<<",
-            "pid: 0, tid: 2526 >>> com.android.vending <<<",
-          ),
-          ExceptionStack(
-            Stacktrace(
-              Caption("backtrace", ")"),
-              frames =
-                listOf(
-                  Frame(
-                    rawSymbol = "#00  pc 0x00000000001f4cdc",
-                    symbol = "#00  pc 0x00000000001f4cdc",
-                  )
-                ),
-            ),
-            type = "backtrace",
-            rawExceptionMessage = "backtrace:",
-          ),
-        )
-      )
-
-    val insight =
-      client.fetchInsight(
-        TEST_CONNECTION_1,
-        ISSUE1.id,
-        null,
-        FailureType.FATAL,
-        Event(stacktraceGroup = stackTraceGroup),
-      )
-
-    assertThat(insight)
-      .isEqualTo(
-        LoadingState.UnsupportedOperation("Insights are currently not available for native crashes")
-      )
-  }
-
-  @Test
-  fun `test fetch insight throws 403 forbidden error`() = runBlocking {
-    val fakeAiInsightClient =
-      object : AiInsightClient {
-        override suspend fun fetchCrashInsight(request: GeminiCrashInsightRequest): AiInsight {
-          throw GoogleJsonResponseException(
-            HttpResponseException.Builder(403, "Forbidden", HttpHeaders()),
-            GoogleJsonError(),
-          )
-        }
-      }
-    val client = createClient(aiInsightClient = fakeAiInsightClient)
-
-    val insight =
-      client.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, FailureType.FATAL, ISSUE1.sampleEvent)
-
-    assertThat(insight).isInstanceOf(LoadingState.PermissionDenied::class.java)
+    assertThat(cache.getTopIssues(issueRequest)).containsExactly(ISSUE1.zeroCounts().copy(source = VitalsInsightsProvider))
   }
 
   private fun createClient(
     cache: AppInsightsCache = AppInsightsCacheImpl(VitalsInsightsProvider),
-    grpcClient: VitalsGrpcClient =
-      VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
-    aiInsightClient: AiInsightClient = FakeAiInsightClient,
-  ) = createVitalsClient(cache, grpcClient, aiInsightClient) { grpcConnectionRule.channel }
+    grpcClient: VitalsGrpcClient = VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
+  ) = createVitalsClient(cache, grpcClient) { grpcConnectionRule.channel }
 }

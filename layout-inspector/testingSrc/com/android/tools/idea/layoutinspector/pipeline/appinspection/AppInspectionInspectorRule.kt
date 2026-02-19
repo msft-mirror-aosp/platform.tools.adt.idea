@@ -50,10 +50,7 @@ import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
 /** App inspection-pipeline specific setup and teardown for tests. */
-class AppInspectionInspectorRule(
-  private val projectRule: AndroidProjectRule,
-  withDefaultResponse: Boolean = true,
-) : TestRule {
+class AppInspectionInspectorRule(private val projectRule: AndroidProjectRule, withDefaultResponse: Boolean = true) : TestRule {
   private val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
 
@@ -62,8 +59,7 @@ class AppInspectionInspectorRule(
   // This flag allows us to avoid a path in Compose inspector client construction so we don't need
   // to mock a bunch of services
   private val devModeFlagRule = FlagRule(StudioFlags.APP_INSPECTION_USE_DEV_JAR, true)
-  private val grpcServer =
-    FakeGrpcServer.createFakeGrpcServer("AppInspectionInspectorRuleServer", transportService)
+  private val grpcServer = FakeGrpcServer.createFakeGrpcServer("AppInspectionInspectorRuleServer", transportService)
   val inspectionService = AppInspectionServiceRule(timer, transportService, grpcServer)
 
   val viewInspector =
@@ -89,14 +85,11 @@ class AppInspectionInspectorRule(
     val viewInspectorHandler =
       TestAppInspectorCommandHandler(
         timer,
-        createInspectorResponse = { createCommand ->
-          createCommand.createResponse(viewInspector.createResponseStatus)
-        },
+        createInspectorResponse = { createCommand -> createCommand.createResponse(viewInspector.createResponseStatus) },
         rawInspectorResponse = { rawCommand ->
           val viewCommand = LayoutInspectorViewProtocol.Command.parseFrom(rawCommand.content)
           val viewResponse = viewInspector.handleCommand(viewCommand)
-          val rawResponse =
-            AppInspection.RawResponse.newBuilder().setContent(viewResponse.toByteString())
+          val rawResponse = AppInspection.RawResponse.newBuilder().setContent(viewResponse.toByteString())
           AppInspection.AppInspectionResponse.newBuilder().setRawResponse(rawResponse)
         },
       )
@@ -104,14 +97,11 @@ class AppInspectionInspectorRule(
     val composeInspectorHandler =
       TestAppInspectorCommandHandler(
         timer,
-        createInspectorResponse = { createCommand ->
-          createCommand.createResponse(composeInspector.createResponseStatus)
-        },
+        createInspectorResponse = { createCommand -> createCommand.createResponse(composeInspector.createResponseStatus) },
         rawInspectorResponse = { rawCommand ->
           val composeCommand = LayoutInspectorComposeProtocol.Command.parseFrom(rawCommand.content)
           val composeResponse = composeInspector.handleCommand(composeCommand)
-          val rawResponse =
-            AppInspection.RawResponse.newBuilder().setContent(composeResponse.toByteString())
+          val rawResponse = AppInspection.RawResponse.newBuilder().setContent(composeResponse.toByteString())
           AppInspection.AppInspectionResponse.newBuilder().setRawResponse(rawResponse)
         },
       )
@@ -136,17 +126,11 @@ class AppInspectionInspectorRule(
     getDisposable: () -> Disposable = { defaultDisposable() },
     apiServicesProvider: () -> AppInspectionApiServices = { inspectionService.apiServices },
   ): InspectorClientProvider {
-    return appInspectionClientProvider(
-      apiServicesProvider,
-      getMonitor,
-      getClientSettings,
-      getDisposable,
-    )
+    return appInspectionClientProvider(apiServicesProvider, getMonitor, getClientSettings, getDisposable)
   }
 
   fun defaultMonitor(client: AbstractInspectorClient): InspectorClientLaunchMonitor {
     return InspectorClientLaunchMonitor(
-      projectRule.project,
       client.notificationModel,
       ListenerCollection.createWithDirectExecutor(),
       client.stats,
@@ -165,9 +149,7 @@ class AppInspectionInspectorRule(
   override fun apply(base: Statement, description: Description): Statement {
     // Rules will be applied in reverse order. This class will evaluate last.
     val innerRules = listOf(inspectionService, grpcServer, devModeFlagRule)
-    return innerRules.fold(base) { stmt: Statement, rule: TestRule ->
-      rule.apply(stmt, description)
-    }
+    return innerRules.fold(base) { stmt: Statement, rule: TestRule -> rule.apply(stmt, description) }
   }
 
   /**

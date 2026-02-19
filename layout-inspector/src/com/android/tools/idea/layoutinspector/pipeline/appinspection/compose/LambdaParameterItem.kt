@@ -37,6 +37,7 @@ import com.intellij.util.ui.JBInsets
 import com.intellij.util.ui.UIUtil
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.launch
+import org.jetbrains.kotlin.idea.gradleTooling.get
 
 /**
  * A [LinkPropertyItem] for a lambda parameter from Compose.
@@ -44,8 +45,7 @@ import kotlinx.coroutines.launch
  * @param name the parameter name
  * @param section the section the parameter will show up in the parameters/attributes table
  * @param viewId the compose node this parameter belongs to
- * @param packageName the package name of the enclosing class as found in the synthetic name of the
- *   lambda
+ * @param packageName the package name of the enclosing class as found in the synthetic name of the lambda
  * @param fileName the name of the enclosing file
  * @param lambdaName the second part of the synthetic lambda name examples: "1", "f1$1"
  * @param startLineNumber the first line number of the lambda as reported by JVMTI (1 based)
@@ -64,11 +64,9 @@ class LambdaParameterItem(
   val startLineNumber: Int,
   val endLineNumber: Int,
   lookup: ViewNodeAndResourceLookup,
-) :
-  ParameterItem(name, PropertyType.LAMBDA, value = "λ", section, viewId, lookup, rootId, index),
-  LinkPropertyItem {
+) : ParameterItem(name, PropertyType.LAMBDA, value = "λ", section, viewId, lookup, rootId, index), LinkPropertyItem {
   override val link =
-    object : AnAction("$fileName:$startLineNumber") {
+    object : AnAction("$fileName:${if (startLineNumber > 0) startLineNumber.toString() else "<unknown>"}") {
       override fun actionPerformed(event: AnActionEvent) {
         lookup.scope.launch {
           val popupLocation = JBPopupFactory.getInstance().guessBestPopupLocation(event.dataContext)
@@ -79,15 +77,7 @@ class LambdaParameterItem(
 
   @Slow
   private suspend fun gotoLambdaLocation(event: AnActionEvent, popupLocation: RelativePoint) {
-    val location =
-      lookup.resourceLookup.findLambdaLocation(
-        packageName,
-        fileName,
-        lambdaName,
-        functionName,
-        startLineNumber,
-        endLineNumber,
-      )
+    val location = lookup.resourceLookup.findLambdaLocation(packageName, fileName, lambdaName, functionName, startLineNumber, endLineNumber)
 
     location.navigatable?.let {
       if (readAction { it.canNavigate() }) {
@@ -95,10 +85,7 @@ class LambdaParameterItem(
           // Execute this via invokeLater to avoid painting errors by JBTable (hover line) when
           // focus is removed
           it.navigate(true)
-          LayoutInspectorRootPanel.get(event)
-            ?.currentClient
-            ?.stats
-            ?.gotoSourceFromPropertyValue(lookup.selection)
+          LayoutInspectorRootPanel.get(event)?.currentClient?.stats?.gotoSourceFromPropertyValue(lookup.selection)
           if (location.source.endsWith(":unknown")) {
             showBalloonError("Could not determine exact source location", popupLocation)
           }
@@ -106,15 +93,19 @@ class LambdaParameterItem(
         return
       }
     }
-    invokeLater { showBalloonError("Could not determine source location", popupLocation) }
+    var content = "Could not determine source location"
+    val reason = lookup.resourceLookup.findCauseOfMissingSourceLocation()
+    if (reason != null) {
+      content = "$content\n${reason.getMessage()}"
+    }
+    invokeLater { showBalloonError(content, popupLocation) }
   }
 
   @Suppress("SameParameterValue")
   @UiThread
   private fun showBalloonError(content: String, popupLocation: RelativePoint) {
     val globalScheme = EditorColorsManager.getInstance().globalScheme
-    val background =
-      globalScheme.getColor(EditorColors.NOTIFICATION_BACKGROUND) ?: UIUtil.getToolTipBackground()
+    val background = globalScheme.getColor(EditorColors.NOTIFICATION_BACKGROUND) ?: UIUtil.getToolTipBackground()
     val balloon =
       JBPopupFactory.getInstance()
         .createHtmlTextBalloonBuilder(content, AllIcons.General.BalloonWarning, background, null)

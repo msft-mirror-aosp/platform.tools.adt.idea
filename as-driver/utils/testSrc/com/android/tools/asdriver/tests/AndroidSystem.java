@@ -17,6 +17,7 @@ package com.android.tools.asdriver.tests;
 
 import com.android.testutils.TestUtils;
 import com.android.tools.asdriver.tests.AndroidStudioInstallation.AndroidStudioFlavor;
+import com.android.tools.asdriver.tests.base.IdeInstallation;
 import com.android.tools.perflogger.Benchmark;
 import com.android.tools.testlib.Adb;
 import com.android.tools.testlib.AndroidSdk;
@@ -30,7 +31,7 @@ import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.AccessDeniedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -57,6 +58,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
   // Currently running emulators
   private final List<Emulator> emulators;
   private int nextPort = 8554;
+  private boolean useTmpDir = false;
 
   @Nullable
   private static Throwable initializedAt = null;
@@ -123,6 +125,26 @@ public class AndroidSystem implements AutoCloseable, TestRule {
 
   public static AndroidSystem standard() {
     return standard(AndroidStudioFlavor.FOR_EXTERNAL_USERS);
+  }
+
+  /**
+   * Creates a standard system and sets up a tmp dir outside bazel sandbox.
+   * It moves the sdk to the tmp dir and tells the ide to use that sdk.
+   */
+  public static AndroidSystem standardWithTmpDir() {
+    try {
+      AndroidSystem system = standard();
+      Path sdkDir = IdeInstallation.getTmpDir().resolve("sdk");
+      AndroidSdk sdk = new AndroidSdk(sdkDir);
+      sdk.install(system.env);
+      system.getInstallation().setupTmpDir();
+      system.getInstallation().setGlobalSdk(sdk);
+      system.useTmpDir = true;
+      return system;
+    }
+    catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   /**
@@ -205,7 +227,12 @@ public class AndroidSystem implements AutoCloseable, TestRule {
 
   public AndroidStudio runStudio(AndroidProject project) throws IOException, InterruptedException {
     AndroidStudioInstallation install = getInstallation();
-    return install.run(display, env, project, sdk.getSourceDir());
+    if (useTmpDir) {
+      return install.runIdeFromTmpDir(display, env, project);
+    }
+    else {
+      return install.run(display, env, project, sdk.getSourceDir());
+    }
   }
 
   public void runStudio(@NotNull final AndroidProject project,
@@ -249,7 +276,8 @@ public class AndroidSystem implements AutoCloseable, TestRule {
 
   public void installRepo(MavenRepo repo) throws Exception {
     AndroidStudioInstallation install = getInstallation();
-    repo.install(fileSystem.getRoot(), install, env);
+    Path repoDir = useTmpDir ? IdeInstallation.getTmpDir() : fileSystem.getRoot();
+    repo.install(repoDir, install, env);
   }
 
   /** Runs and returns an emulator using the default {@link Emulator.SystemImage}. */
@@ -336,7 +364,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
       try {
         PathUtils.deleteRecursivelyIfExists(fileSystem.getRoot());
       }
-      catch (AccessDeniedException e) {
+      catch (FileSystemException e) {
         // TODO(b/240166122): on Windows, there seems to be a race condition preventing deletions, so
         // we try again after waiting for a bit.
         if (SystemInfo.isWindows) {

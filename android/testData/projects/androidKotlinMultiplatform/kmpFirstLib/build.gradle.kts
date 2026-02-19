@@ -18,6 +18,14 @@ kotlin {
       instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    compilations.configureEach {
+      compileTaskProvider.configure {
+        compilerOptions {
+          jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
+      }
+    }
+
     namespace = "com.example.kmpfirstlib"
     compileSdk = 33
     minSdk = 22
@@ -33,6 +41,7 @@ kotlin {
     }
 
     aarMetadata.minAgpVersion = "7.2.0"
+    androidResources.enable = true
   }
 
   sourceSets.getByName("androidMain") {

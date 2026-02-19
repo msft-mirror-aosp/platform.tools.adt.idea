@@ -74,5 +74,6 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.spellchecker" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.properties.backend.psi" level="project" />
     <orderEntry type="library" scope="TEST" name="equalsverifier" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-tanvd.grazi" level="project" />
   </component>
 </module>

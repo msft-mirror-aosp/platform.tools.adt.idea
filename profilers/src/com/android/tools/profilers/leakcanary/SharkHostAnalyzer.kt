@@ -25,43 +25,54 @@ import shark.HeapAnalysisFailure
 import shark.HeapAnalyzer
 import shark.HprofHeapGraph.Companion.openHeapGraph
 import shark.KeyedWeakReferenceFinder
-
+import shark.OnAnalysisProgressListener
 
 class SharkHostAnalyzer {
 
   companion object {
     private val logger = Logger.getInstance(SharkHostAnalyzer::class.java)
+    private const val PERCENT_MAX = 100
   }
 
   /**
    * Takes a heap dump file and returns a structured analysis result.
    *
    * @param hprofFile The .hprof file to analyze.
+   * @param onProgress A callback to report analysis progress as a percentage.
    * @return A [shark.HeapAnalysis] object which can be a [shark.HeapAnalysisSuccess] or [shark.HeapAnalysisFailure].
    */
-  fun analyze(hprofFile: File): HeapAnalysis {
+  fun analyze(hprofFile: File, onProgress: (Int) -> Unit): HeapAnalysis {
     var analysisResult: HeapAnalysis
     try {
-      val analyzer = HeapAnalyzer { step -> logger.info(step.toString()) }
-      analysisResult = analyzer.analyze(
-        heapDumpFile = hprofFile,
-        graph = hprofFile.openHeapGraph(),
-        leakingObjectFinder = KeyedWeakReferenceFinder,
-        referenceMatchers = AndroidReferenceMatchers.Companion.appDefaults,
-        computeRetainedHeapSize = true,
-        objectInspectors = AndroidObjectInspectors.Companion.appDefaults,
-      )
+      val analyzer = HeapAnalyzer { step ->
+        logger.info(step.toString())
+        onProgress(getProgressPercentage(step))
+      }
+      analysisResult =
+        analyzer.analyze(
+          heapDumpFile = hprofFile,
+          graph = hprofFile.openHeapGraph(),
+          leakingObjectFinder = KeyedWeakReferenceFinder,
+          referenceMatchers = AndroidReferenceMatchers.Companion.appDefaults,
+          computeRetainedHeapSize = true,
+          objectInspectors = AndroidObjectInspectors.Companion.appDefaults,
+        )
       logger.info("Leak analysis complete : $analysisResult")
-    }
-    catch (e: Throwable) {
+    } catch (e: Throwable) {
       logger.warn("Heap analysis failed for ${hprofFile.name}", e)
-      analysisResult = HeapAnalysisFailure(
-        heapDumpFile = hprofFile,
-        createdAtTimeMillis = System.currentTimeMillis(),
-        analysisDurationMillis = 0, // Analysis didn't run
-        exception = HeapAnalysisException(e)
-      )
+      analysisResult =
+        HeapAnalysisFailure(
+          heapDumpFile = hprofFile,
+          createdAtTimeMillis = System.currentTimeMillis(),
+          analysisDurationMillis = 0, // Analysis didn't run
+          exception = HeapAnalysisException(e),
+        )
     }
     return analysisResult
+  }
+
+  private fun getProgressPercentage(step: OnAnalysisProgressListener.Step): Int {
+    val totalSteps = OnAnalysisProgressListener.Step.entries.size
+    return (step.ordinal + 1) * PERCENT_MAX / totalSteps
   }
 }

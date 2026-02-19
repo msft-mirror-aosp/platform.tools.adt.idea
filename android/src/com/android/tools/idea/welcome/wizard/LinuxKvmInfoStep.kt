@@ -15,15 +15,14 @@
  */
 package com.android.tools.idea.welcome.wizard
 
-import com.android.tools.idea.welcome.wizard.deprecated.LinuxKvmInfoStepForm
+import com.android.tools.idea.welcome.wizard.forms.LinuxKvmInfoStepForm
 import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.google.wireless.android.sdk.stats.SetupWizardEvent
 import com.intellij.openapi.util.SystemInfo
 import javax.swing.JComponent
 
 /** Provides guidance for setting up KVM on Linux platform. */
-class LinuxKvmInfoStep(private val tracker: FirstRunWizardTracker) :
-  ModelWizardStep.WithoutModel("Emulator Settings") {
+class LinuxKvmInfoStep(private val tracker: FirstRunWizardTracker) : ModelWizardStep.WithoutModel("Emulator Settings") {
   private val form = LinuxKvmInfoStepForm()
 
   override fun getComponent(): JComponent = form.root

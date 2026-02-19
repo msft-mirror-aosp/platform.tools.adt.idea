@@ -31,6 +31,7 @@ import com.android.tools.wear.wff.WFFVersion.WFFVersion4
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.progress.runBlockingMaybeCancellable
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
@@ -38,8 +39,7 @@ import com.intellij.psi.PsiFile
 /** Inspection that informs the user if a higher WFF version is required to use a data source. */
 class FeatureRequiresHigherWFFVersionInspection : LocalInspectionTool() {
 
-  override fun getStaticDescription() =
-    message("inspection.feature.requires.higher.wff.version.description")
+  override fun getStaticDescription() = message("inspection.feature.requires.higher.wff.version.description")
 
   override fun isAvailableForFile(file: PsiFile): Boolean {
     if (!StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_XML_EDITOR_SUPPORT.get()) return false
@@ -49,7 +49,7 @@ class FeatureRequiresHigherWFFVersionInspection : LocalInspectionTool() {
   override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
     val module = holder.file.getModuleSystem()?.module ?: return PsiElementVisitor.EMPTY_VISITOR
     val currentWFFVersion =
-      CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module)
+      runBlockingMaybeCancellable { CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module) }
         ?: return PsiElementVisitor.EMPTY_VISITOR
     return object : WFFExpressionVisitor() {
       override fun visitFunctionId(functionId: WFFExpressionFunctionId) {
@@ -63,12 +63,9 @@ class FeatureRequiresHigherWFFVersionInspection : LocalInspectionTool() {
 
       override fun visitDataSource(dataSource: WFFExpressionDataSource) {
         val isReference = dataSource.isReference()
-        val requiredVersion =
-          if (isReference) WFFVersion4
-          else dataSource.findDataSourceDefinition()?.requiredVersion ?: return
+        val requiredVersion = if (isReference) WFFVersion4 else dataSource.findDataSourceDefinition()?.requiredVersion ?: return
         val errorMessageKey =
-          if (isReference) "wff.feature.requires.higher.wff.version.reference"
-          else "wff.feature.requires.higher.wff.version.datasource"
+          if (isReference) "wff.feature.requires.higher.wff.version.reference" else "wff.feature.requires.higher.wff.version.datasource"
         reportHigherVersionRequiredIfNeeded(
           dataSource.id,
           requiredWFFVersion = requiredVersion,
@@ -76,11 +73,7 @@ class FeatureRequiresHigherWFFVersionInspection : LocalInspectionTool() {
         )
       }
 
-      private fun reportHigherVersionRequiredIfNeeded(
-        element: PsiElement,
-        requiredWFFVersion: WFFVersion,
-        errorMessage: String,
-      ) {
+      private fun reportHigherVersionRequiredIfNeeded(element: PsiElement, requiredWFFVersion: WFFVersion, errorMessage: String) {
         if (currentWFFVersion.wffVersion < requiredWFFVersion) {
           holder.registerProblem(element, errorMessage, ProblemHighlightType.ERROR)
         }

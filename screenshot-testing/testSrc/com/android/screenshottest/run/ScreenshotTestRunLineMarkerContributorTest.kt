@@ -15,17 +15,17 @@
  */
 package com.android.screenshottest.run
 
-
 import com.android.flags.junit.FlagRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.onEdt
 import com.android.utils.FileUtils
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.ActionManagerImpl
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil.findFileByIoFile
 import com.intellij.psi.PsiElement
@@ -34,6 +34,7 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
 import org.jetbrains.android.AndroidTestCase.assertNotNull
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -45,32 +46,33 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 class ScreenshotTestRunLineMarkerContributorTest {
-  @get:Rule
-  val flagRule = FlagRule(StudioFlags.ENABLE_SCREENSHOT_TESTING, true)
+  @get:Rule val flagRule = FlagRule(StudioFlags.ENABLE_SCREENSHOT_TESTING, true)
 
-  @get:Rule
-  val projectRule = AndroidGradleProjectRule().onEdt()
+  @get:Rule val projectRule = AndroidGradleProjectRule().onEdt()
 
   private val contributor = ScreenshotTestRunLineMarkerContributor()
   private var file: PsiFile? = null
 
   private val ACTION_ID = "com.android.screenshottest.action.UpdateReferenceImagesAction"
+  private var originalAction: AnAction? = null
 
-  val updateReferenceImagesAction: AnAction = object : AnAction("Add/Update Reference Images...") {
-    override fun actionPerformed(e: AnActionEvent) {}
-  }
+  val updateReferenceImagesAction: AnAction =
+    object : AnAction("Add/Update Reference Images...") {
+      override fun actionPerformed(e: AnActionEvent) {}
+    }
 
-  private val SRC_FILE_HEADER = """
-      package com.example.runlinemarker;
+  private val SRC_FILE_HEADER =
+    """
+    package com.example.runlinemarker;
 
-      import androidx.compose.runtime.Composable
-      import androidx.compose.ui.tooling.preview.Preview
-      import com.android.tools.screenshot.PreviewTest
+    import androidx.compose.runtime.Composable
+    import androidx.compose.ui.tooling.preview.Preview
+    import com.android.tools.screenshot.PreviewTest
 
-    """.trimIndent()
+    """
+      .trimIndent()
 
   @Before
   fun setup() {
@@ -79,22 +81,28 @@ class ScreenshotTestRunLineMarkerContributorTest {
     stubPreviewAnnotation()
     stubPreviewTestAnnotation()
     val actionManager = ActionManager.getInstance() as ActionManagerImpl
+    originalAction = actionManager.getAction(ACTION_ID)
+    if (originalAction != null) {
+      actionManager.unregisterAction(ACTION_ID)
+    }
     actionManager.registerAction(ACTION_ID, updateReferenceImagesAction)
   }
 
   @After
   fun tearDown() {
-    val actionManager = ActionManager.getInstance()
-    if (actionManager.getAction(ACTION_ID) != null) {
-      actionManager.unregisterAction(ACTION_ID)
-    }
+    val actionManager = ActionManager.getInstance() as ActionManagerImpl
+    actionManager.unregisterAction(ACTION_ID)
+    originalAction?.let { actionManager.registerAction(ACTION_ID, it) }
   }
 
   @Test
   @RunsInEdt
   fun testStudioFlagDisabled() {
     StudioFlags.ENABLE_SCREENSHOT_TESTING.override(false)
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
            @PreviewTest
@@ -111,7 +119,9 @@ class ScreenshotTestRunLineMarkerContributorTest {
                println("Hi")
            }
         }
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -127,7 +137,10 @@ class ScreenshotTestRunLineMarkerContributorTest {
   @Test
   @RunsInEdt
   fun testRunLineMarkerContributor() {
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
            @PreviewTest
@@ -144,7 +157,9 @@ class ScreenshotTestRunLineMarkerContributorTest {
                println("Hi")
            }
         }
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -170,7 +185,10 @@ class ScreenshotTestRunLineMarkerContributorTest {
   @Test
   @RunsInEdt
   fun testRunLineMarkerContributorNoPreviewTest() {
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
            @Preview(showBackground = true)
@@ -185,7 +203,9 @@ class ScreenshotTestRunLineMarkerContributorTest {
                println("Hi")
            }
         }
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -200,10 +220,14 @@ class ScreenshotTestRunLineMarkerContributorTest {
     assertNull(fun2Info)
     assertNull(classInfo)
   }
+
   @Test
   @RunsInEdt
   fun testRunLineMarkerContributorOnlyPreviewTest() {
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
            @PreviewTest
@@ -218,7 +242,9 @@ class ScreenshotTestRunLineMarkerContributorTest {
                println("Hi")
            }
         }
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -244,7 +270,10 @@ class ScreenshotTestRunLineMarkerContributorTest {
   @Test
   @RunsInEdt
   fun testRunLineMarkerContributorMultiPreview() {
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
            @PreviewTest
@@ -258,7 +287,9 @@ class ScreenshotTestRunLineMarkerContributorTest {
         @Preview(name = "with background", showBackground = true)
         @Preview(name = "without background", showBackground = false)
         annotation class MultiPreview
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -278,7 +309,10 @@ class ScreenshotTestRunLineMarkerContributorTest {
   @Test
   @RunsInEdt
   fun testRunLineMarkerContributorNoPreviewMethod() {
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
            @Composable
@@ -291,7 +325,9 @@ class ScreenshotTestRunLineMarkerContributorTest {
                println("Hi")
            }
         }
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -307,11 +343,16 @@ class ScreenshotTestRunLineMarkerContributorTest {
   @Test
   @RunsInEdt
   fun testRunLineMarkerContributorNoMethod() {
-    val cFile = createRelativeFilewithContent("app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt", """
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
         $SRC_FILE_HEADER
         class PreviewScreenshotTest {
         }
-      """.trimIndent())
+      """
+          .trimIndent(),
+      )
     val virtualFile = findFileByIoFile(cFile, true)
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
@@ -320,51 +361,94 @@ class ScreenshotTestRunLineMarkerContributorTest {
     assertNull(contributor.getSlowInfo(classElement))
   }
 
+  @Test
+  @RunsInEdt
+  fun testGutterIconAppearance() {
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/IconsTest.kt",
+        """
+            $SRC_FILE_HEADER
+            class IconsTest {
+                @PreviewTest
+                @Composable
+                fun TestMethod() {
+                    println("Test")
+                }
+            }
+        """
+          .trimIndent(),
+      )
+    val virtualFile = findFileByIoFile(cFile, true)
+    val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
+    PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
+    file = virtualFile.toPsiFile(projectRule.project)
+
+    val classIdentifier = file!!.findClassdentifier("IconsTest")
+    val methodIdentifier = file!!.findFunctionIdentifier("TestMethod")
+
+    val classInfo = contributor.getSlowInfo(classIdentifier)
+    val methodInfo = contributor.getSlowInfo(methodIdentifier)
+
+    assertNotNull(classInfo)
+    assertNotNull(methodInfo)
+
+    // Verify: Double green triangle (Run_run) for class, single (Run) for method
+    assertEquals(AllIcons.RunConfigurations.TestState.Run_run, classInfo!!.icon)
+    assertEquals(AllIcons.RunConfigurations.TestState.Run, methodInfo!!.icon)
+  }
+
   private fun PsiFile.findFunctionIdentifier(name: String): PsiElement {
     val function = PsiTreeUtil.findChildrenOfType(this, KtNamedFunction::class.java).first { it.name == name }
-    return PsiTreeUtil.getChildrenOfType(function, LeafPsiElement::class.java)?.first {
-      it.node.elementType == KtTokens.IDENTIFIER }!!
+    return PsiTreeUtil.getChildrenOfType(function, LeafPsiElement::class.java)?.first { it.node.elementType == KtTokens.IDENTIFIER }!!
   }
 
   private fun PsiFile.findClassdentifier(name: String): PsiElement {
     val function = PsiTreeUtil.findChildrenOfType(this, KtClass::class.java).first { it.name == name }
-    return PsiTreeUtil.getChildrenOfType(function, LeafPsiElement::class.java)?.first {
-      it.node.elementType == KtTokens.IDENTIFIER }!!
+    return PsiTreeUtil.getChildrenOfType(function, LeafPsiElement::class.java)?.first { it.node.elementType == KtTokens.IDENTIFIER }!!
   }
 
   private fun stubPreviewTestAnnotation() {
     createRelativeFilewithContent(
-      "app/src/screenshotTest/java/com/android/testing/screenshot/PreviewTest.kt", """
-    package com.android.tools.screenshot
-    
-    @MustBeDocumented
-    @Retention(AnnotationRetention.BINARY)
-    @Target(
-        AnnotationTarget.FUNCTION
+      "app/src/screenshotTest/java/com/android/testing/screenshot/PreviewTest.kt",
+      """
+      package com.android.tools.screenshot
+
+      @MustBeDocumented
+      @Retention(AnnotationRetention.BINARY)
+      @Target(
+          AnnotationTarget.FUNCTION
+      )
+      annotation class PreviewTest {
+      }
+          
+      """
+        .trimIndent(),
     )
-    annotation class PreviewTest {
-    }
-        
-      """.trimIndent())
   }
+
   private fun stubComposeAnnotation() {
     createRelativeFilewithContent(
-      "app/src/screenshotTest/java/androidx/compose/runtime/Composable.kt", """
-    package androidx.compose.runtime
-    @Target(
-        AnnotationTarget.FUNCTION,
-        AnnotationTarget.TYPE_USAGE,
-        AnnotationTarget.TYPE,
-        AnnotationTarget.TYPE_PARAMETER,
-        AnnotationTarget.PROPERTY_GETTER
-    )
-    annotation class Composable
-    """.trimIndent()
+      "app/src/screenshotTest/java/androidx/compose/runtime/Composable.kt",
+      """
+      package androidx.compose.runtime
+      @Target(
+          AnnotationTarget.FUNCTION,
+          AnnotationTarget.TYPE_USAGE,
+          AnnotationTarget.TYPE,
+          AnnotationTarget.TYPE_PARAMETER,
+          AnnotationTarget.PROPERTY_GETTER
+      )
+      annotation class Composable
+      """
+        .trimIndent(),
     )
   }
 
   private fun stubPreviewAnnotation() {
-    createRelativeFilewithContent("app/src/screenshotTest/java/androidx/compose/ui/tooling/preview/Preview.kt", """
+    createRelativeFilewithContent(
+      "app/src/screenshotTest/java/androidx/compose/ui/tooling/preview/Preview.kt",
+      """
     package androidx.compose.ui.tooling.preview
 
     import kotlin.reflect.KClass
@@ -403,13 +487,12 @@ class ScreenshotTestRunLineMarkerContributorTest {
         val provider: KClass<out PreviewParameterProvider<*>>,
         val limit: Int = Int.MAX_VALUE
     )
-    """)
-  }
-  private fun createRelativeFilewithContent(relativePath: String, content: String): File {
-    val newFile = File(
-      projectRule.project.basePath,
-      FileUtils.toSystemDependentPath(relativePath)
+    """,
     )
+  }
+
+  private fun createRelativeFilewithContent(relativePath: String, content: String): File {
+    val newFile = File(projectRule.project.basePath, FileUtils.toSystemDependentPath(relativePath))
     FileUtil.createIfDoesntExist(newFile)
     newFile.writeText(content)
     return newFile

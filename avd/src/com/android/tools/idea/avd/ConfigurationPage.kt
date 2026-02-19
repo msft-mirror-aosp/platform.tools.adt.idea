@@ -70,17 +70,11 @@ import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 
 private fun matches(device: VirtualDevice, image: ISystemImage): Boolean {
-  return image.androidVersion.apiLevel >= SdkVersionInfo.LOWEST_ACTIVE_API &&
-    DeviceSystemImageMatcher.matches(device.deviceProfile, image)
+  return image.androidVersion.apiLevel >= SdkVersionInfo.LOWEST_ACTIVE_API && DeviceSystemImageMatcher.matches(device.deviceProfile, image)
 }
 
 private fun resolve(sdkHandler: AndroidSdkHandler, deviceSkin: Path, imageSkins: Iterable<Path>) =
-  DeviceSkinResolver.resolve(
-      deviceSkin,
-      imageSkins,
-      sdkHandler.location,
-      DeviceArtDescriptor.getBundledDescriptorsFolder()?.toPath(),
-    )
+  DeviceSkinResolver.resolve(deviceSkin, imageSkins, sdkHandler.location, DeviceArtDescriptor.getBundledDescriptorsFolder()?.toPath())
     .takeIf { Files.exists(it) } ?: SkinUtils.noSkin()
 
 @Composable
@@ -101,20 +95,14 @@ internal fun WizardPageScope.ConfigurationPage(
       delay(1.seconds)
       value = true
     }
-  if (
-    !systemImageState.hasLocal ||
-      (!isTimedOut && !systemImageState.hasRemote && systemImageState.error == null)
-  ) {
+  if (!systemImageState.hasLocal || (!isTimedOut && !systemImageState.hasRemote && systemImageState.error == null)) {
     EmptyStatePanel("Loading system images...", Modifier.fillMaxSize())
     nextAction = WizardAction.Disabled
     finishAction = WizardAction.Disabled
     return
   }
 
-  val filteredImageState =
-    systemImageState.copy(
-      images = systemImageState.images.filter { matches(device, it) }.toImmutableList()
-    )
+  val filteredImageState = systemImageState.copy(images = systemImageState.images.filter { matches(device, it) }.toImmutableList())
   if (filteredImageState.images.isEmpty()) {
     EmptyStatePanel("No system images available.", Modifier.fillMaxSize())
     nextAction = WizardAction.Disabled
@@ -127,10 +115,7 @@ internal fun WizardPageScope.ConfigurationPage(
     remember(device) {
       val imageWasNotSet = device.image == null
       if (imageWasNotSet) {
-        device.image =
-          filteredImageState.images.sortedWith(SystemImageComparator).last().takeIf {
-            it.isSupported()
-          }
+        device.image = filteredImageState.images.sortedWith(SystemImageComparator).last().takeIf { it.isSupported() }
       }
       val state = ConfigureDevicePanelState(device, skins, deviceNameValidator)
       val defaultSkin = resolveDefaultSkin(device, sdkHandler, fileSystem)
@@ -166,12 +151,10 @@ internal fun WizardPageScope.ConfigurationPage(
     ConfigureDevicePanel(
       state,
       filteredImageState,
-      onDownloadButtonClick = { coroutineScope.launch { downloadSystemImage(parent, it) } },
+      onDownloadButtonClick = { coroutineScope.launch { downloadSystemImage(parent, sdkHandler, it) } },
       onSystemImageTableRowClick = {
         state.setSystemImageSelection(it)
-        state.setSkin(
-          resolve(sdkHandler, defaultDeviceSkin(state.device.deviceProfile, fileSystem), it.skins)
-        )
+        state.setSkin(resolve(sdkHandler, defaultDeviceSkin(state.device.deviceProfile, fileSystem), it.skins))
       },
     )
   }
@@ -180,14 +163,8 @@ internal fun WizardPageScope.ConfigurationPage(
   finishAction =
     if (state.isValid) {
       WizardAction {
-        runWithModalProgressBlocking(
-          ModalTaskOwner.component(parent),
-          "Creating AVD",
-          TaskCancellation.nonCancellable(),
-        ) {
-          withContext(AndroidDispatchers.uiThread) {
-            finish(state.device, parent, finish, sdkHandler)
-          }
+        runWithModalProgressBlocking(ModalTaskOwner.component(parent), "Creating AVD", TaskCancellation.nonCancellable()) {
+          withContext(AndroidDispatchers.uiThread) { finish(state.device, parent, finish, sdkHandler) }
         }
       }
     } else {
@@ -196,27 +173,17 @@ internal fun WizardPageScope.ConfigurationPage(
 }
 
 /**
- * Updates the system image selection based on the currently-available images: if a
- * RemoteSystemImage is selected, and is downloaded, it becomes a SystemImage, and we should select
- * it.
+ * Updates the system image selection based on the currently-available images: if a RemoteSystemImage is selected, and is downloaded, it
+ * becomes a SystemImage, and we should select it.
  */
-private fun updateSystemImageSelection(
-  state: TableSelectionState<ISystemImage>,
-  images: SystemImageState,
-) {
+private fun updateSystemImageSelection(state: TableSelectionState<ISystemImage>, images: SystemImageState) {
   val selectedImage = state.selection
   if (selectedImage is RemoteSystemImage && selectedImage !in images.images) {
-    images.images
-      .find { it.`package`.path == selectedImage.`package`.path }
-      ?.let { state.selection = it }
+    images.images.find { it.`package`.path == selectedImage.`package`.path }?.let { state.selection = it }
   }
 }
 
-private fun resolveDefaultSkin(
-  device: VirtualDevice,
-  sdkHandler: AndroidSdkHandler,
-  fileSystem: FileSystem,
-): Path {
+private fun resolveDefaultSkin(device: VirtualDevice, sdkHandler: AndroidSdkHandler, fileSystem: FileSystem): Path {
   return resolve(sdkHandler, defaultDeviceSkin(device.deviceProfile, fileSystem), emptyList())
 }
 
@@ -252,18 +219,13 @@ private suspend fun WizardDialogScope.finish(
 }
 
 /**
- * Prompts the user to download the system image if it is not present. If a new image is downloaded,
- * then device.image will be updated from a [RemoteSystemImage] to a [SystemImage].
+ * Prompts the user to download the system image if it is not present. If a new image is downloaded, then device.image will be updated from
+ * a [RemoteSystemImage] to a [SystemImage].
  *
- * @return true if the system image is present (either because it was already there or it was
- *   downloaded successfully).
+ * @return true if the system image is present (either because it was already there or it was downloaded successfully).
  */
 @UiThread
-private fun ensureSystemImageIsPresent(
-  sdkHandler: AndroidSdkHandler,
-  device: VirtualDevice,
-  parent: Component,
-): Boolean {
+private fun ensureSystemImageIsPresent(sdkHandler: AndroidSdkHandler, device: VirtualDevice, parent: Component): Boolean {
   val image = device.image
   if (image !is RemoteSystemImage) return true
 
@@ -271,33 +233,13 @@ private fun ensureSystemImageIsPresent(
     return false
   }
 
-  if (!downloadSystemImage(parent, image.`package`.path)) {
-    return false
-  }
+  device.image = downloadSystemImage(parent, sdkHandler, image.`package`.path) ?: return false
 
-  device.image = sdkHandler.toLocalImage(image)
   return true
 }
 
-// TODO: http://b/367394413 - This is a hack. Find a better way.
-private fun AndroidSdkHandler.toLocalImage(image: ISystemImage): ISystemImage {
-  if (image !is RemoteSystemImage) return image
-
-  val indicator = StudioLoggerProgressIndicator(AvdConfigurationPage::class.java)
-
-  val images =
-    getSystemImageManager(indicator).imageMap.get(getLocalPackage(image.`package`.path, indicator))
-
-  if (images.size > 1) {
-    logger<AvdConfigurationPage>()
-      .warn("Multiple images for ${image.`package`.path}. Returning the first.")
-  }
-
-  return images.first()
-}
-
 @UiThread
-private fun downloadSystemImage(parent: Component, path: String): Boolean {
+private fun downloadSystemImage(parent: Component, sdkHandler: AndroidSdkHandler, path: String): ISystemImage? {
   catchAndShowErrors<AvdConfigurationPage>(
     parent = parent,
     message = "An unexpected error occurred downloading the system image. See idea.log for details.",
@@ -306,12 +248,22 @@ private fun downloadSystemImage(parent: Component, path: String): Boolean {
 
     if (dialog == null) {
       logger<AvdConfigurationPage>().warn("Could not create the SDK Quickfix Installation dialog")
-      return false
+      return null
     }
 
-    return dialog.showAndGet()
+    if (!dialog.showAndGet()) return null
+
+    // The dialog returns false if the user canceled, but if there's a download error, it can still return true,
+    // so we need to handle the case where no local package exists.
+    val progress = StudioLoggerProgressIndicator(AvdConfigurationPage::class.java)
+    val localPackage = sdkHandler.getLocalPackage(path, progress)
+    val images = sdkHandler.getSystemImageManager(progress).imageMap.get(localPackage)
+    if (images.size > 1) {
+      logger<AvdConfigurationPage>().warn("Multiple images for $path. Returning the first.")
+    }
+    return images.firstOrNull()
   }
-  return false
+  return null
 }
 
 object AvdConfigurationPage

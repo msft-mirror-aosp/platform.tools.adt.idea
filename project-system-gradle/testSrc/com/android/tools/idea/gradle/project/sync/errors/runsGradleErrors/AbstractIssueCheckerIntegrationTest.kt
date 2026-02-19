@@ -25,17 +25,20 @@ import com.intellij.build.events.MessageEvent
 import com.intellij.build.issue.BuildIssue
 import com.intellij.openapi.externalSystem.issue.BuildIssueException
 import com.intellij.openapi.project.Project
+import java.io.File
 
 abstract class AbstractIssueCheckerIntegrationTest : AbstractSyncFailureIntegrationTest() {
   protected fun runSyncAndCheckBuildIssueFailure(
     preparedProject: PreparedTestProject,
+    overrideGradleJdkPath: File? = null,
     verifyBuildIssue: (Project, BuildIssue) -> Unit,
     expectedFailureReported: AndroidStudioEvent.GradleSyncFailure,
     expectedPhasesReported: String?,
-    expectedFailureDetailsString: String
+    expectedFailureDetailsString: String?,
   ) {
     runSyncAndCheckGeneralFailure(
       preparedProject = preparedProject,
+      overrideGradleJdkPath = overrideGradleJdkPath,
       verifySyncViewEvents = { project, buildEvents ->
         // Make sure no additional error build events are generated
         expect.that(buildEvents.filterIsInstance<MessageEvent>()).isEmpty()
@@ -44,9 +47,8 @@ abstract class AbstractIssueCheckerIntegrationTest : AbstractSyncFailureIntegrat
         buildEvents.filterIsInstance<FinishBuildEvent>().single().let { finishBuildEvent ->
           (finishBuildEvent.result as FailureResult).failures.let { failures ->
             expect.that(failures).hasSize(1)
-            (failures.firstOrNull()?.error as? BuildIssueException)?.let {
-               verifyBuildIssue(project, it.buildIssue)
-            } ?: expect.fail("%s not found in %s", BuildIssueException::class.java.name, FinishBuildEvent::class.java.name)
+            (failures.firstOrNull()?.error as? BuildIssueException)?.let { verifyBuildIssue(project, it.buildIssue) }
+              ?: expect.fail("%s not found in %s", BuildIssueException::class.java.name, FinishBuildEvent::class.java.name)
           }
         }
       },
@@ -54,8 +56,9 @@ abstract class AbstractIssueCheckerIntegrationTest : AbstractSyncFailureIntegrat
         expect.that(it.gradleSyncFailure).isEqualTo(expectedFailureReported)
         expect.that(it.buildOutputWindowStats.buildErrorMessagesList).isEmpty()
         if (expectedPhasesReported != null) expect.that(it.gradleSyncStats.printPhases()).isEqualTo(expectedPhasesReported)
-        Truth.assertThat(it.gradleFailureDetails.toTestString()).isEqualTo(expectedFailureDetailsString)
-      }
+        if (expectedFailureDetailsString != null)
+          Truth.assertThat(it.gradleFailureDetails.toTestString()).isEqualTo(expectedFailureDetailsString)
+      },
     )
   }
 }

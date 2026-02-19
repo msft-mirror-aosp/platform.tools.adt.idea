@@ -26,6 +26,7 @@ import com.android.tools.idea.rendering.AndroidBuildTargetReference
 import com.android.tools.idea.rendering.StudioRenderService
 import com.android.tools.idea.rendering.parsers.PsiXmlFile
 import com.android.tools.idea.rendering.taskBuilder
+import com.android.tools.rendering.RenderAsyncActionExecutor
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderTask
 import com.intellij.openapi.vfs.VirtualFile
@@ -36,9 +37,8 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
- * Returns a [CompletableFuture] that creates a [RenderTask] for a single [VirtualFile]. It is the
- * responsibility of a client of this function to dispose the resulting [RenderTask] when no longer
- * needed.
+ * Returns a [CompletableFuture] that creates a [RenderTask] for a single [VirtualFile]. It is the responsibility of a client of this
+ * function to dispose the resulting [RenderTask] when no longer needed.
  */
 @VisibleForTesting
 fun createRenderTaskFuture(
@@ -50,23 +50,19 @@ fun createRenderTaskFuture(
   customViewInfoParser: ((Any) -> List<ViewInfo>)? = null,
   showDecorations: Boolean = false,
   configure: (Configuration) -> Unit = {},
+  renderTopic: RenderAsyncActionExecutor.RenderingTopic = RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED,
 ): CompletableFuture<RenderTask> {
   val project = facet.module.project
 
-  val xmlFile =
-    AndroidPsiUtils.getPsiFileSafely(project, file) as? XmlFile
-      ?: return CompletableFuture.completedFuture(null)
-  val configuration =
-    Configuration.create(
-      ConfigurationManager.getOrCreateInstance(facet.module),
-      FolderConfiguration.createDefault(),
-    )
+  val xmlFile = AndroidPsiUtils.getPsiFileSafely(project, file) as? XmlFile ?: return CompletableFuture.completedFuture(null)
+  val configuration = Configuration.create(ConfigurationManager.getOrCreateInstance(facet.module), FolderConfiguration.createDefault())
   configure(configuration)
 
   val builder =
     StudioRenderService.getInstance(project)
       .taskBuilder(AndroidBuildTargetReference.gradleOnly(facet), configuration)
       .withPsiFile(PsiXmlFile(xmlFile))
+      .withTopic(renderTopic)
       .apply {
         if (privateClassLoader) {
           usePrivateClassLoader()
@@ -89,9 +85,8 @@ fun createRenderTaskFuture(
 }
 
 /**
- * Returns a [CompletableFuture] that creates a [RenderResult] for a single [VirtualFile]. This
- * function first creates a [RenderTask] and sets its disposal to happen when the [RenderResult]
- * future gets completed.
+ * Returns a [CompletableFuture] that creates a [RenderResult] for a single [VirtualFile]. This function first creates a [RenderTask] and
+ * sets its disposal to happen when the [RenderResult] future gets completed.
  */
 fun createRenderResultFuture(
   facet: AndroidFacet,
@@ -102,6 +97,7 @@ fun createRenderResultFuture(
   customViewInfoParser: ((Any) -> List<ViewInfo>)? = null,
   showDecorations: Boolean = false,
   configure: (Configuration) -> Unit = {},
+  renderTopic: RenderAsyncActionExecutor.RenderingTopic = RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED,
 ): CompletableFuture<RenderResult> {
   val renderTaskFuture =
     createRenderTaskFuture(
@@ -113,13 +109,12 @@ fun createRenderResultFuture(
       customViewInfoParser,
       showDecorations,
       configure,
+      renderTopic,
     )
   val renderResultFuture =
-    CompletableFuture.supplyAsync(
-        { renderTaskFuture.get() },
-        AppExecutorUtil.getAppExecutorService(),
-      )
-      .thenCompose { it?.render() ?: CompletableFuture.completedFuture(null as RenderResult?) }
+    CompletableFuture.supplyAsync({ renderTaskFuture.get() }, AppExecutorUtil.getAppExecutorService()).thenCompose {
+      it?.render() ?: CompletableFuture.completedFuture(null as RenderResult?)
+    }
   renderResultFuture.handle { _, _ -> renderTaskFuture.get().dispose() }
   return renderResultFuture
 }

@@ -22,46 +22,45 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.createAndroidProjectBuilderForDefaultTestProjectStructure
 import com.android.tools.idea.testing.highlightedAs
 import com.google.common.truth.Truth.assertThat
-import com.intellij.lang.annotation.HighlightSeverity.ERROR
 import com.intellij.lang.annotation.HighlightSeverity.WARNING
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
+import java.io.File
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
-import java.io.File
 
-@RunWith(/* value = */ Parameterized::class)
+@RunWith(/* value= */ Parameterized::class)
 @RunsInEdt
-class ConsumerRulesInspectionTest(val projectType: IdeAndroidProjectType) {
+class ConsumerRulesInspectionTest(val projectType: IdeAndroidProjectType, val extension: String) {
 
   @get:Rule
-  val projectRule: AndroidProjectRule = AndroidProjectRule.withAndroidModels(
-    prepareProjectSources = { dir ->
-      assertThat(File(/* parent = */ dir, /* child = */ "src").mkdirs()).isTrue()
-    },
-    AndroidModuleModelBuilder(
-      gradlePath = ":",
-      selectedBuildVariant = "debug",
-      projectBuilder = createAndroidProjectBuilderForDefaultTestProjectStructure(
-        projectType = projectType
-      )
+  val projectRule: AndroidProjectRule =
+    AndroidProjectRule.withAndroidModels(
+      prepareProjectSources = { dir -> assertThat(File(/* parent= */ dir, /* child= */ "src").mkdirs()).isTrue() },
+      AndroidModuleModelBuilder(
+        gradlePath = ":",
+        selectedBuildVariant = "debug",
+        projectBuilder = createAndroidProjectBuilderForDefaultTestProjectStructure(projectType = projectType),
+      ),
     )
-  )
 
   val myFixture: JavaCodeInsightTestFixture by lazy { projectRule.fixture as JavaCodeInsightTestFixture }
 
   companion object {
     @Suppress("unused") // Used by JUnit via reflection
     @JvmStatic
-    @get:Parameters(name = "androidProjectType={0}")
-    val data = listOf(
-      arrayOf(IdeAndroidProjectType.PROJECT_TYPE_APP),
-      arrayOf(IdeAndroidProjectType.PROJECT_TYPE_LIBRARY)
-    )
+    @get:Parameters(name = "androidProjectType={0},extension={1}")
+    val data =
+      listOf(
+        arrayOf(IdeAndroidProjectType.PROJECT_TYPE_APP, ".pro"),
+        arrayOf(IdeAndroidProjectType.PROJECT_TYPE_LIBRARY, ".pro"),
+        arrayOf(IdeAndroidProjectType.PROJECT_TYPE_APP, ".keep"),
+        arrayOf(IdeAndroidProjectType.PROJECT_TYPE_LIBRARY, ".keep"),
+      )
   }
 
   @Before
@@ -72,23 +71,25 @@ class ConsumerRulesInspectionTest(val projectType: IdeAndroidProjectType) {
 
   @Test
   fun testBannedRulesInOtherFiles() {
-    val rules = listOf(
-      "-dontobfuscate",
-      "-dontoptimize",
-      "-dontshrink",
-      "-repackageclasses",
-      "-flattenpackagehierarchy",
-      "-allowaccessmodification",
-      "-renamesourcefileattribute",
-    )
+    val rules =
+      listOf(
+        "-dontobfuscate",
+        "-dontoptimize",
+        "-dontshrink",
+        "-repackageclasses",
+        "-flattenpackagehierarchy",
+        "-allowaccessmodification",
+        "-renamesourcefileattribute",
+      )
 
     rules.forEach { rule ->
       myFixture.configureByText(
         // Intentionally pick a name that does not match our pattern for consumer rules.
-        /* fileName = */ "proguard-rules.pro",
+        /* fileName = */ "proguard-rules" + extension,
         /* text = */ """
           $rule
-        """.trimIndent()
+        """
+          .trimIndent(),
       )
 
       myFixture.checkHighlighting()
@@ -97,33 +98,35 @@ class ConsumerRulesInspectionTest(val projectType: IdeAndroidProjectType) {
 
   @Test
   fun testBannedRulesInConsumerRulesPro() {
-    val rules = listOf(
-      "-dontobfuscate",
-      "-dontoptimize",
-      "-dontshrink",
-      "-repackageclasses",
-      "-flattenpackagehierarchy",
-      "-allowaccessmodification",
-      "-renamesourcefileattribute",
-    )
+    val rules =
+      listOf(
+        "-dontobfuscate",
+        "-dontoptimize",
+        "-dontshrink",
+        "-repackageclasses",
+        "-flattenpackagehierarchy",
+        "-allowaccessmodification",
+        "-renamesourcefileattribute",
+      )
 
     rules.forEach { rule ->
-      val highlightedRule = if (projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY) {
-        rule.highlightedAs(
-          level = WARNING,
-          message =
-            "Global flags should never be placed in library consumer rules, since they prevent optimizations in apps using the library"
-        )
-      }
-      else {
-        rule
-      }
+      val highlightedRule =
+        if (projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY) {
+          rule.highlightedAs(
+            level = WARNING,
+            message =
+              "Global flags should never be placed in library consumer rules, since they prevent optimizations in apps using the library",
+          )
+        } else {
+          rule
+        }
 
       myFixture.configureByText(
-        /* fileName = */ "consumer-rules.pro",
+        /* fileName = */ "consumer-rules" + extension,
         /* text = */ """
           $highlightedRule
-        """.trimIndent()
+        """
+          .trimIndent(),
       )
 
       myFixture.checkHighlighting()
@@ -132,42 +135,56 @@ class ConsumerRulesInspectionTest(val projectType: IdeAndroidProjectType) {
 
   @Test
   fun testKeepAttributes() {
-    val rulesAndErrorHighlights = listOf(
-      "-keepattributes RuntimeInvisibleAnnotations" to """
-        -keepattributes <warning descr="Attribute RuntimeInvisibleAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleAnnotations</warning>
-      """.trimIndent(),
-      "-keepattributes LineNumberTable" to """
-        -keepattributes <warning descr="Attribute LineNumberTable should never be placed in library consumer rules, since it prevents optimizations in apps using the library">LineNumberTable</warning>
-      """.trimIndent(),
-      "-keepattributes SourceFile" to """
-        -keepattributes <warning descr="Attribute SourceFile should never be placed in library consumer rules, since it prevents optimizations in apps using the library">SourceFile</warning>
-      """.trimIndent(),
-      "-keepattributes *Annotations" to """
-        -keepattributes <warning descr="Attribute *Annotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">*Annotations</warning>
-      """.trimIndent(),
-      "-keepattributes RuntimeInvisibleAnnotations, RuntimeInvisibleTypeAnnotations" to """
-        -keepattributes <warning descr="Attribute RuntimeInvisibleAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleAnnotations</warning>, <warning descr="Attribute RuntimeInvisibleTypeAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleTypeAnnotations</warning>
-      """.trimIndent(),
-      "-keepattributes RuntimeInvisibleParameterAnnotations, RuntimeInvisibleTypeAnnotations" to """
-        -keepattributes <warning descr="Attribute RuntimeInvisibleParameterAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleParameterAnnotations</warning>, <warning descr="Attribute RuntimeInvisibleTypeAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleTypeAnnotations</warning>
-      """.trimIndent(),
-      "-keepattributes Exceptions" to "-keepattributes Exceptions" // No warning highlights expected
-    )
+    val rulesAndErrorHighlights =
+      listOf(
+        "-keepattributes RuntimeInvisibleAnnotations" to
+          """
+          -keepattributes <warning descr="Attribute RuntimeInvisibleAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleAnnotations</warning>
+          """
+            .trimIndent(),
+        "-keepattributes LineNumberTable" to
+          """
+          -keepattributes <warning descr="Attribute LineNumberTable should never be placed in library consumer rules, since it prevents optimizations in apps using the library">LineNumberTable</warning>
+          """
+            .trimIndent(),
+        "-keepattributes SourceFile" to
+          """
+          -keepattributes <warning descr="Attribute SourceFile should never be placed in library consumer rules, since it prevents optimizations in apps using the library">SourceFile</warning>
+          """
+            .trimIndent(),
+        "-keepattributes *Annotations" to
+          """
+          -keepattributes <warning descr="Attribute *Annotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">*Annotations</warning>
+          """
+            .trimIndent(),
+        "-keepattributes RuntimeInvisibleAnnotations, RuntimeInvisibleTypeAnnotations" to
+          """
+          -keepattributes <warning descr="Attribute RuntimeInvisibleAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleAnnotations</warning>, <warning descr="Attribute RuntimeInvisibleTypeAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleTypeAnnotations</warning>
+          """
+            .trimIndent(),
+        "-keepattributes RuntimeInvisibleParameterAnnotations, RuntimeInvisibleTypeAnnotations" to
+          """
+          -keepattributes <warning descr="Attribute RuntimeInvisibleParameterAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleParameterAnnotations</warning>, <warning descr="Attribute RuntimeInvisibleTypeAnnotations should never be placed in library consumer rules, since it prevents optimizations in apps using the library">RuntimeInvisibleTypeAnnotations</warning>
+          """
+            .trimIndent(),
+        "-keepattributes Exceptions" to "-keepattributes Exceptions", // No warning highlights expected
+      )
 
     rulesAndErrorHighlights.forEach { (rule, errorHighlight) ->
-      val highlightedRule = if (projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY) {
-        check(errorHighlight.isNotBlank()) // Bad test case
-        errorHighlight
-      }
-      else {
-        rule
-      }
+      val highlightedRule =
+        if (projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY) {
+          check(errorHighlight.isNotBlank()) // Bad test case
+          errorHighlight
+        } else {
+          rule
+        }
 
       myFixture.configureByText(
-        /* fileName = */ "consumer-rules.pro",
+        /* fileName = */ "consumer-rules" + extension,
         /* text = */ """
           $highlightedRule
-        """.trimIndent()
+        """
+          .trimIndent(),
       )
 
       myFixture.checkHighlighting()

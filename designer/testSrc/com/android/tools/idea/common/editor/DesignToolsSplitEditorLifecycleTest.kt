@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.common.editor
 
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.editor.DesignFilesPreviewEditorProvider
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
@@ -27,6 +27,7 @@ import com.intellij.openapi.fileEditor.impl.FileEditorManagerImpl
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertFalse
@@ -70,20 +71,14 @@ class DesignToolsSplitEditorLifecycleTest {
                 android:fontWeight="400"
                 android:font="@font/lobster_italic" />
         </font-family>
-       """
+        """
           .trimIndent(),
       )
     file.putUserData(FileEditorProvider.KEY, DesignFilesPreviewEditorProvider())
     val editor =
-      runBlocking(uiThread) {
-        val editor =
-          withContext(uiThread) {
-            val editors =
-              FileEditorManager.getInstance(projectRule.project)
-                .openFile(file.virtualFile, true, true)
-            (editors[0] as DesignToolsSplitEditor)
-          }
-        editor
+      withContext(Dispatchers.EDT) {
+        val editors = FileEditorManager.getInstance(projectRule.project).openFile(file.virtualFile, true, true)
+        (editors[0] as DesignToolsSplitEditor)
       }
     assertFalse(
       "The surface must not be active before the editor has completed loading",

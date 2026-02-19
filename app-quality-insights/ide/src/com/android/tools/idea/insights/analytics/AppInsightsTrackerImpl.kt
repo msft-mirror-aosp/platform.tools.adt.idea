@@ -18,7 +18,6 @@ package com.android.tools.idea.insights.analytics
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.analytics.withProjectId
 import com.android.tools.idea.insights.ai.AiInsight
-import com.android.tools.idea.insights.isOfflineMode
 import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.model.issue.FailureType
 import com.android.tools.idea.insights.toCrashType
@@ -27,17 +26,14 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.EventDetails
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.InsightSentiment.Sentiment
+import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEventKt.agentActionDetails
 import com.google.wireless.android.sdk.stats.DevServiceDeprecationInfo
 import com.intellij.openapi.project.Project
 
-class AppInsightsTrackerImpl(
-  private val project: Project,
-  private val insightsProductType: AppInsightsTracker.ProductType,
-) : AppInsightsTracker {
+class AppInsightsTrackerImpl(private val project: Project, private val insightsProductType: AppInsightsTracker.ProductType) :
+  AppInsightsTracker {
 
-  override fun logZeroState(
-    event: AppQualityInsightsUsageEvent.AppQualityInsightsZeroStateDetails
-  ) {
+  override fun logZeroState(event: AppQualityInsightsUsageEvent.AppQualityInsightsZeroStateDetails) {
     log(project.name) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.ZERO_STATE
       zeroStateDetails = event
@@ -56,19 +52,14 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logCrashListDetailView(
-    event: AppQualityInsightsUsageEvent.AppQualityInsightsCrashOpenDetails
-  ) {
+  override fun logCrashListDetailView(event: AppQualityInsightsUsageEvent.AppQualityInsightsCrashOpenDetails) {
     log(project.name) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.CRASH_LIST_DETAILS_VIEW
       crashOpenDetails = event
     }
   }
 
-  override fun logStacktraceClicked(
-    mode: ConnectionMode?,
-    event: AppQualityInsightsUsageEvent.AppQualityInsightsStacktraceDetails,
-  ) {
+  override fun logStacktraceClicked(mode: ConnectionMode?, event: AppQualityInsightsUsageEvent.AppQualityInsightsStacktraceDetails) {
     log(project.name) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.STACKTRACE_CLICKED
       stacktraceDetails = event
@@ -76,10 +67,7 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logConsoleLinkClicked(
-    mode: ConnectionMode,
-    event: AppQualityInsightsUsageEvent.AppQualityInsightsConsoleLinkDetails,
-  ) {
+  override fun logConsoleLinkClicked(mode: ConnectionMode, event: AppQualityInsightsUsageEvent.AppQualityInsightsConsoleLinkDetails) {
     log(project.name) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.FB_CONSOLE_LINK_CLICKED
       consoleLinkDetails = event
@@ -87,10 +75,7 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logError(
-    mode: ConnectionMode,
-    event: AppQualityInsightsUsageEvent.AppQualityInsightsErrorDetails,
-  ) {
+  override fun logError(mode: ConnectionMode, event: AppQualityInsightsUsageEvent.AppQualityInsightsErrorDetails) {
     log(project.name) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.ERROR
       errorDetails = event
@@ -130,13 +115,9 @@ class AppInsightsTrackerImpl(
     // If the transition is redundant, ie: from online to online, then skip tracking this metric.
     if (
       mode.isOfflineMode() &&
-        event.ordinal ==
-          AppQualityInsightsUsageEvent.AppQualityInsightsModeTransitionDetails.ONLINE_TO_OFFLINE
-            .ordinal ||
+        event.ordinal == AppQualityInsightsUsageEvent.AppQualityInsightsModeTransitionDetails.ONLINE_TO_OFFLINE.ordinal ||
         !mode.isOfflineMode() &&
-          event.ordinal ==
-            AppQualityInsightsUsageEvent.AppQualityInsightsModeTransitionDetails.OFFLINE_TO_ONLINE
-              .ordinal
+          event.ordinal == AppQualityInsightsUsageEvent.AppQualityInsightsModeTransitionDetails.OFFLINE_TO_ONLINE.ordinal
     ) {
       return
     }
@@ -147,12 +128,7 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logEventViewed(
-    unanonymizedAppId: String,
-    mode: ConnectionMode,
-    issueId: String,
-    eventId: String,
-  ) {
+  override fun logEventViewed(unanonymizedAppId: String, mode: ConnectionMode, issueId: String, eventId: String) {
     log(unanonymizedAppId) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.EVENT_VIEWED
       eventDetails =
@@ -166,12 +142,7 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logEventsFetched(
-    unanonymizedAppId: String,
-    issueId: String,
-    crashType: FailureType,
-    isFirstFetch: Boolean,
-  ) {
+  override fun logEventsFetched(unanonymizedAppId: String, issueId: String, crashType: FailureType, isFirstFetch: Boolean) {
     log(unanonymizedAppId) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.EVENTS_FETCHED
       eventsFetched =
@@ -185,11 +156,7 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logInsightSentiment(
-    sentiment: Sentiment,
-    crashType: AppQualityInsightsUsageEvent.CrashType,
-    insight: AiInsight,
-  ) {
+  override fun logInsightSentiment(sentiment: Sentiment, crashType: AppQualityInsightsUsageEvent.CrashType, insight: AiInsight) {
     log(project.name) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.INSIGHT_SENTIMENT
       insightSentiment =
@@ -203,12 +170,7 @@ class AppInsightsTrackerImpl(
     }
   }
 
-  override fun logInsightFetch(
-    unanonymizedAppId: String,
-    crashType: FailureType,
-    insight: AiInsight,
-    contextLimit: Int,
-  ) {
+  override fun logInsightFetch(unanonymizedAppId: String, crashType: FailureType, insight: AiInsight, contextLimit: Int) {
     log(unanonymizedAppId) {
       type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.INSIGHT_FETCH
       insightFetchDetails =
@@ -228,6 +190,20 @@ class AppInsightsTrackerImpl(
     }
   }
 
+  override fun logAgentAction(
+    action: AppQualityInsightsUsageEvent.AgentActionDetails.ActionType,
+    unanonymizedAppId: String,
+    failureType: FailureType,
+  ) {
+    log(unanonymizedAppId) {
+      type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.AGENT_ACTION
+      agentActionDetails = agentActionDetails {
+        actionType = action
+        crashType = failureType.toCrashType()
+      }
+    }
+  }
+
   override fun logServiceDeprecated(
     panel: AppQualityInsightsUsageEvent.ServiceDeprecationInfo.Panel,
     deliveryType: DevServiceDeprecationInfo.DeliveryType,
@@ -239,17 +215,13 @@ class AppInsightsTrackerImpl(
         AppQualityInsightsUsageEvent.ServiceDeprecationInfo.newBuilder()
           .apply {
             this.panel = panel
-            devServiceDeprecationInfo =
-              deprecationInfo.toBuilder().apply { this.deliveryType = deliveryType }.build()
+            devServiceDeprecationInfo = deprecationInfo.toBuilder().apply { this.deliveryType = deliveryType }.build()
           }
           .build()
     }
   }
 
-  private fun log(
-    unanonymizedAppId: String,
-    builder: AppQualityInsightsUsageEvent.Builder.() -> Unit,
-  ) {
+  private fun log(unanonymizedAppId: String, builder: AppQualityInsightsUsageEvent.Builder.() -> Unit) {
     UsageTracker.log(
       generateAndroidStudioEventBuilder()
         .setAppQualityInsightsUsageEvent(

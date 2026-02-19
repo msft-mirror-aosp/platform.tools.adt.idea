@@ -2,6 +2,36 @@ load("//tools/base/bazel:bazel.bzl", "iml_alias", "iml_module")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 
 iml_module(
+    name = "jewel.sdkcompat.253",
+    compatible_intellij_platforms = ["intellij_2025_3"],
+    iml_files = ["jewel.sdkcompat.iml"],
+    visibility = ["//visibility:public"],
+    exports = [
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
+    ],
+    deps = [
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
+        "@intellij//:intellij-sdk",
+    ],
+)
+
+iml_module(
     name = "jewel.sdkcompat.252",
     srcs = ["api252"],
     compatible_intellij_platforms = ["intellij_ce_2025_2"],
@@ -13,6 +43,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
     ],
@@ -22,6 +53,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij-sdk",
@@ -43,6 +75,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
     ],
@@ -52,39 +85,17 @@ iml_module(
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij-sdk",
     ],
 )
 
-iml_module(
-    name = "jewel.sdkcompat.243",
-    srcs = ["api243"],
-    compatible_intellij_platforms = ["intellij_ce_2024_3"],
-    iml_files = ["jewel.sdkcompat.iml"],
-    visibility = ["//visibility:public"],
-    exports = [
-        "//prebuilts/tools/common/m2:compose-desktop",
-        "//tools/adt/idea/adt-ui-compose/jewel.sdkcompat:jewel-ide",
-    ],
-    deps = [
-        "//prebuilts/tools/common/m2:compose-desktop",
-        "//tools/adt/idea/adt-ui-compose/jewel.sdkcompat:jewel-ide",
-        "@intellij//:intellij-sdk",
-    ],
-)
-
-jvm_import(
-    name = "jewel-ide",
-    jars = ["//prebuilts/tools/common/m2:jewel-ide.jar"],
-    visibility = ["//visibility:public"],
-)
-
 # managed by go/iml_to_build
 iml_module(
     name = "jewel.sdkcompat.main",
-    srcs = ["api252"],
+    srcs = ["api253"],
     iml_files = ["jewel.sdkcompat.iml"],
     kotlin_use_compose = True,
     visibility = ["//visibility:public"],
@@ -97,6 +108,8 @@ iml_module(
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
     ],
     # do not sort: must match IML order
     deps = [
@@ -108,6 +121,8 @@ iml_module(
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
     ],
 )
 
@@ -116,9 +131,9 @@ iml_alias(
     name = "jewel.sdkcompat",
     default = "//tools/adt/idea/adt-ui-compose/jewel.sdkcompat:jewel.sdkcompat.main",
     overrides = {
-        "intellij_ce_2024_3": "jewel.sdkcompat.243",
         "intellij_ce_2025_1": "jewel.sdkcompat.251",
         "intellij_ce_2025_2": "jewel.sdkcompat.252",
+        "intellij_2025_3": "jewel.sdkcompat.253",
         "sherlock-sdk": "jewel.sdkcompat.251",
     },
     visibility = ["//visibility:public"],

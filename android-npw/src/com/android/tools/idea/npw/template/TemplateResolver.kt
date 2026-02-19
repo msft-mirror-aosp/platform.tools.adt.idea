@@ -25,26 +25,18 @@ import com.intellij.openapi.extensions.ExtensionPointName
 class TemplateResolver {
 
   companion object {
-    private val EP_NAME =
-      ExtensionPointName<WizardTemplateProvider>(
-        "com.android.tools.idea.wizard.template.wizardTemplateProvider"
-      )
+    private val EP_NAME = ExtensionPointName<WizardTemplateProvider>("com.android.tools.idea.wizard.template.wizardTemplateProvider")
 
     fun getAllTemplates(): List<Template> {
       return EP_NAME.extensions.flatMap {
         it.getTemplates().filter { template ->
           when (template.name) {
-            "Gemini API Starter" -> StudioFlags.NPW_ENABLE_GENAI_TEMPLATE.get()
+            "Gemini API Starter with Firebase" -> StudioFlags.NPW_ENABLE_GEMINI_FIREBASE_TEMPLATE.get()
             "Basic Headset Activity" -> StudioFlags.NPW_ENABLE_XR_TEMPLATE.get()
             "Basic AI Glasses Activity" -> StudioFlags.NPW_ENABLE_AI_GLASSES_TEMPLATE.get()
             "Navigation UI Activity" -> StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.get()
             "Bottom Navigation Views Activity",
-            "Navigation Drawer Views Activity" ->
-              !StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.get()
-            "Journey File" ->
-              StudioFlags.JOURNEYS_WITH_GEMINI_EXECUTION.get() &&
-                StudioFlags.AGP_TEST_SUITES_ENABLED.get() &&
-                !StudioFlags.JOURNEYS_WITH_GEMINI_NEW_WIZARD.get()
+            "Navigation Drawer Views Activity" -> !StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.get()
             "Basic Watch Face" -> StudioFlags.NPW_ENABLE_BASIC_WATCH_FACE_TEMPLATE.get()
             else -> true
           }
@@ -52,11 +44,7 @@ class TemplateResolver {
       }
     }
 
-    fun getTemplateByName(
-      name: String,
-      category: Category? = null,
-      formFactor: FormFactor? = null,
-    ) =
+    fun getTemplateByName(name: String, category: Category? = null, formFactor: FormFactor? = null) =
       getAllTemplates()
         .filter { category == null || it.category == category }
         .filter { formFactor == null || it.formFactor == formFactor }

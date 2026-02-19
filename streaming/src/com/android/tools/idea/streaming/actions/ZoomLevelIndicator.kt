@@ -24,6 +24,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.UIUtil
@@ -52,6 +53,10 @@ class ZoomLevelIndicator : DumbAwareAction(EmptyIcon.ICON_16), CustomComponentAc
       val scale = zoomable.scale
       val scaleText = String.format(Locale.ROOT, "%d%%", (scale * 100).roundToInt())
       presentation.text = "Zoom Level: $scaleText"
+      thisLogger().info("Zoom level indicator updated from ${presentation.description} to $scaleText") // b/479059316
+      if (scaleText != presentation.description) {
+        zoomLevelChanged = true
+      }
       presentation.description = scaleText
     }
   }
@@ -62,23 +67,19 @@ class ZoomLevelIndicator : DumbAwareAction(EmptyIcon.ICON_16), CustomComponentAc
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
-  override fun createCustomComponent(presentation: Presentation, place: String): JComponent =
-      MyActionButton(this, presentation, place)
+  override fun createCustomComponent(presentation: Presentation, place: String): JComponent = MyActionButton(this, presentation, place)
 
-  private class MyActionButton(
-    action: AnAction,
-    presentation: Presentation,
-    place: String
-  ) : ActionButton(action, presentation, place, ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE) {
+  private class MyActionButton(action: AnAction, presentation: Presentation, place: String) :
+    ActionButton(action, presentation, place, ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE) {
 
-    private var myCachedTextPainter: TextPainter? = null
+    private var cachedTextPainter: TextPainter? = null
     private val textPainter: TextPainter
       get() {
         val text = presentation.description ?: ""
-        if (myCachedTextPainter?.baseFont != font || myCachedTextPainter?.text != text) {
-          myCachedTextPainter = null
+        if (cachedTextPainter?.baseFont != font || cachedTextPainter?.text != text) {
+          cachedTextPainter = null
         }
-        return myCachedTextPainter ?: TextPainter(font, text, width).also { myCachedTextPainter = it }
+        return cachedTextPainter ?: TextPainter(font, text, width).also { cachedTextPainter = it }
       }
 
     override fun paintComponent(g: Graphics) {
@@ -105,12 +106,16 @@ class ZoomLevelIndicator : DumbAwareAction(EmptyIcon.ICON_16), CustomComponentAc
       val textBounds = textBounds
       val textX = centerIn.x - textBounds.x + (centerIn.width - textBounds.width) / 2
       val textY = centerIn.y - textBounds.y + (centerIn.height - textBounds.height) / 2
+      if (zoomLevelChanged) { // b/479059316
+        thisLogger().info("Painting zoom level indicator $text")
+        zoomLevelChanged = false
+      }
       g.drawString(text, textX, textY)
     }
 
     /**
-     * If the given text is wider than [maxWidth] when rendered using this font, returns a font that
-     * is squeezed horizontally so that it fits in [maxWidth]. Otherwise, returns this font.
+     * If the given text is wider than [maxWidth] when rendered using this font, returns a font that is squeezed horizontally so that it
+     * fits in [maxWidth]. Otherwise, returns this font.
      */
     private fun Font.squeezeToFit(text: String, maxWidth: Int): Font {
       var scale = 1.0
@@ -142,16 +147,13 @@ class ZoomLevelIndicator : DumbAwareAction(EmptyIcon.ICON_16), CustomComponentAc
       return scaled(scale)
     }
 
-    private fun computeTextWidth(text: String, font: Font, scale: Double): Int =
-        computeTextBounds(font.scaled(scale), text).width
+    private fun computeTextWidth(text: String, font: Font, scale: Double): Int = computeTextBounds(font.scaled(scale), text).width
 
-    private fun computeTextBounds(font: Font, text: String): Rectangle =
-        computePixelBounds(font, text, fontRenderContext)
+    private fun computeTextBounds(font: Font, text: String): Rectangle = computePixelBounds(font, text, fontRenderContext)
   }
 }
 
-private fun Font.scaled(scale: Double): Font =
-    if (scale == 1.0) this else deriveFont(AffineTransform.getScaleInstance(scale, 1.0))
+private fun Font.scaled(scale: Double): Font = if (scale == 1.0) this else deriveFont(AffineTransform.getScaleInstance(scale, 1.0))
 
 private fun computePixelBounds(font: Font, text: String, context: FontRenderContext): Rectangle {
   return when {
@@ -165,3 +167,6 @@ private fun createFontRenderContext(): FontRenderContext {
   val fmHint = UIManager.get(RenderingHints.KEY_FRACTIONALMETRICS) ?: RenderingHints.VALUE_FRACTIONALMETRICS_DEFAULT
   return FontRenderContext(null, aaHint, fmHint)
 }
+
+private var zoomLevelChanged = false
+ // b/479059316

@@ -68,7 +68,6 @@ import com.android.tools.idea.wizard.template.Separator
 import com.android.tools.idea.wizard.template.StringParameter
 import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.TemplateConstraint
-import com.android.tools.idea.wizard.template.TestSuiteWidget
 import com.android.tools.idea.wizard.template.TextFieldWidget
 import com.android.tools.idea.wizard.template.UrlLinkWidget
 import com.android.tools.idea.wizard.template.Widget
@@ -99,18 +98,7 @@ import javax.swing.JScrollPane
 import org.jetbrains.android.util.AndroidBundle.message
 
 val TYPE_CONSTRAINTS: EnumSet<Constraint> =
-  EnumSet.of(
-    ACTIVITY,
-    CLASS,
-    PACKAGE,
-    APP_PACKAGE,
-    MODULE,
-    LAYOUT,
-    DRAWABLE,
-    SOURCE_SET_FOLDER,
-    STRING,
-    URI_AUTHORITY,
-  )
+  EnumSet.of(ACTIVITY, CLASS, PACKAGE, APP_PACKAGE, MODULE, LAYOUT, DRAWABLE, SOURCE_SET_FOLDER, STRING, URI_AUTHORITY)
 
 fun Parameter<*>.isRelated(p: Parameter<*>): Boolean =
   p is StringParameter &&
@@ -119,18 +107,15 @@ fun Parameter<*>.isRelated(p: Parameter<*>): Boolean =
     TYPE_CONSTRAINTS.intersect(constraints).intersect(p.constraints).isNotEmpty()
 
 /**
- * A step which takes a template and wraps a UI around it, allowing a user to modify its various
- * parameters.
+ * A step which takes a template and wraps a UI around it, allowing a user to modify its various parameters.
  *
- * Far from being generic data, the template edited by this step is very Android specific, and needs
- * to be aware of things like the current project/module, package name, min supported API,
- * previously configured values, etc.
+ * Far from being generic data, the template edited by this step is very Android specific, and needs to be aware of things like the current
+ * project/module, package name, min supported API, previously configured values, etc.
  */
 class ConfigureTemplateParametersStep(
   model: RenderTemplateModel,
   @NlsContexts.Label title: String,
   private val templates: List<NamedModuleTemplate>,
-  private val showTargetSourceSetPicker: Boolean = true,
 ) : ModelWizardStep<RenderTemplateModel>(model, title) {
   private val bindings = BindingsManager()
   private val listeners = ListenerManager()
@@ -138,10 +123,9 @@ class ConfigureTemplateParametersStep(
   private val userValues = hashMapOf<Parameter<*>, Any>()
 
   /**
-   * Validity check of all parameters is performed when any parameter changes, and the first error
-   * found is set here. This is then registered as its own validator with [validatorPanel]. This
-   * vastly simplifies validation, as we no longer have to worry about implicit relationships
-   * between parameters (when changing one makes another valid/invalid).
+   * Validity check of all parameters is performed when any parameter changes, and the first error found is set here. This is then
+   * registered as its own validator with [validatorPanel]. This vastly simplifies validation, as we no longer have to worry about implicit
+   * relationships between parameters (when changing one makes another valid/invalid).
    */
   private val invalidParameterMessage = StringValueProperty()
 
@@ -167,12 +151,8 @@ class ConfigureTemplateParametersStep(
   private val project: Project?
     get() = if (model.isNewProject) null else model.project
 
-  /**
-   * Given a parameter, return a String key we can use to interact with IntelliJ's [RecentsManager]
-   * system.
-   */
-  private fun getRecentsKeyForParameter(parameter: Parameter<*>) =
-    "android.template.${parameter.hashCode()}"
+  /** Given a parameter, return a String key we can use to interact with IntelliJ's [RecentsManager] system. */
+  private fun getRecentsKeyForParameter(parameter: Parameter<*>) = "android.template.${parameter.hashCode()}"
 
   override fun shouldShow(): Boolean = model.newTemplate !== Template.NoActivity
 
@@ -195,11 +175,7 @@ class ConfigureTemplateParametersStep(
     templateTitleLabel.text = newTemplate.name
 
     for (widget in model.newTemplate.widgets) {
-      if (
-        widget is LanguageWidget &&
-          (model.moduleTemplateDataBuilder.isNewModule ||
-            model.projectTemplateDataBuilder.isNewProject)
-      ) {
+      if (widget is LanguageWidget && (model.moduleTemplateDataBuilder.isNewModule || model.projectTemplateDataBuilder.isNewProject)) {
         // We should not show language chooser in "New Module" and "New Project" wizards because it
         // should be selected on a previous step.
         continue
@@ -228,26 +204,20 @@ class ConfigureTemplateParametersStep(
         // We cannot know a good default value for package in template, but it's being preset in
         // [createRowForWidget]
         is PackageNameWidget -> parameter.value = property!!.get()
-        is TestSuiteWidget -> parameter.value = property!!.get()
         is EnumWidget -> row.setValue((parameter.value as Enum<*>).name)
         else -> row.setValue(parameter.value)
       }
     }
 
-    if (showTargetSourceSetPicker && templates.size > 1) {
+    if (templates.size > 1) {
       val row =
-        RowEntry(
-            message("android.wizard.target.source.set.header"),
-            ModuleTemplateComboProvider(templates),
-          )
-          .apply {
-            setEnabled(true)
-            addToPanel(parametersPanel)
-            property!!.addListener {
-              model.wizardParameterData.sourceProviderName =
-                (property.get() as Optional<NamedModuleTemplate>).get().name
-            }
+        RowEntry(message("android.wizard.target.source.set.header"), ModuleTemplateComboProvider(templates)).apply {
+          setEnabled(true)
+          addToPanel(parametersPanel)
+          property!!.addListener {
+            model.wizardParameterData.sourceProviderName = (property.get() as Optional<NamedModuleTemplate>).get().name
           }
+        }
 
       val template = (row.property as SelectedItemProperty<NamedModuleTemplate>)
       // ModuleTemplateComboProvider always sets this
@@ -258,10 +228,7 @@ class ConfigureTemplateParametersStep(
     validatorPanel.registerMessageSource(invalidParameterMessage)
 
     // TODO do not deduplicate package name etc.
-    val parameterValues =
-      parameters.filterIsInstance<StringParameter>().associateWith {
-        userValues[it] ?: deduplicate(it)
-      }
+    val parameterValues = parameters.filterIsInstance<StringParameter>().associateWith { userValues[it] ?: deduplicate(it) }
 
     parameters.forEach {
       val resolvedValue = parameterValues[it]
@@ -274,12 +241,11 @@ class ConfigureTemplateParametersStep(
   }
 
   /**
-   * Every template parameter, based on its type, can generate a row of* components. For example, a
-   * text parameter becomes a "Label: Textfield" set, while a list of choices becomes "Label:
-   * pulldown".
+   * Every template parameter, based on its type, can generate a row of* components. For example, a text parameter becomes a "Label:
+   * Textfield" set, while a list of choices becomes "Label: pulldown".
    *
-   * This method takes an input [Parameter] and returns a generated [RowEntry] for it, which neatly
-   * encapsulates its UI. The caller should use [RowEntry.addToPanel] after receiving it.
+   * This method takes an input [Parameter] and returns a generated [RowEntry] for it, which neatly encapsulates its UI. The caller should
+   * use [RowEntry.addToPanel] after receiving it.
    */
   private fun createRowForWidget(module: Module?, widget: Widget<*>): RowEntry<*> =
     when (widget) {
@@ -300,12 +266,7 @@ class ConfigureTemplateParametersStep(
           if (module != null)
             RowEntry(
               widget.p.name,
-              PackageComboProvider(
-                module.project,
-                widget.p,
-                model.packageName.get(),
-                getRecentsKeyForParameter(widget.p),
-              ),
+              PackageComboProvider(module.project, widget.p, model.packageName.get(), getRecentsKeyForParameter(widget.p)),
             )
           else RowEntry(widget.p.name, LabelWithEditButtonProvider(widget.p))
 
@@ -317,21 +278,6 @@ class ConfigureTemplateParametersStep(
         listeners.listen(model.packageName) { enqueueEvaluateParameters() }
         rowEntry
       }
-      is TestSuiteWidget -> {
-        val rowEntry = RowEntry(widget.p.name, TextFieldProvider(widget.parameter))
-
-        // If the test suite name is unset on the model, set it to the default defined by the
-        // string parameter in the template
-        if (model.testSuiteName.get().isEmpty()) {
-          model.testSuiteName.set(widget.p.defaultValue)
-        }
-
-        val testSuiteName = rowEntry.property as StringProperty
-        bindings.bindTwoWay(testSuiteName, model.testSuiteName)
-        listeners.listen(model.testSuiteName) { enqueueEvaluateParameters() }
-
-        rowEntry
-      }
       is CheckBoxWidget -> RowEntry(CheckboxProvider(widget.p))
       is UrlLinkWidget -> RowEntry(UrlLinkProvider(widget.urlName, widget.urlAddress))
       is Separator -> RowEntry(SeparatorProvider())
@@ -340,10 +286,9 @@ class ConfigureTemplateParametersStep(
     }
 
   /**
-   * Instead of evaluating all parameters immediately, invoke the request to run later. This option
-   * allows us to avoid the situation where a value has just changed, is forcefully re-evaluated
-   * immediately, and causes Swing to throw an exception between we're editing a value while it's in
-   * a locked read-only state.
+   * Instead of evaluating all parameters immediately, invoke the request to run later. This option allows us to avoid the situation where a
+   * value has just changed, is forcefully re-evaluated immediately, and causes Swing to throw an exception between we're editing a value
+   * while it's in a locked read-only state.
    */
   private fun enqueueEvaluateParameters() {
     if (evaluationState == EvaluationState.REQUEST_ENQUEUED) {
@@ -355,8 +300,7 @@ class ConfigureTemplateParametersStep(
   }
 
   /**
-   * Run through all parameters for our current template and update their values, including
-   * visibility, enabled state, and actual values.
+   * Run through all parameters for our current template and update their values, including visibility, enabled state, and actual values.
    */
   private fun evaluateParameters() {
     evaluationState = EvaluationState.EVALUATING
@@ -368,10 +312,7 @@ class ConfigureTemplateParametersStep(
       }
     }
 
-    val parameterValues =
-      parameters.filterIsInstance<StringParameter>().associateWith {
-        userValues[it] ?: deduplicate(it)
-      }
+    val parameterValues = parameters.filterIsInstance<StringParameter>().associateWith { userValues[it] ?: deduplicate(it) }
 
     parameters.forEach {
       val resolvedValue = parameterValues[it]
@@ -389,31 +330,18 @@ class ConfigureTemplateParametersStep(
     val sourceProvider = model.template.get().getSourceProvider()
 
     return getSortedStringParametersForValidation(parameters).firstNotNullOfOrNull { parameter ->
-      val property =
-        parameterRows[parameter as Parameter<in Any>]?.property ?: return@firstNotNullOfOrNull null
-      parameter.validate(
-        project,
-        model.module,
-        sourceProvider,
-        model.packageName.get(),
-        model.testSuiteName.get(),
-        property.get(),
-        getRelatedValues(parameter),
-      )
+      val property = parameterRows[parameter as Parameter<in Any>]?.property ?: return@firstNotNullOfOrNull null
+      parameter.validate(project, model.module, sourceProvider, model.packageName.get(), property.get(), getRelatedValues(parameter))
     }
   }
 
   /**
-   * Returns the template's parameters, with parameters containing the PACKAGE constraint first.
-   * This is sort of a hack to make validation check PACKAGE constraints first, before CLASS
-   * constraints. CLASS checks for whether the fully qualified name is valid, while PACKAGE only
-   * checks the package name, so we should check PACKAGE first to display more relevant error
-   * messages.
+   * Returns the template's parameters, with parameters containing the PACKAGE constraint first. This is sort of a hack to make validation
+   * check PACKAGE constraints first, before CLASS constraints. CLASS checks for whether the fully qualified name is valid, while PACKAGE
+   * only checks the package name, so we should check PACKAGE first to display more relevant error messages.
    */
   @VisibleForTesting
-  fun getSortedStringParametersForValidation(
-    parameters: Collection<Parameter<*>>
-  ): List<StringParameter> {
+  fun getSortedStringParametersForValidation(parameters: Collection<Parameter<*>>): List<StringParameter> {
     return parameters
       .filterIsInstance<StringParameter>()
       .filter { it.isVisibleAndEnabled }
@@ -459,26 +387,18 @@ class ConfigureTemplateParametersStep(
       }
       else -> {
         @Suppress("UNCHECKED_CAST")
-        this.value =
-          property.get() as T // TODO(qumeric): row may have no property? (e.g. separator)
+        this.value = property.get() as T // TODO(qumeric): row may have no property? (e.g. separator)
       }
     }
   }
 
-  /**
-   * Fetches the values of all parameters that are related to the target parameter. This is useful
-   * when validating a parameter's value.
-   */
+  /** Fetches the values of all parameters that are related to the target parameter. This is useful when validating a parameter's value. */
   private fun getRelatedValues(parameter: Parameter<*>): Set<Any> =
-    parameters
-      .filter { parameter.isRelated(it) }
-      .mapNotNull { parameterRows[it]?.property?.get() }
-      .toSet()
+    parameters.filter { parameter.isRelated(it) }.mapNotNull { parameterRows[it]?.property?.get() }.toSet()
 
   /**
-   * Because the FreeMarker templating engine is mostly opaque to us, any time any parameter
-   * changes, we need to re-evaluate all parameters. Parameter evaluation can be started immediately
-   * via [evaluateParameters] or with a delay using [enqueueEvaluateParameters].
+   * Because the FreeMarker templating engine is mostly opaque to us, any time any parameter changes, we need to re-evaluate all parameters.
+   * Parameter evaluation can be started immediately via [evaluateParameters] or with a delay using [enqueueEvaluateParameters].
    */
   private enum class EvaluationState {
     NOT_EVALUATING,
@@ -487,8 +407,8 @@ class ConfigureTemplateParametersStep(
   }
 
   /**
-   * A template is broken down into separate fields, each which is given a row with optional header.
-   * This class wraps all UI elements in the row, providing methods for managing them.
+   * A template is broken down into separate fields, each which is given a row with optional header. This class wraps all UI elements in the
+   * row, providing methods for managing them.
    */
   private class RowEntry<T : JComponent> {
     val component: T
@@ -496,8 +416,7 @@ class ConfigureTemplateParametersStep(
 
     private val header: JPanel?
     private val componentProvider: ComponentProvider<T>
-    private val container: JPanel =
-      DialogPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS) }
+    private val container: JPanel = DialogPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS) }
 
     constructor(@NlsContexts.Label headerText: String, componentProvider: ComponentProvider<T>) {
       val headerLabel = JBLabel(headerText)
@@ -574,17 +493,7 @@ class ConfigureTemplateParametersStep(
     var suffix = 2
     val relatedValues = getRelatedValues(parameter)
     val sourceProvider = model.template.get().getSourceProvider()
-    while (
-      !parameter.uniquenessSatisfied(
-        project,
-        model.module,
-        sourceProvider,
-        model.packageName.get(),
-        model.testSuiteName.get(),
-        suggested,
-        relatedValues,
-      )
-    ) {
+    while (!parameter.uniquenessSatisfied(project, model.module, sourceProvider, model.packageName.get(), suggested, relatedValues)) {
       suggested = filenameJoiner.join(namePart + suffix, extPart.ifEmpty { null })
       suffix++
     }

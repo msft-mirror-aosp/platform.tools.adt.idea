@@ -16,36 +16,43 @@
 package com.android.tools.idea.lang.proguardR8.psi
 
 import com.android.tools.idea.lang.androidSql.referenceAtCaret
-import com.android.tools.idea.lang.proguardR8.ProguardR8FileType
 import com.android.tools.idea.lang.proguardR8.ProguardR8TestCase
 import com.android.tools.idea.testing.moveCaret
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.intellij.psi.util.parentOfType
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class ProguardR8ClassMemberTest : ProguardR8TestCase() {
+@RunWith(Parameterized::class)
+class ProguardR8ClassMemberTest(private val fileType: LanguageFileType) : ProguardR8TestCase() {
 
+  @Test
   fun testIsConstructor() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
-        package p1.p2;
-        class MyClass {}
-      """.trimIndent()
+      package p1.p2;
+      class MyClass {}
+      """
+        .trimIndent()
     )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
-        -keep class p1.p2.MyClass {
-          MyClass();
-          p1.p2.MyClass();
-          NotMyClass();
-          p1.p2.NotMyClass();
-          p3.MyClass();
-        }
-      """.trimIndent()
+      -keep class p1.p2.MyClass {
+        MyClass();
+        p1.p2.MyClass();
+        NotMyClass();
+        p1.p2.NotMyClass();
+        p3.MyClass();
+      }
+      """
+        .trimIndent(),
     )
 
     myFixture.moveCaret("My|Class()")
@@ -69,6 +76,7 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
     assertThat(member.isConstructor()).isFalse()
   }
 
+  @Test
   fun testResolveConstructors() {
     fun getConstructorsDescriptionsAt(str: String): List<String> {
       myFixture.moveCaret(str)
@@ -83,34 +91,36 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
     }
 
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
-        package p1.p2;
-        class MyClass {
-          MyClass() {}
-          MyClass(int i) {}
-          protected MyClass(long l) {}
-          private MyClass(String s) {}
-        }
-      """.trimIndent()
+      package p1.p2;
+      class MyClass {
+        MyClass() {}
+        MyClass(int i) {}
+        protected MyClass(long l) {}
+        private MyClass(String s) {}
+      }
+      """
+        .trimIndent()
     )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
-        -keep class p1.p2.MyClass {
-          MyClass();
-          MyClass(***);
-          public MyClass(...);
-          !public MyClass(...);
-          private protected MyClass(...);
-          MyClass(java.lang.String);
+      -keep class p1.p2.MyClass {
+        MyClass();
+        MyClass(***);
+        public MyClass(...);
+        !public MyClass(...);
+        private protected MyClass(...);
+        MyClass(java.lang.String);
 
-          p1.p2.MyClass();
-          p1.p2.MyClass(int, int);
-          protected p1.p2.MyClass(...);
-        }
-      """.trimIndent()
+        p1.p2.MyClass();
+        p1.p2.MyClass(int, int);
+        protected p1.p2.MyClass(...);
+      }
+      """
+        .trimIndent(),
     )
 
     var constructors = getConstructorsDescriptionsAt("My|Class()")
@@ -123,10 +133,8 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
     assertThat(constructors).isEmpty()
 
     constructors = getConstructorsDescriptionsAt("!public My|Class(...)")
-    assertThat(constructors).containsExactly(
-      "MyClass() {}", "MyClass(int i) {}", "protected MyClass(long l) {}",
-      "private MyClass(String s) {}"
-    )
+    assertThat(constructors)
+      .containsExactly("MyClass() {}", "MyClass(int i) {}", "protected MyClass(long l) {}", "private MyClass(String s) {}")
 
     constructors = getConstructorsDescriptionsAt("private protected My|Class(...)")
     assertThat(constructors).containsExactly("protected MyClass(long l) {}", "private MyClass(String s) {}")
@@ -144,9 +152,10 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
     assertThat(constructors).containsExactly("protected MyClass(long l) {}")
   }
 
+  @Test
   fun testModifiers() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -157,11 +166,12 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
         public volatile int myPublicVolatile;
         private strictfp int mySrictfpMethod();
       }
-    """.trimIndent()
+      """
+        .trimIndent()
     )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
          my;
@@ -173,7 +183,8 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
          !static !final !strictfp my;
          volatile !volatile my;
       }
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
     myFixture.moveCaret("m|y;")
     var fields = (myFixture.referenceAtCaret as ProguardR8ClassMemberNameReference).variants.map { it.lookupString }
@@ -196,14 +207,21 @@ class ProguardR8ClassMemberTest : ProguardR8TestCase() {
     assertThat(fields).containsExactly("myPrivateFinal", "mySrictfpMethod")
 
     myFixture.moveCaret("strictfp m|y;")
-    fields = (myFixture.referenceAtCaret as PsiMultiReference).references
-      .find { it is ProguardR8ClassMemberNameReference }!!.variants.map { (it as LookupElement).lookupString }
+    fields =
+      (myFixture.referenceAtCaret as PsiMultiReference)
+        .references
+        .find { it is ProguardR8ClassMemberNameReference }!!
+        .variants
+        .map { (it as LookupElement).lookupString }
     assertThat(fields).containsExactly("mySrictfpMethod")
 
-
     myFixture.moveCaret("!static !final !strictfp m|y;")
-    fields = (myFixture.referenceAtCaret as PsiMultiReference).references
-      .find { it is ProguardR8ClassMemberNameReference }!!.variants.map { (it as LookupElement).lookupString }
+    fields =
+      (myFixture.referenceAtCaret as PsiMultiReference)
+        .references
+        .find { it is ProguardR8ClassMemberNameReference }!!
+        .variants
+        .map { (it as LookupElement).lookupString }
     assertThat(fields).containsExactly("myPackagePrivate", "myPublicVolatile")
 
     myFixture.moveCaret("volatile !volatile m|y;")

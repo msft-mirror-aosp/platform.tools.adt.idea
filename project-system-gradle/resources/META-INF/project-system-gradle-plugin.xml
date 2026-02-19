@@ -14,8 +14,8 @@
   ~ limitations under the License.
   -->
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="/META-INF/project-system-gradle-plugin-k1.xml" includeUnless="idea.kotlin.plugin.use.k2"/>
-  <xi:include href="/META-INF/project-system-gradle-plugin-k2.xml" includeIf="idea.kotlin.plugin.use.k2"/>
+  <xi:include href="/META-INF/project-system-gradle-plugin-k1.xml" includeIf="idea.kotlin.plugin.use.k1"/>
+  <xi:include href="/META-INF/project-system-gradle-plugin-k2.xml" includeUnless="idea.kotlin.plugin.use.k1"/>
   <depends>com.intellij.gradle</depends>
   <depends>org.jetbrains.plugins.gradle</depends>
   <depends>org.jetbrains.kotlin</depends>
@@ -178,10 +178,6 @@
     <spellchecker.support language="Groovy" implementationClass="org.jetbrains.android.spellchecker.AndroidGradleSpellcheckingStrategy" order="first"/>
     <spellchecker.support language="kotlin" implementationClass="org.jetbrains.kotlin.android.spellchecker.AndroidGradleKtsSpellcheckingStrategy" order="first"/>
     <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.instrumented.kmp.KotlinMultiplatformAndroidTestConfigurationProducer"/>
-    <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.screenshot.ScreenshotTestMethodGradleConfigurationProducer"/>
-    <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.screenshot.ScreenshotTestClassGradleConfigurationProducer"/>
-    <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.screenshot.ScreenshotTestAllInPackageGradleConfigurationProducer"/>
-    <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.screenshot.ScreenshotTestAllInDirectoryGradleConfigurationProducer"/>
     <psi.referenceContributor language="Groovy" implementation="com.android.tools.idea.gradle.service.resolve.GroovyNamespacePsiPackageReferenceContributor"/>
     <psi.referenceContributor language="kotlin" implementation="com.android.tools.idea.gradle.service.resolve.KotlinNamespacePsiPackageReferenceContributor"/>
     <psi.referenceContributor language="Declarative" implementation="com.android.tools.idea.gradle.service.resolve.DeclarativeNamespacePsiPackageReferenceContributor"/>
@@ -287,6 +283,7 @@
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.GradleBrokenPipeIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.GradleDistributionInstallIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.IncompatibleAgpVersionsIssueChecker"/>
+    <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.IncompatibleGradleJvmAndGradleIssueChecker" order="first"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.InternetConnectionIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.MissingBuildToolsIssueChecker"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.errors.MissingCMakeIssueChecker"/>
@@ -309,6 +306,7 @@
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.issues.toolchain.GradleUndefinedDaemonJvmCriteriaIssueReporter" order="first"/>
     <issueChecker implementation="com.android.tools.idea.gradle.project.sync.issues.toolchain.GradleUndefinedToolchainRepositoriesIssueReporter" order="first"/>
     <gradleJvmResolver implementation="com.android.tools.idea.gradle.resolvers.GradleJvmEnvironmentStudioJdkResolver" order="first" />
+    <gradleJvmResolver implementation="com.android.tools.idea.gradle.resolvers.GradleJvmProjectTableJdkResolver"/>
     <importCustomizer implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleImportCustomizer"/>
     <settingsControlProvider implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleSettingsControlProvider"/>
     <executionHelperExtension implementation="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$BuildPhaseListenerExecutionHelperExtension"/>

@@ -15,31 +15,53 @@
  */
 package com.android.tools.idea.gradle.project.sync.errors
 
+import com.android.tools.idea.gradle.fixtures.createDaemonJvmPropertiesFile
 import com.android.tools.idea.gradle.project.build.output.TestMessageEventConsumer
+import com.android.tools.idea.gradle.project.sync.quickFixes.OpenGradleDaemonJvmSettingsQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenLinkQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.SelectJdkFromFileSystemQuickFix
+import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix
+import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.TestApplicationManager
 import com.intellij.testFramework.UsefulTestCase.assertEmpty
+import org.gradle.tooling.model.build.BuildEnvironment
+import org.gradle.tooling.model.build.GradleEnvironment
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.whenever
 
 @Suppress("UnstableApiUsage")
 class NoMatchingConfigurationSelectionIssueCheckerTest {
   private val issueChecker = NoMatchingConfigurationSelectionIssueChecker()
 
+  @get:Rule var tmpFolderRule = TemporaryFolder()
+
+  @Before
+  fun setUp() {
+    TestApplicationManager.getInstance()
+    tmpFolderRule.create()
+  }
+
   @Test
   fun `consumeBuildOutputFailureMessage is false when pattern is not present`() {
     val testConsumer = TestMessageEventConsumer()
-    val consumed = issueChecker.consumeBuildOutputFailureMessage(
-      message = "This message should not be consumed",
-      failureCause = "",
-      stacktrace = null,
-      location = null,
-      parentEventId = "",
-      testConsumer
-    )
+    val consumed =
+      issueChecker.consumeBuildOutputFailureMessage(
+        message = "This message should not be consumed",
+        failureCause = "",
+        stacktrace = null,
+        location = null,
+        parentEventId = "",
+        testConsumer,
+      )
     assertFalse(consumed)
     assertEmpty(testConsumer.messageEvents)
   }
@@ -47,40 +69,47 @@ class NoMatchingConfigurationSelectionIssueCheckerTest {
   @Test
   fun `consumeBuildOutputFailureMessage is true when pattern is present`() {
     val testConsumer = TestMessageEventConsumer()
-    val consumed = issueChecker.consumeBuildOutputFailureMessage(
-      message = createErrorMessage(agpVersion = "8.1.0", agpCompiledVersion = "11", gradleJdkVersion = "8"),
-      failureCause = "",
-      stacktrace = null,
-      location = null,
-      parentEventId = "",
-      testConsumer
-    )
+    val consumed =
+      issueChecker.consumeBuildOutputFailureMessage(
+        message = createErrorMessage(agpVersion = "8.1.0", agpCompiledVersion = "11", gradleJdkVersion = "8"),
+        failureCause = "",
+        stacktrace = null,
+        location = null,
+        parentEventId = "",
+        testConsumer,
+      )
     assertTrue(consumed)
     assertEmpty(testConsumer.messageEvents)
   }
 
   @Test
   fun `AGP needs 11 but project uses 8`() {
-    verifyBuildIssue(agpVersion = "7.0.0", agpCompiledVersion = "11", gradleJdkVersion = "8")
-    verifyBuildIssue(agpVersion = "7.1.0-alpha09", agpCompiledVersion = "11", gradleJdkVersion = "8")
-    verifyBuildIssue(agpVersion = "7.0.1-beta01", agpCompiledVersion = "11", gradleJdkVersion = "8")
-    verifyBuildIssue(agpVersion = "7.2.0-dev", agpCompiledVersion = "11", gradleJdkVersion = "8")
+    verifyBuildIssue(agpVersion = "7.0.0", agpCompiledVersion = "11", gradleJdkVersion = "8", gradleVersion = "7.0")
+    verifyBuildIssue(agpVersion = "7.1.0-alpha09", agpCompiledVersion = "11", gradleJdkVersion = "8", gradleVersion = "7.0")
+    verifyBuildIssue(agpVersion = "7.0.1-beta01", agpCompiledVersion = "11", gradleJdkVersion = "8", gradleVersion = "7.0")
+    verifyBuildIssue(agpVersion = "7.2.0-dev", agpCompiledVersion = "11", gradleJdkVersion = "8", gradleVersion = "7.0")
   }
 
   @Test
   fun `AGP needs 17 but project uses 11`() {
-    verifyBuildIssue(agpVersion = "9.0.0", agpCompiledVersion = "17", gradleJdkVersion = "11")
-    verifyBuildIssue(agpVersion = "9.1.0-alpha09", agpCompiledVersion = "17", gradleJdkVersion = "11")
-    verifyBuildIssue(agpVersion = "9.0.1-beta01", agpCompiledVersion = "17", gradleJdkVersion = "11")
-    verifyBuildIssue(agpVersion = "9.2.0-dev", agpCompiledVersion = "17", gradleJdkVersion = "11")
+    verifyBuildIssue(agpVersion = "9.0.0", agpCompiledVersion = "17", gradleJdkVersion = "11", gradleVersion = "9.0.0")
+    verifyBuildIssue(agpVersion = "9.1.0-alpha09", agpCompiledVersion = "17", gradleJdkVersion = "11", gradleVersion = "9.0.0")
+    verifyBuildIssue(agpVersion = "9.0.1-beta01", agpCompiledVersion = "17", gradleJdkVersion = "11", gradleVersion = "9.0.0")
+    verifyBuildIssue(agpVersion = "9.2.0-dev", agpCompiledVersion = "17", gradleJdkVersion = "11", gradleVersion = "9.0.0")
+  }
+
+  @Test
+  fun `AGP needs 17 but project uses 11 and project defines Daemon JVM criteria`() {
+    tmpFolderRule.root.createDaemonJvmPropertiesFile("17")
+    verifyBuildIssue(agpVersion = "9.0.0", agpCompiledVersion = "17", gradleJdkVersion = "11", gradleVersion = "9.0.0", true)
   }
 
   @Test
   fun `AGP needs 8 but project uses 7`() {
-    verifyBuildIssue(agpVersion = "6.0.0", agpCompiledVersion = "8", gradleJdkVersion = "7")
-    verifyBuildIssue(agpVersion = "6.1.0-alpha09", agpCompiledVersion = "8", gradleJdkVersion = "7")
-    verifyBuildIssue(agpVersion = "6.0.1-beta01", agpCompiledVersion = "8", gradleJdkVersion = "7")
-    verifyBuildIssue(agpVersion = "6.2.0-dev", agpCompiledVersion = "8", gradleJdkVersion = "7")
+    verifyBuildIssue(agpVersion = "6.0.0", agpCompiledVersion = "8", gradleJdkVersion = "7", gradleVersion = "6.0")
+    verifyBuildIssue(agpVersion = "6.1.0-alpha09", agpCompiledVersion = "8", gradleJdkVersion = "7", gradleVersion = "6.0")
+    verifyBuildIssue(agpVersion = "6.0.1-beta01", agpCompiledVersion = "8", gradleJdkVersion = "7", gradleVersion = "6.0")
+    verifyBuildIssue(agpVersion = "6.2.0-dev", agpCompiledVersion = "8", gradleJdkVersion = "7", gradleVersion = "6.0")
   }
 
   @Test
@@ -91,34 +120,52 @@ class NoMatchingConfigurationSelectionIssueCheckerTest {
     assertThat(issue).isNull()
   }
 
-  private fun verifyBuildIssue(agpVersion: String, agpCompiledVersion: String, gradleJdkVersion: String) {
+  private fun verifyBuildIssue(
+    agpVersion: String,
+    agpCompiledVersion: String,
+    gradleJdkVersion: String,
+    gradleVersion: String,
+    useDaemonJvmCriteria: Boolean = false,
+  ) {
     val message = createErrorMessage(agpVersion, agpCompiledVersion, gradleJdkVersion)
-    val issueData = GradleIssueData("projectFolderPath", Throwable(message), null, null)
+    val buildEnvironment =
+      mock(BuildEnvironment::class.java).also { buildEnvironment ->
+        val gradle = mock(GradleEnvironment::class.java).also { gradle -> doReturn(gradleVersion).whenever(gradle).gradleVersion }
+        doReturn(gradle).whenever(buildEnvironment).gradle
+      }
+    val issueData = GradleIssueData(tmpFolderRule.root.absolutePath, Throwable(message), buildEnvironment, null)
     val issue = issueChecker.createBuildIssue(issueData)
     assertThat(issue).isNotNull()
-    val expectedMessage = "This project is configured to use an older Gradle JVM that supports up to version $gradleJdkVersion but the " +
-                          "current AGP requires a Gradle JVM that supports version $agpCompiledVersion."
+    val expectedMessage =
+      "This project is configured to use an older Gradle JVM that supports up to version $gradleJdkVersion but the " +
+        "current AGP requires a Gradle JVM that supports version $agpCompiledVersion."
     assertThat(issue!!.description).contains(expectedMessage)
     val quickFixes = issue.quickFixes
-    assertThat(quickFixes).hasSize(2)
-    assertThat(quickFixes[0]).isInstanceOf(SelectJdkFromFileSystemQuickFix::class.java)
-    assertThat(quickFixes[1]).isInstanceOf(OpenLinkQuickFix::class.java)
+    assertThat(quickFixes).hasSize(3)
+    if (useDaemonJvmCriteria) {
+      assertThat(quickFixes[0]).isInstanceOf(UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix::class.java)
+      assertThat(quickFixes[1]).isInstanceOf(OpenGradleDaemonJvmSettingsQuickFix::class.java)
+    } else {
+      assertThat(quickFixes[0]).isInstanceOf(UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix::class.java)
+      assertThat(quickFixes[1]).isInstanceOf(SelectJdkFromFileSystemQuickFix::class.java)
+    }
+    assertThat(quickFixes[2]).isInstanceOf(OpenLinkQuickFix::class.java)
   }
 
   private fun createErrorMessage(agpVersion: String, agpCompiledVersion: String, gradleJdkVersion: String) =
     "No matching variant of com.android.tools.build:gradle:$agpVersion was found. The consumer was configured to find a library for use " +
-    "during runtime, compatible with Java $gradleJdkVersion, packaged as a jar, and its dependencies declared externally, as well as " +
-    "attribute 'org.gradle.plugin.api-version' with value '8.0' but:\n" +
-    "  - Variant 'apiElements' capability com.android.tools.build:gradle:$agpVersion declares a library, packaged as a jar, and its " +
-    "dependencies declared externally:\n" +
-    "      - Incompatible because this component declares a component for use during compile-time, compatible with Java " +
-    "$agpCompiledVersion and the consumer needed a component for use during runtime, compatible with Java $gradleJdkVersion\n" +
-    "      - Other compatible attribute:\n" +
-    "          - Doesn't say anything about org.gradle.plugin.api-version (required '8.0')\n" +
-    "  - Variant 'runtimeElements' capability com.android.tools.build:gradle:$agpVersion declares a library for use during runtime, " +
-    "packaged as a jar, and its dependencies declared externally:\n" +
-    "      - Incompatible because this component declares a component, compatible with Java $agpCompiledVersion and the consumer needed " +
-    "a component, compatible with Java $gradleJdkVersion\n" +
-    "      - Other compatible attribute:\n" +
-    "          - Doesn't say anything about org.gradle.plugin.api-version (required '8.0')"
+      "during runtime, compatible with Java $gradleJdkVersion, packaged as a jar, and its dependencies declared externally, as well as " +
+      "attribute 'org.gradle.plugin.api-version' with value '8.0' but:\n" +
+      "  - Variant 'apiElements' capability com.android.tools.build:gradle:$agpVersion declares a library, packaged as a jar, and its " +
+      "dependencies declared externally:\n" +
+      "      - Incompatible because this component declares a component for use during compile-time, compatible with Java " +
+      "$agpCompiledVersion and the consumer needed a component for use during runtime, compatible with Java $gradleJdkVersion\n" +
+      "      - Other compatible attribute:\n" +
+      "          - Doesn't say anything about org.gradle.plugin.api-version (required '8.0')\n" +
+      "  - Variant 'runtimeElements' capability com.android.tools.build:gradle:$agpVersion declares a library for use during runtime, " +
+      "packaged as a jar, and its dependencies declared externally:\n" +
+      "      - Incompatible because this component declares a component, compatible with Java $agpCompiledVersion and the consumer needed " +
+      "a component, compatible with Java $gradleJdkVersion\n" +
+      "      - Other compatible attribute:\n" +
+      "          - Doesn't say anything about org.gradle.plugin.api-version (required '8.0')"
 }

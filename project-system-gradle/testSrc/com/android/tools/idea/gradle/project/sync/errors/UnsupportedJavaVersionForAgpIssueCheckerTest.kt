@@ -15,28 +15,51 @@
  */
 package com.android.tools.idea.gradle.project.sync.errors
 
+import com.android.tools.idea.gradle.fixtures.createDaemonJvmPropertiesFile
 import com.android.tools.idea.gradle.project.build.output.TestMessageEventConsumer
+import com.android.tools.idea.gradle.project.sync.quickFixes.OpenGradleDaemonJvmSettingsQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenLinkQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.SelectJdkFromFileSystemQuickFix
+import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix
+import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix
 import com.google.common.truth.Truth
+import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.TestApplicationManager
+import org.gradle.tooling.model.build.BuildEnvironment
+import org.gradle.tooling.model.build.GradleEnvironment
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.mockito.Mockito.doReturn
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.whenever
 
 @Suppress("UnstableApiUsage")
 class UnsupportedJavaVersionForAgpIssueCheckerTest {
   private val issueChecker = UnsupportedJavaVersionForAgpIssueChecker()
 
+  @get:Rule var tmpFolderRule = TemporaryFolder()
+
+  @Before
+  fun setUp() {
+    TestApplicationManager.getInstance()
+    tmpFolderRule.create()
+  }
+
   @Test
   fun `consumeBuildOutputFailureMessage is false when pattern is not present`() {
     val testConsumer = TestMessageEventConsumer()
-    val consumed = issueChecker.consumeBuildOutputFailureMessage(
-      message = "This message should not be consumed",
-      failureCause = "Cause is none",
-      stacktrace = null,
-      location = null,
-      parentEventId = "",
-      testConsumer
-    )
+    val consumed =
+      issueChecker.consumeBuildOutputFailureMessage(
+        message = "This message should not be consumed",
+        failureCause = "Cause is none",
+        stacktrace = null,
+        location = null,
+        parentEventId = "",
+        testConsumer,
+      )
     Truth.assertThat(consumed).isFalse()
     Truth.assertThat(testConsumer.messageEvents).isEmpty()
   }
@@ -44,14 +67,15 @@ class UnsupportedJavaVersionForAgpIssueCheckerTest {
   @Test
   fun `consumeBuildOutputFailureMessage is true when pattern is present`() {
     val testConsumer = TestMessageEventConsumer()
-    val consumed = issueChecker.consumeBuildOutputFailureMessage(
-      message = createErrorMessage(agpMinimumJdkVersion = "17", gradleJdkVersion = "11"),
-      failureCause = "",
-      stacktrace = null,
-      location = null,
-      parentEventId = "",
-      testConsumer
-    )
+    val consumed =
+      issueChecker.consumeBuildOutputFailureMessage(
+        message = createErrorMessage(agpMinimumJdkVersion = "17", gradleJdkVersion = "11"),
+        failureCause = "",
+        stacktrace = null,
+        location = null,
+        parentEventId = "",
+        testConsumer,
+      )
     Truth.assertThat(consumed).isTrue()
     Truth.assertThat(testConsumer.messageEvents).isEmpty()
   }
@@ -59,6 +83,12 @@ class UnsupportedJavaVersionForAgpIssueCheckerTest {
   @Test
   fun `AGP needs 17 but project uses 11`() {
     verifyBuildIssue(agpMinimumJdkVersion = "17", gradleJdkVersion = "11")
+  }
+
+  @Test
+  fun `AGP needs 17 but project uses 11 and project defines Daemon JVM criteria`() {
+    tmpFolderRule.root.createDaemonJvmPropertiesFile("17")
+    verifyBuildIssue(agpMinimumJdkVersion = "17", gradleJdkVersion = "11", useDaemonJvmCriteria = true)
   }
 
   @Test
@@ -79,29 +109,46 @@ class UnsupportedJavaVersionForAgpIssueCheckerTest {
     Truth.assertThat(issue).isNull()
   }
 
-  private fun verifyBuildIssue(agpMinimumJdkVersion: String, gradleJdkVersion: String) {
+  private fun verifyBuildIssue(
+    agpMinimumJdkVersion: String,
+    gradleJdkVersion: String,
+    gradleVersion: String = "9.0",
+    useDaemonJvmCriteria: Boolean = false,
+  ) {
     val message = createErrorMessage(agpMinimumJdkVersion, gradleJdkVersion)
-    val issueData = GradleIssueData("projectFolderPath", Throwable(message), null, null)
+    val buildEnvironment =
+      mock(BuildEnvironment::class.java).also { buildEnvironment ->
+        val gradle = mock(GradleEnvironment::class.java).also { gradle -> doReturn(gradleVersion).whenever(gradle).gradleVersion }
+        doReturn(gradle).whenever(buildEnvironment).gradle
+      }
+    val issueData = GradleIssueData(tmpFolderRule.root.absolutePath, Throwable(message), buildEnvironment, null)
     val issue = issueChecker.createBuildIssue(issueData)
     Truth.assertThat(issue).isNotNull()
-    val expectedMessage = "This project is configured to use an older Gradle JVM that supports up to version $gradleJdkVersion but the " +
-                          "current AGP requires a Gradle JVM that supports version $agpMinimumJdkVersion."
+    val expectedMessage =
+      "This project is configured to use an older Gradle JVM that supports up to version $gradleJdkVersion but the " +
+        "current AGP requires a Gradle JVM that supports version $agpMinimumJdkVersion."
     Truth.assertThat(issue!!.description).contains(expectedMessage)
     val quickFixes = issue.quickFixes
-    Truth.assertThat(quickFixes).hasSize(2)
-    Truth.assertThat(quickFixes[0]).isInstanceOf(SelectJdkFromFileSystemQuickFix::class.java)
-    Truth.assertThat(quickFixes[1]).isInstanceOf(OpenLinkQuickFix::class.java)
+    assertThat(quickFixes).hasSize(3)
+    if (useDaemonJvmCriteria) {
+      assertThat(quickFixes[0]).isInstanceOf(UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix::class.java)
+      assertThat(quickFixes[1]).isInstanceOf(OpenGradleDaemonJvmSettingsQuickFix::class.java)
+    } else {
+      assertThat(quickFixes[0]).isInstanceOf(UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix::class.java)
+      assertThat(quickFixes[1]).isInstanceOf(SelectJdkFromFileSystemQuickFix::class.java)
+    }
+    assertThat(quickFixes[2]).isInstanceOf(OpenLinkQuickFix::class.java)
   }
 
   private fun createErrorMessage(agpMinimumJdkVersion: String, gradleJdkVersion: String) =
     "Build file 'build.gradle' line: 2\n" +
-    "\n" +
-    "An exception occurred applying plugin request [id: 'com.android.application']\n" +
-    "> Failed to apply plugin 'com.android.internal.application'.\n" +
-    "   > Android Gradle plugin requires Java $agpMinimumJdkVersion to run. You are currently using Java $gradleJdkVersion.\n" +
-    "      Your current JDK is located in /Users/vmadalin/Develop/studio-main/prebuilts/studio/jdk/jdk11/mac-arm64/Contents/Home\n" +
-    "      You can try some of the following options:\n" +
-    "       - changing the IDE settings.\n" +
-    "       - changing the JAVA_HOME environment variable.\n" +
-    "       - changing `org.gradle.java.home` in `gradle.properties`."
+      "\n" +
+      "An exception occurred applying plugin request [id: 'com.android.application']\n" +
+      "> Failed to apply plugin 'com.android.internal.application'.\n" +
+      "   > Android Gradle plugin requires Java $agpMinimumJdkVersion to run. You are currently using Java $gradleJdkVersion.\n" +
+      "      Your current JDK is located in /Users/vmadalin/Develop/studio-main/prebuilts/studio/jdk/jdk11/mac-arm64/Contents/Home\n" +
+      "      You can try some of the following options:\n" +
+      "       - changing the IDE settings.\n" +
+      "       - changing the JAVA_HOME environment variable.\n" +
+      "       - changing `org.gradle.java.home` in `gradle.properties`."
 }

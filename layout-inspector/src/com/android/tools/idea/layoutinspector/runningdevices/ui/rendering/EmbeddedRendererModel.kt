@@ -17,10 +17,6 @@ package com.android.tools.idea.layoutinspector.runningdevices.ui.rendering
 
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.InspectorModel
-import com.android.tools.idea.layoutinspector.model.LABEL_FONT_SIZE
-import com.android.tools.idea.layoutinspector.model.RenderingDimensions.EMPHASIZED_BORDER_THICKNESS
-import com.android.tools.idea.layoutinspector.model.RenderingDimensions.NORMAL_BORDER_THICKNESS
-import com.android.tools.idea.layoutinspector.model.RenderingDimensions.RECOMPOSITION_BORDER_THICKNESS
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
@@ -35,9 +31,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Package name used to identify views added to the app's view hierarchy by the Layout Inspector
- * agent. Currently used to identify the view used by on-device rendering to render Layout Inspector
- * UI on-top of the app's UI.
+ * Screen density independent dimensions used for rendering Layout Inspector UI. They are used both for studio-side and on-device rendering,
+ * where the platform (intellij or android) will scale them according to the screen density.
+ */
+const val NORMAL_BORDER_THICKNESS = 1f
+const val EMPHASIZED_BORDER_THICKNESS = 2f
+const val RECOMPOSITION_BORDER_THICKNESS = 0f
+
+const val LABEL_FONT_SIZE = 12f
+
+/**
+ * Package name used to identify views added to the app's view hierarchy by the Layout Inspector agent. Currently used to identify the view
+ * used by on-device rendering to render Layout Inspector UI on-top of the app's UI.
  */
 const val AGENT_PACKAGE = "com.android.tools.agent.appinspection"
 
@@ -71,16 +76,13 @@ data class DrawInstruction(
 }
 
 /**
- * Contains state that controls the rendering of the view bounds. It is different from
- * [InspectorModel], which contains state about the inspector in general, like shared state between
- * bounds rendering and component tree (like selected and hovered nodes), client etc.
+ * Contains state that controls the rendering of the view bounds. It is different from [InspectorModel], which contains state about the
+ * inspector in general, like shared state between bounds rendering and component tree (like selected and hovered nodes), client etc.
  *
- * This is a new render model, currently used by embedded Layout Inspector rendering. This render
- * model is designed to be used by any [LayoutInspectorRenderer]. Once standalone Layout Inspector
- * and 3D view are removed, this should take over as the only render model.
+ * This is a new render model, currently used by embedded Layout Inspector rendering. This render model is designed to be used by any
+ * [LayoutInspectorRenderer]. Once standalone Layout Inspector and 3D view are removed, this should take over as the only render model.
  *
- * @param displayId When specified only nodes from this display can be interacted and rendered with
- *   this render model.
+ * @param displayId When specified only nodes from this display can be interacted and rendered with this render model.
  */
 class EmbeddedRendererModel(
   parentDisposable: Disposable,
@@ -123,11 +125,7 @@ class EmbeddedRendererModel(
 
   private val modificationListener =
     object : InspectorModel.ModificationListener {
-      override fun onModification(
-        oldWindow: AndroidWindow?,
-        newWindow: AndroidWindow?,
-        isStructuralChange: Boolean,
-      ) {
+      override fun onModification(oldWindow: AndroidWindow?, newWindow: AndroidWindow?, isStructuralChange: Boolean) {
         val newNodes = getNodes()
         setVisibleNodes(newNodes)
         // If the model is updated the DrawInstruction for the selected and hovered nodes can be
@@ -226,11 +224,7 @@ class EmbeddedRendererModel(
   }
 
   /** Selects the node and returns the list of views at the given coordinates */
-  fun rightClickNode(
-    x: Double,
-    y: Double,
-    rootId: Long = inspectorModel.root.drawId,
-  ): List<ViewNode> {
+  fun rightClickNode(x: Double, y: Double, rootId: Long = inspectorModel.root.drawId): List<ViewNode> {
     selectNode(x, y, rootId)
     return findNodesAt(x, y, rootId)
   }
@@ -274,9 +268,7 @@ class EmbeddedRendererModel(
       // Prevent selection of views added by Layout Inspector, making them selectable only from the
       // component tree:
       ?.filter { !it.qualifiedName.startsWith(AGENT_PACKAGE) }
-      ?.filter {
-        !treeSettings.hideSystemNodes || (treeSettings.hideSystemNodes && !it.isSystemNode)
-      } ?: emptyList()
+      ?.filter { !treeSettings.hideSystemNodes || (treeSettings.hideSystemNodes && !it.isSystemNode) } ?: emptyList()
   }
 
   override fun dispose() {
@@ -318,11 +310,7 @@ class EmbeddedRendererModel(
     if (renderSettings.drawBorders) {
       _visibleNodes.value =
         nodes.mapNotNull {
-          it.toDrawInstruction(
-            color = renderSettings.baseColor,
-            strokeThickness = NORMAL_BORDER_THICKNESS,
-            outlineColor = null,
-          )
+          it.toDrawInstruction(color = renderSettings.baseColor, strokeThickness = NORMAL_BORDER_THICKNESS, outlineColor = null)
         }
     } else {
       _visibleNodes.value = emptyList()
@@ -333,23 +321,14 @@ class EmbeddedRendererModel(
     _recomposingNodes.value =
       nodes.mapNotNull {
         val color = renderSettings.recompositionColor.applyRecompositionAlpha(it, inspectorModel)
-        it.toDrawInstruction(
-          color = color,
-          strokeThickness = RECOMPOSITION_BORDER_THICKNESS,
-          outlineColor = null,
-        )
+        it.toDrawInstruction(color = color, strokeThickness = RECOMPOSITION_BORDER_THICKNESS, outlineColor = null)
       }
   }
 
   private fun setImages(windows: Collection<AndroidWindow>) {
     _images.value =
       windows.mapNotNull { window ->
-        window.root.toDrawInstruction(
-          color = TRANSPARENT_COLOR_ARGB,
-          strokeThickness = 0f,
-          outlineColor = null,
-          image = window.image,
-        )
+        window.root.toDrawInstruction(color = TRANSPARENT_COLOR_ARGB, strokeThickness = 0f, outlineColor = null, image = window.image)
       }
   }
 
@@ -378,8 +357,7 @@ class EmbeddedRendererModel(
 private fun Int.applyRecompositionAlpha(node: ViewNode, inspectorModel: InspectorModel): Int {
   val maxAlpha = 160
   val highlightCount = node.recompositions.highlightCount
-  val alpha =
-    ((highlightCount * maxAlpha) / inspectorModel.maxHighlight).toInt().coerceIn(8, maxAlpha)
+  val alpha = ((highlightCount * maxAlpha) / inspectorModel.maxHighlight).toInt().coerceIn(8, maxAlpha)
   return setColorAlpha(alpha)
 }
 

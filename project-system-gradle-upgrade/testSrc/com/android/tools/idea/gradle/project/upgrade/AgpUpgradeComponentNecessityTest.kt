@@ -16,7 +16,12 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.*
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.IRRELEVANT_FUTURE
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.IRRELEVANT_PAST
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_INDEPENDENT
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_CODEPENDENT
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_INDEPENDENT
 import com.intellij.util.ThrowableRunnable
 import org.jetbrains.android.AndroidTestCase
 
@@ -101,7 +106,11 @@ class AgpUpgradeComponentNecessityTest : AndroidTestCase() {
     listOf(one, two, three).forEach { i ->
       listOf(one, two, three).forEach { j ->
         listOf(one, two, three).forEach { k ->
-          val thrower = ThrowableRunnable<Exception> { PointNecessity(k).computeNecessity(i, j); throw IllegalArgumentException() }
+          val thrower =
+            ThrowableRunnable<Exception> {
+              PointNecessity(k).computeNecessity(i, j)
+              throw IllegalArgumentException()
+            }
           // assert that standardPointNecessity does not throw anything *other* than an IllegalArgumentException
           assertThrows(IllegalArgumentException::class.java, thrower)
         }
@@ -114,7 +123,11 @@ class AgpUpgradeComponentNecessityTest : AndroidTestCase() {
       listOf(one, two, three, four).forEach { j ->
         listOf(one, two, three, four).forEach { k ->
           listOf(one, two, three, four).forEach { l ->
-            val thrower = ThrowableRunnable<Exception> { RegionNecessity(k, l).computeNecessity(i, j); throw IllegalArgumentException() }
+            val thrower =
+              ThrowableRunnable<Exception> {
+                RegionNecessity(k, l).computeNecessity(i, j)
+                throw IllegalArgumentException()
+              }
             // assert that standardRegionNecessity does not throw anything *other* than an IllegalArgumentException
             assertThrows(IllegalArgumentException::class.java, thrower)
           }

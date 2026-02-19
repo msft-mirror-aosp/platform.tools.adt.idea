@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +44,6 @@ import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBas
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_CLOSE
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_LEAKING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_MORE_INFO
-import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_NOT_LEAKING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_OPEN
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_REFERENCING_FIELD
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_REFERENCING_OBJECTS
@@ -54,65 +55,54 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+
 @Composable
 fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
   var showMoreInfo by remember { mutableStateOf(true) }
-  val rowClickableModifier = Modifier
-    .clickable(onClick = { showMoreInfo = !showMoreInfo }, indication = null, interactionSource = remember { MutableInteractionSource() })
-    .pointerHoverIcon(PointerIcon.Hand)
+  val rowClickableModifier =
+    Modifier.clickable(
+        onClick = { showMoreInfo = !showMoreInfo },
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() },
+      )
+      .pointerHoverIcon(PointerIcon.Hand)
   Row(modifier = modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
-    Column(modifier = Modifier.weight(0.10f)) {
+    Column(modifier = Modifier.widthIn(min = 80.dp)) {
       DetailedHeaderText(LEAKCANARY_LEAKING)
       Spacer(modifier = Modifier.height(5.dp))
-      DetailRow(
-        icon = { LeakIcon(node.leakingStatus) },
-        text = getLeakStatusText(node.leakingStatus)
-      )
+      DetailRow(icon = { LeakIcon(node.leakingStatus) }, text = getLeakStatusText(node.leakingStatus))
     }
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .weight(1f)
-        .padding(start = 24.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp)) {
       DetailedHeaderText(LEAKCANARY_WHY)
       Spacer(modifier = Modifier.height(5.dp))
-      Text(
-        text = if (node.leakingStatusReason.isNullOrBlank()) LEAKCANARY_NOT_LEAKING else node.leakingStatusReason,
-        fontWeight = FontWeight.Thin,
-        modifier = Modifier.padding(bottom = 8.dp)
-      )
-      node.referencingField?.let {
-        DetailText("$LEAKCANARY_REFERENCING_FIELD$it")
+      if (node.leakingStatusReason.isNotBlank()) {
+        Text(text = node.leakingStatusReason, fontWeight = FontWeight.Thin, modifier = Modifier.padding(bottom = 8.dp))
       }
-      node.retainedByteSize?.let {
-        DetailText("$LEAKCANARY_RETAINED_BYTES$it bytes")
-      }
-      node.retainedObjectCount?.let {
-        DetailText("$LEAKCANARY_REFERENCING_OBJECTS$it")
-      }
+      node.referencingField?.let { DetailText("$LEAKCANARY_REFERENCING_FIELD$it") }
+      node.retainedHeapSize?.let { DetailText("$LEAKCANARY_RETAINED_BYTES$it") }
+      node.retainedObjectCount?.let { DetailText("$LEAKCANARY_REFERENCING_OBJECTS$it") }
       if (node.notes.isNotEmpty()) {
         Row(modifier = Modifier.testTag(node.className)) {
           Row(modifier = rowClickableModifier) {
             if (showMoreInfo) {
               Icon(AllIconsKeys.General.ArrowDown, LEAKCANARY_OPEN)
-            }
-            else {
+            } else {
               Icon(AllIconsKeys.General.ArrowRight, LEAKCANARY_CLOSE)
             }
           }
           Column {
-            Row (modifier = rowClickableModifier.fillMaxWidth()){
+            Row(modifier = rowClickableModifier.fillMaxWidth()) {
               Spacer(modifier = Modifier.width(TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_TITLE_HORIZONTAL_SPACING_DP))
               Text(LEAKCANARY_MORE_INFO)
               Spacer(modifier = Modifier.width(TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_TITLE_HORIZONTAL_SPACING_DP))
-              Divider(orientation = Orientation.Horizontal,
-                      modifier = Modifier.fillMaxWidth().align(CenterVertically),
-                      color = Color.LightGray,
-                      thickness = TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_LINE_THICKNESS_DP
+              Divider(
+                orientation = Orientation.Horizontal,
+                modifier = Modifier.fillMaxWidth().align(CenterVertically),
+                color = Color.LightGray,
+                thickness = TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_LINE_THICKNESS_DP,
               )
             }
-            if(showMoreInfo) {
+            if (showMoreInfo) {
               BulletList(items = node.notes)
             }
           }
@@ -121,10 +111,12 @@ fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
     }
   }
 }
+
 @Composable
 fun DetailedHeaderText(text: String) {
   Text(text = text, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
 }
+
 /**
  * Composable function to display a row with an icon and text.
  *
@@ -139,6 +131,7 @@ fun DetailRow(icon: @Composable () -> Unit, text: String) {
     Text(text)
   }
 }
+
 @Composable
 fun DetailText(text: String) {
   Text(text = text, modifier = Modifier.padding(bottom = 8.dp))

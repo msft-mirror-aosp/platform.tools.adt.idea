@@ -90,9 +90,7 @@ class GutterIconCacheTest {
 
     // "Modify" Document by rewriting its contents
     val document = checkNotNull(FileDocumentManager.getInstance().getDocument(sampleSvgFile))
-    with(ApplicationManager.getApplication()) {
-      invokeAndWait { runWriteAction { document.setText(document.text) } }
-    }
+    with(ApplicationManager.getApplication()) { invokeAndWait { runWriteAction { document.setText(document.text) } } }
 
     assertThat(cache.getIconIfCached(sampleSvgFile)).isNull()
 

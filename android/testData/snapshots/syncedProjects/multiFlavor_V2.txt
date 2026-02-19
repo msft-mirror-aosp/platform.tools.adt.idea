@@ -12,9 +12,7 @@ PROJECT                       : MultiFlavor
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/MultiFlavor [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/MultiFlavor.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>
+        CONTENT_ENTRY                 : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -35,8 +33,6 @@ PROJECT                       : MultiFlavor
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/MultiFlavor.app.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -57,7 +53,7 @@ PROJECT                       : MultiFlavor
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/app
+        CONTENT_ENTRY                 : file://<PROJECT>/app
             EXCLUDE_FOLDER                : file://<PROJECT>/app/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/app/build
         JDK                           : <NAME_CUT> Android SDK
@@ -91,8 +87,6 @@ PROJECT                       : MultiFlavor
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : MultiFlavor.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/MultiFlavor.app.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -110,51 +104,57 @@ PROJECT                       : MultiFlavor
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/firstAbcSecondAbc/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/res/resValues/androidTest/firstAbcSecondAbc/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestFirstAbc [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestSecondAbc [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestFirstAbc [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestSecondAbc [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/build/generated/res/resValues/androidTest/firstAbcSecondAbc/debug [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbc/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbc/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbc/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbc/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbc/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbc/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbc/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbc/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestFirstAbcSecondAbcDebug/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestSecondAbc/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestSecondAbc/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestSecondAbc/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestSecondAbc/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestSecondAbc/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestSecondAbc/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestSecondAbc/resources [-]
@@ -271,8 +271,6 @@ PROJECT                       : MultiFlavor
             compilerSourceOutputPath      : file://<PROJECT>/app/build/intermediates/javac/firstAbcSecondAbcDebug/compileFirstAbcSecondAbcDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/MultiFlavor.app.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -290,18 +288,18 @@ PROJECT                       : MultiFlavor
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/res/resValues/firstAbcSecondAbc/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/firstAbc [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/firstAbcSecondAbc
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/res/resValues/firstAbcSecondAbc/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/firstAbc [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/firstAbcSecondAbc
             JavaSource                    : file://<PROJECT>/app/src/firstAbcSecondAbc/java
             JavaSource                    : file://<PROJECT>/app/src/firstAbcSecondAbc/java2
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/firstAbcSecondAbcDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/firstAbcSecondAbcDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/main
             JavaSource                    : file://<PROJECT>/app/src/main/java
             JavaResource                  : file://<PROJECT>/app/src/main/res
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/secondAbc
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/secondAbc
             JavaSource                    : file://<PROJECT>/app/src/secondAbc/java
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebug/out [-]
             Generated                     : true
@@ -310,33 +308,39 @@ PROJECT                       : MultiFlavor
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/java [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbc/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbc/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbc/java [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbc/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbc/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbc/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbc/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbc/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbc/baselineProfiles [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbcSecondAbc/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbcSecondAbc/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbc/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbc/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/java [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/firstAbcSecondAbcDebug/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/baselineProfiles [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/secondAbc/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/secondAbc/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/secondAbc/java2 [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/secondAbc/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/secondAbc/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/secondAbc/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/secondAbc/resources [-]
@@ -401,8 +405,6 @@ PROJECT                       : MultiFlavor
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : MultiFlavor.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/MultiFlavor.app.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -420,47 +422,53 @@ PROJECT                       : MultiFlavor
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/test
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/test
             JavaSource (test)             : file://<PROJECT>/app/src/test/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testFirstAbc [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testFirstAbcSecondAbc
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testFirstAbc [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testFirstAbcSecondAbc
             JavaSource (test)             : file://<PROJECT>/app/src/testFirstAbcSecondAbc/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug
             JavaSource (test)             : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testSecondAbc
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testSecondAbc
             JavaSource (test)             : file://<PROJECT>/app/src/testSecondAbc/java
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/firstAbcSecondAbcDebugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbc/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbc/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbc/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbc/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbc/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbc/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbc/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbc/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbc/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbcSecondAbc/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbcSecondAbc/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbc/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbc/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testFirstAbcSecondAbcDebug/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testSecondAbc/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testSecondAbc/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testSecondAbc/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testSecondAbc/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testSecondAbc/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testSecondAbc/resources [-]

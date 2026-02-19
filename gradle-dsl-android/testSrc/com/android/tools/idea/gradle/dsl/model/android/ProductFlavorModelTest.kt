@@ -17,15 +17,12 @@ package com.android.tools.idea.gradle.dsl.model.android
 
 import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport
 import com.android.tools.idea.gradle.dsl.TestFileName
-import com.android.tools.idea.gradle.dsl.android.model.AndroidGradleFileModelTestCase
-import com.android.tools.idea.gradle.dsl.android.model.android.AndroidModelImpl
-import com.android.tools.idea.gradle.dsl.android.model.android.android
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.LIST_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.MAP_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
-import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
+import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.ExternalNativeBuildOptionsModelImpl
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.NdkOptionsModelImpl
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.externalNativeBuild.CMakeOptionsModelImpl
@@ -39,7 +36,6 @@ import com.google.common.truth.Truth.assertThat
 import java.io.File
 import java.io.IOException
 import junit.framework.TestCase
-import org.hamcrest.CoreMatchers
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert
 import org.jetbrains.annotations.SystemDependent
@@ -51,11 +47,9 @@ import org.junit.Test
 /**
  * Tests for [ProductFlavorModelImpl].
  *
- *
- * Both `android.defaultConfig {}` and `android.productFlavors.xyz {}` uses the same structure with same attributes.
- * In this test, the product flavor structure defined by [ProductFlavorModelImpl] is tested in great deal to cover all combinations using
- * the `android.defaultConfig {}` block. The general structure of `android.productFlavors {}` is tested in
- * [ProductFlavorsElementTest].
+ * Both `android.defaultConfig {}` and `android.productFlavors.xyz {}` uses the same structure with same attributes. In this test, the
+ * product flavor structure defined by [ProductFlavorModelImpl] is tested in great deal to cover all combinations using the
+ * `android.defaultConfig {}` block. The general structure of `android.productFlavors {}` is tested in [ProductFlavorsElementTest].
  */
 class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
@@ -82,11 +76,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("minSdkVersion", 15, defaultConfig.minSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
@@ -104,8 +100,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", true, defaultConfig.useJack())
     val vectorDrawables = defaultConfig.vectorDrawables()
     assertEquals("useSupportLibrary", true, vectorDrawables.useSupportLibrary())
@@ -123,11 +122,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
@@ -139,8 +140,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", true, defaultConfig.useJack())
     val vectorDrawables = defaultConfig.vectorDrawables()
     verifyListProperty(vectorDrawables.generatedDensities(), listOf("yes", "no", "maybe"), true)
@@ -159,11 +163,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("minSdkVersion", 15, defaultConfig.minSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
@@ -175,8 +181,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", true, defaultConfig.useJack())
     assertEquals("versionCode", 1, defaultConfig.versionCode())
     assertEquals("versionName", "1.0", defaultConfig.versionName())
@@ -191,11 +200,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
@@ -203,8 +214,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", true, defaultConfig.useJack())
     assertEquals("versionCode", 1, defaultConfig.versionCode())
     assertEquals("versionName", "1.0", defaultConfig.versionName())
@@ -219,11 +233,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
     assertEquals("applicationId", "com.example.myapplication1", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules-1.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules-1.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel3" to "defaultName3", "activityLabel4" to "defaultName4"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel3" to "defaultName3", "activityLabel4" to "defaultName4"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
     assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
     assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
@@ -248,16 +264,29 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertNotNull(android)
 
     val defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders",
-                 mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2", "activityLabel3" to "defaultName3",
-                       "activityLabel4" to "defaultName4"), defaultConfig.manifestPlaceholders())
-    assertEquals("proguardFiles", listOf("pro-1.txt", "pro-2.txt", "pro-3.txt", "pro-4.txt", "pro-5.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf(
+        "activityLabel1" to "defaultName1",
+        "activityLabel2" to "defaultName2",
+        "activityLabel3" to "defaultName3",
+        "activityLabel4" to "defaultName4",
+      ),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals("proguardFiles", listOf("pro-1.txt", "pro-2.txt", "pro-3.txt", "pro-4.txt", "pro-5.txt"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh", "ijkl", "mnop", "qrst"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
-    val expected = mapOf("key1" to "value1", "key2" to "value2", "key3" to "value3", "key4" to "value4",
-                         "key5" to "value5", "key6" to "value6", "key7" to "value7")
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
+    val expected =
+      mapOf(
+        "key1" to "value1",
+        "key2" to "value2",
+        "key3" to "value3",
+        "key4" to "value4",
+        "key5" to "value5",
+        "key6" to "value6",
+        "key7" to "value7",
+      )
     assertEquals("testInstrumentationRunnerArguments", expected, defaultConfig.testInstrumentationRunnerArguments())
   }
 
@@ -269,10 +298,16 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertNotNull(android)
 
     val defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("key1" to "value1", "key2" to "value2"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("key1" to "value1", "key2" to "value2"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
   }
 
   @Test
@@ -285,11 +320,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("minSdkVersion", 15, defaultConfig.minSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
@@ -301,8 +338,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", false, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", false, defaultConfig.useJack())
     assertEquals("versionCode", 1, defaultConfig.versionCode())
     assertEquals("versionName", "1.0", defaultConfig.versionName())
@@ -350,11 +390,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     buildModel.resetState()
 
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("minSdkVersion", 15, defaultConfig.minSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
@@ -366,8 +408,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", false, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", false, defaultConfig.useJack())
     assertEquals("versionCode", 1, defaultConfig.versionCode())
     assertEquals("versionName", "1.0", defaultConfig.versionName())
@@ -544,8 +589,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -555,16 +599,14 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     replaceListValue(defaultConfig.resConfigs(), "abcd", "xyz")
     defaultConfig.replaceResValue("abcd", "efgh", "ijkl", "abcd", "mnop", "qrst")
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("xyz", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "mnop", "qrst")), defaultConfig.resValues())
 
     buildModel.resetState()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -613,8 +655,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -624,18 +665,22 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     defaultConfig.resConfigs().addListValue()!!.setValue("xyz")
     defaultConfig.addResValue("mnop", "qrst", "uvwx")
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     buildModel.resetState()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -651,12 +696,10 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     val defaultConfig = android.defaultConfig()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     removeListValue(defaultConfig.consumerProguardFiles(), "proguard-rules.pro")
     removeListValue(defaultConfig.proguardFiles(), "proguard-rules.pro")
@@ -670,12 +713,10 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     buildModel.resetState()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
   }
 
   @Test
@@ -688,24 +729,36 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     val defaultConfig = android.defaultConfig()
 
     assertEquals("manifestPlaceholders", mapOf("key1" to "value1", "key2" to "value2"), defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     defaultConfig.manifestPlaceholders().getMapValue("key1")!!.setValue(12345)
     defaultConfig.manifestPlaceholders().getMapValue("key3")!!.setValue(true)
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("size")!!.setValue("small")
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("key")!!.setValue("value")
 
-    assertEquals("manifestPlaceholders", mapOf<String, Any>("key1" to 12345, "key2" to "value2", "key3" to true),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "foo" to "bar", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf<String, Any>("key1" to 12345, "key2" to "value2", "key3" to true),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "foo" to "bar", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     buildModel.resetState()
 
     assertEquals("manifestPlaceholders", mapOf("key1" to "value1", "key2" to "value2"), defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
   }
 
   @Test
@@ -725,10 +778,16 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("size")!!.setValue("small")
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("key")!!.setValue("value")
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     buildModel.resetState()
 
@@ -745,25 +804,35 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertNotNull(android)
     val defaultConfig = android.defaultConfig()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     defaultConfig.manifestPlaceholders().getValue(MAP_TYPE)!!["activityLabel1"]!!.delete()
     defaultConfig.testInstrumentationRunnerArguments().getValue(MAP_TYPE)!!["size"]!!.delete()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
 
     buildModel.resetState()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
   }
 
   @Test
@@ -779,11 +848,13 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     checkForValidPsiElement(defaultConfig, ProductFlavorModelImpl::class.java)
 
     assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
     assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
     assertEquals("minSdkVersion", 15, defaultConfig.minSdkVersion())
     assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
@@ -795,8 +866,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("testFunctionalTest", false, defaultConfig.testFunctionalTest())
     assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
     assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
     assertEquals("useJack", false, defaultConfig.useJack())
     assertEquals("versionCode", 1, defaultConfig.versionCode())
     assertEquals("versionName", "1.0", defaultConfig.versionName())
@@ -1413,8 +1487,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertNotNull(android)
 
     var defaultConfig = android.defaultConfig()
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -1424,8 +1497,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     replaceListValue(defaultConfig.resConfigs(), "abcd", "xyz")
     defaultConfig.replaceResValue("abcd", "efgh", "ijkl", "abcd", "mnop", "qrst")
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("xyz", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "mnop", "qrst")), defaultConfig.resValues())
@@ -1433,8 +1505,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.REPLACE_AND_APPLY_LIST_ELEMENTS_EXPECTED)
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("xyz", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "mnop", "qrst")), defaultConfig.resValues())
@@ -1444,8 +1515,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android-1.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("xyz", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "mnop", "qrst")), defaultConfig.resValues())
@@ -1551,8 +1621,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     var defaultConfig = android.defaultConfig()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -1562,37 +1631,52 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     defaultConfig.resConfigs().addListValue()!!.setValue("xyz")
     defaultConfig.addResValue("mnop", "qrst", "uvwx")
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.ADD_TO_AND_APPLY_LIST_ELEMENTS_EXPECTED_400)
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
   }
 
   @Test
@@ -1605,8 +1689,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     var defaultConfig = android.defaultConfig()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
@@ -1616,37 +1699,52 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     defaultConfig.resConfigs().addListValue()!!.setValue("xyz")
     defaultConfig.addResValue("mnop", "qrst", "uvwx")
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.ADD_TO_AND_APPLY_LIST_ELEMENTS_EXPECTED)
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-                 defaultConfig.proguardFiles())
+    assertEquals(
+      "consumerProguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.consumerProguardFiles(),
+    )
+    assertEquals(
+      "proguardFiles",
+      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
+      defaultConfig.proguardFiles(),
+    )
     assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
   }
 
   @Test
@@ -1659,12 +1757,10 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     var defaultConfig = android.defaultConfig()
 
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"),
-                 defaultConfig.consumerProguardFiles())
+    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")),
-                     defaultConfig.resValues())
+    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
 
     removeListValue(defaultConfig.consumerProguardFiles(), "proguard-rules.pro")
     removeListValue(defaultConfig.proguardFiles(), "proguard-rules.pro")
@@ -1740,36 +1836,45 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     var defaultConfig = android.defaultConfig()
     assertEquals("manifestPlaceholders", mapOf("key1" to "value1", "key2" to "value2"), defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     defaultConfig.manifestPlaceholders().getMapValue("key1")!!.setValue(12345)
     defaultConfig.manifestPlaceholders().getMapValue("key3")!!.setValue(true)
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("size")!!.setValue("small")
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("key")!!.setValue("value")
 
-    assertEquals("manifestPlaceholders", mapOf("key1" to 12345, "key2" to "value2", "key3" to true),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "foo" to "bar", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("key1" to 12345, "key2" to "value2", "key3" to true), defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "foo" to "bar", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.SET_AND_APPLY_MAP_ELEMENTS_EXPECTED)
 
-    assertEquals("manifestPlaceholders", mapOf("key1" to 12345, "key2" to "value2", "key3" to true),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "foo" to "bar", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("key1" to 12345, "key2" to "value2", "key3" to true), defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "foo" to "bar", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders", mapOf("key1" to 12345, "key2" to "value2", "key3" to true),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "foo" to "bar", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("key1" to 12345, "key2" to "value2", "key3" to true), defaultConfig.manifestPlaceholders())
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "foo" to "bar", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
   }
 
   @Test
@@ -1791,28 +1896,46 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("size")!!.setValue("small")
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("key")!!.setValue("value")
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED_400)
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
   }
 
   @Test
@@ -1832,28 +1955,46 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("size")!!.setValue("small")
     defaultConfig.testInstrumentationRunnerArguments().getMapValue("key")!!.setValue("value")
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED)
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "small", "key" to "value"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "small", "key" to "value"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
   }
 
   @Test
@@ -1866,36 +2007,36 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     var defaultConfig = android.defaultConfig()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     defaultConfig.manifestPlaceholders().getValue(MAP_TYPE)!!["activityLabel1"]!!.delete()
     defaultConfig.testInstrumentationRunnerArguments().getValue(MAP_TYPE)!!["size"]!!.delete()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.REMOVE_AND_APPLY_MAP_ELEMENTS_EXPECTED)
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
   }
 
   @Test
@@ -1908,36 +2049,36 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     var defaultConfig = android.defaultConfig()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("size" to "medium", "foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals(
+      "manifestPlaceholders",
+      mapOf("activityLabel1" to "defaultName1", "activityLabel2" to "defaultName2"),
+      defaultConfig.manifestPlaceholders(),
+    )
+    assertEquals(
+      "testInstrumentationRunnerArguments",
+      mapOf("size" to "medium", "foo" to "bar"),
+      defaultConfig.testInstrumentationRunnerArguments(),
+    )
 
     defaultConfig.manifestPlaceholders().getValue(MAP_TYPE)!!["activityLabel1"]!!.delete()
     defaultConfig.testInstrumentationRunnerArguments().getValue(MAP_TYPE)!!["size"]!!.delete()
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
 
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.REMOVE_AND_APPLY_DISCONTIGUOUS_MAP_ELEMENTS_EXPECTED)
 
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
 
     buildModel.reparse()
     android = buildModel.android()
     assertNotNull(android)
 
     defaultConfig = android.defaultConfig()
-    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"),
-                 defaultConfig.manifestPlaceholders())
-    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"),
-                 defaultConfig.testInstrumentationRunnerArguments())
+    assertEquals("manifestPlaceholders", mapOf("activityLabel2" to "defaultName2"), defaultConfig.manifestPlaceholders())
+    assertEquals("testInstrumentationRunnerArguments", mapOf("foo" to "bar"), defaultConfig.testInstrumentationRunnerArguments())
   }
 
   @Test
@@ -2368,7 +2509,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     verifyFlavorType(
       "buildConfigFields",
       ImmutableList.of<List<Any>>(Lists.newArrayList<Any>("abcd", "efgh", "ijkl")),
-      freeFlavor.buildConfigFields()
+      freeFlavor.buildConfigFields(),
     )
 
     // Check if initWith is applied
@@ -2378,7 +2519,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     verifyFlavorType(
       "buildConfigFields",
       ImmutableList.of<List<Any>>(Lists.newArrayList<Any>("abcd", "efgh", "ijkl")),
-      paidFlavor.buildConfigFields()
+      paidFlavor.buildConfigFields(),
     )
 
     // check that initWith doesn't change the target flavor
@@ -2479,8 +2620,11 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
       verifyListProperty(newDim, listOf("dim", "val1", "val2"))
 
       // We can set a reference using newDim as a context because we are still withing its parent context (missingDimensionStrategy).
-      val otherDim = buildModel.android().defaultConfig().addMissingDimensionStrategy(
-        "otherDim", ReferenceTo.createReferenceFromText("refToVal", newDim)!!)
+      val otherDim =
+        buildModel
+          .android()
+          .defaultConfig()
+          .addMissingDimensionStrategy("otherDim", ReferenceTo.createReferenceFromText("refToVal", newDim)!!)
       verifyListProperty(otherDim, listOf("otherDim", "boo"))
     }
 
@@ -2541,7 +2685,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     applyChangesAndReparse(buildModel)
     // TODO(b/142114586)
-    //verifyFileContents(myBuildFile, "")
+    // verifyFileContents(myBuildFile, "")
 
     assertFalse(buildModel.android().defaultConfig().areMissingDimensionStrategiesModified())
     buildModel.android().defaultConfig().missingDimensionStrategies()[0].toList()!![1].setValue("minApi17")
@@ -2571,7 +2715,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     applyChangesAndReparse(buildModel)
     // TODO(b/142114586)
-    //verifyFileContents(myBuildFile, "")
+    // verifyFileContents(myBuildFile, "")
 
     assertFalse(buildModel.android().defaultConfig().areMissingDimensionStrategiesModified())
     buildModel.android().defaultConfig().missingDimensionStrategies()[2].delete()
@@ -2590,7 +2734,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertFalse(buildModel.android().defaultConfig().areMissingDimensionStrategiesModified())
   }
 
-
   @Test
   fun testMissingDimensionStrategiesAreUnmodifiedWithDeletionAfterApply() {
     writeToBuildFile(TestFile.MISSING_DIMENSION_TEXT)
@@ -2602,7 +2745,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
     applyChangesAndReparse(buildModel)
     // TODO(b/142114586)
-    //verifyFileContents(myBuildFile, "")
+    // verifyFileContents(myBuildFile, "")
 
     assertFalse(buildModel.android().defaultConfig().areMissingDimensionStrategiesModified())
     buildModel.android().defaultConfig().addMissingDimensionStrategy("abi", "x86")
@@ -2680,8 +2823,8 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   /**
-   * This test ensures that we parse the arguments of setProguardFiles correctly, that they are surfaced by the model
-   * and can be edited correctly.
+   * This test ensures that we parse the arguments of setProguardFiles correctly, that they are surfaced by the model and can be edited
+   * correctly.
    */
   @Test
   fun testSetProguardFiles() {
@@ -2694,7 +2837,10 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     val proguardFiles = defaultConfig.proguardFiles()
     verifyListProperty(proguardFiles, listOf("getDefaultProguardFile(${quote}proguard-android-optimize.txt${quote})", "proguard-rules.pro"))
     proguardFiles.addListValue()!!.setValue("value")
-    verifyListProperty(proguardFiles, listOf("getDefaultProguardFile(${quote}proguard-android-optimize.txt${quote})", "proguard-rules.pro", "value"))
+    verifyListProperty(
+      proguardFiles,
+      listOf("getDefaultProguardFile(${quote}proguard-android-optimize.txt${quote})", "proguard-rules.pro", "value"),
+    )
     proguardFiles.toList()!![0].delete()
     verifyListProperty(proguardFiles, listOf("proguard-rules.pro", "value"))
 
@@ -2703,8 +2849,8 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   /**
-   * This test ensures that we parse reference arguments of setProguardFiles correctly, that they are surfaced by the model
-   * and can be edited correctly.
+   * This test ensures that we parse reference arguments of setProguardFiles correctly, that they are surfaced by the model and can be
+   * edited correctly.
    */
   @Test
   fun testSetProguardFilesWithReference() {
@@ -2718,7 +2864,10 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     verifyListProperty(proguardFiles, listOf("getDefaultProguardFile(${quote}proguard-android-optimize.txt${quote})", "proguard-rules.pro"))
     val varModel = buildModel.ext().findProperty("list")
     varModel.addListValue()!!.setValue("value")
-    verifyListProperty(proguardFiles, listOf("getDefaultProguardFile(${quote}proguard-android-optimize.txt${quote})", "proguard-rules.pro", "value"))
+    verifyListProperty(
+      proguardFiles,
+      listOf("getDefaultProguardFile(${quote}proguard-android-optimize.txt${quote})", "proguard-rules.pro", "value"),
+    )
     varModel.toList()!![0].delete()
     verifyListProperty(proguardFiles, listOf("proguard-rules.pro", "value"))
 
@@ -2726,9 +2875,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     verifyFileContents(myBuildFile, TestFile.SET_PROGUARD_FILES_WITH_REFERENCE_EXPECTED)
   }
 
-  /**
-   * This test ensures that setProguardFiles clears all current proguard files.
-   */
+  /** This test ensures that setProguardFiles clears all current proguard files. */
   @Test
   fun testSetProguardFilesClearsProguardFiles() {
     writeToBuildFile(TestFile.SET_PROGUARD_FILES_CLEARS_PROGUARD_FILES)
@@ -2866,8 +3013,7 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     SET_PROGUARD_FILES_CLEARS_PROGUARD_FILES("setProguardFilesClearsProguardFiles"),
     TEST_INSTRUMENTATION_RUNNER_ARGUMENT_SINGULAR_THEN_PLURAL("testInstrumentationRunnerArgumentSingularThenPlural"),
     TEST_INSTRUMENTATION_RUNNER_ARGUMENT_PLURAL_THEN_SINGULAR("testInstrumentationRunnerArgumentPluralThenSingular"),
-    DECLARATIVE_DEPENDENCIES("declarativeDependencies")
-    ;
+    DECLARATIVE_DEPENDENCIES("declarativeDependencies");
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {
       return super.toFile("$basePath/productFlavorModel/$path", extension)

@@ -22,8 +22,8 @@ import com.android.sdklib.internal.project.ProjectProperties
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.Projects.getBaseDirPath
 import com.android.tools.idea.actions.SubmitBugReportAction
-import com.android.tools.idea.actions.SubmitBugReportAction.safeCall
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
+import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet.Companion.getInstance
 import com.android.tools.idea.gradle.util.GradleVersions
 import com.android.tools.idea.gradle.util.LocalProperties
@@ -45,8 +45,6 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.EnvironmentUtil
-import org.jetbrains.android.facet.AndroidFacet
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -55,6 +53,7 @@ import java.nio.file.Files
 import java.util.Properties
 import java.util.function.Consumer
 import java.util.regex.Pattern
+import org.jetbrains.android.facet.AndroidFacet
 
 private val LOG = Logger.getInstance(GradleAndNdkFeedbackDescriptionProvider::class.java)
 
@@ -81,15 +80,16 @@ class GradleAndNdkFeedbackDescriptionProvider : FeedbackDescriptionProvider {
       return gradleVersion?.version ?: "(gradle version information not found)"
     }
 
-    fun getJdkDetails(): String {
+    suspend fun getJdkDetails(): String {
       return if (project == null) getDefaultJdkDetails() else getProjectJdkDetails(project)
     }
 
     fun getNdkDetails(): String = getNdkDetails(project, sdkHandler, progress)
     fun getCMakeDetails(): String = getCMakeDetails(project, sdkHandler, progress)
 
-    fun StringBuilder.item(prefix: String, getter: () -> String?) {
-      safeCall(getter)?.let { appendLine("$prefix: $it") }
+    suspend fun StringBuilder.item(prefix: String, getter: suspend () -> String?) {
+      runCatching { getter.invoke()?.let { appendLine("$prefix: $it") } }
+        .onFailure { e -> LOG.info("Unable to prepopulate additional version information - proceeding with sending feedback anyway. ", e) }
     }
 
     val description = buildString {
@@ -103,20 +103,20 @@ class GradleAndNdkFeedbackDescriptionProvider : FeedbackDescriptionProvider {
   }
 }
 
-private fun getNdkDetails(
-  project: Project?,
-  sdkHandler: AndroidSdkHandler,
-  progress: ProgressIndicator
-): String {
+private fun getNdkDetails(project: Project?, sdkHandler: AndroidSdkHandler, progress: ProgressIndicator): String {
   return buildString {
-    project?.getAndroidFacets()?.forEach(Consumer { facet: AndroidFacet ->
-      val module = facet.module
-      val ndkFacet = getInstance(module)
-      val ndkModuleModel = ndkFacet?.ndkModuleModel
-      if (ndkModuleModel != null) {
-        append("from module: ${ndkModuleModel.ndkModel.ndkVersion}, ")
-      }
-    })
+    project
+      ?.getAndroidFacets()
+      ?.forEach(
+        Consumer { facet: AndroidFacet ->
+          val module = facet.module
+          val ndkFacet = getInstance(module)
+          val ndkModuleModel = ndkFacet?.ndkModuleModel
+          if (ndkModuleModel != null) {
+            append("from module: ${ndkModuleModel.ndkModel.ndkVersion}, ")
+          }
+        }
+      )
 
     // Get version information from all the channels we know, and include it all into the bug to provide
     // the entire context.
@@ -136,14 +136,15 @@ private fun getNdkDetails(
 }
 
 /**
- * Taken with slight modifications from NdkHelper.getNdkVersion() in android-ndk, but not called directly to
- * avoid dependency of 'android' on 'android-ndk'.
+ * Taken with slight modifications from NdkHelper.getNdkVersion() in android-ndk, but not called directly to avoid dependency of 'android'
+ * on 'android-ndk'.
+ *
  * TODO: Consider factoring out all version info helpers into a separate module.
  */
 private fun getNdkVersion(ndkDir: String): String? {
   val sourcePropertiesFile = File(ndkDir, "source.properties")
   if (sourcePropertiesFile.exists()) {
-    //NDK 11+
+    // NDK 11+
     var fileInput: InputStream? = null
     return try {
       fileInput = FileInputStream(sourcePropertiesFile)
@@ -176,11 +177,7 @@ private fun getNdkVersion(ndkDir: String): String? {
   } else "UNKNOWN"
 }
 
-private fun getCMakeDetails(
-  project: Project?,
-  sdkHandler: AndroidSdkHandler,
-  progress: ProgressIndicator
-): String {
+private fun getCMakeDetails(project: Project?, sdkHandler: AndroidSdkHandler, progress: ProgressIndicator): String {
   return buildString {
     // Get version information from all the channels we know, and include it all into the bug to provide
     // the entire context.
@@ -246,12 +243,14 @@ private fun runAndGetCMakeVersion(cmakeExecutableFile: String): String? {
   return try {
     val process = CapturingAnsiEscapesAwareProcessHandler(commandLine)
     val output = StringBuffer()
-    process.addProcessListener(object : ProcessAdapter() {
-      override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
-        output.append(event.text)
-        super.onTextAvailable(event, outputType)
+    process.addProcessListener(
+      object : ProcessAdapter() {
+        override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
+          output.append(event.text)
+          super.onTextAvailable(event, outputType)
+        }
       }
-    })
+    )
     val exitCode = process.runProcess().exitCode
     if (exitCode == 0) {
       val m = CMAKE_VERSION_PATTERN.matcher(output.toString())
@@ -279,9 +278,9 @@ private fun getDefaultJdkDetails(): String {
   return "(default) " + getJdkVersion(jdk.homePath)
 }
 
-private fun getProjectJdkDetails(project: Project): String {
+private suspend fun getProjectJdkDetails(project: Project): String {
   val basePath = project.basePath ?: return "(cannot find project base path)"
-  return getJdkVersion(GradleInstallationManager.getInstance().getGradleJvmPath(project, basePath))
+  return getJdkVersion(AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(project, basePath))
 }
 
 private fun getJdkVersion(jdkPath: String?): String {

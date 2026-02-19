@@ -33,6 +33,7 @@ import com.android.tools.idea.streaming.device.UNKNOWN_ORIENTATION
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.extractText
+import com.android.tools.idea.streaming.testutil.newEmulatorView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.Presentation
@@ -42,15 +43,15 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.testFramework.RuleChain
+import java.awt.Dimension
+import java.util.concurrent.TimeUnit
+import javax.swing.JLabel
+import javax.swing.JPanel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import java.awt.Dimension
-import java.util.concurrent.TimeUnit
-import javax.swing.JLabel
-import javax.swing.JPanel
 
 /** Tests for [StreamingHardwareInputAction]. */
 @RunWith(JUnit4::class)
@@ -60,8 +61,7 @@ class StreamingHardwareInputActionTest {
   private val agentRule = FakeScreenSharingAgentRule()
   private val popupRule = JBPopupRule()
 
-  @get:Rule
-  val rule = RuleChain(emulatorViewRule, agentRule, popupRule)
+  @get:Rule val rule = RuleChain(emulatorViewRule, agentRule, popupRule)
 
   private val project
     get() = agentRule.project
@@ -145,7 +145,7 @@ class StreamingHardwareInputActionTest {
     val popup = showPopup(presentation)
     val labels = popup.content.findAllDescendants<JLabel>().toList()
     assertThat(labels.map { extractText(it.text) })
-        .containsExactly("Hardware Input", "Enable transparent forwarding of keyboard and mouse events to the device")
+      .containsExactly("Hardware Input", "Enable transparent forwarding of keyboard and mouse events to the device")
   }
 
   private fun createDeviceView(device: FakeDevice): DeviceView {

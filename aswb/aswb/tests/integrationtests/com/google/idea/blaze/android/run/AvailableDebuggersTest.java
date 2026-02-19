@@ -25,18 +25,20 @@ import com.google.idea.blaze.android.BlazeAndroidIntegrationTestCase;
 import com.google.idea.blaze.android.MockSdkUtil;
 import com.google.idea.blaze.android.cppimpl.debug.BlazeAutoAndroidDebugger;
 import com.google.idea.blaze.android.cppimpl.debug.BlazeNativeAndroidDebugger;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Test that ensures required android debuggers are available to blaze android projects. */
 @RunWith(JUnit4.class)
+@Ignore("b/466755859")
 public class AvailableDebuggersTest extends BlazeAndroidIntegrationTestCase {
   @Test
   public void getDebuggers_noCLanguageSupport_returnsJavaAndAutoDebuggers() {
     setProjectView("targets:", "  //java/com/foo/app:app", "android_sdk_platform: android-27");
     MockSdkUtil.registerSdk(workspace, "27");
-    runFullBlazeSyncWithNoIssues();
+    // query sync: runFullBlazeSyncWithNoIssues();
 
     assertThat(
         AndroidDebugger.EP_NAME.getExtensionList().stream()
@@ -56,7 +58,7 @@ public class AvailableDebuggersTest extends BlazeAndroidIntegrationTestCase {
         "  c",
         "android_sdk_platform: android-27");
     MockSdkUtil.registerSdk(workspace, "27");
-    runFullBlazeSyncWithNoIssues();
+    // query sync: runFullBlazeSyncWithNoIssues();
 
     assertThat(
             AndroidDebugger.EP_NAME.getExtensionList().stream()

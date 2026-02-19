@@ -42,7 +42,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class BlazeCommandRunConfigurationTest extends BlazeTestCase {
   private static final BlazeImportSettings DUMMY_IMPORT_SETTINGS =
-      new BlazeImportSettings("", "", "", "", "", BuildSystemName.Blaze, ProjectType.ASPECT_SYNC);
+      new BlazeImportSettings("", "", "", "", "", BuildSystemName.Blaze);
 
   private final BlazeCommandRunConfigurationType type = new BlazeCommandRunConfigurationType();
   private BlazeCommandRunConfiguration configuration;
@@ -75,7 +75,7 @@ public class BlazeCommandRunConfigurationTest extends BlazeTestCase {
   @Test
   public void readAndWriteShouldMatch() throws Exception {
     Label label = Label.create("//package:rule");
-    configuration.setTarget(label);
+    configuration.setTargetPattern(label.toString());
 
     Element element = new Element("test");
     configuration.writeExternal(element);
@@ -83,7 +83,7 @@ public class BlazeCommandRunConfigurationTest extends BlazeTestCase {
         type.getFactory().createTemplateConfiguration(project);
     readConfiguration.readExternal(element);
 
-    assertThat(readConfiguration.getTargets()).containsExactly(label);
+    assertThat(readConfiguration.getTargetPatterns()).containsExactly(label.toString());
   }
 
   @Test
@@ -94,7 +94,7 @@ public class BlazeCommandRunConfigurationTest extends BlazeTestCase {
         type.getFactory().createTemplateConfiguration(project);
     readConfiguration.readExternal(element);
 
-    assertThat(readConfiguration.getTargets()).isEqualTo(configuration.getTargets());
+    assertThat(readConfiguration.getTargetPatterns()).isEqualTo(configuration.getTargetPatterns());
   }
 
   private static class MockTargetFinder implements TargetFinder {

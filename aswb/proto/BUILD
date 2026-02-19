@@ -10,6 +10,7 @@ load(
 )
 load(
     "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
+    "aswb_library",
     "combine_visibilities",
 )
 load("//tools/base/bazel:proto.bzl", "java_proto_library")
@@ -18,46 +19,6 @@ licenses(["notice"])
 
 create_proto_visibility_group()
 
-java_proto_library(
-    name = "common_java_proto",
-    srcs = ["common.proto"],
-    visibility = combine_visibilities(
-        ASPECT_PROTO_VISIBILITY,
-        PLUGIN_PACKAGES_VISIBILITY,
-    ),
-)
-
-java_proto_library(
-    name = "intellij_ide_info_java_proto",
-    srcs = ["intellij_ide_info.proto"],
-    java_deps = [":common_java_proto"],
-    proto_deps = [":common_java_proto_srcs"],
-    visibility = combine_visibilities(
-        ASPECT_PROTO_VISIBILITY,
-        PLUGIN_PACKAGES_VISIBILITY,
-    ),
-)
-
-java_proto_library(
-    name = "project_data_java_proto",
-    srcs = ["project_data.proto"],
-    java_deps = [
-        ":common_java_proto",
-        ":intellij_ide_info_java_proto",
-        "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:build_java_proto",
-    ],
-    proto_deps = [
-        ":common_java_proto_srcs",
-        ":intellij_ide_info_java_proto_srcs",
-        "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:build_java_proto_srcs",
-    ],
-)
-
-java_proto_library(
-    name = "intellij_plugin_target_deploy_info_java_proto",
-    srcs = ["intellij_plugin_target_deploy_info.proto"],
-)
-
 # TODO delete this build rule. Dependants should use the proto targets they use
 # directly instead.
 java_library(
@@ -65,16 +26,15 @@ java_library(
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     exports = [
         # do not sort: to get a consistent version of the protobuf-java library across all proto users
-        "@maven//:io.grpc.grpc-protobuf",
-        ":common_java_proto",
-        ":intellij_ide_info_java_proto",
-        ":intellij_plugin_target_deploy_info_java_proto",
-        ":project_data_java_proto",
+        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto:build_event_stream_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/java/com/google/devtools/build/lib/starlarkdebug/proto:starlark_debugging_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:android_deploy_info_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:build_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:command_line_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:deps_java_proto",
+        "//tools/vendor/google/aswb/plugin_api",
+        "//tools/vendor/google/aswb/plugin_api:jsr305",
+        "@maven//:com.google.errorprone.error_prone_annotations",  # unuseddeps: keep
     ],
 )

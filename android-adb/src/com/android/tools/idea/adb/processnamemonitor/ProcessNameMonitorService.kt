@@ -21,9 +21,7 @@ import com.android.processmonitor.agenttracker.AgentSourcePaths.AGENT_SOURCE_DEV
 import com.android.processmonitor.common.ProcessEvent
 import com.android.processmonitor.monitor.ProcessNameMonitor
 import com.android.processmonitor.monitor.ProcessNameMonitorImpl
-import com.android.processmonitor.monitor.ddmlib.AdbAdapterImpl
 import com.android.tools.idea.IdeInfo
-import com.android.tools.idea.adb.AdbService
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.adblib.AndroidAdbLogger
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
@@ -48,57 +46,27 @@ internal class ProcessNameMonitorService(project: Project) : ProcessNameMonitor,
     val adbSession = AdbLibService.getSession(project)
     val deviceProvisioner = project.service<DeviceProvisionerService>().deviceProvisioner
     val adbLogger = AndroidAdbLogger(thisLogger())
-    val adbAdapter = AdbAdapterImpl(AdbService.getInstance().getDebugBridge(project))
     val pollingIntervalMs = StudioFlags.PROCESS_NAME_TRACKER_AGENT_INTERVAL_MS.get()
     // If Logcat Proto format is supported and enabled, we don't need to use an agent.
-    val shouldUseAgentForSdk: (Int) -> Boolean = { sdk ->
-      sdk < LOGCAT_PROTO_SUPPORT_SDK || !StudioFlags.LOGCAT_PROTOBUF_ENABLED.get()
-    }
-    val trackerAgentConfig =
-      when (StudioFlags.PROCESS_NAME_TRACKER_AGENT_ENABLE.get()) {
-        true -> AgentProcessTrackerConfig(getAgentPath(), pollingIntervalMs, shouldUseAgentForSdk)
-        false -> null
-      }
-    val config =
-      ProcessNameMonitor.Config(
-        StudioFlags.PROCESS_NAME_MONITOR_MAX_RETENTION.get(),
-        trackerAgentConfig,
-      )
+    val shouldUseAgentForSdk: (Int) -> Boolean = { sdk -> sdk < LOGCAT_PROTO_SUPPORT_SDK || !StudioFlags.LOGCAT_PROTOBUF_ENABLED.get() }
+    val trackerAgentConfig = AgentProcessTrackerConfig(getAgentPath(), pollingIntervalMs, shouldUseAgentForSdk)
+    val config = ProcessNameMonitor.Config(StudioFlags.PROCESS_NAME_MONITOR_MAX_RETENTION.get(), trackerAgentConfig)
 
-    when (
-      StudioFlags.PROCESS_NAME_MONITOR_ADBLIB_ENABLED.get() &&
-        StudioFlags.ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER.get()
-    ) {
-      true ->
-        ProcessNameMonitorImpl.forAdblib(
-          parentScope,
-          adbSession,
-          deviceProvisioner,
-          config,
-          adbLogger,
-        )
-      false ->
-        ProcessNameMonitorImpl.forDdmlib(parentScope, adbSession, adbAdapter, config, adbLogger)
-    }
+    ProcessNameMonitorImpl.create(parentScope, adbSession, deviceProvisioner, config, adbLogger)
   }
 
   override fun start() = delegate.start()
 
-  override fun getProcessNames(serialNumber: String, pid: Int) =
-    delegate.getProcessNames(serialNumber, pid)
+  override fun getProcessNames(serialNumber: String, pid: Int) = delegate.getProcessNames(serialNumber, pid)
 
-  override suspend fun trackDeviceProcesses(serialNumber: String): Flow<ProcessEvent> =
-    delegate.trackDeviceProcesses(serialNumber)
+  override suspend fun trackDeviceProcesses(serialNumber: String): Flow<ProcessEvent> = delegate.trackDeviceProcesses(serialNumber)
 
   override fun dispose() {
     delegate.close()
   }
 
   private fun getAgentPath(): Path {
-    return when (
-      StudioPathManager.isRunningFromSources() &&
-        (IdeInfo.getInstance().isAndroidStudio || IdeInfo.getInstance().isGameTools)
-    ) {
+    return when (StudioPathManager.isRunningFromSources() && (IdeInfo.getInstance().isAndroidStudio || IdeInfo.getInstance().isGameTools)) {
       true -> Paths.get(StudioPathManager.getBinariesRoot()).resolve(AGENT_SOURCE_DEV)
       false -> PluginPathManager.getPluginHome("android").toPath().resolve(AGENT_RESOURCE_PROD)
     }

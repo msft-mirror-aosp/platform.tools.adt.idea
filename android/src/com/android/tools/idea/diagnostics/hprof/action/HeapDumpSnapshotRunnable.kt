@@ -41,8 +41,6 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.MemoryDumpHelper
-import org.jetbrains.android.util.AndroidBundle
-import org.jetbrains.kotlin.daemon.common.usedMemory
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -51,10 +49,10 @@ import java.util.Date
 import java.util.Locale
 import kotlin.io.path.exists
 import kotlin.math.max
+import org.jetbrains.android.util.AndroidBundle
+import org.jetbrains.kotlin.daemon.common.usedMemory
 
-class HeapDumpSnapshotRunnable(
-  private val reason: MemoryReportReason,
-  private val analysisOption: AnalysisOption) : Runnable {
+class HeapDumpSnapshotRunnable(private val reason: MemoryReportReason, private val analysisOption: AnalysisOption) : Runnable {
 
   companion object {
     const val MINIMUM_USED_MEMORY_TO_CAPTURE_HEAP_DUMP_IN_MB = 800
@@ -65,7 +63,7 @@ class HeapDumpSnapshotRunnable(
   enum class AnalysisOption {
     NO_ANALYSIS,
     SCHEDULE_ON_NEXT_START,
-    IMMEDIATE
+    IMMEDIATE,
   }
 
   override fun run() {
@@ -87,18 +85,19 @@ class HeapDumpSnapshotRunnable(
             Messages.showErrorDialog(message, AndroidBundle.message("heap.dump.snapshot.title"))
           }
           LOG.info("Heap report already pending.")
-          UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-            HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.REPORT_ALREADY_PENDING).build()))
+          UsageTracker.log(
+            AndroidStudioEvent.newBuilder()
+              .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+              .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.REPORT_ALREADY_PENDING).build())
+          )
           return
         }
-      }
-      catch (ex: IOException) {
+      } catch (ex: IOException) {
         if (userInvoked) {
           val message = AndroidBundle.message("heap.dump.snapshot.error.check.log")
           Messages.showErrorDialog(message, AndroidBundle.message("heap.dump.snapshot.title"))
           LOG.warn("Exception while querying for pending heap report", ex)
-        }
-        else {
+        } else {
           LOG.info("Exception while querying for pending heap report", ex)
         }
         return
@@ -113,12 +112,14 @@ class HeapDumpSnapshotRunnable(
     // Check if there is enough space
     if (spaceInMB < estimatedRequiredMB) {
       LOG.info("Not enough space for heap dump: $spaceInMB MB < $estimatedRequiredMB MB")
-      UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-        HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.INSUFFICIENT_DISK_SPACE).build()))
+      UsageTracker.log(
+        AndroidStudioEvent.newBuilder()
+          .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+          .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.INSUFFICIENT_DISK_SPACE).build())
+      )
       // If invoked by the user action, show a message why a heap dump cannot be captured.
       if (userInvoked) {
-        val message = AndroidBundle.message("heap.dump.snapshot.no.space", hprofPath.parent.toString(),
-                                            estimatedRequiredMB, spaceInMB)
+        val message = AndroidBundle.message("heap.dump.snapshot.no.space", hprofPath.parent.toString(), estimatedRequiredMB, spaceInMB)
         Messages.showErrorDialog(message, AndroidBundle.message("heap.dump.snapshot.title"))
       }
       return
@@ -135,8 +136,11 @@ class HeapDumpSnapshotRunnable(
     if (!userInvoked) {
       if (java.lang.Boolean.getBoolean("diagnostics.disable.heap.analysis")) {
         LOG.info("Disabled with system property.")
-        UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-          HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.DISABLED_SYSTEM_PROPERTY).build()))
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+            .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.DISABLED_SYSTEM_PROPERTY).build())
+        )
         return false
       }
 
@@ -145,17 +149,24 @@ class HeapDumpSnapshotRunnable(
         return false
       }
 
-      var minHeapSizeThreshold = if (StudioFlags.ENABLE_HEAP_REPORT_DIAGNOSTICS_DEFAULT.get()) MINIMUM_USED_MEMORY_TO_CAPTURE_HEAP_DUMP_IN_MB else -1
+      var minHeapSizeThreshold =
+        if (StudioFlags.ENABLE_HEAP_REPORT_DIAGNOSTICS_DEFAULT.get()) MINIMUM_USED_MEMORY_TO_CAPTURE_HEAP_DUMP_IN_MB else -1
       val heapReportConfig = ServerFlagService.instance.getProtoOrNull("diagnostics/heap_reports", HeapReportConfig.getDefaultInstance())
       if (heapReportConfig != null) {
         minHeapSizeThreshold = heapReportConfig.minUsedMemoryMb.toInt()
-        UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-          HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.DISABLED_SERVER_FLAG).build()))
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+            .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.DISABLED_SERVER_FLAG).build())
+        )
       }
       if (minHeapSizeThreshold == -1) {
         LOG.info("Heap dump analysis disabled")
-        UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-          HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.DISABLED_NOT_64_BIT).build()))
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+            .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.DISABLED_NOT_64_BIT).build())
+        )
         return false
       }
 
@@ -172,8 +183,11 @@ class HeapDumpSnapshotRunnable(
       // Capture only large memory heaps, unless explicitly requested by the user
       if (usedMemoryMB < minHeapSizeThreshold) {
         LOG.info("Heap dump too small: $usedMemoryMB MB < $minHeapSizeThreshold MB")
-        UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-          HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.HEAP_TOO_SMALL).build()))
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+            .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.HEAP_TOO_SMALL).build())
+        )
         return false
       }
 
@@ -183,8 +197,11 @@ class HeapDumpSnapshotRunnable(
       if (nextCheckPropertyMs > currentTimestampMs) {
         val nextCheckDateString = SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.US).format(Date(nextCheckPropertyMs))
         LOG.info("Don't ask for snapshot until $nextCheckDateString.")
-        UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-          HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.RATE_LIMITED).build()))
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+            .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.RATE_LIMITED).build())
+        )
         return false
       }
     }
@@ -195,13 +212,12 @@ class HeapDumpSnapshotRunnable(
     return max(100, (usedMemory(false) * 2.0).toLong() / 1_000_000)
   }
 
-  class CaptureHeapDumpTask(private val hprofPath: Path,
-                            private val reason: MemoryReportReason,
-                            private val analysisOption: AnalysisOption,
-                            private val restart: Boolean)
-    : Task.Modal(null,
-                 AndroidBundle.message("heap.dump.snapshot.task.title"),
-                 false) {
+  class CaptureHeapDumpTask(
+    private val hprofPath: Path,
+    private val reason: MemoryReportReason,
+    private val analysisOption: AnalysisOption,
+    private val restart: Boolean,
+  ) : Task.Modal(null, AndroidBundle.message("heap.dump.snapshot.task.title"), false) {
 
     override fun onSuccess() {
       if (analysisOption == AnalysisOption.SCHEDULE_ON_NEXT_START && restart) {
@@ -211,8 +227,11 @@ class HeapDumpSnapshotRunnable(
 
     override fun onThrowable(error: Throwable) {
       LOG.error(error)
-      val notification = HeapDumpAnalysisNotificationGroup.GROUP.createNotification(
-        AndroidBundle.message("heap.dump.snapshot.exception"), NotificationType.ERROR)
+      val notification =
+        HeapDumpAnalysisNotificationGroup.GROUP.createNotification(
+          AndroidBundle.message("heap.dump.snapshot.exception"),
+          NotificationType.ERROR,
+        )
       notification.notify(null)
     }
 
@@ -222,10 +241,7 @@ class HeapDumpSnapshotRunnable(
       val yesString = AndroidBundle.message("heap.dump.snapshot.restart.dialog.restart.now")
       val noString = AndroidBundle.message("heap.dump.snapshot.restart.dialog.restart.later")
       val result = MessageDialogBuilder.yesNo(title, message)
-      if (MessageDialogBuilder.yesNo(title, message)
-        .yesText(yesString)
-        .noText(noString)
-        .guessWindowAndAsk()) {
+      if (MessageDialogBuilder.yesNo(title, message).yesText(yesString).noText(noString).guessWindowAndAsk()) {
         val application = ApplicationManager.getApplication() as ApplicationEx
         application.restart(true)
       }
@@ -235,10 +251,8 @@ class HeapDumpSnapshotRunnable(
       indicator.isIndeterminate = true
 
       val productName = ApplicationNamesInfo.getInstance().fullProductName
-      if (reason.isUserInvoked())
-        indicator.text = AndroidBundle.message("heap.dump.snapshot.indicator.text", productName)
-      else
-        indicator.text = AndroidBundle.message("heap.dump.snapshot.indicator.low.memory.text", productName)
+      if (reason.isUserInvoked()) indicator.text = AndroidBundle.message("heap.dump.snapshot.indicator.text", productName)
+      else indicator.text = AndroidBundle.message("heap.dump.snapshot.indicator.low.memory.text", productName)
 
       // TODO: Rewrite to remove this delay. Task.queue() shows progress dialog with 300ms delay currently without
       //   an API to lower this or get notified the window is shown. Creating a heap dump is a long-running operation
@@ -250,12 +264,12 @@ class HeapDumpSnapshotRunnable(
 
       var liveStats = ""
       ApplicationManager.getApplication().invokeAndWait {
-        liveStats = try {
-          LiveInstanceStats().createReport()
-        }
-        catch (e: Error) {
-          "Error while gathering live statistics: ${TraceUtils.getStackTrace(e)}\n"
-        }
+        liveStats =
+          try {
+            LiveInstanceStats().createReport()
+          } catch (e: Error) {
+            "Error while gathering live statistics: ${TraceUtils.getStackTrace(e)}\n"
+          }
       }
       val report = UnanalyzedHeapReport(hprofPath, HeapReportProperties(reason, liveStats))
 
@@ -263,10 +277,12 @@ class HeapDumpSnapshotRunnable(
         AnalysisOption.SCHEDULE_ON_NEXT_START -> {
           AndroidStudioSystemHealthMonitor.getInstance().addHeapReportToDatabase(report)
           ApplicationManager.getApplication().invokeLater {
-            val notification = HeapDumpAnalysisNotificationGroup.GROUP.createNotification(
-              AndroidBundle.message("heap.dump.analysis.notification.title"),
-              AndroidBundle.message("heap.dump.snapshot.created", hprofPath.toString(), productName),
-              NotificationType.INFORMATION)
+            val notification =
+              HeapDumpAnalysisNotificationGroup.GROUP.createNotification(
+                AndroidBundle.message("heap.dump.analysis.notification.title"),
+                AndroidBundle.message("heap.dump.snapshot.created", hprofPath.toString(), productName),
+                NotificationType.INFORMATION,
+              )
             notification.notify(null)
           }
         }
@@ -274,10 +290,12 @@ class HeapDumpSnapshotRunnable(
           ApplicationManager.getApplication().invokeLater(AnalysisRunnable(report, true))
         }
         AnalysisOption.NO_ANALYSIS -> {
-          val notification = HeapDumpAnalysisNotificationGroup.GROUP.createNotification(
-            AndroidBundle.message("heap.dump.analysis.notification.title"),
-            AndroidBundle.message("heap.dump.snapshot.created.no.analysis", hprofPath.toString()),
-            NotificationType.INFORMATION)
+          val notification =
+            HeapDumpAnalysisNotificationGroup.GROUP.createNotification(
+              AndroidBundle.message("heap.dump.analysis.notification.title"),
+              AndroidBundle.message("heap.dump.snapshot.created.no.analysis", hprofPath.toString()),
+              NotificationType.INFORMATION,
+            )
           notification.notify(null)
         }
       }
@@ -290,12 +308,14 @@ class HeapDumpSnapshotRunnable(
       }
       try {
         MemoryDumpHelper.captureMemoryDump(hprofPath.toString())
-      }
-      catch (t: Throwable) {
+      } catch (t: Throwable) {
         // Delete the hprof file if exception was raised.
         Files.deleteIfExists(hprofPath)
-        UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT).setHeapReportEvent(
-          HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.CAPTURE_SNAPSHOT_FAILED).build()))
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.HEAP_REPORT_EVENT)
+            .setHeapReportEvent(HeapReportEvent.newBuilder().setStatus(HeapReportEvent.Status.CAPTURE_SNAPSHOT_FAILED).build())
+        )
         throw t
       }
     }

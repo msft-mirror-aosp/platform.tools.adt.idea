@@ -16,23 +16,22 @@
 package com.google.idea.blaze.android.functional;
 
 import static com.google.common.truth.Truth.assertThat;
-import static com.google.idea.blaze.android.targetmapbuilder.NbAndroidInstrumentationTestTarget.android_instrumentation_test;
-import static com.google.idea.blaze.android.targetmapbuilder.NbAndroidTarget.android_binary;
 import static org.junit.Assert.fail;
 
 import com.google.idea.blaze.android.BlazeAndroidIntegrationTestCase;
 import com.google.idea.blaze.android.MockSdkUtil;
 import com.google.idea.blaze.android.run.runner.InstrumentationInfo;
 import com.google.idea.blaze.android.run.runner.InstrumentationInfo.InstrumentationParserException;
-import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
+import com.google.idea.blaze.common.Label;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration tests for {@link InstrumentationInfo} */
 @RunWith(JUnit4.class)
+@Ignore("b/466755859")
 public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
   private void setupProject() {
     setProjectView(
@@ -54,34 +53,34 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
         "package com.foo.app",
         "public class Test {}");
 
-    setTargetMap(
-        android_binary("//java/com/foo/app:app").src("MainActivity.java"),
-        android_binary("//java/com/foo/app:test_app")
-            .setResourceJavaPackage("com.foo.app.androidtest")
-            .src("Test.java")
-            .instruments("//java/com/foo/app:app"),
-        android_binary("//java/com/foo/app:test_app_self_instrumenting")
-            .setResourceJavaPackage("com.foo.app.androidtest.selfinstrumenting")
-            .src("Test.java"),
-        android_instrumentation_test("//java/com/foo/app:instrumentation_test")
-            .test_app("//java/com/foo/app:test_app"),
-        android_instrumentation_test("//java/com/foo/app:self_instrumenting_test")
-            .test_app("//java/com/foo/app:test_app_self_instrumenting"));
-    runFullBlazeSyncWithNoIssues();
+    // query sync:     //setTargetMap(
+    //    android_binary("//java/com/foo/app:app").src("MainActivity.java"),
+    //    android_binary("//java/com/foo/app:test_app")
+    //        .setResourceJavaPackage("com.foo.app.androidtest")
+    //        .src("Test.java")
+    //        .instruments("//java/com/foo/app:app"),
+    //    android_binary("//java/com/foo/app:test_app_self_instrumenting")
+    //        .setResourceJavaPackage("com.foo.app.androidtest.selfinstrumenting")
+    //        .src("Test.java"),
+    //    android_instrumentation_test("//java/com/foo/app:instrumentation_test")
+    //        .test_app("//java/com/foo/app:test_app"),
+    //    android_instrumentation_test("//java/com/foo/app:self_instrumenting_test")
+    //        .test_app("//java/com/foo/app:test_app_self_instrumenting"));
+    // query sync: runFullBlazeSyncWithNoIssues();
   }
 
   @Test
   public void separateInstrumentationAndTargetApp() {
     setupProject();
 
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:instrumentation_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:instrumentation_test");
     InstrumentationInfo info =
         InstrumentationInfo.getInstrumentationInfo(
             instrumentationTestLabel,
-            BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
+            getProject());
 
-    assertThat(info.testApp).isEqualTo(Label.create("//java/com/foo/app:test_app"));
-    assertThat(info.targetApp).isEqualTo(Label.create("//java/com/foo/app:app"));
+    assertThat(info.testApp).isEqualTo(Label.of("//java/com/foo/app:test_app"));
+    assertThat(info.targetApp).isEqualTo(Label.of("//java/com/foo/app:app"));
     assertThat(info.isSelfInstrumentingTest()).isFalse();
   }
 
@@ -89,14 +88,14 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
   public void selfInstrumentingTest() {
     setupProject();
 
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:self_instrumenting_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:self_instrumenting_test");
     InstrumentationInfo info =
         InstrumentationInfo.getInstrumentationInfo(
             instrumentationTestLabel,
-            BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
+            getProject());
 
     assertThat(info.testApp)
-        .isEqualTo(Label.create("//java/com/foo/app:test_app_self_instrumenting"));
+        .isEqualTo(Label.of("//java/com/foo/app:test_app_self_instrumenting"));
     assertThat(info.targetApp).isNull();
     assertThat(info.isSelfInstrumentingTest()).isTrue();
   }
@@ -122,20 +121,20 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
         "package com.foo.app",
         "public class Test {}");
 
-    setTargetMap(
-        android_binary("//java/com/foo/app:app").src("MainActivity.java"),
-        android_binary("//java/com/foo/app:test_app")
-            .setResourceJavaPackage("com.foo.app.androidtest")
-            .src("Test.java")
-            .instruments("//java/com/foo/app:app"),
-        android_instrumentation_test("//java/com/foo/app:instrumentation_test"));
-    runFullBlazeSyncWithNoIssues();
+    // query sync:     //setTargetMap(
+    //    android_binary("//java/com/foo/app:app").src("MainActivity.java"),
+    //    android_binary("//java/com/foo/app:test_app")
+    //        .setResourceJavaPackage("com.foo.app.androidtest")
+    //        .src("Test.java")
+    //        .instruments("//java/com/foo/app:app"),
+    //    android_instrumentation_test("//java/com/foo/app:instrumentation_test"));
+    // query sync: runFullBlazeSyncWithNoIssues();
 
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:instrumentation_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:instrumentation_test");
     try {
       InstrumentationInfo.getInstrumentationInfo(
           instrumentationTestLabel,
-          BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
+          getProject());
       fail("parsing should've thrown an exception");
     } catch (InstrumentationParserException e) {
       assertThat(e.getMessage())
@@ -147,12 +146,12 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
   @Test
   public void findTestAndAppTargets() {
     setupProject();
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:instrumentation_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:instrumentation_test");
     InstrumentationInfo info =
         InstrumentationInfo.getInstrumentationInfo(
             instrumentationTestLabel,
-            BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
-    assertThat(info.testApp).isEqualTo(Label.create("//java/com/foo/app:test_app"));
-    assertThat(info.targetApp).isEqualTo(Label.create("//java/com/foo/app:app"));
+            getProject());
+    assertThat(info.testApp).isEqualTo(Label.of("//java/com/foo/app:test_app"));
+    assertThat(info.targetApp).isEqualTo(Label.of("//java/com/foo/app:app"));
   }
 }

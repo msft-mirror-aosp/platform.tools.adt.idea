@@ -50,7 +50,6 @@ iml_module(
         "//tools/adt/idea/deploy:intellij.android.deploy",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/layout-ui:intellij.android.layout-ui",
-        "//tools/base/ddmlib:studio.android.sdktools.ddmlib",
         "//tools/adt/idea/android-adb:intellij.android.adb",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
         "//tools/adt/idea/.idea/libraries:studio-proto",
@@ -63,7 +62,6 @@ iml_module(
         "//tools/adt/idea/app-inspection/ide:app-inspection.ide",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
-        "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
         "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
         "//tools/adt/idea/.idea/libraries:transport-proto",
         "//tools/adt/idea/android-transport:intellij.android.transport",
@@ -74,6 +72,7 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
+        "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
     ],
 )
 
@@ -85,10 +84,10 @@ iml_module(
     test_data = [
         "//prebuilts/studio/sdk:platforms/android-35",
         "//prebuilts/studio/sdk:platforms/latest",
-        "//prebuilts/studio/skiaparser/test_support",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/artwork:device-art-resources",
         "//tools/adt/idea/layout-inspector/testData",
+        "//tools/adt/idea/streaming/native:libimage_converter.prebuilt",
         "//tools/base/build-system:gradle-distrib",
     ],
     # do not sort: must match IML order
@@ -138,14 +137,9 @@ iml_module(
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
+        "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
     ],
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
-    test_jvm_flags = select({
-        "//tools/base/bazel/platforms:macos-arm64": ["-Djava.library.path=prebuilts/studio/skiaparser/test_support/mac-arm"],
-        "//tools/base/bazel/platforms:macos-x86_64": ["-Djava.library.path=prebuilts/studio/skiaparser/test_support/mac"],
-        "@platforms//os:windows": ["-Djava.library.path=prebuilts/studio/skiaparser/test_support/windows"],
-        "@platforms//os:linux": ["-Djava.library.path=prebuilts/studio/skiaparser/test_support/linux"],
-    }),
     test_resources = ["testResources"],
     test_shard_count = 2,
     test_srcs = ["testSrc"],
@@ -159,7 +153,6 @@ iml_module(
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/dynamic-layout-inspector/common:studio.dynamic-layout-inspector.common",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
-        "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
         "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
     ],
@@ -260,12 +253,24 @@ iml_module(
     srcs = ["gradle/src"],
     iml_files = ["gradle/intellij.android.layout-inspector.gradle.iml"],
     resources = ["gradle/resources"],
+    test_class = "com.android.tools.idea.layoutinspector.GradleTokenTestSuite",
+    test_data = [
+        "//prebuilts/studio/sdk:platforms/latest",
+    ],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+    ],
+    test_srcs = ["gradle/testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
@@ -273,5 +278,9 @@ iml_module(
         "//tools/adt/idea/app-inspection/ide:app-inspection.ide",
         "//tools/base/sdk-common/gradle:studio.android.sdktools.sdk-common.gradle",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
     ],
 )

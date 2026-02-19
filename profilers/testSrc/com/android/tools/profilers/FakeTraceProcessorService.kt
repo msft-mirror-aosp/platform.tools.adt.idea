@@ -16,8 +16,8 @@
 package com.android.tools.profilers
 
 import com.android.tools.profiler.perfetto.proto.TraceProcessor
-import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.cpu.CpuProfilerTestUtils
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.CounterModel
 import com.android.tools.profilers.cpu.systemtrace.CpuCoreModel
@@ -30,7 +30,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.ObjectInputStream
 
-class FakeTraceProcessorService: TraceProcessorService {
+class FakeTraceProcessorService : TraceProcessorService {
 
   companion object {
     private val validTraces by lazy {
@@ -39,7 +39,7 @@ class FakeTraceProcessorService: TraceProcessorService {
         CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"),
         CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage_with_power.trace"),
         CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
-        CpuProfilerTestUtils.getTraceFile("perfetto_frame_lifecycle.trace")
+        CpuProfilerTestUtils.getTraceFile("perfetto_frame_lifecycle.trace"),
       )
     }
 
@@ -78,18 +78,20 @@ class FakeTraceProcessorService: TraceProcessorService {
   }
 
   private val loadedTraces = mutableMapOf<Long, File>()
+  private val metadataValues = mutableMapOf<Long, MutableMap<String, String>>()
 
   /**
-   * If true, will always return false on loadTrace() calls, to simulate when the daemon return a failure when attempting to
-   * load a trace file.
+   * If true, will always return false on loadTrace() calls, to simulate when the daemon return a failure when attempting to load a trace
+   * file.
    */
   var forceFailLoadTrace = false
 
-  /**
-   * Setup test UiState data to be returned when parsing a trace. If the trace id is not found in this list, an empty UiState will be
-   * returned.
-   */
-  val uiStateForTraceId = mutableMapOf<Long, String>()
+  fun setTraceMetadataValue(traceId: Long, name: String, value: String) {
+    if (!metadataValues.containsKey(traceId)) {
+      metadataValues[traceId] = mutableMapOf()
+    }
+    metadataValues[traceId]!![name] = value
+  }
 
   override fun loadTrace(traceId: Long, traceFile: File, ideProfilerServices: IdeProfilerServices): Boolean {
     if (validTraces.contains(traceFile) && !forceFailLoadTrace) {
@@ -104,69 +106,76 @@ class FakeTraceProcessorService: TraceProcessorService {
   override fun getProcessMetadata(traceId: Long, ideProfilerServices: IdeProfilerServices): List<ProcessModel> {
     if (loadedTraces.containsKey(traceId)) {
       return loadProcessModelListFor(loadedTraces[traceId]!!)
-    }
-    else {
+    } else {
       return emptyList()
     }
   }
 
   override fun getTraceMetadata(traceId: Long, metadataName: String, ideProfilerServices: IdeProfilerServices): List<String> {
-    val metadataList = mutableListOf<String>()
-    if (metadataName.equals("ui_state") && uiStateForTraceId.containsKey(traceId)) {
-      metadataList.add(uiStateForTraceId[traceId]!!)
-    }
-    return metadataList
+    return metadataValues[traceId]?.get(metadataName)?.let { listOf(it) } ?: emptyList()
   }
 
-  override fun loadCpuData(traceId: Long,
-                           processes: List<ProcessModel>,
-                           selectedProcess: ProcessModel,
-                           ideProfilerServices: IdeProfilerServices): SystemTraceModelAdapter {
+  override fun loadCpuData(
+    traceId: Long,
+    processes: List<ProcessModel>,
+    selectedProcess: ProcessModel,
+    ideProfilerServices: IdeProfilerServices,
+  ): SystemTraceModelAdapter {
     return if (loadedTraces.containsKey(traceId)) {
       val trace = loadedTraces[traceId]!!
       val model: Map<Int, SystemTraceModelAdapter> = getModelMapFor(trace)
       // The pid of the main process is always the first one in the list.
       val pid = processes[0].id
       model[pid]?.let(::FakeTimelineModelAdapter) ?: error("$pid process should be present in model")
-    }
-    else {
+    } else {
       EmptyModelAdapter()
     }
   }
 
-  override fun loadMemoryData(traceId: Long,
-                              abi: String,
-                              memorySet: NativeMemoryHeapSet,
-                              ideProfilerServices: IdeProfilerServices) {
+  override fun loadMemoryData(traceId: Long, abi: String, memorySet: NativeMemoryHeapSet, ideProfilerServices: IdeProfilerServices) {
     // Will populate as needed. Currently no test rely on this.
   }
 
-  private inner class EmptyModelAdapter: SystemTraceModelAdapter {
+  private inner class EmptyModelAdapter : SystemTraceModelAdapter {
     override fun getCaptureStartTimestampUs() = 0L
+
     override fun getCaptureEndTimestampUs() = 0L
+
     override fun getProcesses(): List<ProcessModel> = emptyList()
+
     override fun getProcessById(id: Int) = getProcesses().find { it.id == id }
+
     override fun getDanglingThread(tid: Int): ThreadModel? = null
+
     override fun getCpuCores(): List<CpuCoreModel> = emptyList()
+
     override fun getSystemTraceTechnology() = TraceType.PERFETTO
+
     override fun getPowerRails(): List<CounterModel> = emptyList()
+
     override fun getBatteryDrain(): List<CounterModel> = emptyList()
+
     override fun isCapturePossibleCorrupted() = false
+
     override fun getAndroidFrameLayers(): List<TraceProcessor.AndroidFrameEventsResult.Layer> = emptyList()
+
     override fun getAndroidFrameTimelineEvents(): List<AndroidFrameTimelineEvent> = emptyList()
   }
 }
 
 /**
- * Wrapper for old fake trace that had `null` for timeline events, power rails, and battery drain
- * and resulted in `IllegalStateException` when inspected.
+ * Wrapper for old fake trace that had `null` for timeline events, power rails, and battery drain and resulted in `IllegalStateException`
+ * when inspected.
  */
-private class FakeTimelineModelAdapter(private val base: SystemTraceModelAdapter,
-                                       private val fakeEvents: List<AndroidFrameTimelineEvent> = listOf(),
-                                       private val fakePowerRails: List<CounterModel> = listOf(),
-                                       private val fakeBatteryDrain: List<CounterModel> = listOf()): SystemTraceModelAdapter by base {
+private class FakeTimelineModelAdapter(
+  private val base: SystemTraceModelAdapter,
+  private val fakeEvents: List<AndroidFrameTimelineEvent> = listOf(),
+  private val fakePowerRails: List<CounterModel> = listOf(),
+  private val fakeBatteryDrain: List<CounterModel> = listOf(),
+) : SystemTraceModelAdapter by base {
   override fun getAndroidFrameTimelineEvents() = base.getAndroidFrameTimelineEvents() ?: fakeEvents
-  override fun getPowerRails(): List<CounterModel> = base.getPowerRails() ?: fakePowerRails
-  override fun getBatteryDrain(): List<CounterModel> = base.getBatteryDrain() ?: fakeBatteryDrain
 
+  override fun getPowerRails(): List<CounterModel> = base.getPowerRails() ?: fakePowerRails
+
+  override fun getBatteryDrain(): List<CounterModel> = base.getBatteryDrain() ?: fakeBatteryDrain
 }

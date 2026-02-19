@@ -33,6 +33,7 @@ import com.android.tools.idea.sqlite.ui.mainView.IndexedSqliteTable
 import com.android.tools.idea.sqlite.ui.mainView.RemoveColumns
 import com.android.tools.idea.sqlite.ui.mainView.RemoveTable
 import com.android.tools.idea.sqlite.ui.mainView.ViewDatabase
+import com.google.common.truth.Truth.assertThat
 import com.intellij.mock.MockVirtualFile
 import com.intellij.testFramework.HeavyPlatformTestCase
 import com.intellij.ui.treeStructure.Tree
@@ -63,9 +64,7 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     // Act
     view.updateDatabaseSchema(ViewDatabase(databaseId, true), listOf(RemoveTable(table1.name)))
@@ -82,28 +81,18 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     val tableToAdd = SqliteTable("t2", listOf(column1, column2), null, false)
 
     // Act
     view.updateDatabaseSchema(
       ViewDatabase(databaseId, true),
-      listOf(
-        AddTable(
-          IndexedSqliteTable(tableToAdd, 1),
-          listOf(IndexedSqliteColumn(column1, 0), IndexedSqliteColumn(column2, 1)),
-        )
-      ),
+      listOf(AddTable(IndexedSqliteTable(tableToAdd, 1), listOf(IndexedSqliteColumn(column1, 0), IndexedSqliteColumn(column2, 1)))),
     )
 
     // Assert
-    assertTreeContainsNodes(
-      tree,
-      mapOf(Pair(ViewDatabase(databaseId, true), listOf(table1, tableToAdd))),
-    )
+    assertTreeContainsNodes(tree, mapOf(Pair(ViewDatabase(databaseId, true), listOf(table1, tableToAdd))))
   }
 
   fun testUpdateDatabaseAddsColumn() {
@@ -114,9 +103,7 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     val column3 = SqliteColumn("c3", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table2 = SqliteTable("t1", listOf(column1, column2, column3), null, false)
@@ -139,17 +126,12 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     val table2 = SqliteTable("t1", listOf(column1), null, false)
 
     // Act
-    view.updateDatabaseSchema(
-      ViewDatabase(databaseId, true),
-      listOf(RemoveColumns(table1.name, listOf(column2), table2)),
-    )
+    view.updateDatabaseSchema(ViewDatabase(databaseId, true), listOf(RemoveColumns(table1.name, listOf(column2), table2)))
 
     // Assert
     assertTreeContainsNodes(tree, mapOf(Pair(ViewDatabase(databaseId, true), listOf(table2))))
@@ -163,9 +145,7 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     val newTable = SqliteTable("t2", listOf(column1, column2), null, false)
 
@@ -174,10 +154,7 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
       ViewDatabase(databaseId, true),
       listOf(
         RemoveTable(table1.name),
-        AddTable(
-          IndexedSqliteTable(newTable, 0),
-          listOf(IndexedSqliteColumn(column1, 0), IndexedSqliteColumn(column2, 1)),
-        ),
+        AddTable(IndexedSqliteTable(newTable, 0), listOf(IndexedSqliteColumn(column1, 0), IndexedSqliteColumn(column2, 1))),
       ),
     )
 
@@ -193,12 +170,9 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
-    val newColumn =
-      SqliteColumn("c3", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
+    val newColumn = SqliteColumn("c3", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1AfterRemove = SqliteTable("t1", listOf(column1), null, false)
     val finalTable = SqliteTable("t1", listOf(column1, newColumn), null, false)
 
@@ -223,28 +197,18 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     val tableToAdd = SqliteTable("t2", listOf(column1, column2), null, false)
 
     // Act
     view.updateDatabaseSchema(
       ViewDatabase(databaseId, true),
-      listOf(
-        AddTable(
-          IndexedSqliteTable(tableToAdd, 0),
-          listOf(IndexedSqliteColumn(column1, 0), IndexedSqliteColumn(column2, 1)),
-        )
-      ),
+      listOf(AddTable(IndexedSqliteTable(tableToAdd, 0), listOf(IndexedSqliteColumn(column1, 0), IndexedSqliteColumn(column2, 1)))),
     )
 
     // Assert
-    assertTreeContainsNodes(
-      tree,
-      mapOf(Pair(ViewDatabase(databaseId, true), listOf(tableToAdd, table1))),
-    )
+    assertTreeContainsNodes(tree, mapOf(Pair(ViewDatabase(databaseId, true), listOf(tableToAdd, table1))))
   }
 
   fun testUpdateDatabaseAddsColumnAccordingToIndex() {
@@ -255,9 +219,7 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val column2 = SqliteColumn("c2", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table1 = SqliteTable("t1", listOf(column1, column2), null, false)
     val schema = SqliteSchema(listOf(table1))
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), schema, 0)))
 
     val column3 = SqliteColumn("c3", SqliteAffinity.TEXT, isNullable = false, inPrimaryKey = false)
     val table2 = SqliteTable("t1", listOf(column3, column1, column2), null, false)
@@ -274,20 +236,18 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
 
   fun testEmptyStateIsShownInitially() {
     // Prepare
-    val emptyStateRightPanel =
-      view.component.getDescendant<JComponent> { it.name == "right-panel-empty-state" }
-    val syncSchemaButton =
-      view.component.getDescendant<JComponent> { it.name == "refresh-schema-button" }
+    val emptyStateRightPanel = view.component.getDescendant<JComponent> { it.name == "right-panel-empty-state" }
+    val syncSchemaButton = view.component.getDescendant<JComponent> { it.name == "refresh-schema-button" }
     val runSqlButton = view.component.getDescendant<JComponent> { it.name == "run-sql-button" }
     val tree = view.component.getDescendant<Tree> { it.name == "left-panel-tree" }
 
     // Assert
-    assertTrue(emptyStateRightPanel.isVisible)
-    assertFalse(syncSchemaButton.isEnabled)
-    assertFalse(runSqlButton.isEnabled)
+    assertThat(emptyStateRightPanel.isVisible).isTrue()
+    assertThat(syncSchemaButton.isEnabled).isFalse()
+    assertThat(runSqlButton.isEnabled).isFalse()
 
     // tree.emptyText is shown when the root is null
-    assertNull(tree.model.root)
+    assertThat(tree.model.root).isNull()
   }
 
   fun testTreeEmptyStateIsHiddenAfterOpeningADatabase() {
@@ -295,53 +255,32 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val tree = view.component.getDescendant<Tree> { it.name == "left-panel-tree" }
 
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(databaseId, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), SqliteSchema(emptyList()), 0)))
 
     // Assert
-    val tabsPanelAfterAddingDb =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
-    val syncSchemaButtonAfterAddingDb =
-      view.component.getDescendant<JComponent> { it.name == "refresh-schema-button" }
-    val runSqlButtonAfterAddingDb =
-      view.component.getDescendant<JComponent> { it.name == "run-sql-button" }
+    val tabsPanelAfterAddingDb = view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
+    val syncSchemaButtonAfterAddingDb = view.component.getDescendant<JComponent> { it.name == "refresh-schema-button" }
+    val runSqlButtonAfterAddingDb = view.component.getDescendant<JComponent> { it.name == "run-sql-button" }
     val treeRootAfterAddingDb = tree.model.root
 
-    assertNull(tabsPanelAfterAddingDb)
+    assertThat(tabsPanelAfterAddingDb).isNull()
     // tree.emptyText is shown when the root is null
-    assertNotNull(treeRootAfterAddingDb)
-    assertTrue(syncSchemaButtonAfterAddingDb.isEnabled)
-    assertTrue(runSqlButtonAfterAddingDb.isEnabled)
+    assertThat(treeRootAfterAddingDb).isNotNull()
+    assertThat(syncSchemaButtonAfterAddingDb.isEnabled).isTrue()
+    assertThat(runSqlButtonAfterAddingDb.isEnabled).isTrue()
   }
 
   fun testRightPanelEmptyStateIsHiddenAfterOpeningATab() {
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(databaseId, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), SqliteSchema(emptyList()), 0)))
     view.openTab(TabId.AdHocQueryTab(1), "new tab", StudioIcons.DatabaseInspector.TABLE, JPanel())
 
     // Assert
-    val emptyStateRightPanelAfterAddingTab =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
-    val tabsPanelAfterAddingTab =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
+    val emptyStateRightPanelAfterAddingTab = view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
+    val tabsPanelAfterAddingTab = view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
 
-    assertNull(emptyStateRightPanelAfterAddingTab)
-    assertNotNull(tabsPanelAfterAddingTab)
+    assertThat(emptyStateRightPanelAfterAddingTab).isNull()
+    assertThat(tabsPanelAfterAddingTab).isNotNull()
   }
 
   fun testRightPanelEmptyStateIsShownAfterAllTabsAreClosed() {
@@ -349,37 +288,25 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val tabId = TabId.AdHocQueryTab(1)
 
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(databaseId, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), SqliteSchema(emptyList()), 0)))
     view.openTab(tabId, "new tab", StudioIcons.DatabaseInspector.TABLE, JPanel())
 
     // Assert
-    val emptyStateRightPanelAfterAddingTab =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
-    val tabsPanelAfterAddingTab =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
+    val emptyStateRightPanelAfterAddingTab = view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
+    val tabsPanelAfterAddingTab = view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
 
-    assertNull(emptyStateRightPanelAfterAddingTab)
-    assertNotNull(tabsPanelAfterAddingTab)
+    assertThat(emptyStateRightPanelAfterAddingTab).isNull()
+    assertThat(tabsPanelAfterAddingTab).isNotNull()
 
     // Act
     view.closeTab(tabId)
 
     // Assert
-    val emptyStateRightPanelAfterRemovingTab =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
-    val tabsPanelAfterRemovingTab =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
+    val emptyStateRightPanelAfterRemovingTab = view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
+    val tabsPanelAfterRemovingTab = view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
 
-    assertNotNull(emptyStateRightPanelAfterRemovingTab)
-    assertNull(tabsPanelAfterRemovingTab)
+    assertThat(emptyStateRightPanelAfterRemovingTab).isNotNull()
+    assertThat(tabsPanelAfterRemovingTab).isNull()
   }
 
   fun testEmptyStateIsShownAfterOpenDatabasesAreRemoved() {
@@ -387,234 +314,143 @@ class DatabaseInspectorViewImplTest : HeavyPlatformTestCase() {
     val tree = view.component.getDescendant<Tree> { it.name == "left-panel-tree" }
 
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(databaseId, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.RemoveDatabase(ViewDatabase(databaseId, true)))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId, true), SqliteSchema(emptyList()), 0)))
+    view.updateDatabases(listOf(DatabaseDiffOperation.RemoveDatabase(ViewDatabase(databaseId, true))))
 
     // Assert
-    val emptyStateRightPanelAfterRemovingDb =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
-    val tabsPanelAfterRemovingDb =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
-    val syncSchemaButtonAfterRemovingDb =
-      view.component.getDescendant<JComponent> { it.name == "refresh-schema-button" }
-    val runSqlButtonAfterRemovingDb =
-      view.component.getDescendant<JComponent> { it.name == "run-sql-button" }
+    val emptyStateRightPanelAfterRemovingDb = view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
+    val tabsPanelAfterRemovingDb = view.component.findDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
+    val syncSchemaButtonAfterRemovingDb = view.component.getDescendant<JComponent> { it.name == "refresh-schema-button" }
+    val runSqlButtonAfterRemovingDb = view.component.getDescendant<JComponent> { it.name == "run-sql-button" }
     val treeRootAfterRemovingDb = tree.model.root
 
-    assertNotNull(emptyStateRightPanelAfterRemovingDb)
-    assertNull(tabsPanelAfterRemovingDb)
+    assertThat(emptyStateRightPanelAfterRemovingDb).isNotNull()
+    assertThat(tabsPanelAfterRemovingDb).isNull()
     // tree.emptyText is shown when the root is null
-    assertNull(treeRootAfterRemovingDb)
+    assertThat(treeRootAfterRemovingDb).isNull()
 
-    assertFalse(syncSchemaButtonAfterRemovingDb.isEnabled)
-    assertFalse(runSqlButtonAfterRemovingDb.isEnabled)
+    assertThat(syncSchemaButtonAfterRemovingDb.isEnabled).isFalse()
+    assertThat(runSqlButtonAfterRemovingDb.isEnabled).isFalse()
   }
 
   fun testTabsAreNotHiddenIfANewDatabaseIsAdded() {
     // Prepare
     val databaseId1 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("db1")))
     val databaseId2 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("db2")))
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(databaseId1, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId1, true), SqliteSchema(emptyList()), 0)))
 
     // Act
     view.openTab(TabId.AdHocQueryTab(1), "tab", StudioIcons.DatabaseInspector.TABLE, JPanel())
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(databaseId2, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(databaseId2, true), SqliteSchema(emptyList()), 0)))
 
     // Assert
-    val emptyStateRightPanel =
-      view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
+    val emptyStateRightPanel = view.component.findDescendant<JComponent> { it.name == "right-panel-empty-state" }
     val tabsPanel = view.component.getDescendant<JComponent> { it.name == "right-panel-tabs-panel" }
 
-    assertNull(emptyStateRightPanel)
-    assertTrue(tabsPanel.isVisible)
+    assertThat(emptyStateRightPanel).isNull()
+    assertThat(tabsPanel.isVisible).isTrue()
   }
 
   fun testUpdateKeepConnectionOpenButton() {
     // Prepare
-    val button =
-      view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
+    val button = view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
 
     // Assert
-    assertEquals(StudioIcons.DatabaseInspector.KEEP_DATABASES_OPEN, button.icon)
+    assertThat(button.icon).isEqualTo(StudioIcons.DatabaseInspector.KEEP_DATABASES_OPEN)
 
     // Act
     view.updateKeepConnectionOpenButton(true)
 
     // Assert
-    assertEquals(StudioIcons.DatabaseInspector.KEEP_DATABASES_OPEN, button.icon)
+    assertThat(button.icon).isEqualTo(StudioIcons.DatabaseInspector.KEEP_DATABASES_OPEN)
 
     // Act
     view.updateKeepConnectionOpenButton(false)
 
     // Assert
-    assertEquals(StudioIcons.DatabaseInspector.ALLOW_DATABASES_TO_CLOSE, button.icon)
+    assertThat(button.icon).isEqualTo(StudioIcons.DatabaseInspector.ALLOW_DATABASES_TO_CLOSE)
   }
 
   fun testKeepConnectionOpenIsDisabledWithOfflineDatabases() {
     // Prepare
-    val fileDatabaseId1 =
-      SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file1")))
-    val fileDatabaseId2 =
-      SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file2")))
-    val keepConnectionsOpenButton =
-      view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
+    val fileDatabaseId1 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file1")))
+    val fileDatabaseId2 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file2")))
+    val keepConnectionsOpenButton = view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
 
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(fileDatabaseId1, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(fileDatabaseId2, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(fileDatabaseId1, true), SqliteSchema(emptyList()), 0)))
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(fileDatabaseId2, true), SqliteSchema(emptyList()), 0)))
 
     // Assert
-    assertFalse(keepConnectionsOpenButton.isEnabled)
+    assertThat(keepConnectionsOpenButton.isEnabled).isFalse()
   }
 
   fun testKeepConnectionOpenIsEnabledWithLiveDatabases() {
     // Prepare
     val liveDatabaseId = SqliteDatabaseId.fromLiveDatabase("", 0)
-    val keepConnectionsOpenButton =
-      view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
+    val keepConnectionsOpenButton = view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
 
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(liveDatabaseId, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(liveDatabaseId, true), SqliteSchema(emptyList()), 0)))
 
     // Assert
-    assertTrue(keepConnectionsOpenButton.isEnabled)
+    assertThat(keepConnectionsOpenButton.isEnabled).isTrue()
   }
 
   fun testKeepConnectionOpenIsEnableIfAtLeastOneOnlineDatabase() {
     // Prepare
-    val fileDatabaseId1 =
-      SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file1")))
-    val fileDatabaseId2 =
-      SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file2")))
+    val fileDatabaseId1 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file1")))
+    val fileDatabaseId2 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file2")))
     val liveDatabaseId = SqliteDatabaseId.fromLiveDatabase("", 0)
-    val keepConnectionsOpenButton =
-      view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
+    val keepConnectionsOpenButton = view.component.getDescendant<JToggleButton> { it.name == "keep-connections-open-button" }
 
     // Act
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(fileDatabaseId1, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(liveDatabaseId, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
-    view.updateDatabases(
-      listOf(
-        DatabaseDiffOperation.AddDatabase(
-          ViewDatabase(fileDatabaseId2, true),
-          SqliteSchema(emptyList()),
-          0,
-        )
-      )
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(fileDatabaseId1, true), SqliteSchema(emptyList()), 0)))
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(liveDatabaseId, true), SqliteSchema(emptyList()), 0)))
+    view.updateDatabases(listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(fileDatabaseId2, true), SqliteSchema(emptyList()), 0)))
 
     // Assert
-    assertTrue(keepConnectionsOpenButton.isEnabled)
+    assertThat(keepConnectionsOpenButton.isEnabled).isTrue()
 
     // Act
-    view.updateDatabases(
-      listOf(DatabaseDiffOperation.RemoveDatabase(ViewDatabase(liveDatabaseId, true)))
-    )
+    view.updateDatabases(listOf(DatabaseDiffOperation.RemoveDatabase(ViewDatabase(liveDatabaseId, true))))
 
     // Assert
-    assertFalse(keepConnectionsOpenButton.isEnabled)
+    assertThat(keepConnectionsOpenButton.isEnabled).isFalse()
   }
 
   fun testTreeRootNodeIsExpandedWhenEmptyNodeIsAdded() {
     // Prepare
-    val fileDatabaseId1 =
-      SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file1")))
+    val fileDatabaseId1 = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("file1")))
 
     val tree = view.component.findDescendant<JComponent> { it.name == "left-panel-tree" } as Tree
-    val diffOperations =
-      listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(fileDatabaseId1, true), null, 0))
+    val diffOperations = listOf(DatabaseDiffOperation.AddDatabase(ViewDatabase(fileDatabaseId1, true), null, 0))
 
     // Act
     view.updateDatabases(diffOperations)
 
     // Assert
     val root = tree.model.root
-    assertTrue(tree.isExpanded(TreePath((root))))
+    assertThat(tree.isExpanded(TreePath((root)))).isTrue()
   }
 
   private fun assertTreeContainsNodes(tree: Tree, databases: Map<ViewDatabase, List<SqliteTable>>) {
     val root = tree.model.root
-    assertEquals(databases.size, tree.model.getChildCount(root))
+    assertThat(tree.model.getChildCount(root)).isEqualTo(databases.size)
 
     databases.keys.forEachIndexed { databaseIndex, database ->
       val databaseNode = tree.model.getChild(root, databaseIndex) as DefaultMutableTreeNode
-      assertEquals(database, databaseNode.userObject)
-      assertEquals(databases[database]!!.size, tree.model.getChildCount(databaseNode))
+      assertThat(databaseNode.userObject).isEqualTo(database)
+      assertThat(tree.model.getChildCount(databaseNode)).isEqualTo(databases[database]!!.size)
 
       databases[database]!!.forEachIndexed { tableIndex, table ->
         val tableNode = tree.model.getChild(databaseNode, tableIndex) as DefaultMutableTreeNode
-        assertEquals(table, tableNode.userObject)
-        assertEquals(table.columns.size, tree.model.getChildCount(tableNode))
+        assertThat(tableNode.userObject).isEqualTo(table)
+        assertThat(tree.model.getChildCount(tableNode)).isEqualTo(table.columns.size)
 
         table.columns.forEachIndexed { columnIndex, column ->
           val columnNode = tree.model.getChild(tableNode, columnIndex) as DefaultMutableTreeNode
-          assertEquals(column, columnNode.userObject)
+          assertThat(columnNode.userObject).isEqualTo(column)
         }
       }
     }

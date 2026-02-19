@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 package com.android.tools.idea.gradle.project.sync.utils
-import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
+
+import com.android.tools.idea.gradle.dsl.utils.FN_SETTINGS_GRADLE
 import com.android.tools.idea.gradle.project.sync.extensions.getOptionElement
 import com.android.tools.idea.gradle.project.sync.extensions.getOptionElementName
 import com.android.tools.idea.gradle.project.sync.model.GradleDaemonToolchain
@@ -27,17 +28,15 @@ import com.intellij.openapi.project.Project.DIRECTORY_STORE_FOLDER
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
-import org.jetbrains.annotations.SystemIndependent
+import java.io.File
+import java.nio.file.Paths
 import org.jetbrains.jps.model.serialization.JDomSerializationUtil
 import org.jetbrains.jps.model.serialization.JpsComponentLoader
 import org.jetbrains.plugins.gradle.properties.GRADLE_DAEMON_JVM_PROPERTIES_FILE_NAME
 import org.jetbrains.plugins.gradle.properties.GRADLE_FOLDER
 import org.jetbrains.plugins.gradle.properties.GRADLE_JAVA_HOME_PROPERTY
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants.GRADLE_PROPERTIES_FILE_NAME
-import java.io.File
-import java.nio.file.Paths
 
 private const val PROJECT_DIR = "${'$'}PROJECT_DIR${'$'}"
 private const val PROJECT_IDEA_GRADLE_XML_PATH = "$DIRECTORY_STORE_FOLDER/gradle.xml"
@@ -56,7 +55,7 @@ object ProjectJdkUtils {
     createProjectFile(
       projectRoot = projectRoot,
       relativePath = Paths.get(GRADLE_FOLDER, GRADLE_DAEMON_JVM_PROPERTIES_FILE_NAME).toString(),
-      text = GradleUtils.buildDamonJvmCriteriaProperties(gradleDaemonToolchain)
+      text = GradleUtils.buildDamonJvmCriteriaProperties(gradleDaemonToolchain),
     )
 
     val gradlePropertiesFile = projectRoot.resolve(GRADLE_PROPERTIES_FILE_NAME)
@@ -65,8 +64,12 @@ object ProjectJdkUtils {
       "org.gradle.java.installations.auto-detect" to gradleDaemonToolchain.autoDetectionEnabled.toString(),
       "org.gradle.java.installations.auto-download" to gradleDaemonToolchain.autoProvisioningEnabled.toString(),
       "org.gradle.java.installations.paths" to gradleDaemonToolchain.customToolchainInstallationsPath.joinToString(","),
-      "org.gradle.java.installations.fromEnv" to gradleDaemonToolchain.customToolchainInstallationsEnv?.joinToString(",")
+      "org.gradle.java.installations.fromEnv" to gradleDaemonToolchain.customToolchainInstallationsEnv?.joinToString(","),
     )
+
+    if (gradleDaemonToolchain.applyToolchainResolverPlugin) {
+      applySimpleToolchainResolverPlugin(projectRoot)
+    }
   }
 
   fun setProjectGradlePropertiesJavaHome(projectRoot: File, javaHome: String) {
@@ -74,17 +77,19 @@ object ProjectJdkUtils {
     addPropertiesToFile(gradlePropertiesFile, GRADLE_JAVA_HOME_PROPERTY to javaHome)
   }
 
-  fun setProjectIdeaGradleJdk(projectRoot: File, gradleRoots: List<GradleRoot>) = createProjectFile(
-    projectRoot = projectRoot,
-    relativePath = PROJECT_IDEA_GRADLE_XML_PATH,
-    text = ProjectIdeaConfigFilesUtils.buildGradleXmlConfig(gradleRoots)
-  )
+  fun setProjectIdeaGradleJdk(projectRoot: File, gradleRoots: List<GradleRoot>) =
+    createProjectFile(
+      projectRoot = projectRoot,
+      relativePath = PROJECT_IDEA_GRADLE_XML_PATH,
+      text = ProjectIdeaConfigFilesUtils.buildGradleXmlConfig(gradleRoots),
+    )
 
-  fun setProjectIdeaMiscJdk(projectRoot: File, jdkName: String) = createProjectFile(
-    projectRoot = projectRoot,
-    relativePath = PROJECT_IDEA_MISC_XML_PATH,
-    text = ProjectIdeaConfigFilesUtils.buildMiscXmlConfig(jdkName)
-  )
+  fun setProjectIdeaMiscJdk(projectRoot: File, jdkName: String) =
+    createProjectFile(
+      projectRoot = projectRoot,
+      relativePath = PROJECT_IDEA_MISC_XML_PATH,
+      text = ProjectIdeaConfigFilesUtils.buildMiscXmlConfig(jdkName),
+    )
 
   fun getGradleRootJdkNameInMemory(project: Project, gradleRootName: String): String? {
     val linkedProjectPath = File(project.basePath.orEmpty()).resolve(gradleRootName).absolutePath
@@ -97,10 +102,14 @@ object ProjectJdkUtils {
     val gradleXmlRootElement = JpsComponentLoader.tryLoadRootElement(gradleXml.toPath())
     val gradleSettings = JDomSerializationUtil.findComponent(gradleXmlRootElement, "GradleSettings")
     val linkedExternalProjectsSettings = gradleSettings?.getOptionElement("linkedExternalProjectsSettings")
-    return linkedExternalProjectsSettings?.content?.firstOrNull { gradleProjectSettings ->
-      val externalProjectPath = gradleProjectSettings?.getOptionElementName("externalProjectPath")?.getAttributeValue("value")
-      externalProjectPath == null || externalProjectPath == PROJECT_DIR || externalProjectPath == "$PROJECT_DIR/$gradleRootName"
-    }?.getOptionElementName("gradleJvm")?.getAttributeValue("value")
+    return linkedExternalProjectsSettings
+      ?.content
+      ?.firstOrNull { gradleProjectSettings ->
+        val externalProjectPath = gradleProjectSettings?.getOptionElementName("externalProjectPath")?.getAttributeValue("value")
+        externalProjectPath == null || externalProjectPath == PROJECT_DIR || externalProjectPath == "$PROJECT_DIR/$gradleRootName"
+      }
+      ?.getOptionElementName("gradleJvm")
+      ?.getAttributeValue("value")
   }
 
   fun getProjectJdkNameInMemory(project: Project): String? {
@@ -114,17 +123,10 @@ object ProjectJdkUtils {
     return projectRootManagerComponent?.getAttributeValue("project-jdk-name")
   }
 
-  fun getGradleDaemonExecutionJdkPath(project: Project, gradleRootPath: @SystemIndependent String): String? {
-    val gradleInstallation = (GradleInstallationManager.getInstance() as AndroidStudioGradleInstallationManager)
-    return gradleInstallation.getGradleJvmPath(project, gradleRootPath)
-  }
-
   fun setUserHomeGradlePropertiesJdk(jdkPath: String, disposable: Disposable) {
     val gradlePropertiesFile = GradleUtils.getUserGradlePropertiesFile()
     addPropertiesToFile(gradlePropertiesFile, GRADLE_JAVA_HOME_PROPERTY to jdkPath)
-    Disposer.register(disposable) {
-      clearUserHomeGradleProperties()
-    }
+    Disposer.register(disposable) { clearUserHomeGradleProperties() }
   }
 
   private fun clearUserHomeGradleProperties() {
@@ -144,10 +146,41 @@ object ProjectJdkUtils {
   private fun addPropertiesToFile(propertiesFile: File, vararg newProperties: Pair<String, String?>) {
     FileUtil.createIfNotExists(propertiesFile)
     GradleProperties(propertiesFile).run {
-      newProperties.forEach { (key, value) ->
-        value?.let { properties.setProperty(key, it) }
-      }
+      newProperties.forEach { (key, value) -> value?.let { properties.setProperty(key, it) } }
       save()
     }
+  }
+
+  private fun applySimpleToolchainResolverPlugin(projectRoot: File) {
+    FileUtil.appendToFile(
+      File(projectRoot, FN_SETTINGS_GRADLE),
+      """
+      |import java.util.Optional
+      |
+      |abstract class JavaToolchainPlugin implements Plugin<Settings> {
+      |
+      |    @Inject
+      |    protected abstract JavaToolchainResolverRegistry getJavaToolchainResolverRegistry()
+      |
+      |    void apply(Settings settings) {
+      |        javaToolchainResolverRegistry.register(Resolver)
+      |        settings.plugins.apply('jvm-toolchain-management')
+      |        settings.toolchainManagement.jvm.javaRepositories.repository('custom') {
+      |            resolverClass = Resolver
+      |        }
+      |    }
+      |
+      |    abstract static class Resolver implements JavaToolchainResolver {
+      |        @Override
+      |        Optional<JavaToolchainDownload> resolve(JavaToolchainRequest request) {
+      |            return Optional.of(JavaToolchainDownload.fromUri(URI.create('https://server.com')))
+      |        }
+      |    }
+      |}
+      |
+      |apply plugin: JavaToolchainPlugin
+      """
+        .trimMargin(),
+    )
   }
 }

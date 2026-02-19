@@ -33,16 +33,15 @@ import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.adtui.model.updater.UpdatableManager;
 import com.android.tools.idea.transport.TransportFileManager;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.Trace.TraceInitiationType;
 import com.android.tools.profiler.proto.Trace;
+import com.android.tools.profiler.proto.Trace.TraceInitiationType;
+import com.android.tools.profilers.InterimStage;
 import com.android.tools.profilers.LogUtils;
-import com.android.tools.profilers.NullMonitorStage;
 import com.android.tools.profilers.ProfilerAspect;
 import com.android.tools.profilers.RecordingOption;
 import com.android.tools.profilers.RecordingOptionsModel;
 import com.android.tools.profilers.StreamingStage;
 import com.android.tools.profilers.StudioProfilers;
-import com.android.tools.profilers.InterimStage;
 import com.android.tools.profilers.cpu.adapters.CpuDataProvider;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.CpuProfilerConfigModel;
@@ -50,15 +49,13 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.AdditionalOptions;
 import com.android.tools.profilers.event.EventMonitor;
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel;
-import com.android.tools.profilers.tasks.TaskEventTrackerUtils;
-import com.android.tools.profilers.tasks.TaskMetadataStatus;
-import com.android.tools.profilers.tasks.TaskStartFailedMetadata;
-import com.android.tools.profilers.tasks.TaskStopFailedMetadata;
+import com.android.tools.profilers.tasks.ProfilerTaskType;
+import com.android.tools.profilers.tasks.analytics.TaskStartFailedMetadata;
+import com.android.tools.profilers.tasks.analytics.TaskStopFailedMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
-import com.google.wireless.android.sdk.stats.TaskFailedMetadata;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.registry.Registry;
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -152,6 +149,9 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
   @Nullable
   private final RecordingScreenModel<CpuProfilerStage> myRecordingScreenModel;
+
+  @Nullable
+  private EventMonitor myEventMonitor;
 
   public CpuProfilerStage(@NotNull StudioProfilers profilers) {
     this(profilers, new CpuCaptureParser(profilers), CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, () -> {});
@@ -258,8 +258,9 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     return "CPU";
   }
 
+  @Nullable
   public EventMonitor getEventMonitor() {
-    return myCpuDataProvider.getEventMonitor();
+    return myEventMonitor;
   }
 
   public RecordingOptionsModel getRecordingModel() {
@@ -286,9 +287,11 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
   }
 
   @Override
-  public void enter() {
-    logEnterStage();
-    getEventMonitor().enter();
+  public void onEnter() {
+    myEventMonitor = getEventMonitorInstance();
+    if (myEventMonitor != null) {
+      myEventMonitor.enter();
+    }
     getStudioProfilers().getUpdater().register(getCpuUsage());
     getStudioProfilers().getUpdater().register(getTraceDurations());
     getStudioProfilers().getUpdater().register(myInProgressTraceHandler);
@@ -308,8 +311,10 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
   }
 
   @Override
-  public void exit() {
-    getEventMonitor().exit();
+  public void onExit() {
+    if (myEventMonitor != null) {
+      myEventMonitor.exit();
+    }
     getStudioProfilers().getUpdater().unregister(getCpuUsage());
     getStudioProfilers().getUpdater().unregister(getTraceDurations());
     getStudioProfilers().getUpdater().unregister(myInProgressTraceHandler);
@@ -324,6 +329,12 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     myCaptureParser.abortParsing();
     getRangeSelectionModel().clearListeners();
     getUpdatableManager().releaseAll();
+  }
+
+  @Nullable
+  private EventMonitor getEventMonitorInstance() {
+    boolean jvmtiEnabled = getStudioProfilers().getSessionsManager().getSelectedSessionMetaData().getJvmtiEnabled();
+    return jvmtiEnabled ? new EventMonitor(getStudioProfilers()) : null;
   }
 
   @Override
@@ -391,8 +402,7 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       cleanupFailedCapture();
 
       if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-        TaskEventTrackerUtils.trackStartTaskFailed(getStudioProfilers(), getStudioProfilers().getSessionsManager().isSessionAlive(),
-                                                   new TaskStartFailedMetadata(status, null, null));
+        myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(status, null, null));
       }
     }
   }
@@ -428,11 +438,8 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       // When the stopping is done, a CPU_TRACE event will be generated, and it will be tracked via the InProgressTraceHandler.
     }
     else if (!status.getStatus().equals(Trace.TraceStopStatus.Status.SUCCESS)) {
+      cleanupFailedCapture();
       CpuCaptureMetadata captureMetadata = trackAndLogTraceStopFailures(status);
-      if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-        TaskEventTrackerUtils.trackStopTaskFailed(getStudioProfilers(), getStudioProfilers().getSessionsManager().isSessionAlive(),
-                                                  new TaskStopFailedMetadata(null, null, captureMetadata));
-      }
       // Return to IDLE state and set the current capture to null
       setCaptureState(CaptureState.IDLE);
     }
@@ -458,6 +465,11 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
     getLogger().warn("Unable to stop tracing: " + status.getStatus() +" error code " + status.getErrorCode());
     getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.getCaptureStopFailure(status.getStatus().toString()));
+
+    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+      myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, null, captureMetadata));
+    }
+
     return captureMetadata;
   }
 
@@ -476,10 +488,22 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
         },
         stage -> {
           myRecordingOptionsModel.setLoading(false);
-          if (stage != null) {
+          CpuTraceInfo traceInfo = myCompletedTraceIdToInfoMap.get(traceId);
+          ProfilingConfiguration config = ProfilingConfiguration.fromProto(traceInfo.getTraceInfo().getConfiguration(), isTraceboxEnabled);
+          ProfilingConfiguration.TraceType traceType = config.getTraceType();
+          boolean isSystemTrace = traceType == ProfilingConfiguration.TraceType.ATRACE
+                                  || traceType == ProfilingConfiguration.TraceType.PERFETTO;
+          if (stage != null && getStudioProfilers().getIdeServices().getFeatureConfig().isSystemTraceInEditorEnabled() && isSystemTrace) {
+            File captureFile = stage.getCaptureHandler().getCaptureFile();
+            getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> {
+              if(captureFile.exists()) {
+                getStudioProfilers().getIdeServices().openTraceFile(captureFile);
+                getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.SYSTEM_TRACE);
+              }
+            });
+          } else if (stage != null) {
             getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> getStudioProfilers().setStage(stage));
-          }
-          else {
+          } else {
             // Trace ID is not found or the capture stage cannot retrieve the trace.
             setCaptureState(CaptureState.IDLE);
             getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.IMPORT_TRACE_PARSING_FAILURE);
@@ -716,6 +740,7 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
             myCaptureParser.trackCaptureMetadata(trace.getTraceId(), captureMetadata);
           }
           else {
+            cleanupFailedCapture();
             trackAndLogTraceStopFailures(trace.getStopStatus());
           }
         }

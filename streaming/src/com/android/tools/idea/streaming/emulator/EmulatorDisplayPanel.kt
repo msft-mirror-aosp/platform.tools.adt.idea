@@ -26,11 +26,10 @@ import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.project.Project
 import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
+import javax.swing.JComponent
 
-/**
- * Represents a single Emulator display.
- */
-class EmulatorDisplayPanel(
+/** Represents a single Emulator display. */
+internal class EmulatorDisplayPanel(
   disposableParent: Disposable,
   emulator: EmulatorController,
   project: Project,
@@ -38,7 +37,13 @@ class EmulatorDisplayPanel(
   displaySize: Dimension?,
   zoomToolbarVisible: Boolean,
   deviceFrameVisible: Boolean = false,
-) : AbstractDisplayPanel<EmulatorView>(disposableParent, zoomToolbarVisible), ConnectionStateListener {
+) :
+  AbstractDisplayPanel<EmulatorView>(disposableParent, zoomToolbarVisible),
+  DisplayViewContainer<EmulatorDisplayView>,
+  ConnectionStateListener {
+
+  override val component: JComponent
+    get() = this
 
   override val deviceType: DeviceType
     get() = displayView.emulator.emulatorConfig.deviceType
@@ -57,9 +62,7 @@ class EmulatorDisplayPanel(
   @AnyThread
   override fun connectionStateChanged(emulator: EmulatorController, connectionState: ConnectionState) {
     if (connectionState == ConnectionState.CONNECTED) {
-      UIUtil.invokeLaterIfNeeded {
-        createFloatingToolbar()
-      }
+      UIUtil.invokeLaterIfNeeded { createFloatingToolbar() }
     }
   }
 

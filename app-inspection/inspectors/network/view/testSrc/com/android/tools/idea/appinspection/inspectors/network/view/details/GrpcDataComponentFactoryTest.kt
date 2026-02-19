@@ -36,8 +36,8 @@ import org.junit.Test
 
 private val XML =
   """
-    <?xml version="1.0" encoding="utf-8"?>
-    <tag/>
+  <?xml version="1.0" encoding="utf-8"?>
+  <tag/>
   """
     .trimIndent()
 
@@ -47,15 +47,15 @@ private val PROTO =
   """
   # proto-message: Foo
   foo: 1
-"""
+  """
     .trimIndent()
 
 private val PROTO_FILE =
   LightVirtualFile(
     "foo.proto",
     """
-      message Foo {
-      }
+    message Foo {
+    }
     """
       .trimIndent(),
   )
@@ -72,10 +72,7 @@ internal class GrpcDataComponentFactoryTest {
     RuleChain(
       projectRule,
       ApplicationServiceRule(FileDocumentManager::class.java, FakeFileDocumentManager()),
-      ApplicationServiceRule(
-        FileTypeManager::class.java,
-        MockFileTypeManager(FakeProtoTextFileType),
-      ),
+      ApplicationServiceRule(FileTypeManager::class.java, MockFileTypeManager(FakeProtoTextFileType)),
       EdtRule(),
       disposableRule,
     )
@@ -93,7 +90,7 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(REQUEST)
 
     val editor = component?.findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(JsonFileType.INSTANCE)
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(JsonFileType.INSTANCE)
   }
 
   @Test
@@ -103,7 +100,7 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(RESPONSE)
 
     val editor = component?.findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(JsonFileType.INSTANCE)
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(JsonFileType.INSTANCE)
   }
 
   @Test
@@ -113,7 +110,7 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(REQUEST)
 
     val editor = component?.findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(XmlFileType.INSTANCE)
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(XmlFileType.INSTANCE)
   }
 
   @Test
@@ -123,7 +120,7 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(RESPONSE)
 
     val editor = component?.findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(XmlFileType.INSTANCE)
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(XmlFileType.INSTANCE)
   }
 
   @Test
@@ -133,13 +130,13 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(RESPONSE)
 
     val editor = component?.findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(FakeProtoTextFileType)
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(FakeProtoTextFileType)
     assertThat(editor.document.text)
       .isEqualTo(
         """
-          # proto-file: ???
-          # proto-message: Foo
-          foo: 1
+        # proto-file: ???
+        # proto-message: Foo
+        foo: 1
         """
           .trimIndent()
       )
@@ -147,22 +144,18 @@ internal class GrpcDataComponentFactoryTest {
 
   @Test
   fun createBodyComponent_responseIsProto_withProtoFile() {
-    val factory =
-      grpcDataComponentFactory(
-        responsePayloadText = PROTO,
-        protoFileFinder = { listOf(PROTO_FILE) },
-      )
+    val factory = grpcDataComponentFactory(responsePayloadText = PROTO, protoFileFinder = { listOf(PROTO_FILE) })
 
     val component = factory.createBodyComponent(RESPONSE)
 
     val editor = component?.findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(FakeProtoTextFileType)
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(FakeProtoTextFileType)
     assertThat(editor.document.text)
       .isEqualTo(
         """
-          # proto-file: foo.proto
-          # proto-message: Foo
-          foo: 1
+        # proto-file: foo.proto
+        # proto-message: Foo
+        foo: 1
         """
           .trimIndent()
       )
@@ -175,8 +168,7 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(REQUEST)
 
     val switchingPanel = component?.findDescendant<SwitchingPanel> { true } ?: fail()
-    assertThat(switchingPanel.getComponent(0).findDescendant<EditorComponentImpl> { true })
-      .isNotNull()
+    assertThat(switchingPanel.getComponent(0).findDescendant<EditorComponentImpl> { true }).isNotNull()
     assertThat(switchingPanel.getComponent(1)).isInstanceOf(BinaryDataViewer::class.java)
   }
 
@@ -187,8 +179,7 @@ internal class GrpcDataComponentFactoryTest {
     val component = factory.createBodyComponent(RESPONSE)
 
     val switchingPanel = component?.findDescendant<SwitchingPanel> { true } ?: fail()
-    assertThat(switchingPanel.getComponent(0).findDescendant<EditorComponentImpl> { true })
-      .isNotNull()
+    assertThat(switchingPanel.getComponent(0).findDescendant<EditorComponentImpl> { true }).isNotNull()
     assertThat(switchingPanel.getComponent(1)).isInstanceOf(BinaryDataViewer::class.java)
   }
 
@@ -200,9 +191,8 @@ internal class GrpcDataComponentFactoryTest {
 
     val switchingPanel = component?.findDescendant<SwitchingPanel> { true } ?: fail()
     assertThat(switchingPanel.getComponent(0)).isInstanceOf(BinaryDataViewer::class.java)
-    val editor =
-      switchingPanel.getComponent(1).findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(PlainTextFileType.INSTANCE)
+    val editor = switchingPanel.getComponent(1).findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(PlainTextFileType.INSTANCE)
   }
 
   @Test
@@ -213,9 +203,8 @@ internal class GrpcDataComponentFactoryTest {
 
     val switchingPanel = component?.findDescendant<SwitchingPanel> { true } ?: fail()
     assertThat(switchingPanel.getComponent(0)).isInstanceOf(BinaryDataViewer::class.java)
-    val editor =
-      switchingPanel.getComponent(1).findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
-    assertThat(editor.virtualFile.fileType).isEqualTo(PlainTextFileType.INSTANCE)
+    val editor = switchingPanel.getComponent(1).findDescendant<EditorComponentImpl> { true }?.editor ?: fail()
+    assertThat(editor.virtualFile!!.fileType).isEqualTo(PlainTextFileType.INSTANCE)
   }
 
   private fun grpcDataComponentFactory(

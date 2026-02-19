@@ -34,18 +34,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-@OldAgpTest(agpVersions = ["4.0.0"], gradleVersions = ["6.1.1"])
+@OldAgpTest(agpVersions = ["4.2.2"], gradleVersions = ["6.7.1"])
 @RunsInEdt
 class PsModuleDependencyConfigurationsAnalyzerTest {
 
-  @get:Rule
-  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
+  @get:Rule val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @Test
   fun testObsoleteTestCompileConfigurationInLibrary() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -59,7 +58,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
         issues.toList(),
         "junit:junit:4.12",
         setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
-        setOf("testCompile" to "testImplementation")
+        setOf("testCompile" to "testImplementation"),
       )
     }
   }
@@ -68,7 +67,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
   fun testObsoleteCompileConfigurationInLibrary() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -78,10 +77,12 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsAndroidModuleAnalyzer(context, PsPathRendererImpl().also { it.context = context })
       val issues = analyzer.analyze(module).toList()
 
-      checkIssuesFor(issues,
-                     "androidx.appcompat:appcompat:1.0.2",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "api", "compile" to "implementation"))
+      checkIssuesFor(
+        issues,
+        "androidx.appcompat:appcompat:1.0.2",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "api", "compile" to "implementation"),
+      )
     }
   }
 
@@ -89,7 +90,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
   fun testObsoleteTestCompileConfigurationInApp() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -99,10 +100,12 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsAndroidModuleAnalyzer(context, PsPathRendererImpl().also { it.context = context })
       val issues = analyzer.analyze(module)
 
-      checkIssuesFor(issues.toList(),
-                     "junit:junit:4.12",
-                     setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
-                     setOf("testCompile" to "testImplementation"))
+      checkIssuesFor(
+        issues.toList(),
+        "junit:junit:4.12",
+        setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
+        setOf("testCompile" to "testImplementation"),
+      )
     }
   }
 
@@ -110,7 +113,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
   fun testObsoleteCompileConfigurationInApp() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -120,18 +123,24 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsAndroidModuleAnalyzer(context, PsPathRendererImpl().also { it.context = context })
       val issues = analyzer.analyze(module).toList()
 
-      checkIssuesFor(issues,
-                     "androidx.appcompat:appcompat:1.0.2",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "implementation"))
-      checkIssuesFor(issues,
-                     "obsoleteScopesLibrary",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "implementation"))
-      checkIssuesFor(issues,
-                     "compile/libs",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "implementation"))
+      checkIssuesFor(
+        issues,
+        "androidx.appcompat:appcompat:1.0.2",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "implementation"),
+      )
+      checkIssuesFor(
+        issues,
+        "obsoleteScopesLibrary",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "implementation"),
+      )
+      checkIssuesFor(
+        issues,
+        "compile/libs",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "implementation"),
+      )
     }
   }
 
@@ -140,7 +149,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
   fun testObsoleteCompileConfigurationInTest() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -150,17 +159,19 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsAndroidModuleAnalyzer(context, PsPathRendererImpl().also { it.context = context })
       val issues = analyzer.analyze(module)
 
-      checkIssuesFor(issues.toList(),
-                     "androidx.appcompat:appcompat:1.0.2",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "implementation"))
+      checkIssuesFor(
+        issues.toList(),
+        "androidx.appcompat:appcompat:1.0.2",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "implementation"),
+      )
     }
   }
 
   @Test
   fun testObsoleteTestCompileConfigurationInDynamicFeature() {
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -170,17 +181,19 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsAndroidModuleAnalyzer(context, PsPathRendererImpl().also { it.context = context })
       val issues = analyzer.analyze(module).toList()
 
-      checkIssuesFor(issues,
-                     "junit:junit:4.12",
-                     setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
-                     setOf("testCompile" to "testImplementation"))
+      checkIssuesFor(
+        issues,
+        "junit:junit:4.12",
+        setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
+        setOf("testCompile" to "testImplementation"),
+      )
     }
   }
 
   @Test
   fun testObsoleteCompileConfigurationInDynamicFeature() {
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -190,10 +203,12 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsAndroidModuleAnalyzer(context, PsPathRendererImpl().also { it.context = context })
       val issues = analyzer.analyze(module).toList()
 
-      checkIssuesFor(issues,
-                     "androidx.appcompat:appcompat:1.0.2",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "api", "compile" to "implementation"))
+      checkIssuesFor(
+        issues,
+        "androidx.appcompat:appcompat:1.0.2",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "api", "compile" to "implementation"),
+      )
     }
   }
 
@@ -201,7 +216,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
   fun testObsoleteTestCompileScopeInJava() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -211,10 +226,12 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsJavaModuleAnalyzer(context)
       val issues = analyzer.analyze(module)
 
-      checkIssuesFor(issues.toList(),
-                     "junit:junit:4.12",
-                     setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
-                     setOf("testCompile" to "testImplementation"))
+      checkIssuesFor(
+        issues.toList(),
+        "junit:junit:4.12",
+        setOf("Obsolete dependency configuration found: <b>testCompile</b>" to ""),
+        setOf("testCompile" to "testImplementation"),
+      )
     }
   }
 
@@ -222,7 +239,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
   fun testObsoleteCompileConfigurationInJava() {
     // Use a plugin with instant app support
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_40)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_UPGRADE, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_42)
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
 
@@ -232,10 +249,12 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
       val analyzer = PsJavaModuleAnalyzer(context)
       val issues = analyzer.analyze(module).toList()
 
-      checkIssuesFor(issues,
-                     "androidx.appcompat:appcompat:1.0.2",
-                     setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
-                     setOf("compile" to "api", "compile" to "implementation"))
+      checkIssuesFor(
+        issues,
+        "androidx.appcompat:appcompat:1.0.2",
+        setOf("Obsolete dependency configuration found: <b>compile</b>" to ""),
+        setOf("compile" to "api", "compile" to "implementation"),
+      )
     }
   }
 
@@ -243,7 +262,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
     issues: List<PsIssue>,
     name: String,
     expectedMessages: Set<Pair<String, String>>,
-    expectedChanges: Set<Pair<String, String>>
+    expectedChanges: Set<Pair<String, String>>,
   ) {
     val issueSet = issueSetFor(issues, name)
     val issueMessages = issueSet.map { it.text to it.description!! }.toSet()
@@ -256,7 +275,7 @@ class PsModuleDependencyConfigurationsAnalyzerTest {
     return issues.filter { it.path.toString() == name }.toSet()
   }
 
-  private fun quickFixChangesFor(issueSet: Set<PsIssue>): Set<Pair<String,String>> {
+  private fun quickFixChangesFor(issueSet: Set<PsIssue>): Set<Pair<String, String>> {
     return issueSet
       .flatMap { it.quickFixes }
       .filterIsInstance<PsDependencyConfigurationQuickFixPath>()

@@ -15,24 +15,35 @@
  */
 package com.android.tools.idea.sqlite.ui.sqliteEvaluator
 
-import com.intellij.ui.*
+import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.DoubleClickListener
+import com.intellij.ui.EditorTextField
+import com.intellij.ui.HintHint
+import com.intellij.ui.LightweightHint
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.event.*
-import javax.swing.*
+import java.awt.event.FocusEvent
+import java.awt.event.FocusListener
+import java.awt.event.KeyEvent
+import java.awt.event.KeyListener
+import java.awt.event.MouseEvent
+import java.awt.event.MouseMotionListener
+import javax.swing.DefaultListModel
+import javax.swing.JComponent
+import javax.swing.JList
+import javax.swing.JPanel
+import javax.swing.ListSelectionModel
 import javax.swing.event.ListSelectionEvent
 
 /**
  * Class responsible for showing a popup containing a list of previously executed statements.
  *
- * When the selection model of the list changes, the selected item is temporarily shown in
- * [editorTextField]. When the user press enter and an item is selected in the list, the text of
- * that item is permanently shown in [editorTextField] and the popup is closed. If the popup is
- * closed without enter being pressed (esc or click outside), the text originally shown in
- * [editorTextField] is restored.
+ * When the selection model of the list changes, the selected item is temporarily shown in [editorTextField]. When the user press enter and
+ * an item is selected in the list, the text of that item is permanently shown in [editorTextField] and the popup is closed. If the popup is
+ * closed without enter being pressed (esc or click outside), the text originally shown in [editorTextField] is restored.
  */
 class QueryHistoryView(private val editorTextField: EditorTextField) {
   private val listModel = DefaultListModel<String>()
@@ -44,10 +55,7 @@ class QueryHistoryView(private val editorTextField: EditorTextField) {
 
   private var editorPermanentQuery = ""
 
-  /**
-   * if [shouldRestorePermanentQuery] is true, [editorPermanentQuery] should be restored when the
-   * hint popup is closed.
-   */
+  /** if [shouldRestorePermanentQuery] is true, [editorPermanentQuery] should be restored when the hint popup is closed. */
   private var shouldRestorePermanentQuery = true
 
   init {
@@ -158,13 +166,7 @@ class QueryHistoryView(private val editorTextField: EditorTextField) {
   }
 
   private class MyListCellRenderer : ColoredListCellRenderer<String>() {
-    override fun customizeCellRenderer(
-      list: JList<out String>,
-      value: String,
-      index: Int,
-      selected: Boolean,
-      hasFocus: Boolean,
-    ) {
+    override fun customizeCellRenderer(list: JList<out String>, value: String, index: Int, selected: Boolean, hasFocus: Boolean) {
       append("${index + 1}.")
       append("  ")
       append(value)

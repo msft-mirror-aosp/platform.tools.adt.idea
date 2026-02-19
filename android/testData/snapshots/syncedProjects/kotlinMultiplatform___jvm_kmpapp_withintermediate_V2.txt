@@ -12,9 +12,7 @@ PROJECT                       : kotlinMultiPlatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/kotlinMultiPlatform [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kotlinMultiPlatform.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>
+        CONTENT_ENTRY                 : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -35,8 +33,6 @@ PROJECT                       : kotlinMultiPlatform
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -57,7 +53,7 @@ PROJECT                       : kotlinMultiPlatform
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/app
+        CONTENT_ENTRY                 : file://<PROJECT>/app
             EXCLUDE_FOLDER                : file://<PROJECT>/app/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/app/build
         JDK                           : <NAME_CUT> Android SDK
@@ -91,8 +87,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -124,7 +118,7 @@ PROJECT                       : kotlinMultiPlatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
             CompilerSettings
-                additionalArguments           :
+                additionalArguments           : -Xuse-inline-scopes-numbers
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             ExternalProjectId             : :app
@@ -143,12 +137,12 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidInstrumentedTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidInstrumentedTestDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidInstrumentedTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidInstrumentedTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidInstrumentedTest/assets [-]
@@ -161,12 +155,14 @@ PROJECT                       : kotlinMultiPlatform
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidInstrumentedTestDebug/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTestDebug/resources [-]
@@ -283,8 +279,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.app.commonMain [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.commonMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -318,7 +312,7 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/commonMain [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/commonMain [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/commonMain/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
@@ -340,8 +334,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.app.commonMain
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.commonTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -375,7 +367,8 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/commonTest [-]
+            AdditionalVisibleModuleNames  : [:app:commonMain]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/commonTest [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/commonTest/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
@@ -398,8 +391,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerSourceOutputPath      : file://<PROJECT>/app/build/classes/kotlin/jvm/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.jvmMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -434,7 +425,7 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.app.commonMain
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/jvmMain [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/jvmMain [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/jvmMain/java [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/jvmMain/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/jvmMain/resources [-]
@@ -458,8 +449,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.app.jvmMain
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.jvmTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -494,7 +483,8 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.app.commonTest
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/jvmTest [-]
+            AdditionalVisibleModuleNames  : [:app:commonMain, :app:jvmMain]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/jvmTest [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/jvmTest/java [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/jvmTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/jvmTest/resources [-]
@@ -526,8 +516,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerSourceOutputPath      : file://<PROJECT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -559,7 +547,7 @@ PROJECT                       : kotlinMultiPlatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
             CompilerSettings
-                additionalArguments           :
+                additionalArguments           : -Xuse-inline-scopes-numbers
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             ExternalProjectId             : :app
@@ -579,12 +567,12 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.app.commonMain
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/assets/debugAssetsCopyForAGP [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidMain [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/assets/debugAssetsCopyForAGP [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidMain [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/main
             JavaSource                    : file://<PROJECT>/app/src/main/java
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
@@ -601,11 +589,13 @@ PROJECT                       : kotlinMultiPlatform
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/java [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/debug/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/baselineProfiles [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/app/src/main/resources [-]
@@ -679,8 +669,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/kotlinMultiPlatform.app.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -732,12 +720,12 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.app.commonTest
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidUnitTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidUnitTestDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/test
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidUnitTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidUnitTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/test
             JavaSource (test)             : file://<PROJECT>/app/src/test/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidUnitTest/assets [-]
@@ -750,12 +738,14 @@ PROJECT                       : kotlinMultiPlatform
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidUnitTestDebug/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/baselineProfiles [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/testDebug/resources [-]
@@ -870,8 +860,6 @@ PROJECT                       : kotlinMultiPlatform
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -892,7 +880,7 @@ PROJECT                       : kotlinMultiPlatform
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/module2
+        CONTENT_ENTRY                 : file://<PROJECT>/module2
             EXCLUDE_FOLDER                : file://<PROJECT>/module2/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/module2/build
         JDK                           : <NAME_CUT> Android SDK
@@ -924,8 +912,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.module2.main
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -957,7 +943,7 @@ PROJECT                       : kotlinMultiPlatform
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
             CompilerSettings
-                additionalArguments           :
+                additionalArguments           : -Xuse-inline-scopes-numbers
                 copyJsLibraryFiles            : true
                 outputDirectoryForJsLibraryFiles        : lib
             ExternalProjectId             : :module2
@@ -976,12 +962,12 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidInstrumentedTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidInstrumentedTestDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidInstrumentedTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidInstrumentedTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidTest
             JavaSource (test)             : file://<PROJECT>/module2/src/androidTest/kotlin
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidInstrumentedTest/assets [-]
@@ -995,11 +981,13 @@ PROJECT                       : kotlinMultiPlatform
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTest/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTest/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/androidTest/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/androidTest/keepRules [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTest/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTest/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTestDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTestDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/androidTestDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/androidTestDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/androidTestDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTestDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidTestDebug/resources [-]
@@ -1052,8 +1040,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.module2.commonMain [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.commonMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1087,7 +1073,7 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/commonMain
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/commonMain
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/commonMain/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
@@ -1109,8 +1095,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.module2.commonMain
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.commonTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1144,7 +1128,8 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/commonTest [-]
+            AdditionalVisibleModuleNames  : [:module2:commonMain, :module2:jvmAndAndroid]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/commonTest [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/commonTest/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
@@ -1170,8 +1155,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/kotlinMultiPlatform.module2.jvmAndAndroid [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.jvmAndAndroid.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1205,7 +1188,7 @@ PROJECT                       : kotlinMultiPlatform
             Platform                      : JVM (21)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/jvmAndAndroid [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/jvmAndAndroid [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/jvmAndAndroid/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/jvmAndAndroid/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
@@ -1226,8 +1209,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerSourceOutputPath      : file://<PROJECT>/module2/build/classes/kotlin/jvm/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.jvmMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1263,7 +1244,7 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.module2.commonMain
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/jvmMain [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/jvmMain [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/jvmMain/java [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/jvmMain/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/jvmMain/resources [-]
@@ -1288,8 +1269,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.module2.jvmMain
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.jvmTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1324,7 +1303,8 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.module2.commonTest
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/jvmTest [-]
+            AdditionalVisibleModuleNames  : [:module2:commonMain, :module2:jvmAndAndroid, :module2:jvmMain]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/jvmTest [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/jvmTest/java [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/jvmTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/jvmTest/resources [-]
@@ -1358,8 +1338,6 @@ PROJECT                       : kotlinMultiPlatform
             compilerSourceOutputPath      : file://<PROJECT>/module2/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1412,13 +1390,13 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.module2.jvmAndAndroid
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/assets/debugAssetsCopyForAGP [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidMain
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/build/generated/assets/debugAssetsCopyForAGP [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidMain
             JavaSource                    : file://<PROJECT>/module2/src/androidMain/kotlin
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/main [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/main [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/build/generated/assets/debugAssetsCopyForAGP [-]
@@ -1433,12 +1411,14 @@ PROJECT                       : kotlinMultiPlatform
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/debug/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/debug/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/debug/java [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/debug/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/debug/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/debug/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/debug/resources [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/main/assets [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/main/baselineProfiles [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/main/java [-]
+        WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/main/keepRules [-]
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/module2/src/main/kotlin [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/main/res [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/module2/src/main/resources [-]
@@ -1477,8 +1457,6 @@ PROJECT                       : kotlinMultiPlatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : kotlinMultiPlatform.module2.main
-        ModuleFile                    : <PROJECT>/.idea/modules/module2/kotlinMultiPlatform.module2.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1530,11 +1508,11 @@ PROJECT                       : kotlinMultiPlatform
             - SourceSetName               : kotlinMultiPlatform.module2.commonTest
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidUnitTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/androidUnitTestDebug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/module2/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidUnitTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/androidUnitTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/module2/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/androidUnitTest/assets [-]
@@ -1548,12 +1526,14 @@ PROJECT                       : kotlinMultiPlatform
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/test/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/test/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/test/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/test/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/test/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/test/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/test/resources [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/testDebug/assets [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/testDebug/baselineProfiles [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/testDebug/java [-]
+        WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/testDebug/keepRules [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/module2/src/testDebug/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/testDebug/res [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/module2/src/testDebug/resources [-]

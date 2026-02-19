@@ -32,7 +32,6 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.buildAndWait
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
@@ -41,15 +40,12 @@ import com.intellij.openapi.roots.ex.ProjectRootManagerEx
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.writeText
 import com.intellij.psi.PsiManager
-import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndWait
-import com.intellij.workspaceModel.ide.impl.WorkspaceEntityLifecycleSupporterUtils
 import org.junit.Rule
 import org.junit.Test
 
 class BuildListenerTest {
-  @get:Rule
-  val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
+  @get:Rule val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   private val collector = StringBuilder()
   private val listener = TestListener(collector)
@@ -60,43 +56,67 @@ class BuildListenerTest {
     preparedTestProject.runTest() {
       setupTestListener(buildTargetReference)
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * setupBuildListener
-        ->startedListening
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * setupBuildListener
+          ->startedListening
+          """
+            .trimIndent()
+        )
     }
   }
 
   @Test
-  fun `re-open subscribe-at-opening no-build`() {
+  fun `open subscribe-at-opening no-build`() {
+    val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
+    preparedTestProject.runTest(
+      onFirstContent = { project ->
+        setupTestListener(
+          buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
+        )
+      }
+    ) {
+      runInEdtAndWait {
+        assertThat(collectedEvents())
+          .isEqualTo(
+            """
+            * syncStarted
+            * firstSourceRootsAdded
+            * setupBuildListener
+            * syncSucceeded
+            ->startedListening
+            """
+              .trimIndent()
+          )
+      }
+    }
+  }
+
+  @Test
+  fun `re-open subscribe no-build`() {
     val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedTestProject.runTest {
       // Do nothing.
     }
 
     collector.clear()
-    preparedTestProject.runTest(onFirstContent = { project ->
-      setupTestListener(
-        buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
-      )
-    }) {
-      runInEdtAndWait {
-        WorkspaceEntityLifecycleSupporterUtils.withAllEntitiesInWorkspaceFromProvidersDefinedOnEdt(project) {
-          assertThat(collectedEvents()).isEqualTo(
-            """
-          * syncSkipped
+    preparedTestProject.runTest {
+      setupTestListener(buildTargetReference)
+
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
           * firstSourceRootsAdded
+          * syncSkipped
           * setupBuildListener
           ->startedListening
-        """.trimIndent() // Note that `->startedListening` comes only after `* syncSkipped`.
-          )
-        }
-      }
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -107,19 +127,21 @@ class BuildListenerTest {
       setupTestListener(buildTargetReference)
       project.buildAndWait { it.assemble() }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * setupBuildListener
-        ->startedListening
-        * buildStarted
-        ->buildStarted
-        * buildFinished
-        ->buildSucceeded
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * setupBuildListener
+          ->startedListening
+          * buildStarted
+          ->buildStarted
+          * buildFinished
+          ->buildSucceeded
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -128,24 +150,30 @@ class BuildListenerTest {
     val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedTestProject.runTest {
       project.buildAndWait(
-        buildStarted = { setupTestListener(
-          buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
-        )}
-      ) { it.assemble() }
+        buildStarted = {
+          setupTestListener(
+            buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
+          )
+        }
+      ) {
+        it.assemble()
+      }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * setupBuildListener
-        ->startedListening
-        * buildFinished
-        ->buildStarted
-        ->buildSucceeded
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * setupBuildListener
+          ->startedListening
+          * buildFinished
+          ->buildStarted
+          ->buildSucceeded
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -155,28 +183,34 @@ class BuildListenerTest {
     preparedTestProject.runTest {
       project.buildAndWait { it.assemble() }
       project.buildAndWait(
-        buildStarted = { setupTestListener(
-          buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
-        )}
-      ) { it.assemble() }
+        buildStarted = {
+          setupTestListener(
+            buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
+          )
+        }
+      ) {
+        it.assemble()
+      }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * buildFinished
-        * buildStarted
-        * setupBuildListener
-        ->buildStarted
-        ->buildSucceeded
-        ->startedListening
-        * buildFinished
-        ->buildStarted
-        ->buildSucceeded
-      """.trimIndent() // Note the artificially nested builds and `->startedListening` after the nested one.
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * buildFinished
+          * buildStarted
+          * setupBuildListener
+          ->buildStarted
+          ->buildSucceeded
+          ->startedListening
+          * buildFinished
+          ->buildStarted
+          ->buildSucceeded
+          """
+            .trimIndent() // Note the artificially nested builds and `->startedListening` after the nested one.
+        )
     }
   }
 
@@ -184,30 +218,34 @@ class BuildListenerTest {
   fun `open build-failed subscribe-while-building`() {
     val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedTestProject.runTest {
-      withBrokenBuild {
-        project.buildAndWait { it.assemble() }
-      }
+      withBrokenBuild { project.buildAndWait { it.assemble() } }
       project.buildAndWait(
-        buildStarted = { setupTestListener(
-          buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
-        )}
-      ) { it.assemble() }
+        buildStarted = {
+          setupTestListener(
+            buildTargetReferenceFromFile(project, preparedTestProject, "app/src/main/java/google/simpleapplication/MyActivity.java")
+          )
+        }
+      ) {
+        it.assemble()
+      }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * buildFinished
-        * buildStarted
-        * setupBuildListener
-        ->startedListening
-        * buildFinished
-        ->buildStarted
-        ->buildSucceeded
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * buildFinished
+          * buildStarted
+          * setupBuildListener
+          ->startedListening
+          * buildFinished
+          ->buildStarted
+          ->buildSucceeded
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -218,19 +256,21 @@ class BuildListenerTest {
       project.buildAndWait { it.assemble() }
       setupTestListener(buildTargetReference)
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * buildFinished
-        * setupBuildListener
-        ->buildStarted
-        ->buildSucceeded
-        ->startedListening
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * buildFinished
+          * setupBuildListener
+          ->buildStarted
+          ->buildSucceeded
+          ->startedListening
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -238,28 +278,29 @@ class BuildListenerTest {
   fun `open build subscribe build`() {
     val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedTestProject.runTest {
-
       project.buildAndWait { it.assemble() }
       setupTestListener(buildTargetReference)
       project.buildAndWait { it.assemble() }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * buildFinished
-        * setupBuildListener
-        ->buildStarted
-        ->buildSucceeded
-        ->startedListening
-        * buildStarted
-        ->buildStarted
-        * buildFinished
-        ->buildSucceeded
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * buildFinished
+          * setupBuildListener
+          ->buildStarted
+          ->buildSucceeded
+          ->startedListening
+          * buildStarted
+          ->buildStarted
+          * buildFinished
+          ->buildSucceeded
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -267,26 +308,27 @@ class BuildListenerTest {
   fun `open clean subscribe build`() {
     val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedTestProject.runTest {
-
       project.buildAndWait { it.cleanProject() }
       setupTestListener(buildTargetReference)
       project.buildAndWait { it.assemble() }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * buildFinished
-        * setupBuildListener
-        ->startedListening
-        * buildStarted
-        ->buildStarted
-        * buildFinished
-        ->buildSucceeded
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * buildFinished
+          * setupBuildListener
+          ->startedListening
+          * buildStarted
+          ->buildStarted
+          * buildFinished
+          ->buildSucceeded
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -294,30 +336,29 @@ class BuildListenerTest {
   fun `open build subscribe build-failed`() {
     val preparedTestProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedTestProject.runTest {
-
       project.buildAndWait { it.assemble() }
       setupTestListener(buildTargetReference)
-      withBrokenBuild {
-        project.buildAndWait { it.assemble() }
-      }
+      withBrokenBuild { project.buildAndWait { it.assemble() } }
 
-      assertThat(collectedEvents()).isEqualTo(
-        """
-        * syncStarted
-        * firstSourceRootsAdded
-        * syncSucceeded
-        * buildStarted
-        * buildFinished
-        * setupBuildListener
-        ->buildStarted
-        ->buildSucceeded
-        ->startedListening
-        * buildStarted
-        ->buildStarted
-        * buildFinished
-        ->buildFailed
-      """.trimIndent()
-      )
+      assertThat(collectedEvents())
+        .isEqualTo(
+          """
+          * syncStarted
+          * firstSourceRootsAdded
+          * syncSucceeded
+          * buildStarted
+          * buildFinished
+          * setupBuildListener
+          ->buildStarted
+          ->buildSucceeded
+          ->startedListening
+          * buildStarted
+          ->buildStarted
+          * buildFinished
+          ->buildFailed
+          """
+            .trimIndent()
+        )
     }
   }
 
@@ -349,24 +390,15 @@ class BuildListenerTest {
     }
   }
 
-  private val Context.buildTargetReference get() = BuildTargetReference.gradleOnly(this.fixture.module)
+  private val Context.buildTargetReference
+    get() = BuildTargetReference.gradleOnly(this.fixture.module)
 
-  private fun buildTargetReferenceFromFile(
-    project: Project,
-    preparedTestProject: PreparedTestProject,
-    file: String
-  ): BuildTargetReference = runReadAction {
-    BuildTargetReference.from(
-      PsiManager.getInstance(project)
-        .findFile(
-          VfsUtil.findFileByIoFile(
-            preparedTestProject.root.resolve(file),
-            true
-          )!!
-        )!!
-
-    )!!
-  }
+  private fun buildTargetReferenceFromFile(project: Project, preparedTestProject: PreparedTestProject, file: String): BuildTargetReference =
+    runReadAction {
+      BuildTargetReference.from(
+        PsiManager.getInstance(project).findFile(VfsUtil.findFileByIoFile(preparedTestProject.root.resolve(file), true)!!)!!
+      )!!
+    }
 
   fun log(event: String) {
     collector.appendLine("* $event")
@@ -378,65 +410,67 @@ class BuildListenerTest {
   }
 
   private fun <T> Context.withBrokenBuild(body: () -> T) {
-    val buildFile = runWriteActionAndWait {VfsUtil.findFileByIoFile(this.projectRoot.resolve("app/build.gradle"), true)!!}
+    val buildFile = runWriteActionAndWait { VfsUtil.findFileByIoFile(this.projectRoot.resolve("app/build.gradle"), true)!! }
     val oldContent = buildFile.contentsToByteArray()
-    runWriteActionAndWait {
-      buildFile.writeText("***")
-    }
+    runWriteActionAndWait { buildFile.writeText("***") }
     try {
       body()
     } finally {
-      runWriteActionAndWait {
-        buildFile.setBinaryContent(oldContent)
-      }
+      runWriteActionAndWait { buildFile.setBinaryContent(oldContent) }
     }
   }
 
-  private fun <T> PreparedTestProject.runTest(
-    onFirstContent: (Project) -> Unit = {},
-    body: Context.(Project) -> T
-  ) {
+  private fun <T> PreparedTestProject.runTest(onFirstContent: (Project) -> Unit = {}, body: Context.(Project) -> T) {
     var firstSyncStarted = false
-    val syncListener = object : GradleSyncListenerWithRoot {
-      override fun syncStarted(project: Project, rootProjectPath: String) {
-        log("syncStarted")
-        if (firstSyncStarted) return
-        firstSyncStarted = true
-      }
+    val syncListener =
+      object : GradleSyncListenerWithRoot {
+        override fun syncStarted(project: Project, rootProjectPath: String) {
+          log("syncStarted")
+          if (firstSyncStarted) return
+          firstSyncStarted = true
+        }
 
-      override fun syncSucceeded(project: Project, rootProjectPath: String) = log("syncSucceeded")
-      override fun syncSkipped(project: Project) = log("syncSkipped")
-      override fun syncCancelled(project: Project, rootProjectPath: String) = log("syncCancelled")
-      override fun syncFailed(project: Project, errorMessage: String, rootProjectPath: String) = log("syncFailed")
-    }
-    val buildListener = object : GradleBuildListener {
-      override fun buildStarted(context: BuildContext) {
-        log("buildStarted")
-      }
+        override fun syncSucceeded(project: Project, rootProjectPath: String) = log("syncSucceeded")
 
-      override fun buildFinished(status: BuildStatus, context: BuildContext) = log("buildFinished")
-    }
-    val rootListener = object : ModuleRootListener {
-      private var seenSources = false
-      override fun rootsChanged(event: ModuleRootEvent) {
-        if (!seenSources) {
-          if (ProjectRootManagerEx.getInstance(event.project).orderEntries().allSourceRoots.isNotEmpty()) {
-            seenSources = true
-            log("firstSourceRootsAdded")
-            onFirstContent(event.project)
+        override fun syncSkipped(project: Project) = log("syncSkipped")
+
+        override fun syncCancelled(project: Project, rootProjectPath: String) = log("syncCancelled")
+
+        override fun syncFailed(project: Project, errorMessage: String, rootProjectPath: String) = log("syncFailed")
+      }
+    val buildListener =
+      object : GradleBuildListener {
+        override fun buildStarted(context: BuildContext) {
+          log("buildStarted")
+        }
+
+        override fun buildFinished(status: BuildStatus, context: BuildContext) = log("buildFinished")
+      }
+    val rootListener =
+      object : ModuleRootListener {
+        private var seenSources = false
+
+        override fun rootsChanged(event: ModuleRootEvent) {
+          if (!seenSources) {
+            if (ProjectRootManagerEx.getInstance(event.project).orderEntries().allSourceRoots.isNotEmpty()) {
+              seenSources = true
+              log("firstSourceRootsAdded")
+              onFirstContent(event.project)
+            }
           }
         }
       }
-    }
-    this.open(updateOptions = {
-      it.copy(
-        subscribe = { bus ->
-          bus.subscribe(GRADLE_SYNC_TOPIC, syncListener)
-          bus.subscribe(GRADLE_BUILD_TOPIC, buildListener)
-          bus.subscribe(ModuleRootListener.TOPIC, rootListener)
-        },
-      )
-    }) { project ->
+    this.open(
+      updateOptions = {
+        it.copy(
+          subscribe = { bus ->
+            bus.subscribe(GRADLE_SYNC_TOPIC, syncListener)
+            bus.subscribe(GRADLE_BUILD_TOPIC, buildListener)
+            bus.subscribe(ModuleRootListener.TOPIC, rootListener)
+          }
+        )
+      }
+    ) { project ->
       runInEdtAndWait { body(project) }
     }
   }

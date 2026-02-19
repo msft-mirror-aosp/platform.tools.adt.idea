@@ -22,9 +22,7 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 
-private val composeCompilerPluginPath by lazy {
-  PathManager.getJarForClass(ComposePluginRegistrar::class.java)
-}
+private val composeCompilerPluginPath by lazy { PathManager.getJarForClass(ComposePluginRegistrar::class.java) }
 
 private val suppressKotlinVersionCheckOption =
   "plugin:${

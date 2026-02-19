@@ -12,8 +12,6 @@ MODULE                        : project
     COMPILER_MODULE_EXTENSION
         isCompilerPathInherited       : false
         isExcludeOutput               : true
-    ModuleFile                    : <ROOT>/.idea/modules/project.iml [-]
-    ModuleTypeName                : JAVA_MODULE
     FACET                         : Android
         TypeId                        : android
         ExternalSource                : GRADLE
@@ -34,7 +32,7 @@ MODULE                        : project
     FACET                         : Android-Gradle
         TypeId                        : android-gradle
         ExternalSource                : GRADLE
-    CONENT_ENTRY                  : file://<ROOT>
+    CONTENT_ENTRY                 : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
     JDK                           : <NAME_CUT> Android SDK
@@ -537,10 +535,10 @@ LIBRARY_TABLE
         artifact                      : <M2>/com/android/support/support-annotations/<VERSION>/support-annotations-<VERSION>.jar
         artifactAddress               : com.android.support:support-annotations:28.0.0@jar
         component                     : com.android.support:support-annotations:28.0.0
-    - library                     : org.jacoco:org.jacoco.agent:0.8.13 (IdeJavaLibraryImpl)
-        artifact                      : <M2>/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar
-        artifactAddress               : org.jacoco:org.jacoco.agent:0.8.13@jar
-        component                     : org.jacoco:org.jacoco.agent:0.8.13
+    - library                     : org.jacoco:org.jacoco.agent:0.8.14 (IdeJavaLibraryImpl)
+        artifact                      : <M2>/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar
+        artifactAddress               : org.jacoco:org.jacoco.agent:0.8.14@jar
+        component                     : org.jacoco:org.jacoco.agent:0.8.14
     - library                     : <ROOT>::@debug (IdeModuleLibraryImpl)
         buildId                       : <ROOT>
         projectPath                   : :
@@ -677,6 +675,7 @@ MODULE                        : project
             AssetsDirectories             : <ROOT>/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -691,6 +690,7 @@ MODULE                        : project
                     AssetsDirectories             : <ROOT>/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -704,6 +704,7 @@ MODULE                        : project
                     AssetsDirectories             : <ROOT>/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -728,6 +729,7 @@ MODULE                        : project
             AssetsDirectories             : <ROOT>/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -742,6 +744,7 @@ MODULE                        : project
                     AssetsDirectories             : <ROOT>/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -756,6 +759,7 @@ MODULE                        : project
                     AssetsDirectories             : <ROOT>/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -776,6 +780,7 @@ MODULE                        : project
             AssetsDirectories             : <ROOT>/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1063,10 +1068,10 @@ MODULE                        : project
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : android.arch.core:common:1.1.1@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.13@jar
+                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.14@jar
                 BytecodeTransforms            : JACOCO_INSTRUMENTATION
                 RuntimeOnlyClasses
-                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar
+                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar
                 ApplicationId                 : com.android.tests.basic.debug
                 SigningConfigName             : myConfig
                 IsSigned                      : true
@@ -1499,13 +1504,13 @@ MODULE                        : project
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : android.arch.core:common:1.1.1@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.13@jar
+                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.14@jar
                         module                        : <ROOT>-:-MAIN
                             androidLibrary                : com.android.support:support-v4:28.0.0@aar
                             androidLibrary                : com.android.support:support-v13:28.0.0@aar
-                            javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.13@jar
+                            javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.14@jar
                 RuntimeOnlyClasses
-                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.13/org.jacoco.agent-0.8.13-runtime.jar
+                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     externalProject               : project (DefaultExternalProject)
         path                          : : [-]

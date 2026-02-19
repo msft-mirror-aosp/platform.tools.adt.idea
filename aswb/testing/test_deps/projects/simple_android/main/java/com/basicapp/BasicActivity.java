@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
@@ -35,13 +36,17 @@ public class BasicActivity extends Activity {
       findViewById(R.id.button_id_fizz), findViewById(R.id.button_id_buzz),
     };
 
+    ImageView imageView = findViewById(R.id.img_id_fizz);
+    imageView.setImageResource(R.drawable.foo);
+
+
     for (var b : buttons) {
       b.setOnClickListener(
           new View.OnClickListener() {
             public void onClick(View v) {
               TextView tv = findViewById(R.id.text_hello);
               if (v.getId() == R.id.button_id_fizz) {
-                tv.setText("fizz");
+                tv.setText(getString(R.string.generated_string));
               } else if (v.getId() == R.id.button_id_buzz) {
                 tv.setText("buzz");
               }

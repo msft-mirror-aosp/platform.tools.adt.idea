@@ -18,7 +18,8 @@ package com.android.tools.idea.gradle.dsl.model.settings
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.STRING_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.settings.VersionCatalogModel.VersionCatalogSource
-import com.android.tools.idea.gradle.dsl.api.settings.VersionCatalogModel.VersionCatalogSource.*
+import com.android.tools.idea.gradle.dsl.api.settings.VersionCatalogModel.VersionCatalogSource.FILES
+import com.android.tools.idea.gradle.dsl.api.settings.VersionCatalogModel.VersionCatalogSource.IMPORTED
 import com.android.tools.idea.gradle.dsl.api.util.TypeReference
 import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder
 import com.android.tools.idea.gradle.dsl.model.ext.ResolvedPropertyModelImpl
@@ -26,22 +27,29 @@ import com.android.tools.idea.gradle.dsl.model.ext.transforms.SingleArgumentMeth
 import com.android.tools.idea.gradle.dsl.parser.settings.VersionCatalogDslElement
 import com.intellij.openapi.vfs.VirtualFile
 
-class FromCatalogResolvedProperty(private val dslElement: VersionCatalogDslElement,
-                                  private val delegate: ResolvedPropertyModelImpl,
-                                  private val currentType: VersionCatalogSource) : ResolvedPropertyModel by delegate {
+class FromCatalogResolvedProperty(
+  private val dslElement: VersionCatalogDslElement,
+  private val delegate: ResolvedPropertyModelImpl,
+  private val currentType: VersionCatalogSource,
+) : ResolvedPropertyModel by delegate {
   fun getType(): VersionCatalogSource = currentType
 
-
   fun setAsFilesType(): FromCatalogResolvedProperty {
-    return FromCatalogResolvedProperty(dslElement, GradlePropertyModelBuilder.create(dslElement, VersionCatalogModelImpl.FROM)
-      .addTransform(SingleArgumentMethodTransform("files"))
-      .buildResolved(), FILES)
+    return FromCatalogResolvedProperty(
+      dslElement,
+      GradlePropertyModelBuilder.create(dslElement, VersionCatalogModelImpl.FROM)
+        .addTransform(SingleArgumentMethodTransform("files"))
+        .buildResolved(),
+      FILES,
+    )
   }
 
   fun setAsImportedType(): FromCatalogResolvedProperty {
-    return FromCatalogResolvedProperty(dslElement,
-                                       GradlePropertyModelBuilder.create(dslElement, VersionCatalogModelImpl.FROM).buildResolved(),
-                                       IMPORTED)
+    return FromCatalogResolvedProperty(
+      dslElement,
+      GradlePropertyModelBuilder.create(dslElement, VersionCatalogModelImpl.FROM).buildResolved(),
+      IMPORTED,
+    )
   }
 
   override fun setValue(value: Any) {
@@ -70,5 +78,4 @@ class FromCatalogResolvedProperty(private val dslElement: VersionCatalogDslEleme
   }
 
   override fun toString(): String = delegate.toString()
-
 }

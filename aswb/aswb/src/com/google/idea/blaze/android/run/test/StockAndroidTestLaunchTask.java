@@ -21,8 +21,8 @@ import com.android.tools.idea.execution.common.RunConfigurationNotifier;
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler;
 import com.android.tools.idea.run.ApkProvisionException;
 import com.android.tools.idea.run.ApplicationIdProvider;
-import com.android.tools.idea.run.blaze.BlazeLaunchContext;
-import com.android.tools.idea.run.blaze.BlazeLaunchTask;
+import com.google.idea.blaze.android.run.runner.BlazeLaunchContext;
+import com.google.idea.blaze.android.run.runner.BlazeLaunchTask;
 import com.android.tools.idea.run.configuration.execution.ExecutionUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.android.manifest.ManifestParser;
@@ -144,7 +144,7 @@ class StockAndroidTestLaunchTask implements BlazeLaunchTask {
           .runReadAction(
               (Computable<ImmutableList<String>>) () -> getRunnersFromManifest(deployInfo));
     }
-    ManifestParser.ParsedManifest parsedManifest = deployInfo.getMergedManifest();
+    ManifestParser.ParsedManifest parsedManifest = deployInfo.getMainAppMergedManifest();
     if (parsedManifest != null) {
       return ImmutableList.copyOf(parsedManifest.instrumentationClassNames);
     }

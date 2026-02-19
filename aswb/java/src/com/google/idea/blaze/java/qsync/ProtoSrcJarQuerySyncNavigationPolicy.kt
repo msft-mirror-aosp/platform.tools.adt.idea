@@ -17,23 +17,21 @@ package com.google.idea.blaze.java.qsync
 
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.qsync.java.AddDependencyGenSrcsJars.Companion.ENABLED_NAVIGATION_POLICY
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.compiled.ClsCustomNavigationPolicy
 import com.intellij.psi.impl.compiled.ClsFileImpl
 import com.intellij.psi.util.CachedValueProvider.Result
 import com.intellij.psi.util.CachedValuesManager
 
-/**
- * Substitutes a workspace source file in place of a decompiled class file for non-project
- * dependencies with sources in the workspace.
- */
+/** Substitutes a workspace source file in place of a decompiled class file for non-project dependencies with sources in the workspace. */
 class ProtoSrcJarQuerySyncNavigationPolicy : ClsCustomNavigationPolicy {
 
   override fun getNavigationElement(clsFile: ClsFileImpl): PsiElement? {
     if (!ENABLED_NAVIGATION_POLICY.value) return null
 
     val project = clsFile.project
-    if (!project.isQuerySyncProject()) {
+    if (!project.isQuerySyncProject() || DaemonCodeAnalyzer.getInstance(project).isRunning) {
       return null
     }
 
@@ -41,7 +39,7 @@ class ProtoSrcJarQuerySyncNavigationPolicy : ClsCustomNavigationPolicy {
       Result.create(
         ProtoFileJavaSourceFinder(clsFile).findSourceFile(),
         clsFile,
-        QuerySyncManager.getInstance(project).projectModificationTracker
+        QuerySyncManager.getInstance(project).projectModificationTracker,
       )
     }
   }

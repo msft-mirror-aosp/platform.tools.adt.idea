@@ -41,7 +41,7 @@ class JavadocGenerationManagerTest {
         /** Field Javadoc */
         public int a = 0;
       }
-    """
+      """
         .trimIndent(),
     )
 

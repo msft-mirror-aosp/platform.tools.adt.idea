@@ -25,6 +25,7 @@ import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.join;
 import static com.intellij.openapi.util.io.FileUtil.toSystemDependentName;
 import static com.intellij.openapi.vfs.VfsUtil.findFileByIoFile;
+import static com.intellij.workspaceModel.ide.legacyBridge.impl.java.JavaModuleTypeUtils.JAVA_MODULE_ENTITY_TYPE_ID_NAME;
 import static org.jetbrains.android.AndroidTestBase.getTestDataPath;
 import static org.mockito.Mockito.mock;
 
@@ -36,7 +37,6 @@ import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.module.ModifiableModuleModel;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
-import com.intellij.openapi.module.StdModuleTypes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.ModuleRootManager;
@@ -112,7 +112,7 @@ public class SmaliFileNotificationProviderTest {
   @NotNull
   private Module createRootModule(@NotNull File projectRootPath) {
     ModifiableModuleModel modifiableModel = ModuleManager.getInstance(getProject()).getModifiableModel();
-    Module rootModule = modifiableModel.newModule(projectRootPath.getPath(), StdModuleTypes.JAVA.getId());
+    Module rootModule = modifiableModel.newModule(projectRootPath.getPath(), JAVA_MODULE_ENTITY_TYPE_ID_NAME);
     ApplicationManager.getApplication().runWriteAction(modifiableModel::commit);
     return rootModule;
   }

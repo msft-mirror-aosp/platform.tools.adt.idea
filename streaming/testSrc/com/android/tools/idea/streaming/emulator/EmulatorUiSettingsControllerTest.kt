@@ -29,20 +29,19 @@ import com.google.wireless.android.sdk.stats.DeviceInfo.DeviceType.LOCAL_EMULATO
 import com.google.wireless.android.sdk.stats.UiDeviceSettingsEvent.OperationKind
 import com.intellij.openapi.Disposable
 import com.intellij.testFramework.RuleChain
+import java.awt.Dimension
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.awt.Dimension
-import kotlin.time.Duration.Companion.seconds
 
 class EmulatorUiSettingsControllerTest {
 
   private val uiRule = UiSettingsRule()
   private val usageRule = UsageTrackerRule()
 
-  @get:Rule
-  val chain = RuleChain(uiRule, usageRule)
+  @get:Rule val chain = RuleChain(uiRule, usageRule)
 
   private val testRootDisposable: Disposable
     get() = uiRule.testRootDisposable
@@ -59,7 +58,9 @@ class EmulatorUiSettingsControllerTest {
   private val usages: List<LoggedUsage>
     get() = usageRule.usages
 
-  private val model: UiSettingsModel by lazy { UiSettingsModel(Dimension(1344, 2992), DEFAULT_DENSITY, 33, DeviceType.HANDHELD) } // Pixel 8 Pro
+  private val model: UiSettingsModel by lazy {
+    UiSettingsModel(Dimension(1344, 2992), DEFAULT_DENSITY, 33, DeviceType.HANDHELD)
+  } // Pixel 8 Pro
   private val controller: EmulatorUiSettingsController by lazy { createController() }
   private val resetWithDebugLayoutAndGestureNavigation = (FACTORY_RESET_COMMAND).format(APPLICATION_ID1, DEFAULT_DENSITY)
 
@@ -79,11 +80,18 @@ class EmulatorUiSettingsControllerTest {
     adb.configureShellCommand(deviceSelector, "settings delete secure enabled_accessibility_services", "")
     adb.configureShellCommand(deviceSelector, "settings put secure enabled_accessibility_services $SELECT_TO_SPEAK_SERVICE_NAME", "")
     adb.configureShellCommand(deviceSelector, "settings put secure accessibility_button_targets $SELECT_TO_SPEAK_SERVICE_NAME", "")
+    adb.configureShellCommand(deviceSelector, "settings put secure accessibility_button_targets $MAGNIFICATION_SERVICE_NAME", "")
     adb.configureShellCommand(deviceSelector, "settings delete secure accessibility_button_targets", "")
-    adb.configureShellCommand(deviceSelector, "settings put secure enabled_accessibility_services " +
-                                                     "$TALK_BACK_SERVICE_NAME:$SELECT_TO_SPEAK_SERVICE_NAME", "")
-    adb.configureShellCommand(deviceSelector, "settings put secure enabled_accessibility_services " +
-                                                     "$SELECT_TO_SPEAK_SERVICE_NAME:$TALK_BACK_SERVICE_NAME", "")
+    adb.configureShellCommand(
+      deviceSelector,
+      "settings put secure enabled_accessibility_services " + "$TALK_BACK_SERVICE_NAME:$SELECT_TO_SPEAK_SERVICE_NAME",
+      "",
+    )
+    adb.configureShellCommand(
+      deviceSelector,
+      "settings put secure enabled_accessibility_services " + "$SELECT_TO_SPEAK_SERVICE_NAME:$TALK_BACK_SERVICE_NAME",
+      "",
+    )
     adb.configureShellCommand(deviceSelector, FACTORY_RESET_COMMAND.format(APPLICATION_ID1, DEFAULT_DENSITY), "")
     adb.configureShellCommand(deviceSelector, resetWithDebugLayoutAndGestureNavigation, "")
     adb.configureShellCommand(deviceSelector, "cmd overlay enable $GESTURES_OVERLAY; cmd overlay disable $THREE_BUTTON_OVERLAY", "")
@@ -238,7 +246,7 @@ class EmulatorUiSettingsControllerTest {
     model.talkBackOn.setFromUi(true)
     waitForCondition(10.seconds) {
       antepenultimateChangeCommand == "pm grant $TALKBACK_PACKAGE_NAME android.permission.POST_NOTIFICATIONS" &&
-      lastIssuedChangeCommand == "settings put secure enabled_accessibility_services $TALK_BACK_SERVICE_NAME"
+        lastIssuedChangeCommand == "settings put secure enabled_accessibility_services $TALK_BACK_SERVICE_NAME"
     }
     assertUsageEvent(OperationKind.TALKBACK)
     assertThat(model.differentFromDefault.value).isTrue()
@@ -262,7 +270,8 @@ class EmulatorUiSettingsControllerTest {
     model.talkBackOn.setFromUi(true)
     waitForCondition(10.seconds) {
       antepenultimateChangeCommand == "pm grant $TALKBACK_PACKAGE_NAME android.permission.POST_NOTIFICATIONS" &&
-      lastIssuedChangeCommand == "settings put secure enabled_accessibility_services $SELECT_TO_SPEAK_SERVICE_NAME:$TALK_BACK_SERVICE_NAME"
+        lastIssuedChangeCommand ==
+          "settings put secure enabled_accessibility_services $SELECT_TO_SPEAK_SERVICE_NAME:$TALK_BACK_SERVICE_NAME"
     }
     assertUsageEvent(OperationKind.TALKBACK)
   }
@@ -286,7 +295,7 @@ class EmulatorUiSettingsControllerTest {
     model.selectToSpeakOn.setFromUi(true)
     waitForCondition(10.seconds) {
       antepenultimateChangeCommand == "settings put secure enabled_accessibility_services $SELECT_TO_SPEAK_SERVICE_NAME" &&
-      lastIssuedChangeCommand == "settings put secure accessibility_button_targets $SELECT_TO_SPEAK_SERVICE_NAME"
+        lastIssuedChangeCommand == "settings put secure accessibility_button_targets $SELECT_TO_SPEAK_SERVICE_NAME"
     }
     assertUsageEvent(OperationKind.SELECT_TO_SPEAK)
     assertThat(model.differentFromDefault.value).isTrue()
@@ -300,7 +309,7 @@ class EmulatorUiSettingsControllerTest {
     model.selectToSpeakOn.setFromUi(false)
     waitForCondition(10.seconds) {
       antepenultimateChangeCommand == "settings delete secure enabled_accessibility_services" &&
-      lastIssuedChangeCommand == "settings delete secure accessibility_button_targets"
+        lastIssuedChangeCommand == "settings delete secure accessibility_button_targets"
     }
     assertUsageEvent(OperationKind.SELECT_TO_SPEAK)
     assertThat(model.differentFromDefault.value).isFalse()
@@ -312,9 +321,9 @@ class EmulatorUiSettingsControllerTest {
     controller.initAndWait()
     model.selectToSpeakOn.setFromUi(true)
     waitForCondition(10.seconds) {
-      antepenultimateChangeCommand == "settings put secure enabled_accessibility_services " +
-                                      "$TALK_BACK_SERVICE_NAME:$SELECT_TO_SPEAK_SERVICE_NAME" &&
-      lastIssuedChangeCommand == "settings put secure accessibility_button_targets $SELECT_TO_SPEAK_SERVICE_NAME"
+      antepenultimateChangeCommand ==
+        "settings put secure enabled_accessibility_services " + "$TALK_BACK_SERVICE_NAME:$SELECT_TO_SPEAK_SERVICE_NAME" &&
+        lastIssuedChangeCommand == "settings put secure accessibility_button_targets $SELECT_TO_SPEAK_SERVICE_NAME"
     }
     assertUsageEvent(OperationKind.SELECT_TO_SPEAK)
   }
@@ -326,7 +335,7 @@ class EmulatorUiSettingsControllerTest {
     model.selectToSpeakOn.setFromUi(false)
     waitForCondition(10.seconds) {
       antepenultimateChangeCommand == "settings put secure enabled_accessibility_services $TALK_BACK_SERVICE_NAME" &&
-      lastIssuedChangeCommand == "settings delete secure accessibility_button_targets"
+        lastIssuedChangeCommand == "settings delete secure accessibility_button_targets"
     }
     assertUsageEvent(OperationKind.SELECT_TO_SPEAK)
   }
@@ -383,20 +392,27 @@ class EmulatorUiSettingsControllerTest {
       selectToSpeakOn = true,
       fontScale = CUSTOM_FONT_SCALE,
       physicalDensity = DEFAULT_DENSITY,
-      overrideDensity = CUSTOM_DENSITY
+      overrideDensity = CUSTOM_DENSITY,
     )
     controller.initAndWait()
     assertThat(model.differentFromDefault.value).isTrue()
     adb.shellV2Requests.clear()
-    uiRule.configureUiSettings()
     model.resetAction()
-    waitForCondition(10.seconds) { adb.shellV2Requests.size == 3 }
+
+    waitForCondition(10.seconds) { adb.shellV2Requests.size == 7 }
     val commands = adb.shellV2Requests.map { it.command }
-    assertThat(commands).hasSize(3)
+    assertThat(commands).hasSize(7)
     assertThat(commands[0]).isEqualTo(FACTORY_RESET_COMMAND.format(APPLICATION_ID1, DEFAULT_DENSITY))
-    assertThat(commands[1]).isEqualTo(POPULATE_COMMAND)
-    assertThat(commands[2]).isEqualTo(POPULATE_LANGUAGE_COMMAND.format(APPLICATION_ID1))
+    assertThat(commands[1]).isEqualTo("settings get secure $ENABLED_ACCESSIBILITY_SERVICES")
+    assertThat(commands[2]).isEqualTo("settings get secure $ACCESSIBILITY_BUTTON_TARGETS")
+    assertThat(commands[3]).isEqualTo("settings delete secure $ENABLED_ACCESSIBILITY_SERVICES")
+    assertThat(commands[4]).isEqualTo("settings delete secure $ACCESSIBILITY_BUTTON_TARGETS")
+    assertThat(commands[5]).isEqualTo(POPULATE_COMMAND)
+    assertThat(commands[6]).isEqualTo(POPULATE_LANGUAGE_COMMAND.format(APPLICATION_ID1))
     assertUsageEvent(OperationKind.RESET)
+
+    uiRule.configureUiSettings()
+    controller.initAndWait()
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
@@ -419,15 +435,59 @@ class EmulatorUiSettingsControllerTest {
     controller.initAndWait()
     assertThat(model.differentFromDefault.value).isTrue()
     adb.shellV2Requests.clear()
-    uiRule.configureUiSettings()
     model.resetAction()
-    waitForCondition(10.seconds) { adb.shellV2Requests.size == 3 }
+    waitForCondition(10.seconds) { adb.shellV2Requests.size == 7 }
     val commands = adb.shellV2Requests.map { it.command }
-    assertThat(commands).hasSize(3)
+    assertThat(commands).hasSize(7)
     assertThat(commands[0]).isEqualTo(resetWithDebugLayoutAndGestureNavigation)
-    assertThat(commands[1]).isEqualTo(POPULATE_COMMAND)
-    assertThat(commands[2]).isEqualTo(POPULATE_LANGUAGE_COMMAND.format(APPLICATION_ID1))
+    assertThat(commands[1]).isEqualTo("settings get secure $ENABLED_ACCESSIBILITY_SERVICES")
+    assertThat(commands[2]).isEqualTo("settings get secure $ACCESSIBILITY_BUTTON_TARGETS")
+    assertThat(commands[3]).isEqualTo("settings delete secure $ENABLED_ACCESSIBILITY_SERVICES")
+    assertThat(commands[4]).isEqualTo("settings delete secure $ACCESSIBILITY_BUTTON_TARGETS")
+    assertThat(commands[5]).isEqualTo(POPULATE_COMMAND)
+    assertThat(commands[6]).isEqualTo(POPULATE_LANGUAGE_COMMAND.format(APPLICATION_ID1))
     assertUsageEvent(OperationKind.RESET)
+
+    uiRule.configureUiSettings()
+    controller.initAndWait()
+    waitForCondition(10.seconds) { !model.differentFromDefault.value }
+  }
+
+  @Test
+  fun testResetWithMagnificationOn() {
+    uiRule.configureUiSettings(
+      darkMode = true,
+      gestureOverlayInstalled = true,
+      gestureNavigation = false,
+      applicationId = APPLICATION_ID1,
+      appLocales = "da",
+      talkBackInstalled = true,
+      talkBackOn = true,
+      selectToSpeakOn = true,
+      magnificationOn = true,
+      fontScale = CUSTOM_FONT_SCALE,
+      physicalDensity = DEFAULT_DENSITY,
+      overrideDensity = CUSTOM_DENSITY,
+      debugLayout = true,
+    )
+    controller.initAndWait()
+    assertThat(model.differentFromDefault.value).isTrue()
+    adb.shellV2Requests.clear()
+    model.resetAction()
+    waitForCondition(10.seconds) { adb.shellV2Requests.size == 7 }
+    val commands = adb.shellV2Requests.map { it.command }
+    assertThat(commands).hasSize(7)
+    assertThat(commands[0]).isEqualTo(resetWithDebugLayoutAndGestureNavigation)
+    assertThat(commands[1]).isEqualTo("settings get secure $ENABLED_ACCESSIBILITY_SERVICES")
+    assertThat(commands[2]).isEqualTo("settings get secure $ACCESSIBILITY_BUTTON_TARGETS")
+    assertThat(commands[3]).isEqualTo("settings delete secure $ENABLED_ACCESSIBILITY_SERVICES")
+    assertThat(commands[4]).isEqualTo("settings put secure $ACCESSIBILITY_BUTTON_TARGETS $MAGNIFICATION_SERVICE_NAME")
+    assertThat(commands[5]).isEqualTo(POPULATE_COMMAND)
+    assertThat(commands[6]).isEqualTo(POPULATE_LANGUAGE_COMMAND.format(APPLICATION_ID1))
+    assertUsageEvent(OperationKind.RESET)
+
+    uiRule.configureUiSettings(magnificationOn = true)
+    controller.initAndWait()
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
@@ -447,9 +507,7 @@ class EmulatorUiSettingsControllerTest {
   private fun createController() =
     EmulatorUiSettingsController(uiRule.project, uiRule.emulator.serialNumber, model, uiRule.emulatorConfiguration, testRootDisposable)
 
-  private fun EmulatorUiSettingsController.initAndWait() = runBlocking {
-    populateModel()
-  }
+  private fun EmulatorUiSettingsController.initAndWait() = runBlocking { populateModel() }
 
   private fun assertUsageEvent(vararg operations: OperationKind) {
     for ((index, expected) in operations.withIndex()) {

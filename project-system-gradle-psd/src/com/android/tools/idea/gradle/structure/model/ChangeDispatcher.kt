@@ -17,15 +17,20 @@ package com.android.tools.idea.gradle.structure.model
 
 import com.intellij.openapi.Disposable
 import com.intellij.util.EventDispatcher
-import java.util.*
+import java.util.EventListener
 
 class ChangeDispatcher() {
   private val dispatcher = EventDispatcher.create(ChangeListener::class.java)
 
   fun changed() = dispatcher.multicaster.changed()
-  fun add(parentDisposable: Disposable, listener: () -> Unit) = dispatcher.addListener(object : ChangeListener {
-    override fun changed() = listener()
-  }, parentDisposable)
+
+  fun add(parentDisposable: Disposable, listener: () -> Unit) =
+    dispatcher.addListener(
+      object : ChangeListener {
+        override fun changed() = listener()
+      },
+      parentDisposable,
+    )
 
   private interface ChangeListener : EventListener {
     fun changed()

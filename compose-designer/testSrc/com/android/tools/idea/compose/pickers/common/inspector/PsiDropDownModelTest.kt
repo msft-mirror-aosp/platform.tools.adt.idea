@@ -69,8 +69,7 @@ internal class PsiDropDownModelTest {
   @Test
   // Regression test for b/321695920
   fun testEnumSupportValuesIsFetchedOnBackgroundThread() {
-    val property =
-      ClassPsiCallParameter(mock(), mock(), { _, _ -> null }, mock(), null, null, "test")
+    val property = ClassPsiCallParameter(mock(), mock(), { _, _ -> null }, mock(), null, null, "test")
     var valuesCalled = false
     val enumSupport =
       mock<EnumSupport> {

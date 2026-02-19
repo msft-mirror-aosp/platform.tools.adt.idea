@@ -15,25 +15,24 @@
  */
 package com.android.tools.profilers.integration
 
-import com.android.tools.testlib.Adb
 import com.android.tools.asdriver.tests.AndroidProject
 import com.android.tools.asdriver.tests.AndroidProjectWithoutGradle
 import com.android.tools.asdriver.tests.AndroidStudio
 import com.android.tools.asdriver.tests.AndroidSystem
-import com.android.tools.testlib.Emulator
 import com.android.tools.asdriver.tests.MavenRepo
 import com.android.tools.asdriver.tests.MemoryDashboardNameProviderWatcher
-import org.junit.Rule
+import com.android.tools.testlib.Adb
+import com.android.tools.testlib.Emulator
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 import kotlin.time.Duration.Companion.seconds
+import org.junit.AssumptionViolatedException
+import org.junit.Rule
 
 /**
- * This is the base test class for all unit tests in this project.
- * It provides common functionality for all profiler integration tests,
- * such as setting up the android studio, starting and waiting for emulator boot-up,
- * syncing and building project and some common profiler specific reusable execute actions
- * and log verifications.
+ * This is the base test class for all unit tests in this project. It provides common functionality for all profiler integration tests, such
+ * as setting up the android studio, starting and waiting for emulator boot-up, syncing and building project and some common profiler
+ * specific reusable execute actions and log verifications.
  *
  * All Profiler integration tests should extend this class.
  */
@@ -44,17 +43,13 @@ open class ProfilersTestBase {
   }
 
   // Default projects for most of the tests.
-  open val projectPath : String = TestConstants.MIN_APP_PROJECT_PATH
-  open val repoManifestPath : String = TestConstants.MIN_APP_REPO_MANIFEST
-  open val systemImage : Emulator.SystemImage = TestConstants.SYSTEM_IMAGE
+  open val projectPath: String = TestConstants.MIN_APP_PROJECT_PATH
+  open val repoManifestPath: String = TestConstants.MIN_APP_REPO_MANIFEST
+  open val systemImage: Emulator.SystemImage = TestConstants.SYSTEM_IMAGE
 
-  @JvmField
-  @Rule
-  val system: AndroidSystem = AndroidSystem.standard()
+  @JvmField @Rule val system: AndroidSystem = AndroidSystem.standard()
 
-  @JvmField
-  @Rule
-  var watcher = MemoryDashboardNameProviderWatcher()
+  @JvmField @Rule var watcher = MemoryDashboardNameProviderWatcher()
 
   protected fun sessionBasedProfiling(testFunction: ((studio: AndroidStudio, adb: Adb) -> Unit)) {
     // Disabling the profiler task-based ux and verbose logs behind the flag.
@@ -86,8 +81,7 @@ open class ProfilersTestBase {
     }
   }
 
-  protected fun taskBasedProfiling(deployApp: Boolean,
-                                   testFunction: ((studio: AndroidStudio, adb: Adb) -> Unit)) {
+  protected fun taskBasedProfiling(deployApp: Boolean, testFunction: ((studio: AndroidStudio, adb: Adb) -> Unit)) {
     // Enabling profiler task-based ux and verbose logs behind the flag.
     system.installation.addVmOption("-Dprofiler.task.based.ux=true")
     system.installation.addVmOption("-Dprofiler.testing.mode=true")
@@ -99,39 +93,34 @@ open class ProfilersTestBase {
     // Create a maven repo and set it up in the installation and environment
     system.installRepo(MavenRepo(repoManifestPath))
 
-    var setupComplete = false
-    retry(shouldRetry = { !setupComplete }) {
-      system.runAdb { adb ->
-        system.runEmulator(systemImage) { emulator ->
-          system.runStudio(project, watcher.dashboardName) { studio ->
-            // Waiting for sync and build.
-            studio.waitForSync()
-            studio.waitForIndex()
-            // Assume project build will be triggered by `testFunction` if needed.
-            // Waiting for emulator to boot up.
-            emulator.waitForBoot()
-            adb.waitForDevice(emulator)
+    system.runAdb { adb ->
+      system.runEmulator(systemImage) { emulator ->
+        system.runStudio(project, watcher.dashboardName) { studio ->
+          // Waiting for sync and build.
+          studio.waitForSync()
+          studio.waitForIndex()
+          // Assume project build will be triggered by `testFunction` if needed.
+          // Waiting for emulator to boot up.
+          emulator.waitForBoot()
+          adb.waitForDevice(emulator)
 
-            if (deployApp) {
-              deployApp(studio, adb)
-              invokeProfilerToolWindow(studio)
-              waitForProfilerDeviceConnection()
-              getLogger().info("App Deployment is completed. Profiler tool window opened. Transport Pipeline is successful")
-            }
-
-            getLogger().info("Test set-up completed, starting the test case / invoking test function.")
-            Thread.sleep(2000)
-            setupComplete = true
-            // Test Function or test steps to be executed.
-            testFunction.invoke(studio, adb)
+          if (deployApp) {
+            deployApp(studio, adb)
+            invokeProfilerToolWindow(studio)
+            waitForProfilerDeviceConnection()
+            getLogger().info("App Deployment is completed. Profiler tool window opened. Transport Pipeline is successful")
           }
+
+          getLogger().info("Test set-up completed, starting the test case / invoking test function.")
+          Thread.sleep(2000)
+          // Test Function or test steps to be executed.
+          testFunction.invoke(studio, adb)
         }
       }
     }
   }
 
-  protected fun profileAppUsingApk(enableTaskBasedProfiling: Boolean,
-                                   testFunction: (studio: AndroidStudio, adb: Adb) -> Unit) {
+  protected fun profileAppUsingApk(enableTaskBasedProfiling: Boolean, testFunction: (studio: AndroidStudio, adb: Adb) -> Unit) {
     system.installation.addVmOption("-Dprofiler.testing.mode=true")
     if (enableTaskBasedProfiling) {
       system.installation.addVmOption("-Dprofiler.task.based.ux=true")
@@ -156,8 +145,8 @@ open class ProfilersTestBase {
 
         system.runStudioFromApk(project) { studio ->
           studio.waitForIndex()
-          getLogger().info("Finished waiting for index");
-          studio.waitForProjectInit();
+          getLogger().info("Finished waiting for index")
+          studio.waitForProjectInit()
 
           getLogger().info("Test set-up completed, starting the test case / invoking test function.")
           testFunction.invoke(studio, adb)
@@ -187,10 +176,7 @@ open class ProfilersTestBase {
   }
 
   protected fun verifyIdeaLog(regexText: String, timeOut: Long) {
-    system.installation.ideaLog.waitForMatchingLine(
-      regexText,
-      timeOut,
-      TimeUnit.SECONDS)
+    system.installation.ideaLog.waitForMatchingLine(regexText, timeOut, TimeUnit.SECONDS)
   }
 
   protected fun invokeProfilerToolWindow(studio: AndroidStudio) {
@@ -206,31 +192,33 @@ open class ProfilersTestBase {
     verifyIdeaLog(".*TransportProxy\\s+successfully\\s+created\\s+for\\s+device\\:\\s+emulator\\-5554", 60)
   }
 
+  protected fun waitForAppDeploymentStarted(packageName: String, timeout: Long) {
+    try {
+      verifyIdeaLog(".*Installing\\sapplication:\\s$packageName.*", timeout)
+    } catch (e: InterruptedException) {
+      throw AssumptionViolatedException("Skipping test. Cannot start profiling as app deployment did not start", e)
+    }
+  }
+
   protected fun deployApp(studio: AndroidStudio, adb: Adb) {
     studio.executeAction("Run")
     waitForAppToBeDeployed(adb, ".*Hello Minimal World!.*")
   }
 
   protected fun waitForAppToBeDeployed(adb: Adb, regex: String) {
-    adb.runCommand("logcat") {
-      waitForLog(regex, 300.seconds);
-    }
+    adb.runCommand("logcat") { waitForLog(regex, 300.seconds) }
   }
 
-  protected fun profileWithCompleteData(studio: AndroidStudio, adb:Adb) {
+  protected fun profileWithCompleteData(studio: AndroidStudio, adb: Adb) {
     studio.executeAction("Android.ProfileWithCompleteData")
 
-    adb.runCommand("logcat") {
-      waitForLog(".*Hello Minimal World!.*", 300.seconds);
-    }
+    adb.runCommand("logcat") { waitForLog(".*Hello Minimal World!.*", 300.seconds) }
   }
 
   protected fun profileWithLowOverhead(studio: AndroidStudio, adb: Adb) {
     studio.executeAction("Android.ProfileWithLowOverhead")
 
-    adb.runCommand("logcat") {
-      waitForLog(".*Hello Minimal World!.*", 180.seconds);
-    }
+    adb.runCommand("logcat") { waitForLog(".*Hello Minimal World!.*", 180.seconds) }
   }
 
   protected fun stopProfilingSession(studio: AndroidStudio) {
@@ -335,8 +323,8 @@ open class ProfilersTestBase {
   }
 
   /**
-   * This action sets HIDE_NEW_TASK_PROMPT dialog prompt to true, which prevents the dialog prompt from appearing when
-   * starting/importing new tasks, allowing the test to proceed without closing the task tab.
+   * This action sets HIDE_NEW_TASK_PROMPT dialog prompt to true, which prevents the dialog prompt from appearing when starting/importing
+   * new tasks, allowing the test to proceed without closing the task tab.
    */
   protected fun openPastRecordingsTab(studio: AndroidStudio) {
     studio.executeAction("Android.OpenProfilersPastRecordingsTab")
@@ -348,19 +336,5 @@ open class ProfilersTestBase {
 
   protected fun profileAction(studio: AndroidStudio) {
     studio.executeAction("Android.Profile")
-  }
-
-  protected fun retry(maxAttempts: Int = 3, shouldRetry: (Throwable) -> Boolean, block: () -> Unit) {
-    for (attempt in 1..maxAttempts) {
-      try {
-        block()
-        return
-      } catch(t: Throwable) {
-        if (attempt == maxAttempts || !shouldRetry(t)) {
-          throw t
-        }
-        getLogger().info("Attempt $attempt failed: ${t.message}. Retrying...")
-      }
-    }
   }
 }

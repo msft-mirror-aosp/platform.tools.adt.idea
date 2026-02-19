@@ -19,6 +19,7 @@ import com.google.idea.blaze.base.bazel.BuildSystemProvider;
 import com.google.idea.blaze.base.qsync.QuerySync;
 import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
 import com.intellij.ide.DataManager;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import javax.annotation.Nullable;
@@ -55,10 +56,7 @@ public class Blaze {
     if (blazeImportSettings == null) {
       return ProjectType.UNKNOWN;
     }
-    if (!QuerySync.legacySyncEnabled()) {
-      return ProjectType.QUERY_SYNC;
-    }
-    return blazeImportSettings.getProjectType();
+    return ProjectType.QUERY_SYNC;
   }
 
   /**
@@ -106,25 +104,5 @@ public class Blaze {
    */
   public static String defaultBuildSystemName() {
     return BuildSystemProvider.defaultBuildSystem().buildSystem().getName();
-  }
-
-  /**
-   * Tries to guess the current project, and uses that to determine the build system name.<br>
-   * Should only be used in situations where the current project is not accessible.
-   */
-  public static String guessBuildSystemName() {
-    Project project = guessCurrentProject();
-    return buildSystemName(project);
-  }
-
-  private static Project guessCurrentProject() {
-    Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
-    if (openProjects.length == 1) {
-      return openProjects[0];
-    }
-    if (SwingUtilities.isEventDispatchThread()) {
-      return (Project) DataManager.getInstance().getDataContext().getData("project");
-    }
-    return null;
   }
 }

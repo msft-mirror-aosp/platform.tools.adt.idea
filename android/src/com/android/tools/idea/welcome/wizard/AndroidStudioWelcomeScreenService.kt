@@ -17,7 +17,7 @@ package com.android.tools.idea.welcome.wizard
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.sdk.IdeSdks
+import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
@@ -26,6 +26,7 @@ import com.android.tools.idea.welcome.config.installerData
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.net.HttpConnectionUtils
 import com.intellij.util.net.JdkProxyProvider
@@ -33,16 +34,13 @@ import com.intellij.util.net.ProxySettings
 import com.intellij.util.net.editConfigurable
 import java.io.IOException
 
-/**
- * A service responsible for determining whether to show the Android Studio Welcome Screen and, if
- * so, which wizard mode to use.
- */
+/** A service responsible for determining whether to show the Android Studio Welcome Screen and, if so, which wizard mode to use. */
 @Service(Service.Level.APP)
 class AndroidStudioWelcomeScreenService {
 
   /**
-   * Indicates whether the welcome wizard has already been shown in the current IDE session. Used to
-   * prevent the wizard from appearing multiple times.
+   * Indicates whether the welcome wizard has already been shown in the current IDE session. Used to prevent the wizard from appearing
+   * multiple times.
    */
   var wizardWasShown: Boolean = false
 
@@ -52,31 +50,24 @@ class AndroidStudioWelcomeScreenService {
    * @return `true` if the welcome screen should be shown, `false` otherwise.
    */
   fun isAvailable(): Boolean {
-    val isWizardDisabled =
-      GuiTestingService.getInstance().isGuiTestingMode ||
-        java.lang.Boolean.getBoolean(SYSTEM_PROPERTY_DISABLE_WIZARD)
+    val isWizardDisabled = GuiTestingService.getInstance().isGuiTestingMode || java.lang.Boolean.getBoolean(SYSTEM_PROPERTY_DISABLE_WIZARD)
     return !wizardWasShown &&
       !isWizardDisabled &&
-      getWizardMode(
-        AndroidFirstRunPersistentData.getInstance(),
-        installerData,
-        IdeSdks.getInstance(),
-      ) != null
+      getWizardMode(AndroidFirstRunPersistentData.getInstance(), installerData, AndroidSdks.getInstance()) != null
   }
 
   /**
-   * Determines the appropriate mode for the first-run wizard based on current system state and
-   * installation status.
+   * Determines the appropriate mode for the first-run wizard based on current system state and installation status.
    *
    * @param persistentData Persistent data related to Android Studio's first-run configuration.
    * @param installerData Data from the installer, if available. Used for install handoff scenarios.
-   * @param ideSdks The IDE's SDK manager. Used to check for installed SDKs.
+   * @param androidSdks The IDE's SDK manager. Used to check for installed SDKs.
    * @return The [FirstRunWizardMode] to use, or `null` if the wizard should not be shown.
    */
   fun getWizardMode(
     persistentData: AndroidFirstRunPersistentData,
     installerData: InstallerData?,
-    ideSdks: IdeSdks,
+    androidSdks: AndroidSdks,
   ): FirstRunWizardMode? {
     if (StudioFlags.NPW_FIRST_RUN_SHOW.get()) {
       return FirstRunWizardMode.NEW_INSTALL
@@ -85,24 +76,19 @@ class AndroidStudioWelcomeScreenService {
     return when {
       isHandoff(persistentData, installerData) -> FirstRunWizardMode.INSTALL_HANDOFF
       !persistentData.isSdkUpToDate -> FirstRunWizardMode.NEW_INSTALL
-      ideSdks.eligibleAndroidSdks.isEmpty() -> FirstRunWizardMode.MISSING_SDK
+      androidSdks.tryToChooseAndroidSdk() == null -> FirstRunWizardMode.MISSING_SDK
       else -> null
     }
   }
 
   /** Returns true if the handoff data was updated since the last time wizard ran. */
-  private fun isHandoff(
-    persistentData: AndroidFirstRunPersistentData,
-    installerData: InstallerData?,
-  ): Boolean {
+  private fun isHandoff(persistentData: AndroidFirstRunPersistentData, installerData: InstallerData?): Boolean {
     val data = installerData ?: return false
-    return (!persistentData.isSdkUpToDate || !persistentData.isSameTimestamp(data.timestamp)) &&
-      data.isCurrentVersion
+    return (!persistentData.isSdkUpToDate || !persistentData.isSameTimestamp(data.timestamp)) && data.isCurrentVersion
   }
 
   /**
-   * Performs a check to see if the IDE can connect to the internet. This is important for
-   * downloading SDK components.
+   * Performs a check to see if the IDE can connect to the internet. This is important for downloading SDK components.
    *
    * @param httpConfigurable The IDE's HTTP settings configurable.
    */
@@ -152,7 +138,7 @@ class AndroidStudioWelcomeScreenService {
         arrayOf("Setup Proxy", "Cancel"),
         1,
         Messages.getErrorIcon(),
-        null,
+        null as DoNotAskOption?, // Disambiguate to use the non-deprecated overload
       )
     val showSetupProxy = selection == 0
     if (showSetupProxy) {
@@ -167,8 +153,6 @@ class AndroidStudioWelcomeScreenService {
 
     @JvmStatic
     val instance: AndroidStudioWelcomeScreenService
-      get() =
-        ApplicationManager.getApplication()
-          .getService(AndroidStudioWelcomeScreenService::class.java)
+      get() = ApplicationManager.getApplication().getService(AndroidStudioWelcomeScreenService::class.java)
   }
 }

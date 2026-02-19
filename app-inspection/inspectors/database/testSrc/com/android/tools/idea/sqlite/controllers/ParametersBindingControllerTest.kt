@@ -21,6 +21,7 @@ import com.android.tools.idea.sqlite.model.SqliteStatement
 import com.android.tools.idea.sqlite.model.SqliteStatementType
 import com.android.tools.idea.sqlite.ui.parametersBinding.ParametersBindingDialogView
 import com.android.tools.idea.sqlite.utils.toSqliteValues
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiElement
 import com.intellij.testFramework.DisposableRule
@@ -28,7 +29,6 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.testFramework.UsefulTestCase.assertContainsElements
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,11 +58,7 @@ class ParametersBindingControllerTest {
   @Test
   fun testSetup() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = :barVal and baz = :bazVal",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = :barVal and baz = :bazVal")
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
@@ -70,19 +66,13 @@ class ParametersBindingControllerTest {
 
     // Assert
     orderVerifier.verify(view).addListener(any<ParametersBindingDialogView.Listener>())
-    orderVerifier
-      .verify(view)
-      .showNamedParameters(setOf(SqliteParameter(":barVal"), SqliteParameter(":bazVal")))
+    orderVerifier.verify(view).showNamedParameters(setOf(SqliteParameter(":barVal"), SqliteParameter(":bazVal")))
   }
 
   @Test
   fun testRenamesPositionalTemplates() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = ? and baz = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ? and baz = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
@@ -96,11 +86,7 @@ class ParametersBindingControllerTest {
   @Test
   fun testRenamesPositionalTemplates2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = ? and baz = :paramName and p = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ? and baz = :paramName and p = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
@@ -108,20 +94,13 @@ class ParametersBindingControllerTest {
     controller.setUp()
 
     // Assert
-    verify(view)
-      .showNamedParameters(
-        setOf(SqliteParameter("bar"), SqliteParameter(":paramName"), SqliteParameter("p"))
-      )
+    verify(view).showNamedParameters(setOf(SqliteParameter("bar"), SqliteParameter(":paramName"), SqliteParameter("p")))
   }
 
   @Test
   fun testRenamesPositionalTemplates3() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar >> ? and baz >> ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar >> ? and baz >> ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
@@ -135,11 +114,7 @@ class ParametersBindingControllerTest {
   @Test
   fun testRunStatement() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = :barVal and baz = :bazVal",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = :barVal and baz = :bazVal")
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
@@ -153,27 +128,21 @@ class ParametersBindingControllerTest {
     )
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ? and baz = ?",
           listOf("1", "2").toSqliteValues(),
           "select * from Foo where bar = '1' and baz = '2'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testSupportsNull() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = :barVal and baz = :bazVal",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = :barVal and baz = :bazVal")
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
@@ -187,481 +156,380 @@ class ParametersBindingControllerTest {
     )
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ? and baz = ?",
           listOf(null, "null").toSqliteValues(),
           "select * from Foo where bar = null and baz = 'null'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testPositionalTemplateInsideString1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = '?' and baz = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = '?' and baz = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = '?' and baz = ?",
           listOf("42").toSqliteValues(),
           "select * from Foo where bar = '?' and baz = '42'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testPositionalTemplateInsideString2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = '?1' and baz = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = '?1' and baz = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = '?1' and baz = ?",
           listOf("42").toSqliteValues(),
           "select * from Foo where bar = '?1' and baz = '42'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testNamedTemplateInsideString1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = ':bar' and baz = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ':bar' and baz = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ':bar' and baz = ?",
           listOf("42").toSqliteValues(),
           "select * from Foo where bar = ':bar' and baz = '42'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testNamedTemplateInsideString2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = '@bar' and baz = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = '@bar' and baz = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = '@bar' and baz = ?",
           listOf("42").toSqliteValues(),
           "select * from Foo where bar = '@bar' and baz = '42'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testNamedTemplateInsideString3() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = '\$bar' and baz = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = '\$bar' and baz = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("baz") to SqliteParameterValue.fromAny("42")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = '\$bar' and baz = ?",
           listOf("42").toSqliteValues(),
           "select * from Foo where bar = '\$bar' and baz = '42'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testBindPositionalParameter1ToCollection() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (?)")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (?)")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("param 1", true) to SqliteParameterValue.fromAny("1", "2", "3"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("param 1", true) to SqliteParameterValue.fromAny("1", "2", "3")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar in (?, ?, ?)",
           listOf("1", "2", "3").toSqliteValues(),
           "select * from Foo where bar in ('1', '2', '3')",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testBindPositionalParameter2ToCollection() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (\$barVal)")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (\$barVal)")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("\$barVal", true) to SqliteParameterValue.fromAny("1", "2", "3"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("\$barVal", true) to SqliteParameterValue.fromAny("1", "2", "3")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar in (?, ?, ?)",
           listOf("1", "2", "3").toSqliteValues(),
           "select * from Foo where bar in ('1', '2', '3')",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testBindPositionalParameter3ToCollection() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (?1)")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (?1)")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("param 1", true) to SqliteParameterValue.fromAny("1", "2", "3"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("param 1", true) to SqliteParameterValue.fromAny("1", "2", "3")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar in (?, ?, ?)",
           listOf("1", "2", "3").toSqliteValues(),
           "select * from Foo where bar in ('1', '2', '3')",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testBindPositionalParameter4ToCollection() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (@barVal)")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (@barVal)")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("@barVal", true) to SqliteParameterValue.fromAny("1", "2", "3"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("@barVal", true) to SqliteParameterValue.fromAny("1", "2", "3")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar in (?, ?, ?)",
           listOf("1", "2", "3").toSqliteValues(),
           "select * from Foo where bar in ('1', '2', '3')",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testBindNamedParameterToCollection() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (:barVal)")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar in (:barVal)")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter(":barVal", true) to SqliteParameterValue.fromAny("1", "2", "3"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter(":barVal", true) to SqliteParameterValue.fromAny("1", "2", "3")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar in (?, ?, ?)",
           listOf("1", "2", "3").toSqliteValues(),
           "select * from Foo where bar in ('1', '2', '3')",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testComplexInStatement() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from foo where bar in (select id from baz where bax > ?)",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from foo where bar in (select id from baz where bax > ?)")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("bax", false) to SqliteParameterValue.fromAny("1"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("bax", false) to SqliteParameterValue.fromAny("1")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from foo where bar in (select id from baz where bax > ?)",
           listOf("1").toSqliteValues(),
           "select * from foo where bar in (select id from baz where bax > '1')",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testRunStatementWithRepeatedNamedParameter() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where bar = :barVal and baz = :barVal",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = :barVal and baz = :barVal")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter(":barVal") to SqliteParameterValue.fromAny("1"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter(":barVal") to SqliteParameterValue.fromAny("1")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ? and baz = ?",
           listOf("1", "1").toSqliteValues(),
           "select * from Foo where bar = '1' and baz = '1'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testParameterStringValueHasRightInlinedFormat1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ?")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("bar") to SqliteParameterValue.fromAny("te'st"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("bar") to SqliteParameterValue.fromAny("te'st")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ?",
           listOf("te'st").toSqliteValues(),
           "select * from Foo where bar = 'te''st'",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testParameterStringValueHasRightInlinedFormat2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ?")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("bar") to SqliteParameterValue.fromAny("'test'"))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("bar") to SqliteParameterValue.fromAny("'test'")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ?",
           listOf("'test'").toSqliteValues(),
           "select * from Foo where bar = '''test'''",
         )
-      ),
-    )
+      )
   }
 
   @Test
   fun testParameterStringValueHasRightInlinedFormat3() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ?")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where bar = ?")
 
     val controller = parametersBindingController(view, psiFile) { ranStatements.add(it) }
 
     // Act
     controller.setUp()
     val listener = view.listeners.first()
-    listener.bindingCompletedInvoked(
-      mapOf(SqliteParameter("bar") to SqliteParameterValue.fromAny("\"test\""))
-    )
+    listener.bindingCompletedInvoked(mapOf(SqliteParameter("bar") to SqliteParameterValue.fromAny("\"test\"")))
 
     // Assert
-    assertContainsElements(
-      ranStatements,
-      listOf(
+    assertThat(ranStatements)
+      .containsExactly(
         SqliteStatement(
           SqliteStatementType.SELECT,
           "select * from Foo where bar = ?",
           listOf("\"test\"").toSqliteValues(),
           "select * from Foo where bar = '\"test\"'",
         )
-      ),
-    )
+      )
   }
 
   private fun parametersBindingController(
     view: ParametersBindingDialogView,
     sqliteStatementPsi: PsiElement,
     runStatement: (SqliteStatement) -> Unit,
-  ) =
-    ParametersBindingController(view, sqliteStatementPsi, runStatement).also {
-      Disposer.register(disposable, it)
-    }
+  ) = ParametersBindingController(view, sqliteStatementPsi, runStatement).also { Disposer.register(disposable, it) }
 }

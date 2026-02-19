@@ -16,8 +16,6 @@
 package com.android.tools.idea.templates.diff.activity
 
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.npw.model.RenderTemplateModel
-import com.android.tools.idea.npw.project.DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS
 import com.android.tools.idea.npw.project.GradleAndroidModuleTemplate
 import com.android.tools.idea.npw.template.ModuleTemplateDataBuilder
 import com.android.tools.idea.npw.template.ProjectTemplateDataBuilder
@@ -46,8 +44,7 @@ import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
 
 /**
- * Template test that generates the template files and diffs them against golden files located in
- * android-templates/testData/golden
+ * Template test that generates the template files and diffs them against golden files located in android-templates/testData/golden
  *
  * For context and instructions on running and generating golden files, see go/template-diff-tests
  */
@@ -55,8 +52,7 @@ import org.junit.runners.Parameterized.Parameters
 class TemplateDiffTest(private val testMode: TestMode) {
   @get:Rule
   val projectRule: TestRule =
-    if (shouldUseGradle())
-      AndroidGradleProjectRule(agpVersionSoftwareEnvironment = getPinnedAgpVersion())
+    if (shouldUseGradle()) AndroidGradleProjectRule(agpVersionSoftwareEnvironment = getPinnedAgpVersion())
     else AndroidProjectRule.withAndroidModels()
 
   @get:Rule val disposableRule = DisposableRule()
@@ -66,13 +62,11 @@ class TemplateDiffTest(private val testMode: TestMode) {
     private var validationFailed = false
 
     /**
-     * Utilizes parameterized test to decide which modes to run the test in. When DIFFING the
-     * template-generated files against golden files, we do not run Gradle sync, to keep the test
-     * fast.
+     * Utilizes parameterized test to decide which modes to run the test in. When DIFFING the template-generated files against golden files,
+     * we do not run Gradle sync, to keep the test fast.
      *
-     * When we need to validate and generate the golden files however, we run the first part,
-     * VALIDATING, with Gradle sync, which calls into [GoldenFileValidator] that also builds and
-     * Lints. Then, after the template is validated, we generate the golden files WITHOUT Gradle
+     * When we need to validate and generate the golden files however, we run the first part, VALIDATING, with Gradle sync, which calls into
+     * [GoldenFileValidator] that also builds and Lints. Then, after the template is validated, we generate the golden files WITHOUT Gradle
      * sync, to have them be diff-able without syncing.
      */
     @JvmStatic
@@ -86,19 +80,18 @@ class TemplateDiffTest(private val testMode: TestMode) {
     }
 
     /**
-     * Gets the system property for whether to generate and overwrite the golden files. This can be
-     * run from Bazel with the option: --test_env=GENERATE_GOLDEN=true
+     * Gets the system property for whether to generate and overwrite the golden files. This can be run from Bazel with the option:
+     * --test_env=GENERATE_GOLDEN=true
      */
     private fun shouldGenerateGolden(): Boolean {
       return System.getenv("GENERATE_GOLDEN")?.equals("true") ?: false
     }
 
     /**
-     * Gets the system property for whether to fail the test suite on first error with "previous
-     * validation failed" or to run all of the validation tests. The former is enabled by default
-     * and could be more useful for people not expecting errors, since te full suite takes a long
-     * time (~45+ minutes) to run. The latter is more useful for people making large-scale changes
-     * who want to fix more errors at once.
+     * Gets the system property for whether to fail the test suite on first error with "previous validation failed" or to run all of the
+     * validation tests. The former is enabled by default and could be more useful for people not expecting errors, since te full suite
+     * takes a long time (~45+ minutes) to run. The latter is more useful for people making large-scale changes who want to fix more errors
+     * at once.
      */
     private fun shouldFailEarly(): Boolean {
       return !(System.getenv("RUN_FULL_VALIDATION")?.equals("true") ?: false)
@@ -132,7 +125,6 @@ class TemplateDiffTest(private val testMode: TestMode) {
   fun tearDown() {
     StudioFlags.AGP_VERSION_TO_USE.clearOverride()
     StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.clearOverride()
-    StudioFlags.JOURNEYS_WITH_GEMINI_NEW_WIZARD.clearOverride()
   }
 
   enum class TestMode {
@@ -153,8 +145,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
    * Checks the given template in the given category. Supports overridden template values.
    *
    * @param name the template name
-   * @param customizers An instance of [ProjectStateCustomizer]s used for providing template and
-   *   project overrides.
+   * @param customizers An instance of [ProjectStateCustomizer]s used for providing template and project overrides.
    */
   private fun checkCreateTemplate(
     name: String,
@@ -183,8 +174,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
       val projectRenderer: ProjectRenderer =
         when (testMode) {
           TestMode.DIFFING -> ProjectDiffer(template, goldenDirName)
-          TestMode.VALIDATING ->
-            GoldenFileValidator(template, goldenDirName, projectRule as AndroidGradleProjectRule)
+          TestMode.VALIDATING -> GoldenFileValidator(template, goldenDirName, projectRule as AndroidGradleProjectRule)
           TestMode.GENERATING -> GoldenFileGenerator(template, goldenDirName)
         }
 
@@ -208,8 +198,8 @@ class TemplateDiffTest(private val testMode: TestMode) {
     }
 
   /**
-   * Goes up the stack trace to find the closest @Test method that this was called from. This will
-   * be used as a unique identifier for the golden directory name
+   * Goes up the stack trace to find the closest @Test method that this was called from. This will be used as a unique identifier for the
+   * golden directory name
    */
   private fun findEnclosingTestMethodName(): String {
     val stackTrace = Thread.currentThread().stackTrace
@@ -231,17 +221,9 @@ class TemplateDiffTest(private val testMode: TestMode) {
     throw RuntimeException("Must be called from a @Test")
   }
 
-  private fun withKotlin(
-    kotlinVersion: String = DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS
-  ): ProjectStateCustomizer =
-    { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
-      projectData.language = Language.Kotlin
-      // Use the Kotlin version for tests
-      projectData.kotlinVersion = kotlinVersion
-    }
-
-  private val withSpecificKotlin: ProjectStateCustomizer =
-    withKotlin(RenderTemplateModel.getComposeKotlinVersion())
+  private fun withKotlin(): ProjectStateCustomizer = { _: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
+    projectData.language = Language.Kotlin
+  }
 
   @Suppress("SameParameterValue")
   private fun withApplicationId(applicationId: String): ProjectStateCustomizer =
@@ -253,9 +235,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
   private fun withPackage(packageName: String): ProjectStateCustomizer =
     { moduleData: ModuleTemplateDataBuilder, projectData: ProjectTemplateDataBuilder ->
       moduleData.packageName = packageName
-      val paths =
-        GradleAndroidModuleTemplate.createDefaultModuleTemplate(getProject(), moduleData.name!!)
-          .paths
+      val paths = GradleAndroidModuleTemplate.createDefaultModuleTemplate(getProject(), moduleData.name!!).paths
       moduleData.setModuleRoots(paths, projectData.topOut!!.path, moduleData.name!!, packageName)
     }
 
@@ -289,11 +269,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewEmptyViewsActivity_notInRootPackage() {
-    checkCreateTemplate(
-      "Empty Views Activity",
-      withApplicationId("com.mycompany.myapp"),
-      withPackage("com.mycompany.myapp.subpackage"),
-    )
+    checkCreateTemplate("Empty Views Activity", withApplicationId("com.mycompany.myapp"), withPackage("com.mycompany.myapp.subpackage"))
   }
 
   @Test
@@ -503,12 +479,12 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testComposeActivityMaterial3() {
-    checkCreateTemplate("Empty Activity", withSpecificKotlin) // Compose is always Kotlin
+    checkCreateTemplate("Empty Activity", withKotlin()) // Compose is always Kotlin
   }
 
   @Test
   fun testComposeNavigationUiActivityMaterial3() {
-    checkCreateTemplate("Navigation UI Activity", withSpecificKotlin) // Compose is always Kotlin
+    checkCreateTemplate("Navigation UI Activity", withKotlin()) // Compose is always Kotlin
   }
 
   @Test
@@ -523,19 +499,21 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewComposeWearActivity() {
-    checkCreateTemplate("Empty Wear App", withSpecificKotlin)
+    checkCreateTemplate("Empty Wear App", withKotlin())
   }
 
   @Test
   fun testNewComposeWearActivityWithTileAndComplication() {
-    checkCreateTemplate("Empty Wear App With Tile And Complication", withSpecificKotlin)
+    checkCreateTemplate("Empty Wear App With Tile And Complication", withKotlin())
   }
 
+  @Ignore("b/443868398")
   @Test
   fun testNewTvActivity() {
     checkCreateTemplate("Android TV Blank Views Activity")
   }
 
+  @Ignore("b/443868398")
   @Test
   fun testNewTvActivityWithKotlin() {
     checkCreateTemplate("Android TV Blank Views Activity", withKotlin())
@@ -543,7 +521,7 @@ class TemplateDiffTest(private val testMode: TestMode) {
 
   @Test
   fun testNewEmptyComposeForTvActivity() {
-    checkCreateTemplate("Empty Activity", withSpecificKotlin, formFactor = FormFactor.Tv)
+    checkCreateTemplate("Empty Activity", withKotlin(), formFactor = FormFactor.Tv)
   }
 
   @Test
@@ -774,23 +752,13 @@ class TemplateDiffTest(private val testMode: TestMode) {
   @Ignore("b/418047552")
   @Test
   fun testXRBasicHeadsetActivity() {
-    checkCreateTemplate("Basic Headset Activity", withSpecificKotlin)
-  }
-
-  @Test
-  fun testJourneysWithTestSuite() {
-    StudioFlags.AGP_TEST_SUITES_ENABLED.override(true)
-    StudioFlags.JOURNEYS_WITH_GEMINI_NEW_WIZARD.override(false)
-    checkCreateTemplate("Journey File")
+    checkCreateTemplate("Basic Headset Activity", withKotlin())
   }
 
   @Test
   fun testBasicWatchFace() {
     StudioFlags.NPW_ENABLE_BASIC_WATCH_FACE_TEMPLATE.override(true)
-    checkCreateTemplate("Basic Watch Face", {
-      moduleData,
-      _ -> moduleData.isWatchFace = true
-    })
+    checkCreateTemplate("Basic Watch Face", withKotlin(), { moduleData, _ -> moduleData.isWatchFace = true })
   }
 }
 

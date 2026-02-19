@@ -15,13 +15,9 @@
  */
 package com.google.idea.blaze.base.sync;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.idea.blaze.base.model.BlazeProjectData;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.scope.BlazeContext;
-import com.google.idea.blaze.base.sync.SyncScope.SyncCanceledException;
-import com.google.idea.blaze.base.sync.SyncScope.SyncFailedException;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 
@@ -29,24 +25,6 @@ import com.intellij.openapi.project.Project;
 public interface SyncListener {
   ExtensionPointName<SyncListener> EP_NAME =
       ExtensionPointName.create("com.google.idea.blaze.SyncListener");
-
-  /** Called after open documents have been saved, prior to starting the blaze sync. */
-  default void onSyncStart(Project project, BlazeContext context, SyncMode syncMode)
-      throws SyncFailedException, SyncCanceledException {}
-
-  /**
-   * Called just prior to starting a blaze build during sync.
-   *
-   * @param fullProjectSync true if all project targets are being synced.
-   * @param buildId a unique ID associated with each sync build. {@link #afterQuerySync} is
-   *     guaranteed to be called with this build ID at some point.
-   */
-  default void buildStarted(
-      Project project,
-      BlazeContext context,
-      boolean fullProjectSync,
-      int buildId,
-      ImmutableList<TargetExpression> targets) {}
 
   /** Called on successful (or partially successful) completion of a sync */
   default void onSyncComplete(
@@ -56,14 +34,6 @@ public interface SyncListener {
       BlazeProjectData blazeProjectData,
       SyncMode syncMode,
       SyncResult syncResult) {}
-
-  /** Guaranteed to be called once per sync, regardless of whether it successfully completed */
-  default void afterSync(
-      Project project,
-      BlazeContext context,
-      SyncMode syncMode,
-      SyncResult syncResult,
-      ImmutableSet<Integer> buildIds) {}
 
   /** Called after sync. Only used in new query-sync * */
   default void afterQuerySync(Project project, BlazeContext context) {}

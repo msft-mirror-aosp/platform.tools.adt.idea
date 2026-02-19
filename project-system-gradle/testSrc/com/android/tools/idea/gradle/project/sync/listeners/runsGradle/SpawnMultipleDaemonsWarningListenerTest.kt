@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.sync.listeners.runsGradle
 
 import com.android.tools.idea.gradle.fixtures.createDaemonJvmPropertiesFile
+import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.sync.hyperlink.DoNotShowJdkHomeWarningAgainHyperlink
 import com.android.tools.idea.gradle.project.sync.hyperlink.OpenUrlHyperlink
@@ -35,29 +36,29 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.testFramework.replaceService
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.android.util.AndroidBundle
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 
 class SpawnMultipleDaemonsWarningListenerTest {
-  @get:Rule
-  val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
+  @get:Rule val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   private val notifications = mutableListOf<Notification>()
 
-  private val listener = object : Notifications {
-    override fun notify(notification: Notification) {
-      notifications.add(notification)
+  private val listener =
+    object : Notifications {
+      override fun notify(notification: Notification) {
+        notifications.add(notification)
+      }
     }
-  }
 
   private fun PreparedTestProject.openWithListener(
     updateOptions: (OpenPreparedProjectOptions) -> OpenPreparedProjectOptions = { it },
-    body: PreparedTestProject.Context.(Project) -> Unit
-  ) = open(updateOptions = { updateOptions(it.copy(subscribe = { bus -> bus.subscribe(Notifications.TOPIC, listener)}))}, body)
+    body: PreparedTestProject.Context.(Project) -> Unit,
+  ) = open(updateOptions = { updateOptions(it.copy(subscribe = { bus -> bus.subscribe(Notifications.TOPIC, listener) })) }, body)
 
   private fun assertSyncFailed(project: Project) {
     assertThat(project.getProjectSystem().getSyncManager().getLastSyncResult().isSuccessful).isFalse()
@@ -119,48 +120,50 @@ class SpawnMultipleDaemonsWarningListenerTest {
     whenever(mockIdeSdks.jdkFromJavaHome).thenReturn(jdkFromJavaHomePath)
     ApplicationManager.getApplication().replaceService(IdeSdks::class.java, mockIdeSdks, projectRule.testRootDisposable)
 
-    projectRule
-      .prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
-      .openWithListener { project ->
-        notifications
-          .filter { GradleSyncState.Companion.JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId == it.groupId }
-          .run {
-            assertThat(this).hasSize(1)
-            assertThat(first().content).isEqualTo(createWarningMessageMultipleGradleDaemons(project, jdkFromJavaHomePath))
-          }
-      }
+    projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION).openWithListener { project ->
+      notifications
+        .filter { GradleSyncState.Companion.JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId == it.groupId }
+        .run {
+          assertThat(this).hasSize(1)
+          assertThat(first().content).isEqualTo(createWarningMessageMultipleGradleDaemons(project, jdkFromJavaHomePath))
+        }
+    }
   }
 
   @Test
   fun `test Given same jdkFromJavaHomePath and jdkPath When sync finished Then MultipleGradleDaemons warning isn't displayed`() {
     val defaultProject = ProjectManager.getInstance().defaultProject
-    val jdkFromJavaHomePath = GradleInstallationManager.getInstance().getGradleJvmPath(defaultProject, defaultProject.basePath.orEmpty())
+    val jdkFromJavaHomePath = runBlocking {
+      AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(defaultProject, defaultProject.basePath.orEmpty())
+    }
     val mockIdeSdks = Mockito.spy(IdeSdks.getInstance())
     whenever(mockIdeSdks.jdkFromJavaHome).thenReturn(jdkFromJavaHomePath)
     ApplicationManager.getApplication().replaceService(IdeSdks::class.java, mockIdeSdks, projectRule.testRootDisposable)
 
-    projectRule
-      .prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
-      .openWithListener { project ->
-        notifications
-          .filter { GradleSyncState.Companion.JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId == it.groupId }
-          .run { assertThat(this).isEmpty() }
+    projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION).openWithListener { project ->
+      notifications
+        .filter { GradleSyncState.Companion.JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId == it.groupId }
+        .run { assertThat(this).isEmpty() }
     }
   }
 
-  private fun createWarningMessageMultipleGradleDaemons(
-    project: Project,
-    jdkFromJavaHomePath: String? = null
-  ) = StringBuilder().apply {
-    append(
-      AndroidBundle.message("project.sync.warning.multiple.gradle.daemons.message",
-                            project.name,
-                            GradleInstallationManager.getInstance().getGradleJvmPath(project, project.basePath.orEmpty()) ?: "Undefined",
-                            jdkFromJavaHomePath ?: "Undefined"
-      )
-    )
-    append("<br>", OpenUrlHyperlink(AndroidBundle.message("project.sync.warning.multiple.gradle.daemons.url"), "More info...").toHtml())
-    append("<br>", SelectJdkFromFileSystemHyperlink.Companion.create(project, project.basePath)?.toHtml())
-    append("<br>", DoNotShowJdkHomeWarningAgainHyperlink().toHtml())
-  }.toString()
+  private fun createWarningMessageMultipleGradleDaemons(project: Project, jdkFromJavaHomePath: String? = null) =
+    StringBuilder()
+      .apply {
+        val gradleJvmPath = runBlocking {
+          AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(project, project.basePath.orEmpty())
+        }
+        append(
+          AndroidBundle.message(
+            "project.sync.warning.multiple.gradle.daemons.message",
+            project.name,
+            gradleJvmPath ?: "Undefined",
+            jdkFromJavaHomePath ?: "Undefined",
+          )
+        )
+        append("<br>", OpenUrlHyperlink(AndroidBundle.message("project.sync.warning.multiple.gradle.daemons.url"), "More info...").toHtml())
+        append("<br>", SelectJdkFromFileSystemHyperlink.Companion.create(project, project.basePath)?.toHtml())
+        append("<br>", DoNotShowJdkHomeWarningAgainHyperlink().toHtml())
+      }
+      .toString()
 }

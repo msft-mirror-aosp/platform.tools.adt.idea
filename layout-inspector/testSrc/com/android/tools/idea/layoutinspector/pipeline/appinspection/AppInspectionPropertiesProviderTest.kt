@@ -24,9 +24,10 @@ import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
+import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
-import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
+import com.android.tools.idea.layoutinspector.model.COMPOSE4
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
@@ -86,8 +87,7 @@ import org.mockito.kotlin.whenever
 /** Timeout used in this test. While debugging, you may want to extend the timeout */
 private const val TIMEOUT = 10L
 private val TIMEOUT_UNIT = TimeUnit.SECONDS
-private val MODERN_PROCESS =
-  MODERN_DEVICE.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
+private val MODERN_PROCESS = DEVICE_1.createProcess(streamId = DEFAULT_TEST_INSPECTION_STREAM.streamId)
 private val PARAM_NS = parameterNamespaceOf(PropertySection.PARAMETERS)
 private const val APP_NAMESPACE = "${URI_PREFIX}com.example"
 
@@ -97,18 +97,13 @@ class AppInspectionPropertiesProviderTest {
   private lateinit var inspectorClientSettings: InspectorClientSettings
   private val inspectorRule =
     LayoutInspectorRule(
-      listOf(
-        inspectionRule.createInspectorClientProvider(
-          getClientSettings = { inspectorClientSettings }
-        )
-      ),
+      listOf(inspectionRule.createInspectorClientProvider(getClientSettings = { inspectorClientSettings })),
       projectRule,
     ) {
       it.name == MODERN_PROCESS.name
     }
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule)!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule)!!
 
   private lateinit var inspectorState: FakeInspectorState
 
@@ -122,32 +117,25 @@ class AppInspectionPropertiesProviderTest {
     // Check that generated getComposablesCommands has the `extractAllParameters` set in snapshot
     // mode.
     inspectionRule.composeInspector.listenWhen({ it.hasGetComposablesCommand() }) { command ->
-      assertThat(command.getComposablesCommand.extractAllParameters)
-        .isEqualTo(!inspectorClientSettings.inLiveMode)
+      assertThat(command.getComposablesCommand.extractAllParameters).isEqualTo(!inspectorClientSettings.inLiveMode)
     }
 
-    inspectorState =
-      FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
+    inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
     inspectorState.createAllResponses()
-    inspectorRule.attachDevice(MODERN_DEVICE)
+    inspectorRule.attachDevice(DEVICE_1)
 
     val fixture = projectRule.fixture
-    fixture.testDataPath =
-      TestUtils.resolveWorkspacePath("tools/adt/idea/layout-inspector/testData/resource").toString()
+    fixture.testDataPath = TestUtils.resolveWorkspacePath("tools/adt/idea/layout-inspector/testData/resource").toString()
     fixture.copyFileToProject("res/layout/activity_main.xml")
     fixture.copyFileToProject("res/values/styles.xml")
   }
 
   @Test
   fun canQueryPropertiesForViewsWithResourceResolver() {
-    inspectorClientSettings.inLiveMode =
-      true // Enable live mode, so we only fetch properties on demand
+    inspectorClientSettings.inLiveMode = true // Enable live mode, so we only fetch properties on demand
 
-    val modelUpdatedLatch =
-      ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedLatch.countDown()
-    }
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedLatch.countDown() }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
@@ -155,9 +143,7 @@ class AppInspectionPropertiesProviderTest {
     val provider = inspectorRule.inspectorClient.provider
     val resultQueue = ArrayBlockingQueue<ProviderResult>(1)
     provider.addResultListener { _, view, table ->
-      resultQueue.add(
-        ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache)
-      )
+      resultQueue.add(ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache))
     }
 
     inspectorRule.inspectorModel[3]!!.let { targetNode ->
@@ -189,12 +175,7 @@ class AppInspectionPropertiesProviderTest {
       assertThat(result.view).isSameAs(targetNode)
       result.table.run {
         assertProperty("imeOptions", PropertyType.INT_FLAG, "normal|actionUnspecified")
-        assertProperty(
-          "id",
-          PropertyType.RESOURCE,
-          "@com.example:id/fab",
-          source = layout("activity_main"),
-        )
+        assertProperty("id", PropertyType.RESOURCE, "@com.example:id/fab", source = layout("activity_main"))
         assertProperty(
           "src",
           PropertyType.DRAWABLE,
@@ -217,9 +198,7 @@ class AppInspectionPropertiesProviderTest {
       provider.requestProperties(targetNode).get()
       val result = resultQueue.poll(TIMEOUT, TIMEOUT_UNIT)!!
       assertThat(result.view).isSameAs(targetNode)
-      result.table.run {
-        assertProperty("backgroundTint", PropertyType.COLOR, "#4422FF00", namespace = APP_NAMESPACE)
-      }
+      result.table.run { assertProperty("backgroundTint", PropertyType.COLOR, "#4422FF00", namespace = APP_NAMESPACE) }
       // Assert that "android:backgroundTint" is omitted
       assertThat(result.table.getByNamespace(ANDROID_URI)).isEmpty()
     }
@@ -229,14 +208,10 @@ class AppInspectionPropertiesProviderTest {
   fun canQueryPropertiesForViewsWithoutResourceResolver() {
     AndroidFacet.getInstance(projectRule.module)!!.setApplicationIdForTest("com.nonmatching.app")
 
-    inspectorClientSettings.inLiveMode =
-      true // Enable live mode, so we only fetch properties on demand
+    inspectorClientSettings.inLiveMode = true // Enable live mode, so we only fetch properties on demand
 
-    val modelUpdatedLatch =
-      ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedLatch.countDown()
-    }
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedLatch.countDown() }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
@@ -244,9 +219,7 @@ class AppInspectionPropertiesProviderTest {
     val provider = inspectorRule.inspectorClient.provider
     val resultQueue = ArrayBlockingQueue<ProviderResult>(1)
     provider.addResultListener { _, view, table ->
-      resultQueue.add(
-        ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache)
-      )
+      resultQueue.add(ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache))
     }
 
     // The properties should be simple non-expanding properties
@@ -256,38 +229,19 @@ class AppInspectionPropertiesProviderTest {
       assertThat(result.view).isSameAs(targetNode)
       result.table.run {
         assertProperty("imeOptions", PropertyType.INT_FLAG, "normal|actionUnspecified")
-        assertProperty(
-          "id",
-          PropertyType.RESOURCE,
-          "@com.example:id/fab",
-          source = layout("activity_main"),
-        )
-        assertProperty(
-          "src",
-          PropertyType.DRAWABLE,
-          "@drawable/?",
-          source = layout("activity_main"),
-        )
-        assertProperty(
-          "stateListAnimator",
-          PropertyType.ANIMATOR,
-          "@animator/?",
-          source = layout("activity_main"),
-        )
+        assertProperty("id", PropertyType.RESOURCE, "@com.example:id/fab", source = layout("activity_main"))
+        assertProperty("src", PropertyType.DRAWABLE, "@drawable/?", source = layout("activity_main"))
+        assertProperty("stateListAnimator", PropertyType.ANIMATOR, "@animator/?", source = layout("activity_main"))
       }
     }
   }
 
   @Test
   fun syntheticPropertiesAlwaysAdded() {
-    inspectorClientSettings.inLiveMode =
-      true // Enable live mode, so we only fetch properties on demand
+    inspectorClientSettings.inLiveMode = true // Enable live mode, so we only fetch properties on demand
 
-    val modelUpdatedLatch =
-      ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
-    inspectorRule.inspectorModel.addModificationListener() { _, _, _ ->
-      modelUpdatedLatch.countDown()
-    }
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.addModificationListener() { _, _, _ -> modelUpdatedLatch.countDown() }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
@@ -295,9 +249,7 @@ class AppInspectionPropertiesProviderTest {
     val provider = inspectorRule.inspectorClient.provider
     val resultQueue = ArrayBlockingQueue<ProviderResult>(1)
     provider.addResultListener { _, view, table ->
-      resultQueue.add(
-        ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache)
-      )
+      resultQueue.add(ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache))
     }
 
     inspectorRule.inspectorModel[1]!!.let { targetNode ->
@@ -307,55 +259,21 @@ class AppInspectionPropertiesProviderTest {
       // Technically the view with ID #1 has no properties, but synthetic properties are always
       // added
       result.table.run {
-        assertProperty(
-          "name",
-          PropertyType.STRING,
-          "androidx.constraintlayout.widget.ConstraintLayout",
-          group = PropertySection.VIEW,
-          namespace = NAMESPACE_INTERNAL,
-        )
-        assertProperty(
-          "x",
-          PropertyType.DIMENSION,
-          "0px",
-          group = PropertySection.DIMENSION,
-          namespace = NAMESPACE_INTERNAL,
-        )
-        assertProperty(
-          "y",
-          PropertyType.DIMENSION,
-          "0px",
-          group = PropertySection.DIMENSION,
-          namespace = NAMESPACE_INTERNAL,
-        )
-        assertProperty(
-          "width",
-          PropertyType.DIMENSION,
-          "0px",
-          group = PropertySection.DIMENSION,
-          namespace = NAMESPACE_INTERNAL,
-        )
-        assertProperty(
-          "height",
-          PropertyType.DIMENSION,
-          "0px",
-          group = PropertySection.DIMENSION,
-          namespace = NAMESPACE_INTERNAL,
-        )
+        assertProperty("x", PropertyType.DIMENSION, "0px", group = PropertySection.DIMENSION, namespace = NAMESPACE_INTERNAL)
+        assertProperty("y", PropertyType.DIMENSION, "0px", group = PropertySection.DIMENSION, namespace = NAMESPACE_INTERNAL)
+        assertProperty("width", PropertyType.DIMENSION, "0px", group = PropertySection.DIMENSION, namespace = NAMESPACE_INTERNAL)
+        assertProperty("height", PropertyType.DIMENSION, "0px", group = PropertySection.DIMENSION, namespace = NAMESPACE_INTERNAL)
       }
     }
   }
 
   @Test
   fun propertiesAreCachedUntilNextLayoutEvent() {
-    inspectorClientSettings.inLiveMode =
-      true // Enable live mode, so we only fetch properties on demand
+    inspectorClientSettings.inLiveMode = true // Enable live mode, so we only fetch properties on demand
 
     // We should get no more than two updates before continuing
     val modelUpdatedSignal = ArrayBlockingQueue<Unit>(2)
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedSignal.offer(Unit)
-    }
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedSignal.offer(Unit) }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedSignal.poll(TIMEOUT, TIMEOUT_UNIT)!! // Event triggered by tree #1
@@ -409,11 +327,8 @@ class AppInspectionPropertiesProviderTest {
   fun snapshotModeSendsAllPropertiesAtOnce() {
     inspectorClientSettings.inLiveMode = false // i.e. snapshot mode
 
-    val modelUpdatedLatch =
-      ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedLatch.countDown()
-    }
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedLatch.countDown() }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
@@ -425,9 +340,7 @@ class AppInspectionPropertiesProviderTest {
     val provider = inspectorRule.inspectorClient.provider
     val resultQueue = ArrayBlockingQueue<ProviderResult>(1)
     provider.addResultListener { _, view, table ->
-      resultQueue.add(
-        ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache)
-      )
+      resultQueue.add(ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache))
     }
 
     for (id in listOf(3L, 4L, 5L)) {
@@ -443,14 +356,10 @@ class AppInspectionPropertiesProviderTest {
 
   @Test
   fun canQueryParametersForComposables() {
-    inspectorClientSettings.inLiveMode =
-      true // Enable live mode, so we only fetch properties on demand
+    inspectorClientSettings.inLiveMode = true // Enable live mode, so we only fetch properties on demand
 
-    val modelUpdatedLatch =
-      ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedLatch.countDown()
-    }
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedLatch.countDown() }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
@@ -458,9 +367,7 @@ class AppInspectionPropertiesProviderTest {
     val provider = inspectorRule.inspectorClient.provider
     val resultQueue = ArrayBlockingQueue<ProviderResult>(1)
     provider.addResultListener { _, view, table ->
-      resultQueue.add(
-        ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache)
-      )
+      resultQueue.add(ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache))
     }
 
     inspectorRule.inspectorModel[-2]!!.let { targetNode ->
@@ -513,12 +420,7 @@ class AppInspectionPropertiesProviderTest {
           assertParameter("onTextLayout", PropertyType.LAMBDA, "λ")
           assertParameter("dataObject", PropertyType.STRING, "PojoClass")
           val groupItem = this[PARAM_NS, "dataObject"] as ParameterGroupItem
-          assertParameter(
-            groupItem.children[0],
-            "stringProperty",
-            PropertyType.STRING,
-            "stringValue",
-          )
+          assertParameter(groupItem.children[0], "stringProperty", PropertyType.STRING, "stringValue")
           assertParameter(groupItem.children[1], "intProperty", PropertyType.INT32, "812")
           assertParameter(groupItem.children[2], "lines", PropertyType.STRING, "MyLineClass")
           assertThat(groupItem.children.size).isEqualTo(3)
@@ -583,9 +485,7 @@ class AppInspectionPropertiesProviderTest {
       }
       .whenever(table1)
       .updateGroupItems(any(), any())
-    doAnswer { table1.component }
-      .whenever(event1)
-      .getData(Mockito.eq(PlatformCoreDataKeys.CONTEXT_COMPONENT))
+    doAnswer { table1.component }.whenever(event1).getData(Mockito.eq(PlatformCoreDataKeys.CONTEXT_COMPONENT))
     val list = last.children.last() as ParameterGroupItem
     moreListElements1.runInEdt {
       val showMoreItem = list.children[2] as ShowMoreElementsItem
@@ -615,9 +515,7 @@ class AppInspectionPropertiesProviderTest {
       }
       .whenever(table2)
       .updateGroupItems(any(), any())
-    doAnswer { table2.component }
-      .whenever(event2)
-      .getData(Mockito.eq(PlatformCoreDataKeys.CONTEXT_COMPONENT))
+    doAnswer { table2.component }.whenever(event2).getData(Mockito.eq(PlatformCoreDataKeys.CONTEXT_COMPONENT))
     moreListElements2.runInEdt {
       val showMoreItem = list.children[4] as ShowMoreElementsItem
       // Click the "Show more" link:
@@ -638,14 +536,10 @@ class AppInspectionPropertiesProviderTest {
 
   @Test
   fun parametersAreCachedUntilNextLayoutEvent() {
-    inspectorClientSettings.inLiveMode =
-      true // Enable live mode, so we only fetch properties on demand
+    inspectorClientSettings.inLiveMode = true // Enable live mode, so we only fetch properties on demand
 
-    val modelUpdatedSignal =
-      ArrayBlockingQueue<Unit>(2) // We should get no more than two updates before continuing
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedSignal.offer(Unit)
-    }
+    val modelUpdatedSignal = ArrayBlockingQueue<Unit>(2) // We should get no more than two updates before continuing
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedSignal.offer(Unit) }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedSignal.poll(TIMEOUT, TIMEOUT_UNIT)!! // Event triggered by tree #1
@@ -690,11 +584,8 @@ class AppInspectionPropertiesProviderTest {
   fun snapshotModeSendsAllParametersAtOnce() {
     inspectorClientSettings.inLiveMode = false // i.e. snapshot mode
 
-    val modelUpdatedLatch =
-      ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
-    inspectorRule.inspectorModel.addModificationListener { _, _, _ ->
-      modelUpdatedLatch.countDown()
-    }
+    val modelUpdatedLatch = ReportingCountDownLatch(2) // We'll get two tree layout events on start fetch
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedLatch.countDown() }
 
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     modelUpdatedLatch.await(TIMEOUT, TIMEOUT_UNIT)
@@ -706,9 +597,7 @@ class AppInspectionPropertiesProviderTest {
     val provider = inspectorRule.inspectorClient.provider
     val resultQueue = ArrayBlockingQueue<ProviderResult>(1)
     provider.addResultListener { _, view, table ->
-      resultQueue.add(
-        ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache)
-      )
+      resultQueue.add(ProviderResult(view, table, inspectorRule.inspectorModel, inspectorRule.parametersCache))
     }
 
     for (id in listOf(-2L, -3L, -4L)) {
@@ -727,8 +616,8 @@ class AppInspectionPropertiesProviderTest {
     projectRule.fixture.addFileToProject(
       "src/java/com/google/android/material/textview/MaterialTextView.java",
       """
-        package com.google.android.material.textview;
-        public class MaterialTextView extends android.widget.TextView {}
+      package com.google.android.material.textview;
+      public class MaterialTextView extends android.widget.TextView {}
       """
         .trimIndent(),
     )
@@ -737,14 +626,18 @@ class AppInspectionPropertiesProviderTest {
 
     var generatedCount = 0
     var valuesChanged = 0
+    var childElementChangeCount = 0
     propertiesModel.addListener(
       object : PropertiesModelListener<InspectorPropertyItem> {
         override fun propertiesGenerated(model: PropertiesModel<InspectorPropertyItem>) {
           generatedCount++
         }
 
-        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>) {
+        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>, childElementChanges: Boolean) {
           valuesChanged++
+          if (childElementChanges) {
+            childElementChangeCount++
+          }
         }
       }
     )
@@ -777,6 +670,66 @@ class AppInspectionPropertiesProviderTest {
     // Verify that we did not fire a properties generated notification after the original
     assertThat(generatedCount).isEqualTo(3)
     assertThat(valuesChanged).isEqualTo(1)
+    assertThat(childElementChangeCount).isEqualTo(0)
+  }
+
+  @Test
+  fun testPropertiesModelNotificationsWithParameters() {
+    projectRule.fixture.addFileToProject(
+      "src/java/com/google/android/material/textview/MaterialTextView.java",
+      """
+      package com.google.android.material.textview;
+      public class MaterialTextView extends android.widget.TextView {}
+      """
+        .trimIndent(),
+    )
+    val propertiesModel = InspectorPropertiesModel(inspectorRule.disposable)
+    propertiesModel.layoutInspector = inspectorRule.inspector
+
+    var generatedCount = 0
+    var valuesChanged = 0
+    var childElementChangeCount = 0
+    propertiesModel.addListener(
+      object : PropertiesModelListener<InspectorPropertyItem> {
+        override fun propertiesGenerated(model: PropertiesModel<InspectorPropertyItem>) {
+          generatedCount++
+        }
+
+        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>, childElementChanges: Boolean) {
+          valuesChanged++
+          if (childElementChanges) {
+            childElementChangeCount++
+          }
+        }
+      }
+    )
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { generatedCount == 2 }
+    assertThat(valuesChanged).isEqualTo(0)
+
+    val targetNode = inspectorRule.inspectorModel[COMPOSE4]!!
+    inspectorRule.inspectorModel.setSelection(targetNode, SelectionOrigin.COMPONENT_TREE)
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { generatedCount == 3 }
+    propertiesModel.properties.assertParameter("onTextLayout", PropertyType.LAMBDA, "λ")
+    propertiesModel.properties.assertParameter("dataObject", PropertyType.STRING, "PojoClass")
+    val p1 = propertiesModel.properties["parameter", "dataObject"] as ParameterGroupItem
+    assertThat(p1.children).hasSize(3)
+
+    // Add another element to dataObject
+    inspectorState.addParameterElement(COMPOSE4, "dataObject")
+
+    inspectorState.triggerLayoutCapture(rootId = 1)
+
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) {
+      val parameter = propertiesModel.properties["parameter", "dataObject"] as ParameterGroupItem
+      parameter.children.size == 4 && valuesChanged > 0
+    }
+
+    // Verify that we did not fire a properties generated notification after the original
+    assertThat(generatedCount).isEqualTo(3)
+    assertThat(valuesChanged).isEqualTo(1)
+    assertThat(childElementChangeCount).isEqualTo(1)
   }
 
   @Test
@@ -792,7 +745,7 @@ class AppInspectionPropertiesProviderTest {
           generatedCount++
         }
 
-        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>) {
+        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>, childElementChanges: Boolean) {
           valuesChanged++
         }
       }
@@ -818,8 +771,7 @@ class AppInspectionPropertiesProviderTest {
   @Test
   fun propertiesCanBeCompletedConcurrently() = runBlocking {
     val propertiesCache = LiveViewPropertiesCache(mock(), inspectorRule.inspectorModel)
-    val propertiesProvider =
-      AppInspectionPropertiesProvider(propertiesCache, null, inspectorRule.inspectorModel)
+    val propertiesProvider = AppInspectionPropertiesProvider(propertiesCache, null, inspectorRule.inspectorModel)
     val continueLoopLatch = CountDownLatch(1)
     val insideModificationLoopLatch = CountDownLatch(1)
     val mockLookup = mock<ViewNodeAndResourceLookup> { on { resourceLookup } doReturn mock() }
@@ -888,18 +840,7 @@ class AppInspectionPropertiesProviderTest {
     namespace: String = ANDROID_URI,
     classLocation: String? = null,
     resolutionStack: List<ResStackItem> = emptyList(),
-  ) =
-    assertProperty(
-      this[namespace, name],
-      name,
-      type,
-      value,
-      source,
-      group,
-      namespace,
-      classLocation,
-      resolutionStack,
-    )
+  ) = assertProperty(this[namespace, name], name, type, value, source, group, namespace, classLocation, resolutionStack)
 
   private fun assertParameter(
     property: InspectorPropertyItem,
@@ -933,8 +874,7 @@ class AppInspectionPropertiesProviderTest {
       assertThat(classLocation).isNull()
     } else {
       assertThat(property.classLocation?.source).isEqualTo(classLocation?.substringAfterLast('.'))
-      assertThat((property.classLocation?.navigatable as? PsiClass)?.qualifiedName)
-        .isEqualTo(classLocation)
+      assertThat((property.classLocation?.navigatable as? PsiClass)?.qualifiedName).isEqualTo(classLocation)
       property.children.zip(resolutionStack).forEach { (actual, expected) ->
         assertThat(actual.source).isEqualTo(expected.source)
         expected.value?.let { assertThat(actual.value).isEqualTo(it) }

@@ -44,8 +44,7 @@ import org.mockito.kotlin.verify
 class ChangeListenerProjectServiceTest {
   private val safeArgsRule = SafeArgsRule(SafeArgsMode.KOTLIN)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(KotlinPluginRule(KotlinPluginMode.K2)).around(safeArgsRule)
+  @get:Rule val ruleChain = RuleChain.outerRule(KotlinPluginRule(KotlinPluginMode.K2)).around(safeArgsRule)
 
   private inline fun withAnalysisBusListener(block: (KotlinModificationEventListener) -> Unit) {
     val disposable = Disposer.newDisposable()
@@ -64,22 +63,20 @@ class ChangeListenerProjectServiceTest {
   }
 
   @Test
-  fun `fires module OOB for module SafeArgs mode change`() =
-    withAnalysisBusListener { listener ->
-      safeArgsRule.androidFacet.safeArgsMode = SafeArgsMode.JAVA
-      runInEdtAndWait { EDT.dispatchAllInvocationEvents() }
-      safeArgsRule.module.toKaModulesForModificationEvents().forEach {
-        verify(listener).onModification(KotlinModuleStateModificationEvent(it, KotlinModuleStateModificationKind.UPDATE))
-      }
+  fun `fires module OOB for module SafeArgs mode change`() = withAnalysisBusListener { listener ->
+    safeArgsRule.androidFacet.safeArgsMode = SafeArgsMode.JAVA
+    runInEdtAndWait { EDT.dispatchAllInvocationEvents() }
+    safeArgsRule.module.toKaModulesForModificationEvents().forEach {
+      verify(listener).onModification(KotlinModuleStateModificationEvent(it, KotlinModuleStateModificationKind.UPDATE))
     }
+  }
 
   @Test
-  fun `fires global source change for completed project sync`() =
-    withAnalysisBusListener { listener ->
-      val future = safeArgsRule.project.getSyncManager().requestSyncProject(SyncReason.USER_REQUEST)
-      val result = future.get()
-      assertThat(result).isNoneOf(SyncResult.FAILURE, SyncResult.CANCELLED, SyncResult.UNKNOWN)
-      runInEdtAndWait { EDT.dispatchAllInvocationEvents() }
-      verify(listener).onModification(KotlinGlobalSourceOutOfBlockModificationEvent)
-    }
+  fun `fires global source change for completed project sync`() = withAnalysisBusListener { listener ->
+    val future = safeArgsRule.project.getSyncManager().requestSyncProject(SyncReason.USER_REQUEST)
+    val result = future.get()
+    assertThat(result).isNoneOf(SyncResult.FAILURE, SyncResult.CANCELLED, SyncResult.UNKNOWN)
+    runInEdtAndWait { EDT.dispatchAllInvocationEvents() }
+    verify(listener).onModification(KotlinGlobalSourceOutOfBlockModificationEvent)
+  }
 }

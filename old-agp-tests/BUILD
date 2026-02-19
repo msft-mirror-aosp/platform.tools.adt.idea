@@ -240,6 +240,7 @@ maven_repository(
         "@maven//:org.junit.junit-bom_5.9.3",
         "@maven//:org.ow2.asm.asm-bom_9.6",
         "@maven//:org.ow2.asm.asm-bom_9.7",
+        "@maven//:org.ow2.asm.asm-bom_9.8",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )
@@ -286,14 +287,14 @@ local_generate_old_agp_tests_from_list(
             "additional_jdks": ["11"],
             "agp_version": AGP_4_0,
             "gradle_version": GRADLE_6_1_1,
-            "shard_count": 3,
+            "shard_count": 1,
             "tags": COMMON_OLD_AGP_TEST_TARGETS_TAGS,
         },
         {
             "additional_jdks": ["11"],
             "agp_version": AGP_4_1,
             "gradle_version": GRADLE_6_7_1,
-            "shard_count": 3,
+            "shard_count": 1,
             "tags": COMMON_OLD_AGP_TEST_TARGETS_TAGS,
         },
         {

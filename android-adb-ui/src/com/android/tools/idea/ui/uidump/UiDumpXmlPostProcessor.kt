@@ -18,28 +18,33 @@ package com.android.tools.idea.ui.uidump
 import java.io.StringReader
 import java.io.StringWriter
 import javax.xml.parsers.DocumentBuilderFactory
-import kotlin.system.measureTimeMillis
 import org.w3c.dom.Document
 import org.w3c.dom.Node
 import org.xml.sax.InputSource
 
 val implicitAttributeDefaultsInstruction =
   "For all the attributes listed below, if you don't see it in the input, assume it is the value provided below.\n"
-val implicitAttributeDefaults = mapOf(
-  "checkable" to "false",
-  "checked" to "false",
-  "clickable" to "false",
-  "content-desc" to "",
-  "enabled" to "true",
-  "focusable" to "false",
-  "focused" to "false",
-  "long-clickable" to "false",
-  "password" to "false",
-  "resource-id" to "",
-  "scrollable" to "false",
-  "selected" to "false",
-  "text" to ""
-)
+val implicitAttributeDefaults =
+  mapOf(
+    "checkable" to "false",
+    "checked" to "false",
+    "clickable" to "false",
+    "content-desc" to "",
+    "enabled" to "true",
+    "focusable" to "false",
+    "focused" to "false",
+    "long-clickable" to "false",
+    "password" to "false",
+    "resource-id" to "",
+    "scrollable" to "false",
+    "selected" to "false",
+    "text" to "",
+    "hint" to "",
+    "index" to "0",
+  )
+
+val omitAttributes = setOf("package")
+private val boundsPattern = Regex("\\[(\\d+),(\\d+)]\\[(\\d+),(\\d+)]")
 
 fun createLlmInstruction(): String {
   val instruction = StringBuilder()
@@ -50,14 +55,9 @@ fun createLlmInstruction(): String {
   return instruction.toString()
 }
 
-fun postProcess(xmlString: String): String {
-  lateinit var result: String
-  val time = measureTimeMillis {
-    val doc = parse(xmlString)
-    result = documentToString(doc, true)
-  }
-  println("XMLPostProcess took $time ms")
-  return result
+fun postProcess(xmlString: String): UiState {
+  val nafRegions = ArrayList<Region>()
+  return UiState(documentToString(parse(xmlString), nafRegions, true), nafRegions)
 }
 
 private fun parse(xmlString: String): Document {
@@ -67,22 +67,24 @@ private fun parse(xmlString: String): Document {
   return builder.parse(inputSource)
 }
 
-private fun documentToString(doc: Document, indent: Boolean = false): String {
+private fun documentToString(doc: Document, nafRegion: ArrayList<Region>, indent: Boolean = false): String {
   val writer = StringWriter()
   if (doc.xmlEncoding != null && doc.xmlVersion != null) {
-    writer.write("<?xml version='${doc.xmlVersion}'" +
-                 " encoding='${doc.xmlEncoding}'" +
-                 " standalone='${if (doc.xmlStandalone) "yes" else "no"}' ?>\n")
+    writer.write(
+      "<?xml version='${doc.xmlVersion}'" +
+        " encoding='${doc.xmlEncoding}'" +
+        " standalone='${if (doc.xmlStandalone) "yes" else "no"}' ?>\n"
+    )
   }
   val rootElement = doc.documentElement
 
   if (rootElement != null) {
-    printNode(rootElement, writer, "", indent)
+    printNode(rootElement, writer, "", indent, nafRegion)
   }
   return writer.toString()
 }
 
-private fun printNode(node: Node, writer: StringWriter, currentIndent: String, indent: Boolean) {
+private fun printNode(node: Node, writer: StringWriter, currentIndent: String, indent: Boolean, nafRegions: MutableList<Region>) {
   if (node.nodeType == Node.TEXT_NODE) {
     val text = node.nodeValue.trim()
     if (text.isNotEmpty()) {
@@ -95,10 +97,33 @@ private fun printNode(node: Node, writer: StringWriter, currentIndent: String, i
     if (indent) writer.write(currentIndent)
     writer.write("<${node.nodeName}")
     val attributes = node.attributes
+
+    var isNaf = false
+    var boundsString: String? = null
+
     for (i in 0 until attributes.length) {
       val attr = attributes.item(i)
-      if (implicitAttributeDefaults[attr.nodeName] != attr.nodeValue) {
+      val attrName = attr.nodeName
+
+      if (attrName == "NAF" && attr.nodeValue == "true") {
+        isNaf = true
+      }
+      if (attrName == "bounds") {
+        boundsString = attr.nodeValue
+      }
+
+      if (implicitAttributeDefaults[attrName] != attr.nodeValue && attrName !in omitAttributes) {
         writer.write(" ${attr.nodeName}=\"${attr.nodeValue}\"")
+      }
+    }
+
+    if (isNaf && boundsString != null) {
+      val match = boundsPattern.matchEntire(boundsString)
+      if (match != null) {
+        val (x0, y0, x1, y1) = match.destructured
+        val regionName = "NAF-${nafRegions.size + 1}"
+        nafRegions.add(Region(x0.toInt(), y0.toInt(), x1.toInt(), y1.toInt(), regionName))
+        writer.write(" NAF-name=\"$regionName\"")
       }
     }
 
@@ -118,15 +143,14 @@ private fun printNode(node: Node, writer: StringWriter, currentIndent: String, i
       for (i in 0 until children.length) {
         val child = children.item(i)
         if (child.nodeType == Node.ELEMENT_NODE || (child.nodeType == Node.TEXT_NODE && child.nodeValue.trim().isNotEmpty())) {
-          printNode(child, writer, if (indent) "$currentIndent  " else "", indent)
+          printNode(child, writer, if (indent) "$currentIndent  " else "", indent, nafRegions)
           if (indent && child.nodeType == Node.ELEMENT_NODE) writer.write("\n")
         }
       }
 
       if (indent && hasElementChildren) writer.write(currentIndent)
       writer.write("</${node.nodeName}>")
-    }
-    else {
+    } else {
       writer.write("/>")
     }
   }

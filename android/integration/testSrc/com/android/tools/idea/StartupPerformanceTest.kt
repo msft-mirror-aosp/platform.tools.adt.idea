@@ -21,41 +21,44 @@ import com.android.tools.asdriver.tests.MavenRepo
 import com.android.tools.asdriver.tests.MemoryDashboardNameProviderWatcher
 import com.android.tools.platform.performance.testing.PlatformPerformanceBenchmark
 import com.intellij.openapi.util.SystemInfo
+import java.nio.file.Paths
 import org.apache.groovy.util.Maps
 import org.junit.Rule
 import org.junit.Test
 
 class StartupPerformanceTest {
-  @JvmField
-  @Rule
-  val system: AndroidSystem = AndroidSystem.standard()
+  @JvmField @Rule val system: AndroidSystem = AndroidSystem.standardWithTmpDir()
 
-  @JvmField
-  @Rule
-  var watcher = MemoryDashboardNameProviderWatcher()
+  @JvmField @Rule var watcher = MemoryDashboardNameProviderWatcher()
 
   @Test
   fun testStartupPerformance() {
     // Create a new android project, and set a fixed distribution
-    val project = AndroidProject("tools/adt/idea/android/integration/testData/architecture-samples")
+    val projectArtifactsPath = Paths.get("tools/adt/idea/android/integration/architectureSamples_project_model")
+    val project = AndroidProject(projectArtifactsPath.resolve("architecture-samples").toString())
     // Don't show Decompiler legal notice in case of resolving in .class files.
     system.installation.acceptLegalDecompilerNotice()
 
     // Create a maven repo and set it up in the installation and environment
     system.installRepo(MavenRepo("tools/adt/idea/android/integration/editor_performance_test_deps.manifest"))
+    system.getInstallation().copySystemDir(projectArtifactsPath)
     project.setDistribution("tools/external/gradle/gradle-8.6-bin.zip")
 
     system.runStudio(project) { studio ->
-      studio.waitForSync()
-      studio.waitForIndex()
+      studio.waitForSyncSkippedLog()
+      studio.waitForIndexingSkippedLog()
 
-      studio.openFile(null, "app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/tasks/TasksScreenTest.kt", false,
-                      true)
+      studio.openFile(
+        null,
+        "app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/tasks/TasksScreenTest.kt",
+        false,
+        true,
+      )
     }
 
     system.runStudio(project, watcher.dashboardName) { studio ->
-      studio.waitForSync()
-      studio.waitForIndex()
+      studio.waitForSyncSkippedLog()
+      studio.waitForIndexingSkippedLog()
 
       studio.waitForFinishedCodeAnalysis(null)
     }
@@ -65,8 +68,10 @@ class StartupPerformanceTest {
 
     stats.get("STARTUP_EVENT").findFirst().get().let { benchmark.log("startup_event", it.startupEvent.durationMs.toLong()) }
     stats.get("STARTUP_PERFORMANCE_CODE_LOADED_AND_VISIBLE_IN_EDITOR").findFirst().get().let {
-      benchmark.log("startup_performance_code_loaded_and_visible_in_editor",
-                    it.startupPerformanceCodeLoadedAndVisibleInEditor.durationMs.toLong())
+      benchmark.log(
+        "startup_performance_code_loaded_and_visible_in_editor",
+        it.startupPerformanceCodeLoadedAndVisibleInEditor.durationMs.toLong(),
+      )
     }
     stats.get("STARTUP_PERFORMANCE_FIRST_UI_SHOWN").findFirst().get().let {
       benchmark.log("startup_performance_first_ui_shown", it.startupPerformanceFirstUiShownEvent.durationMs.toLong())
@@ -79,19 +84,32 @@ class StartupPerformanceTest {
     }
 
     // [Linux test const term, Windows test const term]
-    val metricConstTerms = Maps.of("pausedTimeInIndexingOrScanning", listOf(6, 6),
-                                   "indexingTimeWithoutPauses", listOf(31, 225),
-                                   "scanningTimeWithoutPauses", listOf(88, 760),
-                                   "startup_performance_code_loaded_and_visible_in_editor", listOf(200, 200),
-                                   "startup_performance_frame_became_visible", listOf(120, 384),
-                                   "startup_performance_frame_became_interactive", listOf(145, 664),
-                                   "startup_event", listOf(5, 300),
-                                   "dumbModeTimeWithPauses", listOf(0, 330),
-                                   "startup_performance_first_ui_shown", listOf(40, 10))
+    val metricConstTerms =
+      Maps.of(
+        "pausedTimeInIndexingOrScanning",
+        listOf(6, 6),
+        "indexingTimeWithoutPauses",
+        listOf(31, 225),
+        "scanningTimeWithoutPauses",
+        listOf(88, 760),
+        "startup_performance_code_loaded_and_visible_in_editor",
+        listOf(200, 200),
+        "startup_performance_frame_became_visible",
+        listOf(120, 384),
+        "startup_performance_frame_became_interactive",
+        listOf(145, 664),
+        "startup_event",
+        listOf(5, 300),
+        "dumbModeTimeWithPauses",
+        listOf(0, 330),
+        "startup_performance_first_ui_shown",
+        listOf(40, 10),
+      )
 
     system.installation.indexingMetrics.get(project).forEach {
       // Per-filetype metrics are too volatile and fine-granular. Let's report them without analyzer.
-      if (it.metricLabel.startsWith("processingSpeedAvg_") ||
+      if (
+        it.metricLabel.startsWith("processingSpeedAvg_") ||
           it.metricLabel.startsWith("processingSpeedOfBaseLanguageAvg_") ||
           it.metricLabel.startsWith("processingSpeedWorst_") ||
           it.metricLabel.startsWith("processingSpeedOfBaseLanguageWorst_") ||
@@ -100,7 +118,7 @@ class StartupPerformanceTest {
           // one, or races with other background processes that modify files or request an index refresh).
           it.metricLabel.startsWith("numberOfRunsOfIndexing") ||
           it.metricLabel.startsWith("numberOfIndexedFilesWithNothingToWrite")
-        ) {
+      ) {
         benchmark.logWithoutAnalyzer(it.metricLabel, it.metricValue)
         return
       }

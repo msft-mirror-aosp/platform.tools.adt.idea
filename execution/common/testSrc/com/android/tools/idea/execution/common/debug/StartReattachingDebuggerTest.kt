@@ -18,12 +18,14 @@ package com.android.tools.idea.execution.common.debug
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener
 import com.android.ddmlib.IDevice
-import com.android.ddmlib.internal.FakeAdbTestRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.services.ShellCommandOutput
+import com.android.sdklib.AndroidApiLevel
+import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.execution.common.assertTaskPresentedInStats
 import com.android.tools.idea.execution.common.debug.impl.java.AndroidJavaDebugger
+import com.android.tools.idea.execution.common.launchAndWaitForProcess
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.execution.common.processhandler.AndroidRemoteDebugProcessHandler
 import com.android.tools.idea.execution.common.stats.RunStats
@@ -38,45 +40,37 @@ import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.testFramework.registerServiceInstance
 import com.intellij.xdebugger.XDebuggerManager
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.fail
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.random.Random
-import org.junit.Ignore
-
 
 class StartReattachingDebuggerTest {
 
-  private val APP_ID = FakeAdbTestRule.CLIENT_PACKAGE_NAME
+  private val APP_ID = "com.other"
   private val MASTER_PROCESS_NAME = "com.master.test"
 
   @get:Rule(order = 0)
-  val projectRule = AndroidProjectRule.withAndroidModels(
-    AndroidModuleModelBuilder(
-      ":",
-      "debug",
-      AndroidProjectBuilder(
-        applicationIdFor = { "com.test.integration.ddmlib" }
-      ))
-  )
+  val projectRule =
+    AndroidProjectRule.withAndroidModels(
+      AndroidModuleModelBuilder(":", "debug", AndroidProjectBuilder(applicationIdFor = { "com.test.integration.ddmlib" }))
+    )
 
-  @get:Rule(order = 1)
-  val fakeAdbRule: FakeAdbTestRule = FakeAdbTestRule()
+  @get:Rule(order = 1) val fakeAdbRule = FakeAdbServerAdbLibRule()
 
-  @get:Rule(order = 2)
-  val debuggerThreadCleanupRule = DebuggerThreadCleanupRule { fakeAdbRule.server }
+  @get:Rule(order = 2) val debuggerThreadCleanupRule = DebuggerThreadCleanupRule { fakeAdbRule.adbServer }
 
-  @get:Rule
-  val usageTrackerRule = UsageTrackerRule()
+  @get:Rule val usageTrackerRule = UsageTrackerRule()
 
   val project
     get() = projectRule.project
@@ -87,39 +81,37 @@ class StartReattachingDebuggerTest {
 
   @Before
   fun setUp() {
-    deviceState = fakeAdbRule.connectAndWaitForDevice()
+    deviceState =
+      fakeAdbRule.connectDevice("test_device_001", "test1", "test2", "model", AndroidApiLevel(26), DeviceState.HostConnectionType.USB)
     device = AndroidDebugBridge.getBridge()!!.devices.single()
     executionEnvironment = createFakeExecutionEnvironment(project, "myTestConfiguration")
   }
 
   @After
   fun tearDown() {
-    XDebuggerManager.getInstance(project).debugSessions.forEach {
-      it.stop()
-    }
+    XDebuggerManager.getInstance(project).debugSessions.forEach { it.stop() }
   }
 
   @Test
   fun testStartReattachingDebuggerForOneClient() = runTest {
-    val stats = RunStatsService.get(project).create().also {
-      executionEnvironment.putUserData(RunStats.KEY, it)
-    }
+    val stats = RunStatsService.get(project).create().also { executionEnvironment.putUserData(RunStats.KEY, it) }
     val masterProcessHandler = AndroidProcessHandler(MASTER_PROCESS_NAME, {})
-    FakeAdbTestRule.launchAndWaitForProcess(deviceState, true)
-    val firstSession = DebugSessionStarter.attachReattachingDebuggerToStartedProcess(
-      device,
-      TestApplicationProjectContext(APP_ID,),
-      masterProcessHandler,
-      executionEnvironment,
-      AndroidJavaDebugger(),
-      AndroidJavaDebugger().createState(),
-      EmptyProgressIndicator()
-    )
-    Thread.sleep(250); // Let the virtual machine initialize. Otherwise, JDI Internal Event Handler thread is leaked.
+    deviceState.launchAndWaitForProcess(1234, 4321, APP_ID, true)
+    val firstSession =
+      DebugSessionStarter.attachReattachingDebuggerToStartedProcess(
+        device,
+        TestApplicationProjectContext(APP_ID),
+        masterProcessHandler,
+        executionEnvironment,
+        AndroidJavaDebugger(),
+        AndroidJavaDebugger().createState(),
+        EmptyProgressIndicator(),
+      )
+    Thread.sleep(250)
+    // Let the virtual machine initialize. Otherwise, JDI Internal Event Handler thread is leaked.
 
     assertThat(firstSession.sessionName).isEqualTo("myTestConfiguration")
-    assertThat(firstSession.debugProcess.processHandler).isInstanceOf(
-      AndroidRemoteDebugProcessHandler::class.java)
+    assertThat(firstSession.debugProcess.processHandler).isInstanceOf(AndroidRemoteDebugProcessHandler::class.java)
     stats.success()
     assertTaskPresentedInStats(usageTrackerRule.usages, "startReattachingDebuggerSession")
     // Clean up.
@@ -127,20 +119,21 @@ class StartReattachingDebuggerTest {
     masterProcessHandler.destroyProcess()
   }
 
-
   private fun waitForProcessToStop(pid: Int) {
     val latch = CountDownLatch(1)
 
-    val deviceListener: IDeviceChangeListener = object : IDeviceChangeListener {
-      override fun deviceConnected(device: IDevice) {}
-      override fun deviceDisconnected(device: IDevice) {}
-      override fun deviceChanged(changedDevice: IDevice, changeMask: Int) {
-        if (changeMask and IDevice.CHANGE_CLIENT_LIST
-          == IDevice.CHANGE_CLIENT_LIST) {
-          latch.countDown()
+    val deviceListener: IDeviceChangeListener =
+      object : IDeviceChangeListener {
+        override fun deviceConnected(device: IDevice) {}
+
+        override fun deviceDisconnected(device: IDevice) {}
+
+        override fun deviceChanged(changedDevice: IDevice, changeMask: Int) {
+          if (changeMask and IDevice.CHANGE_CLIENT_LIST == IDevice.CHANGE_CLIENT_LIST) {
+            latch.countDown()
+          }
         }
       }
-    }
     AndroidDebugBridge.addDeviceChangeListener(deviceListener)
     deviceState.stopClient(pid)
     assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue()
@@ -150,17 +143,16 @@ class StartReattachingDebuggerTest {
   @Test
   @Ignore("b/448561855")
   fun testStartReattachingDebuggerForFewClients() = runTest {
-
     val ADDITIONAL_CLIENTS = 2
     // RunContentManagerImpl.showRunContent content does nothing on showRunContent in Unit tests, we want to check it was invoked.
     val runContentManagerImplMock = mock<RunContentManager>()
 
     project.registerServiceInstance(RunContentManager::class.java, runContentManagerImplMock)
 
-    FakeAdbTestRule.launchAndWaitForProcess(deviceState, 1111, MASTER_PROCESS_NAME, false)
+    deviceState.launchAndWaitForProcess(1111, 4321, MASTER_PROCESS_NAME, false)
 
     var pid = Random.nextInt()
-    FakeAdbTestRule.launchAndWaitForProcess(deviceState, pid, FakeAdbTestRule.CLIENT_PACKAGE_NAME, true)
+    deviceState.launchAndWaitForProcess(pid, 4321, APP_ID, true)
 
     DebugSessionStarter.attachReattachingDebuggerToStartedProcess(
       device,
@@ -169,16 +161,18 @@ class StartReattachingDebuggerTest {
       executionEnvironment,
       AndroidJavaDebugger(),
       AndroidJavaDebugger().createState(),
-      destroyRunningProcess = { it.forceStop(APP_ID) }, EmptyProgressIndicator()
+      destroyRunningProcess = { it.forceStop(APP_ID) },
+      EmptyProgressIndicator(),
     )
-    Thread.sleep(250); // Let the virtual machine initialize. Otherwise, JDI Internal Event Handler thread is leaked.
+    Thread.sleep(250)
+    // Let the virtual machine initialize. Otherwise, JDI Internal Event Handler thread is leaked.
 
     val tabsOpened = AtomicInteger(0)
     repeat(ADDITIONAL_CLIENTS) {
       waitForProcessToStop(pid)
       val latchStartDebug = CountDownLatch(1)
       pid = Random.nextInt()
-      FakeAdbTestRule.launchAndWaitForProcess(deviceState, pid, FakeAdbTestRule.CLIENT_PACKAGE_NAME, true)
+      deviceState.launchAndWaitForProcess(pid, 4321, APP_ID, true)
       whenever(runContentManagerImplMock.showRunContent(any(), any())).thenAnswer {
         tabsOpened.incrementAndGet()
         latchStartDebug.countDown()
@@ -193,15 +187,13 @@ class StartReattachingDebuggerTest {
 
   @Test
   fun testStopping() = runTest {
-
-    FakeAdbTestRule.launchAndWaitForProcess(deviceState, 1111, MASTER_PROCESS_NAME, false)
-    FakeAdbTestRule.launchAndWaitForProcess(deviceState, true)
+    deviceState.launchAndWaitForProcess(1111, 4321, MASTER_PROCESS_NAME, false)
+    deviceState.launchAndWaitForProcess(1234, 4321, APP_ID, true)
 
     val latch = CountDownLatch(1)
 
     deviceState.setActivityManager { args: List<String>, shellCommandOutput: ShellCommandOutput ->
       val wholeCommand = args.joinToString(" ")
-
 
       when (wholeCommand) {
         "force-stop $MASTER_PROCESS_NAME" -> latch.countDown()
@@ -209,19 +201,20 @@ class StartReattachingDebuggerTest {
       }
     }
 
-    val sessionImpl = DebugSessionStarter.attachReattachingDebuggerToStartedProcess(
-      device,
-      TestApplicationProjectContext(APP_ID),
-      MASTER_PROCESS_NAME,
-      executionEnvironment,
-      AndroidJavaDebugger(),
-      AndroidJavaDebugger().createState(),
-      destroyRunningProcess = {
-        it.forceStop(APP_ID)
-        it.forceStop(MASTER_PROCESS_NAME)
-      },
-      EmptyProgressIndicator()
-    )
+    val sessionImpl =
+      DebugSessionStarter.attachReattachingDebuggerToStartedProcess(
+        device,
+        TestApplicationProjectContext(APP_ID),
+        MASTER_PROCESS_NAME,
+        executionEnvironment,
+        AndroidJavaDebugger(),
+        AndroidJavaDebugger().createState(),
+        destroyRunningProcess = {
+          it.forceStop(APP_ID)
+          it.forceStop(MASTER_PROCESS_NAME)
+        },
+        EmptyProgressIndicator(),
+      )
 
     // when we stop for debug, master process should be stopped too
     sessionImpl.runContentDescriptor.processHandler!!.destroyProcess()

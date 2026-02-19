@@ -15,6 +15,9 @@
  */
 package com.android.tools.idea.npw.project
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.onChildren
@@ -94,9 +97,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     composeTestRule.onNodeWithText(FormFactor.Wear.displayName).performClick()
 
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
-      .performClick()
+    composeTestRule.onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid).performClick()
 
     composeTestRule
       .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
@@ -114,5 +115,37 @@ class ComposeChooseAndroidProjectStepUITest {
       mobileTemplates[mobileTemplates.size - 1].name,
       (model.chooseAndroidProjectEntries[0] as FormFactorProjectEntry).selectedTemplate?.name,
     )
+  }
+
+  @Test
+  fun showSelectedProjectTypeOnBackNavigation() = runTest {
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    model.getAndroidProjectEntries()
+    var showUi by mutableStateOf(true)
+    composeTestRule.setContent {
+      if (showUi) {
+        ChooseAndroidProjectStepUI(model = model)
+      }
+    }
+
+    // Select Wear OS
+    val wearOsDisplayName = FormFactor.Wear.displayName
+    composeTestRule.onNodeWithText(wearOsDisplayName).performClick()
+
+    // Simulate navigating next then back by recomposing the UI
+    showUi = false
+    composeTestRule.awaitIdle()
+    showUi = true
+    composeTestRule.awaitIdle()
+
+    // Verify Wear OS is still selected and focused in the UI
+    composeTestRule.onNodeWithText(wearOsDisplayName).assertIsFocused()
+
+    // And verify the templates are for Wear OS
+    composeTestRule
+      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
+      .onChildren()
+      .assertCountEquals(FormFactor.Wear.getProjectTemplates().size)
   }
 }

@@ -45,12 +45,14 @@ class Controller : private DisplayManager::DisplayListener, ClipboardManager::Cl
                            XrSimulatedInputManager::EnvironmentListener {
 public:
   explicit Controller(int socket_fd);
-  virtual ~Controller();
+  ~Controller() override;
 
   void Run();
-  // Stops the controller asynchronously. The controller can't be restarted one stopped.
+  // Terminates the main controller loop asynchronously. The controller can't be restarted once stopped.
   // May be called on any thread.
-  void Stop();
+  void StopReceivingCommands();
+  // Shuts down the controller. Must be called on the main thread after termination of the controller loop.
+  void Shutdown();
   // Requests to power the display OFF or reset it to a power state it supposed to have. Requires API 35+.
   // The state parameter is one of DisplayInfo::STATE_OFF (to turn display off), DisplayInfo::STATE_UNKNOWN
   // (to reset the display to its default state). Returns true if successful, false otherwise.
@@ -72,6 +74,8 @@ private:
   void Initialize();
   void InitializeVirtualKeyboard();
   [[nodiscard]] VirtualTablet& GetVirtualTablet(int32_t display_id, int32_t width, int32_t height);
+
+  void SendControlMessage(const ControlMessage& message);
   void ProcessMessage(const ControlMessage& message);
   void ProcessMotionEvent(const MotionEventMessage& message);
   void ProcessKeyboardEvent(const KeyEventMessage& message) {
@@ -131,7 +135,7 @@ private:
   int socket_fd_;  // Owned.
   Base128InputStream input_stream_;
   Base128OutputStream output_stream_;
-  volatile bool stopped = false;
+  std::atomic_bool stopping_ = false;
   PointerHelper* pointer_helper_ = nullptr;  // Owned.
   JObjectArray pointer_properties_;  // MotionEvent.PointerProperties[]
   JObjectArray pointer_coordinates_;  // MotionEvent.PointerCoords[]
@@ -150,6 +154,7 @@ private:
   std::atomic_int32_t device_state_identifier_ = DeviceStateManager::INVALID_DEVICE_STATE_IDENTIFIER;
   int32_t sent_device_state_ = DeviceStateManager::INVALID_DEVICE_STATE_IDENTIFIER;
 
+  bool xr_input_available_ = false;
   std::atomic<float> xr_passthrough_coefficient_ = XrSimulatedInputManager::UNKNOWN_PASSTHROUGH_COEFFICIENT;
   float sent_xr_passthrough_coefficient_ = XrSimulatedInputManager::UNKNOWN_PASSTHROUGH_COEFFICIENT;
   std::atomic_int32_t xr_environment_ = XrSimulatedInputManager::UNKNOWN_ENVIRONMENT;

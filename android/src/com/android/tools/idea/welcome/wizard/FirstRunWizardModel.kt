@@ -38,12 +38,13 @@ import com.android.tools.idea.welcome.install.SdkComponentCategoryTreeNode
 import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.install.SdkComponentTreeNode
 import com.android.tools.idea.welcome.install.WizardException
-import com.android.tools.idea.welcome.wizard.deprecated.InstallComponentsPath
 import com.android.tools.idea.wizard.model.WizardModel
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.containers.orNull
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import java.util.Optional
 import java.util.function.Supplier
@@ -75,23 +76,16 @@ class FirstRunWizardModel(
     }
 
   val localHandlerProperty: ObjectValueProperty<AndroidSdkHandler> =
-    ObjectValueProperty(
-      AndroidSdkHandler.getInstance(AndroidLocationsSingleton, initialSdkLocation)
-    )
+    ObjectValueProperty(AndroidSdkHandler.getInstance(AndroidLocationsSingleton, initialSdkLocation))
   private val localHandler
     get() = localHandlerProperty.get()
 
-  val sdkInstallLocationProperty: ObservableValue<Optional<Path>> =
-    localHandlerProperty.transform { Optional.ofNullable(it.location) }
+  val sdkInstallLocationProperty: ObservableValue<Optional<Path>> = localHandlerProperty.transform { Optional.ofNullable(it.location) }
   val sdkInstallLocation: Path?
     get() = sdkInstallLocationProperty.get().orNull()
 
   /** Should store the root node of the component tree. */
-  val componentTree =
-    createComponentTree(
-      !isChromeOSAndIsNotHWAccelerated() && mode.shouldCreateAvd(),
-      installUpdates,
-    )
+  val componentTree = createComponentTree(!isChromeOSAndIsNotHWAccelerated() && mode.shouldCreateAvd(), installUpdates)
 
   init {
     componentTree.updateState(localHandler)
@@ -107,12 +101,8 @@ class FirstRunWizardModel(
     }
   }
 
-  private fun createComponentTree(
-    createAvd: Boolean,
-    installUpdates: Boolean,
-  ): SdkComponentTreeNode {
-    val components: MutableList<SdkComponentTreeNode> =
-      mutableListOf(AndroidSdkComponentTreeNode(installUpdates))
+  private fun createComponentTree(createAvd: Boolean, installUpdates: Boolean): SdkComponentTreeNode {
+    val components: MutableList<SdkComponentTreeNode> = mutableListOf(AndroidSdkComponentTreeNode(installUpdates))
 
     val sdkManager =
       localHandler.getRepoManager(StudioLoggerProgressIndicator(javaClass)).apply {
@@ -126,9 +116,7 @@ class FirstRunWizardModel(
 
     val remotePackages = sdkManager.packages.remotePackages.values
 
-    components.add(
-      AndroidPlatformSdkComponentTreeNode.createSubtree(remotePackages, installUpdates)
-    )
+    components.add(AndroidPlatformSdkComponentTreeNode.createSubtree(remotePackages, installUpdates))
 
     val installationIntention =
       if (installUpdates) AehdSdkComponentTreeNode.InstallationIntention.INSTALL_WITH_UPDATES
@@ -142,16 +130,12 @@ class FirstRunWizardModel(
         components.add(avdSdkComponent)
       }
     }
-    return SdkComponentCategoryTreeNode(
-      "Root",
-      "Root node that is not supposed to appear in the UI",
-      components,
-    )
+    return SdkComponentCategoryTreeNode("Root", "Root node that is not supposed to appear in the UI", components)
   }
 
   /**
-   * Installs all components in the `componentTree` that are configured to be installed. Once the
-   * components have been installed, the SDK path and installer timestamp are stored in preferences.
+   * Installs all components in the `componentTree` that are configured to be installed. Once the components have been installed, the SDK
+   * path and installer timestamp are stored in preferences.
    *
    * @param progressStep used to provide feedback on installation progress
    */
@@ -159,13 +143,11 @@ class FirstRunWizardModel(
   fun installComponents(progressStep: InstallComponentsProgressStep) {
     val sdkHandler = localHandler
 
-    tracker.trackSdkComponentsToInstall(
-      componentTree.childrenToInstall.map { it.sdkComponentsMetricKind() }
-    )
+    tracker.trackSdkComponentsToInstall(componentTree.childrenToInstall.map { it.sdkComponentsMetricKind() })
 
     sdkComponentInstaller.installComponents(
       componentTree.childrenToInstall,
-      InstallContext(InstallComponentsPath.createTempDir(), progressStep),
+      InstallContext(createTempDir(), progressStep),
       mode.installerTimestamp,
       ModalityState.stateForComponent(progressStep.component),
       sdkHandler,
@@ -185,4 +167,14 @@ class FirstRunWizardModel(
   }
 
   override fun handleFinished() {}
+}
+
+fun createTempDir(): File {
+  val tempDirectory: File
+  try {
+    tempDirectory = FileUtil.createTempDirectory("AndroidStudio", "FirstRun", true)
+  } catch (e: IOException) {
+    throw WizardException("Unable to create temporary folder: " + e.message, e)
+  }
+  return tempDirectory
 }

@@ -16,7 +16,7 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.gradle.dsl.android.model.android.android
+import com.android.tools.idea.gradle.dsl.model.android.android
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind
 import com.intellij.usages.impl.rules.UsageType
 
@@ -25,25 +25,27 @@ val MIGRATE_JACOCO_TO_TEST_COVERAGE =
     optionalFromVersion = AgpVersion.parse("7.0.1"),
     requiredFromVersion = AgpVersion.parse("9.0.0-alpha01"),
     commandNameSupplier = AgpUpgradeBundle.messagePointer("migrateToTestCoverageRefactoringProcessor.commandName"),
-    shortDescriptionSupplier = { """
+    shortDescriptionSupplier = {
+      """
       Configuration related to test coverage is now performed using
       the testCoverage block.
-    """.trimIndent()
+      """
+        .trimIndent()
     },
     processedElementsHeaderSupplier = AgpUpgradeBundle.messagePointer("migrateToTestCoverageRefactoringProcessor.usageView.header"),
     componentKind = UpgradeAssistantComponentKind.MIGRATE_TO_TEST_COVERAGE,
-    propertiesOperationInfos = listOf(
-      MovePropertiesInfo(
-        sourceToDestinationPropertyModelGetters = listOf(
-          Pair({ android().jacoco().version() }, { android().testCoverage().jacocoVersion() })
+    propertiesOperationInfos =
+      listOf(
+        MovePropertiesInfo(
+          sourceToDestinationPropertyModelGetters =
+            listOf(Pair({ android().jacoco().version() }, { android().testCoverage().jacocoVersion() })),
+          tooltipTextSupplier = AgpUpgradeBundle.messagePointer("testCoverageUsageInfo.move.tooltipText"),
+          usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToTestCoverageRefactoringProcessor.move.usageType")),
         ),
-        tooltipTextSupplier = AgpUpgradeBundle.messagePointer("testCoverageUsageInfo.move.tooltipText"),
-        usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToTestCoverageRefactoringProcessor.move.usageType")),
+        RemovePropertiesInfo(
+          propertyModelListGetter = { listOf(android().jacoco()) },
+          tooltipTextSupplier = AgpUpgradeBundle.messagePointer("testCoverageUsageInfo.remove.tooltipText"),
+          usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToTestCoverageRefactoringProcessor.remove.usageType")),
+        ),
       ),
-      RemovePropertiesInfo(
-        propertyModelListGetter = { listOf(android().jacoco()) },
-        tooltipTextSupplier = AgpUpgradeBundle.messagePointer("testCoverageUsageInfo.remove.tooltipText"),
-        usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToTestCoverageRefactoringProcessor.remove.usageType")),
-      ),
-    ),
   )

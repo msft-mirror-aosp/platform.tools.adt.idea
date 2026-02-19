@@ -25,6 +25,8 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import java.awt.event.FocusEvent
+import java.awt.event.KeyEvent
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -35,8 +37,6 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import java.awt.event.FocusEvent
-import java.awt.event.KeyEvent
 
 /** Tests the [TranslationsEditorTextField] class. */
 @RunWith(JUnit4::class)

@@ -18,7 +18,7 @@ package com.android.tools.idea.layoutinspector.util
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceReference
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
-import com.android.tools.idea.layoutinspector.MODERN_DEVICE
+import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.resource.data.AppContext
 import com.android.tools.idea.layoutinspector.resource.data.Display
 import com.android.tools.idea.projectsystem.gradle.isMainModule
@@ -37,17 +37,14 @@ class ConfigurationParamsBuilder(private val strings: TestStringTable) {
   fun makeSampleContext(project: Project): AppContext {
     val packageName = runInEdtAndGet { getAppPackageName(project) }
     return AppContext(
-      theme =
-        strings.add(
-          ResourceReference.style(ResourceNamespace.fromPackageName(packageName), "AppTheme")
-        )!!,
+      theme = strings.add(ResourceReference.style(ResourceNamespace.fromPackageName(packageName), "AppTheme"))!!,
       displays = listOf(Display(id = 0, size = Dimension(1080, 1920), orientation = 90)),
     )
   }
 
   fun makeSampleProcess(project: Project): ProcessDescriptor {
     return object : ProcessDescriptor {
-      override val device = MODERN_DEVICE
+      override val device = DEVICE_1
       override val abiCpuArch = "x86"
       override val name = getAppPackageName(project)
       override val packageName = getAppPackageName(project)
@@ -58,9 +55,7 @@ class ConfigurationParamsBuilder(private val strings: TestStringTable) {
   }
 
   private fun getAppPackageName(project: Project): String {
-    val module =
-      ModuleManager.getInstance(project).modules.find { it.isMainModule() }
-        ?: return defaultPackageName
+    val module = ModuleManager.getInstance(project).modules.find { it.isMainModule() } ?: return defaultPackageName
     val facet = AndroidFacet.getInstance(module)
     return Manifest.getMainManifest(facet)?.`package`?.value ?: defaultPackageName
   }

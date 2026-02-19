@@ -9,9 +9,7 @@ MODULE                        : Kotlin_Multiplatform
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/Kotlin_Multiplatform [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    : <ROOT>/.idea/modules/Kotlin_Multiplatform.iml [-]
-    ModuleTypeName                : JAVA_MODULE
-    CONENT_ENTRY                  : file://<ROOT>
+    CONTENT_ENTRY                 : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -1309,8 +1307,11 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             TargetSdkVersion
                 ApiLevel                      : 35
                 ApiString                     : 35
-            VectorDrawables
+           VectorDrawables
                 UseSupportLibrary             : false
+            MissingDimensionStrategy
+                mode                          : [modetwo]
+                type                          : [typeone]
         SourceProvider
             Name                          : main
             Manifest                      : <ROOT>/androidLib/src/main/AndroidManifest.xml
@@ -1903,6 +1904,9 @@ MODULE                        : Kotlin_Multiplatform.app
                 ApiString                     : 35
             VectorDrawables
                 UseSupportLibrary             : false
+            MissingDimensionStrategy
+                mode                          : [modetwo]
+                type                          : [typeone]
         SourceProvider
             Name                          : main
             Manifest                      : <ROOT>/app/src/main/AndroidManifest.xml

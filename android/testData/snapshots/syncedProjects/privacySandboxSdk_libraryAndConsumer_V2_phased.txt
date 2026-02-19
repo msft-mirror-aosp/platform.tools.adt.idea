@@ -12,9 +12,7 @@ PROJECT                       : project
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/project [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/project.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>
+        CONTENT_ENTRY                 : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -32,11 +30,10 @@ PROJECT                       : project
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/project.ads-sdk [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk
             EXCLUDE_FOLDER                : file://<PROJECT>/ads-sdk/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/ads-sdk/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -57,7 +54,6 @@ PROJECT                       : project
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -78,7 +74,7 @@ PROJECT                       : project
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation
             EXCLUDE_FOLDER                : file://<PROJECT>/ads-sdk-implementation/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/ads-sdk-implementation/build
         JDK                           : <NAME_CUT> Android SDK
@@ -110,7 +106,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.ads-sdk-implementation.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -148,9 +143,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/src/androidTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/src/androidTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/ads-sdk-implementation/src/androidTest/assets [-]
@@ -206,7 +201,6 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/ads-sdk-implementation/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -244,9 +238,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/src/main
             JavaResource                  : file://<PROJECT>/ads-sdk-implementation/src/main/assets
             JavaSource                    : file://<PROJECT>/ads-sdk-implementation/src/main/java
             JavaResource                  : file://<PROJECT>/ads-sdk-implementation/src/main/res
@@ -300,7 +294,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.ads-sdk-implementation.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -338,9 +331,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/ads-sdk-implementation/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/ads-sdk-implementation/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/ads-sdk-implementation/src/test/assets [-]
@@ -396,7 +389,6 @@ PROJECT                       : project
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -417,7 +409,7 @@ PROJECT                       : project
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/app
+        CONTENT_ENTRY                 : file://<PROJECT>/app
             EXCLUDE_FOLDER                : file://<PROJECT>/app/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/app/build
         JDK                           : <NAME_CUT> Android SDK
@@ -449,7 +441,6 @@ PROJECT                       : project
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -470,7 +461,7 @@ PROJECT                       : project
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature
             EXCLUDE_FOLDER                : file://<PROJECT>/app-with-dynamic-feature/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/app-with-dynamic-feature/build
         JDK                           : <NAME_CUT> Android SDK
@@ -504,7 +495,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.app-with-dynamic-feature.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -542,10 +532,10 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app-with-dynamic-feature/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app-with-dynamic-feature/src/androidTest/assets [-]
@@ -680,7 +670,6 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/app-with-dynamic-feature/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -718,9 +707,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/src/main
             JavaSource                    : file://<PROJECT>/app-with-dynamic-feature/src/main/java
             JavaResource                  : file://<PROJECT>/app-with-dynamic-feature/src/main/res
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debug/out [-]
@@ -804,7 +793,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.app-with-dynamic-feature.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -842,9 +830,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app-with-dynamic-feature/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app-with-dynamic-feature/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app-with-dynamic-feature/src/test/assets [-]
@@ -958,7 +946,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.app.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -996,10 +983,10 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/assets [-]
@@ -1132,7 +1119,6 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1170,9 +1156,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/main
             JavaSource                    : file://<PROJECT>/app/src/main/java
             JavaResource                  : file://<PROJECT>/app/src/main/res
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
@@ -1256,7 +1242,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.app.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1294,9 +1279,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/assets [-]
@@ -1408,7 +1393,6 @@ PROJECT                       : project
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1429,7 +1413,7 @@ PROJECT                       : project
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/feature
+        CONTENT_ENTRY                 : file://<PROJECT>/feature
             EXCLUDE_FOLDER                : file://<PROJECT>/feature/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/feature/build
         JDK                           : <NAME_CUT> Android SDK
@@ -1462,7 +1446,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.feature.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1500,9 +1483,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature/src/androidTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/src/androidTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature/src/androidTest/assets [-]
@@ -1553,7 +1536,6 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/feature/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1591,9 +1573,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/feature/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/src/main
             JavaSource                    : file://<PROJECT>/feature/src/main/java
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/feature/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
@@ -1644,7 +1626,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.feature.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1682,9 +1663,9 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
-        CONENT_ENTRY                  : file://<PROJECT>/feature/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/feature/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/feature/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/feature/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/feature/src/test/assets [-]

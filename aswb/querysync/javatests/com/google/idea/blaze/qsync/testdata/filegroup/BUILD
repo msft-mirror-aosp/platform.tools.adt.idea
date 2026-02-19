@@ -1,3 +1,5 @@
+load("//tools/adt/idea/aswb/build_defs:test_data_build_defs.bzl", "java_library_for_test_data")
+
 filegroup(
     name = "nested_filegroup",
     srcs = ["TestSubFileGroupSource.java"],
@@ -11,8 +13,8 @@ filegroup(
     ],
 )
 
-java_library(
+java_library_for_test_data(
     name = "filegroup",
     srcs = [":sources"],
-    deps = ["@maven//:com.google.guava.guava"],
+    deps = ["//tools/vendor/google/aswb/plugin_api/maven:guava"],
 )

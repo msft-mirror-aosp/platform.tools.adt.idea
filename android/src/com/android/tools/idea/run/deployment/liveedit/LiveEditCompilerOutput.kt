@@ -28,18 +28,21 @@ internal class LiveEditCompiledClass(
   val name: String,
   var data: ByteArray,
   val compilationDependencies: ApplicationLiveEditServices.CompilationDependencies?,
-  val type: LiveEditClassType
+  val type: LiveEditClassType,
 )
 
-data class LiveEditCompilerOutput internal constructor (internal val classes: List<LiveEditCompiledClass> = emptyList(),
-                                                        val irClasses: List<IrClass> = emptyList(),
-                                                        val groupIds: Set<Int> = emptySet(),
-                                                        val invalidateMode: InvalidateMode = InvalidateMode.INVALIDATE_GROUPS,
-                                                        val hasNonComposeChanges: Boolean = false) {
+data class LiveEditCompilerOutput
+internal constructor(
+  internal val classes: List<LiveEditCompiledClass> = emptyList(),
+  val irClasses: List<IrClass> = emptyList(),
+  val groupIds: Set<Int> = emptySet(),
+  val invalidateMode: InvalidateMode = InvalidateMode.INVALIDATE_GROUPS,
+  val hasNonComposeChanges: Boolean = false,
+) {
 
-  private fun getMap(type: LiveEditClassType) : Map<String, ByteArray> {
-    val map : MutableMap<String, ByteArray> = HashMap()
-    classes.forEach{
+  private fun getMap(type: LiveEditClassType): Map<String, ByteArray> {
+    val map: MutableMap<String, ByteArray> = HashMap()
+    classes.forEach {
       if (it.type != type) {
         return@forEach
       }
@@ -48,8 +51,8 @@ data class LiveEditCompilerOutput internal constructor (internal val classes: Li
     return map
   }
 
-  val classesMap by lazy(LazyThreadSafetyMode.NONE) { getMap(LiveEditClassType.NORMAL_CLASS)}
-  val supportClassesMap by lazy(LazyThreadSafetyMode.NONE) { getMap(LiveEditClassType.SUPPORT_CLASS)}
+  val classesMap by lazy(LazyThreadSafetyMode.NONE) { getMap(LiveEditClassType.NORMAL_CLASS) }
+  val supportClassesMap by lazy(LazyThreadSafetyMode.NONE) { getMap(LiveEditClassType.SUPPORT_CLASS) }
 
   internal class Builder {
     private val classes = mutableListOf<LiveEditCompiledClass>()
@@ -70,17 +73,17 @@ data class LiveEditCompilerOutput internal constructor (internal val classes: Li
         }
       }
 
-    fun addClass(clazz: LiveEditCompiledClass) : Builder {
+    fun addClass(clazz: LiveEditCompiledClass): Builder {
       classes.add(clazz)
       return this
     }
 
-    fun addIrClass(irClass: IrClass) : Builder {
+    fun addIrClass(irClass: IrClass): Builder {
       irClasses.add(irClass)
       return this
     }
 
-    fun addGroupId(id: Int) : Builder{
+    fun addGroupId(id: Int): Builder {
       groupIds.add(id)
       return this
     }

@@ -27,7 +27,6 @@ import static com.android.tools.idea.wizard.ui.WizardUtils.wrapWithVScroll;
 import static com.intellij.openapi.fileChooser.FileChooserDescriptorFactory.createSingleFolderDescriptor;
 import static java.lang.String.format;
 import static org.jetbrains.android.util.AndroidBundle.message;
-
 import com.android.ide.common.repository.AgpVersion;
 import com.android.repository.api.RemotePackage;
 import com.android.repository.api.UpdatablePackage;
@@ -55,6 +54,7 @@ import com.android.tools.idea.observable.core.OptionalProperty;
 import com.android.tools.idea.observable.expressions.Expression;
 import com.android.tools.idea.observable.expressions.value.TransformOptionalExpression;
 import com.android.tools.idea.observable.ui.SelectedItemProperty;
+import com.android.tools.idea.observable.ui.SelectedProperty;
 import com.android.tools.idea.observable.ui.TextProperty;
 import com.android.tools.idea.sdk.AndroidSdks;
 import com.android.tools.idea.sdk.wizard.InstallSelectedPackagesStep;
@@ -65,11 +65,11 @@ import com.android.tools.idea.ui.validation.validators.StringPathValidator;
 import com.android.tools.idea.wizard.model.ModelWizard;
 import com.android.tools.idea.wizard.model.ModelWizardStep;
 import com.android.tools.idea.wizard.template.BuildConfigurationLanguageForNewProject;
-import com.android.tools.idea.wizard.template.Category;
 import com.android.tools.idea.wizard.template.FormFactor;
 import com.android.tools.idea.wizard.template.Language;
 import com.android.tools.idea.wizard.template.Template;
 import com.android.tools.idea.wizard.template.TemplateConstraint;
+import com.android.tools.idea.wizard.template.TemplateFlag;
 import com.android.tools.idea.wizard.ui.StudioWizardLayout;
 import com.android.tools.idea.wizard.ui.WizardUtils;
 import com.google.common.collect.ImmutableList;
@@ -85,15 +85,22 @@ import com.intellij.ui.ContextHelpLabel;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBLoadingPanel;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.scale.JBUIScale;
 import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.ModalityUiUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.FormBuilder;
+import com.intellij.util.ui.JBInsets;
+import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
+import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -101,6 +108,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -132,6 +140,11 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
   private JPanel myPanel;
   private TextFieldWithBrowseButton myProjectLocation;
   private JTextField myAppName;
+  private JButton generateAppName;
+  // Create a panel to hold the text field and the button
+  private JPanel appNamePanel;
+  private JBLoadingPanel loadingPanel;
+
   private JTextField myPackageName;
   private JComboBox<Language> myProjectLanguage;
   private JBLabel myProjectLanguageLabel;
@@ -146,6 +159,8 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
   private JComboBox myMinSdkCombo;
   private JComboBox<BuildConfigurationLanguageForNewProject> myBuildConfigurationLanguageCombo;
   private ContextHelpLabel myBuildConfigurationLanguageLabel;
+  private JBCheckBox myLaunchFirebaseCheckbox;
+  private JPanel myLaunchFirebasePanel;
 
   private ContextHelpLabel myAndroidGradlePluginLabel;
   private JComboBox<AgpVersions.NewProjectWizardAgpVersion> myAndroidGradlePluginCombo;
@@ -201,17 +216,18 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myFormFactorSdkControls.init(androidSdkInfo, this);
 
     myBindings.bindTwoWay(new SelectedItemProperty<>(myProjectLanguage), myProjectModel.getLanguage());
+    myBindings.bindTwoWay(new SelectedProperty(myLaunchFirebaseCheckbox), myProjectModel.getLaunchFirebaseWizard());
 
     if (StudioFlags.NPW_SHOW_KTS_GRADLE_COMBO_BOX.get()) {
       myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.KTS);
       myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.Groovy);
       myBindings.bind(myProjectModel.getUseGradleKts(), new TransformOptionalExpression<BuildConfigurationLanguageForNewProject, Boolean>(true, new SelectedItemProperty<>(myBuildConfigurationLanguageCombo)) {
-                        @NotNull
-                        @Override
-                        protected Boolean transform(@NotNull BuildConfigurationLanguageForNewProject value) {
-                          return value.getUseKts();
-                        }
-                      });
+        @NotNull
+        @Override
+        protected Boolean transform(@NotNull BuildConfigurationLanguageForNewProject value) {
+          return value.getUseKts();
+        }
+      });
     } else {
       myBuildConfigurationLanguageLabel.setVisible(false);
       myBuildConfigurationLanguageCombo.setVisible(false);
@@ -222,10 +238,10 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
          GradleExperimentalSettings.getInstance().SHOW_ANDROID_GRADLE_PLUGIN_VERSION_COMBO_BOX_IN_NEW_PROJECT_WIZARD)) {
       AgpVersions.NewProjectWizardAgpVersion
         placeholderCurrentVersion = new AgpVersions.NewProjectWizardAgpVersion(
-          /* Resolve as if IdeGoogleMavenRepository.getAgpVersions() is not available as a placeholder */
-          myProjectModel.getAgpVersionSelector().get().resolveVersion(ImmutableSet::of),
-          ImmutableList.of(),
-          "");
+        /* Resolve as if IdeGoogleMavenRepository.getAgpVersions() is not available as a placeholder */
+        myProjectModel.getAgpVersionSelector().get().resolveVersion(ImmutableSet::of),
+        ImmutableList.of(),
+        "");
       myAndroidGradlePluginCombo.addItem(placeholderCurrentVersion);
       myBindings.bind(myProjectModel.getAgpVersionSelector(), ObjectProperty.wrap(new SelectedItemProperty<>(myAndroidGradlePluginCombo)).transform(it -> new AgpVersionSelector.FixedVersion(((AgpVersions.NewProjectWizardAgpVersion)it).getVersion())));
       myBindings.bind(myProjectModel.getAdditionalMavenRepos(), ObjectProperty.wrap(new SelectedItemProperty<>(myAndroidGradlePluginCombo)).transform(it -> ((AgpVersions.NewProjectWizardAgpVersion)it).getAdditionalMavenRepositoryUrls()));
@@ -306,7 +322,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myFormFactorSdkControls.startDataLoading(toWizardFormFactor(formFactor), minSdk);
     setTemplateThumbnail(newTemplate);
     boolean isKotlinOnly = newTemplate.getConstraints().contains(TemplateConstraint.Kotlin);
-    boolean isWatchFace = newTemplate.getCategory() == Category.WatchFace;
+    boolean isWatchFace = newTemplate.getFlags().contains(TemplateFlag.WatchFace);
 
     myProjectLanguage.setVisible(!isKotlinOnly && !isWatchFace);
     myProjectLanguageLabel.setVisible(!isKotlinOnly && !isWatchFace);
@@ -315,9 +331,15 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     }
     myWearCheck.setVisible(formFactor == FormFactor.Wear && !isWatchFace);
 
+    boolean isFirebaseTemplate = newTemplate.getFlags().contains(TemplateFlag.FirebaseAi);
+    myProjectModel.getLaunchFirebaseWizard().set(isFirebaseTemplate);
+    myLaunchFirebasePanel.setVisible(isFirebaseTemplate);
+
     if (isWatchFace) {
       myProjectModel.getApplicationName().set("My Watch Face");
     }
+
+    generateAppName.setVisible(StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && newTemplate.getFlags().contains(TemplateFlag.NewProjectAgent));
   }
 
   @Override
@@ -326,7 +348,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       (myWearCheck.isVisible() && myWearCheck.isSelected()) ||
       (myTvCheck.isVisible() && myTvCheck.isSelected()) ||
       (myCarPlatformCombo.isVisible() &&
-          ANDROID_AUTOMOTIVE_OS_AND_ANDROID_AUTO.equals(myCarPlatformCombo.getSelectedItem()))
+       ANDROID_AUTOMOTIVE_OS_AND_ANDROID_AUTO.equals(myCarPlatformCombo.getSelectedItem()))
     );
 
     myInstallRequests.clear();
@@ -380,7 +402,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       .addVerticalGap(10)
       .addComponent(createDocumentationLinkPanel())
       .addVerticalGap(10)
-      .addLabeledComponent("&Name", myAppName)
+      .addLabeledComponent("&Name",  appNamePanel)
       .addLabeledComponent("&Package name", myPackageName)
       .addLabeledComponent("&Save location", myProjectLocation)
       .addLabeledComponent(myProjectLanguageLabel, myProjectLanguage)
@@ -391,6 +413,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       .addLabeledComponent(myCarPlatformComboLabel, myCarPlatformCombo)
       .addLabeledComponent(myBuildConfigurationLanguageLabel, myBuildConfigurationLanguageCombo)
       .addLabeledComponent(myAndroidGradlePluginLabel, myAndroidGradlePluginCombo)
+      .addComponent(myLaunchFirebasePanel)
       .addComponentFillVertically(new Spacer(), 0);
 
     myPanel = builder.getPanel();
@@ -470,6 +493,26 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
 
     myAppName = new JTextField();
     myAppName.setToolTipText("The name that will be shown in the Android launcher for this application");
+    generateAppName = new JButton("✨");
+    generateAppName.setVisible(false);
+    loadingPanel = new JBLoadingPanel(new BorderLayout(), this);
+
+    generateAppName.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        Runnable onStart = loadingPanel::startLoading;
+
+        Runnable onFinish = loadingPanel::stopLoading;
+        myProjectModel.generateAppNameAsync(onStart, onFinish);
+      }
+    });
+    loadingPanel.add(generateAppName);
+    // Create a panel to hold the text field and the button
+    appNamePanel = new JPanel(new BorderLayout(5, 0)); // 5px horizontal gap
+
+    appNamePanel.add(myAppName, BorderLayout.CENTER);
+    appNamePanel.add(loadingPanel, BorderLayout.LINE_END);
+
     myPackageName = new JTextField();
     myProjectLocation = new TextFieldWithBrowseButton();
     myProjectLanguage = new LanguageComboProvider().createComponent();
@@ -483,5 +526,32 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myDocumentationLink = new HyperlinkLabel();
     myBuildConfigurationLanguageCombo = new JComboBox<>();
     myAndroidGradlePluginCombo = new JComboBox<>();
+    myLaunchFirebaseCheckbox = new JBCheckBox("Launch the Gemini API setup");
+    myLaunchFirebasePanel = createCheckboxPanel(
+      myLaunchFirebaseCheckbox, "<html>" + message("android.wizard.project.new.launch.gemini.setup") + "</html>");
+  }
+
+  private static JPanel createCheckboxPanel(JBCheckBox checkbox, String description) {
+    JPanel panel = new JPanel(new GridBagLayout());
+    GridBagConstraints c = new GridBagConstraints();
+    c.gridx = 0;
+    c.gridy = 0;
+    c.weightx = 1.0;
+    c.fill = GridBagConstraints.HORIZONTAL;
+    c.anchor = GridBagConstraints.WEST;
+    panel.add(checkbox, c);
+
+    c.gridy = 1;
+    c.insets = JBUI.insets(4, calculateHorizontalIndent(), 0, 0);
+    JBLabel descriptionLabel = new JBLabel(description);
+    descriptionLabel.setForeground(UIUtil.getContextHelpForeground());
+    panel.add(descriptionLabel, c);
+    return panel;
+  }
+
+  private static int calculateHorizontalIndent() {
+    int iconSize = JBUI.getInt("CheckBox.iconSize", 18);
+    int textIconGap = JBUI.getInt("CheckBox.textIconGap", 5);
+    return iconSize + textIconGap;
   }
 }

@@ -16,7 +16,7 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.gradle.dsl.android.model.android.android
+import com.android.tools.idea.gradle.dsl.model.android.android
 import com.google.wireless.android.sdk.stats.UpgradeAssistantComponentInfo.UpgradeAssistantComponentKind
 import com.intellij.usages.impl.rules.UsageType
 
@@ -25,29 +25,33 @@ val MIGRATE_AAPT_OPTIONS_TO_ANDROID_RESOURCES =
     optionalFromVersion = AgpVersion.parse("7.0.1"),
     requiredFromVersion = AgpVersion.parse("9.0.0-alpha01"),
     commandNameSupplier = AgpUpgradeBundle.messagePointer("migrateToAndroidResourcesRefactoringProcessor.commandName"),
-    shortDescriptionSupplier = { """
+    shortDescriptionSupplier = {
+      """
       Configuration related to Android assets and other resources is
       now performed using the androidResources block.
-    """.trimIndent() },
+      """
+        .trimIndent()
+    },
     processedElementsHeaderSupplier = AgpUpgradeBundle.messagePointer("migrateToAndroidResourcesRefactoringProcessor.usageView.header"),
     componentKind = UpgradeAssistantComponentKind.MIGRATE_TO_ANDROID_RESOURCES,
-    propertiesOperationInfos = listOf(
-      MovePropertiesInfo(
-        sourceToDestinationPropertyModelGetters = listOf(
-          Pair({ android().aaptOptions().ignoreAssets() }, { android().androidResources().ignoreAssets() }),
-          Pair({ android().aaptOptions().noCompress() }, { android().androidResources().noCompress() }),
-          Pair({ android().aaptOptions().failOnMissingConfigEntry() }, { android().androidResources().failOnMissingConfigEntry() }),
-          Pair({ android().aaptOptions().additionalParameters() }, { android().androidResources().additionalParameters() }),
-          Pair({ android().aaptOptions().namespaced() }, { android().androidResources().namespaced() }),
+    propertiesOperationInfos =
+      listOf(
+        MovePropertiesInfo(
+          sourceToDestinationPropertyModelGetters =
+            listOf(
+              Pair({ android().aaptOptions().ignoreAssets() }, { android().androidResources().ignoreAssets() }),
+              Pair({ android().aaptOptions().noCompress() }, { android().androidResources().noCompress() }),
+              Pair({ android().aaptOptions().failOnMissingConfigEntry() }, { android().androidResources().failOnMissingConfigEntry() }),
+              Pair({ android().aaptOptions().additionalParameters() }, { android().androidResources().additionalParameters() }),
+              Pair({ android().aaptOptions().namespaced() }, { android().androidResources().namespaced() }),
+            ),
+          tooltipTextSupplier = AgpUpgradeBundle.messagePointer("androidResourcesUsageInfo.move.tooltipText"),
+          usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToAndroidResourcesRefactoringProcessor.move.usageType")),
         ),
-        tooltipTextSupplier = AgpUpgradeBundle.messagePointer("androidResourcesUsageInfo.move.tooltipText"),
-        usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToAndroidResourcesRefactoringProcessor.move.usageType"))
+        RemovePropertiesInfo(
+          propertyModelListGetter = { listOf(android().aaptOptions()) },
+          tooltipTextSupplier = AgpUpgradeBundle.messagePointer("androidResourcesUsageInfo.remove.tooltipText"),
+          usageType = UsageType(AgpUpgradeBundle.messagePointer("migrateToAndroidResourcesRefactoringProcessor.remove.usageType")),
+        ),
       ),
-      RemovePropertiesInfo(
-        propertyModelListGetter = { listOf(android().aaptOptions()) },
-        tooltipTextSupplier = AgpUpgradeBundle.messagePointer("androidResourcesUsageInfo.remove.tooltipText"),
-        usageType = UsageType(
-          AgpUpgradeBundle.messagePointer("migrateToAndroidResourcesRefactoringProcessor.remove.usageType")),
-      )
-    )
   )

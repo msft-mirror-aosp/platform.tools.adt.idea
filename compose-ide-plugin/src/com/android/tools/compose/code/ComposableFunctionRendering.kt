@@ -31,22 +31,15 @@ import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.renderer.DescriptorRenderer.ValueParametersHandler
 import org.jetbrains.kotlin.resolve.source.getPsi
 
-/**
- * Represents parts of a Composable function to be used for rendering in various menus or dialogs.
- */
-data class ComposableFunctionRenderParts(
-  val totalParameterCount: Int,
-  val parameters: String?,
-  val tail: String?,
-)
+/** Represents parts of a Composable function to be used for rendering in various menus or dialogs. */
+data class ComposableFunctionRenderParts(val totalParameterCount: Int, val parameters: String?, val tail: String?)
 
 @OptIn(KaAllowAnalysisOnEdt::class)
 fun KtDeclaration.getComposableFunctionRenderParts(): ComposableFunctionRenderParts? {
   return if (KotlinPluginModeProvider.isK2Mode()) {
     allowAnalysisOnEdt {
       analyze(this) {
-        val functionLikeSymbol =
-          this@getComposableFunctionRenderParts.symbol as? KaFunctionSymbol ?: return null
+        val functionLikeSymbol = this@getComposableFunctionRenderParts.symbol as? KaFunctionSymbol ?: return null
         getComposableFunctionRenderParts(functionLikeSymbol)
       }
     }
@@ -59,23 +52,20 @@ fun KtDeclaration.getComposableFunctionRenderParts(): ComposableFunctionRenderPa
 /**
  * Generates [ComposableFunctionRenderParts] for a given Composable function.
  *
- * Since Composable functions tend to have numerous optional parameters, those are omitted from the
- * rendered parameters and replaced with an ellipsis ("..."). Additional modifications are made to
- * ensure that a lambda can be added in cases where the Composable function requires another
- * Composable as its final argument.
+ * Since Composable functions tend to have numerous optional parameters, those are omitted from the rendered parameters and replaced with an
+ * ellipsis ("..."). Additional modifications are made to ensure that a lambda can be added in cases where the Composable function requires
+ * another Composable as its final argument.
  */
 fun FunctionDescriptor.getComposableFunctionRenderParts(): ComposableFunctionRenderParts {
   val allParameters = valueParameters
   val requiredParameters = allParameters.filter { it.isRequired() }
-  val hasTrailingLambda =
-    allParameters.lastOrNull()?.let { it.isRequired() && it.type.isBuiltinFunctionalType } ?: false
+  val hasTrailingLambda = allParameters.lastOrNull()?.let { it.isRequired() && it.type.isBuiltinFunctionalType } ?: false
   val inParens = if (hasTrailingLambda) requiredParameters.dropLast(1) else requiredParameters
 
   val descriptorRenderer =
     when {
       requiredParameters.size < allParameters.size -> SHORT_NAMES_RENDERER_WITH_DOTS
-      inParens.isEmpty() && hasTrailingLambda ->
-        null // Don't render an empty pair of parentheses if we're rendering a lambda afterwards.
+      inParens.isEmpty() && hasTrailingLambda -> null // Don't render an empty pair of parentheses if we're rendering a lambda afterwards.
       else -> SHORT_NAMES_RENDERER
     }
   val parameters = descriptorRenderer?.renderValueParameters(inParens, false)

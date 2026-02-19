@@ -16,41 +16,21 @@
 
 #pragma once
 
-#include <android/native_window.h>
-#include <media/NdkMediaCodec.h>
-
-#include <atomic>
+#include <chrono>
 #include <mutex>
-#include <thread>
 
 #include "accessors/display_manager.h"
 #include "accessors/window_manager.h"
+#include "codec_info.h"
 #include "common.h"
 #include "geom.h"
 #include "jvm.h"
+#include "ndk_types.h"
 #include "socket_writer.h"
+#include "thread_handle.h"
 #include "video_packet_header.h"
 
 namespace screensharing {
-
-struct CodecInfo {
-  std::string mime_type;
-  std::string name;
-  Size max_resolution;
-  Size size_alignment;
-  int32_t max_frame_rate;
-  bool hardware_accelerated;
-
-  CodecInfo(std::string mime_type, std::string name, Size max_resolution, Size size_alignment, int32_t max_frame_rate,
-            bool hardware_accelerated)
-      : mime_type(std::move(mime_type)),
-        name(std::move(name)),
-        max_resolution(max_resolution),
-        size_alignment(size_alignment),
-        max_frame_rate(max_frame_rate),
-        hardware_accelerated(hardware_accelerated) {
-  }
-};
 
 // Processes control socket commands.
 class DisplayStreamer : private DisplayManager::DisplayListener {
@@ -60,9 +40,9 @@ public:
   };
 
   DisplayStreamer(
-      int display_id, const CodecInfo* codec_name, Size max_video_resolution, int initial_video_orientation, int max_bitrate,
+      int display_id, const CodecInfo* codec_info, Size max_video_resolution, int initial_video_orientation, int max_bit_rate,
       SocketWriter* writer);
-  virtual ~DisplayStreamer();
+  ~DisplayStreamer() override;
 
   // Starts the streamer's thread.
   void Start();
@@ -100,10 +80,10 @@ private:
   void CreateCodec();
   // Deletes the codec if it was created. The codec should not be running when this method is called. Safe to call multiple times.
   void DeleteCodec();
-  void StartCodecUnlocked();  // REQUIRES(mutex_)
+  void StartCodecUnlocked();  // GUARDED_BY(mutex_)
   // Stops the codec before deleting if it is running. Safe to call multiple times.
   void StopCodec();
-  void StopCodecUnlocked();  // REQUIRES(mutex_)
+  void StopCodecUnlocked();  // GUARDED_BY(mutex_)
   bool IsCodecRunning();
   // Returns true if the bit rate was deduced, false if it already reached allowed minimum.
   bool ReduceBitRate();
@@ -115,28 +95,26 @@ private:
   void OnDisplayRemoved(int32_t display_id) override;
   void OnDisplayChanged(int32_t display_id) override;
 
-  std::thread thread_;
   DisplayRotationWatcher display_rotation_watcher_;
   int display_id_;
   uint32_t frame_number_ = 0;
-  uint32_t initial_frame_number_ = 0; // Frame number before the last time the encoder was started.
+  std::chrono::milliseconds frame_timeout_;
   const CodecInfo* codec_info_ = nullptr;  // Not owned.
   SocketWriter* writer_;
   int64_t presentation_timestamp_offset_ = 0;
   int32_t bit_rate_;
   bool bit_rate_reduced_ = false;
-  std::atomic_bool streamer_stopped_ = true;
   VirtualDisplay virtual_display_;
   JObject display_token_;
 
-  AMediaCodec* codec_ = nullptr;
-  ANativeWindow* surface_ = nullptr;
+  MediaCodec codec_;
   std::recursive_mutex mutex_;
   DisplayInfo display_info_;  // GUARDED_BY(mutex_)
   Size max_video_resolution_;  // GUARDED_BY(mutex_)
   int32_t video_orientation_;  // GUARDED_BY(mutex_)
   bool codec_running_ = false;  // GUARDED_BY(mutex_)
   bool codec_stop_pending_ = false;  // GUARDED_BY(mutex_)
+  ThreadHandle thread_handle_;
 
   DISALLOW_COPY_AND_ASSIGN(DisplayStreamer);
 };

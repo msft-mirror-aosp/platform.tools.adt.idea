@@ -19,7 +19,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.model.primitives.Label;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
@@ -47,10 +46,11 @@ public class BlazeConfigurationNameBuilder {
     BlazeCommandName commandName = configuration.getHandler().getCommandName();
     setCommandName(commandName == null ? "command" : commandName.toString());
 
-    ImmutableList<? extends TargetExpression> targets = configuration.getTargets();
+    ImmutableList<? extends String> targets = configuration.getTargetPatterns();
     if (!targets.isEmpty()) {
-      TargetExpression first = targets.get(0);
-      String text = first instanceof Label ? getTextForLabel((Label) first) : first.toString();
+      String first = targets.get(0);
+      Label label = Label.createIfValid(first);
+      String text = label != null ? getTextForLabel(label) : first;
       setTargetString(text);
     }
   }

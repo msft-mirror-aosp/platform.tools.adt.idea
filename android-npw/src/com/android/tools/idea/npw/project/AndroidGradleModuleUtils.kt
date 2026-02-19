@@ -36,28 +36,26 @@ import java.io.IOException
 import org.jetbrains.kotlin.idea.gradleTooling.KotlinGradlePluginVersion
 
 /**
- * Convenience method to convert a [NamedModuleTemplate] into a [SourceProvider]. Note that this
- * target source provider has many fields stubbed out and should be used carefully.
+ * Convenience method to convert a [NamedModuleTemplate] into a [SourceProvider]. Note that this target source provider has many fields
+ * stubbed out and should be used carefully.
  *
- * TODO: Investigate getting rid of dependencies on [SourceProvider] in [Parameter.validate] as this
- *   may allow us to delete this code
+ * TODO: Investigate getting rid of dependencies on [SourceProvider] in [Parameter.validate] as this may allow us to delete this code
  */
 fun NamedModuleTemplate.getSourceProvider() = SourceProviderAdapter(name, paths)
 
 /**
- * Given a file and a project, return the Module corresponding to the containing Gradle project for
- * the file. If the file is not contained by any project then return null
+ * Given a file and a project, return the Module corresponding to the containing Gradle project for the file. If the file is not contained
+ * by any project then return null
  */
 fun getContainingModule(file: File?, project: Project): Module? {
   if (project.isDisposed) return null
   val vFile = VfsUtil.findFileByIoFile(file!!, false)
-  return if (vFile == null || vFile.isDirectory) null
-  else ProjectFileIndex.getInstance(project).getModuleForFile(vFile, false)
+  return if (vFile == null || vFile.isDirectory) null else ProjectFileIndex.getInstance(project).getModuleForFile(vFile, false)
 }
 
 /**
- * Set the executable bit on the 'gradlew' wrapper script on Mac/Linux. On Windows, we use a
- * separate gradlew.bat file which does not need an executable bit.
+ * Set the executable bit on the 'gradlew' wrapper script on Mac/Linux. On Windows, we use a separate gradlew.bat file which does not need
+ * an executable bit.
  */
 @Throws(IOException::class)
 fun setGradleWrapperExecutable(projectRoot: File) {
@@ -82,19 +80,14 @@ fun determineKotlinVersionOrDefault(project: Project, isNewProject: Boolean): St
 
 @Slow
 fun determineKotlinVersion(project: Project): KotlinGradlePluginVersion? {
-  return project.basePath
-    ?.let { KotlinGradleProjectSystemUtil.getKotlinVersionsInUse(project, it) }
-    ?.firstOrNull()
+  return project.basePath?.let { KotlinGradleProjectSystemUtil.getKotlinVersionsInUse(project, it) }?.firstOrNull()
 }
 
-/**
- * Call detector to check whether Version Catalogs are in use. Is (very occasionally) slow if cached
- * value has been invalidated.
- */
+/** Call detector to check whether Version Catalogs are in use. Is (very occasionally) slow if cached value has been invalidated. */
 @Slow
 fun determineVersionCatalogUse(project: Project): Boolean {
   return GradleVersionCatalogDetector.getInstance(project).isVersionCatalogProject
 }
 
-// TODO(b/322863175): Establish process/tests to ensure the default version gets updated.
-const val DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS = "2.0.21"
+/** This version should be kept in sync with the version bundled in AGP */
+const val DEFAULT_KOTLIN_VERSION_FOR_NEW_PROJECTS = "2.2.10"

@@ -2,12 +2,17 @@ load(
     "//tools/adt/idea/aswb:build-visibility.bzl",
     "COMMON_PLUGINS_VISIBILITY",
 )
+load(
+    "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
+    "aswb_library",
+)
+load("//tools/adt/idea/aswb/testing:test_defs.bzl", "aswb_test")
 
 package(default_visibility = COMMON_PLUGINS_VISIBILITY)
 
 licenses(["notice"])
 
-java_library(
+aswb_library(
     name = "concurrency",
     srcs = ["src/com/google/idea/common/util/ConcurrencyUtil.java"],
     deps = [
@@ -16,7 +21,7 @@ java_library(
     ],
 )
 
-java_library(
+aswb_library(
     name = "platform",
     srcs = [
         "src/com/google/idea/common/util/MorePlatformUtils.java",
@@ -26,7 +31,7 @@ java_library(
     ],
 )
 
-java_library(
+aswb_library(
     name = "transactions",
     srcs = ["src/com/google/idea/common/util/Transactions.java"],
     deps = [
@@ -34,7 +39,7 @@ java_library(
     ],
 )
 
-java_library(
+aswb_library(
     name = "process",
     srcs = glob(["src/com/google/idea/async/process/*.java"]),
     deps = [
@@ -45,7 +50,7 @@ java_library(
     ],
 )
 
-java_test(
+aswb_test(
     name = "CommandLineTaskTest",
     size = "medium",
     srcs = ["tests/unittests/com/google/idea/common/async/process/CommandLineTaskTest.java"],

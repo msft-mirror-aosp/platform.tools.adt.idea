@@ -35,7 +35,6 @@ import com.android.tools.idea.insights.model.connection.AppConnection
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.model.event.Device
-import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.event.EventPage
 import com.android.tools.idea.insights.model.event.OperatingSystemInfo
 import com.android.tools.idea.insights.model.event.Version
@@ -105,7 +104,7 @@ class AppInsightsProjectLevelControllerRule(
   private lateinit var cache: AppInsightsCache
 
   lateinit var fakeGeminiPluginApi: FakeGeminiPluginApi
-  private val geminiToolkit = FakeAiInsightToolkit()
+  lateinit var geminiToolkit: FakeAiInsightToolkit
 
   override fun before(description: Description) {
     val offlineStatusManager = OfflineStatusManagerImpl()
@@ -116,11 +115,8 @@ class AppInsightsProjectLevelControllerRule(
     connections = MutableSharedFlow(replay = 1)
     tracker = mock<AppInsightsTracker>()
     fakeGeminiPluginApi = FakeGeminiPluginApi()
-    ExtensionTestUtil.maskExtensions(
-      GeminiPluginApi.EP_NAME,
-      listOf(fakeGeminiPluginApi),
-      disposable,
-    )
+    geminiToolkit = FakeAiInsightToolkit(projectProvider())
+    ExtensionTestUtil.maskExtensions(GeminiPluginApi.EP_NAME, listOf(fakeGeminiPluginApi), disposable)
     controller =
       AppInsightsProjectLevelControllerImpl(
         provider,
@@ -177,18 +173,15 @@ class AppInsightsProjectLevelControllerRule(
           client.completeIssueVariantsCallWith(issueVariantsState)
           client.completeListEvents(eventsState)
         } else {
-          client.completeFetchInsightCallWith(insightState)
+          geminiToolkit.completeFetchInsightCallWith(insightState)
         }
       }
       if (provider.supportsMultipleEvents) {
         consumeNext()
         consumeNext()
         resultState = consumeNext()
-        if (
-          eventsState.valueOrNull()?.events?.isNotEmpty() == true &&
-            resultState.selectedEvent?.isStackTraceEmpty() == false
-        ) {
-          client.completeFetchInsightCallWith(insightState)
+        if (eventsState.valueOrNull()?.events?.isNotEmpty() == true && resultState.selectedEvent?.isStackTraceEmpty() == false) {
+          geminiToolkit.completeFetchInsightCallWith(insightState)
           consumeNext()
         }
         client.completeListNotesCallWith(notesState)
@@ -218,21 +211,13 @@ class AppInsightsProjectLevelControllerRule(
   ): AppInsightsState {
     connections.emit(connectionsState)
     val loadingState = consumeWhile { it.connections.items != connectionsState }
-    assertThat(loadingState.connections)
-      .isEqualTo(Selection(connectionsState.firstOrNull(), connectionsState))
+    assertThat(loadingState.connections).isEqualTo(Selection(connectionsState.firstOrNull(), connectionsState))
     assertThat(loadingState.issues).isInstanceOf(LoadingState.Loading::class.java)
     assertThat(loadingState.currentIssueVariants).isEqualTo(LoadingState.Ready(null))
     assertThat(loadingState.currentIssueDetails).isEqualTo(LoadingState.Ready(null))
     assertThat(loadingState.currentNotes).isEqualTo(LoadingState.Ready(null))
     assertThat(loadingState.currentInsight).isEqualTo(LoadingState.Ready(null))
-    return consumeFetchState(
-      state,
-      issueVariantsState,
-      eventsState,
-      detailsState,
-      notesState,
-      insightState,
-    )
+    return consumeFetchState(state, issueVariantsState, eventsState, detailsState, notesState, insightState)
   }
 
   suspend fun consumeNext() = internalState.receiveWithTimeout()
@@ -246,9 +231,7 @@ class AppInsightsProjectLevelControllerRule(
   }
 
   private suspend fun consumeLoading(): AppInsightsState {
-    return internalState.receiveWithTimeout().also {
-      assertThat(it.issues).isInstanceOf(LoadingState.Loading::class.java)
-    }
+    return internalState.receiveWithTimeout().also { assertThat(it.issues).isInstanceOf(LoadingState.Loading::class.java) }
   }
 
   suspend fun refreshAndConsumeLoadingState(): AppInsightsState {
@@ -258,8 +241,7 @@ class AppInsightsProjectLevelControllerRule(
 
   fun revertToSnapshot(state: AppInsightsState) = controller.revertToSnapshot(state)
 
-  fun selectIssue(value: AppInsightsIssue?, source: IssueSelectionSource) =
-    controller.selectIssue(value, source)
+  fun selectIssue(value: AppInsightsIssue?, source: IssueSelectionSource) = controller.selectIssue(value, source)
 
   fun selectVersions(values: Set<Version>) = controller.selectVersions(values)
 
@@ -313,13 +295,10 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
   private val createNoteCall = CallInProgress<LoadingState.Done<Note>>()
   private val deleteNoteCall = CallInProgress<LoadingState.Done<Unit>>()
   private val listEventsCall = CallInProgress<LoadingState.Done<EventPage>>()
-  private val fetchInsightCall = CallInProgress<LoadingState.Done<AiInsight>>()
 
-  override suspend fun listConnections(): LoadingState.Done<List<AppConnection>> =
-    listConnections.initiateCall()
+  override suspend fun listConnections(): LoadingState.Done<List<AppConnection>> = listConnections.initiateCall()
 
-  suspend fun completeConnectionsCallWith(value: LoadingState.Done<List<AppConnection>>) =
-    listConnections.completeWith(value)
+  suspend fun completeConnectionsCallWith(value: LoadingState.Done<List<AppConnection>>) = listConnections.completeWith(value)
 
   override suspend fun listTopOpenIssues(
     request: IssueRequest,
@@ -338,13 +317,10 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
   }
 
   suspend fun completeIssuesCallWithPreconditionFailed() {
-    completeIssuesCallWith(
-      LoadingState.UnknownFailure("failure", Status.FAILED_PRECONDITION.asException())
-    )
+    completeIssuesCallWith(LoadingState.UnknownFailure("failure", Status.FAILED_PRECONDITION.asException()))
   }
 
-  override suspend fun getIssueVariants(request: IssueRequest, issueId: IssueId) =
-    issueVariantsCall.initiateCall()
+  override suspend fun getIssueVariants(request: IssueRequest, issueId: IssueId) = issueVariantsCall.initiateCall()
 
   suspend fun completeIssueVariantsCallWith(value: LoadingState.Done<List<IssueVariant>>) {
     issueVariantsCall.completeWith(value)
@@ -364,28 +340,20 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
     token: String?,
   ): LoadingState.Done<EventPage> = listEventsCall.initiateCall()
 
-  suspend fun completeListEvents(value: LoadingState.Done<EventPage>) =
-    listEventsCall.completeWith(value)
+  suspend fun completeListEvents(value: LoadingState.Done<EventPage>) = listEventsCall.completeWith(value)
 
   suspend fun completeDetailsCallWith(value: LoadingState.Done<DetailedIssueStats?>) {
     detailsCall.completeWith(value)
   }
 
-  override suspend fun updateIssueState(
-    connection: Connection,
-    issueId: IssueId,
-    state: IssueState,
-  ): LoadingState.Done<Unit> = setIssueStateCall.initiateCall()
+  override suspend fun updateIssueState(connection: Connection, issueId: IssueId, state: IssueState): LoadingState.Done<Unit> =
+    setIssueStateCall.initiateCall()
 
   suspend fun completeUpdateIssueStateCallWith(value: LoadingState.Done<Unit>) {
     setIssueStateCall.completeWith(value)
   }
 
-  override suspend fun listNotes(
-    connection: Connection,
-    issueId: IssueId,
-    mode: ConnectionMode,
-  ): LoadingState.Done<List<Note>> =
+  override suspend fun listNotes(connection: Connection, issueId: IssueId, mode: ConnectionMode): LoadingState.Done<List<Note>> =
     listNotesCall.initiateCall().also {
       if (it is LoadingState.Ready) {
         cache.populateNotes(connection, issueId, it.value)
@@ -396,11 +364,7 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
     listNotesCall.completeWith(value)
   }
 
-  override suspend fun createNote(
-    connection: Connection,
-    issueId: IssueId,
-    message: String,
-  ): LoadingState.Done<Note> =
+  override suspend fun createNote(connection: Connection, issueId: IssueId, message: String): LoadingState.Done<Note> =
     createNoteCall.initiateCall().also {
       if (it is LoadingState.Ready) {
         cache.addNote(connection, issueId, it.value)
@@ -421,15 +385,4 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
   suspend fun completeDeleteNoteCallWith(value: LoadingState.Done<Unit>) {
     deleteNoteCall.completeWith(value)
   }
-
-  override suspend fun fetchInsight(
-    connection: Connection,
-    issueId: IssueId,
-    variantId: String?,
-    failureType: FailureType,
-    event: Event,
-  ): LoadingState.Done<AiInsight> = fetchInsightCall.initiateCall()
-
-  suspend fun completeFetchInsightCallWith(value: LoadingState.Done<AiInsight>) =
-    fetchInsightCall.completeWith(value)
 }

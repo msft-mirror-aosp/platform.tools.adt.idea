@@ -19,22 +19,25 @@ import com.android.tools.asdriver.tests.AndroidStudio
 
 /**
  * This is the base test class for all Profiler Startup tests. This class verifies the functionality of the startup task-based profiling
- * feature in Android Studio. It specifically checks if the profiler can successfully start and stop a task and if the UI components
- * are displayed correctly.
+ * feature in Android Studio. It specifically checks if the profiler can successfully start and stop a task and if the UI components are
+ * displayed correctly.
  *
  * All Profiler integration tests related to startup tasks should extend this class.
  */
 abstract class ProfilersStartupTaskTestBase : ProfilersTestBase() {
 
   abstract fun selectTask(studio: AndroidStudio)
+
   abstract fun verifyTaskStarted(studio: AndroidStudio)
+
   abstract fun verifyTaskStopped(studio: AndroidStudio)
+
   abstract fun verifyUIComponents(studio: AndroidStudio)
 
   protected fun testStartUpTask() {
     taskBasedProfiling(
       deployApp = false,
-      testFunction = {studio, adb ->
+      testFunction = { studio, adb ->
         Thread.sleep(5000)
         invokeProfilerToolWindow(studio)
         waitForProfilerDeviceConnection()
@@ -47,16 +50,16 @@ abstract class ProfilersStartupTaskTestBase : ProfilersTestBase() {
         setProfilingStartingPointToProcessStart(studio)
         Thread.sleep(2000)
         startTask(studio)
-
+        verifyTaskStarted(studio)
         // Wait for app to be deployed.
         waitForAppToBeDeployed(adb, ".*Hello Minimal World!.*")
-        verifyTaskStarted(studio)
+
         Thread.sleep(4000)
 
         stopTask(studio)
         verifyTaskStopped(studio)
         verifyUIComponents(studio)
-      }
+      },
     )
   }
 }

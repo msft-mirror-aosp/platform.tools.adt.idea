@@ -16,24 +16,27 @@
 package com.android.tools.idea.gradle.project.sync.jdk.exceptions
 
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.base.GradleJdkException
+import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.InvalidEnvironmentVariableStudioGradleJdk
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.UndefinedEnvironmentVariableStudioGradleJdk
+import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.sdk.IdeSdks.JDK_LOCATION_ENV_VARIABLE_NAME
 import com.intellij.openapi.project.Project
+import kotlin.io.path.Path
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
-import java.nio.file.Path
 
 /**
  * A [GradleJdkException] when gradle root [GradleProjectSettings.getGradleJvm] is configured with [JDK_LOCATION_ENV_VARIABLE_NAME] macro
  * and this system environment variable isn't defined, invalid or corrupted.
  */
-class InvalidEnvironmentVariableStudioGradleJdkException(
-  project: Project,
-  gradleRootPath: @SystemIndependent String,
-  resolvedGradleJdkPath: Path?
-): GradleJdkException(project, gradleRootPath) {
+class InvalidEnvironmentVariableStudioGradleJdkException(project: Project, gradleRootPath: @SystemIndependent String) :
+  GradleJdkException(project, gradleRootPath) {
 
-  override val cause =
-    if (resolvedGradleJdkPath == null) UndefinedEnvironmentVariableStudioGradleJdk else InvalidEnvironmentVariableStudioGradleJdk(resolvedGradleJdkPath)
+  override val cause: InvalidGradleJdkCause
+    get() {
+      val environmentVariablePath = IdeSdks.getInstance().envVariableJdkValue?.let { Path(it) }
+      return if (environmentVariablePath == null) UndefinedEnvironmentVariableStudioGradleJdk
+      else InvalidEnvironmentVariableStudioGradleJdk(environmentVariablePath)
+    }
 }

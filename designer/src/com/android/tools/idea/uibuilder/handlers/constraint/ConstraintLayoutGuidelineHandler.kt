@@ -16,7 +16,12 @@
 package com.android.tools.idea.uibuilder.handlers.constraint
 
 import com.android.AndroidXConstants
-import com.android.SdkConstants.*
+import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_GUIDELINE_ORIENTATION_VERTICAL
+import com.android.SdkConstants.ATTR_ORIENTATION
+import com.android.SdkConstants.LAYOUT_CONSTRAINT_GUIDE_BEGIN
+import com.android.SdkConstants.LAYOUT_CONSTRAINT_GUIDE_END
+import com.android.SdkConstants.LAYOUT_CONSTRAINT_GUIDE_PERCENT
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.uibuilder.api.ViewHandler
 import com.google.common.collect.ImmutableList
@@ -40,16 +45,11 @@ class ConstraintLayoutGuidelineHandler : ViewHandler() {
   companion object {
     @JvmStatic
     fun isVertical(component: NlComponent): Boolean {
-      return ATTR_GUIDELINE_ORIENTATION_VERTICAL ==
-        component.resolveAttribute(ANDROID_URI, ATTR_ORIENTATION)
+      return ATTR_GUIDELINE_ORIENTATION_VERTICAL == component.resolveAttribute(ANDROID_URI, ATTR_ORIENTATION)
     }
   }
 
   override fun getInspectorProperties(): List<String> {
-    return ImmutableList.of(
-      LAYOUT_CONSTRAINT_GUIDE_BEGIN,
-      LAYOUT_CONSTRAINT_GUIDE_END,
-      LAYOUT_CONSTRAINT_GUIDE_PERCENT,
-    )
+    return ImmutableList.of(LAYOUT_CONSTRAINT_GUIDE_BEGIN, LAYOUT_CONSTRAINT_GUIDE_END, LAYOUT_CONSTRAINT_GUIDE_PERCENT)
   }
 }

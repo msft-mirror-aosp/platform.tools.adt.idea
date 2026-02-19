@@ -22,9 +22,12 @@ import com.android.tools.idea.concurrency.pumpEventsAndWaitForFutureCancellation
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFutureException
 import com.android.tools.idea.sqlite.DatabaseInspectorMessenger
 import com.android.tools.idea.sqlite.model.ResultSetSqliteColumn
+import com.android.tools.idea.sqlite.model.SqliteColumnValue
+import com.android.tools.idea.sqlite.model.SqliteRow
 import com.android.tools.idea.sqlite.model.SqliteStatement
 import com.android.tools.idea.sqlite.model.SqliteStatementType
 import com.android.tools.idea.sqlite.model.SqliteValue
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.util.concurrency.EdtExecutorService
@@ -32,7 +35,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.concurrency.any
 import org.jetbrains.ide.PooledThreadExecutor
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
@@ -50,28 +52,19 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
 
       val cursor =
         SqliteInspectorProtocol.Response.newBuilder()
-          .setQuery(
-            SqliteInspectorProtocol.QueryResponse.newBuilder().addAllColumnNames(columnNames)
-          )
+          .setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addAllColumnNames(columnNames))
           .build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act
       val columnsFromResultSet = pumpEventsAndWaitForFuture(resultSet.columns)
 
       // Assert
-      assertEquals(
-        listOf(ResultSetSqliteColumn("col1"), ResultSetSqliteColumn("col2")),
-        columnsFromResultSet,
-      )
+      assertThat(columnsFromResultSet).isEqualTo(listOf(ResultSetSqliteColumn("col1"), ResultSetSqliteColumn("col2")))
     }
 
   fun testRowCountReturnsCorrectNumberOfRows() =
@@ -85,28 +78,19 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
 
       val cursor =
         SqliteInspectorProtocol.Response.newBuilder()
-          .setQuery(
-            SqliteInspectorProtocol.QueryResponse.newBuilder()
-              .addAllColumnNames(columnNames)
-              .addRows(row)
-              .addRows(row)
-          )
+          .setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addAllColumnNames(columnNames).addRows(row).addRows(row))
           .build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act
       val rowCount = pumpEventsAndWaitForFuture(resultSet.totalRowCount)
 
       // Assert
-      assertEquals(2, rowCount)
+      assertThat(rowCount).isEqualTo(2)
     }
 
   fun testRowCountFailsIfDisposed() =
@@ -117,11 +101,7 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(ByteArray(0))
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
       Disposer.register(project, resultSet)
 
       // Act / Assert
@@ -132,48 +112,38 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
   fun testGetRowBatchReturnsCorrectListOfRows() =
     runBlocking<Unit> {
       // Prepare
-      val cellValueString =
-        SqliteInspectorProtocol.CellValue.newBuilder().setStringValue("a string").build()
+      val cellValueString = SqliteInspectorProtocol.CellValue.newBuilder().setStringValue("a string").build()
 
       val row =
-        SqliteInspectorProtocol.Row.newBuilder()
-          .addValues(cellValueString)
-          .addValues(cellValueString)
-          .addValues(cellValueString)
-          .build()
+        SqliteInspectorProtocol.Row.newBuilder().addValues(cellValueString).addValues(cellValueString).addValues(cellValueString).build()
 
       val columnNames = listOf("column1", "column2", "column3")
 
       val cursor =
         SqliteInspectorProtocol.Response.newBuilder()
-          .setQuery(
-            SqliteInspectorProtocol.QueryResponse.newBuilder()
-              .addAllColumnNames(columnNames)
-              .addRows(row)
-          )
+          .setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addAllColumnNames(columnNames).addRows(row))
           .build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act
       // Since we are mocking the answer the values passed to getRowBatch don't matter.
-      val rowsFromResultSet =
-        pumpEventsAndWaitForFuture(resultSet.getRowBatch(0, Integer.MAX_VALUE)).rows
+      val rowsFromResultSet = pumpEventsAndWaitForFuture(resultSet.getRowBatch(0, Integer.MAX_VALUE)).rows
 
       // Assert
-      assertSize(1, rowsFromResultSet)
-      assertEquals("column1", rowsFromResultSet.first().values.first().columnName)
-      assertEquals(
-        SqliteValue.StringValue("a string"),
-        rowsFromResultSet.first().values.first().value,
-      )
+      assertThat(rowsFromResultSet)
+        .containsExactly(
+          SqliteRow(
+            listOf(
+              SqliteColumnValue("column1", SqliteValue.StringValue("a string")),
+              SqliteColumnValue("column2", SqliteValue.StringValue("a string")),
+              SqliteColumnValue("column3", SqliteValue.StringValue("a string")),
+            )
+          )
+        )
     }
 
   fun testGetRowBatchFailsIfDisposed() =
@@ -184,11 +154,7 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(ByteArray(0))
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
       Disposer.register(project, resultSet)
 
       // Act / Assert
@@ -202,23 +168,15 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
       val row = SqliteInspectorProtocol.Row.newBuilder().build()
 
       val cursor =
-        SqliteInspectorProtocol.Response.newBuilder()
-          .setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addRows(row))
-          .build()
+        SqliteInspectorProtocol.Response.newBuilder().setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addRows(row)).build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act / Assert
-      assertThrows(IllegalArgumentException::class.java) {
-        resultSet.getRowBatch(-1, Integer.MAX_VALUE)
-      }
+      assertThrows(IllegalArgumentException::class.java) { resultSet.getRowBatch(-1, Integer.MAX_VALUE) }
     }
 
   fun testGetRowBatchThrowsIfMaxOffsetSmallerEqualZero() =
@@ -227,18 +185,12 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
       val row = SqliteInspectorProtocol.Row.newBuilder().build()
 
       val cursor =
-        SqliteInspectorProtocol.Response.newBuilder()
-          .setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addRows(row))
-          .build()
+        SqliteInspectorProtocol.Response.newBuilder().setQuery(SqliteInspectorProtocol.QueryResponse.newBuilder().addRows(row)).build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act / Assert
       assertThrows(IllegalArgumentException::class.java) { resultSet.getRowBatch(0, 0) }
@@ -252,38 +204,29 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
           .setContent(
             SqliteInspectorProtocol.ErrorContent.newBuilder()
               .setMessage("errorMessage")
-              .setRecoverability(
-                SqliteInspectorProtocol.ErrorRecoverability.newBuilder()
-                  .setIsRecoverable(true)
-                  .build()
-              )
+              .setRecoverability(SqliteInspectorProtocol.ErrorRecoverability.newBuilder().setIsRecoverable(true).build())
               .setStackTrace("stackTrace")
               .build()
           )
           .build()
 
-      val cursor =
-        SqliteInspectorProtocol.Response.newBuilder().setErrorOccurred(errorOccurredEvent).build()
+      val cursor = SqliteInspectorProtocol.Response.newBuilder().setErrorOccurred(errorOccurredEvent).build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act / Assert
       val error1 = pumpEventsAndWaitForFutureException(resultSet.columns)
       val error2 = pumpEventsAndWaitForFutureException(resultSet.totalRowCount)
       val error3 = pumpEventsAndWaitForFutureException(resultSet.getRowBatch(0, 10))
 
-      assertEquals(error1.cause, error2.cause)
-      assertEquals(error1.cause, error3.cause)
-      assertInstanceOf(error1.cause, LiveInspectorException::class.java)
-      assertEquals("errorMessage", error1.cause!!.message)
-      assertEquals("stackTrace", (error1.cause as LiveInspectorException).onDeviceStackTrace)
+      assertThat(error2.cause).isEqualTo(error1.cause)
+      assertThat(error3.cause).isEqualTo(error1.cause)
+      assertThat(error1.cause).isInstanceOf(LiveInspectorException::class.java)
+      assertThat(error1.cause!!.message).isEqualTo("errorMessage")
+      assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
     }
 
   fun testThrowsNonRecoverableErrorOnErrorOccurredResponse() =
@@ -294,41 +237,29 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
           .setContent(
             SqliteInspectorProtocol.ErrorContent.newBuilder()
               .setMessage("errorMessage")
-              .setRecoverability(
-                SqliteInspectorProtocol.ErrorRecoverability.newBuilder()
-                  .setIsRecoverable(false)
-                  .build()
-              )
+              .setRecoverability(SqliteInspectorProtocol.ErrorRecoverability.newBuilder().setIsRecoverable(false).build())
               .setStackTrace("stackTrace")
               .build()
           )
           .build()
 
-      val cursor =
-        SqliteInspectorProtocol.Response.newBuilder().setErrorOccurred(errorOccurredEvent).build()
+      val cursor = SqliteInspectorProtocol.Response.newBuilder().setErrorOccurred(errorOccurredEvent).build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act / Assert
       val error1 = pumpEventsAndWaitForFutureException(resultSet.columns)
       val error2 = pumpEventsAndWaitForFutureException(resultSet.totalRowCount)
       val error3 = pumpEventsAndWaitForFutureException(resultSet.getRowBatch(0, 10))
 
-      assertEquals(error1.cause, error2.cause)
-      assertEquals(error1.cause, error3.cause)
-      assertInstanceOf(error1.cause, LiveInspectorException::class.java)
-      assertEquals(
-        "An error has occurred which requires you to restart your app: errorMessage",
-        error1.cause!!.message,
-      )
-      assertEquals("stackTrace", (error1.cause as LiveInspectorException).onDeviceStackTrace)
+      assertThat(error2.cause).isEqualTo(error1.cause)
+      assertThat(error3.cause).isEqualTo(error1.cause)
+      assertThat(error1.cause).isInstanceOf(LiveInspectorException::class.java)
+      assertThat(error1.cause!!.message).isEqualTo("An error has occurred which requires you to restart your app: errorMessage")
+      assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
     }
 
   fun testThrowsUnknownRecoverableErrorOnErrorOccurredResponse() =
@@ -345,44 +276,28 @@ class LazyLiveSqliteResultSetTest : LightPlatformTestCase() {
           )
           .build()
 
-      val cursor =
-        SqliteInspectorProtocol.Response.newBuilder().setErrorOccurred(errorOccurredEvent).build()
+      val cursor = SqliteInspectorProtocol.Response.newBuilder().setErrorOccurred(errorOccurredEvent).build()
 
       val mockMessenger = mock(AppInspectorMessenger::class.java)
       whenever(mockMessenger.sendRawCommand(any())).thenReturn(cursor.toByteArray())
 
-      val resultSet =
-        createLazyLiveSqliteResultSet(
-          SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"),
-          mockMessenger,
-        )
+      val resultSet = createLazyLiveSqliteResultSet(SqliteStatement(SqliteStatementType.EXPLAIN, "fake stmt"), mockMessenger)
 
       // Act / Assert
       val error1 = pumpEventsAndWaitForFutureException(resultSet.columns)
       val error2 = pumpEventsAndWaitForFutureException(resultSet.totalRowCount)
       val error3 = pumpEventsAndWaitForFutureException(resultSet.getRowBatch(0, 10))
 
-      assertEquals(error1.cause, error2.cause)
-      assertEquals(error1.cause, error3.cause)
-      assertInstanceOf(error1.cause, LiveInspectorException::class.java)
-      assertEquals(
-        "An error has occurred which might require you to restart your app: errorMessage",
-        error1.cause!!.message,
-      )
-      assertEquals("stackTrace", (error1.cause as LiveInspectorException).onDeviceStackTrace)
+      assertThat(error2.cause).isEqualTo(error1.cause)
+      assertThat(error3.cause).isEqualTo(error1.cause)
+      assertThat(error1.cause).isInstanceOf(LiveInspectorException::class.java)
+      assertThat(error1.cause!!.message).isEqualTo("An error has occurred which might require you to restart your app: errorMessage")
+      assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
     }
 
-  private fun createLazyLiveSqliteResultSet(
-    statement: SqliteStatement,
-    messenger: AppInspectorMessenger,
-  ): LiveSqliteResultSet {
+  private fun createLazyLiveSqliteResultSet(statement: SqliteStatement, messenger: AppInspectorMessenger): LiveSqliteResultSet {
     val liveSqliteResultSet =
-      LazyLiveSqliteResultSet(
-        statement,
-        DatabaseInspectorMessenger(messenger, scope, taskExecutor),
-        0,
-        taskExecutor,
-      )
+      LazyLiveSqliteResultSet(statement, DatabaseInspectorMessenger(messenger, scope, taskExecutor), 0, taskExecutor)
     Disposer.register(testRootDisposable, liveSqliteResultSet)
     return liveSqliteResultSet
   }

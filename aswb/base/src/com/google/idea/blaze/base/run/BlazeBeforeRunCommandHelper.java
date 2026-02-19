@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.base.run;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.idea.blaze.base.async.executor.ProgressiveTaskWithProgressIndicator;
 import com.google.idea.blaze.base.bazel.BuildSystem;
@@ -24,13 +23,8 @@ import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
-import com.google.idea.blaze.base.io.FileOperationProvider;
-import com.google.idea.blaze.base.io.TempDirectoryProvider;
 import com.google.idea.blaze.base.issueparser.BlazeIssueParser;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
-import com.google.idea.blaze.base.projectview.ProjectViewManager;
-import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.ScopedTask;
@@ -42,8 +36,6 @@ import com.google.idea.blaze.base.settings.BlazeUserSettings;
 import com.google.idea.blaze.base.toolwindow.Task;
 import com.google.idea.blaze.exception.BuildException;
 import com.intellij.openapi.project.Project;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -72,14 +64,16 @@ public final class BlazeBeforeRunCommandHelper {
       String progressMessage,
       BuildEventStreamConsumer<T> consumer) {
     return runBlazeCommand(
-        commandName,
-        configuration,
-        requiredExtraBlazeFlags,
-        overridableExtraBlazeFlags,
-        invocationContext,
-        progressMessage,
-        configuration.getTargets(),
-        consumer);
+      configuration.getProject(),
+      commandName,
+      requiredExtraBlazeFlags,
+      overridableExtraBlazeFlags,
+      invocationContext,
+      progressMessage,
+      configuration.getTargetPatterns(),
+      ((BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState()).getBlazeFlagsState().getFlagsForExternalProcesses(),
+      consumer
+    );
   }
 
   /**
@@ -87,20 +81,17 @@ public final class BlazeBeforeRunCommandHelper {
    * targets from the run {@code configuration}.
    */
   public static <T> ListenableFuture<T> runBlazeCommand(
-      BlazeCommandName commandName,
-      BlazeCommandRunConfiguration configuration,
-      List<String> requiredExtraBlazeFlags,
-      List<String> overridableExtraBlazeFlags,
-      BlazeInvocationContext invocationContext,
-      String progressMessage,
-      ImmutableList<TargetExpression> targets,
-      BuildEventStreamConsumer<T> consumer) {
+    final Project project,
+    BlazeCommandName commandName,
+    List<String> requiredExtraBlazeFlags,
+    List<String> overridableExtraBlazeFlags,
+    BlazeInvocationContext invocationContext,
+    String progressMessage,
+    List<String> targets,
+    List<String> flags,
+    BuildEventStreamConsumer<T> consumer) {
 
-    Project project = configuration.getProject();
-    BlazeCommandRunConfigurationCommonState handlerState =
-        (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
     WorkspaceRoot workspaceRoot = WorkspaceRoot.fromProject(project);
-    ProjectViewSet projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
 
     return ProgressiveTaskWithProgressIndicator.builder(project, TASK_TITLE)
         .submitTaskWithResult(
@@ -110,16 +101,16 @@ public final class BlazeBeforeRunCommandHelper {
                 context
                     .push(
                         new ToolWindowScope.Builder(
-                                project, new Task(project, TASK_TITLE, Task.Type.BEFORE_LAUNCH))
+                          project, new Task(project, TASK_TITLE))
                             .setPopupBehavior(
                                 BlazeUserSettings.getInstance().getShowBlazeConsoleOnRun())
                             .setIssueParsers(
                                 BlazeIssueParser.defaultIssueParsers(
-                                    project, workspaceRoot, invocationContext.type()))
+                                  project, workspaceRoot, invocationContext.type()))
                             .build())
                     .push(
                         new ProblemsViewScope(
-                            project, BlazeUserSettings.getInstance().getShowProblemsViewOnRun()));
+                          project, BlazeUserSettings.getInstance().getShowProblemsViewOnRun()));
 
                 context.output(new StatusOutput(progressMessage));
 
@@ -129,19 +120,16 @@ public final class BlazeBeforeRunCommandHelper {
                     .getBuildInvoker(project);
 
                 BlazeCommand.Builder command =
-                    BlazeCommand.builder(invoker, commandName)
-                        .addTargets(targets)
+                    BlazeCommand.builder(commandName)
+                        .addTargetStrings(targets)
                         .addBlazeFlags(overridableExtraBlazeFlags)
                         .addBlazeFlags(
                             BlazeFlags.blazeFlags(
-                                project,
-                                projectViewSet,
-                                BlazeCommandName.BUILD,
-                                context,
+                              project,
+                              BlazeCommandName.BUILD,
                                 invocationContext))
-                        .addBlazeFlags(
-                            handlerState.getBlazeFlagsState().getFlagsForExternalProcesses())
-                        .addBlazeFlags(requiredExtraBlazeFlags);
+                      .addBlazeFlags(flags)
+                      .addBlazeFlags(requiredExtraBlazeFlags);
                 try {
                   return invoker.invoke(command, context, consumer);
                 } catch (BuildException e) {
@@ -149,14 +137,5 @@ public final class BlazeBeforeRunCommandHelper {
                 }
               }
             });
-  }
-
-  /** Creates a temporary output file to write the shell script to. */
-  public static Path createScriptPathFile() throws IOException {
-    Path tempDir = TempDirectoryProvider.getInstance().getTempDirectory();
-    Path tempFile =
-        FileOperationProvider.getInstance().createTempFile(tempDir, "blaze-script-", "");
-    tempFile.toFile().deleteOnExit();
-    return tempFile;
   }
 }

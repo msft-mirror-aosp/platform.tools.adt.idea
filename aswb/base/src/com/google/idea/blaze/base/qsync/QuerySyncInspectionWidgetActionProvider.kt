@@ -24,8 +24,7 @@ import com.google.idea.blaze.base.qsync.action.PopupPositioner
 import com.google.idea.blaze.base.qsync.action.TargetDisambiguationAnchors
 import com.google.idea.blaze.base.qsync.action.getVirtualFiles
 import com.google.idea.blaze.base.qsync.settings.QuerySyncSettings
-import com.google.idea.blaze.base.settings.Blaze
-import com.google.idea.blaze.base.settings.BlazeImportSettings
+import com.google.idea.blaze.base.settings.Bazel.isBazelProject
 import com.google.idea.blaze.qsync.project.TargetsToBuild
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -44,15 +43,14 @@ import javax.swing.JComponent
 import kotlinx.coroutines.guava.asDeferred
 
 /**
- * Provides the actions to be used with the inspection widget. The inspection widget is the
- * tri-color icon at the top-right of files showing analysis results. This class provides the action
- * that sits there and builds the file dependencies and enables analysis
+ * Provides the actions to be used with the inspection widget. The inspection widget is the tri-color icon at the top-right of files showing
+ * analysis results. This class provides the action that sits there and builds the file dependencies and enables analysis
  */
 class QuerySyncInspectionWidgetActionProvider : InspectionWidgetActionProvider {
   override fun createAction(editor: Editor): AnAction? {
     val project = editor.project ?: return null
     return when {
-      Blaze.getProjectType(project) != BlazeImportSettings.ProjectType.QUERY_SYNC -> null
+      !project.isBazelProject() -> null
       editor.editorKind != EditorKind.MAIN_EDITOR -> null
       else -> BuildDependenciesAction(project, editor)
     }
@@ -71,16 +69,14 @@ class QuerySyncInspectionWidgetActionProvider : InspectionWidgetActionProvider {
       val querySyncActionStats = QuerySyncActionStatsScope.createForFiles(project, javaClass, e, ImmutableList.copyOf(vfs))
       buildDepsHelper.determineTargetsAndRun(
         workspaceRelativePaths = WorkspaceRoot.virtualFilesToWorkspaceRelativePaths(project, vfs),
-        disambiguateTargetPrompt = BuildDependenciesHelperSelectTargetPopup.createDisambiguateTargetPrompt(
-          PopupPositioner.showUnderneathClickedComponentOrCentered(e)),
+        disambiguateTargetPrompt =
+          BuildDependenciesHelperSelectTargetPopup.createDisambiguateTargetPrompt(
+            PopupPositioner.showUnderneathClickedComponentOrCentered(e)
+          ),
         targetDisambiguationAnchors = TargetDisambiguationAnchors.NONE,
-        querySyncActionStats = querySyncActionStats
+        querySyncActionStats = querySyncActionStats,
       ) { labels ->
-        syncManager.enableAnalysis(
-          labels,
-          querySyncActionStats,
-          QuerySyncManager.TaskOrigin.USER_ACTION
-        ).asDeferred()
+        syncManager.enableAnalysis(labels, querySyncActionStats, QuerySyncManager.TaskOrigin.USER_ACTION).asDeferred()
       }
     }
 
@@ -88,14 +84,16 @@ class QuerySyncInspectionWidgetActionProvider : InspectionWidgetActionProvider {
       val presentation = e.presentation
       presentation.text = ""
       val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-      val vf = psiFile?.virtualFile ?: let {
-        presentation.setEnabled(false)
-        return
-      }
+      val vf =
+        psiFile?.virtualFile
+          ?: let {
+            presentation.setEnabled(false)
+            return
+          }
 
       val currentOperation = QuerySyncManager.getInstance(project).currentOperation()
       if (currentOperation.isPresent) {
-        presentation.isEnabled =false
+        presentation.isEnabled = false
         presentation.text =
           when (QuerySyncManager.OperationType.SYNC) {
             currentOperation.get() -> "Syncing project..."
@@ -103,12 +101,10 @@ class QuerySyncInspectionWidgetActionProvider : InspectionWidgetActionProvider {
           }
         return
       }
-      val toBuild = buildDepsHelper.getTargetsToEnableAnalysisForPaths(
-        WorkspaceRoot.virtualFilesToWorkspaceRelativePaths(
-          project,
-          ImmutableList.of(vf)
+      val toBuild =
+        buildDepsHelper.getTargetsToEnableAnalysisForPaths(
+          WorkspaceRoot.virtualFilesToWorkspaceRelativePaths(project, ImmutableList.of(vf))
         )
-      )
 
       if (toBuild.isEmpty()) {
         // The file is not recognised as potentially analyzable. If the file is not synced, it is represented by a
@@ -128,9 +124,7 @@ class QuerySyncInspectionWidgetActionProvider : InspectionWidgetActionProvider {
       }
     }
 
-    override fun createCustomComponent(
-      presentation: Presentation, place: String
-    ): JComponent {
+    override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
       presentation.icon = AllIcons.Actions.Compile
       presentation.text = ""
       return QuerySyncWidget(this, presentation, place, editor, buildDepsHelper).component()

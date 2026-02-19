@@ -54,9 +54,7 @@ class ComposeDebuggerTest {
 
     val element = serialize(settingsManager.state!!)
     settings.filterComposeRuntimeClasses = true
-    settingsManager.loadState(
-      element!!.deserialize(XDebuggerSettingManagerImpl.SettingsState::class.java)
-    )
+    settingsManager.loadState(element!!.deserialize(XDebuggerSettingManagerImpl.SettingsState::class.java))
     assert(!settings.filterComposeRuntimeClasses)
   }
 

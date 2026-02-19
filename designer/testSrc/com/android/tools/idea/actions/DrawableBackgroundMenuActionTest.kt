@@ -20,7 +20,6 @@ import com.android.tools.adtui.actions.prettyPrintActions
 import com.android.tools.idea.DesignSurfaceTestUtil.createZoomControllerFake
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurfaceSettings
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.rendering.AndroidBuildTargetReference
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -33,9 +32,11 @@ import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.util.androidFacet
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.TestActionEvent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.concurrency.await
@@ -52,9 +53,8 @@ class DrawableBackgroundMenuActionTest {
 
   @Test
   fun `switch options`() = runBlocking {
-    withContext(uiThread) {
-      val drawablePsiFile =
-        projectRule.fixture.loadNewFile("res/drawable/icon.xml", "<drawable></drawable>")
+    withContext(Dispatchers.EDT) {
+      val drawablePsiFile = projectRule.fixture.loadNewFile("res/drawable/icon.xml", "<drawable></drawable>")
 
       projectRule.fixture.openFileInEditor(drawablePsiFile.virtualFile)
 
@@ -63,11 +63,11 @@ class DrawableBackgroundMenuActionTest {
 
       assertEquals(
         """
-          ✔ None
-          White
-          Black
-          Checkered
-      """
+        ✔ None
+        White
+        Black
+        Checkered
+        """
           .trimIndent(),
         prettyPrintActions(action, dataContext = testEvent.dataContext).trimIndent(),
       )
@@ -75,11 +75,11 @@ class DrawableBackgroundMenuActionTest {
       action.findActionByText("White")!!.actionPerformed(testEvent)
       assertEquals(
         """
-          None
-          ✔ White
-          Black
-          Checkered
-      """
+        None
+        ✔ White
+        Black
+        Checkered
+        """
           .trimIndent(),
         prettyPrintActions(action, dataContext = testEvent.dataContext).trimIndent(),
       )
@@ -87,11 +87,11 @@ class DrawableBackgroundMenuActionTest {
       action.findActionByText("Black")!!.actionPerformed(testEvent)
       assertEquals(
         """
-          None
-          White
-          ✔ Black
-          Checkered
-      """
+        None
+        White
+        ✔ Black
+        Checkered
+        """
           .trimIndent(),
         prettyPrintActions(action, dataContext = testEvent.dataContext).trimIndent(),
       )
@@ -100,9 +100,8 @@ class DrawableBackgroundMenuActionTest {
 
   @Test
   fun `option change changes the global state`() = runBlocking {
-    withContext(uiThread) {
-      val drawablePsiFile =
-        projectRule.fixture.loadNewFile("res/drawable/icon.xml", "<drawable></drawable>")
+    withContext(Dispatchers.EDT) {
+      val drawablePsiFile = projectRule.fixture.loadNewFile("res/drawable/icon.xml", "<drawable></drawable>")
 
       projectRule.fixture.openFileInEditor(drawablePsiFile.virtualFile)
 
@@ -111,26 +110,21 @@ class DrawableBackgroundMenuActionTest {
 
       assertEquals(
         DrawableBackgroundType.NONE,
-        DesignSurfaceSettings.getInstance(project)
-          .surfaceState
-          .loadDrawableBackgroundType(project, drawablePsiFile.virtualFile),
+        DesignSurfaceSettings.getInstance(project).surfaceState.loadDrawableBackgroundType(project, drawablePsiFile.virtualFile),
       )
 
       action.findActionByText("White")!!.actionPerformed(testEvent)
       assertEquals(
         DrawableBackgroundType.WHITE,
-        DesignSurfaceSettings.getInstance(project)
-          .surfaceState
-          .loadDrawableBackgroundType(project, drawablePsiFile.virtualFile),
+        DesignSurfaceSettings.getInstance(project).surfaceState.loadDrawableBackgroundType(project, drawablePsiFile.virtualFile),
       )
     }
   }
 
   @Test
   fun `option change changes the surface state`() = runBlocking {
-    withContext(uiThread) {
-      val drawablePsiFile =
-        projectRule.fixture.loadNewFile("res/drawable/icon.xml", "<drawable></drawable>")
+    withContext(Dispatchers.EDT) {
+      val drawablePsiFile = projectRule.fixture.loadNewFile("res/drawable/icon.xml", "<drawable></drawable>")
       val virtualFile = drawablePsiFile.virtualFile
 
       projectRule.fixture.openFileInEditor(virtualFile)
@@ -146,39 +140,27 @@ class DrawableBackgroundMenuActionTest {
             projectRule.testRootDisposable,
             AndroidBuildTargetReference.gradleOnly(projectRule.module.androidFacet!!),
             virtualFile,
-            ConfigurationManager.getOrCreateInstance(projectRule.module)
-              .getConfiguration(virtualFile),
+            ConfigurationManager.getOrCreateInstance(projectRule.module).getConfiguration(virtualFile),
           )
           .build()
       whenever(mockLayoutlibSceneManager.model).thenReturn(nlModel)
       Disposer.register(projectRule.testRootDisposable, mockLayoutlibSceneManager)
 
       val testDrawableScreenViewProvider = DrawableScreenViewProvider(DrawableBackgroundType.NONE)
-      val screenView =
-        testDrawableScreenViewProvider.createPrimarySceneView(
-          mockDesignSurface,
-          mockLayoutlibSceneManager,
-        )
+      val screenView = testDrawableScreenViewProvider.createPrimarySceneView(mockDesignSurface, mockLayoutlibSceneManager)
       screenView.setForceLayersRepaint(false)
       whenever(mockDesignSurface.screenViewProvider).thenReturn(testDrawableScreenViewProvider)
       val parentDataContext = DataManager.getInstance().dataContextFromFocusAsync.await()
       val testEvent =
-        TestActionEvent.createTestEvent(
-          SimpleDataContext.getSimpleContext(DESIGN_SURFACE, mockDesignSurface, parentDataContext)
-        )
+        TestActionEvent.createTestEvent(SimpleDataContext.getSimpleContext(DESIGN_SURFACE, mockDesignSurface, parentDataContext))
 
       assertEquals(
         DrawableBackgroundType.NONE,
-        DesignSurfaceSettings.getInstance(project)
-          .surfaceState
-          .loadDrawableBackgroundType(project, virtualFile),
+        DesignSurfaceSettings.getInstance(project).surfaceState.loadDrawableBackgroundType(project, virtualFile),
       )
 
       action.findActionByText("Checkered")!!.actionPerformed(testEvent)
-      assertEquals(
-        DrawableBackgroundType.CHECKERED,
-        testDrawableScreenViewProvider.getDrawableBackgroudType(),
-      )
+      assertEquals(DrawableBackgroundType.CHECKERED, testDrawableScreenViewProvider.getDrawableBackgroudType())
     }
   }
 }

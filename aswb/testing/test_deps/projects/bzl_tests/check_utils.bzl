@@ -224,6 +224,29 @@ def _collection_contains_exactly(self, expecteds, use_predicates = False):
         elif type(file) == "string":
             _str_subject_equals(struct(actual = file, meta = self.meta), expected)
 
+def subjects_collection_contains_factory(actual, *, meta):
+    return struct(
+        actual = actual,
+        contains_exactly = lambda *a, **k: _collection_contains_exactly_custom(struct(actual = actual, meta = meta), *a, **k),
+    )
+
+def _collection_contains_exactly_custom(self, expecteds):
+    if len(expecteds) > 0 and expecteds[0] == "*contains*":
+        _collection_contains_subset(self, expecteds[1:])
+    else:
+        _collection_contains_exactly(self, expecteds, use_predicates = True)
+
+def _collection_contains_subset(self, expecteds):
+    # Check that 'actual' contains all elements in 'expecteds'
+    for expected in expecteds:
+        found = False
+        for actual_item in self.actual:
+            if actual_item == expected:
+                found = True
+                break
+        if not found:
+            self.meta.add_failure("Expected to contain: {}".format(expected), "Actual: {}".format(self.actual))
+
 def subjects_file_factory(actual, *, meta):
     """Creates a FileSubject asserting against the given file.
 
@@ -325,6 +348,23 @@ def _str_subject_equals(self, other):
         suffix = other[index + 1:]
         if self.actual and self.actual.startswith(prefix) and self.actual.endswith(suffix):
             return
+    self.meta.add_failure(
+        "expected: {}".format(other),
+        "actual: {}".format(self.actual),
+    )
+
+def subjects_bool_factory(actual, *, meta):
+    """Creates a new subject for asserting boolean objects."""
+    self = struct(actual = actual, meta = meta)
+    return struct(
+        actual = actual,
+        contains_exactly = lambda *a, **k: _bool_subject_equals(self, *a, **k),
+    )
+
+def _bool_subject_equals(self, other):
+    """Asserts that the subject boolean equals the other boolean."""
+    if self.actual == other:
+        return
     self.meta.add_failure(
         "expected: {}".format(other),
         "actual: {}".format(self.actual),

@@ -17,13 +17,19 @@ package com.android.tools.idea.gradle.structure.model.helpers
 
 import com.android.ide.common.gradle.Version
 import com.android.tools.idea.gradle.structure.model.android.asParsed
-import com.android.tools.idea.gradle.structure.model.meta.*
+import com.android.tools.idea.gradle.structure.model.meta.DslText
+import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
+import com.android.tools.idea.gradle.structure.model.meta.ValueAnnotation
+import com.android.tools.idea.gradle.structure.model.meta.annotated
 import com.intellij.pom.java.LanguageLevel
-import junit.framework.Assert.*
+import java.io.File
+import junit.framework.Assert.assertEquals
+import junit.framework.Assert.assertFalse
+import junit.framework.Assert.assertNull
+import junit.framework.Assert.assertTrue
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
-import java.io.File
 
 class InputParsersTest {
 
@@ -184,8 +190,7 @@ class InputParsersTest {
   fun languageLevel() {
     assertEquals(parseLanguageLevel("1.8"), ParsedValue.Set.Parsed(LanguageLevel.JDK_1_8, DslText.Literal).annotated())
     assertEquals(parseLanguageLevel("VERSION_1_7"), ParsedValue.Set.Parsed(LanguageLevel.JDK_1_7, DslText.Literal).annotated())
-    assertEquals(parseLanguageLevel("JavaVersion.VERSION_1_6"),
-                 ParsedValue.Set.Parsed(LanguageLevel.JDK_1_6, DslText.Literal).annotated())
+    assertEquals(parseLanguageLevel("JavaVersion.VERSION_1_6"), ParsedValue.Set.Parsed(LanguageLevel.JDK_1_6, DslText.Literal).annotated())
   }
 
   @Test
@@ -199,8 +204,7 @@ class InputParsersTest {
     assertEquals("android-26".asParsed().annotated(), parseString("android-26"))
     assertEquals("android-P".asParsed().annotated(), parseString("android-P"))
     assertEquals("P".asParsed().annotated(), parseString("P"))
-    assertEquals("Superlogic:Superlogic SDK v7.34".asParsed().annotated(),
-                 parseString("Superlogic:Superlogic SDK v7.34"))
+    assertEquals("Superlogic:Superlogic SDK v7.34".asParsed().annotated(), parseString("Superlogic:Superlogic SDK v7.34"))
   }
 
   @Test

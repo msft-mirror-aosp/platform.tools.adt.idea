@@ -36,8 +36,6 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeParametersCache
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
-import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyClient
-import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyTreeLoader
 import com.android.tools.idea.layoutinspector.ui.LAYOUT_INSPECTOR_DATA_KEY
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
@@ -49,23 +47,19 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.ide.util.PropertiesComponent
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.RuleChain
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.android.facet.AndroidFacet
-import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito
-import org.mockito.kotlin.whenever
 
-val MODERN_DEVICE =
+val DEVICE_1 =
   object : DeviceDescriptor {
     override val manufacturer = "Google"
     override val model = "Modern Model"
@@ -76,20 +70,26 @@ val MODERN_DEVICE =
     override val codename: String? = null
   }
 
-val LEGACY_DEVICE =
-  object : DeviceDescriptor by MODERN_DEVICE {
-    override val model = "Legacy Model"
-    override val serial = "123"
-    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.M)
-    override val version = "M"
+val DEVICE_2 =
+  object : DeviceDescriptor {
+    override val manufacturer = "Google"
+    override val model = "Modern Model"
+    override val serial = "1234567"
+    override val isEmulator = false
+    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.R)
+    override val version = "R"
+    override val codename: String? = null
   }
 
-val OLDER_LEGACY_DEVICE =
-  object : DeviceDescriptor by MODERN_DEVICE {
-    override val model = "Older Legacy Model"
-    override val serial = "12"
-    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.LOLLIPOP)
-    override val version = "L"
+val UNSUPPORTED_DEVICE =
+  object : DeviceDescriptor {
+    override val manufacturer = "Google"
+    override val model = "Modern Model"
+    override val serial = "12345678"
+    override val isEmulator = false
+    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.P)
+    override val version = "P"
+    override val codename: String? = null
   }
 
 fun DeviceDescriptor.createProcess(
@@ -111,8 +111,7 @@ fun DeviceDescriptor.createProcess(
 }
 
 /**
- * Test interface for providing an [InspectorClient] that should get created when connecting to a
- * process.
+ * Test interface for providing an [InspectorClient] that should get created when connecting to a process.
  *
  * This will be used to handle initializing this rule's [InspectorClientLauncher].
  */
@@ -120,39 +119,18 @@ fun interface InspectorClientProvider {
   fun create(params: InspectorClientLauncher.Params, inspector: LayoutInspector): InspectorClient?
 }
 
-/** Simple, convenient provider for generating a real [LegacyClient] */
-fun LegacyClientProvider(
-  getDisposable: () -> Disposable,
-  treeLoaderOverride: LegacyTreeLoader? =
-    Mockito.mock(LegacyTreeLoader::class.java).also {
-      whenever(it.getAllWindowIds(ArgumentMatchers.any())).thenReturn(listOf("1"))
-    },
-) = InspectorClientProvider { params, inspector ->
-  LegacyClient(
-    params.process,
-    inspector.inspectorModel,
-    inspector.notificationModel,
-    LayoutInspectorSessionMetrics(inspector.inspectorModel.project, params.process),
-    AndroidCoroutineScope(getDisposable()),
-    getDisposable(),
-    treeLoaderOverride,
-  )
-}
-
 /**
  * Rule providing mechanisms for testing core behavior used by the layout inspector.
  *
  * This includes things like fake ADB support, process management, and [InspectorClient] setup.
  *
- * Note that, when the rule first starts up, that [inspectorClient] will be set to a disconnected
- * client. You must first call [TestProcessDiscovery.fireConnected] (with a process that has a
- * preferred process name) or [ProcessesModel.selectedProcess] directly, to trigger a new client to
- * get created.
+ * Note that, when the rule first starts up, that [inspectorClient] will be set to a disconnected client. You must first call
+ * [TestProcessDiscovery.fireConnected] (with a process that has a preferred process name) or [ProcessesModel.selectedProcess] directly, to
+ * trigger a new client to get created.
  *
  * @param projectRule A rule providing access to a test project.
- * @param isPreferredProcess Optionally provide a process selector that, when connected via
- *   [TestProcessDiscovery], will be automatically attached to. This simulates the experience when
- *   the user presses the "Run" button for example. Otherwise, the test caller must set
+ * @param isPreferredProcess Optionally provide a process selector that, when connected via [TestProcessDiscovery], will be automatically
+ *   attached to. This simulates the experience when the user presses the "Run" button for example. Otherwise, the test caller must set
  *   [ProcessesModel.selectedProcess] directly.
  */
 class LayoutInspectorRule(
@@ -196,8 +174,8 @@ class LayoutInspectorRule(
   }
 
   /**
-   * Set this to false if the test requires the launcher to execute on a different thread. Use
-   * [asyncLaunchLatch] to make sure the thread finished.
+   * Set this to false if the test requires the launcher to execute on a different thread. Use [asyncLaunchLatch] to make sure the thread
+   * finished.
    */
   var launchSynchronously = true
 
@@ -215,16 +193,17 @@ class LayoutInspectorRule(
   val processNotifier = TestProcessDiscovery()
 
   /**
-   * The underlying processes model, automatically affected by [processNotifier] but can be
-   * interacted directly with to force a connection via its [ProcessesModel.selectedProcess]
-   * property.
+   * The underlying processes model, automatically affected by [processNotifier] but can be interacted directly with to force a connection
+   * via its [ProcessesModel.selectedProcess] property.
    */
   val processes = ProcessesModel(processNotifier, isPreferredProcess)
   private lateinit var deviceModel: DeviceModel
 
   val adbRule = FakeAdbServerAdbLibRule()
   val adbFileProviderRule = AdbFileProviderRule(projectRule::project)
-  private val ruleChain = RuleChain.outerRule(adbRule).around(adbFileProviderRule)
+  private val provisionerServiceRule = DeviceProvisionerServiceCleanUpRule(projectRule::project)
+
+  private val ruleChain = RuleChain(adbRule, adbFileProviderRule, provisionerServiceRule)
 
   lateinit var inspector: LayoutInspector
     private set
@@ -247,14 +226,7 @@ class LayoutInspectorRule(
   /** Notify this rule about a device that it should be aware of. */
   fun attachDevice(device: DeviceDescriptor) {
     adbRule
-      .connectDevice(
-        device.serial,
-        device.manufacturer,
-        device.model,
-        device.version,
-        device.apiLevel,
-        DeviceState.HostConnectionType.USB,
-      )
+      .connectDevice(device.serial, device.manufacturer, device.model, device.version, device.apiLevel, DeviceState.HostConnectionType.USB)
       .also { it.deviceStatus = DeviceState.DeviceStatus.ONLINE }
   }
 
@@ -269,9 +241,7 @@ class LayoutInspectorRule(
     launcher =
       InspectorClientLauncher(
         processes,
-        clientProviders.map { provider ->
-          ClientFactory { params -> provider.create(params, inspector) }
-        },
+        clientProviders.map { provider -> ClientFactory { params -> provider.create(params, inspector) } },
         project,
         notificationModel,
         layoutInspectorCoroutineScope,
@@ -313,10 +283,7 @@ class LayoutInspectorRule(
       }
     }
 
-    (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(
-      dataProvider,
-      projectRule.fixture.testRootDisposable,
-    )
+    (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(dataProvider, projectRule.fixture.testRootDisposable)
   }
 
   fun disconnect() {
@@ -324,8 +291,7 @@ class LayoutInspectorRule(
     // might happen on a background thread after the test framework is done tearing down.
     launcher.disconnectActiveClient(10, TimeUnit.SECONDS)
 
-    launchSynchronously =
-      true // Do not start more threads, since that would cause ConcurrentModificationException
+    launchSynchronously = true // Do not start more threads, since that would cause ConcurrentModificationException
     // below
     asyncLauncherThreads.forEach {
       it.join(1000) // Wait for the thread to finish
@@ -359,8 +325,8 @@ class LayoutInspectorRule(
 }
 
 /**
- * For tests that run with the Default Project System, modify project system structures so that the
- * test environment has a model with this [applicationId].
+ * For tests that run with the Default Project System, modify project system structures so that the test environment has a model with this
+ * [applicationId].
  */
 fun AndroidFacet.setApplicationIdForTest(applicationId: String) {
   AndroidModel.setForTests(this, TestAndroidModel(applicationId))

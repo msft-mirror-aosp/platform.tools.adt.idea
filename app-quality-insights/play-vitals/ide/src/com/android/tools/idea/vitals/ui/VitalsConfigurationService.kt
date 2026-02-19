@@ -23,7 +23,6 @@ import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.AppInsightsProjectLevelControllerImpl
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.OfflineStatusManagerImpl
-import com.android.tools.idea.insights.ai.AiInsightToolkitImpl
 import com.android.tools.idea.insights.ai.GeminiAiInsightsOnboardingProvider
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
@@ -41,6 +40,7 @@ import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.ui.AppInsightsToolWindowFactory
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.vitals.IntellijStackTraceGroupParser
+import com.android.tools.idea.vitals.VitalsAiInsightToolkit
 import com.android.tools.idea.vitals.VitalsInsightsProvider
 import com.android.tools.idea.vitals.VitalsLoginFeature
 import com.android.tools.idea.vitals.client.VitalsClient
@@ -77,8 +77,7 @@ import org.jetbrains.annotations.VisibleForTesting
 class VitalsConfigurationService(project: Project) : Disposable {
   private val cache = AppInsightsCacheImpl(VitalsInsightsProvider)
 
-  val manager: AppInsightsConfigurationManager =
-    VitalsConfigurationManager(project, cache, parentDisposable = this)
+  val manager: AppInsightsConfigurationManager = VitalsConfigurationManager(project, cache, parentDisposable = this)
 
   override fun dispose() = Unit
 }
@@ -93,8 +92,7 @@ class VitalsConfigurationManager(
 
   private val logger = Logger.getInstance(VitalsConfigurationManager::class.java)
   private val scope = AndroidCoroutineScope(this)
-  private val refreshConfigurationFlow =
-    MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+  private val refreshConfigurationFlow = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
   private val loader = ComponentLoader()
 
   private val queryConnectionsFlow =
@@ -105,11 +103,7 @@ class VitalsConfigurationManager(
           .combine(loginState) { _, _ -> LoginFeature.feature<VitalsLoginFeature>().isLoggedIn() }
           .collect { isLoggedIn ->
             if (!isLoggedIn) {
-              emit(
-                LoadingState.Unauthorized(
-                  "Android Vitals is not an allowed feature for current user"
-                )
-              )
+              emit(LoadingState.Unauthorized("Android Vitals is not an allowed feature for current user"))
             } else {
               val connections = loader.getClient().listConnections()
               if (connections is LoadingState.Ready) {
@@ -155,13 +149,7 @@ class VitalsConfigurationManager(
     } else {
       Disposer.register(parentDisposable, this)
       loader.start()
-      scope.launch {
-        loader
-          .getController()
-          .eventFlow
-          .filter { it is ExplicitRefresh }
-          .collect { refreshConfiguration() }
-      }
+      scope.launch { loader.getController().eventFlow.filter { it is ExplicitRefresh }.collect { refreshConfiguration() } }
     }
   }
 
@@ -171,19 +159,13 @@ class VitalsConfigurationManager(
 
   override fun dispose() = Unit
 
-  private fun Flow<LoadingState.Done<List<AppConnection>>>
-    .mapConnectionsToVariantConnectionsIfReady() = mapNotNull { result ->
+  private fun Flow<LoadingState.Done<List<AppConnection>>>.mapConnectionsToVariantConnectionsIfReady() = mapNotNull { result ->
     when (result) {
       is LoadingState.Ready -> {
         offlineStatusManager.enterMode(ConnectionMode.ONLINE)
         val modules = project.getHolderModules().filter { it.isAndroidApp }
-        val appIds =
-          modules
-            .flatMap { module -> AndroidModel.get(module)?.allApplicationIds ?: emptyList() }
-            .toSet()
-        result.value
-          .map { app -> VitalsConnection(app.appId, app.displayName, app.appId in appIds) }
-          .also { cache.populateConnections(it) }
+        val appIds = modules.flatMap { module -> AndroidModel.get(module)?.allApplicationIds ?: emptyList() }.toSet()
+        result.value.map { app -> VitalsConnection(app.appId, app.displayName, app.appId in appIds) }.also { cache.populateConnections(it) }
       }
       is LoadingState.NetworkFailure -> {
         logger.warn("Encountered error in getting Vitals connections: ${result.message}")
@@ -223,10 +205,7 @@ class VitalsConfigurationManager(
             VitalsClient(
               channelProvider,
               cache,
-              GoogleLoginService.instance.getActiveUserAuthInterceptor(
-                LoginFeature.feature<VitalsLoginFeature>()
-              ),
-              aiInsightClient = GeminiAiInsightClient(project, cache),
+              GoogleLoginService.instance.getActiveUserAuthInterceptor(LoginFeature.feature<VitalsLoginFeature>()),
               stackTraceGroupParser = IntellijStackTraceGroupParser(),
             )
           )
@@ -240,6 +219,8 @@ class VitalsConfigurationManager(
             // Project is disposed.
             return@launch
           }
+
+        val codeContextResolver = CodeContextResolverImpl(project)
         val vitalsController =
           AppInsightsProjectLevelControllerImpl(
             provider = VitalsInsightsProvider,
@@ -252,19 +233,15 @@ class VitalsConfigurationManager(
             clock = Clock.systemDefaultZone(),
             project = project,
             onErrorAction = { msg, hyperlinkListener ->
-              AppInsightsToolWindowFactory.showBalloon(
-                project,
-                MessageType.ERROR,
-                msg,
-                hyperlinkListener,
-              )
+              AppInsightsToolWindowFactory.showBalloon(project, MessageType.ERROR, msg, hyperlinkListener)
             },
             defaultFilters = createVitalsFilters(),
             aiInsightToolkit =
-              AiInsightToolkitImpl(
+              VitalsAiInsightToolkit(
                 project,
                 GeminiAiInsightsOnboardingProvider(project),
-                CodeContextResolverImpl(project),
+                codeContextResolver,
+                GeminiAiInsightClient(project, codeContextResolver),
               ),
             cache = cache,
           )

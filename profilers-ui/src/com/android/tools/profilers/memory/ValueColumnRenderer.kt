@@ -21,28 +21,34 @@ import com.android.tools.profilers.memory.adapters.InstanceObject
 import com.android.tools.profilers.memory.adapters.ReferenceObject
 import com.android.tools.profilers.memory.adapters.ValueObject
 import com.android.tools.profilers.memory.adapters.ValueObject.ValueType.ARRAY
-import com.intellij.icons.AllIcons.Debugger.*
+import com.intellij.icons.AllIcons.Debugger.Db_array
+import com.intellij.icons.AllIcons.Debugger.Db_primitive
 import com.intellij.icons.AllIcons.Hierarchy.Subtypes
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.IconManager
 import com.intellij.ui.NewUI
 import com.intellij.ui.PlatformIcons
 import com.intellij.ui.SimpleTextAttributes
-import com.intellij.util.PlatformIcons.*
-import icons.StudioIcons.Profiler.Overlays.*
+import com.intellij.util.PlatformIcons.CLASS_ICON
+import com.intellij.util.PlatformIcons.INTERFACE_ICON
+import icons.StudioIcons.Profiler.Overlays.ARRAY_STACK
+import icons.StudioIcons.Profiler.Overlays.FIELD_STACK
+import icons.StudioIcons.Profiler.Overlays.INTERFACE_STACK
 import java.awt.Color
 import javax.swing.Icon
 import javax.swing.JTree
 import javax.swing.SwingConstants
 
 open class ValueColumnRenderer : ColoredTreeCellRenderer() {
-  override fun customizeCellRenderer(tree: JTree,
-                                     value: Any,
-                                     selected: Boolean,
-                                     expanded: Boolean,
-                                     leaf: Boolean,
-                                     row: Int,
-                                     hasFocus: Boolean) {
+  override fun customizeCellRenderer(
+    tree: JTree,
+    value: Any,
+    selected: Boolean,
+    expanded: Boolean,
+    leaf: Boolean,
+    row: Int,
+    hasFocus: Boolean,
+  ) {
     when {
       value !is MemoryObjectTreeNode<*> -> append(value.toString())
       value.adapter !is ValueObject -> append(value.adapter.name)
@@ -60,40 +66,44 @@ open class ValueColumnRenderer : ColoredTreeCellRenderer() {
         append(if (valueText.isEmpty()) "" else " ")
 
         val toStringText = valueObject.toStringText
-        append(toStringText,
-               // TODO import IntelliJ colors for accessibility
-               if (valueObject.valueType == ValueObject.ValueType.STRING) STRING_ATTRIBUTES
-               else SimpleTextAttributes.REGULAR_ATTRIBUTES,
-               toStringText)
+        append(
+          toStringText,
+          // TODO import IntelliJ colors for accessibility
+          if (valueObject.valueType == ValueObject.ValueType.STRING) STRING_ATTRIBUTES else SimpleTextAttributes.REGULAR_ATTRIBUTES,
+          toStringText,
+        )
       }
     }
   }
 
-  private fun setIconColorized(icon: Icon) =
-    setIcon(if (mySelected && isFocused && !NewUI.isEnabled()) generateWhiteIcon(icon) else icon)
+  private fun setIconColorized(icon: Icon) = setIcon(if (mySelected && isFocused && !NewUI.isEnabled()) generateWhiteIcon(icon) else icon)
 
   companion object {
     val STRING_ATTRIBUTES = SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, Color(0, 0x80, 0))
 
     @JvmStatic
-    fun ValueObject.getValueObjectIcon() = when (this) {
-      is FieldObject -> when {
-        valueType == ARRAY -> asInstance.getStackedIcon(ARRAY_STACK, Db_array)
-        valueType.isPrimitive -> Db_primitive
-        else -> asInstance.getStackedIcon(FIELD_STACK, IconManager.getInstance().getPlatformIcon(PlatformIcons.Field))
+    fun ValueObject.getValueObjectIcon() =
+      when (this) {
+        is FieldObject ->
+          when {
+            valueType == ARRAY -> asInstance.getStackedIcon(ARRAY_STACK, Db_array)
+            valueType.isPrimitive -> Db_primitive
+            else -> asInstance.getStackedIcon(FIELD_STACK, IconManager.getInstance().getPlatformIcon(PlatformIcons.Field))
+          }
+        is ReferenceObject ->
+          when {
+            referenceInstance.isRoot -> Subtypes
+            referenceInstance.valueType == ARRAY -> referenceInstance.getStackedIcon(ARRAY_STACK, Db_array)
+            else -> referenceInstance.getStackedIcon(FIELD_STACK, IconManager.getInstance().getPlatformIcon(PlatformIcons.Field))
+          }
+        is InstanceObject ->
+          when (valueType) {
+            ValueObject.ValueType.CLASS -> CLASS_ICON
+            ARRAY -> getStackedIcon(ARRAY_STACK, Db_array)
+            else -> getStackedIcon(INTERFACE_STACK, INTERFACE_ICON)
+          }
+        else -> INTERFACE_ICON
       }
-      is ReferenceObject -> when {
-        referenceInstance.isRoot -> Subtypes
-        referenceInstance.valueType == ARRAY -> referenceInstance.getStackedIcon(ARRAY_STACK, Db_array)
-        else -> referenceInstance.getStackedIcon(FIELD_STACK, IconManager.getInstance().getPlatformIcon(PlatformIcons.Field))
-      }
-      is InstanceObject -> when (valueType) {
-        ValueObject.ValueType.CLASS -> CLASS_ICON
-        ARRAY -> getStackedIcon(ARRAY_STACK, Db_array)
-        else -> getStackedIcon(INTERFACE_STACK, INTERFACE_ICON)
-      }
-      else -> INTERFACE_ICON
-    }
 
     private fun InstanceObject?.getStackedIcon(stackedIcon: Icon, nonStackedIcon: Icon) =
       if (this == null || callStackDepth == 0) nonStackedIcon else stackedIcon

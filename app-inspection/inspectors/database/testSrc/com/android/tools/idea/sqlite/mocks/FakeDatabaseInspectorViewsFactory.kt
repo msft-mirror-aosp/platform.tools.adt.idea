@@ -23,6 +23,7 @@ import com.android.tools.idea.sqlite.ui.exportToFile.ExportInProgressView
 import com.android.tools.idea.sqlite.ui.exportToFile.ExportToFileDialogView
 import com.android.tools.idea.sqlite.ui.sqliteEvaluator.SqliteEvaluatorView
 import com.android.tools.idea.sqlite.ui.tableView.TableView
+import com.android.tools.idea.sqlite.ui.tableView.TableView.TableViewType
 import com.intellij.openapi.project.Project
 import javax.swing.JComponent
 import kotlinx.coroutines.CoroutineDispatcher
@@ -37,13 +38,12 @@ open class FakeDatabaseInspectorViewsFactory : DatabaseInspectorViewsFactory {
   val tableView: FakeTableView
     get() = tableViews.last()
 
-  val parametersBindingDialogView: FakeParametersBindingDialogView =
-    spy(FakeParametersBindingDialogView())
+  val parametersBindingDialogView: FakeParametersBindingDialogView = spy(FakeParametersBindingDialogView())
   val databaseInspectorView: FakeDatabaseInspectorView = spy(FakeDatabaseInspectorView())
   private val exportToFileDialogView: ExportToFileDialogView = mock()
   private val exportInProgressView: ExportInProgressView = mock()
 
-  override fun createTableView(): TableView {
+  override fun createTableView(type: TableViewType): TableView {
     val fakeTableView = spy<FakeTableView>()
     whenever(fakeTableView.component).thenReturn(mock<JComponent>())
     whenever(sqliteEvaluatorView.tableView).thenReturn(fakeTableView)
@@ -51,14 +51,10 @@ open class FakeDatabaseInspectorViewsFactory : DatabaseInspectorViewsFactory {
     return fakeTableView
   }
 
-  override fun createEvaluatorView(
-    project: Project,
-    schemaProvider: SchemaProvider,
-    tableView: TableView,
-  ): SqliteEvaluatorView = sqliteEvaluatorView
+  override fun createEvaluatorView(project: Project, schemaProvider: SchemaProvider, tableView: TableView): SqliteEvaluatorView =
+    sqliteEvaluatorView
 
-  override fun createParametersBindingView(project: Project, sqliteStatementText: String) =
-    parametersBindingDialogView
+  override fun createParametersBindingView(project: Project, sqliteStatementText: String) = parametersBindingDialogView
 
   override fun createDatabaseInspectorView(project: Project) = databaseInspectorView
 
@@ -68,9 +64,5 @@ open class FakeDatabaseInspectorViewsFactory : DatabaseInspectorViewsFactory {
     analyticsTracker: DatabaseInspectorAnalyticsTracker,
   ): ExportToFileDialogView = exportToFileDialogView
 
-  override fun createExportInProgressView(
-    project: Project,
-    job: Job,
-    taskDispatcher: CoroutineDispatcher,
-  ) = exportInProgressView
+  override fun createExportInProgressView(project: Project, job: Job, taskDispatcher: CoroutineDispatcher) = exportInProgressView
 }

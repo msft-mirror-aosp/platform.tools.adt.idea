@@ -37,17 +37,8 @@ class WiFiPairingViewImpl(
   init {
     // Note: No need to remove the listener, as the Model and View have the same lifetime
     model.addListener(ModelListener())
-    dlg =
-      WiFiPairingDialog(
-        project,
-        true,
-        DialogWrapper.IdeModalityType.IDE,
-        hyperlinkListener,
-        mdnsServiceUnderPairing,
-      )
-    dlg.pairingCodePairInvoked = { service ->
-      listeners.forEach { it.onPairingCodePairAction(service) }
-    }
+    dlg = WiFiPairingDialog(project, true, DialogWrapper.IdeModalityType.IDE, hyperlinkListener, mdnsServiceUnderPairing)
+    dlg.pairingCodePairInvoked = { service -> listeners.forEach { it.onPairingCodePairAction(service) } }
     dlg.qrCodeScanAgainInvoked = { listeners.forEach { it.onScanAnotherQrCodeDeviceAction() } }
     Disposer.register(
       dlg.disposable,
@@ -73,9 +64,7 @@ class WiFiPairingViewImpl(
   }
 
   override fun showMdnsNotSupportedError() {
-    showMdnsNotSupportedError(
-      "This system does not meet the requirements to support Wi-Fi pairing."
-    )
+    showMdnsNotSupportedError("This system does not meet the requirements to support Wi-Fi pairing.")
   }
 
   private fun showMdnsNotSupportedError(message: String) {
@@ -92,15 +81,11 @@ class WiFiPairingViewImpl(
   }
 
   override fun showMdnsNotSupportedByAdbError() {
-    showMdnsNotSupportedError(
-      "The currently installed version of the \"Android Debug Bridge\" (adb) does not support Wi-Fi pairing."
-    )
+    showMdnsNotSupportedError("The currently installed version of the \"Android Debug Bridge\" (adb) does not support Wi-Fi pairing.")
   }
 
   override fun showMdnsCheckError() {
-    dlg.showLoadingError(
-      buildErrorHtml { add("There was an unexpected error during Wi-Fi pairing initialization.") }
-    )
+    dlg.showLoadingError(buildErrorHtml { add("There was an unexpected error during Wi-Fi pairing initialization.") })
   }
 
   private fun buildErrorHtml(build: HtmlBuilder.() -> Unit): HtmlBuilder {
@@ -126,33 +111,13 @@ class WiFiPairingViewImpl(
     dlg.showQrCodePairingWaitForDevice()
   }
 
-  override fun showQrCodePairingSuccess(
-    pairingMdnsService: PairingMdnsService,
-    device: AdbOnlineDevice,
-  ) {
+  override fun showQrCodePairingSuccess(pairingMdnsService: PairingMdnsService, device: AdbOnlineDevice) {
     dlg.showQrCodePairingSuccess(device)
     notificationService.showPairingSuccessBalloon(device)
   }
 
   override fun showQrCodePairingError(pairingMdnsService: PairingMdnsService, error: Throwable) {
     dlg.showQrCodePairingError(error)
-  }
-
-  override fun showMacMdnsEnvironmentIsBroken() {
-    dlg.showLoadingError(
-      buildErrorHtml {
-        add("Please update to the latest version of \"platform-tools\" (minimum 35.0.2) with the ")
-        addLink("SDK manager", Urls.openSdkManager)
-        add(".")
-        newline()
-        newline()
-        add("Make sure mDNS backend 'default' is selected in ")
-        addLink("ADB Settings", Urls.openAdbSettings)
-        add(".")
-        newline()
-        newline()
-      }
-    )
   }
 
   override fun showMdnsDisabledOnAdbServer() {

@@ -5,7 +5,11 @@ load(
     "G3PLUGINS_VISIBILITY",
     "SERVICES_EXPERIMENT_SUBPACKAGES",
 )
-load("//tools/adt/idea/aswb/build_defs:build_defs.bzl", "intellij_plugin_library")
+load(
+    "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
+    "aswb_library",
+    "intellij_plugin_library",
+)
 load(
     "//tools/adt/idea/aswb/testing:test_defs.bzl",
     "intellij_unit_test_suite",
@@ -13,7 +17,7 @@ load(
 
 licenses(["notice"])
 
-java_library(
+aswb_library(
     name = "experiments",
     srcs = glob(["src/**/*.java"]),
     visibility = COMMON_PLUGINS_VISIBILITY,
@@ -61,6 +65,6 @@ intellij_unit_test_suite(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

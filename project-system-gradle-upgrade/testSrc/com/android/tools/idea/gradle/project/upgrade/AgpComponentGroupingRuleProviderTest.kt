@@ -26,8 +26,8 @@ import com.intellij.usages.UsageViewSettings
 import com.intellij.usages.impl.rules.UsageTypeGroupingRule
 import com.intellij.usages.rules.UsageGroupingRule
 import com.intellij.usages.rules.UsageGroupingRuleProvider
-import org.jetbrains.android.AndroidTestCase
 import java.util.ArrayList
+import org.jetbrains.android.AndroidTestCase
 
 class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
   fun testRuleIsActive() {
@@ -37,77 +37,46 @@ class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
       .isLessThan(groupingRules.indexOfFirst { it is UsageTypeGroupingRule })
   }
 
-  // TODO(b/161888480): parameterize by Groovy/KotlinScript
   fun testAgpClasspathDependencyRefactoringProcessor() {
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       buildscript {
         dependencies {
           classpath 'com.android.tools.build:gradle:3.6.0'
         }
       }
-      """.trimIndent())
-    val processor = AgpVersionRefactoringProcessor(myFixture.project, AgpVersion.parse("3.6.0"), AgpVersion.parse("4.0.0"))
+      """
+        .trimIndent(),
+    )
+    val processor = AgpVersionRefactoringProcessor(myFixture.project, AgpVersion.parse("3.6.0"), AgpVersion.parse("4.2.0"))
     assertTrue(processor.isEnabled)
     val usages = processor.findUsages()
     assertThat(usages).hasLength(1)
     val group = getParentComponentGroupFor(usages[0])
-    assertThat(group.presentableGroupText).isEqualTo("Upgrade AGP dependency from 3.6.0 to 4.0.0")
+    assertThat(group.presentableGroupText).isEqualTo("Upgrade AGP dependency from 3.6.0 to 4.2.0")
   }
 
   fun testAgpGradleVersionRefactoringProcessor() {
-    myFixture.addFileToProject("gradle/wrapper/gradle-wrapper.properties", """
+    myFixture.addFileToProject(
+      "gradle/wrapper/gradle-wrapper.properties",
+      """
       distributionUrl=https\://services.gradle.org/distributions/gradle-6.4-bin.zip
-    """.trimIndent())
-    val processor = GradleVersionRefactoringProcessor(myFixture.project, AgpVersion.parse("3.6.0"), AgpVersion.parse("4.1.0"))
+      """
+        .trimIndent(),
+    )
+    val processor = GradleVersionRefactoringProcessor(myFixture.project, AgpVersion.parse("3.6.0"), AgpVersion.parse("4.2.0"))
     assertTrue(processor.isEnabled)
     val usages = processor.findUsages()
     assertThat(usages).hasLength(1)
     val group = getParentComponentGroupFor(usages[0])
-    assertThat(group.presentableGroupText).isEqualTo("Upgrade Gradle version to 6.5")
-  }
-
-  fun testJava8DefaultRefactoringProcessorInsertOldDefault() {
-    myFixture.addFileToProject("build.gradle", """
-      plugins {
-        id 'com.android.application'
-      }
-      android {
-        compileOptions {
-          sourceCompatibility = JavaVersion.VERSION_1_7
-        }
-      }
-    """.trimIndent())
-    val processor = Java8DefaultRefactoringProcessor(myFixture.project, AgpVersion.parse("4.0.0"), AgpVersion.parse("4.2.0"))
-    assertTrue(processor.isEnabled)
-    processor.noLanguageLevelAction = Java8DefaultRefactoringProcessor.NoLanguageLevelAction.INSERT_OLD_DEFAULT
-    val usages = processor.findUsages()
-    assertThat(usages).hasLength(2)
-    assertThat(usages.map { getParentComponentGroupFor(it).presentableGroupText }.toSet())
-      .containsExactly("Add directives to keep using Java 7")
-  }
-
-  fun testJava8DefaultRefactoringProcessorAcceptNewDefault() {
-    myFixture.addFileToProject("build.gradle", """
-      plugins {
-        id 'com.android.application'
-      }
-      android {
-        compileOptions {
-          sourceCompatibility = JavaVersion.VERSION_1_7
-        }
-      }
-    """.trimIndent())
-    val processor = Java8DefaultRefactoringProcessor(myFixture.project, AgpVersion.parse("4.0.0"), AgpVersion.parse("4.2.0"))
-    assertTrue(processor.isEnabled)
-    processor.noLanguageLevelAction = Java8DefaultRefactoringProcessor.NoLanguageLevelAction.ACCEPT_NEW_DEFAULT
-    val usages = processor.findUsages()
-    assertThat(usages).hasLength(2)
-    assertThat(usages.map { getParentComponentGroupFor(it).presentableGroupText }.toSet())
-      .containsExactly("Add directives to keep using Java 7")
+    assertThat(group.presentableGroupText).isEqualTo("Upgrade Gradle version to 6.7.1")
   }
 
   fun testCompileRuntimeConfigurationRefactoringProcessor() {
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       plugins {
         id 'com.android.application'
       }
@@ -117,7 +86,9 @@ class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
       dependencies {
         androidTestCompile 'org.junit:junit:4.11'
       }
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     val processor = CompileRuntimeConfigurationRefactoringProcessor(myFixture.project, AgpVersion.parse("4.0.0"), AgpVersion.parse("5.0.0"))
     assertTrue(processor.isEnabled)
     val usages = processor.findUsages()
@@ -126,32 +97,20 @@ class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
       .containsExactly("Replace deprecated configurations")
   }
 
-  fun testFabricCrashlyticsRefactoringProcessor() {
-    myFixture.addFileToProject("build.gradle", """
-      buildscript {
-        dependencies {
-          classpath 'io.fabric.tools:gradle:1.2.3'
-        }
-      }
-    """.trimIndent())
-    val processor = FabricCrashlyticsRefactoringProcessor(myFixture.project, AgpVersion.parse("3.5.0"), AgpVersion.parse("4.2.0"))
-    assertTrue(processor.isEnabled)
-    val usages = processor.findUsages()
-    assertThat(usages).hasLength(3)
-    assertThat(usages.map { getParentComponentGroupFor(it).presentableGroupText }.toSet())
-      .containsExactly("Migrate crashlytics from fabric to firebase")
-  }
-
   fun testMigrateToBuildFeaturesRefactoringProcessor() {
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       android {
         viewBinding {
           enabled true
         }
       }
-    """.trimIndent())
-    val processor = MIGRATE_TO_BUILD_FEATURES_INFO.RefactoringProcessor(myFixture.project,
-                                                                        AgpVersion.parse("4.2.0"), AgpVersion.parse("7.0.0"))
+      """
+        .trimIndent(),
+    )
+    val processor =
+      MIGRATE_TO_BUILD_FEATURES_INFO.RefactoringProcessor(myFixture.project, AgpVersion.parse("4.2.0"), AgpVersion.parse("7.0.0"))
     assertTrue(processor.isEnabled)
     val usages = processor.findUsages()
     assertThat(usages).hasLength(1)
@@ -160,7 +119,9 @@ class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
   }
 
   fun testRemoveSourceSetJniRefactoringProcessor() {
-    myFixture.addFileToProject("build.gradle", """
+    myFixture.addFileToProject(
+      "build.gradle",
+      """
       android {
         sourceSets {
           foo {
@@ -170,7 +131,9 @@ class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
           }
         }
       }
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val processor = REMOVE_SOURCE_SET_JNI_INFO.RefactoringProcessor(myFixture.project, AgpVersion.parse("4.2.0"), AgpVersion.parse("7.0.0"))
     assertTrue(processor.isEnabled)
@@ -180,9 +143,7 @@ class AgpComponentGroupingRuleProviderTest : AndroidTestCase() {
       .containsExactly("Remove jni source directory from sourceSets")
   }
 
-  /**
-   * this mirrors [com.intellij.usages.impl.UsageViewImpl.getActiveGroupingRules]
-   */
+  /** this mirrors [com.intellij.usages.impl.UsageViewImpl.getActiveGroupingRules] */
   private fun getActiveGroupingRules(project: Project): Array<UsageGroupingRule> {
     val providers = UsageGroupingRuleProvider.EP_NAME.extensionList
     val usageViewSettings = UsageViewSettings.instance

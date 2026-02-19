@@ -24,8 +24,6 @@ import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.AndroidWindow.ImageType
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
-import com.android.tools.idea.layoutinspector.model.DrawViewChild
-import com.android.tools.idea.layoutinspector.model.DrawViewImage
 import com.android.tools.idea.layoutinspector.model.FakeAndroidWindow
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.ViewNode
@@ -59,10 +57,7 @@ fun model(
   scheduler: ScheduledExecutorService? = null,
   displayId: Int? = null,
   body: InspectorModelDescriptor.() -> Unit,
-) =
-  InspectorModelDescriptor(disposable, project, scheduler, displayId = displayId)
-    .also(body)
-    .build(treeSettings)
+) = InspectorModelDescriptor(disposable, project, scheduler, displayId = displayId).also(body).build(treeSettings)
 
 fun viewWindow(
   rootViewDrawId: Long,
@@ -87,23 +82,15 @@ fun viewWindow(
         null,
         "",
         layoutFlags,
+        isDerivedFromWebView = false,
         null,
       )
       .also(body)
       .build()
 
-  val layoutEvent =
-    LayoutInspectorViewProtocol.LayoutEvent.newBuilder().apply { this.isXr = isXr }.build()
+  val layoutEvent = LayoutInspectorViewProtocol.LayoutEvent.newBuilder().apply { this.isXr = isXr }.build()
 
-  return ViewAndroidWindow(
-    notificationModel = mock(),
-    skiaParser = mock(),
-    root = root,
-    event = layoutEvent,
-    folderConfiguration = mock(),
-    isInterrupted = { false },
-    logEvent = {},
-  )
+  return ViewAndroidWindow(root = root, event = layoutEvent, folderConfiguration = mock(), logEvent = {})
 }
 
 fun window(
@@ -133,24 +120,16 @@ fun window(
         viewId,
         textValue,
         layoutFlags,
+        isDerivedFromWebView = false,
         null,
       )
       .also(body)
       .build()
 
-  return FakeAndroidWindow(inspectorViewDescriptor, windowId, imageType) { _, window ->
-    ViewNode.writeAccess {
-      window.root.flatten().forEach {
-        it.drawChildren.clear()
-        it.children.mapTo(it.drawChildren) { child -> DrawViewChild(child) }
-      }
-    }
-    onRefreshImages()
-  }
+  return FakeAndroidWindow(inspectorViewDescriptor, windowId, imageType) { _, _ -> onRefreshImages() }
 }
 
-private val defaultLayout =
-  ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "defaultLayout")
+private val defaultLayout = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "defaultLayout")
 
 fun view(
   drawId: Long,
@@ -163,22 +142,12 @@ fun view(
   viewId: ResourceReference? = null,
   textValue: String = "",
   layoutFlags: Int = 0,
+  isDerivedFromWebView: Boolean = false,
+  flags: Int = 0,
   layout: ResourceReference? = defaultLayout,
   body: InspectorViewDescriptor.() -> Unit = {},
 ) =
-  InspectorViewDescriptor(
-      drawId,
-      qualifiedName,
-      x,
-      y,
-      width,
-      height,
-      bounds,
-      viewId,
-      textValue,
-      layoutFlags,
-      layout,
-    )
+  InspectorViewDescriptor(drawId, qualifiedName, x, y, width, height, bounds, viewId, textValue, layoutFlags, isDerivedFromWebView, layout)
     .also(body)
     .build()
 
@@ -206,18 +175,16 @@ fun compose(
       null,
       "",
       0,
+      isDerivedFromWebView = false,
       composeFilename = composeFilename,
       composePackageHash = composePackageHash,
       composeOffset = composeOffset,
       composeLineNumber = composeLineNumber,
-      composeFlags =
-        if (composePackageHash == SYSTEM_PKG) ComposableNode.Flags.SYSTEM_CREATED_VALUE else 0,
+      composeFlags = if (composePackageHash == SYSTEM_PKG) ComposableNode.Flags.SYSTEM_CREATED_VALUE else 0,
     )
     .also(body)
 
 interface InspectorNodeDescriptor
-
-class InspectorImageDescriptor(internal val image: BufferedImage) : InspectorNodeDescriptor
 
 class InspectorViewDescriptor(
   private val drawId: Long,
@@ -230,6 +197,7 @@ class InspectorViewDescriptor(
   private val viewId: ResourceReference?,
   private val textValue: String,
   private val layoutFlags: Int,
+  private val isDerivedFromWebView: Boolean = false,
   private val layout: ResourceReference? = defaultLayout,
   private val composeCount: Int = 0,
   private val composeSkips: Int = 0,
@@ -244,10 +212,6 @@ class InspectorViewDescriptor(
 ) : InspectorNodeDescriptor {
   private val children = mutableListOf<InspectorNodeDescriptor>()
 
-  fun image(image: BufferedImage = mock()) {
-    children.add(InspectorImageDescriptor(image))
-  }
-
   fun view(
     drawId: Long,
     x: Int = 0,
@@ -259,6 +223,7 @@ class InspectorViewDescriptor(
     viewId: ResourceReference? = null,
     textValue: String = "",
     layoutFlags: Int = 0,
+    isDerivedFromWebView: Boolean = false,
     layout: ResourceReference? = defaultLayout,
     body: InspectorViewDescriptor.() -> Unit = {},
   ) =
@@ -274,6 +239,7 @@ class InspectorViewDescriptor(
           viewId,
           textValue,
           layoutFlags,
+          isDerivedFromWebView,
           layout,
         )
         .apply(body)
@@ -286,6 +252,7 @@ class InspectorViewDescriptor(
     viewId: ResourceReference? = null,
     textValue: String = "",
     layout: ResourceReference? = null,
+    isDerivedFromWebView: Boolean = false,
     body: InspectorViewDescriptor.() -> Unit = {},
   ) =
     view(
@@ -299,6 +266,7 @@ class InspectorViewDescriptor(
       viewId,
       textValue,
       0,
+      isDerivedFromWebView,
       layout,
       body,
     )
@@ -310,8 +278,7 @@ class InspectorViewDescriptor(
     composePackageHash: Int = -1,
     composeOffset: Int = 0,
     composeLineNumber: Int = 0,
-    composeFlags: Int =
-      if (composePackageHash == SYSTEM_PKG) ComposableNode.Flags.SYSTEM_CREATED_VALUE else 0,
+    composeFlags: Int = if (composePackageHash == SYSTEM_PKG) ComposableNode.Flags.SYSTEM_CREATED_VALUE else 0,
     composeCount: Int = 0,
     composeSkips: Int = 0,
     anchorHash: Int = drawId.toInt(),
@@ -351,16 +318,7 @@ class InspectorViewDescriptor(
 
     val result =
       if (composePackageHash == 0) {
-        ViewNode(
-          drawId,
-          qualifiedName,
-          layout,
-          layoutBounds,
-          renderBounds,
-          viewId,
-          textValue,
-          layoutFlags,
-        )
+        ViewNode(drawId, qualifiedName, layout, layoutBounds, renderBounds, viewId, textValue, layoutFlags, isDerivedFromWebView)
       } else {
         ComposeViewNode(
           drawId,
@@ -387,10 +345,6 @@ class InspectorViewDescriptor(
           is InspectorViewDescriptor -> {
             val viewNode = it.build()
             result.children.add(viewNode)
-            result.drawChildren.add(DrawViewChild(viewNode))
-          }
-          is InspectorImageDescriptor -> {
-            result.drawChildren.add(DrawViewImage(it.image, result))
           }
         }
       }
@@ -419,6 +373,7 @@ class InspectorModelDescriptor(
     viewId: ResourceReference? = null,
     textValue: String = "",
     layoutFlags: Int = 0,
+    isDerivedFromWebView: Boolean = false,
     layout: ResourceReference? = defaultLayout,
     imageType: ImageType = ImageType.BITMAP_AS_REQUESTED,
     body: InspectorViewDescriptor.() -> Unit = {},
@@ -435,6 +390,7 @@ class InspectorModelDescriptor(
           viewId,
           textValue,
           layoutFlags,
+          isDerivedFromWebView,
           layout,
           imageType = imageType,
         )
@@ -447,6 +403,7 @@ class InspectorModelDescriptor(
     qualifiedName: String = CLASS_VIEW,
     viewId: ResourceReference? = null,
     textValue: String = "",
+    isDerivedFromWebView: Boolean = false,
     imageType: ImageType = ImageType.BITMAP_AS_REQUESTED,
     layout: ResourceReference? = defaultLayout,
     body: InspectorViewDescriptor.() -> Unit = {},
@@ -462,6 +419,7 @@ class InspectorModelDescriptor(
       viewId,
       textValue,
       0,
+      isDerivedFromWebView,
       layout,
       imageType,
       body,
@@ -477,51 +435,17 @@ class InspectorModelDescriptor(
         displayId = displayId,
         imageType = root?.imageType ?: ImageType.UNKNOWN,
         image = root?.image,
-      ) { _, window ->
-        ViewNode.writeAccess {
-          window.root.flatten().forEach {
-            val drawChildren = it.drawChildren
-            val children = it.children
-            if (drawChildren.any { drawChild -> drawChild is DrawViewImage }) {
-              // We can't support changes to the child list when there are also images, currently,
-              // since we can't know where in the order
-              // of children it should be, or if it should still be there at all.
-              if (
-                drawChildren.filterIsInstance<DrawViewChild>().map { drawChild ->
-                  drawChild.findFilteredOwner(treeSettings)
-                } == children
-              ) {
-                // No changes, great.
-              } else {
-                throw UnsupportedOperationException(
-                  "TestLayoutInspectorModelBuilder doesn't support updating children of nodes with images."
-                )
-              }
-            } else {
-              // We don't have any images
-              drawChildren.clear()
-              children.mapTo(drawChildren) { child -> DrawViewChild(child) }
-            }
-          }
-        }
-      }
+        refreshImages = { _, _ -> },
+      )
     model.update(newWindow, listOf(windowRoot.drawId), 0)
     if (project.isOpen) {
-      ProjectFacetManager.getInstance(project)
-        .getFacets(AndroidFacet.ID)
-        .singleOrNull()
-        ?.setApplicationIdForTest("com.example")
+      ProjectFacetManager.getInstance(project).getFacets(AndroidFacet.ID).singleOrNull()?.setApplicationIdForTest("com.example")
       val strings = TestStringTable()
       val builder = ConfigurationParamsBuilder(strings)
       val context = builder.makeSampleContext(project)
       val theme = context.theme.createReference(strings)
       val process = builder.makeSampleProcess(project)
-      model.resourceLookup.updateConfiguration(
-        FolderConfiguration.createDefault(),
-        theme,
-        process,
-        displays = emptyList(),
-      )
+      model.resourceLookup.updateConfiguration(FolderConfiguration.createDefault(), theme, process, displays = emptyList())
     }
     // This is usually added by DeviceViewPanel
     model.addModificationListener { _, new, _ -> runBlocking { new?.refreshImages(1.0) } }

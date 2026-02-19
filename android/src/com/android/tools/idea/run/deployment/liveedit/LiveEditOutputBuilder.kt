@@ -36,14 +36,12 @@ import com.android.tools.idea.run.deployment.liveedit.analysis.toStringWithLineI
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.util.containers.addIfNotNull
-import org.jetbrains.kotlin.backend.common.output.OutputFile
-import org.jetbrains.kotlin.codegen.`when`.WhenByEnumsMapping.MAPPINGS_CLASS_NAME_POSTFIX
-import org.jetbrains.kotlin.codegen.`when`.WhenByEnumsMapping.MAPPING_ARRAY_FIELD_PREFIX
-import org.jetbrains.kotlin.psi.KtFile
 import java.util.concurrent.TimeUnit
 import kotlin.metadata.jvm.KotlinClassMetadata
+import org.jetbrains.kotlin.backend.common.output.OutputFile
+import org.jetbrains.kotlin.psi.KtFile
 
-private val logger = LogWrapper(Logger.getInstance(LiveEditOutputBuilder ::class.java))
+private val logger = LogWrapper(Logger.getInstance(LiveEditOutputBuilder::class.java))
 private val debug = LiveEditLogger("LiveEditOutputBuilder")
 
 internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
@@ -51,12 +49,14 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
   // Be extremely careful if you use the state inside the outputs object for any reason (or better yet, don't) - it's very easy to
   // inadvertently re-process classes and break things, especially when running in manual mode
   // TODO: Refactor this pattern so this isn't a thing that can happen
-  internal fun getGeneratedCode(applicationLiveEditServices: ApplicationLiveEditServices,
-                                sourceFile: KtFile,
-                                compiledFiles: List<OutputFile>,
-                                irCache: IrClassCache,
-                                inlineCandidateCache: SourceInlineCandidateCache,
-                                outputs: LiveEditCompilerOutput.Builder) {
+  internal fun getGeneratedCode(
+    applicationLiveEditServices: ApplicationLiveEditServices,
+    sourceFile: KtFile,
+    compiledFiles: List<OutputFile>,
+    irCache: IrClassCache,
+    inlineCandidateCache: SourceInlineCandidateCache,
+    outputs: LiveEditCompilerOutput.Builder,
+  ) {
     val startTimeNs = System.nanoTime()
     val classFiles = compiledFiles.filter { it.relativePath.endsWith(".class") }
 
@@ -70,8 +70,7 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
     val modifiedMethods = mutableListOf<IrMethod>()
     val requiresReinit = mutableListOf<IrClass>()
     for (classFile in classFiles.filterNot { it in keyMetaFiles }) {
-      val changes = handleClassFile(applicationLiveEditServices, classFile, sourceFile, irCache, inlineCandidateCache,
-                                    outputs)
+      val changes = handleClassFile(applicationLiveEditServices, classFile, sourceFile, irCache, inlineCandidateCache, outputs)
       irClasses.add(changes.clazz)
 
       modifiedMethods.addAll(changes.modifiedMethods)
@@ -125,8 +124,10 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
       if (group == null) {
         // Handle switching the setContent lambda. We'd ideally like to restart the activity in all cases of non-Compose code being
         // modified, but this can cause issues at the moment as large blocks of non-Compose code will execute. This will suffice for now.
-        if (method.name == "onCreate" && method.desc in setOf("(Landroid/os/Bundle;)V",
-                                                              "(Landroid/os/Bundle;Landroid/os/PersistableBundle;)V")) {
+        if (
+          method.name == "onCreate" &&
+            method.desc in setOf("(Landroid/os/Bundle;)V", "(Landroid/os/Bundle;Landroid/os/PersistableBundle;)V")
+        ) {
           logger.info("LiveEdit will restart the activity due to changes in the onCreate() method of an activity")
           outputs.invalidateMode = InvalidateMode.RESTART_ACTIVITY
           outputs.hasNonComposeChanges = true
@@ -152,30 +153,35 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
 
   private data class ChangeInfo(val clazz: IrClass, val modifiedMethods: List<IrMethod>, val requiresReinit: Boolean)
 
-  private fun handleClassFile(applicationLiveEditServices: ApplicationLiveEditServices,
-                              classFile: OutputFile,
-                              sourceFile: KtFile,
-                              irCache: IrClassCache,
-                              inlineCandidateCache: SourceInlineCandidateCache,
-                              output: LiveEditCompilerOutput.Builder): ChangeInfo {
+  private fun handleClassFile(
+    applicationLiveEditServices: ApplicationLiveEditServices,
+    classFile: OutputFile,
+    sourceFile: KtFile,
+    irCache: IrClassCache,
+    inlineCandidateCache: SourceInlineCandidateCache,
+    output: LiveEditCompilerOutput.Builder,
+  ): ChangeInfo {
     val classBytes = classFile.asByteArray()
     val newClass = IrClass(classBytes)
-    val oldClass = irCache[newClass.name] ?: run {
-      logger.info("Live Edit: No cache entry for ${newClass.name}; using the APK for class diff")
-      val classContent = applicationLiveEditServices.getClassContent(sourceFile.originalFile.virtualFile, newClass.name)
-      classContent?.let { IrClass(it.content) }
-    }
+    val oldClass =
+      irCache[newClass.name]
+        ?: run {
+          logger.info("Live Edit: No cache entry for ${newClass.name}; using the APK for class diff")
+          val classContent = applicationLiveEditServices.getClassContent(sourceFile.originalFile.virtualFile, newClass.name)
+          classContent?.let { IrClass(it.content) }
+        }
 
     output.addIrClass(newClass)
 
     val isFirstDiff = newClass.name !in irCache
 
     val metadata = parseMetadata(newClass)
-    val classType = if (metadata is KotlinClassMetadata.SyntheticClass) {
-      LiveEditClassType.SUPPORT_CLASS
-    } else {
-      LiveEditClassType.NORMAL_CLASS
-    }
+    val classType =
+      if (metadata is KotlinClassMetadata.SyntheticClass) {
+        LiveEditClassType.SUPPORT_CLASS
+      } else {
+        LiveEditClassType.NORMAL_CLASS
+      }
 
     // Live Edit supports adding new synthetic classes in order to handle the lambda classes that Compose generates
     if (oldClass == null) {
@@ -189,7 +195,7 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
           name = newClass.name,
           data = classBytes,
           compilationDependencies = applicationLiveEditServices.getCompilationDependencies(sourceFile),
-          type = LiveEditClassType.SUPPORT_CLASS
+          type = LiveEditClassType.SUPPORT_CLASS,
         )
       )
 
@@ -208,7 +214,7 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
           name = newClass.name,
           data = classBytes,
           compilationDependencies = applicationLiveEditServices.getCompilationDependencies(sourceFile),
-          type = classType
+          type = classType,
         )
       )
     }
@@ -234,7 +240,7 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
     }
 
     if (classType == LiveEditClassType.SUPPORT_CLASS && isWhenMapping(newClass)) {
-      if (modifiedMethods.any {it.name.equals("<clinit>")}) {
+      if (modifiedMethods.any { it.name.equals("<clinit>") }) {
         throw unsupportedSourceModificationWhenEnumPath("Changing `when` on enum code path in ${newClass.sourceFile}", sourceFile)
       }
     }
@@ -260,21 +266,22 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
  * Kotlin compiler generates a synthetic mapping class when the code contains a 'when' on an enum type.
  *
  * This class only contain a static int[] that maps the enum's ordinate to an int that represent a control flow branch in the body.
- * Therefore, when the branching is changed, we need to update that mapping. However, since we can't rerun the <clinit> this is
- * impossible for now. We can tree WhenMappings just like any helper class and allow adding of new mappings but as long as existing
- * mapping is changed, we will need to go into unsupported state.
+ * Therefore, when the branching is changed, we need to update that mapping. However, since we can't rerun the <clinit> this is impossible
+ * for now. We can tree WhenMappings just like any helper class and allow adding of new mappings but as long as existing mapping is changed,
+ * we will need to go into unsupported state.
  */
-private fun isWhenMapping(clazz: IrClass) : Boolean {
-  return clazz.name.endsWith(MAPPINGS_CLASS_NAME_POSTFIX) && clazz.fields.all { it.name.startsWith(MAPPING_ARRAY_FIELD_PREFIX)}
+private fun isWhenMapping(clazz: IrClass): Boolean {
+  return clazz.name.endsWith("\$WhenMappings") && clazz.fields.all { it.name.startsWith("\$EnumSwitchMapping$") }
 }
-
 
 // First diff is against the APK, so the diff for the constructors and static initializers is likely to be noisy. We skip this check
 // for that particular case, and rely on the PSI validation that happened before.
 private fun checkForInit(irClass: IrClass, irMethod: IrMethod, throwOnFail: Boolean) {
   if (irMethod.name == "<init>") {
     if (throwOnFail) {
-      throw unsupportedSourceModificationConstructor("in ${irClass.name.replace('/', '.')}, modified constructor ${irMethod.getReadableDesc()}")
+      throw unsupportedSourceModificationConstructor(
+        "in ${irClass.name.replace('/', '.')}, modified constructor ${irMethod.getReadableDesc()}"
+      )
     } else {
       logger.warning("Live Edit detected modified constructor ${irClass.name}${irMethod.desc} in ${irClass.sourceFile}")
     }

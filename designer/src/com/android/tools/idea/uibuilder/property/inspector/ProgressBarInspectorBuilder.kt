@@ -15,67 +15,45 @@
  */
 package com.android.tools.idea.uibuilder.property.inspector
 
-import com.android.SdkConstants.*
+import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_INDETERMINATE
+import com.android.SdkConstants.ATTR_INDETERMINATE_DRAWABLE
+import com.android.SdkConstants.ATTR_INDETERMINATE_TINT
+import com.android.SdkConstants.ATTR_MAXIMUM
+import com.android.SdkConstants.ATTR_PROGRESS
+import com.android.SdkConstants.ATTR_PROGRESS_DRAWABLE
+import com.android.SdkConstants.ATTR_PROGRESS_TINT
+import com.android.SdkConstants.ATTR_STYLE
+import com.android.SdkConstants.VALUE_TRUE
 import com.android.tools.adtui.model.stdui.ValueChangedListener
 import com.android.tools.idea.uibuilder.property.NlPropertyItem
-import com.android.tools.property.panel.api.*
+import com.android.tools.property.panel.api.EditorProvider
+import com.android.tools.property.panel.api.InspectorLineModel
+import com.android.tools.property.panel.api.InspectorPanel
+import com.android.tools.property.panel.api.PropertiesTable
+import com.android.tools.property.panel.api.PropertyEditorModel
 
 class ProgressBarInspectorBuilder(private val editorProvider: EditorProvider<NlPropertyItem>) {
 
-  fun attachToInspector(
-    inspector: InspectorPanel,
-    properties: PropertiesTable<NlPropertyItem>,
-    getTitleLine: () -> InspectorLineModel,
-  ) {
+  fun attachToInspector(inspector: InspectorPanel, properties: PropertiesTable<NlPropertyItem>, getTitleLine: () -> InspectorLineModel) {
     if (!isApplicable(properties)) return
 
     val titleLine = getTitleLine()
     inspector.addEditor(editorProvider.createEditor(properties["", ATTR_STYLE]), titleLine)
-    val drawable =
-      inspector.addEditor(
-        editorProvider.createEditor(properties[ANDROID_URI, ATTR_PROGRESS_DRAWABLE]),
-        titleLine,
-      )
-    val drawableInt =
-      inspector.addEditor(
-        editorProvider.createEditor(properties[ANDROID_URI, ATTR_INDETERMINATE_DRAWABLE]),
-        titleLine,
-      )
-    val tint =
-      addOptionalEditor(inspector, properties.getOrNull(ANDROID_URI, ATTR_PROGRESS_TINT), titleLine)
-    val tintInt =
-      addOptionalEditor(
-        inspector,
-        properties.getOrNull(ANDROID_URI, ATTR_INDETERMINATE_TINT),
-        titleLine,
-      )
-    val max =
-      inspector.addEditor(
-        editorProvider.createEditor(properties[ANDROID_URI, ATTR_MAXIMUM]),
-        titleLine,
-      )
-    val progress =
-      inspector.addEditor(
-        editorProvider.createEditor(properties[ANDROID_URI, ATTR_PROGRESS]),
-        titleLine,
-      )
+    val drawable = inspector.addEditor(editorProvider.createEditor(properties[ANDROID_URI, ATTR_PROGRESS_DRAWABLE]), titleLine)
+    val drawableInt = inspector.addEditor(editorProvider.createEditor(properties[ANDROID_URI, ATTR_INDETERMINATE_DRAWABLE]), titleLine)
+    val tint = addOptionalEditor(inspector, properties.getOrNull(ANDROID_URI, ATTR_PROGRESS_TINT), titleLine)
+    val tintInt = addOptionalEditor(inspector, properties.getOrNull(ANDROID_URI, ATTR_INDETERMINATE_TINT), titleLine)
+    val max = inspector.addEditor(editorProvider.createEditor(properties[ANDROID_URI, ATTR_MAXIMUM]), titleLine)
+    val progress = inspector.addEditor(editorProvider.createEditor(properties[ANDROID_URI, ATTR_PROGRESS]), titleLine)
     val indeterminate = properties[ANDROID_URI, ATTR_INDETERMINATE]
     val model = addEditorAndReturnEditorModel(inspector, indeterminate, titleLine)
-    val updater =
-      StateUpdater(
-        indeterminate,
-        listOf(drawable, tint, max, progress),
-        listOf(drawableInt, tintInt),
-      )
+    val updater = StateUpdater(indeterminate, listOf(drawable, tint, max, progress), listOf(drawableInt, tintInt))
     model.addListener(updater)
     updater.valueChanged()
   }
 
-  private fun addOptionalEditor(
-    inspector: InspectorPanel,
-    property: NlPropertyItem?,
-    group: InspectorLineModel,
-  ): InspectorLineModel? {
+  private fun addOptionalEditor(inspector: InspectorPanel, property: NlPropertyItem?, group: InspectorLineModel): InspectorLineModel? {
     if (property == null) return null
     return inspector.addEditor(editorProvider.createEditor(property), group)
   }
@@ -96,14 +74,7 @@ class ProgressBarInspectorBuilder(private val editorProvider: EditorProvider<NlP
   }
 
   companion object {
-    val REQUIRED_PROPERTIES =
-      listOf(
-        ATTR_PROGRESS_DRAWABLE,
-        ATTR_INDETERMINATE_DRAWABLE,
-        ATTR_MAXIMUM,
-        ATTR_PROGRESS,
-        ATTR_INDETERMINATE,
-      )
+    val REQUIRED_PROPERTIES = listOf(ATTR_PROGRESS_DRAWABLE, ATTR_INDETERMINATE_DRAWABLE, ATTR_MAXIMUM, ATTR_PROGRESS, ATTR_INDETERMINATE)
   }
 
   private class StateUpdater(

@@ -16,7 +16,12 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.*
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.IRRELEVANT_FUTURE
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.IRRELEVANT_PAST
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_INDEPENDENT
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_CODEPENDENT
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_INDEPENDENT
 import com.intellij.testFramework.RunsInEdt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -58,14 +63,15 @@ class CompileRuntimeConfigurationRefactoringProcessorTest : UpgradeGradleFileMod
 
   @Test
   fun testNecessities() {
-    val expectedNecessitiesMap = mapOf(
-      ("2.3.2" to "3.0.0") to IRRELEVANT_FUTURE,
-      ("2.3.2" to "3.5.0") to OPTIONAL_CODEPENDENT,
-      ("3.1.0" to "3.6.0") to OPTIONAL_INDEPENDENT,
-      ("3.6.0" to "7.1.0") to MANDATORY_INDEPENDENT,
-      ("2.3.2" to "7.1.0") to MANDATORY_CODEPENDENT,
-      ("7.0.0" to "7.1.0") to IRRELEVANT_PAST
-    )
+    val expectedNecessitiesMap =
+      mapOf(
+        ("2.3.2" to "3.0.0") to IRRELEVANT_FUTURE,
+        ("2.3.2" to "3.5.0") to OPTIONAL_CODEPENDENT,
+        ("3.1.0" to "3.6.0") to OPTIONAL_INDEPENDENT,
+        ("3.6.0" to "7.1.0") to MANDATORY_INDEPENDENT,
+        ("2.3.2" to "7.1.0") to MANDATORY_CODEPENDENT,
+        ("7.0.0" to "7.1.0") to IRRELEVANT_PAST,
+      )
     expectedNecessitiesMap.forEach { (t, u) ->
       val processor = CompileRuntimeConfigurationRefactoringProcessor(project, AgpVersion.parse(t.first), AgpVersion.parse(t.second))
       assertEquals(u, processor.necessity())
@@ -212,7 +218,6 @@ class CompileRuntimeConfigurationRefactoringProcessorTest : UpgradeGradleFileMod
     val processor = CompileRuntimeConfigurationRefactoringProcessor(project, AgpVersion.parse("3.5.0"), AgpVersion.parse("7.0.0"))
     processor.run()
     verifyFileContents(buildFile, TestFileName("CompileRuntimeConfiguration/SimpleAndroidPluginExpected"))
-
   }
 
   @Test

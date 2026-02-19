@@ -77,7 +77,7 @@ class SelectedTabStateTest {
     val model =
       model(displayViewRule.disposable) {
         view(ROOT, rectMap[ROOT]) {
-          view(VIEW1, rectMap[VIEW1]) { view(VIEW2, rectMap[VIEW2]) { image() } }
+          view(VIEW1, rectMap[VIEW1]) { view(VIEW2, rectMap[VIEW2]) }
           view(VIEW3, rectMap[VIEW3])
           view(VIEW4, rectMap[VIEW4])
         }
@@ -174,6 +174,7 @@ class SelectedTabStateTest {
   @RunsInEdt
   fun testUiConfigIsRestored() {
     val tabsComponents1 = createTabComponents()
+    val container1 = tabsComponents1.tabContentPanel.parent
     val selectedTabState1 = createSelectedTabState(tabsComponents1)
 
     selectedTabState1.enableLayoutInspector(UiConfig.VERTICAL)
@@ -181,19 +182,16 @@ class SelectedTabStateTest {
     verifyUiInjected<LayoutInspectorRenderer>(
       UiConfig.VERTICAL,
       tabsComponents1.tabContentPanel,
-      tabsComponents1.tabContentPanelContainer,
+      container1,
       tabsComponents1.displayList.value,
     )
 
     Disposer.dispose(tabsComponents1)
 
-    verifyUiRemoved(
-      tabsComponents1.tabContentPanel,
-      tabsComponents1.tabContentPanelContainer,
-      tabsComponents1.displayList.value,
-    )
+    verifyUiRemoved(tabsComponents1.tabContentPanel, container1, tabsComponents1.displayList.value)
 
     val tabsComponents2 = createTabComponents()
+    val container2 = tabsComponents2.tabContentPanel.parent
     val selectedTabState2 = createSelectedTabState(tabsComponents2)
 
     selectedTabState2.enableLayoutInspector()
@@ -201,7 +199,7 @@ class SelectedTabStateTest {
     verifyUiInjected<LayoutInspectorRenderer>(
       UiConfig.VERTICAL,
       tabsComponents2.tabContentPanel,
-      tabsComponents2.tabContentPanelContainer,
+      container2,
       tabsComponents2.displayList.value,
     )
   }
@@ -210,13 +208,14 @@ class SelectedTabStateTest {
   @RunsInEdt
   fun testDynamicallyAddedDisplay() {
     val tabComponents = createTabComponents()
+    val container = tabComponents.tabContentPanel.parent
     val selectedTabState = createSelectedTabState(tabComponents)
 
     waitForCondition(10.seconds) { selectedTabState.renderingComponents.isNotEmpty() }
 
     selectedTabState.enableLayoutInspector(UiConfig.HORIZONTAL)
 
-    val newDisplay = displayViewRule.newEmulatorView()
+    val newDisplay = displayViewRule.newEmulatorDisplayView()
     displayListeners.forEach { it.displayAdded(newDisplay) }
 
     assertThat(tabComponents.displayList.value).contains(newDisplay)
@@ -224,7 +223,7 @@ class SelectedTabStateTest {
     verifyUiInjected<LayoutInspectorRenderer>(
       UiConfig.HORIZONTAL,
       selectedTabState.tabComponents.tabContentPanel,
-      selectedTabState.tabComponents.tabContentPanelContainer,
+      container,
       tabComponents.displayList.value,
     )
 
@@ -235,13 +234,14 @@ class SelectedTabStateTest {
     verifyUiInjected<LayoutInspectorRenderer>(
       UiConfig.HORIZONTAL,
       selectedTabState.tabComponents.tabContentPanel,
-      selectedTabState.tabComponents.tabContentPanelContainer,
+      container,
       tabComponents.displayList.value,
     )
   }
 
   private fun testConfiguration(uiConfig: UiConfig) {
     val tabComponents = createTabComponents()
+    val container = tabComponents.tabContentPanel.parent
     val selectedTabState = createSelectedTabState(tabComponents)
 
     waitForCondition(10.seconds) { selectedTabState.renderingComponents.isNotEmpty() }
@@ -251,17 +251,13 @@ class SelectedTabStateTest {
     verifyUiInjected<LayoutInspectorRenderer>(
       uiConfig,
       selectedTabState.tabComponents.tabContentPanel,
-      selectedTabState.tabComponents.tabContentPanelContainer,
+      container,
       tabComponents.displayList.value,
     )
 
     Disposer.dispose(tabComponents)
 
-    verifyUiRemoved(
-      selectedTabState.tabComponents.tabContentPanel,
-      selectedTabState.tabComponents.tabContentPanelContainer,
-      tabComponents.displayList.value,
-    )
+    verifyUiRemoved(selectedTabState.tabComponents.tabContentPanel, container, tabComponents.displayList.value)
   }
 
   private fun createTabComponents(): TabComponents {
@@ -269,16 +265,15 @@ class SelectedTabStateTest {
     val content = JPanel()
     container.add(content)
 
-    val displayView1 = displayViewRule.newEmulatorView()
-    content.add(displayView1)
+    val displayView1 = displayViewRule.newEmulatorDisplayView()
+    content.add(displayView1.component)
 
-    val displayView2 = displayViewRule.newEmulatorView()
-    content.add(displayView2)
+    val displayView2 = displayViewRule.newEmulatorDisplayView()
+    content.add(displayView2.component)
 
     return TabComponents(
       disposable = displayViewRule.disposable,
       tabContentPanel = content,
-      tabContentPanelContainer = container,
       displayOwner =
         object : DisplayOwner {
           override fun addDeviceDisplayListener(listener: DeviceDisplayListener) {

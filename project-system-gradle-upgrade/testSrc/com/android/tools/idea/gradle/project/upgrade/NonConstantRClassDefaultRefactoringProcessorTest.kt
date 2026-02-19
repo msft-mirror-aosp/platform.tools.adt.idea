@@ -23,13 +23,16 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.RunsInEdt
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 @RunsInEdt
 class NonConstantRClassDefaultRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
-  private lateinit var gradlePropertiesFile : VirtualFile
+  private lateinit var gradlePropertiesFile: VirtualFile
 
   @Before
   fun setUpGradlePropertiesFile() {
@@ -83,16 +86,17 @@ class NonConstantRClassDefaultRefactoringProcessorTest : UpgradeGradleFileModelT
 
   @Test
   fun testNecessities() {
-    val expectedNecessitiesMap = mapOf(
-      ("7.3.0" to "7.4.0") to AgpUpgradeComponentNecessity.IRRELEVANT_FUTURE,
-      ("7.3.0" to "8.0.0-alpha01") to AgpUpgradeComponentNecessity.IRRELEVANT_FUTURE,
-      ("7.3.0" to "8.0.0-beta01") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
-      ("7.3.0" to "8.0.0-rc01") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
-      ("7.3.0" to "8.0.0") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
-      ("8.0.0-alpha01" to "8.0.0") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
-      ("8.0.0-beta01" to "8.0.0") to AgpUpgradeComponentNecessity.IRRELEVANT_PAST,
-      ("8.0.0-rc01" to "8.0.0") to AgpUpgradeComponentNecessity.IRRELEVANT_PAST
-    )
+    val expectedNecessitiesMap =
+      mapOf(
+        ("7.3.0" to "7.4.0") to AgpUpgradeComponentNecessity.IRRELEVANT_FUTURE,
+        ("7.3.0" to "8.0.0-alpha01") to AgpUpgradeComponentNecessity.IRRELEVANT_FUTURE,
+        ("7.3.0" to "8.0.0-beta01") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
+        ("7.3.0" to "8.0.0-rc01") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
+        ("7.3.0" to "8.0.0") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
+        ("8.0.0-alpha01" to "8.0.0") to AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT,
+        ("8.0.0-beta01" to "8.0.0") to AgpUpgradeComponentNecessity.IRRELEVANT_PAST,
+        ("8.0.0-rc01" to "8.0.0") to AgpUpgradeComponentNecessity.IRRELEVANT_PAST,
+      )
     expectedNecessitiesMap.forEach { (t, u) ->
       val processor = NonConstantRClassDefaultRefactoringProcessor(project, AgpVersion.parse(t.first), AgpVersion.parse(t.second))
       assertEquals("${t.first} to ${t.second}", u, processor.necessity())
@@ -106,6 +110,7 @@ class NonConstantRClassDefaultRefactoringProcessorTest : UpgradeGradleFileModelT
     processor.run()
     verifyGradlePropertiesFileContents(gradlePropertiesFile, TestFileName("NonConstantRClassDefault/EmptyExpected"))
   }
+
   @Test
   fun testFalse() {
     writeToGradlePropertiesFile(TestFileName("NonConstantRClassDefault/False"))

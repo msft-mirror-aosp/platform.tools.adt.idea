@@ -31,9 +31,8 @@ import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 /**
  * See implementing classes for usage examples.
  *
- * NOTE: It you made changes to sync or the test projects which make Snapshot tests fail in an
- * expected way, you can re-run the tests: (1) from the IDE with -DUPDATE_TEST_SNAPSHOTS to update
- * the files; or (2) from the command-line using Bazel with:
+ * NOTE: It you made changes to sync or the test projects which make Snapshot tests fail in an expected way, you can re-run the tests: (1)
+ * from the IDE with -DUPDATE_TEST_SNAPSHOTS to update the files; or (2) from the command-line using Bazel with:
  * ```
  * bazel test [target]  \
  * --jvmopt="-DUPDATE_TEST_SNAPSHOTS=$(bazel info workspace)" \
@@ -44,10 +43,7 @@ import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
  * ```
  */
 interface SnapshotComparisonTest {
-  /**
-   * The name of the property which should be set to activate "update snapshots" test execution
-   * mode.
-   */
+  /** The name of the property which should be set to activate "update snapshots" test execution mode. */
   val updateSnapshotsJvmProperty: String
     get() = "UPDATE_TEST_SNAPSHOTS"
 
@@ -56,17 +52,38 @@ interface SnapshotComparisonTest {
 
   /** The list of file name suffixes applicable to the currently running test. */
   val snapshotSuffixes: List<String>
-    get() =
-      listOfNotNull(
-        "_K2_phased"
-          .takeIf { KotlinPluginModeProvider.isK2Mode() && StudioFlags.PHASED_SYNC_ENABLED.get() },
-        "_K2".takeIf { KotlinPluginModeProvider.isK2Mode() },
-        "_phased".takeIf { StudioFlags.PHASED_SYNC_ENABLED.get() },
-        "",
-      )
+    get() = SnapshotSuffix.snapshotSuffixesApplicable()
 
   /** Assumed to be matched by [UsefulTestCase.getName]. */
   fun getName(): String
+}
+
+/** Snapshot filename suffixes ordered by matching priority, where [BASELINE] must be last. */
+enum class SnapshotSuffix(val suffix: String) {
+  K2_PHASED("_K2_phased") {
+    override val isEnabled
+      get() = KotlinPluginModeProvider.isK2Mode() && StudioFlags.PHASED_SYNC_ENABLED.get()
+  },
+  K2("_K2") {
+    override val isEnabled
+      get() = KotlinPluginModeProvider.isK2Mode()
+  },
+  PHASED("_phased") {
+    override val isEnabled
+      get() = StudioFlags.PHASED_SYNC_ENABLED.get()
+  },
+  BASELINE("") {
+    override val isEnabled
+      get() = true
+  };
+
+  abstract val isEnabled: Boolean
+
+  companion object {
+    fun nonBaselineSnapshots() = entries.filter { it != BASELINE }
+
+    fun snapshotSuffixesApplicable() = entries.filter { it.isEnabled }.map { it.suffix }
+  }
 }
 
 private val testLogsPath: String?
@@ -86,38 +103,57 @@ private fun SnapshotComparisonTest.assertInSnapshotTextContext() =
   Truth.assert_()
     .withMessage(
       """
-  There has been a change to the contents of snapshot test ${getName()}.
-
-  If that change is intentional, update the expectation files.
-
-  To update the files from a presubmit failure, download and unzip the outputs.zip for this target:
-    unzip -d $(bazel info workspace) -o outputs.zip
-
-  For a local bazel invocation, outputs.zip will be in bazel-testlogs:
-    unzip -d $(bazel info workspace) -o \
-      $(bazel info bazel-testlogs)/${testLogsPath ?: "<bazel test target for ${getName()}>"}/test.outputs/outputs.zip
-
-  Or, to re-run the test and update the expectations in place, either add -DUPDATE_TEST_SNAPSHOTS
-  to the jvm options in the idea test configuration and re-run the test, or from bazel, run:
-    bazel test ${System.getenv("TEST_TARGET")?.takeIf { it.isNotEmpty() } ?: "<bazel test target for ${getName()}>"} \
-      --nocache_test_results \
-      --sandbox_writable_path=${'$'}(bazel info workspace) \
-      --strategy=TestRunner=standalone \
-      --jvmopt=\"-DUPDATE_TEST_SNAPSHOTS=$(bazel info workspace)\" \
-      --test_timeout=6000 \
-      --test_output=streamed
-
-  NB: All the commands above assume 'tools/base/bazel' is on your path.
+    |There has been a change to the contents of snapshot test ${getName()}.
+    |
+    |If that change is intentional, update the expectation files.
+    |
+    |${updateSnapshotGuidelinesText()}
   """
-        .trimIndent()
+        .trimMargin()
+    )
+
+private fun SnapshotComparisonTest.assertDuplicatedSnapshotsTextContext() =
+  Truth.assert_()
+    .withMessage(
+      """
+    |There are duplicated snapshot files to their baseline content ${getName()}.
+    |
+    |${updateSnapshotGuidelinesText()}
+  """
+        .trimMargin()
     )
 
 fun SnapshotComparisonTest.assertIsEqualToSnapshot(text: String, snapshotTestSuffix: String = "") {
   val (fullSnapshotName, expectedText) = getAndMaybeUpdateSnapshot(snapshotTestSuffix, text)
-  assertInSnapshotTextContext()
-    .that(text)
-    .named("Snapshot comparison for $fullSnapshotName")
-    .isEqualTo(expectedText)
+  assertInSnapshotTextContext().that(text).named("Snapshot comparison for $fullSnapshotName").isEqualTo(expectedText)
+  assertNoDuplicatedSnapshots()
+}
+
+fun SnapshotComparisonTest.assertNoDuplicatedSnapshots() {
+  val sanitizedTestName = sanitizeFileName(UsefulTestCase.getTestName(getName(), true))
+  val duplicates = mutableListOf<File>()
+
+  val baseline = getCandidateSnapshotFile(sanitizedTestName, SnapshotSuffix.BASELINE.suffix)
+  val baselineContent = baseline.readText()
+  SnapshotSuffix.nonBaselineSnapshots().forEach {
+    val snapshotFile = getCandidateSnapshotFile(sanitizedTestName, it.suffix)
+    if (snapshotFile.exists()) {
+      val content = snapshotFile.readText()
+      if (content == baselineContent) {
+        duplicates.add(snapshotFile)
+      }
+    }
+  }
+
+  if (duplicates.isNotEmpty()) {
+    if (System.getProperty(updateSnapshotsJvmProperty) != null) {
+      duplicates.forEach {
+        println("Delete duplicated snapshot file: ${it.absolutePath}")
+        it.delete()
+      }
+    }
+    assertDuplicatedSnapshotsTextContext().that(duplicates).named("Duplicated snapshots of ${baseline.name}").isEmpty()
+  }
 }
 
 fun SnapshotComparisonTest.assertAreEqualToSnapshots(vararg checks: Pair<String, String>) {
@@ -143,8 +179,7 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
   doNotUpdate: Boolean = false,
 ): Pair<String, String> {
   val sanitizedTestName = sanitizeFileName(UsefulTestCase.getTestName(getName(), true))
-  val (expectedText, snapshotFile) =
-    getExpectedTextAndFileFor(sanitizedTestName, snapshotTestSuffix)
+  val (expectedText, snapshotFile) = getExpectedTextAndFileFor(sanitizedTestName, snapshotTestSuffix)
 
   if (doNotUpdate) {
     return snapshotFile.name to expectedText
@@ -159,10 +194,7 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
     // Populate additional test output if the file needs updating
     if (!snapshotFile.isFile || expectedText != text) {
       val workspaceRelativePath = TestUtils.getWorkspaceRoot().relativize(snapshotFile.toPath())
-      println(
-        "Writing updated snapshot file to bazel additional test output.\n" +
-          "    $workspaceRelativePath"
-      )
+      println("Writing updated snapshot file to bazel additional test output.\n" + "    $workspaceRelativePath")
       TestUtils.getTestOutputDir().resolve(workspaceRelativePath).run {
         Files.createDirectories(parent)
         writeText(text)
@@ -172,24 +204,20 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
   return snapshotFile.name to expectedText
 }
 
-private fun SnapshotComparisonTest.getCandidateSnapshotFiles(
-  project: String,
-  suffix: String,
-): List<File> {
+private fun SnapshotComparisonTest.getCandidateSnapshotFiles(project: String, additionalSuffix: String): List<File> {
+  return snapshotSuffixes.map { getCandidateSnapshotFile(project, "$it$additionalSuffix") }
+}
+
+private fun SnapshotComparisonTest.getCandidateSnapshotFile(project: String, suffix: String): File {
   val configuredWorkspace =
     System.getProperty(updateSnapshotsJvmProperty)
       ?.takeUnless { it.isEmpty() }
       ?.let { Paths.get(it).resolve(snapshotDirectoryWorkspaceRelativePath) }
       ?: resolveWorkspacePath(snapshotDirectoryWorkspaceRelativePath)
-  return snapshotSuffixes.map {
-    configuredWorkspace.resolve("${project.substringAfter("projects/")}$it$suffix.txt").toFile()
-  }
+  return configuredWorkspace.resolve("${project.substringAfter("projects/")}$suffix.txt").toFile()
 }
 
-private fun SnapshotComparisonTest.getExpectedTextAndFileFor(
-  project: String,
-  suffix: String,
-): Pair<String, File> =
+private fun SnapshotComparisonTest.getExpectedTextAndFileFor(project: String, suffix: String): Pair<String, File> =
   getCandidateSnapshotFiles(project, suffix).let { candidateFiles ->
     candidateFiles
       .firstOrNull { it.exists() }
@@ -197,21 +225,14 @@ private fun SnapshotComparisonTest.getExpectedTextAndFileFor(
         println("Comparing with: ${it.relativeTo(resolveWorkspacePath("").toFile())}")
         it.readText().trimIndent() to it
       }
-      ?: (candidateFiles.joinToString(
-        separator = "\n",
-        prefix = "No snapshot files found. Candidates considered:\n\n",
-      ) {
+      ?: (candidateFiles.joinToString(separator = "\n", prefix = "No snapshot files found. Candidates considered:\n\n") {
         it.relativeTo(resolveWorkspacePath("").toFile()).toString()
       } to candidateFiles.last())
   }
 
-data class ProjectViewSettings(
-  val hideEmptyPackages: Boolean = true,
-  val flattenPackages: Boolean = false,
-)
+data class ProjectViewSettings(val hideEmptyPackages: Boolean = true, val flattenPackages: Boolean = false)
 
-fun Project.dumpAndroidProjectView(): String =
-  dumpAndroidProjectView(initialState = Unit) { _, _ -> Unit }
+fun Project.dumpAndroidProjectView(): String = dumpAndroidProjectView(initialState = Unit) { _, _ -> Unit }
 
 fun nameProperties(
   snapshotLines: Sequence<String>,
@@ -221,18 +242,13 @@ fun nameProperties(
   val context = mutableListOf<Pair<Int, String>>()
   var previousIndentation = -1
   for (existingLine in snapshotLines) {
-    val propertyValue =
-      existingLine.trimStart().removePrefix("- ").substringAfter(':', existingLine).trim()
-    val propertyName =
-      existingLine.trimStart().removePrefix("- ").substringBefore(' ', existingLine).trim()
+    val propertyValue = existingLine.trimStart().removePrefix("- ").substringAfter(':', existingLine).trim()
+    val propertyName = existingLine.trimStart().removePrefix("- ").substringBefore(' ', existingLine).trim()
     val line =
       if (attachValue && propertyValue != propertyName) {
         if (propertyName.isEmpty()) propertyValue else "$propertyName ($propertyValue)"
       } else propertyName
-    val indentation =
-      existingLine
-        .indexOfFirst { !it.isWhitespace() }
-        .let { if (it == -1) existingLine.length else it }
+    val indentation = existingLine.indexOfFirst { !it.isWhitespace() }.let { if (it == -1) existingLine.length else it }
     when {
       indentation > previousIndentation -> context.add(indentation to line)
       indentation == previousIndentation -> context[context.size - 1] = indentation to line
@@ -249,3 +265,26 @@ fun nameProperties(
     }
   }
 }
+
+private fun SnapshotComparisonTest.updateSnapshotGuidelinesText() =
+  """
+  To update the files from a presubmit failure, download and unzip the outputs.zip for this target:
+    unzip -d $(bazel info workspace) -o outputs.zip
+
+  For a local bazel invocation, outputs.zip will be in bazel-testlogs:
+    unzip -d $(bazel info workspace) -o \
+      $(bazel info bazel-testlogs)/${testLogsPath ?: "<bazel test target for ${getName()}>"}/test.outputs/outputs.zip
+
+  Or, to re-run the test and update the expectations in place, either add -DUPDATE_TEST_SNAPSHOTS
+  to the jvm options in the idea test configuration and re-run the test, or from bazel, run:
+    bazel test ${System.getenv("TEST_TARGET")?.takeIf { it.isNotEmpty() } ?: "<bazel test target for ${getName()}>"} \
+      --nocache_test_results \
+      --sandbox_writable_path=${'$'}(bazel info workspace) \
+      --strategy=TestRunner=standalone \
+      --jvmopt=\"-DUPDATE_TEST_SNAPSHOTS=$(bazel info workspace)\" \
+      --test_timeout=6000 \
+      --test_output=streamed
+
+  NB: All the commands above assume 'tools/base/bazel' is on your path.
+  """
+    .trimIndent()

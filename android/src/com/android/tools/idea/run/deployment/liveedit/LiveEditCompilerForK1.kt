@@ -23,14 +23,14 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.backend.common.output.OutputFile
 import org.jetbrains.kotlin.psi.KtFile
 
-internal class LiveEditCompilerForK1(
-  private val project: Project,
-  private val inlineCandidateCache: SourceInlineCandidateCache
-) : LiveEditCompiler.LiveEditCompilerForKotlinVersion {
+internal class LiveEditCompilerForK1(private val project: Project, private val inlineCandidateCache: SourceInlineCandidateCache) :
+  LiveEditCompiler.LiveEditCompilerForKotlinVersion {
 
-  override fun compileKtFile(applicationLiveEditServices: ApplicationLiveEditServices,
-                             file: KtFile,
-                             inputs: Collection<LiveEditCompilerInput>): List<OutputFile> {
+  override fun compileKtFile(
+    applicationLiveEditServices: ApplicationLiveEditServices,
+    file: KtFile,
+    inputs: Collection<LiveEditCompilerInput>,
+  ): List<OutputFile> {
     val tracker = PerformanceTracker()
     var inputFiles = listOf(file)
 
@@ -51,45 +51,46 @@ internal class LiveEditCompilerForK1(
       //    This is the one of the most time-consuming step with 80 to 500ms turnaround, depending on
       //    the complexity of the input .kt file.
       ProgressManager.checkCanceled()
-      val generationState = try {
-        tracker.record("codegen") {
-          backendCodeGen(
-            applicationLiveEditServices,
-            project,
-            analysisResult,
-            inputFiles,
-            ModuleUtilCore.findModuleForFile(inputFiles.first())!!,
-            inlineCandidates
-          )
-        }
-      } catch (e: LiveEditUpdateException) {
-        if (e.error != LiveEditUpdateException.Error.UNABLE_TO_INLINE) {
-          throw e
-        }
+      val generationState =
+        try {
+          tracker.record("codegen") {
+            backendCodeGen(
+              applicationLiveEditServices,
+              project,
+              analysisResult,
+              inputFiles,
+              ModuleUtilCore.findModuleForFile(inputFiles.first())!!,
+              inlineCandidates,
+            )
+          }
+        } catch (e: LiveEditUpdateException) {
+          if (e.error != LiveEditUpdateException.Error.UNABLE_TO_INLINE) {
+            throw e
+          }
 
-        // 2.1) Add any extra source file this compilation need in order to support the input file calling an inline function
-        //      from another source file then perform a compilation again.
-        inputFiles = performInlineSourceDependencyAnalysis(resolution, file, analysisResult.bindingContext)
+          // 2.1) Add any extra source file this compilation need in order to support the input file calling an inline function
+          //      from another source file then perform a compilation again.
+          inputFiles = performInlineSourceDependencyAnalysis(resolution, file, analysisResult.bindingContext)
 
-        // We need to perform the analysis once more with the new set of input files.
-        val newAnalysisResult = resolution.analyzeWithAllCompilerChecks(inputFiles)
+          // We need to perform the analysis once more with the new set of input files.
+          val newAnalysisResult = resolution.analyzeWithAllCompilerChecks(inputFiles)
 
-        // We will need to start using the new analysis for code gen.
-        tracker.record("codegen_inline") {
-          backendCodeGen(
-            applicationLiveEditServices,
-            project,
-            newAnalysisResult,
-            inputFiles,
-            ModuleUtilCore.findModuleForFile(inputFiles.first())!!,
-            inlineCandidates
-          )
+          // We will need to start using the new analysis for code gen.
+          tracker.record("codegen_inline") {
+            backendCodeGen(
+              applicationLiveEditServices,
+              project,
+              newAnalysisResult,
+              inputFiles,
+              ModuleUtilCore.findModuleForFile(inputFiles.first())!!,
+              inlineCandidates,
+            )
+          }
+        } catch (p: ProcessCanceledException) {
+          throw p
+        } catch (t: Throwable) {
+          throw LiveEditUpdateException.internalErrorCodeGenException(file, t)
         }
-      } catch (p: ProcessCanceledException) {
-        throw p
-      } catch (t: Throwable) {
-        throw LiveEditUpdateException.internalErrorCodeGenException(file, t)
-      }
       generationState.factory.asList()
     }
   }

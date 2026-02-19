@@ -19,13 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
-import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
-import com.google.idea.blaze.base.ideinfo.TargetMapBuilder;
 import com.google.idea.blaze.base.lang.buildfile.psi.util.PsiUtils;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.Label;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
@@ -46,6 +43,7 @@ import org.junit.runners.JUnit4;
 
 /** Integration tests for configuring run configurations from java test methods. */
 @RunWith(JUnit4.class)
+@Ignore("b/466755859")
 public class BlazeJavaTestMethodConfigurationProducerTest
     extends BlazeRunConfigurationProducerTestCase {
 
@@ -82,15 +80,15 @@ public class BlazeJavaTestMethodConfigurationProducerTest
             "}");
 
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    builder.setTargetMap(
-        TargetMapBuilder.builder()
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setKind("java_test")
-                    .setLabel("//java/com/google/test:TestClass")
-                    .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-                    .build())
-            .build());
+    // query sync:     //builder.setTargetMap(
+    //    TargetMapBuilder.builder()
+    //        .addTarget(
+    //            TargetIdeInfo.builder()
+    //                .setKind("java_test")
+    //                .setLabel("//java/com/google/test:TestClass")
+    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
+    //                .build())
+    //        .build());
     registerProjectService(
         BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
     PsiMethod method = PsiUtils.findFirstChildOfClassRecursive(javaFile, PsiMethod.class);
@@ -107,8 +105,8 @@ public class BlazeJavaTestMethodConfigurationProducerTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
-    assertThat(config.getTargets())
-        .containsExactly(TargetExpression.fromStringSafe("//java/com/google/test:TestClass"));
+    assertThat(config.getTargetPatterns())
+        .containsExactly("//java/com/google/test:TestClass");
     assertThat(getTestFilterContents(config))
         .isEqualTo("--test_filter=com.google.test.TestClass#testMethod1$");
     assertThat(config.getName()).isEqualTo("Bazel test TestClass.testMethod1");
@@ -140,7 +138,7 @@ public class BlazeJavaTestMethodConfigurationProducerTest
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
     // modify the label, and check that is enough for the producer to class it as different.
-    config.setTarget(Label.create("//java/com/google/test:DifferentTestTarget"));
+    config.setTargetPattern("//java/com/google/test:DifferentTestTarget");
 
     // Act
     boolean isConfigFromContext =
@@ -191,15 +189,15 @@ public class BlazeJavaTestMethodConfigurationProducerTest
             "}");
 
     MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    builder.setTargetMap(
-        TargetMapBuilder.builder()
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setKind("java_test")
-                    .setLabel("//java/com/google/test:TestClass")
-                    .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-                    .build())
-            .build());
+    // query sync:     //builder.setTargetMap(
+    //    TargetMapBuilder.builder()
+    //        .addTarget(
+    //            TargetIdeInfo.builder()
+    //                .setKind("java_test")
+    //                .setLabel("//java/com/google/test:TestClass")
+    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
+    //                .build())
+    //        .build());
     registerProjectService(
         BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
 

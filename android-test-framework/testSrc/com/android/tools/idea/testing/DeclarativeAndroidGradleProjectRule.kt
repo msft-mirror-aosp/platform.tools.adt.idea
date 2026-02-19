@@ -24,8 +24,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import java.io.File
 import org.junit.runner.Description
 
-class DeclarativeAndroidGradleProjectRule(val projectRule: AndroidGradleProjectRule) :
-  NamedExternalResource() {
+class DeclarativeAndroidGradleProjectRule(val projectRule: AndroidGradleProjectRule) : NamedExternalResource() {
   val project: Project
     get() = projectRule.project
 
@@ -45,8 +44,7 @@ class DeclarativeAndroidGradleProjectRule(val projectRule: AndroidGradleProjectR
   @JvmOverloads
   fun loadProject(
     projectPath: String,
-    agpVersion: AgpVersionSoftwareEnvironmentDescriptor =
-      AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
+    agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
     ndkVersion: String? = null,
     preLoad: ((projectRoot: File) -> Unit)? = null,
   ) =
@@ -57,11 +55,10 @@ class DeclarativeAndroidGradleProjectRule(val projectRule: AndroidGradleProjectR
 
   private fun setupGradleSnapshotToWrapper(project: Project) {
     val distribution = TestUtils.resolveWorkspacePath("tools/external/gradle")
-    val gradle = distribution.resolve("gradle-9.1.0-bin.zip")
+    val gradle = distribution.resolve("gradle-9.3.1-bin.zip")
     val wrapper = GradleWrapper.find(project)!!
     wrapper.updateDistribution(gradle.toFile())
   }
 }
 
-fun AndroidGradleProjectRule.withDeclarative(): DeclarativeAndroidGradleProjectRule =
-  DeclarativeAndroidGradleProjectRule(this)
+fun AndroidGradleProjectRule.withDeclarative(): DeclarativeAndroidGradleProjectRule = DeclarativeAndroidGradleProjectRule(this)

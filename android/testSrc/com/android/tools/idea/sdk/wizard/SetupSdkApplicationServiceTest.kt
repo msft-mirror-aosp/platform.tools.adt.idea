@@ -50,10 +50,6 @@ import kotlin.test.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
-import org.junit.runners.Parameterized.Parameter
-import org.junit.runners.Parameterized.Parameters
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
@@ -63,16 +59,7 @@ import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
 
 @RunsInEdt
-@RunWith(Parameterized::class)
 class SetupSdkApplicationServiceTest {
-  companion object {
-    @JvmStatic
-    @Parameters(name = "isTestingLegacyWizard={0}")
-    fun parameters() = listOf(arrayOf(true), arrayOf(false))
-  }
-
-  @Parameter @JvmField var isTestingLegacyWizard: Boolean? = null
-
   private val projectRule = AndroidProjectRule.withSdk().initAndroid(true)
   private val sdkHandlerRule = AndroidSdkHandlerRule()
 
@@ -80,7 +67,6 @@ class SetupSdkApplicationServiceTest {
   val chain =
     RuleChain(
       FlagRule(StudioFlags.NPW_COMPILE_SDK_VERSION, AndroidApiLevel(35)),
-      FlagRule(StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED),
       sdkHandlerRule,
       projectRule,
       HeadlessDialogRule(),
@@ -91,8 +77,6 @@ class SetupSdkApplicationServiceTest {
 
   @Before
   fun setUp() {
-    StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED.override(isTestingLegacyWizard == false)
-
     val fakeRepoManager =
       spy(
         FakeRepoManager(
@@ -103,7 +87,7 @@ class SetupSdkApplicationServiceTest {
               createFakeRemotePackageWithLicense("platform-tools"),
               createFakeRemotePackageWithLicense("platforms"),
               createFakeRemotePackageWithLicense("emulator"),
-              createFakeRemotePackageWithLicense("platforms;android-35")
+              createFakeRemotePackageWithLicense("platforms;android-35"),
             ),
           )
         )
@@ -121,22 +105,13 @@ class SetupSdkApplicationServiceTest {
     whenever(mockInstaller.getPackagesToInstall(any(), any())).thenReturn(listOf(remotePackage))
 
     createModalDialogAndInteractWithIt(
-      dialogTrigger = {
-        SetupSdkApplicationService.instance.showSdkSetupWizard(
-          newSdkPath.absolutePath,
-          {},
-          mockInstaller,
-          mock(),
-          isTestingLegacyWizard == true
-        )
-      }
+      dialogTrigger = { SetupSdkApplicationService.instance.showSdkSetupWizard(newSdkPath.absolutePath, {}, mockInstaller, mock()) }
     ) {
       assertEquals(it.title, "SDK Setup")
 
       val fakeUi = FakeUi(it.rootPane)
 
-      val sdkComponentsTitle =
-        checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("SDK Components Setup") })
+      val sdkComponentsTitle = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("SDK Components Setup") })
       assertTrue { fakeUi.isShowing(sdkComponentsTitle) }
 
       val nextButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") })
@@ -144,21 +119,18 @@ class SetupSdkApplicationServiceTest {
       nextButton.doClick()
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-      val summaryTitle =
-        checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Verify Settings") })
+      val summaryTitle = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Verify Settings") })
       assertTrue { fakeUi.isShowing(summaryTitle) }
 
       nextButton.doClick()
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-      val licensesTitle =
-        checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("License Agreement") })
+      val licensesTitle = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("License Agreement") })
       assertTrue { fakeUi.isShowing(licensesTitle) }
 
       // Accept all licenses
       val tree = checkNotNull(fakeUi.findComponent<Tree>())
-      val acceptButton =
-        checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
+      val acceptButton = checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
       for (i in 0..<tree.rowCount) {
         tree.setSelectionRow(i)
         acceptButton.doClick()
@@ -168,8 +140,7 @@ class SetupSdkApplicationServiceTest {
       nextButton.doClick()
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-      val downloadingTitle =
-        checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
+      val downloadingTitle = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
       assertTrue { fakeUi.isShowing(downloadingTitle) }
 
       val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
@@ -187,15 +158,7 @@ class SetupSdkApplicationServiceTest {
     val mockTracker = mock(FirstRunWizardTracker::class.java)
 
     createModalDialogAndInteractWithIt(
-      dialogTrigger = {
-        SetupSdkApplicationService.instance.showSdkSetupWizard(
-          newSdkPath.absolutePath,
-          {},
-          mockInstaller,
-          mockTracker,
-          isTestingLegacyWizard == true
-        )
-      }
+      dialogTrigger = { SetupSdkApplicationService.instance.showSdkSetupWizard(newSdkPath.absolutePath, {}, mockInstaller, mockTracker) }
     ) {
       assertEquals(it.title, "SDK Setup")
 
@@ -212,8 +175,7 @@ class SetupSdkApplicationServiceTest {
 
       // Accept all licenses and continue
       val tree = checkNotNull(fakeUi.findComponent<Tree>())
-      val acceptButton =
-        checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
+      val acceptButton = checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
       for (i in 0..<tree.rowCount) {
         tree.setSelectionRow(i)
         acceptButton.doClick()
@@ -231,12 +193,9 @@ class SetupSdkApplicationServiceTest {
 
       inOrder(mockTracker).apply {
         verify(mockTracker).trackWizardStarted()
-        verify(mockTracker)
-          .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.SDK_COMPONENTS)
-        verify(mockTracker)
-          .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.LICENSE_AGREEMENT)
-        verify(mockTracker)
-          .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_SDK)
+        verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.SDK_COMPONENTS)
+        verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.LICENSE_AGREEMENT)
+        verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_SDK)
         verify(mockTracker).trackWizardFinished(SetupWizardEvent.CompletionStatus.FINISHED)
       }
 
@@ -244,10 +203,7 @@ class SetupSdkApplicationServiceTest {
       verify(mockTracker, never()).trackSdkInstallLocationChanged()
       verify(mockTracker).trackSdkComponentsToInstall(any())
       verify(mockTracker).trackInstallingComponentsStarted()
-      verify(mockTracker)
-        .trackInstallingComponentsFinished(
-          SetupWizardEvent.SdkInstallationMetrics.SdkInstallationResult.SUCCESS
-        )
+      verify(mockTracker).trackInstallingComponentsFinished(SetupWizardEvent.SdkInstallationMetrics.SdkInstallationResult.SUCCESS)
     }
   }
 

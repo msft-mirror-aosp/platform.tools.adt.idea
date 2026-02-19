@@ -31,8 +31,7 @@ open class GenericInspectorLineModel : InspectorLineModel {
 
   override var parent: InspectorLineModel? = null
 
-  override var hidden by
-    Delegates.observable(false) { _, old, new -> if (old != new) fireValueChanged() }
+  override var hidden by Delegates.observable(false) { _, old, new -> if (old != new) fireValueChanged() }
 
   override var visible = true
     get() = field && !hidden
@@ -52,7 +51,7 @@ open class GenericInspectorLineModel : InspectorLineModel {
     error(ERROR_NOT_FOCUSABLE)
   }
 
-  override fun refresh() {
+  override fun refresh(childElementChanges: Boolean) {
     fireValueChanged()
   }
 

@@ -35,70 +35,50 @@ constexpr int BUF_SIZE = 1024;
 
 AudioRecordReader::AudioRecordReader(int32_t num_channels, int32_t sample_rate)
     : AudioReader(num_channels, sample_rate) {
+  audio_record_ = AudioRecord(Jvm::GetJni(), sample_rate);
 }
 
 AudioRecordReader::~AudioRecordReader() {
   Stop();
 }
 
-void AudioRecordReader::Start(CodecHandle* codec_handle) {
-  if (reader_stopped_.exchange(false)) {
-    codec_handle_ = codec_handle;
-    thread_ = thread([this]() {
-      Jvm::AttachCurrentThread("AudioRecordReader");
-      Run();
-      Jvm::DetachCurrentThread();
-      Log::D("Audio: reader terminated");
-    });
+bool AudioRecordReader::Start(CodecHandle* codec_handle) {
+  if (!audio_record_.IsValid()) {
+    Log::E("Audio: error creating AudioRecord");
+    return false;
   }
+  bool started = audio_record_.Start(Jvm::GetJni());
+  if (!started) {
+    return false;
+  }
+  codec_handle_ = codec_handle;
+  thread_handle_.Start("AudioRecordReader", [this]() { Run(); });
+  return true;
 }
 
 void AudioRecordReader::Stop() {
-  if (!reader_stopped_.exchange(true)) {
-    if (thread_.get_id() != this_thread::get_id() && thread_.joinable()) {
-      thread_.join();
-    }
-  }
+  thread_handle_.Stop();
 }
 
 void AudioRecordReader::Run() {
-  Log::D("AudioRecordReader::Run: 1"); // b/457620853
+  Jni jni = Jvm::GetJni();
   consequent_queue_error_count_ = 0;
-  audio_record_ = AudioRecord(Jvm::GetJni(), sample_rate_);
-  if (!audio_record_.IsValid()) {
-    Log::D("AudioRecordReader::Run: 2"); // b/457620853
-    return;
-  }
-  Log::D("AudioRecordReader::Run: 3"); // b/457620853
-  if (audio_record_.Start()) {
-    Log::D("AudioRecordReader::Run: 4"); // b/457620853
-    ReadUntilStopped();
-    Log::D("AudioRecordReader::Run: 5"); // b/457620853
-    audio_record_.Stop();
-  } else {
-    Log::E("Audio: AudioRecord.startRecording failed");
-    fprintf(stderr, "NOTIFICATION Unable to start audio streaming\n");
-  }
-  Log::D("AudioRecordReader::Run: 6"); // b/457620853
-  audio_record_.Release();
-  Log::D("AudioRecordReader::Run: 7"); // b/457620853
+  ReadUntilStopped(jni);
   codec_handle_->Stop();
-  Log::D("AudioRecordReader::Run: 8"); // b/457620853
+  audio_record_.Stop(jni);
 }
 
-void AudioRecordReader::ReadUntilStopped() {
-  Log::D("AudioRecordReader::ReadUntilStopped"); // b/457620853
-  Jni jni = Jvm::GetJni();
+void AudioRecordReader::ReadUntilStopped(Jni jni) {
   JShortArray audio_data(jni, BUF_SIZE);
-  while (!reader_stopped_) {
-    int32_t num_samples = audio_record_.Read(&audio_data, BUF_SIZE);
+  while (!thread_handle_.IsStopping()) {
+    int32_t num_samples = audio_record_.Read(jni, &audio_data, BUF_SIZE);
     if (num_samples <= 0) {
       Log::E("Audio: error reading audio mix: %d", num_samples);
       fprintf(stderr, "NOTIFICATION Audio streaming stopped due an error while capturing audio\n");
       break;
     }
     int32_t num_frames = num_samples / num_channels_;
-    int64_t timestamp = audio_record_.GetTimestamp();
+    int64_t timestamp = audio_record_.GetTimestamp(jni);
     if (timestamp < 0) {
       Log::W("Audio: error obtaining timestamp: %" PRId64, timestamp);
     }
@@ -117,14 +97,14 @@ void AudioRecordReader::ReadUntilStopped() {
       if (!codec_input.Deque(-1)) {
         break;
       }
-      if (reader_stopped_) {
+      if (thread_handle_.IsStopping()) {
         return;
       }
       auto size = min(static_cast<size_t>(num_samples - offset), codec_input.size / sizeof(int16_t));
       audio_data.GetRegion(jni, offset, size, reinterpret_cast<int16_t*>(codec_input.buffer));
       bool queued_ok = codec_input.Queue(size * sizeof(int16_t), presentation_time_us, 0);
       if (!queued_ok && ++consequent_queue_error_count_ >= MAX_SUBSEQUENT_ERRORS) {
-        if (!reader_stopped_) {
+        if (!thread_handle_.IsStopping()) {
           Log::E("Audio: streaming stopped due to repeated errors while queuing data");
           fprintf(stderr, "NOTIFICATION Audio streaming stopped due to repeated errors while queuing data\n");
         }
@@ -134,7 +114,6 @@ void AudioRecordReader::ReadUntilStopped() {
       offset += size;
     }
   }
-  Log::D("AudioRecordReader::ReadUntilStopped: exiting"); // b/457620853
 }
 
 }  // namespace screensharing

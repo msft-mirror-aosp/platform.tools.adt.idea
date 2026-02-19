@@ -21,97 +21,122 @@ import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.highlightedAs
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
 import com.intellij.lang.annotation.HighlightSeverity.WARNING
+import com.intellij.openapi.fileTypes.LanguageFileType
 import org.jetbrains.android.AndroidTestCase
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class ProguardR8InspectionsTest : ProguardR8TestCase() {
+@RunWith(Parameterized::class)
+class ProguardR8InspectionsTest(private val fileType: LanguageFileType) : ProguardR8TestCase() {
+
+  @Test
   fun testUnresolvedClassName() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class ${"test.MyNotExistingClass".highlightedAs(ERROR, "Unresolved class name")} {
         long myBoolean;
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyNotExistingClass.WithWildCard** {
         long myBoolean;
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class java.lang.String {
         ${"test.MyNotExistingClass".highlightedAs(ERROR, "Unresolved class name")}
         ${"myVal".highlightedAs(ERROR, "The rule matches no class members")};
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
   }
 
+  @Test
   fun testUnresolvedClassNameInFlagRule() {
     // Regression test for b/301246673
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -dontwarn test.MyNotExistingClass
       -dontnote test.MyNotExistingClass
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
   }
 
+  @Test
   fun testWildcards() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class ** {
         long myBoolean;
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class com.android.** { *; }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
   }
 
+  @Test
   fun testInnerClasses() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package example;
 
       class MyClass {
         class Inner {}
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class example.MyClass${'$'}Inner
-      """
+      """,
     )
     myFixture.checkHighlighting()
   }
 
+  @Test
   fun testInnerClassesSeparatorInspection() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package example;
 
@@ -120,60 +145,68 @@ class ProguardR8InspectionsTest : ProguardR8TestCase() {
           class SecondInner {}
         }
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class example.MyClass.Inner
-      """
+      """,
     )
     var highlights = myFixture.doHighlighting(ERROR).map { it.description }
 
     highlights.contains("Inner classes should be separated by a dollar sign \"\$\"")
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class example.MyClass.Inner${'$'}SecondInner
-      """
+      """,
     )
     highlights = myFixture.doHighlighting(ERROR).map { it.description }
 
     highlights.contains("Inner classes should be separated by a dollar sign \"\$\"")
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class example.MyClass${'$'}Inner.SecondInner
-      """
+      """,
     )
     highlights = myFixture.doHighlighting(ERROR).map { it.description }
 
     highlights.contains("Inner classes should be separated by a dollar sign \"\$\"")
   }
 
+  @Test
   fun testInvalidFlag() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
-        ${"-invalidflag".highlightedAs(ERROR, "Invalid flag")}
-      """.trimIndent()
+      ${"-invalidflag".highlightedAs(ERROR, "Invalid flag")}
+      """
+        .trimIndent(),
     )
 
     myFixture.checkHighlighting()
   }
 
+  @Test
   fun testSpacesInArrayType() {
-    myFixture.addClass("""
+    myFixture.addClass(
+      """
       package test
       class myClass {
         int[] method() {};
        }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.myClass {
         ${"int []".highlightedAs(ERROR, "White space between type and array annotation is not allowed, use 'type[]'")} method();
@@ -181,28 +214,39 @@ class ProguardR8InspectionsTest : ProguardR8TestCase() {
         int ${"[  ]".highlightedAs(ERROR, "White space is not allowed in array annotation, use 'type[]'")} method();
         int[] method();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
   }
-
 }
 
-class ProguardR8IgnoredFlagInspectionTest : AndroidTestCase() {
+@RunWith(Parameterized::class)
+class ProguardR8IgnoredFlagInspectionTest(private val fileType: LanguageFileType) : AndroidTestCase() {
+  companion object {
+    @Suppress("unused")
+    @JvmStatic
+    @get:Parameterized.Parameters(name = "{0}")
+    val fileType = listOf(ProguardR8FileType.INSTANCE, KeepRulesR8FileType.INSTANCE)
+  }
+
   override fun setUp() {
     super.setUp()
     myFixture.enableInspections(ProguardR8IgnoredFlagInspection::class.java)
   }
 
+  @Test
   fun testIgnoredFlag() {
     (myModule.getModuleSystem() as DefaultModuleSystem).codeShrinker = CodeShrinker.R8
 
     val flag = PROGUARD_FLAGS.minus(R8_FLAGS).first()
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
         ${"-${flag}".highlightedAs(WARNING, "Flag ignored by R8")}
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.checkHighlighting()
@@ -210,10 +254,11 @@ class ProguardR8IgnoredFlagInspectionTest : AndroidTestCase() {
     (myModule.getModuleSystem() as DefaultModuleSystem).codeShrinker = CodeShrinker.PROGUARD
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
         -${flag}
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.checkHighlighting()
@@ -221,10 +266,11 @@ class ProguardR8IgnoredFlagInspectionTest : AndroidTestCase() {
     (myModule.getModuleSystem() as DefaultModuleSystem).codeShrinker = null
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
         -${flag}
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.checkHighlighting()

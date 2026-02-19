@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <atomic>
-
 #include "common.h"
 #include "codec_handle.h"
 
@@ -30,13 +28,12 @@ public:
   AudioReader(int32_t num_channels, int32_t sample_rate);
   virtual ~AudioReader() = default;
 
-  // Starts the reader.
-  virtual void Start(CodecHandle* codec_handle) = 0;
+  // Starts the reader. Returns true if the reader started successfully.
+  virtual bool Start(CodecHandle* codec_handle) = 0;
   // Stops the reader.
   virtual void Stop() = 0;
 
 protected:
-  std::atomic_bool reader_stopped_ = true;
   CodecHandle* codec_handle_ = nullptr;
   int32_t num_channels_;
   int32_t sample_rate_;

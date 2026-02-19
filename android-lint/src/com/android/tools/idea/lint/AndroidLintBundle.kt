@@ -37,10 +37,7 @@ class AndroidLintBundle private constructor() {
     }
 
     @JvmStatic
-    fun message(
-      @PropertyKey(resourceBundle = BUNDLE_NAME) key: String,
-      vararg params: Any?,
-    ): String {
+    fun message(@PropertyKey(resourceBundle = BUNDLE_NAME) key: String, vararg params: Any?): String {
       return AbstractBundle.message(getBundle(), key, *params)
     }
   }

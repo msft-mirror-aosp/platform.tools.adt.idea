@@ -103,6 +103,8 @@ public class ArtifactTrackerStateSerializationTest {
                     .setSources(ImmutableSet.of(ProjectPath.workspaceRelativeForTests(Path.of("/workspace/path/Source.java"))))
                     .setSrcJars(ImmutableSet.of(ProjectPath.workspaceRelativeForTests(Path.of("/workspace/path/sources.srcjar"))))
                     .setAndroidResourcesPackage("com.my.package")
+                    .setKotlinCompilerFlags(ImmutableList.of())
+                    .setIsKotlinToolchain(false)
                     .build(),
                 buildContext));
     assertThat(roundTrip(depsMap)).containsExactlyEntriesIn(depsMap);

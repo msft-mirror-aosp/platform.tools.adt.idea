@@ -16,36 +16,28 @@
 package com.android.build.attribution.analyzers
 
 import com.android.build.attribution.BuildAnalyzerStorageManager
-import com.android.build.attribution.BuildAttributionManagerImpl
-import com.android.build.attribution.BuildAttributionWarningsFilter
 import com.android.build.attribution.data.AlwaysRunTaskData
 import com.android.build.attribution.getSuccessfulResult
 import com.android.tools.idea.gradle.dsl.utils.FN_GRADLE_PROPERTIES
-import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionManager
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.io.FileUtil
-import org.junit.Ignore
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 class AlwaysRunTasksAnalyzerTest {
-  @get:Rule
-  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
+  @get:Rule val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
-  //TODO(b/263282787): re-enable tests for checking plugin info
+  // TODO(b/263282787): re-enable tests for checking plugin info
   @Test
   fun testAlwaysRunTasksAnalyzer() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.BUILD_ANALYZER_CHECK_ANALYZERS)
 
-    FileUtil.appendToFile(
-      File(preparedProject.root, FN_GRADLE_PROPERTIES),
-      "org.gradle.unsafe.configuration-cache=true\n"
-    )
+    FileUtil.appendToFile(File(preparedProject.root, FN_GRADLE_PROPERTIES), "org.gradle.unsafe.configuration-cache=true\n")
 
     preparedProject.runTest {
       invokeTasks("clean", "lintDebug")
@@ -58,7 +50,8 @@ class AlwaysRunTasksAnalyzerTest {
 
       assertThat(alwaysRunTasks[0].taskData.getTaskPath()).isEqualTo(":app:alwaysRunningBuildSrcTask")
       assertThat(alwaysRunTasks[0].taskData.taskType).isEqualTo("org.example.buildsrc.AlwaysRunningBuildSrcTask")
-      assertThat(alwaysRunTasks[0].taskData.originPlugin.toString()).isEqualTo("buildSrc plugin org.example.buildsrc.AlwaysRunningBuildSrcPlugin")
+      assertThat(alwaysRunTasks[0].taskData.originPlugin.toString())
+        .isEqualTo("buildSrc plugin org.example.buildsrc.AlwaysRunningBuildSrcPlugin")
       assertThat(alwaysRunTasks[0].rerunReason).isEqualTo(AlwaysRunTaskData.Reason.UP_TO_DATE_WHEN_FALSE)
 
       assertThat(alwaysRunTasks[1].taskData.getTaskPath()).isEqualTo(":app:alwaysRunningTask")
@@ -74,8 +67,7 @@ class AlwaysRunTasksAnalyzerTest {
       // configuration cached run
       invokeTasks("clean", "lintDebug")
 
-      alwaysRunTasks =
-        buildAnalyzerStorageManager.getSuccessfulResult().getAlwaysRunTasks().sortedBy { it.taskData.taskName }
+      alwaysRunTasks = buildAnalyzerStorageManager.getSuccessfulResult().getAlwaysRunTasks().sortedBy { it.taskData.taskName }
 
       // lint analysis runs on every task intentionally, it should be filtered out at this point even in a config-cached run
       assertThat(alwaysRunTasks).hasSize(3)

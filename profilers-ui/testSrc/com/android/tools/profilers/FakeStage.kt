@@ -18,12 +18,14 @@ package com.android.tools.profilers
 import com.android.tools.adtui.model.StreamingTimeline
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent
 
-internal class FakeStage(profilers: StudioProfilers,
-                         private val confirmExitMessage: String? = null,
-                         private val isInteractingWithTimeline: Boolean = true) : Stage<StreamingTimeline>(profilers) {
-  override fun enter() {}
+internal class FakeStage(
+  profilers: StudioProfilers,
+  private val confirmExitMessage: String? = null,
+  private val isInteractingWithTimeline: Boolean = true,
+) : Stage<StreamingTimeline>(profilers) {
+  override fun onEnter() {}
 
-  override fun exit() {}
+  override fun onExit() {}
 
   override fun getStageType() = AndroidProfilerEvent.Stage.UNKNOWN_STAGE
 

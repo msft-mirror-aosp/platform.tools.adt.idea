@@ -22,14 +22,13 @@ import com.android.tools.idea.sqlite.model.DatabaseFileData
 import com.android.tools.idea.sqlite.model.SqliteDatabaseId
 import com.android.tools.idea.sqlite.utils.StubProcessDescriptor
 import com.android.tools.idea.testing.runDispatching
+import com.google.common.truth.Truth.assertThat
 import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.LightPlatformTestCase
-import com.intellij.util.concurrency.EdtExecutorService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
@@ -47,7 +46,8 @@ class FileDatabaseManagerTest : LightPlatformTestCase() {
 
   private lateinit var fileDatabaseManager: FileDatabaseManager
 
-  private val edtDispatcher get() = Dispatchers.EDT as CoroutineDispatcher
+  private val edtDispatcher
+    get() = Dispatchers.EDT as CoroutineDispatcher
 
   override fun setUp() {
     super.setUp()
@@ -55,19 +55,15 @@ class FileDatabaseManagerTest : LightPlatformTestCase() {
     processDescriptor = StubProcessDescriptor()
 
     liveDatabaseId =
-      SqliteDatabaseId.fromLiveDatabase("/data/user/0/com.example.package/databases/db-file", 0)
-        as SqliteDatabaseId.LiveSqliteDatabaseId
+      SqliteDatabaseId.fromLiveDatabase("/data/user/0/com.example.package/databases/db-file", 0) as SqliteDatabaseId.LiveSqliteDatabaseId
 
     val virtualFile = mock<VirtualFile>()
     whenever(virtualFile.path).thenReturn("/data/data/com.example.package/databases/db-file")
-    fileDatabaseId =
-      SqliteDatabaseId.fromFileDatabase(DatabaseFileData(virtualFile))
-        as SqliteDatabaseId.FileSqliteDatabaseId
+    fileDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(virtualFile)) as SqliteDatabaseId.FileSqliteDatabaseId
 
     deviceFileDownloaderService = mock()
 
-    fileDatabaseManager =
-      FileDatabaseManagerImpl(project, edtDispatcher, deviceFileDownloaderService)
+    fileDatabaseManager = FileDatabaseManagerImpl(project, edtDispatcher, deviceFileDownloaderService)
   }
 
   fun testOpenOfflineDatabases() = runBlocking {
@@ -86,9 +82,7 @@ class FileDatabaseManagerTest : LightPlatformTestCase() {
       )
 
     // Act
-    val offlineDatabaseData = runDispatching {
-      fileDatabaseManager.loadDatabaseFileData("processName", processDescriptor, liveDatabaseId)
-    }
+    val offlineDatabaseData = runDispatching { fileDatabaseManager.loadDatabaseFileData("processName", processDescriptor, liveDatabaseId) }
 
     // Assert
     verify(deviceFileDownloaderService)
@@ -105,7 +99,7 @@ class FileDatabaseManagerTest : LightPlatformTestCase() {
         eq(IdeFileService("database-inspector").cacheRoot),
       )
 
-    assertEquals(DatabaseFileData(file1, listOf(file2, file3)), offlineDatabaseData)
+    assertThat(offlineDatabaseData).isEqualTo(DatabaseFileData(file1, listOf(file2, file3)))
   }
 
   fun testOpenOfflineDatabaseNoMainFileThrows() = runBlocking {

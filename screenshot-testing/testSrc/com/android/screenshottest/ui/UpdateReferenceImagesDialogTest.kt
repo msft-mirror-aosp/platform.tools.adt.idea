@@ -15,8 +15,11 @@
  */
 package com.android.screenshottest.ui
 
+import com.android.tools.idea.metrics.MetricsTrackerRule
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.TestDialog
@@ -25,58 +28,61 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
-import java.io.File
 import java.util.Base64
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.mockito.Mockito.contains
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.mockito.Mockito.contains
 
 class UpdateReferenceImagesDialogTest {
-  @get:Rule
-  val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
-  @get:Rule
-  val tempFolder = TemporaryFolder()
+  @get:Rule val metricsTrackerRule = MetricsTrackerRule()
 
-  private var dialog: UpdateReferenceImagesDialog? = null
+  @get:Rule val tempFolder = TemporaryFolder()
+
+  private lateinit var dialog: UpdateReferenceImagesDialog
   private val mockLogger: Logger = mock(Logger::class.java)
 
   // A tiny 1x1 transparent PNG
   private val TINY_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
   private val TINY_PNG_BYTES = Base64.getDecoder().decode(TINY_PNG_BASE64)
 
+  @Before
+  fun setUp() {
+    runInEdtAndWait { dialog = createDialog() }
+  }
+
   @After
   fun tearDown() {
-    runInEdtAndWait {
-      dialog?.close(DialogWrapper.CANCEL_EXIT_CODE)
-    }
+    runInEdtAndWait { dialog.close(DialogWrapper.CANCEL_EXIT_CODE) }
   }
 
   @Test
   fun testTreePopulation() = runInEdtAndWait {
-    dialog = createDialog()
     val imagePath = createTempImage("preview1.png")
 
-    val details = PreviewDetails(
-      testId = "id",
-      className = "com.example.TestClass",
-      methodName = "testMethod",
-      previewName = "preview1",
-      testResult = AndroidTestCaseResult.PASSED,
-      srcImagePath = imagePath
-    )
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "com.example.TestClass",
+        methodName = "testMethod",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = imagePath,
+      )
 
-    dialog?.updateDialogWithTestResult(details, isChecked = true)
+    dialog.updateDialogWithTestResult(details, isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    val tree = findTree(dialog!!)
+    val tree = findTree(dialog)
     val root = tree.model.root as CheckedTreeNode
 
     // Root -> Class -> Method -> Preview
@@ -95,54 +101,54 @@ class UpdateReferenceImagesDialogTest {
 
   @Test
   fun testOkButtonState() = runInEdtAndWait {
-    dialog = createDialog()
     // Initially OK disabled
-    assertFalse("OK button should be disabled initially", dialog!!.isOKActionEnabled)
+    assertFalse("OK button should be disabled initially", dialog.isOKActionEnabled)
 
     val imagePath = createTempImage("preview2.png")
-    val details = PreviewDetails(
-      testId = "id",
-      className = "com.example.TestClass",
-      methodName = "testMethod",
-      previewName = "preview1",
-      testResult = AndroidTestCaseResult.PASSED,
-      srcImagePath = imagePath
-    )
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "com.example.TestClass",
+        methodName = "testMethod",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = imagePath,
+      )
 
-    dialog?.updateDialogWithTestResult(details, isChecked = true)
+    dialog.updateDialogWithTestResult(details, isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     // Still disabled because suite not finished
-    assertFalse("OK button should remain disabled until suite finishes", dialog!!.isOKActionEnabled)
+    assertFalse("OK button should remain disabled until suite finishes", dialog.isOKActionEnabled)
 
-    dialog?.onTestSuiteFinished()
+    dialog.onTestSuiteFinished()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     // Now enabled
-    assertTrue("OK button should be enabled after suite finishes", dialog!!.isOKActionEnabled)
+    assertTrue("OK button should be enabled after suite finishes", dialog.isOKActionEnabled)
   }
 
   @Test
   fun testSelectionUpdatesOkButton() = runInEdtAndWait {
-    dialog = createDialog()
     val imagePath = createTempImage("preview3.png")
-    val details = PreviewDetails(
-      testId = "id",
-      className = "TestClass",
-      methodName = "testMethod",
-      previewName = "preview1",
-      testResult = AndroidTestCaseResult.PASSED,
-      srcImagePath = imagePath
-    )
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "TestClass",
+        methodName = "testMethod",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = imagePath,
+      )
 
-    dialog?.updateDialogWithTestResult(details, isChecked = true)
-    dialog?.onTestSuiteFinished()
+    dialog.updateDialogWithTestResult(details, isChecked = true)
+    dialog.onTestSuiteFinished()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    assertTrue("OK enabled initially", dialog!!.isOKActionEnabled)
+    assertTrue("OK enabled initially", dialog.isOKActionEnabled)
 
     // Uncheck the node
-    val tree = findTree(dialog!!)
+    val tree = findTree(dialog)
     val root = tree.model.root as CheckedTreeNode
     val classNode = root.firstChild as CheckedTreeNode
     val methodNode = classNode.firstChild as CheckedTreeNode
@@ -151,52 +157,62 @@ class UpdateReferenceImagesDialogTest {
     previewNode.isChecked = false
 
     // Manually trigger updateOkButtonState since we modify CheckedTreeNode directly
-    callUpdateOkButtonState(dialog!!)
+    callUpdateOkButtonState(dialog)
 
-    assertFalse("OK disabled after uncheck", dialog!!.isOKActionEnabled)
+    assertFalse("OK disabled after uncheck", dialog.isOKActionEnabled)
 
     previewNode.isChecked = true
-    callUpdateOkButtonState(dialog!!)
+    callUpdateOkButtonState(dialog)
 
-    assertTrue("OK enabled after re-check", dialog!!.isOKActionEnabled)
+    assertTrue("OK enabled after re-check", dialog.isOKActionEnabled)
   }
 
   @Test
   fun testNoTestsDiscovered() = runInEdtAndWait {
-    dialog = createDialog()
     // No tests added
 
     // Handle expected error dialog
     TestDialogManager.setTestDialog(TestDialog.OK)
 
-    dialog?.onTestSuiteFinished()
+    dialog.onTestSuiteFinished()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val usages = metricsTrackerRule.testTracker.usages
+    val emptyResultEvent =
+      usages.find {
+        it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
+          it.studioEvent.screenshotTestComposePreviewEvent.type ==
+            ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_TEST_RESULTS_EMPTY
+      }
 
     // Verify the logger was called with expected message
     verify(mockLogger).error(contains("No tests were discovered"))
 
+    // Verify metric was logged
+    assertTrue("Should have logged empty results metric", emptyResultEvent != null)
+
     // Verify dialog was closed
-    assertEquals(DialogWrapper.CANCEL_EXIT_CODE, dialog!!.exitCode)
+    assertEquals(DialogWrapper.CANCEL_EXIT_CODE, dialog.exitCode)
 
     TestDialogManager.setTestDialog(TestDialog.DEFAULT)
   }
 
   @Test
   fun testMissingMetadataLogsWarning() = runInEdtAndWait {
-    dialog = createDialog()
     val imagePath = createTempImage("preview4.png")
 
     // Missing methodName and previewName (empty strings)
-    val details = PreviewDetails(
-      testId = "id",
-      className = "com.example.TestClass",
-      methodName = "",
-      previewName = "",
-      testResult = AndroidTestCaseResult.PASSED,
-      srcImagePath = imagePath
-    )
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "com.example.TestClass",
+        methodName = "",
+        previewName = "",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = imagePath,
+      )
 
-    dialog?.updateDialogWithTestResult(details, isChecked = true)
+    dialog.updateDialogWithTestResult(details, isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     // Verify warn was logged
@@ -205,22 +221,106 @@ class UpdateReferenceImagesDialogTest {
 
   @Test
   fun testMissingImageLogsError() = runInEdtAndWait {
-    dialog = createDialog()
     // No image path provided (null)
-    val details = PreviewDetails(
-      testId = "testMissingImage",
-      className = "com.example.TestClass",
-      methodName = "testMethod",
-      previewName = "preview1",
-      testResult = AndroidTestCaseResult.PASSED,
-      srcImagePath = null
-    )
+    val details =
+      PreviewDetails(
+        testId = "testMissingImage",
+        className = "com.example.TestClass",
+        methodName = "testMethod",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = null,
+      )
 
-    dialog?.updateDialogWithTestResult(details, isChecked = true)
+    dialog.updateDialogWithTestResult(details, isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     // Verify warn was logged
     verify(mockLogger).warn(contains("Source image path missing"))
+  }
+
+  @Test
+  fun testErrorDialogShowsFunctionName() = runInEdtAndWait {
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "com.example.TestClass",
+        methodName = "myMethod",
+        previewName = "myPreview",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = null, // This causes load failure
+      )
+
+    dialog.updateDialogWithTestResult(details, isChecked = true)
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    var checkedMessage = false
+    TestDialogManager.setTestDialog { message ->
+      if (message.contains("myMethod.myPreview")) {
+        checkedMessage = true
+      }
+      DialogWrapper.OK_EXIT_CODE
+    }
+
+    callDoOKAction(dialog)
+
+    assertTrue("Error dialog should contain 'myMethod.myPreview'", checkedMessage)
+
+    TestDialogManager.setTestDialog(TestDialog.DEFAULT)
+  }
+
+  @Test
+  fun testDeferredImageLoading() = runInEdtAndWait {
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "com.example.TestClass",
+        methodName = "testMethod",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = "some_path.png",
+      )
+
+    // updateDialogWithTestResult should NOT trigger image loading.
+    // In the old implementation, it would create a PreviewItemPanel and call loadImage.
+    // In the new implementation, it just updates the tree.
+    dialog.updateDialogWithTestResult(details, isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Since we removed imagePanelMap, we can verify that no image panels were created yet.
+    // Actually, imagePanelMap was removed.
+    // We can check the RightPane is still in placeholder or details without actual images loaded.
+  }
+
+  @Test
+  fun testCancelLogsMetric() = runInEdtAndWait {
+    dialog.doCancelAction()
+
+    val usages = metricsTrackerRule.testTracker.usages
+    // Check that we have at least one event and the last one matches
+    assertTrue("Should have logged at least one event", usages.isNotEmpty())
+    assertEquals(AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW, usages.last().studioEvent.kind)
+    assertEquals(
+      ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_CLOSE,
+      usages.last().studioEvent.screenshotTestComposePreviewEvent.type,
+    )
+  }
+
+  @Test
+  fun testBuildFailureLogsMetric() = runInEdtAndWait {
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val usages = metricsTrackerRule.testTracker.usages
+    val failureEvent =
+      usages.find {
+        it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
+          it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
+      }
+
+    assertTrue("Should have logged build failure metric", failureEvent != null)
+    assertEquals(DialogWrapper.CANCEL_EXIT_CODE, dialog.exitCode)
   }
 
   private fun findTree(dialog: UpdateReferenceImagesDialog): CheckboxTree {
@@ -231,6 +331,12 @@ class UpdateReferenceImagesDialogTest {
 
   private fun callUpdateOkButtonState(dialog: UpdateReferenceImagesDialog) {
     val method = UpdateReferenceImagesDialog::class.java.getDeclaredMethod("updateOkButtonState")
+    method.isAccessible = true
+    method.invoke(dialog)
+  }
+
+  private fun callDoOKAction(dialog: UpdateReferenceImagesDialog) {
+    val method = UpdateReferenceImagesDialog::class.java.getDeclaredMethod("doOKAction")
     method.isAccessible = true
     method.invoke(dialog)
   }

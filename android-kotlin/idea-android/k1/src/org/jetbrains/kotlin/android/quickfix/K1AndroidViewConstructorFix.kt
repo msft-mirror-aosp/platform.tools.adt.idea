@@ -16,7 +16,6 @@
 
 package org.jetbrains.kotlin.android.quickfix
 
-import com.android.SdkConstants
 import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -28,11 +27,10 @@ import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.quickfixes.KotlinQuickFixAction
 import org.jetbrains.kotlin.idea.quickfix.KotlinSingleIntentionActionFactory
 import org.jetbrains.kotlin.idea.quickfix.QuickFixContributor
-import org.jetbrains.kotlin.idea.quickfix.QuickFixRegistrar
 import org.jetbrains.kotlin.idea.quickfix.QuickFixes
-import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtSuperTypeEntry
 import org.jetbrains.kotlin.psi.psiUtil.containingClass
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.descriptorUtil.classId
@@ -43,6 +41,7 @@ import org.jetbrains.kotlin.types.typeUtil.supertypes
 class K1AndroidViewConstructorFix(element: KtSuperTypeEntry) : KotlinQuickFixAction<KtSuperTypeEntry>(element) {
 
     override fun getText() = KotlinAndroidViewConstructorUtils.DESCRIPTION
+
     override fun getFamilyName() = text
 
     override fun isAvailable(project: Project, editor: Editor?, file: KtFile): Boolean {
@@ -55,10 +54,11 @@ class K1AndroidViewConstructorFix(element: KtSuperTypeEntry) : KotlinQuickFixAct
 
         val bindingContext = ktClass.analyze(BodyResolveMode.PARTIAL)
 
-        val useThreeParameterConstructor = ktClass.superTypeListEntries
-          .mapNotNull { bindingContext[BindingContext.TYPE, it.typeReference]?.getClassId() }
-          // Check if the super is android.view.View to use the three parameters constructors
-          .any { it in KotlinAndroidViewConstructorUtils.ALLOWED_THREE_PARAMETER_CONSTRUCTOR_DIRECT_SUPERTYPES }
+        val useThreeParameterConstructor =
+            ktClass.superTypeListEntries
+                .mapNotNull { bindingContext[BindingContext.TYPE, it.typeReference]?.getClassId() }
+                // Check if the super is android.view.View to use the three parameters constructors
+                .any { it in KotlinAndroidViewConstructorUtils.ALLOWED_THREE_PARAMETER_CONSTRUCTOR_DIRECT_SUPERTYPES }
 
         KotlinAndroidViewConstructorUtils.applyFix(project, element, useThreeParameterConstructor)
     }
@@ -88,9 +88,7 @@ class K1AndroidViewConstructorFix(element: KtSuperTypeEntry) : KotlinQuickFixAct
 
         private fun KotlinType.constructorSignatures(): List<List<ClassId?>>? {
             val classDescriptor = constructor.declarationDescriptor as? ClassDescriptor ?: return null
-            return classDescriptor.constructors.map {
-                it.valueParameters.map { parameter -> parameter.type.getClassId() }
-            }
+            return classDescriptor.constructors.map { it.valueParameters.map { parameter -> parameter.type.getClassId() } }
         }
     }
 }

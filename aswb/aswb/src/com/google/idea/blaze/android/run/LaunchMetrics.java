@@ -23,6 +23,8 @@ import com.google.idea.blaze.base.logging.GenericEvent;
 import com.google.idea.common.experiments.BoolExperiment;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
+import java.util.Map;
 
 /** Metrics collected during launch events. */
 public class LaunchMetrics {
@@ -52,14 +54,14 @@ public class LaunchMetrics {
    * same instant in time.
    */
   public static String newLaunchId() {
-    return String.format("%1$s:%2$d", SANITIZED_USER_NAME, Instant.now().toEpochMilli());
+    return String.format(Locale.ROOT, "%1$s:%2$d", SANITIZED_USER_NAME, Instant.now().toEpochMilli());
   }
 
   public static void logBuildTime(
       String launchId,
       Duration buildDuration,
       int blazeExitCode,
-      ImmutableMap<String, String> additionalMetrics) {
+      Map<String, String> additionalMetrics) {
     if (!launchMetricsEnabled.getValue()) {
       return;
     }

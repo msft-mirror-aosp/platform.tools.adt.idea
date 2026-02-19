@@ -27,13 +27,11 @@ private val ZONE_ID = ZoneId.of("Asia/Yerevan")
 
 /** Tests for [LogcatMessageWrapper] */
 class LogcatMessageWrapperTest {
-  private val logcatMessage =
-    logcatMessage(WARN, pid = 1, tid = 2, "app", "tag", TIMESTAMP, "message")
+  private val logcatMessage = logcatMessage(WARN, pid = 1, tid = 2, "app", "tag", TIMESTAMP, "message")
 
   @Test
   fun logLine() {
-    assertThat(LogcatMessageWrapper(logcatMessage, ZONE_ID).logLine)
-      .isEqualTo("1970-01-01 04:00:01.000 1-2 tag app W: message")
+    assertThat(LogcatMessageWrapper(logcatMessage, ZONE_ID).logLine).isEqualTo("1970-01-01 04:00:01.000 1-2 tag app W: message")
   }
 
   @Test

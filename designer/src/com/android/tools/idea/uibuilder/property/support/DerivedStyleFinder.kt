@@ -18,7 +18,7 @@ package com.android.tools.idea.uibuilder.property.support
 import com.android.ide.common.rendering.api.StyleResourceValue
 import com.android.ide.common.resources.ResourceResolver
 import com.android.tools.idea.res.isAccessibleInXml
-import java.util.*
+import java.util.ArrayDeque
 import org.jetbrains.android.facet.AndroidFacet
 
 typealias StyleFilter = (StyleResourceValue) -> Boolean
@@ -29,8 +29,8 @@ typealias StyleOrder = (StyleResourceValue) -> Comparable<*>
 class DerivedStyleFinder(private val facet: AndroidFacet, private val resolver: ResourceResolver?) {
 
   /**
-   * Returns a [List] of styles that are derived from the `baseStyle` specified. Known internal
-   * styles are filtered out. In addition the styles are filtered by the specified filter.
+   * Returns a [List] of styles that are derived from the `baseStyle` specified. Known internal styles are filtered out. In addition the
+   * styles are filtered by the specified filter.
    *
    * The result list is sorted as follows:
    * 1) User defined styles
@@ -42,19 +42,11 @@ class DerivedStyleFinder(private val facet: AndroidFacet, private val resolver: 
    * @param filter apply this filter to remove any unwanted styles in the result
    * @param sortOrder the sort order to use. To sort by style name use: [.standardSortOrder]
    */
-  fun find(
-    baseStyle: StyleResourceValue,
-    filter: StyleFilter,
-    sortOrder: StyleOrder,
-  ): List<StyleResourceValue> {
+  fun find(baseStyle: StyleResourceValue, filter: StyleFilter, sortOrder: StyleOrder): List<StyleResourceValue> {
     return find(listOf(baseStyle), filter, sortOrder)
   }
 
-  fun find(
-    baseStyles: List<StyleResourceValue>,
-    filter: StyleFilter,
-    sortOrder: StyleOrder,
-  ): List<StyleResourceValue> {
+  fun find(baseStyles: List<StyleResourceValue>, filter: StyleFilter, sortOrder: StyleOrder): List<StyleResourceValue> {
     if (resolver == null) {
       return baseStyles
     }

@@ -25,19 +25,16 @@ import com.android.tools.perflogger.Metric
 import com.android.tools.perflogger.Metric.MetricSample
 import com.android.tools.perflogger.PerfData
 import com.android.tools.testlib.Emulator
-import org.junit.Rule
-import org.junit.Test
+import java.nio.file.Paths
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+import org.junit.Rule
+import org.junit.Test
 
 class BuildAndRunKMPTest {
-  @JvmField
-  @Rule
-  val system = AndroidSystem.standard()
+  @JvmField @Rule val system = AndroidSystem.standardWithTmpDir()
 
-  @JvmField
-  @Rule
-  var watcher = MemoryDashboardNameProviderWatcher()
+  @JvmField @Rule var watcher = MemoryDashboardNameProviderWatcher()
 
   val metric = Metric("Time-elapsed")
 
@@ -48,24 +45,34 @@ class BuildAndRunKMPTest {
 
     benchmark.log("test_start", System.currentTimeMillis())
 
-    val project = AndroidProject("tools/adt/idea/android/integration/testData/kmpapp")
+    val projectArtifactsPath = Paths.get("tools/adt/idea/android/integration/kmpapp_project_model")
+    val project = AndroidProject(projectArtifactsPath.resolve("kmpapp").toString())
+
     system.installRepo(MavenRepo("tools/adt/idea/android/integration/buildkmpproject_deps.manifest"))
 
     benchmark.log("studio_start", System.currentTimeMillis())
 
+    system.getInstallation().copySystemDir(projectArtifactsPath)
+    system.getInstallation().copyConfigDir(projectArtifactsPath)
     system.runAdb { adb ->
-      system.runStudio(project,benchmark)  { studio ->
+      system.runStudio(project, benchmark) { studio ->
         system.runEmulator(Emulator.SystemImage.API_31) { emulator ->
-          studio.waitForSync()
+          studio.waitForSyncSkippedLog()
           collectMemoryUsageStatistics(studio, system.installation, watcher, "afterSync")
-          studio.waitForIndex()
+          studio.waitForIndexingSkippedLog()
           println("Finished waiting for index")
 
           println("Waiting for boot")
-          metric.addSamples(Benchmark.Builder("KMP-before-boot").setProject("Android Studio E2E").build(), MetricSample(Instant.now().toEpochMilli(), System.currentTimeMillis() - startTime ))
+          metric.addSamples(
+            Benchmark.Builder("KMP-before-boot").setProject("Android Studio E2E").build(),
+            MetricSample(Instant.now().toEpochMilli(), System.currentTimeMillis() - startTime),
+          )
           benchmark.log("calling_waitForBoot", System.currentTimeMillis())
           emulator.waitForBoot()
-          metric.addSamples(Benchmark.Builder("KMP-after-boot").setProject("Android Studio E2E").build(), MetricSample(Instant.now().toEpochMilli(), System.currentTimeMillis() - startTime ))
+          metric.addSamples(
+            Benchmark.Builder("KMP-after-boot").setProject("Android Studio E2E").build(),
+            MetricSample(Instant.now().toEpochMilli(), System.currentTimeMillis() - startTime),
+          )
           benchmark.log("after_waitForBoot", System.currentTimeMillis())
 
           studio.executeAction("MakeGradleProject")
@@ -79,7 +86,10 @@ class BuildAndRunKMPTest {
 
           studio.waitForEmulatorStart(system.installation.ideaLog, emulator, "com\\.google\\.samples\\.apps\\.kmp", 60, TimeUnit.SECONDS)
           emulator.logCat.waitForMatchingLine(".*Hello World!.*", 30, TimeUnit.SECONDS)
-          metric.addSamples(Benchmark.Builder("KMP-total-time").setProject("Android Studio E2E").build(), MetricSample(Instant.now().toEpochMilli(), System.currentTimeMillis() - startTime ))
+          metric.addSamples(
+            Benchmark.Builder("KMP-total-time").setProject("Android Studio E2E").build(),
+            MetricSample(Instant.now().toEpochMilli(), System.currentTimeMillis() - startTime),
+          )
           benchmark.log("test_end", System.currentTimeMillis())
           metric.commit()
         }
@@ -92,10 +102,7 @@ class BuildAndRunKMPTest {
     val benchmarkName = "BuildAndRunKMP"
     val perfData = PerfData()
 
-    val benchmark =
-      Benchmark.Builder(benchmarkName)
-        .setProject("Android Studio E2E")
-        .build()
+    val benchmark = Benchmark.Builder(benchmarkName).setProject("Android Studio E2E").build()
     perfData.addBenchmark(benchmark)
     perfData.commit()
 

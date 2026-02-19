@@ -16,7 +16,6 @@
 package com.android.tools.idea.npw.template
 
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.model.ProjectSyncInvoker.DefaultProjectSyncInvoker
 import com.android.tools.idea.npw.model.RenderTemplateModel
 import com.android.tools.idea.npw.model.RenderTemplateModel.Companion.fromFacet
@@ -26,7 +25,6 @@ import com.android.tools.idea.observable.TestInvokeStrategy
 import com.android.tools.idea.projectsystem.NamedModuleTemplate
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.createAndroidProjectBuilderForDefaultTestProjectStructure
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.template.Constraint.CLASS
@@ -34,12 +32,9 @@ import com.android.tools.idea.wizard.template.Constraint.LAYOUT
 import com.android.tools.idea.wizard.template.Constraint.NONEMPTY
 import com.android.tools.idea.wizard.template.Constraint.PACKAGE
 import com.android.tools.idea.wizard.template.Constraint.UNIQUE
-import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.StringParameter
-import com.android.tools.idea.wizard.template.Template
-import com.android.tools.idea.wizard.template.TestSuiteWidget
 import com.android.tools.idea.wizard.template.WizardUiContext
-import com.android.tools.idea.wizard.template.impl.other.files.journeyFile.journeyFileTemplate
+import com.android.tools.idea.wizard.template.impl.other.appWidget.appWidgetTemplate
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.TemplatesUsage.TemplateComponent.WizardUiContext.MENU_GALLERY
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
@@ -64,10 +59,7 @@ import org.mockito.kotlin.whenever
 class ConfigureTemplateParametersStepTest {
   private lateinit var step: ConfigureTemplateParametersStep
 
-  @get:Rule
-  val projectRule =
-    AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure())
-      .onEdt()
+  @get:Rule val projectRule = AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure()).onEdt()
 
   private lateinit var facet: AndroidFacet
   private val myInvokeStrategy = TestInvokeStrategy()
@@ -116,8 +108,7 @@ class ConfigureTemplateParametersStepTest {
     val modelWizard = createTemplateWizard(templateModel, moduleTemplates)
     val fakeUI = FakeUi(modelWizard.contentPanel)
 
-    val targetSourceSetSelector =
-      checkNotNull(fakeUI.findComponent<JLabel> { it.text.contains("Target Source Set") })
+    val targetSourceSetSelector = checkNotNull(fakeUI.findComponent<JLabel> { it.text.contains("Target Source Set") })
     assertTrue(fakeUI.isShowing(targetSourceSetSelector))
   }
 
@@ -134,123 +125,12 @@ class ConfigureTemplateParametersStepTest {
   }
 
   @Test
-  fun targetSourceSetSelector_notAddedIfParameterDisabled() {
-    StudioFlags.JOURNEYS_WITH_GEMINI_NEW_WIZARD.overrideForTest(
-      false,
-      projectRule.testRootDisposable,
-    )
-
-    val moduleTemplates = facet.getModuleTemplates(null)
-    assertTrue(moduleTemplates.size > 1)
-
-    val templateModel = createTemplate("Journey File", moduleTemplates)
-    val modelWizard =
-      createTemplateWizard(templateModel, moduleTemplates, showTargetSourceSetPicker = false)
-    val fakeUI = FakeUi(modelWizard.contentPanel)
-
-    assertNull(fakeUI.findComponent<JLabel> { it.text.contains("Target Source Set") })
-  }
-
-  @Test
-  fun testSuiteWidget_initialValueIsSetToDefaultIfWhenNoTestSuiteNameSuggestion() {
-    val moduleTemplates = facet.getModuleTemplates(null)
-    val templateModel =
-      fromFacet(
-        facet,
-        "",
-        facet.getModuleTemplates(null)[0],
-        "New activity",
-        DefaultProjectSyncInvoker(),
-        true,
-        MENU_GALLERY,
-        testSuiteNameSuggestion = null,
-      )
-    templateModel.newTemplate = createTestSuiteTemplate("myDefaultSuite")
-    val modelWizard = createTemplateWizard(templateModel, moduleTemplates)
-    val fakeUI = FakeUi(modelWizard.contentPanel)
-
-    val testSuiteTextField = fakeUI.findComponent<JTextField>()
-    assertNotNull(testSuiteTextField)
-    assertEquals("myDefaultSuite", testSuiteTextField.text)
-    assertEquals("myDefaultSuite", templateModel.testSuiteName.get())
-  }
-
-  @Test
-  fun testSuiteWidget_initialValueIsSetToTestSuiteNameSuggestion() {
-    val moduleTemplates = facet.getModuleTemplates(null)
-    val templateModel =
-      fromFacet(
-        facet,
-        "",
-        facet.getModuleTemplates(null)[0],
-        "New activity",
-        DefaultProjectSyncInvoker(),
-        true,
-        MENU_GALLERY,
-        testSuiteNameSuggestion = "mySuggestedSuite",
-      )
-    templateModel.newTemplate = createTestSuiteTemplate("myDefaultSuite")
-    val modelWizard = createTemplateWizard(templateModel, moduleTemplates)
-    val fakeUI = FakeUi(modelWizard.contentPanel)
-
-    val testSuiteTextField = fakeUI.findComponent<JTextField>()
-    assertNotNull(testSuiteTextField)
-    assertEquals("mySuggestedSuite", testSuiteTextField.text)
-    assertEquals("mySuggestedSuite", templateModel.testSuiteName.get())
-  }
-
-  @Test
-  @RunsInEdt
-  fun testSuiteWidget_twoWayBindingOfTestSuiteNameParameter() {
-    val moduleTemplates = facet.getModuleTemplates(null)
-    val templateModel =
-      fromFacet(
-        facet,
-        "",
-        facet.getModuleTemplates(null)[0],
-        "New activity",
-        DefaultProjectSyncInvoker(),
-        true,
-        MENU_GALLERY,
-        testSuiteNameSuggestion = "mySuggestedSuite",
-      )
-    templateModel.newTemplate = createTestSuiteTemplate("myDefaultSuite")
-
-    val modelWizard = createTemplateWizard(templateModel, moduleTemplates)
-    val fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
-
-    val testSuiteTextField = fakeUI.findComponent<JTextField>()
-    assertNotNull(testSuiteTextField)
-
-    // Test that changing the UI updates the model
-    testSuiteTextField.text = "newSuiteName"
-    myInvokeStrategy.updateAllSteps()
-    assertEquals("newSuiteName", templateModel.testSuiteName.get())
-
-    // Test that changing the model updates the UI
-    templateModel.testSuiteName.set("anotherName")
-    myInvokeStrategy.updateAllSteps()
-    assertEquals("anotherName", fakeUI.findComponent<JTextField>()!!.text)
-  }
-
-  @Test
   @RunsInEdt
   fun parameterValuesAreResetWhenTemplateIsShownAgain() {
     val moduleTemplates = facet.getModuleTemplates(null)
-    val template = journeyFileTemplate
+    val template = appWidgetTemplate
     val templateModel =
-      fromFacet(
-        facet,
-        "",
-        facet.getModuleTemplates(null)[0],
-        "New activity",
-        DefaultProjectSyncInvoker(),
-        true,
-        MENU_GALLERY,
-        testSuiteNameSuggestion = "mySuggestedSuite",
-      )
+      fromFacet(facet, "", facet.getModuleTemplates(null)[0], "New activity", DefaultProjectSyncInvoker(), true, MENU_GALLERY)
     templateModel.newTemplate = template
 
     // Create and show the wizard
@@ -259,12 +139,12 @@ class ConfigureTemplateParametersStepTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
 
-    val journeyNameTextField = fakeUI.findAllComponents<JTextField>()[1]
-    assertNotNull(journeyNameTextField)
-    assertEquals("My first Journey", journeyNameTextField.text)
+    val classNameTextField = fakeUI.findAllComponents<JTextField>()[0]
+    assertNotNull(classNameTextField)
+    assertEquals("NewAppWidget", classNameTextField.text)
 
     // Simulate user changing the value
-    journeyNameTextField.text = "New Journey name"
+    classNameTextField.text = "My App Widget"
     myInvokeStrategy.updateAllSteps()
 
     // Dispose the current wizard
@@ -272,16 +152,7 @@ class ConfigureTemplateParametersStepTest {
 
     // Create a new template model using the same template
     val newTemplateModel =
-      fromFacet(
-        facet,
-        "",
-        facet.getModuleTemplates(null)[0],
-        "New activity",
-        DefaultProjectSyncInvoker(),
-        true,
-        MENU_GALLERY,
-        testSuiteNameSuggestion = "mySuggestedSuite",
-      )
+      fromFacet(facet, "", facet.getModuleTemplates(null)[0], "New activity", DefaultProjectSyncInvoker(), true, MENU_GALLERY)
     newTemplateModel.newTemplate = template
 
     // Re-create and show the wizard with the new template model
@@ -291,68 +162,24 @@ class ConfigureTemplateParametersStepTest {
     PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
     myInvokeStrategy.updateAllSteps()
 
-    val newJourneyTestNameTextField = fakeUI.findAllComponents<JTextField>()[1]
-    assertNotNull(newJourneyTestNameTextField)
+    val newClassNameTextField = fakeUI.findAllComponents<JTextField>()[0]
+    assertNotNull(newClassNameTextField)
     // Verify that the value is reset to the default value
-    assertEquals("My first Journey", newJourneyTestNameTextField.text)
+    assertEquals("NewAppWidget", newClassNameTextField.text)
   }
 
-  private fun createTemplate(
-    templateName: String,
-    moduleTemplates: List<NamedModuleTemplate>,
-  ): RenderTemplateModel {
-    val templateModel =
-      fromFacet(
-        facet,
-        "",
-        moduleTemplates[0],
-        "New activity",
-        DefaultProjectSyncInvoker(),
-        true,
-        MENU_GALLERY,
-      )
+  private fun createTemplate(templateName: String, moduleTemplates: List<NamedModuleTemplate>): RenderTemplateModel {
+    val templateModel = fromFacet(facet, "", moduleTemplates[0], "New activity", DefaultProjectSyncInvoker(), true, MENU_GALLERY)
     val newActivity =
-      TemplateResolver.getAllTemplates()
-        .filter { WizardUiContext.MenuEntry in it.uiContexts }
-        .find { it.name == templateName }
+      TemplateResolver.getAllTemplates().filter { WizardUiContext.MenuEntry in it.uiContexts }.find { it.name == templateName }
     templateModel.newTemplate = newActivity!!
 
     return templateModel
   }
 
-  private fun createTestSuiteTemplate(defaultTestSuiteName: String): Template {
-    val testSuiteParameter =
-      StringParameter(
-        "testSuiteName",
-        "Test Suite Name",
-        constraints = emptyList(),
-        defaultValue = defaultTestSuiteName,
-      )
-    val testSuiteWidget = TestSuiteWidget(testSuiteParameter)
-    val template = mock<Template>()
-    whenever(template.name).thenReturn("Test Template with Test Suite")
-    whenever(template.description).thenReturn("A test template")
-    whenever(template.formFactor).thenReturn(FormFactor.Mobile)
-    whenever(template.widgets).thenReturn(listOf(testSuiteWidget))
-    whenever(template.parameters).thenReturn(listOf(testSuiteParameter))
-    whenever(template.constraints).thenReturn(emptyList())
-    return template
-  }
-
-  private fun createTemplateWizard(
-    templateModel: RenderTemplateModel,
-    moduleTemplates: List<NamedModuleTemplate>,
-    showTargetSourceSetPicker: Boolean = true,
-  ): ModelWizard {
+  private fun createTemplateWizard(templateModel: RenderTemplateModel, moduleTemplates: List<NamedModuleTemplate>): ModelWizard {
     val wizardBuilder = ModelWizard.Builder()
-    wizardBuilder.addStep(
-      ConfigureTemplateParametersStep(
-        templateModel,
-        "Add new Activity test",
-        moduleTemplates,
-        showTargetSourceSetPicker,
-      )
-    )
+    wizardBuilder.addStep(ConfigureTemplateParametersStep(templateModel, "Add new Activity test", moduleTemplates))
 
     val modelWizard = wizardBuilder.build()
     Disposer.register(projectRule.project, modelWizard)

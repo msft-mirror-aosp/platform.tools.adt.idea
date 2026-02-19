@@ -19,16 +19,17 @@ import com.android.tools.adtui.model.Range
 import com.android.tools.profilers.cpu.CaptureNode
 import com.android.tools.profilers.cpu.CpuCapture
 import java.util.stream.Collectors
-import kotlin.streams.asSequence
 import kotlin.streams.toList
 
-data class CaptureNodeAnalysisModel constructor(
+data class CaptureNodeAnalysisModel
+constructor(
   val node: CaptureNode,
   private val capture: CpuCapture,
   private val runModelUpdate: (Runnable) -> Unit,
-  private val nameToNodes: Map<String, List<CaptureNode>> = mapOf()
+  private val nameToNodes: Map<String, List<CaptureNode>> = mapOf(),
 ) : CpuAnalyzable<CaptureNodeAnalysisModel> {
-  val nodeRange: Range get() = Range(node.start.toDouble(), node.end.toDouble())
+  val nodeRange: Range
+    get() = Range(node.start.toDouble(), node.end.toDouble())
 
   /**
    * Statistics of all occurrences of this node, e.g. count, min, max.
@@ -40,7 +41,7 @@ data class CaptureNodeAnalysisModel constructor(
       val nodeName = node.data.fullName
       val allOccurrences =
         // Try to get all occurrences from lookup table
-        if(nameToNodes.contains(nodeName)) {
+        if (nameToNodes.contains(nodeName)) {
           nameToNodes[nodeName]!!
         }
         // Otherwise, compute all node occurrences via stream
@@ -51,9 +52,7 @@ data class CaptureNodeAnalysisModel constructor(
       return CaptureNodeAnalysisStats.fromNodes(allOccurrences)
     }
 
-  /**
-   * @return top k nodes by duration, with same full name, in descending order.
-   */
+  /** @return top k nodes by duration, with same full name, in descending order. */
   fun getLongestRunningOccurrences(k: Int): List<CaptureNode> =
     node.findRootNode().getTopKNodes(k, node.data.fullName, compareBy(CaptureNode::getDuration), nameToNodes)
 

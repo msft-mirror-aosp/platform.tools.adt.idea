@@ -17,14 +17,13 @@ package com.android.tools.idea.testartifacts.instrumented.testsuite.view
 
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
-/**
- * Unit tests for [ScreenshotAttributesView].
- */
+/** Unit tests for [ScreenshotAttributesView]. */
 @RunWith(JUnit4::class)
 class ScreenshotAttributesViewTest {
 
@@ -35,85 +34,81 @@ class ScreenshotAttributesViewTest {
     view = ScreenshotAttributesView()
   }
 
-  /**
-   * Verifies that all fields are set correctly when a test has passed.
-   * This implicitly tests that the summary color is green.
-   */
+  /** Verifies that all fields are set correctly when a test has passed. This implicitly tests that the summary color is green. */
   @Test
   fun updateData_withPassedResult_setsPassedState() {
+    val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
+    val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
     view.updateData(
-        refImagePath = "ref.png",
-        newImagePath = "new.png",
-        testMethodName = "myMethod",
-        testClassName = "MyClass",
-        result = AndroidTestCaseResult.PASSED,
-        diffPercent = null
+      refImagePath = refFile.absolutePath,
+      newImagePath = newFile.absolutePath,
+      testMethodName = "myMethod",
+      testClassName = "MyClass",
+      result = AndroidTestCaseResult.PASSED,
+      diffPercent = null,
     )
     assertThat(view.state.matchPercentage).isNull()
     assertThat(view.state.testResult).isEqualTo(AndroidTestCaseResult.PASSED)
-    assertThat(view.state.refLocation).isEqualTo("ref.png")
-    assertThat(view.state.newLocation).isEqualTo("new.png")
+    assertThat(view.state.refLocation).isEqualTo(refFile.absolutePath)
+    assertThat(view.state.newLocation).isEqualTo(newFile.absolutePath)
     assertThat(view.state.methodName).isEqualTo("myMethod")
     assertThat(view.state.className).isEqualTo("MyClass")
   }
 
-  /**
-   * Verifies that all fields are set correctly when a test has failed with a diff.
-   * This implicitly tests that the summary color is red.
-   */
+  /** Verifies that all fields are set correctly when a test has failed with a diff. This implicitly tests that the summary color is red. */
   @Test
   fun updateData_withFailedResultAndValidDiff_setsFailedState() {
+    val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
+    val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
     view.updateData(
-        refImagePath = "ref.png",
-        newImagePath = "new.png",
-        testMethodName = "myMethod",
-        testClassName = "MyClass",
-        result = AndroidTestCaseResult.FAILED,
-        diffPercent = 0.2550
+      refImagePath = refFile.absolutePath,
+      newImagePath = newFile.absolutePath,
+      testMethodName = "myMethod",
+      testClassName = "MyClass",
+      result = AndroidTestCaseResult.FAILED,
+      diffPercent = 0.2550,
     )
     assertThat(view.state.matchPercentage).isEqualTo("74.50%")
     assertThat(view.state.testResult).isEqualTo(AndroidTestCaseResult.FAILED)
-    assertThat(view.state.refLocation).isEqualTo("ref.png")
-    assertThat(view.state.newLocation).isEqualTo("new.png")
+    assertThat(view.state.refLocation).isEqualTo(refFile.absolutePath)
+    assertThat(view.state.newLocation).isEqualTo(newFile.absolutePath)
     assertThat(view.state.methodName).isEqualTo("myMethod")
     assertThat(view.state.className).isEqualTo("MyClass")
   }
 
   /**
-   * Verifies that all fields are set correctly when a test has failed without a diff.
-   * This implicitly tests that the summary color is red.
+   * Verifies that all fields are set correctly when a test has failed without a diff. This implicitly tests that the summary color is red.
    */
   @Test
   fun updateData_withFailedResultAndNullDiff_setsFailedState() {
+    val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
+    val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
     view.updateData(
-        refImagePath = "ref.png",
-        newImagePath = "new.png",
-        testMethodName = "myMethod",
-        testClassName = "MyClass",
-        result = AndroidTestCaseResult.FAILED,
-        diffPercent = null
+      refImagePath = refFile.absolutePath,
+      newImagePath = newFile.absolutePath,
+      testMethodName = "myMethod",
+      testClassName = "MyClass",
+      result = AndroidTestCaseResult.FAILED,
+      diffPercent = null,
     )
     assertThat(view.state.matchPercentage).isNull()
     assertThat(view.state.testResult).isEqualTo(AndroidTestCaseResult.FAILED)
-    assertThat(view.state.refLocation).isEqualTo("ref.png")
-    assertThat(view.state.newLocation).isEqualTo("new.png")
+    assertThat(view.state.refLocation).isEqualTo(refFile.absolutePath)
+    assertThat(view.state.newLocation).isEqualTo(newFile.absolutePath)
     assertThat(view.state.methodName).isEqualTo("myMethod")
     assertThat(view.state.className).isEqualTo("MyClass")
   }
 
-  /**
-   * Verifies that fields are set to "N/A" when they are null.
-   * This implicitly tests that the summary color is gray.
-   */
+  /** Verifies that fields are set to "N/A" when they are null. This implicitly tests that the summary color is gray. */
   @Test
   fun updateData_withNullValues_setsNotAvailable() {
     view.updateData(
-        refImagePath = null,
-        newImagePath = null,
-        testMethodName = null,
-        testClassName = null,
-        result = null,
-        diffPercent = null
+      refImagePath = null,
+      newImagePath = null,
+      testMethodName = null,
+      testClassName = null,
+      result = null,
+      diffPercent = null,
     )
     assertThat(view.state.refLocation).isEqualTo("N/A")
     assertThat(view.state.newLocation).isEqualTo("N/A")
@@ -121,5 +116,21 @@ class ScreenshotAttributesViewTest {
     assertThat(view.state.className).isEqualTo("N/A")
     assertThat(view.state.testResult).isNull()
     assertThat(view.state.matchPercentage).isNull()
+  }
+
+  /** Verifies that refLocation is "N/A" when refImagePath is a non-existent file. */
+  @Test
+  fun updateData_withNonExistentRefImagePath_setsRefLocationToNotAvailable() {
+    val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
+    view.updateData(
+      refImagePath = "non_existent_ref.png",
+      newImagePath = newFile.absolutePath,
+      testMethodName = "myMethod",
+      testClassName = "MyClass",
+      result = AndroidTestCaseResult.FAILED,
+      diffPercent = 0.1,
+    )
+    assertThat(view.state.refLocation).isEqualTo("N/A")
+    assertThat(view.state.newLocation).isEqualTo(newFile.absolutePath)
   }
 }

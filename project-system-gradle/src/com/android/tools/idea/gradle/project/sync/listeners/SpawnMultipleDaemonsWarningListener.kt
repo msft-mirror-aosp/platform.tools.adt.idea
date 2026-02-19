@@ -18,52 +18,49 @@ package com.android.tools.idea.gradle.project.sync.listeners
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.gradle.extensions.isProjectUsingDaemonJvmCriteria
+import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot
 import com.android.tools.idea.gradle.project.sync.GradleSyncState.Companion.JDK_LOCATION_WARNING_NOTIFICATION_GROUP
 import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
 import com.android.tools.idea.gradle.project.sync.hyperlink.DoNotShowJdkHomeWarningAgainHyperlink
 import com.android.tools.idea.gradle.project.sync.hyperlink.OpenUrlHyperlink
 import com.android.tools.idea.gradle.project.sync.hyperlink.SelectJdkFromFileSystemHyperlink
+import com.android.tools.idea.gradle.project.sync.jdk.ProjectJdkUtils
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink
 import com.android.tools.idea.sdk.IdeSdks
 import com.intellij.notification.NotificationListener
 import com.intellij.notification.impl.NotificationsConfigurationImpl
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.annotations.SystemIndependent
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
 
-class SpawnMultipleDaemonsWarningListener : GradleSyncListenerWithRoot {
+class SpawnMultipleDaemonsWarningListener(private val coroutineScope: CoroutineScope) : GradleSyncListenerWithRoot {
 
   override fun syncSucceeded(project: Project, rootProjectPath: @SystemIndependent String) {
     if (project.isDisposed) return
     if (!IdeInfo.getInstance().isAndroidStudio) return
     if (!NotificationsConfigurationImpl.getSettings(JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId).isShouldLog) return
 
-    ApplicationManager.getApplication().executeOnPooledThread {
-      // Use runReadAction because we are accessing Project model data
-      runReadAction {
-        if (project.isDisposed) return@runReadAction
+    coroutineScope.launch {
+      if (ProjectJdkUtils.isUsingJavaHomeJdk(project)) return@launch
 
-        // This check involves IO/Path resolution, must be off EDT
-        if (IdeSdks.getInstance().isUsingJavaHomeJdk(project)) return@runReadAction
+      val gradleVersion = GradleSyncStateHolder.getInstance(project).lastSyncedGradleVersion ?: return@launch
+      if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(rootProjectPath, gradleVersion)) return@launch
 
-        val gradleVersion = GradleSyncStateHolder.getInstance(project).lastSyncedGradleVersion ?: return@runReadAction
-        if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(rootProjectPath, gradleVersion)) return@runReadAction
+      // Pre-calculate strings here to avoid IO on the UI thread later
+      val gradleJvmPath =
+        AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(project, project.basePath.orEmpty()) ?: "Undefined"
+      val javaHome = IdeSdks.getInstance().jdkFromJavaHome ?: "Undefined"
 
-        // Pre-calculate strings here to avoid IO on the UI thread later
-        val gradleJvmPath = GradleInstallationManager.getInstance().getGradleJvmPath(project, project.basePath.orEmpty()) ?: "Undefined"
-        val javaHome = IdeSdks.getInstance().jdkFromJavaHome ?: "Undefined"
-
-        // Dispatch back to EDT to show the notification
-        ApplicationManager.getApplication().invokeLater {
-          showMultipleGradleDaemonWarning(project, rootProjectPath, gradleJvmPath, javaHome)
-        }
-      }
+      // Dispatch back to EDT to show the notification
+      withContext(Dispatchers.EDT) { showMultipleGradleDaemonWarning(project, rootProjectPath, gradleJvmPath, javaHome) }
     }
   }
 
@@ -72,7 +69,7 @@ class SpawnMultipleDaemonsWarningListener : GradleSyncListenerWithRoot {
     project: Project,
     rootProjectPath: @SystemIndependent String,
     gradleJvmPath: String,
-    javaHome: String
+    javaHome: String,
   ) {
     val hyperlinkUrl = AndroidBundle.message("project.sync.warning.multiple.gradle.daemons.url")
     val quickFixes = mutableListOf<NotificationHyperlink>(OpenUrlHyperlink(hyperlinkUrl, "More info..."))
@@ -81,19 +78,10 @@ class SpawnMultipleDaemonsWarningListener : GradleSyncListenerWithRoot {
     quickFixes.add(DoNotShowJdkHomeWarningAgainHyperlink())
 
     // Use the pre-calculated paths passed as arguments
-    var message = AndroidBundle.message(
-      "project.sync.warning.multiple.gradle.daemons.message",
-      project.name,
-      gradleJvmPath,
-      javaHome
-    )
+    var message = AndroidBundle.message("project.sync.warning.multiple.gradle.daemons.message", project.name, gradleJvmPath, javaHome)
 
-    quickFixes.forEach { quickFix ->
-      message += "<br>${quickFix.toHtml()}"
-    }
-    val listener = NotificationListener { _, event ->
-      quickFixes.forEach { link -> link.executeIfClicked(project, event) }
-    }
+    quickFixes.forEach { quickFix -> message += "<br>${quickFix.toHtml()}" }
+    val listener = NotificationListener { _, event -> quickFixes.forEach { link -> link.executeIfClicked(project, event) } }
 
     JDK_LOCATION_WARNING_NOTIFICATION_GROUP.createNotification("", message, MessageType.WARNING.toNotificationType()).apply {
       setListener(listener)

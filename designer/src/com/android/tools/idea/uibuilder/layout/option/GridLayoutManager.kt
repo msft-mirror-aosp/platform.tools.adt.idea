@@ -35,19 +35,21 @@ import com.intellij.ui.scale.JBUIScale
 import java.awt.Dimension
 import java.awt.Point
 import kotlin.math.max
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * Experimental grid layout. All previews are organized in groups.
  *
  * @param padding The padding used for content organized in groups (with a header for each group).
- * @param transform The lambda that converts the [PositionableContent]s in [PositionableGroup]s
- *   taking care to add headers when needed.
+ * @param transform The lambda that converts the [PositionableContent]s in [PositionableGroup]s taking care to add headers when needed.
  */
 open class GridLayoutManager(
   private val padding: OrganizationPadding = DEFAULT_LAYOUT_PADDING,
   val transform: (Collection<PositionableContent>) -> List<PositionableGroup> = NO_GROUP_TRANSFORM,
 ) : SurfaceLayoutManager {
+
+  private var storedSurfaceSizes: StoredSurfaceSizes? = null
 
   override fun getRequiredSize(
     content: Collection<PositionableContent>,
@@ -56,20 +58,25 @@ open class GridLayoutManager(
     @SwingCoordinate dimension: Dimension?,
   ) = getSize(content, { scale }, availableWidth)
 
-  /**
-   * Special case of single content (non-header) is handled differently. Returns this single content
-   * or null.
-   */
-  private fun Collection<PositionableContent>.singleContentOrNull() =
-    this.singleOrNull().takeIf { it !is HeaderPositionableContent }
+  /** Special case of single content (non-header) is handled differently. Returns this single content or null. */
+  private fun Collection<PositionableContent>.singleContentOrNull() = this.singleOrNull().takeIf { it !is HeaderPositionableContent }
 
   /** Get the total required size to layout the [content] with the given conditions. */
-  fun getSize(
-    content: Collection<PositionableContent>,
-    scaleFunc: PositionableContent.() -> Double,
-    availableWidth: Int,
-  ): Dimension {
-    return calculateSize(content = content, scaleFunc = scaleFunc, availableWidth = availableWidth)
+  fun getSize(content: Collection<PositionableContent>, scaleFunc: PositionableContent.() -> Double, availableWidth: Int): Dimension {
+    // PositionableContent.contentSize is mutable. Create a defensive copy of the dimensions to
+    // avoid side effects.
+    val newContentSizes = content.map { Dimension(it.contentSize.width, it.contentSize.height) }
+    // Check if there is a cached size already, if so, returns the cached size if the input
+    // parameters match the previous calculation.
+    storedSurfaceSizes?.let { (storedPositionableContentSize, storedAvailableWidth, storedCalculatedSize) ->
+      if (storedPositionableContentSize == newContentSizes && storedAvailableWidth == availableWidth) {
+        return storedCalculatedSize
+      }
+    }
+    // Otherwise, we call [calculateSize] and we update [storedSurfaceSizes].
+    val newSize = calculateSize(content, scaleFunc, availableWidth)
+    storedSurfaceSizes = StoredSurfaceSizes(newContentSizes, availableWidth, newSize)
+    return newSize
   }
 
   private fun calculateSize(
@@ -89,10 +96,7 @@ open class GridLayoutManager(
     val groupSizes = groups.map { group -> getGroupSize(group, scaleFunc) }
     val requiredWidth = groupSizes.maxOfOrNull { it.width } ?: 0
     val requiredHeight = groupSizes.sumOf { it.height }
-    return Dimension(
-      max(0, padding.canvasLeftPadding + requiredWidth),
-      max(0, padding.canvasVerticalPadding + requiredHeight),
-    )
+    return Dimension(max(0, padding.canvasLeftPadding + requiredWidth), max(0, padding.canvasVerticalPadding + requiredHeight))
   }
 
   /** Creates a layout from the given [PositionableGroup]s considering the available width. */
@@ -105,10 +109,7 @@ open class GridLayoutManager(
 
   /** Get the total required size of the [PositionableContent]s in grid layout. */
   @VisibleForTesting
-  fun getGroupSize(
-    layoutGroup: GridLayoutGroup,
-    scaleFunc: PositionableContent.() -> Double,
-  ): Dimension {
+  fun getGroupSize(layoutGroup: GridLayoutGroup, scaleFunc: PositionableContent.() -> Double): Dimension {
     var groupRequiredWidth = 0
     var groupRequiredHeight = 0
     layoutGroup.header?.let {
@@ -201,9 +202,8 @@ open class GridLayoutManager(
   }
 
   /**
-   * Arrange [PositionableGroup]s into a 2-dimension list which represent a list of row of
-   * [PositionableContent]. The [widthFunc] is for getting the preferred widths of
-   * [PositionableContent]s when filling the horizontal spaces.
+   * Arrange [PositionableGroup]s into a 2-dimension list which represent a list of row of [PositionableContent]. The [widthFunc] is for
+   * getting the preferred widths of [PositionableContent]s when filling the horizontal spaces.
    */
   private fun calculateNewLayout(
     group: PositionableGroup,
@@ -222,10 +222,7 @@ open class GridLayoutManager(
     var columnList = mutableListOf<PositionableContent>()
 
     // Actual width to fill is less as there is also canvas and group paddings.
-    val widthToFill =
-      availableWidth -
-        padding.canvasLeftPadding -
-        if (group.hasHeader) padding.groupLeftPadding else 0
+    val widthToFill = availableWidth - padding.canvasLeftPadding - if (group.hasHeader) padding.groupLeftPadding else 0
 
     // Once we have initialized columnList and nextX for the first preview, we can proceed checking
     // all the remaining content.
@@ -285,16 +282,8 @@ open class GridLayoutManager(
       // When there is only one visible preview, centralize it as a special case.
       val previewSize = singleContent.sizeForScale(singleContent.scale)
       // Try to centralize the content.
-      val x =
-        maxOf(
-          (availableWidth - previewSize.width - getResizableHoveringArea()) / 2,
-          padding.canvasSinglePadding,
-        )
-      val y =
-        maxOf(
-          (availableHeight - previewSize.height - getResizableHoveringArea()) / 2,
-          padding.canvasSinglePadding,
-        )
+      val x = maxOf((availableWidth - previewSize.width - getResizableHoveringArea()) / 2, padding.canvasSinglePadding)
+      val y = maxOf((availableHeight - previewSize.height - getResizableHoveringArea()) / 2, padding.canvasSinglePadding)
       return mapOf(singleContent to getContentPosition(singleContent, x, y))
     }
 
@@ -410,11 +399,7 @@ open class GridLayoutManager(
 
   /** Get the actual position should be set to the given [PositionableContent] */
   @SwingCoordinate
-  private fun getContentPosition(
-    content: PositionableContent,
-    @SwingCoordinate previewX: Int,
-    @SwingCoordinate previewY: Int,
-  ): Point {
+  private fun getContentPosition(content: PositionableContent, @SwingCoordinate previewX: Int, @SwingCoordinate previewY: Int): Point {
     // The new compose layout consider the toolbar size as the anchor of location.
     val margin = content.margin
     val shiftedX = previewX + margin.left
@@ -423,6 +408,21 @@ open class GridLayoutManager(
   }
 
   /** @return [NlConstants.RESIZING_HOVERING_SIZE] if [containsResizableContent], 0 otherwsie */
-  private fun getResizableHoveringArea(): Int =
-    NlConstants.RESIZING_HOVERING_SIZE.takeIf { containsResizableContent } ?: 0
+  private fun getResizableHoveringArea(): Int = NlConstants.RESIZING_HOVERING_SIZE.takeIf { containsResizableContent } ?: 0
+
+  /**
+   * Class used to store the [PositionableContent]s sizes and [DesignSurface]s available width used to check if we should update
+   * [currentCachedSize]
+   *
+   * @property contentSize The collection of [PositionableContent.contentSize] to be laid out.
+   * @property availableWidth The available width to show the content in the layout.
+   * @property cachedCalculatedSize The stored result of [calculateSize] call given [contentSize] and [availableWidth].
+   */
+  private data class StoredSurfaceSizes(
+    val contentSize: Collection<Dimension>,
+    val availableWidth: Int,
+    val cachedCalculatedSize: Dimension,
+  )
+
+  @TestOnly fun getCurrentCachedSizeForTestOnly() = storedSurfaceSizes?.cachedCalculatedSize
 }

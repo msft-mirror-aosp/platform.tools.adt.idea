@@ -31,7 +31,7 @@ import com.intellij.notification.Notifications;
 import com.intellij.notification.NotificationsConfiguration;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
-import com.intellij.openapi.application.ConfigImportHelper;
+import com.intellij.openapi.application.InitialConfigImportState;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.Key;
@@ -40,14 +40,18 @@ import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsPr
 import com.intellij.openapi.externalSystem.service.project.manage.AbstractProjectDataService;
 import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataService;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.util.registry.Registry;
 import java.util.Collection;
 import java.util.List;
+import kotlin.sequences.SequencesKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
-import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeData;
-import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeProjectDataService;
+import org.jetbrains.kotlin.idea.core.script.v1.settings.KotlinScriptingSettingsStorage;
+import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionProvider;
+import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeData;
+import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeProjectDataService;
 
 /**
  * Performs Gradle-specific IDE initialization
@@ -60,43 +64,20 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
   public void appFrameCreated(@NotNull List<String> arguments) {
     checkInstallPath();
 
-    if (ConfigImportHelper.isConfigImported()) {
+    if (InitialConfigImportState.INSTANCE.isConfigImported()) {
       cleanProjectJdkTableForNewIdeVersion();
       migrateAgpUpgradeAssistantSettingForNewIdeVersion();
     }
 
     useIdeGooglePlaySdkIndexInGradleDetector();
     initializePhasedSync();
-  }
-
-  public static final class AndroidGradleBridgeProjectDataService extends AbstractProjectDataService<GradleBridgeData, Void> {
-    GradleBridgeProjectDataService delegate = new GradleBridgeProjectDataService();
-
-    @Override
-    public @NotNull Key<GradleBridgeData> getTargetDataKey() {
-      return GradleBridgeData.INSTANCE.getKEY();
-    }
-
-    @Override
-    public void importData(@NotNull Collection<? extends DataNode<GradleBridgeData>> toImport,
-                           @Nullable ProjectData projectData,
-                           @NotNull Project project,
-                           @NotNull IdeModifiableModelsProvider modelsProvider) {
-      if (StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get()) return;
-      delegate.importData(toImport, projectData, project, modelsProvider);
-    }
+    configureKotlinScripting();
   }
 
   @VisibleForTesting
   public static void initializePhasedSync() {
-    if (!StudioFlags.PHASED_SYNC_ENABLED.get()) {
-      Registry.get("gradle.phased.sync.enabled").setValue(false);
-    } else {
-      Registry.get("gradle.phased.sync.enabled").setValue(true);
-    }
-
-    ProjectDataService.EP_NAME.getPoint().unregisterExtension(GradleBridgeProjectDataService.class);
-    ProjectDataService.EP_NAME.getPoint().registerExtension(new AndroidGradleBridgeProjectDataService());
+    Registry.get("gradle.phased.sync.enabled").setValue(StudioFlags.PHASED_SYNC_ENABLED.get());
+    Registry.get("gradle.phased.sync.bridge.disabled").setValue(StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get());
   }
 
   /**
@@ -139,7 +120,7 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
     if (ideInfo.isAndroidStudio() || ideInfo.isGameTools()) {
       // In older versions of Android Studio, we cleaned and recreated the Project Jdk Table here because
       // otherwise a change in the bundled version of the JDK (among other possibilities) would lead to
-      // red symbols in Gradle build files (b/185562147).
+      // red symbols in Gradle build files ( b/185562147 ).
       //
       // We now check the project Jdk used for Gradle during Gradle sync, fixing it if it does not exist, and
       // also recreate the table in the UI for the Gradle JVM drop-down, so this cleanup step at application
@@ -160,7 +141,7 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
         ApplicationManager.getApplication().invokeLater(() -> {
           String groupId = "Android Gradle Upgrade Notification";
           NotificationsConfiguration.getNotificationsConfiguration()
-            .changeSettings(groupId, NotificationDisplayType.NONE, /* do not log */ false, /* silence */ false);
+            .changeSettings(groupId, NotificationDisplayType.NONE, false, false);
         });
       }
       properties.unsetValue(propertyKey);
@@ -172,6 +153,25 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
       IdeGooglePlaySdkIndex playIndex = IdeGooglePlaySdkIndex.INSTANCE;
       playIndex.initializeAndSetFlags();
       return playIndex;
+    });
+  }
+
+  private static void configureKotlinScripting() {
+    if (ApplicationManager.getApplication().isUnitTestMode()) return;
+
+    ApplicationManager.getApplication().invokeLater(() -> {
+      Project project = ProjectManager.getInstance().getDefaultProject();
+      var scriptDefinitionProvider = ScriptDefinitionProvider.Companion.getInstance(project);
+      if (scriptDefinitionProvider != null) {
+        SequencesKt.asIterable(scriptDefinitionProvider.getCurrentDefinitions()).forEach(
+          scriptDefinitions -> {
+            var settings = KotlinScriptingSettingsStorage.Companion.getInstance(project);
+            if (settings.isScriptDefinitionEnabled(scriptDefinitions) && settings.autoReloadConfigurations(scriptDefinitions)) {
+              settings.setAutoReloadConfigurations(scriptDefinitions, false);
+            }
+          }
+        );
+      }
     });
   }
 }

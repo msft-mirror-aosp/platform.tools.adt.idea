@@ -66,9 +66,8 @@ import org.junit.Test
 private val NUMBER_OF_SAMPLES = 40
 
 /**
- * Class with utilities to generate content for a compile root. This class will generate a number of
- * unique classes and unique R.jar files that can be used to test the [GradleClassFileFinder] lookup
- * methods. The class files are not valid class files but this is ok since the
+ * Class with utilities to generate content for a compile root. This class will generate a number of unique classes and unique R.jar files
+ * that can be used to test the [GradleClassFileFinder] lookup methods. The class files are not valid class files but this is ok since the
  * [GradleClassFileFinder] only locates them and does not instantiate them.
  */
 private class ContentGenerator(
@@ -84,8 +83,7 @@ private class ContentGenerator(
   private val compileRoot: Path = Files.createTempDirectory("compileRoot")
   val generatedClasses = mutableListOf<String>()
 
-  private fun generateRandomPackagePrefix(): String =
-    "package/".repeat(Random.Default.nextInt(0, 3))
+  private fun generateRandomPackagePrefix(): String = "package/".repeat(Random.Default.nextInt(0, 3))
 
   /** Generates random content in the given file [path] of [size]. */
   private fun generateFile(path: Path, size: Int) {
@@ -112,25 +110,24 @@ private class ContentGenerator(
 
     outputJar.parent.createDirectories()
     val outputJarPath = "/${PathString(outputJar).portablePath.removePrefix("/")}"
-    FileSystems.newFileSystem(URI.create("jar:file:$outputJarPath"), mapOf("create" to "true"))
-      .use { fileSystem ->
-        repeat(numberOfRPackagesPerFile) {
-          val basePath = "$resourceRoot/p$it"
-          listOf(
-              "$basePath/R.class",
-              "$basePath/R\$style.class",
-              "$basePath/R\$string.class",
-              "$basePath/R\$color.class",
-              "$basePath/R\$id.class",
-              "$basePath/R\$value.class",
-              "$basePath/R\$xml.class",
-            )
-            .forEach {
-              generateFile(fileSystem.getPath(it), Random.Default.nextInt(600, 1500))
-              generatedClasses.add(it.removeSuffix(".class").replace("/", "."))
-            }
-        }
+    FileSystems.newFileSystem(URI.create("jar:file:$outputJarPath"), mapOf("create" to "true")).use { fileSystem ->
+      repeat(numberOfRPackagesPerFile) {
+        val basePath = "$resourceRoot/p$it"
+        listOf(
+            "$basePath/R.class",
+            "$basePath/R\$style.class",
+            "$basePath/R\$string.class",
+            "$basePath/R\$color.class",
+            "$basePath/R\$id.class",
+            "$basePath/R\$value.class",
+            "$basePath/R\$xml.class",
+          )
+          .forEach {
+            generateFile(fileSystem.getPath(it), Random.Default.nextInt(600, 1500))
+            generatedClasses.add(it.removeSuffix(".class").replace("/", "."))
+          }
       }
+    }
   }
 
   private fun generateRFiles(compileRoot: Path): List<File> =
@@ -167,9 +164,7 @@ class PerfgateGradleClassFileFinderTest {
   @get:Rule
   val projectRule =
     AndroidProjectRule.withAndroidModel(
-      AndroidProjectBuilder().withMainArtifactStub {
-        buildMainArtifactStub("debug").copy(classesFolder = content.outputRoots.toImpl())
-      }
+      AndroidProjectBuilder().withMainArtifactStub { buildMainArtifactStub("debug").copy(classesFolder = content.outputRoots.toImpl()) }
     )
 
   @Before
@@ -192,17 +187,13 @@ class PerfgateGradleClassFileFinderTest {
     // of classes
     // to ensure that cache is can also be hit sometimes.
     val classesToQuery =
-      (content.generatedClasses +
-          content.generatedClasses +
-          content.generatedClasses +
-          content.generatedClasses)
+      (content.generatedClasses + content.generatedClasses + content.generatedClasses + content.generatedClasses)
         .shuffled()
         .take(content.generatedClasses.size)
 
     repeat(NUMBER_OF_SAMPLES) {
       val stopWatch = Stopwatch.createStarted()
-      val gradleClassFinder =
-        GradleClassFileFinder.createWithoutTests(projectRule.module.getMainModule())
+      val gradleClassFinder = GradleClassFileFinder.createWithoutTests(projectRule.module.getMainModule())
       classesToQuery.forEach { assertNotNull(gradleClassFinder.findClassFile(it)) }
       samples.add(Metric.MetricSample(System.currentTimeMillis(), stopWatch.elapsed().toMillis()))
     }
@@ -221,22 +212,16 @@ class PerfgateGradleClassFileFinderTest {
     // of classes
     // to ensure that cache is can also be hit sometimes.
     val classesToQuery =
-      (content.generatedClasses +
-          content.generatedClasses +
-          content.generatedClasses +
-          content.generatedClasses)
+      (content.generatedClasses + content.generatedClasses + content.generatedClasses + content.generatedClasses)
         .shuffled()
         .take(content.generatedClasses.size)
 
     repeat(NUMBER_OF_SAMPLES) {
       // Invalidate roots to ensure they get recalculated in every iteration
-      projectRule.project.messageBus
-        .syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC)
-        .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
+      projectRule.project.messageBus.syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC).syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
       runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
       val stopWatch = Stopwatch.createStarted()
-      val gradleClassFinder =
-        GradleClassFileFinder.createWithoutTests(projectRule.module.getMainModule())
+      val gradleClassFinder = GradleClassFileFinder.createWithoutTests(projectRule.module.getMainModule())
       classesToQuery.forEach { assertNotNull(gradleClassFinder.findClassFile(it)) }
       samples.add(Metric.MetricSample(System.currentTimeMillis(), stopWatch.elapsed().toMillis()))
     }

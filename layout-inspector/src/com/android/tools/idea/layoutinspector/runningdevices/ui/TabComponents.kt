@@ -17,9 +17,9 @@ package com.android.tools.idea.layoutinspector.runningdevices.ui
 
 import com.android.annotations.concurrency.GuardedBy
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.DeviceDisplayListener
 import com.android.tools.idea.streaming.core.DisplayOwner
+import com.android.tools.idea.streaming.core.DisplayView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import java.awt.Component
@@ -29,39 +29,32 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Class grouping components from a Running Devices tab. Used to inject Layout Inspector in the tab.
- * These components are disposed as soon as the tab is not visible or is not the main selected tab.
- * For this reason they should not be kept around if they don't belong to the selected tab.
+ * Class grouping components from a Running Devices tab. Used to inject Layout Inspector in the tab. These components are disposed as soon
+ * as the tab is not visible or is not the main selected tab. For this reason they should not be kept around if they don't belong to the
+ * selected tab.
  *
  * @param tabContentPanel The component containing the main content of the tab (the display).
- * @param tabContentPanelContainer The container of [tabContentPanel].
  */
-class TabComponents(
-  val disposable: Disposable,
-  val tabContentPanel: JComponent,
-  val tabContentPanelContainer: Container,
-  private val displayOwner: DisplayOwner,
-) : Disposable {
+class TabComponents(val disposable: Disposable, val tabContentPanel: JComponent, private val displayOwner: DisplayOwner) : Disposable {
 
   private val lock = Any()
 
-  @GuardedBy("lock")
-  private val _displayList = MutableStateFlow<List<AbstractDisplayView>>(emptyList())
+  @GuardedBy("lock") private val _displayList = MutableStateFlow<List<DisplayView>>(emptyList())
   /**
-   * The list of [AbstractDisplayView] from running devices. Each entry corresponds to a display on
-   * the device. Layout Inspector UI is rendered on top of each display.
+   * The list of [AbstractDisplayView] from running devices. Each entry corresponds to a display on the device. Layout Inspector UI is
+   * rendered on top of each display.
    */
   val displayList = synchronized(lock) { _displayList.asStateFlow() }
 
   private val displayListener =
     object : DeviceDisplayListener {
       @UiThread
-      override fun displayAdded(displayView: AbstractDisplayView) {
+      override fun displayAdded(displayView: DisplayView) {
         synchronized(lock) { _displayList.value += displayView }
       }
 
       @UiThread
-      override fun displayRemoved(displayView: AbstractDisplayView) {
+      override fun displayRemoved(displayView: DisplayView) {
         synchronized(lock) { _displayList.value -= displayView }
       }
     }
@@ -69,9 +62,7 @@ class TabComponents(
   init {
     Disposer.register(disposable, this)
 
-    synchronized(lock) {
-      _displayList.value = tabContentPanel.allChildren().filterIsInstance<AbstractDisplayView>()
-    }
+    synchronized(lock) { _displayList.value = tabContentPanel.allChildren().filterIsInstance<DisplayView>() }
 
     displayOwner.addDeviceDisplayListener(displayListener)
   }

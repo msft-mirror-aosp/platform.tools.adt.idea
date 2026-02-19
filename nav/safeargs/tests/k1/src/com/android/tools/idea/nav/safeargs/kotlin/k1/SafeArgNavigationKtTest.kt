@@ -46,28 +46,28 @@ class SafeArgNavigationKtTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
-          <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1">
-            <argument
-                android:name="arg_one"
-                app:argType="string" />
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2"
-              android:name="test.safeargs.Fragment2"
-              android:label="Fragment2">
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1">
           <argument
-                android:name="Arg_two"
-                app:argType="string" />
-          </fragment>
-        </navigation>
+              android:name="arg_one"
+              app:argType="string" />
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2"
+            android:name="test.safeargs.Fragment2"
+            android:label="Fragment2">
+        <argument
+              android:name="Arg_two"
+              app:argType="string" />
+        </fragment>
+      </navigation>
       """
         .trimIndent(),
     )
@@ -76,9 +76,7 @@ class SafeArgNavigationKtTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -108,45 +106,41 @@ class SafeArgNavigationKtTest {
       assertThat(navigationElement).isInstanceOf(XmlTag::class.java)
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/fragment1\"")
 
-      it.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          when (descriptor) {
-            is PropertyDescriptorImpl -> {
-              val resolvedNavigationElement = descriptor.source.getPsi()!!
-              assertThat(resolvedNavigationElement is XmlTag).isTrue()
+      it.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach { descriptor ->
+        when (descriptor) {
+          is PropertyDescriptorImpl -> {
+            val resolvedNavigationElement = descriptor.source.getPsi()!!
+            assertThat(resolvedNavigationElement is XmlTag).isTrue()
+            assertThat((resolvedNavigationElement as XmlTag).text)
+              .isEqualTo(
+                """
+                <argument
+                        android:name="arg_one"
+                        app:argType="string" />
+                """
+                  .trimIndent()
+              )
+            assertThat(descriptor.name.asString()).isEqualTo("argOne")
+          }
+          is SimpleFunctionDescriptorImpl -> {
+            val resolvedNavigationElement = descriptor.source.getPsi()!!
+            assertThat(resolvedNavigationElement is XmlTag).isTrue()
+            if (descriptor.name.asString() == "component1") {
               assertThat((resolvedNavigationElement as XmlTag).text)
                 .isEqualTo(
                   """
-                <argument
-                        android:name="arg_one"
-                        app:argType="string" />
-                """
+                  <argument
+                          android:name="arg_one"
+                          app:argType="string" />
+                  """
                     .trimIndent()
                 )
-              assertThat(descriptor.name.asString()).isEqualTo("argOne")
-            }
-            is SimpleFunctionDescriptorImpl -> {
-              val resolvedNavigationElement = descriptor.source.getPsi()!!
-              assertThat(resolvedNavigationElement is XmlTag).isTrue()
-              if (descriptor.name.asString() == "component1") {
-                assertThat((resolvedNavigationElement as XmlTag).text)
-                  .isEqualTo(
-                    """
-                <argument
-                        android:name="arg_one"
-                        app:argType="string" />
-                """
-                      .trimIndent()
-                  )
-              } else {
-                assertThat((resolvedNavigationElement as XmlTag).text)
-                  .contains("id=\"@+id/fragment1\"")
-              }
+            } else {
+              assertThat((resolvedNavigationElement as XmlTag).text).contains("id=\"@+id/fragment1\"")
             }
           }
         }
+      }
     }
 
     // check Fragment2Args class navigation
@@ -157,46 +151,42 @@ class SafeArgNavigationKtTest {
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/fragment2\"")
 
       // check properties and methods
-      it.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          when (descriptor) {
-            is PropertyDescriptorImpl -> {
-              val resolvedNavigationElement = descriptor.source.getPsi()!!
-              assertThat(resolvedNavigationElement is XmlTag).isTrue()
+      it.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach { descriptor ->
+        when (descriptor) {
+          is PropertyDescriptorImpl -> {
+            val resolvedNavigationElement = descriptor.source.getPsi()!!
+            assertThat(resolvedNavigationElement is XmlTag).isTrue()
+            assertThat((resolvedNavigationElement as XmlTag).text)
+              .isEqualTo(
+                """
+                <argument
+                        android:name="Arg_two"
+                        app:argType="string" />
+                """
+                  .trimIndent()
+              )
+            assertThat(descriptor.name.asString()).isEqualTo("ArgTwo")
+          }
+          is SimpleFunctionDescriptorImpl -> {
+            val resolvedNavigationElement = descriptor.source.getPsi()!!
+            assertThat(resolvedNavigationElement is XmlTag).isTrue()
+
+            if (descriptor.name.asString() == "component1") {
               assertThat((resolvedNavigationElement as XmlTag).text)
                 .isEqualTo(
                   """
-                <argument
-                        android:name="Arg_two"
-                        app:argType="string" />
-                """
+                  <argument
+                          android:name="Arg_two"
+                          app:argType="string" />
+                  """
                     .trimIndent()
                 )
-              assertThat(descriptor.name.asString()).isEqualTo("ArgTwo")
-            }
-            is SimpleFunctionDescriptorImpl -> {
-              val resolvedNavigationElement = descriptor.source.getPsi()!!
-              assertThat(resolvedNavigationElement is XmlTag).isTrue()
-
-              if (descriptor.name.asString() == "component1") {
-                assertThat((resolvedNavigationElement as XmlTag).text)
-                  .isEqualTo(
-                    """
-                <argument
-                        android:name="Arg_two"
-                        app:argType="string" />
-                """
-                      .trimIndent()
-                  )
-              } else {
-                assertThat((resolvedNavigationElement as XmlTag).text)
-                  .contains("id=\"@+id/fragment2\"")
-              }
+            } else {
+              assertThat((resolvedNavigationElement as XmlTag).text).contains("id=\"@+id/fragment2\"")
             }
           }
         }
+      }
     }
   }
 
@@ -206,45 +196,45 @@ class SafeArgNavigationKtTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
+        <action
+          android:id="@+id/action_to_nested"
+          app:destination="@id/nested" />
+
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1" >
           <action
-            android:id="@+id/action_to_nested"
-            app:destination="@id/nested" />
+            android:id="@+id/action_fragment1_to_fragment2"
+            app:destination="@id/fragment2" />
+          <action
+            android:id="@+id/action_fragment1_to_fragment3"
+            app:destination="@id/fragment3" />
+        </fragment>
+
+        <fragment
+            android:id="@+id/fragment2"
+            android:name="test.safeargs.Fragment2"
+            android:label="Fragment2" >
+        </fragment>
+
+        <navigation
+            android:id="@+id/nested"
+            app:startDestination="@id/fragment3">
 
           <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1" >
-            <action
-              android:id="@+id/action_fragment1_to_fragment2"
-              app:destination="@id/fragment2" />
-            <action
-              android:id="@+id/action_fragment1_to_fragment3"
-              app:destination="@id/fragment3" />
+              android:id="@+id/fragment3"
+              android:name="test.safeargs.Fragment3"
+              android:label="Fragment3">
           </fragment>
 
-          <fragment
-              android:id="@+id/fragment2"
-              android:name="test.safeargs.Fragment2"
-              android:label="Fragment2" >
-          </fragment>
-
-          <navigation
-              android:id="@+id/nested"
-              app:startDestination="@id/fragment3">
-
-            <fragment
-                android:id="@+id/fragment3"
-                android:name="test.safeargs.Fragment3"
-                android:label="Fragment3">
-            </fragment>
-
-          </navigation>
         </navigation>
+      </navigation>
       """
         .trimIndent(),
     )
@@ -253,9 +243,7 @@ class SafeArgNavigationKtTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -286,39 +274,36 @@ class SafeArgNavigationKtTest {
       assertThat(navigationElement).isInstanceOf(XmlTag::class.java)
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/fragment1\"")
 
-      it.companionObjectDescriptor.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          val resolvedNavigationElement =
-            (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
-          assertThat(resolvedNavigationElement is XmlTag).isTrue()
+      it.companionObjectDescriptor.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach {
+        descriptor ->
+        val resolvedNavigationElement = (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
+        assertThat(resolvedNavigationElement is XmlTag).isTrue()
 
-          when (descriptor.name.toString()) {
-            "actionFragment1ToFragment2" -> {
-              assertThat((resolvedNavigationElement as XmlTag).text)
-                .isEqualTo(
-                  """
+        when (descriptor.name.toString()) {
+          "actionFragment1ToFragment2" -> {
+            assertThat((resolvedNavigationElement as XmlTag).text)
+              .isEqualTo(
+                """
                 <action
                       android:id="@+id/action_fragment1_to_fragment2"
                       app:destination="@id/fragment2" />
                 """
-                    .trimIndent()
-                )
-            }
-            "actionFragment1ToFragment3" -> {
-              assertThat((resolvedNavigationElement as XmlTag).text)
-                .isEqualTo(
-                  """
+                  .trimIndent()
+              )
+          }
+          "actionFragment1ToFragment3" -> {
+            assertThat((resolvedNavigationElement as XmlTag).text)
+              .isEqualTo(
+                """
                 <action
                       android:id="@+id/action_fragment1_to_fragment3"
                       app:destination="@id/fragment3" />
                 """
-                    .trimIndent()
-                )
-            }
+                  .trimIndent()
+              )
           }
         }
+      }
     }
 
     // check fragment2Directions class navigation
@@ -327,23 +312,20 @@ class SafeArgNavigationKtTest {
       assertThat(navigationElement).isInstanceOf(XmlTag::class.java)
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/fragment2\"")
 
-      it.companionObjectDescriptor.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          val resolvedNavigationElement =
-            (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
-          assertThat(resolvedNavigationElement is XmlTag).isTrue()
-          assertThat((resolvedNavigationElement as XmlTag).text)
-            .isEqualTo(
-              """
-                <action
-                    android:id="@+id/action_to_nested"
-                    app:destination="@id/nested" />
+      it.companionObjectDescriptor.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach {
+        descriptor ->
+        val resolvedNavigationElement = (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
+        assertThat(resolvedNavigationElement is XmlTag).isTrue()
+        assertThat((resolvedNavigationElement as XmlTag).text)
+          .isEqualTo(
             """
-                .trimIndent()
-            )
-        }
+            <action
+                android:id="@+id/action_to_nested"
+                app:destination="@id/nested" />
+            """
+              .trimIndent()
+          )
+      }
     }
 
     // check fragment3Directions class navigation
@@ -352,23 +334,20 @@ class SafeArgNavigationKtTest {
       assertThat(navigationElement).isInstanceOf(XmlTag::class.java)
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/fragment3\"")
 
-      it.companionObjectDescriptor.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          val resolvedNavigationElement =
-            (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
-          assertThat(resolvedNavigationElement is XmlTag).isTrue()
-          assertThat((resolvedNavigationElement as XmlTag).text)
-            .isEqualTo(
-              """
-                <action
-                    android:id="@+id/action_to_nested"
-                    app:destination="@id/nested" />
+      it.companionObjectDescriptor.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach {
+        descriptor ->
+        val resolvedNavigationElement = (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
+        assertThat(resolvedNavigationElement is XmlTag).isTrue()
+        assertThat((resolvedNavigationElement as XmlTag).text)
+          .isEqualTo(
             """
-                .trimIndent()
-            )
-        }
+            <action
+                android:id="@+id/action_to_nested"
+                app:destination="@id/nested" />
+            """
+              .trimIndent()
+          )
+      }
     }
 
     // check mainDirections class navigation
@@ -377,23 +356,20 @@ class SafeArgNavigationKtTest {
       assertThat(navigationElement).isInstanceOf(XmlTag::class.java)
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/main\"")
 
-      it.companionObjectDescriptor.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          val resolvedNavigationElement =
-            (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
-          assertThat(resolvedNavigationElement is XmlTag).isTrue()
-          assertThat((resolvedNavigationElement as XmlTag).text)
-            .isEqualTo(
-              """
-                <action
-                    android:id="@+id/action_to_nested"
-                    app:destination="@id/nested" />
+      it.companionObjectDescriptor.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach {
+        descriptor ->
+        val resolvedNavigationElement = (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
+        assertThat(resolvedNavigationElement is XmlTag).isTrue()
+        assertThat((resolvedNavigationElement as XmlTag).text)
+          .isEqualTo(
             """
-                .trimIndent()
-            )
-        }
+            <action
+                android:id="@+id/action_to_nested"
+                app:destination="@id/nested" />
+            """
+              .trimIndent()
+          )
+      }
     }
 
     // check nestedDirections class navigation
@@ -402,23 +378,20 @@ class SafeArgNavigationKtTest {
       assertThat(navigationElement).isInstanceOf(XmlTag::class.java)
       assertThat((navigationElement as XmlTag).text).contains("id=\"@+id/nested\"")
 
-      it.companionObjectDescriptor.unsubstitutedMemberScope
-        .getContributedDescriptors()
-        .sortedWith(MemberComparator.INSTANCE)
-        .forEach { descriptor ->
-          val resolvedNavigationElement =
-            (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
-          assertThat(resolvedNavigationElement is XmlTag).isTrue()
-          assertThat((resolvedNavigationElement as XmlTag).text)
-            .isEqualTo(
-              """
-                <action
-                    android:id="@+id/action_to_nested"
-                    app:destination="@id/nested" />
+      it.companionObjectDescriptor.unsubstitutedMemberScope.getContributedDescriptors().sortedWith(MemberComparator.INSTANCE).forEach {
+        descriptor ->
+        val resolvedNavigationElement = (descriptor as SimpleFunctionDescriptorImpl).source.getPsi()!!
+        assertThat(resolvedNavigationElement is XmlTag).isTrue()
+        assertThat((resolvedNavigationElement as XmlTag).text)
+          .isEqualTo(
             """
-                .trimIndent()
-            )
-        }
+            <action
+                android:id="@+id/action_to_nested"
+                app:destination="@id/nested" />
+            """
+              .trimIndent()
+          )
+      }
     }
   }
 }

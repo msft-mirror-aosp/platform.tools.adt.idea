@@ -25,17 +25,16 @@ import com.intellij.openapi.projectRoots.SimpleJavaSdkType
 import com.intellij.openapi.roots.AnnotationOrderRootType
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.testFramework.runInEdtAndWait
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import org.jetbrains.android.sdk.AndroidSdkType
 import org.jetbrains.kotlin.idea.framework.KotlinSdkType
 import org.junit.Rule
 import org.junit.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class SdkExtensionsTest {
 
-  @get:Rule
-  val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   @Test
   fun `Given Sdks with different naming When compare They are different`() {
@@ -60,14 +59,8 @@ class SdkExtensionsTest {
 
   @Test
   fun `Given Sdks with different roots When compare They are different`() {
-    val sdkA = createMockSdk(roots = listOf(
-      Pair(OrderRootType.CLASSES, "root1"),
-      Pair(OrderRootType.CLASSES, "rootA2"),
-    ))
-    val sdkB = createMockSdk(roots = listOf(
-      Pair(OrderRootType.CLASSES, "root1"),
-      Pair(OrderRootType.CLASSES, "rootB2"),
-    ))
+    val sdkA = createMockSdk(roots = listOf(Pair(OrderRootType.CLASSES, "root1"), Pair(OrderRootType.CLASSES, "rootA2")))
+    val sdkB = createMockSdk(roots = listOf(Pair(OrderRootType.CLASSES, "root1"), Pair(OrderRootType.CLASSES, "rootB2")))
     assertFalse(sdkA.isEqualTo(sdkB))
   }
 
@@ -80,32 +73,36 @@ class SdkExtensionsTest {
 
   @Test
   fun `Given Sdks with same values When compare They are equal`() {
-    val sdkA = createMockSdk(
-      name = "sdk",
-      path = "testPath",
-      version = "testVersion",
-      sdkTpe = KotlinSdkType(),
-      roots = listOf(
-        Pair(OrderRootType.CLASSES, "class1"),
-        Pair(OrderRootType.CLASSES, "class2"),
-        Pair(OrderRootType.SOURCES, "source"),
-        Pair(OrderRootType.DOCUMENTATION, "documentation"),
-        Pair(AnnotationOrderRootType.getInstance(), "annotation"),
+    val sdkA =
+      createMockSdk(
+        name = "sdk",
+        path = "testPath",
+        version = "testVersion",
+        sdkTpe = KotlinSdkType(),
+        roots =
+          listOf(
+            Pair(OrderRootType.CLASSES, "class1"),
+            Pair(OrderRootType.CLASSES, "class2"),
+            Pair(OrderRootType.SOURCES, "source"),
+            Pair(OrderRootType.DOCUMENTATION, "documentation"),
+            Pair(AnnotationOrderRootType.getInstance(), "annotation"),
+          ),
       )
-    )
-    val sdkB = createMockSdk(
-      name = "sdk",
-      path = "testPath",
-      version = "testVersion",
-      sdkTpe = KotlinSdkType(),
-      roots = listOf(
-        Pair(OrderRootType.CLASSES, "class1"),
-        Pair(OrderRootType.CLASSES, "class2"),
-        Pair(OrderRootType.SOURCES, "source"),
-        Pair(OrderRootType.DOCUMENTATION, "documentation"),
-        Pair(AnnotationOrderRootType.getInstance(), "annotation"),
+    val sdkB =
+      createMockSdk(
+        name = "sdk",
+        path = "testPath",
+        version = "testVersion",
+        sdkTpe = KotlinSdkType(),
+        roots =
+          listOf(
+            Pair(OrderRootType.CLASSES, "class1"),
+            Pair(OrderRootType.CLASSES, "class2"),
+            Pair(OrderRootType.SOURCES, "source"),
+            Pair(OrderRootType.DOCUMENTATION, "documentation"),
+            Pair(AnnotationOrderRootType.getInstance(), "annotation"),
+          ),
       )
-    )
     assertTrue(sdkA.isEqualTo(sdkB))
   }
 
@@ -114,15 +111,13 @@ class SdkExtensionsTest {
     path: String = "path",
     version: String = "version",
     sdkTpe: SdkTypeId = SimpleJavaSdkType(),
-    roots: List<Pair<OrderRootType, String>> = emptyList()
+    roots: List<Pair<OrderRootType, String>> = emptyList(),
   ): Sdk {
     val sdk = ProjectJdkTable.getInstance().createSdk(name, sdkTpe)
     val sdkModificator = sdk.sdkModificator
     sdkModificator.versionString = version
     sdkModificator.homePath = path
-    roots.forEach { (rootType, name) ->
-      sdkModificator.addRoot(MockVirtualFile(name), rootType)
-    }
+    roots.forEach { (rootType, name) -> sdkModificator.addRoot(MockVirtualFile(name), rootType) }
     runInEdtAndWait { ApplicationManager.getApplication().runWriteAction { sdkModificator.commitChanges() } }
     return sdk
   }

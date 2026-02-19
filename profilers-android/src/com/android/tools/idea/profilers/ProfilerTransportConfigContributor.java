@@ -21,6 +21,7 @@ import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.profilers.commands.CpuTraceInterceptCommandHandler;
+import com.android.tools.idea.profilers.commands.LeakCanaryAnalysisCommandHandler;
 import com.android.tools.idea.profilers.commands.GcCommandHandler;
 import com.android.tools.idea.profilers.commands.LeakCanaryLogcatCommandHandler;
 import com.android.tools.idea.profilers.commands.LegacyAllocationCommandHandler;
@@ -84,8 +85,12 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
 
     LeakCanaryLogcatCommandHandler lcLogcatHandler =
       new LeakCanaryLogcatCommandHandler(device, TransportServiceGrpc.newBlockingStub(proxy.getTransportChannel()), proxy.getEventQueue());
-    proxy.registerProxyCommandHandler(Commands.Command.CommandType.START_LOGCAT_TRACKING, lcLogcatHandler);
-    proxy.registerProxyCommandHandler(Commands.Command.CommandType.STOP_LOGCAT_TRACKING, lcLogcatHandler);
+    proxy.registerProxyCommandHandler(Commands.Command.CommandType.START_LEAKCANARY_TASK, lcLogcatHandler);
+    proxy.registerProxyCommandHandler(Commands.Command.CommandType.STOP_LEAKCANARY_TASK, lcLogcatHandler);
+
+    LeakCanaryAnalysisCommandHandler lcAnalysisHandler =
+      new LeakCanaryAnalysisCommandHandler(TransportServiceGrpc.newBlockingStub(proxy.getTransportChannel()), proxy.getEventQueue());
+    proxy.registerProxyCommandHandler(Commands.Command.CommandType.SEND_LEAKCANARY_ANALYSIS, lcAnalysisHandler);
   }
 
   @Override

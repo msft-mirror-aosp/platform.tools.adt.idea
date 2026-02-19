@@ -37,8 +37,8 @@ import com.intellij.util.ui.UIUtil
 
 class GradleSyncInvokerImpl : GradleSyncInvoker {
   /**
-   * This method should not be called within a [DumbModeTask], the platform will take care of ensuring that
-   * sync is not run at the same time as indexing.
+   * This method should not be called within a [DumbModeTask], the platform will take care of ensuring that sync is not run at the same time
+   * as indexing.
    */
   @Suppress("UnstableApiUsage")
   override fun requestProjectSync(project: Project, request: GradleSyncInvoker.Request, listener: GradleSyncListener?) {
@@ -57,9 +57,7 @@ class GradleSyncInvokerImpl : GradleSyncInvoker {
       return
     }
     val syncTask = Runnable {
-      ExternalSystemUtil.ensureToolWindowContentInitialized(project,
-                                                            GradleProjectSystemUtil.GRADLE_SYSTEM_ID
-      )
+      ExternalSystemUtil.ensureToolWindowContentInitialized(project, GradleProjectSystemUtil.GRADLE_SYSTEM_ID)
       if (prepareProject(project, listener)) {
         sync(project, request, listener)
       }
@@ -73,20 +71,13 @@ class GradleSyncInvokerImpl : GradleSyncInvoker {
   }
 
   @WorkerThread
-  override fun fetchAndMergeNativeVariants(
-    project: Project,
-    requestedAbis: Set<String>
-  ) {
-    GradleSyncExecutor(project).fetchAndMergeNativeVariants(requestedAbis)
-  }
-
-  @WorkerThread
   override fun fetchGradleModels(project: Project): GradleProjectModels {
     return GradleSyncExecutor(project).fetchGradleModels()
   }
 
   companion object {
     private val LOG = Logger.getInstance(GradleSyncInvoker::class.java)
+
     private fun prepareProject(project: Project, listener: GradleSyncListener?): Boolean {
       if (Info.getInstance(project).isBuildWithGradle) {
         return true // continue with sync.

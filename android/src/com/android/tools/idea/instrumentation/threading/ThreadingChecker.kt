@@ -29,18 +29,17 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-
 class ThreadingChecker : ApplicationInitializedListener {
 
   /** Start receiving notifications from the threading agent. */
   override suspend fun execute() {
-    val agentLoadedAtStartup = try {
-      Class.forName("com.android.tools.instrumentation.threading.agent.Agent", false, null)
-      true
-    }
-    catch (e: ClassNotFoundException) {
-      false
-    }
+    val agentLoadedAtStartup =
+      try {
+        Class.forName("com.android.tools.instrumentation.threading.agent.Agent", false, null)
+        true
+      } catch (e: ClassNotFoundException) {
+        false
+      }
 
     if (agentLoadedAtStartup) {
       ThreadingCheckerTrampoline.installHook(ThreadingCheckerHookImpl())
@@ -88,11 +87,9 @@ class ThreadingChecker : ApplicationInitializedListener {
       vm.loadAgent(threadingAgentJarPath.toString())
       ThreadingCheckerTrampoline.installHook(ThreadingCheckerHookImpl())
       thisLogger().info("ThreadingChecker listener has been installed (after threading agent was dynamically loaded).")
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
       thisLogger().error(e)
-    }
-    finally {
+    } finally {
       vm?.detach()
     }
   }

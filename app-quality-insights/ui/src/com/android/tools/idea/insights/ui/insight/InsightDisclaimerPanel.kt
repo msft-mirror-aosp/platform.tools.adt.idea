@@ -54,10 +54,7 @@ class InsightDisclaimerPanel(
 ) : JPanel(VerticalLayout(0)) {
 
   private val insightToConnectionFlow =
-    combine(
-        currentInsightFlow.map { it.valueOrNull() },
-        controller.state.map { it.connections.selected },
-      ) { insight, conn ->
+    combine(currentInsightFlow.map { it.valueOrNull() }, controller.state.map { it.connections.selected }) { insight, conn ->
         insight to conn
       }
       .distinctUntilChanged()
@@ -105,10 +102,8 @@ class InsightDisclaimerPanel(
             } else {
               // shouldn't be null, but at least don't blow up if it is. We just won't get
               // highlighting.
-              DataManager.getInstance()
-                .getDataContext(component)
-                .getData(SearchTextField.KEY)
-                ?.text = "Use all Gemini features Use context from this project"
+              DataManager.getInstance().getDataContext(component).getData(SearchTextField.KEY)?.text =
+                "Use all Gemini features Use context from this project"
             }
           }
           runnableReference.set(runnable)
@@ -120,18 +115,13 @@ class InsightDisclaimerPanel(
   private val projectMismatch =
     disclaimerPanel(
       text =
-        "This insight was generated without code context because the currently open project does not appear to match the project selected in ${controller.provider.displayName}"
+        "The AI does not have access to source code for generating insights because the currently open Android Studio project does not match the project selected in App Quality Insights."
     ) { /* no link in text */
     }
 
   init {
     val toolbar =
-      ActionManager.getInstance()
-        .createActionToolbar(
-          "GeminiOnboardingObserver",
-          DefaultActionGroup(geminiOnboardingObserverAction),
-          true,
-        )
+      ActionManager.getInstance().createActionToolbar("GeminiOnboardingObserver", DefaultActionGroup(geminiOnboardingObserverAction), true)
     toolbar.targetComponent = this
 
     scope.launch {

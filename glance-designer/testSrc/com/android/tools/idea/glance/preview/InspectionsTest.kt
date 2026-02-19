@@ -34,9 +34,7 @@ class InspectionsTest {
 
   @Test
   fun testNeedsComposableInspection() {
-    fixture.enableInspections(
-      GlancePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(GlancePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName")
     @Language("kotlin")
@@ -66,9 +64,7 @@ class InspectionsTest {
 
   @Test
   fun testInspectionsWithNoImport() {
-    fixture.enableInspections(
-      GlancePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(GlancePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName")
     @Language("kotlin")
@@ -189,16 +185,18 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """15: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |16: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |20: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |21: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |35: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |36: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |51: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |53: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |68: Glance Preview must be a top level declaration or in a top level class with a default constructor.
-                    |70: Glance Preview must be a top level declaration or in a top level class with a default constructor."""
+      """
+      |15: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |16: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |20: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |21: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |35: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |36: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |51: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |53: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |68: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      |70: Glance Preview must be a top level declaration or in a top level class with a default constructor.
+      """
         .trimMargin(),
       inspections,
     )
@@ -215,7 +213,7 @@ class InspectionsTest {
       import $GLANCE_PREVIEW_ANNOTATION_FQN
       import $COMPOSABLE_ANNOTATION_FQ_NAME
 
-      private const val badWidth = 3000
+      private const val badWidth = 3001
 
       private const val goodWidth = 2000
 
@@ -223,11 +221,11 @@ class InspectionsTest {
       annotation class BadAnnotation
 
       @Preview(widthDp = goodWidth)
-      annotation class GoodAnnotation(val widthDp: Int = 2001) // MultiPreview annotation parameters have no effect
+      annotation class GoodAnnotation(val widthDp: Int = 3001) // MultiPreview annotation parameters have no effect
 
       @Composable
       @GoodAnnotation
-      @Preview(heightDp = 2001, widthDp = 2001) // Only one warning
+      @Preview(heightDp = 3001, widthDp = 3001) // Only one warning
       fun Preview1() {
       }
 
@@ -247,8 +245,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """7: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
-        |15: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
+      """
+      |7: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
+      |15: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
       """
         .trimMargin(),
       inspections,
@@ -266,7 +265,7 @@ class InspectionsTest {
       import $GLANCE_PREVIEW_ANNOTATION_FQN
       import $COMPOSABLE_ANNOTATION_FQ_NAME
 
-      private const val badHeight = 3000
+      private const val badHeight = 3001
 
       private const val goodHeight = 2000
 
@@ -274,11 +273,11 @@ class InspectionsTest {
       annotation class BadAnnotation
 
       @Preview(heightDp = goodHeight)
-      annotation class GoodAnnotation(val heightDp: Int = 2001) // MultiPreview annotation parameters have no effect
+      annotation class GoodAnnotation(val heightDp: Int = 3001) // MultiPreview annotation parameters have no effect
 
       @Composable
       @GoodAnnotation
-      @Preview(heightDp = 2001, widthDp = 2001) // Only one warning
+      @Preview(heightDp = 3001, widthDp = 3001) // Only one warning
       fun Preview1() {
       }
 
@@ -298,8 +297,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """7: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
-        |15: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
+      """
+      |7: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
+      |15: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
       """
         .trimMargin(),
       inspections,
@@ -309,6 +309,4 @@ class InspectionsTest {
 
 /** Returns the [HighlightInfo] description adding the relative line number */
 internal fun HighlightInfo.descriptionWithLineNumber() =
-  ReadAction.compute<String, Throwable> {
-    "${StringUtil.offsetToLineNumber(highlighter!!.document.text, startOffset)}: $description"
-  }
+  ReadAction.compute<String, Throwable> { "${StringUtil.offsetToLineNumber(highlighter!!.document.text, startOffset)}: $description" }

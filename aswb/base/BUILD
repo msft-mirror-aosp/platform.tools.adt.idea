@@ -53,7 +53,7 @@ aswb_library(
         "//tools/vendor/google/asfg/ext/proto:intellijext_java_proto",
         "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
-        "@maven//:com.google.protobuf.protobuf-java",  # unuseddeps: keep for consistent protobuf-java version
+        "//tools/vendor/google/aswb/plugin_api/maven:protobuf-java",  # unuseddeps: keep for consistent protobuf-java version
     ],
 )
 
@@ -64,7 +64,6 @@ intellij_plugin_library(
     deps = [
         ":base",
         "//tools/adt/idea/aswb/aswb/src/com/android/tools/idea/rendering/tokens",
-        "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/deployment/liveedit/tokens",
         "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/project/analysis/ijar",
     ],
 )
@@ -73,7 +72,6 @@ java_library(
     name = "proto_wrapper",
     srcs = [
         "src/com/google/idea/blaze/base/ideinfo/ProjectDataInterner.java",
-        "src/com/google/idea/blaze/base/ideinfo/ProtoWrapper.java",
     ],
     neverlink = 1,
     visibility = ["//visibility:private"],
@@ -114,7 +112,6 @@ java_library(
 java_library(
     name = "label_api",
     srcs = [
-        "src/com/google/idea/blaze/base/ideinfo/ArtifactLocation.java",
         "src/com/google/idea/blaze/base/model/primitives/InvalidTargetException.java",
         "src/com/google/idea/blaze/base/model/primitives/Kind.java",
         "src/com/google/idea/blaze/base/model/primitives/Label.java",
@@ -142,7 +139,6 @@ java_library(
 java_library(
     name = "sync_listener_api",
     srcs = [
-        "src/com/google/idea/blaze/base/sync/SimpleSyncListener.java",
         "src/com/google/idea/blaze/base/sync/SyncMode.java",
         "src/com/google/idea/blaze/base/sync/SyncResult.java",
     ],
@@ -240,7 +236,6 @@ java_library(
     name = "workspace_language_checker_api",
     srcs = [
         "src/com/google/idea/blaze/base/model/primitives/LanguageClass.java",
-        "src/com/google/idea/blaze/base/sync/projectview/WorkspaceLanguageChecker.java",
     ],
     neverlink = 1,
     visibility = G3PLUGINS_VISIBILITY,
@@ -271,23 +266,6 @@ java_library(
 
 # neverlink library exposed so other plugins can optionally depend on it
 java_library(
-    name = "library_to_target_api",
-    srcs = [
-        "src/com/google/idea/blaze/base/model/LegacyLibraryToTargetResolver.java",
-        "src/com/google/idea/blaze/base/model/LibraryKey.java",
-    ],
-    neverlink = 1,
-    visibility = G3PLUGINS_VISIBILITY,
-    deps = [
-        ":label_api",
-        ":proto_wrapper",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Immutable
-    ],
-)
-
-# neverlink library exposed so other plugins can optionally depend on it
-java_library(
     name = "blaze_user_settings_api",
     srcs = [
         "src/com/google/idea/blaze/base/settings/BlazeUserSettings.java",
@@ -297,108 +275,6 @@ java_library(
         ":logging_api",
         "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
-    ],
-)
-
-# neverlink library exposed so other plugins can provide dependency information
-java_library(
-    name = "dep_finder_api",
-    srcs = [
-        "src/com/google/idea/blaze/base/dependencies/DependencyFinder.java",
-        "src/com/google/idea/blaze/base/dependencies/SourceToTargetProvider.java",
-        "src/com/google/idea/blaze/base/dependencies/TargetInfo.java",
-        "src/com/google/idea/blaze/base/dependencies/TestSize.java",
-        "src/com/google/idea/blaze/base/run/SourceToTargetFinder.java",
-        "src/com/google/idea/blaze/base/run/targetfinder/FuturesUtil.java",
-        "src/com/google/idea/blaze/base/run/targetfinder/TargetFinder.java",
-    ],
-    neverlink = 1,
-    visibility = G3PLUGINS_VISIBILITY,
-    deps = [
-        ":base",
-        "//tools/adt/idea/aswb/proto:proto_deps",
-        "//tools/adt/idea/aswb/shared",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",
-    ],
-)
-
-# neverlink library exposed so other plugins can provide dependency information
-java_library(
-    name = "build_batching_service_api",
-    neverlink = 1,
-    visibility = G3PLUGINS_VISIBILITY,
-    exports = [":build_batching_service_api_lib"],
-)
-
-aswb_library(
-    name = "build_batching_service_api_lib",
-    srcs = [
-        "src/com/google/idea/blaze/base/bazel/BuildSystem.kt",
-        "src/com/google/idea/blaze/base/logging/utils/ShardStats.java",
-        "src/com/google/idea/blaze/base/sync/sharding/BuildBatchingService.java",
-    ],
-    visibility = ["//visibility:private"],
-    exports = [
-        ":label_api",
-    ],
-    deps = [
-        ":base",
-        "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/command/buildresult/bepparser",
-        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
-        "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/exception",
-        "//tools/adt/idea/aswb/third_party/java/auto_value",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",
-        "@maven//:com.google.errorprone.error_prone_annotations",
-    ],
-)
-
-# neverlink library exposed so other plugins can optionally depend on it
-java_library(
-    name = "blaze_sync_modification_tracker_api",
-    srcs = ["src/com/google/idea/blaze/base/sync/BlazeSyncModificationTracker.java"],
-    neverlink = 1,
-    visibility = G3PLUGINS_VISIBILITY,
-    deps = [
-        ":base",
-        "//tools/vendor/google/aswb/plugin_api",
-    ],
-)
-
-# neverlink library exposed so other plugins can optionally depend on it
-java_library(
-    name = "buildifier_binary_provider_api",
-    srcs = [
-        "src/com/google/idea/blaze/base/buildmodifier/BuildifierBinaryProvider.java",
-    ],
-    neverlink = 1,
-    deps = [
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
-    ],
-)
-
-# exposed so g3plugins tests can optionally depend on it
-java_library(
-    name = "remote_file_prefetcher_for_tests",
-    testonly = 1,
-    srcs = [
-        "src/com/google/idea/blaze/base/async/FutureUtil.java",
-        "src/com/google/idea/blaze/base/command/buildresult/RemoteOutputArtifact.java",
-        "src/com/google/idea/blaze/base/ideinfo/ProtoWrapper.java",
-        "src/com/google/idea/blaze/base/prefetch/DefaultPrefetcher.java",
-        "src/com/google/idea/blaze/base/prefetch/FetchExecutor.java",
-        "src/com/google/idea/blaze/base/prefetch/RemoteArtifactPrefetcher.java",
-    ],
-    visibility = G3PLUGINS_VISIBILITY,
-    deps = [
-        ":base",
-        "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/command/buildresult/bepparser",
-        "//tools/adt/idea/aswb/proto:proto_deps",
-        "//tools/adt/idea/aswb/shared:artifact",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",
     ],
 )
 
@@ -465,7 +341,7 @@ java_library(
     visibility = G3PLUGINS_VISIBILITY,
     deps = [
         "//tools/vendor/google/aswb/plugin_api",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -499,7 +375,7 @@ java_library(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -510,12 +386,6 @@ aswb_library(
         "tests/utils/integration/**/*.java",
         "tests/utils/integration/**/*.kt",
     ]),
-    data = [
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test",
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test:test_srcs",
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test2",
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test2:test2_srcs",
-    ],
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     deps = [
         ":base",
@@ -530,8 +400,8 @@ aswb_library(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@bazel_tools//tools/java/runfiles",
-        "@maven//:com.google.guava.guava",
     ],
 )
 
@@ -567,7 +437,7 @@ intellij_unit_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -630,6 +500,6 @@ intellij_integration_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",  # unuseddeps: keep
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

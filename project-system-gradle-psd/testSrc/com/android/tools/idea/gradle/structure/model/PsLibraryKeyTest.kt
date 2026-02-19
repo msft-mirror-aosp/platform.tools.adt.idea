@@ -15,17 +15,17 @@
  */
 package com.android.tools.idea.gradle.structure.model
 
-import org.junit.Assert.*
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PsLibraryKeyTest {
   @Test
   fun compareTo() {
-    assertTrue(PsLibraryKey("group1", "library1") < PsLibraryKey("group2", "library1") )
-    assertTrue(PsLibraryKey("group1", "library1") < PsLibraryKey("group1", "library2") )
-    assertTrue(PsLibraryKey("group2", "library1") > PsLibraryKey("group1", "library1") )
-    assertTrue(PsLibraryKey("group1", "library2") > PsLibraryKey("group1", "library1") )
-    assertTrue(PsLibraryKey("group", "library") <= PsLibraryKey("group", "library") )
-    assertTrue(PsLibraryKey("group", "library") >= PsLibraryKey("group", "library") )
+    assertTrue(PsLibraryKey("group1", "library1") < PsLibraryKey("group2", "library1"))
+    assertTrue(PsLibraryKey("group1", "library1") < PsLibraryKey("group1", "library2"))
+    assertTrue(PsLibraryKey("group2", "library1") > PsLibraryKey("group1", "library1"))
+    assertTrue(PsLibraryKey("group1", "library2") > PsLibraryKey("group1", "library1"))
+    assertTrue(PsLibraryKey("group", "library") <= PsLibraryKey("group", "library"))
+    assertTrue(PsLibraryKey("group", "library") >= PsLibraryKey("group", "library"))
   }
 }

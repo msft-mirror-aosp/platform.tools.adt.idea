@@ -91,7 +91,6 @@ import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
-import org.jetbrains.plugins.gradle.service.GradleInstallationManager;
 
 /**
  * Android Studio has single JDK and single Android SDK. Both can be configured via ProjectStructure dialog.
@@ -560,22 +559,6 @@ public class IdeSdks {
     return isUsingJavaHomeJdk(ApplicationManager.getApplication().isUnitTestMode());
   }
 
-  public boolean isUsingJavaHomeJdk(@NotNull Project project) {
-    String basePath = project.getBasePath();
-    if (basePath == null) {
-      return false;
-    }
-    String projectJvmPath = GradleInstallationManager.getInstance().getGradleJvmPath(project, basePath);
-    if (projectJvmPath == null) {
-      return false;
-    }
-    String javaHome = getJdkFromJavaHome();
-    if (javaHome == null) {
-      return false;
-    }
-    return FileUtils.isSameFile(new File(projectJvmPath), new File(javaHome));
-  }
-
   @VisibleForTesting
   boolean isUsingJavaHomeJdk(boolean assumeUnitTest) {
     if (!myIdeInfo.isAndroidStudio()) {
@@ -920,7 +903,7 @@ public class IdeSdks {
    * @param path the JDK path to validate
    * @return true if the path contains a valid JDK
    */
-  private static boolean isValidJdkPath(@NotNull Path path) {
+  public static boolean isValidJdkPath(@NotNull Path path) {
     return checkForJdk(path) && checkForJre(path);
   }
 

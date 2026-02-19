@@ -30,8 +30,7 @@ import javax.swing.plaf.ScrollBarUI
 import org.intellij.lang.annotations.JdkConstants
 
 class DesignSurfaceScrollPane private constructor() : JBScrollPane(0) {
-  private class MyScrollBar(@JdkConstants.AdjustableOrientation orientation: Int) :
-    JBScrollBar(orientation), IdeGlassPane.TopComponent {
+  private class MyScrollBar(@JdkConstants.AdjustableOrientation orientation: Int) : JBScrollBar(orientation), IdeGlassPane.TopComponent {
     private var myPersistentUI: ScrollBarUI? = null
 
     override fun canBePreprocessed(e: MouseEvent): Boolean {
@@ -70,11 +69,7 @@ class DesignSurfaceScrollPane private constructor() : JBScrollPane(0) {
      * @param onPanningChanged callback when the scrollable area changes size.
      */
     @JvmStatic
-    fun createDefaultScrollPane(
-      content: JComponent,
-      background: Color,
-      onPanningChanged: AdjustmentListener,
-    ): JScrollPane =
+    fun createDefaultScrollPane(content: JComponent, background: Color, onPanningChanged: AdjustmentListener): JScrollPane =
       DesignSurfaceScrollPane().apply {
         setViewportView(content)
         border = JBUI.Borders.empty()

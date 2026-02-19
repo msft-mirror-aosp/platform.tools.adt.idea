@@ -22,8 +22,6 @@ import com.intellij.util.MemoryDumpHelper
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import javax.management.MBeanServer
 import javax.management.ObjectName
 import kotlin.system.measureTimeMillis
@@ -38,9 +36,7 @@ fun captureSnapshot(outputPath: String, checkpoint: MeasurementCheckpoint) {
   try {
     val file = File(outputPath).resolve("${getTimestamp()}-$name.hprof")
     println("Capturing memory snapshot at: ${file.absolutePath}")
-    val elapsedTime = measureTimeMillis {
-      MemoryDumpHelper.captureMemoryDump(file.absolutePath)
-    }
+    val elapsedTime = measureTimeMillis { MemoryDumpHelper.captureMemoryDump(file.absolutePath) }
     println("Done in $elapsedTime")
   } catch (e: Exception) {
     println("Error capturing snapshot:  ${e.stackTraceToString()}")
@@ -51,9 +47,7 @@ fun analyzeCurrentProcessHeap(outputPath: String, checkpoint: MeasurementCheckpo
   val name = checkpoint.name
   println("Starting heap traversal for $name")
   var result: LightweightTraverseResult?
-  val elapsedTime = measureTimeMillis {
-    result = LightweightHeapTraverse.collectReport(LightweightHeapTraverseConfig(false, true, true))
-  }
+  val elapsedTime = measureTimeMillis { result = LightweightHeapTraverse.collectReport(LightweightHeapTraverseConfig(false, true, true)) }
   println("Heap traversal for $name finished in $elapsedTime milliseconds")
 
   println("Heap $name total size MBs: ${result!!.totalReachableObjectsSizeBytes shr 20} ")
@@ -76,11 +70,7 @@ fun captureHeapHistogramOfCurrentProcess(outputPath: String, checkpoint: Measure
   fileHistogram.writeText(histogram)
 }
 
-private fun MBeanServer.execute(name: String) = invoke(
-  ObjectName("com.sun.management:type=DiagnosticCommand"),
-  name,
-  arrayOf(null),
-  arrayOf(Array<String>::class.java.name)
-)
+private fun MBeanServer.execute(name: String) =
+  invoke(ObjectName("com.sun.management:type=DiagnosticCommand"), name, arrayOf(null), arrayOf(Array<String>::class.java.name))
 
 private fun getTimestamp() = Instant.now().toEpochMilli()

@@ -22,24 +22,23 @@ import com.android.tools.asdriver.tests.MavenRepo
 import com.android.tools.asdriver.tests.MemoryDashboardNameProviderWatcher
 import com.android.tools.platform.performance.testing.PlatformPerformanceBenchmark
 import com.intellij.openapi.util.SystemInfo
+import java.nio.file.Paths
 import org.junit.Rule
 import org.junit.Test
 
 class HighlightingAfterTypingTest {
-  @JvmField
-  @Rule
-  val system: AndroidSystem = AndroidSystem.standard()
+  @JvmField @Rule val system: AndroidSystem = AndroidSystem.standardWithTmpDir()
 
-  @JvmField
-  @Rule
-  var watcher = MemoryDashboardNameProviderWatcher()
+  @JvmField @Rule var watcher = MemoryDashboardNameProviderWatcher()
 
   @Test
   fun testHighlightingAfterTyping() {
     // Create a new android project, and set a fixed distribution
-    val project = AndroidProject("tools/adt/idea/android/integration/testData/architecture-samples")
+    val projectArtifactsPath = Paths.get("tools/adt/idea/android/integration/architectureSamples_project_model")
+    val project = AndroidProject(projectArtifactsPath.resolve("architecture-samples").toString())
     // Don't show Decompiler legal notice in case of resolving in .class files.
     system.installation.acceptLegalDecompilerNotice()
+    system.getInstallation().copySystemDir(projectArtifactsPath)
 
     // Create a maven repo and set it up in the installation and environment
     system.installRepo(MavenRepo("tools/adt/idea/android/integration/editor_performance_test_deps.manifest"))
@@ -48,18 +47,21 @@ class HighlightingAfterTypingTest {
     system.installation.addVmOption("-Didea.is.integration.test=true")
 
     system.runStudio(project) { studio ->
-      studio.waitForSync()
-      studio.waitForIndex()
+      studio.waitForSyncSkippedLog()
+      studio.waitForIndexingSkippedLog()
 
-      studio.openFile(null, "app/src/main/java/com/example/android/architecture/blueprints/todoapp/addedittask/AddEditTaskViewModel.kt", 89,
-                      19, false,
-                      false)
+      studio.openFile(
+        null,
+        "app/src/main/java/com/example/android/architecture/blueprints/todoapp/addedittask/AddEditTaskViewModel.kt",
+        89,
+        19,
+        false,
+        false,
+      )
       // We set up caret after the `updateTitle` symbol and press backspace 5 times to remove
       // the `Title` part.
       // "_uiState.updateTitle<caret> {"
-      repeat(5) {
-        studio.pressKey(AndroidStudio.Keys.BACKSPACE, null)
-      }
+      repeat(5) { studio.pressKey(AndroidStudio.Keys.BACKSPACE, null) }
       // Now lets type the "Title" back and measure how long it takes to rehighlight the file.
       studio.delayType(null, 100, "Title")
       studio.waitForFinishedCodeAnalysis(null)
@@ -68,11 +70,15 @@ class HighlightingAfterTypingTest {
 
     val benchmark = PlatformPerformanceBenchmark(watcher.dashboardName!!)
 
-    system.installation.telemetry.get("highlighting_AddEditTaskViewModel.kt").reduce { _, e -> e }.get().let {
-      benchmark.log("highlighting_AddEditTaskViewModel", it)
-    }
-    system.installation.telemetry.get("firstCodeAnalysis").reduce { _, e -> e }.get().let {
-      benchmark.log("firstCodeAnalysis", it, if (SystemInfo.isWindows) 75 else 2)
-    }
+    system.installation.telemetry
+      .get("highlighting_AddEditTaskViewModel.kt")
+      .reduce { _, e -> e }
+      .get()
+      .let { benchmark.log("highlighting_AddEditTaskViewModel", it) }
+    system.installation.telemetry
+      .get("firstCodeAnalysis")
+      .reduce { _, e -> e }
+      .get()
+      .let { benchmark.log("firstCodeAnalysis", it, if (SystemInfo.isWindows) 75 else 2) }
   }
 }

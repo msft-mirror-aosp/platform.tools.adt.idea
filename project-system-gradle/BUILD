@@ -14,8 +14,6 @@ iml_module(
     ],
     iml_files = ["intellij.android.projectSystem.gradle.iml"],
     lint_baseline = "lint_baseline.xml",
-    # TODO(b/463634019): Disabling lint due to timeouts.
-    lint_enabled = False,
     # NOTE: For edits to module_visibility, please see note at end of list
     module_visibility = [
         # Gradle Project System tools
@@ -45,6 +43,7 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
         # AI Plugin access to Gradle Project System functionality
         "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
+        "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle_tests",
         # TODO(b/427148033), MigrateToCatalogProcessor
         "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         # TODO(xof): investigate
@@ -303,9 +302,12 @@ iml_module(
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
                 "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system:gradle-distrib-7.4",
+                "//tools/base/build-system:gradle-distrib-8.0",
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
                 "//tools/data-binding:data_binding_runtime.zip",
+                "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
                 "//prebuilts/studio/jdk:jdk21",
             ],
@@ -640,6 +642,7 @@ iml_module(
         "@intellij//:intellij.spellchecker",
         "@intellij//:intellij.properties.backend.psi",
         "//tools/adt/idea/.idea/libraries:equalsverifier",
+        "@intellij//:tanvd.grazi",
     ],
     test_jvm_flags = ["-Didea.skip.indices.initialization=true"],
     test_resources = ["testResources"],
@@ -669,7 +672,7 @@ iml_module(
 )
 
 generate_old_agp_tests_from_list(
-    name = "MultipleGradleRootsSyncUpdatesProjectJdkIntegrationTest",
+    name = "GradleSyncWithOldAgpIntegrationTest",
     iml_module = ":intellij.android.projectSystem.gradle.tests",
     tests_list = [
         dict(

@@ -15,7 +15,15 @@
  */
 package com.android.tools.idea.uibuilder.property.inspector
 
-import com.android.SdkConstants.*
+import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_ID
+import com.android.SdkConstants.BUTTON
+import com.android.SdkConstants.DOT_XML
+import com.android.SdkConstants.LINEAR_LAYOUT
+import com.android.SdkConstants.TAG_GROUP
+import com.android.SdkConstants.TAG_ITEM
+import com.android.SdkConstants.TAG_MENU
+import com.android.SdkConstants.TEXT_VIEW
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.model.PreferenceUtils
 import com.android.tools.idea.uibuilder.property.NlPropertyType
@@ -63,12 +71,7 @@ class IdInspectorBuilderTest {
   @Test
   fun testNotAvailableForPreferenceTags() {
     for (tagName in PreferenceUtils.VALUES) {
-      val util =
-        InspectorTestUtil(
-          projectRule,
-          tagName,
-          fileName = "${tagName.lowercase(Locale.getDefault())}$DOT_XML",
-        )
+      val util = InspectorTestUtil(projectRule, tagName, fileName = "${tagName.lowercase(Locale.getDefault())}$DOT_XML")
       val builder = IdInspectorBuilder(util.editorProvider)
       util.addProperty(ANDROID_URI, ATTR_ID, NlPropertyType.ID)
       builder.attachToInspector(util.inspector, util.properties)
@@ -79,8 +82,7 @@ class IdInspectorBuilderTest {
   @Test
   fun testNotAvailableForMenuTags() {
     for (tagName in arrayOf(TAG_MENU, TAG_ITEM, TAG_GROUP)) {
-      val util =
-        InspectorTestUtil(projectRule, tagName, fileName = "${tagName.lowercase()}$DOT_XML")
+      val util = InspectorTestUtil(projectRule, tagName, fileName = "${tagName.lowercase()}$DOT_XML")
       val builder = IdInspectorBuilder(util.editorProvider)
       util.addProperty(ANDROID_URI, ATTR_ID, NlPropertyType.ID)
       builder.attachToInspector(util.inspector, util.properties)

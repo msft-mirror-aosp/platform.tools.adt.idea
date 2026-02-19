@@ -32,10 +32,7 @@ import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.psiUtil.getNextSiblingIgnoringWhitespace
 
-/**
- * Adds a @Preview annotation when a full @Composable is selected or cursor at @Composable
- * annotation.
- */
+/** Adds a @Preview annotation when a full @Composable is selected or cursor at @Composable annotation. */
 class ComposeCreatePreviewActionK1 : IntentionAction {
   override fun startInWriteAction() = true
 
@@ -53,25 +50,16 @@ class ComposeCreatePreviewActionK1 : IntentionAction {
 
   private fun getComposableAnnotationEntry(editor: Editor, file: PsiFile): KtAnnotationEntry? {
     if (editor.selectionModel.hasSelection()) {
-      val elementAtCaret =
-        file.findElementAt(editor.selectionModel.selectionStart)?.parentOfType<KtAnnotationEntry>()
+      val elementAtCaret = file.findElementAt(editor.selectionModel.selectionStart)?.parentOfType<KtAnnotationEntry>()
       if (elementAtCaret?.isComposableAnnotation() == true) {
         return elementAtCaret
       } else {
         // Case when user selected few extra blank lines before @Composable annotation.
-        val elementAtCaretAfterSpace =
-          file
-            .findElementAt(editor.selectionModel.selectionStart)
-            ?.getNextSiblingIgnoringWhitespace()
-        return (elementAtCaretAfterSpace as? KtFunction)?.annotationEntries?.find {
-          it.fqNameMatches(COMPOSABLE_ANNOTATION_FQ_NAME)
-        }
+        val elementAtCaretAfterSpace = file.findElementAt(editor.selectionModel.selectionStart)?.getNextSiblingIgnoringWhitespace()
+        return (elementAtCaretAfterSpace as? KtFunction)?.annotationEntries?.find { it.fqNameMatches(COMPOSABLE_ANNOTATION_FQ_NAME) }
       }
     } else {
-      return file
-        .findElementAt(editor.caretModel.offset)
-        ?.parentOfType<KtAnnotationEntry>()
-        ?.takeIf { it.isComposableAnnotation() }
+      return file.findElementAt(editor.caretModel.offset)?.parentOfType<KtAnnotationEntry>()?.takeIf { it.isComposableAnnotation() }
     }
   }
 
@@ -79,10 +67,8 @@ class ComposeCreatePreviewActionK1 : IntentionAction {
     if (editor == null || file == null) return
     val composableAnnotationEntry = getComposableAnnotationEntry(editor, file) ?: return
     val composableFunction = composableAnnotationEntry.parentOfType<KtFunction>() ?: return
-    val previewAnnotationEntry =
-      KtPsiFactory(project).createAnnotationEntry("@${COMPOSE_PREVIEW_ANNOTATION_FQN}")
+    val previewAnnotationEntry = KtPsiFactory(project).createAnnotationEntry("@${COMPOSE_PREVIEW_ANNOTATION_FQN}")
 
-    ShortenReferencesFacility.getInstance()
-      .shorten(composableFunction.addAnnotationEntry(previewAnnotationEntry))
+    ShortenReferencesFacility.getInstance().shorten(composableFunction.addAnnotationEntry(previewAnnotationEntry))
   }
 }

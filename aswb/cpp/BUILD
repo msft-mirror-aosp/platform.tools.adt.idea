@@ -5,6 +5,7 @@ load(
 )
 load(
     "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
+    "aswb_library",
     "intellij_plugin",
     "intellij_plugin_library",
     "optional_plugin_xml",
@@ -18,7 +19,7 @@ load(
 load("//tools/adt/idea/studio:studio.bzl", "intellij_plugin_import")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 
-java_library(
+aswb_library(
     name = "cpp",
     srcs = glob([
         "src/com/google/idea/blaze/cpp/*.java",
@@ -104,7 +105,7 @@ intellij_unit_test_suite(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -113,7 +114,6 @@ java_library(
     testonly = 1,
     srcs = [
         "tests/integrationtests/com/google/idea/blaze/cpp/BlazeCppIntegrationTestCase.java",
-        "tests/integrationtests/com/google/idea/blaze/cpp/BlazeCppResolvingTestCase.java",
     ],
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     deps = [
@@ -124,7 +124,7 @@ java_library(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -185,6 +185,6 @@ intellij_integration_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

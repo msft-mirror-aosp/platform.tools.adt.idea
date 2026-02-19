@@ -60,15 +60,10 @@ class ComposeUnresolvedFunctionFixContributorTest {
         .trimIndent(),
     )
 
-    val action =
-      myFixture.availableIntentions.find {
-        it.text == "Create @Composable function 'UnresolvedFunction'"
-      }
+    val action = myFixture.availableIntentions.find { it.text == "Create @Composable function 'UnresolvedFunction'" }
     assertThat(action).isNotNull()
 
-    WriteCommandAction.runWriteCommandAction(myFixture.project) {
-      action!!.invoke(myFixture.project, myFixture.editor, myFixture.file)
-    }
+    WriteCommandAction.runWriteCommandAction(myFixture.project) { action!!.invoke(myFixture.project, myFixture.editor, myFixture.file) }
 
     // language=kotlin
     val expectedText =
@@ -112,15 +107,10 @@ class ComposeUnresolvedFunctionFixContributorTest {
         .trimIndent(),
     )
 
-    val action =
-      myFixture.availableIntentions.find {
-        it.text == "Create @Composable function 'UnresolvedFunction'"
-      }
+    val action = myFixture.availableIntentions.find { it.text == "Create @Composable function 'UnresolvedFunction'" }
     assertThat(action).isNotNull()
 
-    WriteCommandAction.runWriteCommandAction(myFixture.project) {
-      action!!.invoke(myFixture.project, myFixture.editor, myFixture.file)
-    }
+    WriteCommandAction.runWriteCommandAction(myFixture.project) { action!!.invoke(myFixture.project, myFixture.editor, myFixture.file) }
 
     // TODO(b/267429486): Revisit after implementing the K2 version of `CreateCallableFromUsageFix`.
     if (KotlinPluginModeProvider.isK2Mode()) {
@@ -185,10 +175,7 @@ class ComposeUnresolvedFunctionFixContributorTest {
         .trimIndent(),
     )
 
-    val action =
-      myFixture.availableIntentions.find {
-        it.text == "Create @Composable function 'unresolvedFunction'"
-      }
+    val action = myFixture.availableIntentions.find { it.text == "Create @Composable function 'unresolvedFunction'" }
     assertThat(action).isNull()
   }
 
@@ -210,10 +197,7 @@ class ComposeUnresolvedFunctionFixContributorTest {
         .trimIndent(),
     )
 
-    val action =
-      myFixture.availableIntentions.find {
-        it.text == "Create @Composable function 'unresolvedFunction'"
-      }
+    val action = myFixture.availableIntentions.find { it.text == "Create @Composable function 'unresolvedFunction'" }
     assertThat(action).isNull()
   }
 
@@ -235,15 +219,10 @@ class ComposeUnresolvedFunctionFixContributorTest {
         .trimIndent(),
     )
 
-    val action =
-      myFixture.availableIntentions.find {
-        it.text == "Create @Composable function 'UnresolvedFunction'"
-      }
+    val action = myFixture.availableIntentions.find { it.text == "Create @Composable function 'UnresolvedFunction'" }
     assertThat(action).isNotNull()
 
-    WriteCommandAction.runWriteCommandAction(myFixture.project) {
-      action!!.invoke(myFixture.project, myFixture.editor, myFixture.file)
-    }
+    WriteCommandAction.runWriteCommandAction(myFixture.project) { action!!.invoke(myFixture.project, myFixture.editor, myFixture.file) }
 
     val extraEmptyLine = if (KotlinPluginModeProvider.isK2Mode()) "" else "\n"
     myFixture.checkResult(

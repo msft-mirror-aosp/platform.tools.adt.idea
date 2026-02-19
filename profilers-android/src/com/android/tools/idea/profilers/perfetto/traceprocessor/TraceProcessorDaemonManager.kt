@@ -24,6 +24,7 @@ import com.google.common.base.Ticker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.util.system.CpuArch
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -33,14 +34,14 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
-
 /**
- * This is responsible to manage the lifetime of an instance of the TraceProcessorDaemon,
- * spawning a new one if necessary and properly shutting it down at the end of Studio execution.
+ * This is responsible to manage the lifetime of an instance of the TraceProcessorDaemon, spawning a new one if necessary and properly
+ * shutting it down at the end of Studio execution.
  */
 class TraceProcessorDaemonManager(
-    private val ticker: Ticker,
-    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()): Disposable {
+  private val ticker: Ticker,
+  private val executorService: ExecutorService = Executors.newSingleThreadExecutor(),
+) : Disposable {
 
   // All access paths to process should be synchronized.
   private var process: Process? = null
@@ -66,7 +67,7 @@ class TraceProcessorDaemonManager(
           "prebuilts/tools/common/trace-processor-daemon/windows"
         }
         SystemInfo.isMac -> {
-          "prebuilts/tools/common/trace-processor-daemon/${if (SystemInfo.isAarch64) "darwin-arm64" else "darwin-x86_64"}"
+          "prebuilts/tools/common/trace-processor-daemon/${if (CpuArch.isArm64()) "darwin-arm64" else "darwin-x86_64"}"
         }
         SystemInfo.isLinux -> {
           "prebuilts/tools/common/trace-processor-daemon/linux"
@@ -89,11 +90,8 @@ class TraceProcessorDaemonManager(
       }
     }
 
-    private val TPD_BINARY = DeployableFile.Builder(TPD_EXECUTABLE)
-      .setReleaseDir(TPD_RELEASE_PATH)
-      .setDevDir(TPD_DEV_PATH)
-      .setExecutable(true)
-      .build()
+    private val TPD_BINARY =
+      DeployableFile.Builder(TPD_EXECUTABLE).setReleaseDir(TPD_RELEASE_PATH).setDevDir(TPD_DEV_PATH).setExecutable(true).build()
 
     private fun getExecutablePath(): String {
       return File(TPD_BINARY.dir, TPD_BINARY.fileName).absolutePath
@@ -111,9 +109,8 @@ class TraceProcessorDaemonManager(
     if (!processIsRunning() && !disposed) {
       val spawnStopwatch = Stopwatch.createStarted(ticker)
       LOGGER.info("TPD Manager: Starting new instance of TPD")
-      val newProcess = ProcessBuilder(getExecutablePath(), "--llvm_symbolizer_path", getLlvmSymbolizerPath())
-        .redirectErrorStream(true)
-        .start()
+      val newProcess =
+        ProcessBuilder(getExecutablePath(), "--llvm_symbolizer_path", getLlvmSymbolizerPath()).redirectErrorStream(true).start()
       val stdoutListener = TPDStdoutListener(BufferedReader(InputStreamReader(newProcess.inputStream)))
       executorService.execute(stdoutListener)
 
@@ -138,16 +135,19 @@ class TraceProcessorDaemonManager(
     }
   }
 
-  /**
-   * Represents the status of the daemon, that we can extract from its output/logging.
-   */
+  /** Represents the status of the daemon, that we can extract from its output/logging. */
   @VisibleForTesting
-  enum class DaemonStatus { STARTING, RUNNING, FAILED, END_OF_STREAM }
+  enum class DaemonStatus {
+    STARTING,
+    RUNNING,
+    FAILED,
+    END_OF_STREAM,
+  }
 
   /**
-   * This runnable will keep consuming the output (stdout and stderr) from the daemon and will pipe it to our own logs.
-   * Besides the obvious utility of being able to track down what the daemon is doing duing debugging, it seems this
-   * is also important to not lock the daemon if it produces too much output (see b/158124339 for full context).
+   * This runnable will keep consuming the output (stdout and stderr) from the daemon and will pipe it to our own logs. Besides the obvious
+   * utility of being able to track down what the daemon is doing duing debugging, it seems this is also important to not lock the daemon if
+   * it produces too much output (see b/158124339 for full context).
    */
   @VisibleForTesting
   class TPDStdoutListener(private val outputReader: BufferedReader) : Runnable {
@@ -160,6 +160,7 @@ class TraceProcessorDaemonManager(
           statusLock.notifyAll()
         }
       }
+
     var selectedPort = 0
       private set
 
@@ -186,15 +187,15 @@ class TraceProcessorDaemonManager(
 
     @VisibleForTesting
     fun waitUntilTerminated(timeout: Long) {
-      while(!terminated()) {
+      while (!terminated()) {
         waitForStatusChangeOrTerminated(timeout)
       }
     }
 
-    fun waitForStatusChangeOrTerminated(timeout:Long) {
+    fun waitForStatusChangeOrTerminated(timeout: Long) {
       synchronized(statusLock) {
         // We do a check to avoid the timeout wait unnecessarily if the status isn't expected status already.
-        if ( !terminated() ) statusLock.wait(timeout)
+        if (!terminated()) statusLock.wait(timeout)
       }
     }
 

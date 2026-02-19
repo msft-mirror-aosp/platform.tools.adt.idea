@@ -30,8 +30,15 @@ import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.cpu.CpuCaptureParser.FileHeaderParsingFailureException
 import com.android.tools.profilers.cpu.CpuCaptureParser.ProcessTraceAction
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
+import com.android.tools.profilers.tasks.analytics.TaskTracker
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.CpuImportTraceMetadata.ImportStatus
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.CancellationException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.function.Supplier
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
@@ -41,12 +48,6 @@ import org.mockito.Mockito
 import org.mockito.Mockito.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import java.io.File
-import java.io.IOException
-import java.util.concurrent.CancellationException
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutionException
-import java.util.function.Supplier
 
 class CpuCaptureParserTest {
 
@@ -56,25 +57,21 @@ class CpuCaptureParserTest {
 
   private lateinit var myProfilers: StudioProfilers
 
-  @JvmField
-  @Rule
-  val temporaryFolder = TemporaryFolder()
+  @JvmField @Rule val temporaryFolder = TemporaryFolder()
 
-  @get:Rule
-  val grpcChannel = FakeGrpcChannel("CpuCaptureParserTest", transportService)
-
+  @get:Rule val grpcChannel = FakeGrpcChannel("CpuCaptureParserTest", transportService)
 
   class SampleParserWithoutException(private val resultCapture: CpuCapture) : TraceParser {
     @Throws(IOException::class)
     override fun parse(trace: File, traceId: Long): CpuCapture {
-      return resultCapture;
+      return resultCapture
     }
   }
 
   class SampleParserWithException : TraceParser {
     @Throws(IOException::class)
     override fun parse(trace: File, traceId: Long): CpuCapture {
-      throw java.lang.RuntimeException("Unit Test Parse failure $traceId");
+      throw java.lang.RuntimeException("Unit Test Parse failure $traceId")
     }
   }
 
@@ -84,8 +81,7 @@ class CpuCaptureParserTest {
     val processId = 100
     val processNameHint = "processNameHint"
     val mockIdeProfilerServices = mock<IdeProfilerServices>()
-    return Mockito.spy(
-      ProcessTraceAction(traceFile, traceId.toLong(), traceType, processId, processNameHint, mockIdeProfilerServices))
+    return Mockito.spy(ProcessTraceAction(traceFile, traceId.toLong(), traceType, processId, processNameHint, mockIdeProfilerServices))
   }
 
   @Before
@@ -174,7 +170,7 @@ class CpuCaptureParserTest {
   @Test
   fun atraceKnownTypeParseToCaptureTest() {
     // Known trace type
-    val processTraceAction = spyInitializeProcessTraceAction("atrace.ctrace",TraceType.ATRACE)
+    val processTraceAction = spyInitializeProcessTraceAction("atrace.ctrace", TraceType.ATRACE)
     val resultCapture = mock<CpuCapture>()
     val supplierParseWithoutError = Supplier<TraceParser> { SampleParserWithoutException(resultCapture) }
 
@@ -262,8 +258,8 @@ class CpuCaptureParserTest {
   @Test
   fun atraceUnknownTypeParseToCapture() {
     // Unknown trace type
-    val processTraceAction = spyInitializeProcessTraceAction("atrace.ctrace",TraceType.UNSPECIFIED)
-    val resultCapture = mock<CpuCapture>();
+    val processTraceAction = spyInitializeProcessTraceAction("atrace.ctrace", TraceType.UNSPECIFIED)
+    val resultCapture = mock<CpuCapture>()
     val supplierParseWithoutError = Supplier<TraceParser> { SampleParserWithoutException(resultCapture) }
 
     doReturn(supplierParseWithoutError).whenever(processTraceAction).getParserSupplier(TraceType.ATRACE)
@@ -325,14 +321,14 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // We expect getting the capture to throw an ExecutionException because the trace failed to be parsed.
       // CpuCapture fails with an IllegalStateException
       assertThat(e).hasCauseThat().isInstanceOf(CancellationException::class.java)
-      assertThat(e).hasCauseThat().hasMessageThat().contains(
-        String.format("Parsing of a long (%d bytes) trace file was aborted by the user.", traceLength)
-      )
+      assertThat(e)
+        .hasCauseThat()
+        .hasMessageThat()
+        .contains(String.format("Parsing of a long (%d bytes) trace file was aborted by the user.", traceLength))
     }
   }
 
@@ -362,8 +358,7 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // We expect getting the capture to throw an ExecutionException because the trace failed to be parsed.
       // CpuCapture fails with an IllegalStateException
       assertThat(e.cause).isInstanceOf(CpuCaptureParser.ParsingFailureException::class.java)
@@ -383,8 +378,7 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // We expect getting the capture to throw an ExecutionException because the trace file is a directory.
       // CpuCapture fails with an ExecutionException
       assertThat(e.cause).isInstanceOf(CpuCaptureParser.InvalidPathParsingFailureException::class.java)
@@ -432,8 +426,7 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // Do nothing. We expect the parsing to fail.
     }
   }
@@ -502,8 +495,7 @@ class CpuCaptureParserTest {
   @Test
   fun parsingSimpleperfFilesShouldProduceCpuCapture() {
     val parser = CpuCaptureParser(myProfilers)
-    val futureCapture = parser.parseForTest(
-      CpuProfilerTestUtils.getTraceFile("simpleperf.trace"), 123)
+    val futureCapture = parser.parseForTest(CpuProfilerTestUtils.getTraceFile("simpleperf.trace"), 123)
 
     val capture = futureCapture.get()
     assertThat(capture).isNotNull()
@@ -525,8 +517,7 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // We expect getting the capture to throw an ExecutionException because the trace failed to be parsed.
       // CpuCapture fails with an IllegalStateException
       assertThat(e).hasCauseThat().isInstanceOf(CancellationException::class.java)
@@ -560,8 +551,7 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // We expect getting the capture to throw an ExecutionException because the trace failed to be parsed.
       // CpuCapture fails with an IllegalStateException
       assertThat(e).hasCauseThat().isInstanceOf(CancellationException::class.java)
@@ -625,8 +615,7 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       // Do nothing. We expect the parsing to fail.
     }
   }
@@ -699,12 +688,14 @@ class CpuCaptureParserTest {
     services.enableTaskBasedUx(false)
     CpuCaptureParser.clearPreviouslyLoadedCaptures()
 
-    parser.parseForTest(
-      CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
-      idHint = 0, // note: idHint == 0 signifies importing an existing trace from a file (i.e. not a fresh trace capture)
-      nameHint = "com.google.samples.apps.nowinandroid.demo.debug",
-      type = TraceType.PERFETTO
-    ).get()
+    parser
+      .parseForTest(
+        CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
+        idHint = 0, // note: idHint == 0 signifies importing an existing trace from a file (i.e. not a fresh trace capture)
+        nameHint = "com.google.samples.apps.nowinandroid.demo.debug",
+        type = TraceType.PERFETTO,
+      )
+      .get()
     assertThat(fakeFeatureTracker.lastCpuImportTraceMetadata.importStatus).isEqualTo(ImportStatus.IMPORT_TRACE_SUCCESS)
     assertThat(fakeFeatureTracker.lastCpuImportTraceMetadata.hasComposeTracingNodes).isTrue()
     assertThat(fakeFeatureTracker.lastCpuCaptureMetadata.hasComposeTracingNodes).isTrue()
@@ -719,11 +710,13 @@ class CpuCaptureParserTest {
     services.enableTaskBasedUx(false)
     CpuCaptureParser.clearPreviouslyLoadedCaptures()
 
-    parser.parseForTest(
-      CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"),
-      idHint = 0, // note: idHint == 0 signifies importing an existing trace from a file (i.e. not a fresh trace capture)
-      type = TraceType.PERFETTO
-    ).get()
+    parser
+      .parseForTest(
+        CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"),
+        idHint = 0, // note: idHint == 0 signifies importing an existing trace from a file (i.e. not a fresh trace capture)
+        type = TraceType.PERFETTO,
+      )
+      .get()
     assertThat(fakeFeatureTracker.lastCpuImportTraceMetadata.importStatus).isEqualTo(ImportStatus.IMPORT_TRACE_SUCCESS)
     assertThat(fakeFeatureTracker.lastCpuImportTraceMetadata.hasHasComposeTracingNodes()).isTrue() // check if Proto field is populated
     assertThat(fakeFeatureTracker.lastCpuImportTraceMetadata.getHasComposeTracingNodes()).isFalse() // check the value of the field
@@ -737,12 +730,14 @@ class CpuCaptureParserTest {
     val parser = CpuCaptureParser(myProfilers)
     CpuCaptureParser.clearPreviouslyLoadedCaptures()
 
-    parser.parseForTest(
-      CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
-      idHint = 20728, // note: idHint != 0 signifies capturing a fresh trace (i.e. not importing an existing one from file)
-      nameHint = "com.google.samples.apps.nowinandroid.demo.debug",
-      type = TraceType.PERFETTO
-    ).get()
+    parser
+      .parseForTest(
+        CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
+        idHint = 20728, // note: idHint != 0 signifies capturing a fresh trace (i.e. not importing an existing one from file)
+        nameHint = "com.google.samples.apps.nowinandroid.demo.debug",
+        type = TraceType.PERFETTO,
+      )
+      .get()
     assertThat(fakeFeatureTracker.lastCpuImportTraceMetadata).isEqualTo(null)
     assertThat(fakeFeatureTracker.lastCpuCaptureMetadata.hasComposeTracingNodes).isTrue()
   }
@@ -761,8 +756,7 @@ class CpuCaptureParserTest {
 
     // Validate 2nd time parsing does not trigger metrics.
     fakeFeatureTracker.resetLastCpuCaptureMetadata()
-    parser.parseForTest(
-      CpuProfilerTestUtils.getTraceFile("valid_trace.trace"), traceId = 100, idHint = 33).get()
+    parser.parseForTest(CpuProfilerTestUtils.getTraceFile("valid_trace.trace"), traceId = 100, idHint = 33).get()
     assertThat(fakeFeatureTracker.lastCpuCaptureMetadata).isNull()
   }
 
@@ -778,20 +772,23 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       assertThat(e).hasCauseThat().isInstanceOf(FileHeaderParsingFailureException::class.java)
-      assertThat(e).hasCauseThat().hasMessageThat().contains(
-        "Trace file '${traceFile.absolutePath}' expected to be of type PERFETTO but failed header verification.")
+      assertThat(e)
+        .hasCauseThat()
+        .hasMessageThat()
+        .contains("Trace file '${traceFile.absolutePath}' expected to be of type PERFETTO but failed header verification.")
 
       assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(Throwable::class.java)
-      assertThat(e).hasCauseThat().hasCauseThat().hasMessageThat().contains(
-        "Encountered unknown tag (84) when attempting to parse perfetto capture.")
-    }
-    finally {
+      assertThat(e)
+        .hasCauseThat()
+        .hasCauseThat()
+        .hasMessageThat()
+        .contains("Encountered unknown tag (84) when attempting to parse perfetto capture.")
+    } finally {
       val fakeFeatureTracker = services.featureTracker as FakeFeatureTracker
-      assertThat(fakeFeatureTracker.lastCpuCaptureMetadata.status).isEqualTo(
-        CpuCaptureMetadata.CaptureStatus.PARSING_FAILED_FILE_HEADER_ERROR)
+      assertThat(fakeFeatureTracker.lastCpuCaptureMetadata.status)
+        .isEqualTo(CpuCaptureMetadata.CaptureStatus.PARSING_FAILED_FILE_HEADER_ERROR)
     }
   }
 
@@ -810,15 +807,13 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       assertThat(e).hasCauseThat().isInstanceOf(CpuCaptureParser.ParsingFailureException::class.java)
       assertThat(e).hasCauseThat().hasMessageThat().contains("Trace file '${traceFile.absolutePath}' failed to be parsed as PERFETTO")
 
       assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(RuntimeException::class.java)
       assertThat(e).hasCauseThat().hasCauseThat().hasMessageThat().contains("Unable to load trace with TPD.")
-    }
-    finally {
+    } finally {
       val fakeFeatureTracker = services.featureTracker as FakeFeatureTracker
       assertThat(fakeFeatureTracker.lastCpuCaptureMetadata.status).isEqualTo(CpuCaptureMetadata.CaptureStatus.PARSING_FAILED_PARSER_ERROR)
     }
@@ -839,23 +834,19 @@ class CpuCaptureParserTest {
     try {
       futureCapture.get()
       fail()
-    }
-    catch (e: ExecutionException) {
+    } catch (e: ExecutionException) {
       assertThat(e).hasCauseThat().isInstanceOf(CpuCaptureParser.ParsingFailureException::class.java)
       assertThat(e).hasCauseThat().hasMessageThat().contains("Trace file '${traceFile.absolutePath}' failed to be parsed as PERFETTO")
 
       assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(RuntimeException::class.java)
       assertThat(e).hasCauseThat().hasCauseThat().hasMessageThat().contains("Unable to load trace with TPD.")
-    }
-    finally {
+    } finally {
       val fakeFeatureTracker = services.featureTracker as FakeFeatureTracker
       assertThat(fakeFeatureTracker.lastCpuCaptureMetadata.status).isEqualTo(CpuCaptureMetadata.CaptureStatus.PARSING_FAILED_PARSER_ERROR)
     }
   }
 
-  /**
-   * Check some fields of a [CpuCapture] to see if it was properly built.
-   */
+  /** Check some fields of a [CpuCapture] to see if it was properly built. */
   private fun checkValidCapture(capture: CpuCapture) {
     val captureRange = capture.range
     assertThat(captureRange.isEmpty).isFalse()
@@ -880,25 +871,31 @@ class CpuCaptureParserTest {
     assertThat(capture.traceId).isEqualTo(ANY_TRACE_ID)
   }
 
-  private fun CpuCaptureParser.parseForTestWithArt(traceFile: File,
-                                                   traceId: Long = ANY_TRACE_ID,
-                                                   idHint: Int = 0,
-                                                   nameHint: String = ""): CompletableFuture<CpuCapture> {
+  private fun CpuCaptureParser.parseForTestWithArt(
+    traceFile: File,
+    traceId: Long = ANY_TRACE_ID,
+    idHint: Int = 0,
+    nameHint: String = "",
+  ): CompletableFuture<CpuCapture> {
     return this.parseForTest(traceFile, traceId, TraceType.ART, idHint, nameHint)
   }
 
-  private fun CpuCaptureParser.parseForTestWithSimplePerf(traceFile: File,
-                                                          traceId: Long = ANY_TRACE_ID,
-                                                          idHint: Int = 0,
-                                                          nameHint: String = ""): CompletableFuture<CpuCapture> {
+  private fun CpuCaptureParser.parseForTestWithSimplePerf(
+    traceFile: File,
+    traceId: Long = ANY_TRACE_ID,
+    idHint: Int = 0,
+    nameHint: String = "",
+  ): CompletableFuture<CpuCapture> {
     return this.parseForTest(traceFile, traceId, TraceType.SIMPLEPERF, idHint, nameHint)
   }
 
-  private fun CpuCaptureParser.parseForTest(traceFile: File,
-                                            traceId: Long = ANY_TRACE_ID,
-                                            type: TraceType = TraceType.UNSPECIFIED,
-                                            idHint: Int = 0,
-                                            nameHint: String = ""): CompletableFuture<CpuCapture> {
-    return this.parse(traceFile, traceId, type, idHint, nameHint) {}
+  private fun CpuCaptureParser.parseForTest(
+    traceFile: File,
+    traceId: Long = ANY_TRACE_ID,
+    type: TraceType = TraceType.UNSPECIFIED,
+    idHint: Int = 0,
+    nameHint: String = "",
+  ): CompletableFuture<CpuCapture> {
+    return this.parse(traceFile, traceId, type, idHint, nameHint, TaskTracker.createNullTaskTracker(myProfilers))
   }
 }

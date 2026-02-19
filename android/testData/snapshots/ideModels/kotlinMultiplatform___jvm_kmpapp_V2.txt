@@ -9,9 +9,7 @@ MODULE                        : kotlinMultiPlatform
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/kotlinMultiPlatform [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    : <ROOT>/.idea/modules/kotlinMultiPlatform.iml [-]
-    ModuleTypeName                : JAVA_MODULE
-    CONENT_ENTRY                  : file://<ROOT>
+    CONTENT_ENTRY                 : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -624,8 +622,6 @@ MODULE                        : kotlinMultiPlatform
                     - taskArtifacts               : <ROOT>/app/build/libs/app-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/app/build/libs/app-jvm.jar [-]
                     configurationArtifacts
-                        - archives                    : <ROOT>/app/build/libs/app-jvm.jar [-]
-                        - archives                    : <ROOT>/app/build/libs/app-metadata.jar [-]
                         - jvmApiElements              : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - jvmApiElements-published    : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - jvmRuntimeElements          : <ROOT>/app/build/libs/app-jvm.jar [-]
@@ -715,8 +711,6 @@ MODULE                        : kotlinMultiPlatform
                     configurationArtifacts
                         - androidDebugArchives        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
                         - androidReleaseArchives      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
-                        - archives                    : <ROOT>/module2/build/libs/module2-jvm.jar [-]
-                        - archives                    : <ROOT>/module2/build/libs/module2-metadata.jar [-]
                         - debugApiElements-published  : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
                         - debugRuntimeElements-published        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
                         - debugSourcesElements        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
@@ -911,6 +905,7 @@ MODULE                        : kotlinMultiPlatform.app
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             JniLibsDirectories            : <ROOT>/app/src/androidMain/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -930,6 +925,7 @@ MODULE                        : kotlinMultiPlatform.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidInstrumentedTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -948,6 +944,7 @@ MODULE                        : kotlinMultiPlatform.app
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidUnitTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -974,6 +971,7 @@ MODULE                        : kotlinMultiPlatform.app
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             JniLibsDirectories            : <ROOT>/app/src/androidDebug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -993,6 +991,7 @@ MODULE                        : kotlinMultiPlatform.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidInstrumentedTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1012,6 +1011,7 @@ MODULE                        : kotlinMultiPlatform.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidUnitTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -1037,6 +1037,7 @@ MODULE                        : kotlinMultiPlatform.app
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             JniLibsDirectories            : <ROOT>/app/src/androidRelease/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1480,14 +1481,14 @@ MODULE                        : kotlinMultiPlatform.app
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : junit:junit:4.12@jar
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : net.sf.kxml:kxml2:2.3.0@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
@@ -1933,6 +1934,7 @@ MODULE                        : kotlinMultiPlatform.app
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2007,6 +2009,7 @@ MODULE                        : kotlinMultiPlatform.app
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2264,7 +2267,6 @@ MODULE                        : kotlinMultiPlatform.app
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/app/build/libs/app-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
@@ -2391,6 +2393,7 @@ MODULE                        : kotlinMultiPlatform.module2
             JniLibsDirectories            : <ROOT>/module2/src/main/jniLibs [-]
             JniLibsDirectories            : <ROOT>/module2/src/androidMain/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/module2/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/module2/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2410,6 +2413,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     JniLibsDirectories            : <ROOT>/module2/src/androidTest/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/module2/src/androidInstrumentedTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/module2/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/module2/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2428,6 +2432,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     JniLibsDirectories            : <ROOT>/module2/src/test/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/module2/src/androidUnitTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/module2/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/module2/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -2454,6 +2459,7 @@ MODULE                        : kotlinMultiPlatform.module2
             JniLibsDirectories            : <ROOT>/module2/src/debug/jniLibs [-]
             JniLibsDirectories            : <ROOT>/module2/src/androidDebug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/module2/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/module2/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2473,6 +2479,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     JniLibsDirectories            : <ROOT>/module2/src/androidTestDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/module2/src/androidInstrumentedTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/module2/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/module2/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2492,6 +2499,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     JniLibsDirectories            : <ROOT>/module2/src/testDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/module2/src/androidUnitTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/module2/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/module2/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -2517,6 +2525,7 @@ MODULE                        : kotlinMultiPlatform.module2
             JniLibsDirectories            : <ROOT>/module2/src/release/jniLibs [-]
             JniLibsDirectories            : <ROOT>/module2/src/androidRelease/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/module2/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/module2/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2592,14 +2601,14 @@ MODULE                        : kotlinMultiPlatform.module2
                             javaLibrary                   : net.sf.kxml:kxml2:2.3.0@jar
                         androidLibrary                : com.android.support.test:monitor:1.0.2@aar
                             javaLibrary                   : com.android.support:support-annotations:27.1.1@jar
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:27.1.1@jar
                         javaLibrary                   : junit:junit:4.12@jar
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : net.sf.kxml:kxml2:2.3.0@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:module2-MAIN
                         module                        : <ROOT>-:module2-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -2650,12 +2659,12 @@ MODULE                        : kotlinMultiPlatform.module2
                 ClassesFolder                 : <ROOT>/module2/build/tmp/kotlin-classes/debugUnitTest [-]
                 Dependencies
                     compileClasspath
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : junit:junit:4.12@jar
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:module2-MAIN
                         module                        : <ROOT>-:module2-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -2837,6 +2846,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3094,7 +3104,6 @@ MODULE                        : kotlinMultiPlatform.module2
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/module2/build/libs/module2-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test

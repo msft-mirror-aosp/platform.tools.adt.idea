@@ -32,7 +32,6 @@ import com.intellij.openapi.fileTypes.SyntaxHighlighterBase
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 
 internal enum class LogcatFilterTextAttributes(fallback: TextAttributesKey? = null) {
@@ -40,8 +39,7 @@ internal enum class LogcatFilterTextAttributes(fallback: TextAttributesKey? = nu
   KVALUE,
   STRING_KVALUE,
   REGEX_KVALUE,
-  VALUE(HighlighterColors.TEXT),
-  BAD_CHARACTER(HighlighterColors.BAD_CHARACTER);
+  VALUE(HighlighterColors.TEXT);
 
   val key = TextAttributesKey.createTextAttributesKey("LOGCAT_FILTER_$name", fallback)
   val keys = arrayOf(key)
@@ -60,14 +58,10 @@ internal class LogcatFilterSyntaxHighlighter : SyntaxHighlighterBase() {
       STRING_KVALUE -> LogcatFilterTextAttributes.STRING_KVALUE.keys
       REGEX_KVALUE -> LogcatFilterTextAttributes.REGEX_KVALUE.keys
       VALUE -> LogcatFilterTextAttributes.VALUE.keys
-      TokenType.BAD_CHARACTER -> LogcatFilterTextAttributes.BAD_CHARACTER.keys
       else -> EMPTY_ARRAY
     }
 }
 
 internal class LogcatFilterSyntaxHighlighterFactory : SyntaxHighlighterFactory() {
-  override fun getSyntaxHighlighter(
-    project: Project?,
-    virtualFile: VirtualFile?,
-  ): SyntaxHighlighter = LogcatFilterSyntaxHighlighter()
+  override fun getSyntaxHighlighter(project: Project?, virtualFile: VirtualFile?): SyntaxHighlighter = LogcatFilterSyntaxHighlighter()
 }

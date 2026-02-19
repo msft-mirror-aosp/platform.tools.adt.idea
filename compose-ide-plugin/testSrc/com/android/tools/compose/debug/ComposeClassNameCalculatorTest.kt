@@ -49,7 +49,7 @@ class ComposeClassNameCalculatorTest {
           AnnotationTarget.PROPERTY_GETTER
         )
         annotation class Composable
-    """
+      """
         .trimIndent(),
     )
   }
@@ -60,11 +60,11 @@ class ComposeClassNameCalculatorTest {
       projectRule.fixture.addFileToProject(
         "src/App.kt",
         """
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyComposable() {}
-    """
+        @Composable
+        fun MyComposable() {}
+        """
           .trimIndent(),
       )
 
@@ -80,17 +80,17 @@ class ComposeClassNameCalculatorTest {
       projectRule.fixture.addFileToProject(
         "src/a/App.kt",
         """
-      package a
-      import androidx.compose.runtime.Composable
+        package a
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyComposable(child: @Composable () -> Unit) {}
+        @Composable
+        fun MyComposable(child: @Composable () -> Unit) {}
 
-       @Composable
-      fun App() {
-        MyComposable { } // <- This Lambda is expected to generate a special class by compose
-      }
-    """
+         @Composable
+        fun App() {
+          MyComposable { } // <- This Lambda is expected to generate a special class by compose
+        }
+        """
           .trimIndent(),
       )
 
@@ -116,16 +116,16 @@ class ComposeClassNameCalculatorTest {
       projectRule.fixture.addFileToProject(
         "src/a/App.kt",
         """
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyComposable(child: @Composable () -> Unit) {}
+        @Composable
+        fun MyComposable(child: @Composable () -> Unit) {}
 
-       @Composable
-      fun App() {
-        MyComposable { } // <- This Lambda is expected to generate a special class by compose
-      }
-    """
+         @Composable
+        fun App() {
+          MyComposable { } // <- This Lambda is expected to generate a special class by compose
+        }
+        """
           .trimIndent(),
       )
 
@@ -151,26 +151,23 @@ class ComposeClassNameCalculatorTest {
       projectRule.fixture.addFileToProject(
         "src/a/App.kt",
         """
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyComposable(child: @Composable () -> Unit) {}
+        @Composable
+        fun MyComposable(child: @Composable () -> Unit) {}
 
-       @Composable
-      fun App() {
-        MyComposable { } // <- This Lambda is expected to generate a special class by compose
-      }
-    """
+         @Composable
+        fun App() {
+          MyComposable { } // <- This Lambda is expected to generate a special class by compose
+        }
+        """
           .trimIndent(),
       )
 
     runReadAction {
       val allClassNames = ClassNameCalculator.getClassNames(file as KtFile)
       Assert.assertEquals(
-        mapOf(
-          file to "AppKt",
-          file.findDescendantOfType<KtLambdaExpression>() to "ComposableSingletons\$AppKt",
-        ),
+        mapOf(file to "AppKt", file.findDescendantOfType<KtLambdaExpression>() to "ComposableSingletons\$AppKt"),
         allClassNames,
       )
     }
@@ -182,17 +179,17 @@ class ComposeClassNameCalculatorTest {
       projectRule.fixture.addFileToProject(
         "src/a/App.kt",
         """
-      package a
-      import androidx.compose.runtime.Composable
+        package a
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyComposable(child: @Composable () -> Unit) {}
+        @Composable
+        fun MyComposable(child: @Composable () -> Unit) {}
 
-       @Composable
-      fun App() {
-        MyComposable { } // <- This Lambda is expected to generate a special class by compose
-      }
-    """
+         @Composable
+        fun App() {
+          MyComposable { } // <- This Lambda is expected to generate a special class by compose
+        }
+        """
           .trimIndent(),
       ) as KtFile
 

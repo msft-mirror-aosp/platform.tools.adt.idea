@@ -17,7 +17,20 @@
 
 package com.android.tools.rendering.parsers
 
-import com.android.SdkConstants.*
+import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_IGNORE
+import com.android.SdkConstants.ATTR_LAYOUT
+import com.android.SdkConstants.ATTR_LAYOUT_HEIGHT
+import com.android.SdkConstants.ATTR_LAYOUT_WIDTH
+import com.android.SdkConstants.AUTO_URI
+import com.android.SdkConstants.EXPANDABLE_LIST_VIEW
+import com.android.SdkConstants.GRID_VIEW
+import com.android.SdkConstants.LIST_VIEW
+import com.android.SdkConstants.SPINNER
+import com.android.SdkConstants.TOOLS_URI
+import com.android.SdkConstants.VALUE_FILL_PARENT
+import com.android.SdkConstants.VALUE_MATCH_PARENT
+import com.android.SdkConstants.VIEW_INCLUDE
 import com.android.ide.common.rendering.api.ILayoutPullParser
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.ValueXmlHelper
@@ -30,21 +43,16 @@ import com.android.tools.res.ids.resolver
 import org.xmlpull.v1.XmlPullParser
 
 /** Creates a new [ILayoutPullParser] for the given XML file. */
-fun create(
-  xml: PathString,
-  namespace: ResourceNamespace,
-  resIdManager: ResourceIdManager?,
-): ILayoutPullParser? {
+fun create(xml: PathString, namespace: ResourceNamespace, resIdManager: ResourceIdManager?): ILayoutPullParser? {
   val parser = FileResourceReader.createXmlPullParser(xml, resIdManager.resolver) ?: return null
   return LayoutPullParserImpl(parser, namespace)
 }
 
 /**
- * Modified [XmlPullParser] that adds the methods of [ILayoutPullParser], and performs other
- * layout-specific parser behavior like translating fragment tags into include tags.
+ * Modified [XmlPullParser] that adds the methods of [ILayoutPullParser], and performs other layout-specific parser behavior like
+ * translating fragment tags into include tags.
  */
-private class LayoutPullParserImpl
-constructor(private val delegate: XmlPullParser, private val layoutNamespace: ResourceNamespace) :
+private class LayoutPullParserImpl constructor(private val delegate: XmlPullParser, private val layoutNamespace: ResourceNamespace) :
   ILayoutPullParser, XmlPullParser by delegate {
   /** The layout to be shown for the current `<fragment>` tag. Usually null. */
   private var fragmentLayout: String? = null
@@ -109,11 +117,7 @@ constructor(private val delegate: XmlPullParser, private val layoutNamespace: Re
     var value: String? = delegate.getAttributeValue(namespace, localName)
 
     // On the fly convert match_parent to fill_parent for compatibility with older platforms.
-    if (
-      VALUE_MATCH_PARENT == value &&
-        (ATTR_LAYOUT_WIDTH == localName || ATTR_LAYOUT_HEIGHT == localName) &&
-        ANDROID_URI == namespace
-    ) {
+    if (VALUE_MATCH_PARENT == value && (ATTR_LAYOUT_WIDTH == localName || ATTR_LAYOUT_HEIGHT == localName) && ANDROID_URI == namespace) {
       return VALUE_FILL_PARENT
     }
 

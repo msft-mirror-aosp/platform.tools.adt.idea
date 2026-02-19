@@ -15,17 +15,12 @@
  */
 package com.android.tools.idea.insights.client
 
-import com.android.tools.idea.insights.DEFAULT_AI_INSIGHT
 import com.android.tools.idea.insights.FAKE_INSIGHTS_PROVIDER
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.ISSUE2
 import com.android.tools.idea.insights.NOTE1
 import com.android.tools.idea.insights.NOTE2
 import com.android.tools.idea.insights.TestConnection
-import com.android.tools.idea.insights.ai.AiInsight
-import com.android.tools.idea.insights.ai.codecontext.CodeContext
-import com.android.tools.idea.insights.ai.codecontext.CodeContextData
-import com.android.tools.idea.insights.ai.codecontext.ContextSharingState
 import com.android.tools.idea.insights.model.common.Interval
 import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.Event
@@ -67,19 +62,14 @@ class AppInsightsCacheTest {
               ExceptionStack(
                 stacktrace =
                   Stacktrace(
-                    caption =
-                      Caption(
-                        title = "Non-fatal Exception: retrofit2.HttpException",
-                        subtitle = "HTTP 401 ",
-                      ),
+                    caption = Caption(title = "Non-fatal Exception: retrofit2.HttpException", subtitle = "HTTP 401 "),
                     blames = Blames.BLAMED,
                     frames =
                       listOf(
                         Frame(
                           line = 23,
                           file = "ResponseWrapper.kt",
-                          symbol =
-                            "dev.firebase.appdistribution.api_service.ResponseWrapper\$Companion.build",
+                          symbol = "dev.firebase.appdistribution.api_service.ResponseWrapper\$Companion.build",
                           offset = 23,
                           address = 0,
                           library = "dev.firebase.appdistribution.debug",
@@ -88,8 +78,7 @@ class AppInsightsCacheTest {
                         Frame(
                           line = 31,
                           file = "ResponseWrapper.kt",
-                          symbol =
-                            "dev.firebase.appdistribution.api_service.ResponseWrapper\$Companion.fetchOrError",
+                          symbol = "dev.firebase.appdistribution.api_service.ResponseWrapper\$Companion.fetchOrError",
                           offset = 31,
                           address = 0,
                           library = "dev.firebase.appdistribution.debug",
@@ -135,61 +124,30 @@ class AppInsightsCacheTest {
         when (i) {
           0 ->
             issue.copy(
-              issueDetails =
-                issue.issueDetails.copy(eventsCount = 4, fatality = FailureType.NON_FATAL),
-              sampleEvent =
-                issue.sampleEvent.copy(
-                  eventData =
-                    issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(31)))
-                ),
+              issueDetails = issue.issueDetails.copy(eventsCount = 4, fatality = FailureType.NON_FATAL),
+              sampleEvent = issue.sampleEvent.copy(eventData = issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(31)))),
             )
           1 ->
             issue.copy(
               issueDetails =
-                issue.issueDetails.copy(
-                  eventsCount = 22,
-                  fatality = FailureType.FATAL,
-                  signals = setOf(SignalType.SIGNAL_FRESH),
-                ),
-              sampleEvent =
-                issue.sampleEvent.copy(
-                  eventData =
-                    issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(5)))
-                ),
+                issue.issueDetails.copy(eventsCount = 22, fatality = FailureType.FATAL, signals = setOf(SignalType.SIGNAL_FRESH)),
+              sampleEvent = issue.sampleEvent.copy(eventData = issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(5)))),
             )
           2 ->
             issue.copy(
-              issueDetails =
-                issue.issueDetails.copy(eventsCount = 13, fatality = FailureType.NON_FATAL),
-              sampleEvent =
-                issue.sampleEvent.copy(
-                  eventData =
-                    issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(3)))
-                ),
+              issueDetails = issue.issueDetails.copy(eventsCount = 13, fatality = FailureType.NON_FATAL),
+              sampleEvent = issue.sampleEvent.copy(eventData = issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(3)))),
             )
           3 ->
             issue.copy(
               issueDetails =
-                issue.issueDetails.copy(
-                  eventsCount = 44,
-                  fatality = FailureType.NON_FATAL,
-                  signals = setOf(SignalType.SIGNAL_REGRESSED),
-                ),
-              sampleEvent =
-                issue.sampleEvent.copy(
-                  eventData =
-                    issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(14)))
-                ),
+                issue.issueDetails.copy(eventsCount = 44, fatality = FailureType.NON_FATAL, signals = setOf(SignalType.SIGNAL_REGRESSED)),
+              sampleEvent = issue.sampleEvent.copy(eventData = issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(14)))),
             )
           4 ->
             issue.copy(
-              issueDetails =
-                issue.issueDetails.copy(eventsCount = 67, fatality = FailureType.FATAL),
-              sampleEvent =
-                issue.sampleEvent.copy(
-                  eventData =
-                    issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(89)))
-                ),
+              issueDetails = issue.issueDetails.copy(eventsCount = 67, fatality = FailureType.FATAL),
+              sampleEvent = issue.sampleEvent.copy(eventData = issue.sampleEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(89)))),
             )
           else -> throw RuntimeException()
         }
@@ -199,13 +157,7 @@ class AppInsightsCacheTest {
     val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
     assertThat(
         cache.getTopIssues(
-          IssueRequest(
-            connection,
-            QueryFilters(
-              Interval(now.minus(Duration.ofDays(60)), now),
-              eventTypes = FailureType.entries,
-            ),
-          )
+          IssueRequest(connection, QueryFilters(Interval(now.minus(Duration.ofDays(60)), now), eventTypes = FailureType.entries))
         )
       )
       .isNull()
@@ -215,55 +167,32 @@ class AppInsightsCacheTest {
     // Check data range filter
     var topIssues =
       cache.getTopIssues(
-        IssueRequest(
-          connection,
-          QueryFilters(
-            Interval(now.minus(Duration.ofDays(60)), now),
-            eventTypes = FailureType.entries,
-          ),
-        )
+        IssueRequest(connection, QueryFilters(Interval(now.minus(Duration.ofDays(60)), now), eventTypes = FailureType.entries))
       )!!
     assertThat(topIssues).hasSize(4)
     assertThat(topIssues.map { it.issueDetails.id })
       .containsExactlyElementsIn(listOf(IssueId("3"), IssueId("1"), IssueId("2"), IssueId("0")))
       .inOrder()
     assertThat(topIssues.map { it.issueDetails.eventsCount }).containsExactly(0L, 0L, 0L, 0L)
-    assertThat(topIssues.map { it.issueDetails.impactedDevicesCount })
-      .containsExactly(0L, 0L, 0L, 0L)
+    assertThat(topIssues.map { it.issueDetails.impactedDevicesCount }).containsExactly(0L, 0L, 0L, 0L)
 
     // Check fatal even type
     topIssues =
       cache.getTopIssues(
-        IssueRequest(
-          connection,
-          QueryFilters(
-            Interval(now.minus(Duration.ofDays(90)), now),
-            eventTypes = listOf(FailureType.FATAL),
-          ),
-        )
+        IssueRequest(connection, QueryFilters(Interval(now.minus(Duration.ofDays(90)), now), eventTypes = listOf(FailureType.FATAL)))
       )!!
     assertThat(topIssues).hasSize(2)
-    assertThat(topIssues.map { it.issueDetails.id })
-      .containsExactlyElementsIn(listOf(IssueId("4"), IssueId("1")))
-      .inOrder()
+    assertThat(topIssues.map { it.issueDetails.id }).containsExactlyElementsIn(listOf(IssueId("4"), IssueId("1"))).inOrder()
     assertThat(topIssues.map { it.issueDetails.eventsCount }).containsExactly(0L, 0L)
     assertThat(topIssues.map { it.issueDetails.impactedDevicesCount }).containsExactly(0L, 0L)
 
     // Check non fatal event type
     topIssues =
       cache.getTopIssues(
-        IssueRequest(
-          connection,
-          QueryFilters(
-            Interval(now.minus(Duration.ofDays(30)), now),
-            eventTypes = listOf(FailureType.NON_FATAL),
-          ),
-        )
+        IssueRequest(connection, QueryFilters(Interval(now.minus(Duration.ofDays(30)), now), eventTypes = listOf(FailureType.NON_FATAL)))
       )!!
     assertThat(topIssues).hasSize(2)
-    assertThat(topIssues.map { it.issueDetails.id })
-      .containsExactlyElementsIn(listOf(IssueId("3"), IssueId("2")))
-      .inOrder()
+    assertThat(topIssues.map { it.issueDetails.id }).containsExactlyElementsIn(listOf(IssueId("3"), IssueId("2"))).inOrder()
     assertThat(topIssues.map { it.issueDetails.eventsCount }).containsExactly(0L, 0L)
     assertThat(topIssues.map { it.issueDetails.impactedDevicesCount }).containsExactly(0L, 0L)
 
@@ -272,11 +201,7 @@ class AppInsightsCacheTest {
       cache.getTopIssues(
         IssueRequest(
           connection,
-          QueryFilters(
-            Interval(now.minus(Duration.ofDays(90)), now),
-            eventTypes = FailureType.entries,
-            signal = SignalType.SIGNAL_FRESH,
-          ),
+          QueryFilters(Interval(now.minus(Duration.ofDays(90)), now), eventTypes = FailureType.entries, signal = SignalType.SIGNAL_FRESH),
         )
       )!!
     assertThat(topIssues).hasSize(1)
@@ -287,16 +212,8 @@ class AppInsightsCacheTest {
   fun `add sample events to an existing cached issue, query returns correct event`() {
     val event = testEvent
     val recentEvent =
-      testEvent.copy(
-        eventData =
-          testEvent.eventData.copy(
-            eventTime = testEvent.eventData.eventTime.plus(Duration.ofDays(1))
-          )
-      )
-    val evenMoreRecentEvent =
-      testEvent.copy(
-        eventData = testEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(2)))
-      )
+      testEvent.copy(eventData = testEvent.eventData.copy(eventTime = testEvent.eventData.eventTime.plus(Duration.ofDays(1))))
+    val evenMoreRecentEvent = testEvent.copy(eventData = testEvent.eventData.copy(eventTime = now.minus(Duration.ofDays(2))))
     val issue =
       AppInsightsIssue(
         IssueDetails(
@@ -323,11 +240,7 @@ class AppInsightsCacheTest {
     val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER, 5)
     cache.populateIssues(
       connection,
-      listOf(
-        issue.copy(sampleEvent = event),
-        issue.copy(sampleEvent = recentEvent),
-        issue.copy(sampleEvent = evenMoreRecentEvent),
-      ),
+      listOf(issue.copy(sampleEvent = event), issue.copy(sampleEvent = recentEvent), issue.copy(sampleEvent = evenMoreRecentEvent)),
     )
 
     // Assert the first event that satisfies the filter is returned.
@@ -441,9 +354,7 @@ class AppInsightsCacheTest {
     cache.populateIssues(connection, listOf(ISSUE1, ISSUE2))
 
     assertThat(cache.getIssues(connection, listOf(ISSUE2.id))).containsExactly(ISSUE2)
-    assertThat(cache.getIssues(connection, listOf(ISSUE2.id, ISSUE1.id)))
-      .containsExactly(ISSUE2, ISSUE1)
-      .inOrder()
+    assertThat(cache.getIssues(connection, listOf(ISSUE2.id, ISSUE1.id))).containsExactly(ISSUE2, ISSUE1).inOrder()
     assertThat(cache.getIssues(connection, emptyList())).isEmpty()
   }
 
@@ -509,11 +420,7 @@ class AppInsightsCacheTest {
             QueryFilters(
               interval = Interval(now.minus(Duration.ofDays(10)), now),
               devices = setOf(testEvent.eventData.device),
-              operatingSystems =
-                setOf(
-                  OperatingSystemInfo("Android 11", "11"),
-                  OperatingSystemInfo("Android 12", "12"),
-                ),
+              operatingSystems = setOf(OperatingSystemInfo("Android 11", "11"), OperatingSystemInfo("Android 12", "12")),
             ),
           ),
           issue.id,
@@ -544,12 +451,7 @@ class AppInsightsCacheTest {
             connection,
             QueryFilters(
               interval = Interval(now.minus(Duration.ofDays(14)), now),
-              devices =
-                setOf(
-                  Device("Google", "Pixel 5"),
-                  Device("Samsung", "Galaxy S7"),
-                  testEvent.eventData.device,
-                ),
+              devices = setOf(Device("Google", "Pixel 5"), Device("Samsung", "Galaxy S7"), testEvent.eventData.device),
               operatingSystems =
                 setOf(
                   OperatingSystemInfo("Android 11", "11"),
@@ -565,56 +467,13 @@ class AppInsightsCacheTest {
   }
 
   @Test
-  fun `get and put AI insights`() {
-    val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
-    val context =
-      CodeContextData(
-        listOf(CodeContext("/path", "abc")),
-        contextSharingState = ContextSharingState.ALLOWED,
-      )
-    cache.populateIssues(connection, listOf(ISSUE1))
-
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, null, ContextSharingState.DISABLED))
-      .isNull()
-
-    cache.putAiInsight(connection, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, null, ContextSharingState.DISABLED))
-      .isEqualTo(DEFAULT_AI_INSIGHT.copy(isCached = true))
-
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, "variant1", ContextSharingState.DISABLED))
-      .isNull()
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, null, ContextSharingState.ALLOWED))
-      .isNull()
-
-    val newInsight = AiInsight("blah", ISSUE1.sampleEvent, codeContextData = context)
-    cache.putAiInsight(connection, ISSUE1.id, null, newInsight)
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, null, ContextSharingState.ALLOWED))
-      .isEqualTo(newInsight.copy(isCached = true))
-
-    cache.putAiInsight(connection, ISSUE1.id, "variant1", DEFAULT_AI_INSIGHT)
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, "variant1", ContextSharingState.DISABLED))
-      .isEqualTo(DEFAULT_AI_INSIGHT.copy(isCached = true))
-  }
-
-  @Test
   fun `removeIssue removes the issue from cache`() {
     val cache = AppInsightsCacheImpl(FAKE_INSIGHTS_PROVIDER)
     cache.populateIssues(connection, listOf(ISSUE1))
     cache.addNote(connection, ISSUE1.issueDetails.id, NOTE1)
-    cache.putAiInsight(connection, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
-    cache.putAiInsight(
-      connection,
-      ISSUE1.id,
-      "variant2",
-      AiInsight("blah", ISSUE1.sampleEvent, codeContextData = CodeContextData.DISABLED),
-    )
 
     cache.removeIssue(connection, ISSUE1.id)
     assertThat(cache.getIssues(connection, listOf(ISSUE1.id))).isEmpty()
     assertThat(cache.getNotes(connection, ISSUE1.id)).isNull()
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, null, ContextSharingState.DISABLED))
-      .isNull()
-    assertThat(cache.getAiInsight(connection, ISSUE1.id, "variant2", ContextSharingState.DISABLED))
-      .isNull()
   }
 }

@@ -20,9 +20,7 @@ import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.intellij.openapi.util.text.StringUtil.toTitleCase
 
-/**
- * Characteristics of a mirrored Android device.
- */
+/** Characteristics of a mirrored Android device. */
 class DeviceConfiguration(val deviceProperties: DeviceProperties, useTitleAsName: Boolean = false) {
   val apiLevel: Int
     get() = deviceProperties.androidVersion?.androidApiLevel?.majorVersion ?: SdkVersionInfo.HIGHEST_KNOWN_STABLE_API
@@ -45,6 +43,9 @@ class DeviceConfiguration(val deviceProperties: DeviceProperties, useTitleAsName
   val deviceName: String = deviceProperties.composeDeviceName(useTitleAsName)
 
   val hasOrientationSensors: Boolean = true // TODO Obtain sensor info from the device.
+
+  val hasTouchScreen: Boolean
+    get() = deviceType != DeviceType.AI_GLASSES
 }
 
 internal fun DeviceProperties?.composeDeviceName(useTitleAsName: Boolean = false): String {
@@ -65,8 +66,7 @@ internal fun DeviceProperties?.composeDeviceName(useTitleAsName: Boolean = false
       }
     }
     name.append(if (model.startsWith("Google Pixel")) model.removePrefix("Google ") else model)
-  }
-  else {
+  } else {
     name.append("unknown")
   }
   val api = androidVersion?.apiStringWithoutExtension

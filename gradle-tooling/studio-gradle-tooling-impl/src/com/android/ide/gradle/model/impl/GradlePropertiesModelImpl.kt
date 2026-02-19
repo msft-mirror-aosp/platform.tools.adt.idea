@@ -22,5 +22,6 @@ data class GradlePropertiesModelImpl(
   override val excludeLibraryComponentsFromConstraints: Boolean?,
   override val generateManifestClass: Boolean?,
   override val disableAgpUpgradePrompt: Boolean?,
-  override val useCustomManagedDevices: Boolean?
+  override val useCustomManagedDevices: Boolean?,
+  override val buildInKotlinDefaultEnabled: Boolean?,
 ) : GradlePropertiesModel

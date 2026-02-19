@@ -23,23 +23,21 @@ import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.Facets
 import com.android.tools.idea.testing.onEdt
-import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
-import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.modules
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.resourceManagers.LocalResourceManager
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers
-import org.junit.*
+import org.junit.After
 import org.junit.Assert.assertNull
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -47,9 +45,7 @@ import org.mockito.kotlin.verify
 
 @RunsInEdt
 class ClearResourceCacheAfterFirstBuildTest {
-  @JvmField
-  @Rule
-  val projectRule = AndroidProjectRule.onDisk().initAndroid(false).onEdt()
+  @JvmField @Rule val projectRule = AndroidProjectRule.onDisk().initAndroid(false).onEdt()
 
   private lateinit var project: Project
   private lateinit var projectSystem: TestProjectSystem
@@ -79,12 +75,14 @@ class ClearResourceCacheAfterFirstBuildTest {
 
     onCacheClean = TestRunnable {
       assertWithMessage("onCacheClean callback was called before resource cache was cleared")
-        .that(clearResourceCacheAfterFirstBuild.isCacheClean()).isTrue()
+        .that(clearResourceCacheAfterFirstBuild.isCacheClean())
+        .isTrue()
     }
 
     onSourceGenerationError = TestRunnable {
       assertWithMessage("onSourceGenerationError callback was called after resource cache was cleared")
-        .that(clearResourceCacheAfterFirstBuild.isCacheClean()).isFalse()
+        .that(clearResourceCacheAfterFirstBuild.isCacheClean())
+        .isFalse()
     }
 
     mockDisposable = Disposer.newDisposable()
@@ -193,9 +191,7 @@ class ClearResourceCacheAfterFirstBuildTest {
 
     // Module service
     val localResourceManager: LocalResourceManager = mock()
-    val moduleResourceManagers: ModuleResourceManagers = mock {
-      on { getLocalResourceManager() } doReturn localResourceManager
-    }
+    val moduleResourceManagers: ModuleResourceManagers = mock { on { getLocalResourceManager() } doReturn localResourceManager }
     module.replaceService(ModuleResourceManagers::class.java, moduleResourceManagers, disposable)
 
     clearResourceCacheAfterFirstBuild.setIncompleteRuntimeDependencies()

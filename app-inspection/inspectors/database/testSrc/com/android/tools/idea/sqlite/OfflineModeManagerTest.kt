@@ -21,9 +21,12 @@ import com.android.tools.idea.sqlite.mocks.FakeFileDatabaseManager
 import com.android.tools.idea.sqlite.model.SqliteDatabaseId
 import com.android.tools.idea.sqlite.utils.StubProcessDescriptor
 import com.android.tools.idea.testing.runDispatching
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.EDT
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.testFramework.registerServiceInstance
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -35,8 +38,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
 class OfflineModeManagerTest : LightPlatformTestCase() {
 
@@ -45,13 +46,9 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
   private lateinit var fileDatabaseManager: FakeFileDatabaseManager
   private lateinit var offlineModeManager: OfflineModeManager
 
-  private val liveDb1 =
-    SqliteDatabaseId.fromLiveDatabase("db1", 1) as SqliteDatabaseId.LiveSqliteDatabaseId
-  private val liveDb2 =
-    SqliteDatabaseId.fromLiveDatabase("db2", 2) as SqliteDatabaseId.LiveSqliteDatabaseId
-  private val inMemoryDb =
-    SqliteDatabaseId.fromLiveDatabase(":memory: { 123 }", 3)
-      as SqliteDatabaseId.LiveSqliteDatabaseId
+  private val liveDb1 = SqliteDatabaseId.fromLiveDatabase("db1", 1) as SqliteDatabaseId.LiveSqliteDatabaseId
+  private val liveDb2 = SqliteDatabaseId.fromLiveDatabase("db2", 2) as SqliteDatabaseId.LiveSqliteDatabaseId
+  private val inMemoryDb = SqliteDatabaseId.fromLiveDatabase(":memory: { 123 }", 3) as SqliteDatabaseId.LiveSqliteDatabaseId
 
   private lateinit var trackerService: FakeDatabaseInspectorAnalyticsTracker
 
@@ -66,41 +63,21 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
     project.registerServiceInstance(DatabaseInspectorAnalyticsTracker::class.java, trackerService)
 
     fileDatabaseManager = FakeFileDatabaseManager()
-    offlineModeManager =
-      OfflineModeManagerImpl(
-        project,
-        fileDatabaseManager,
-        uiDispatcher,
-        isFileDownloadAllowed = { true },
-      )
+    offlineModeManager = OfflineModeManagerImpl(project, fileDatabaseManager, uiDispatcher, isFileDownloadAllowed = { true })
 
     processDescriptor = StubProcessDescriptor()
   }
 
   fun testDownloadFiles() {
     // Act
-    val flow =
-      offlineModeManager.downloadFiles(
-        listOf(liveDb1, liveDb2, inMemoryDb),
-        processDescriptor,
-        null,
-      ) { _, _ ->
-      }
+    val flow = offlineModeManager.downloadFiles(listOf(liveDb1, liveDb2, inMemoryDb), processDescriptor, null) { _, _ -> }
     val results = runDispatching { flow.toList(mutableListOf()) }
 
     // Assert
-    assertEquals(
-      listOf(
-        OfflineModeManager.DownloadProgress(
-          OfflineModeManager.DownloadState.IN_PROGRESS,
-          emptyList(),
-          2,
-        ),
-        OfflineModeManager.DownloadProgress(
-          OfflineModeManager.DownloadState.IN_PROGRESS,
-          listOf(fileDatabaseManager.databaseFileData),
-          2,
-        ),
+    assertThat(results)
+      .containsExactly(
+        OfflineModeManager.DownloadProgress(OfflineModeManager.DownloadState.IN_PROGRESS, emptyList(), 2),
+        OfflineModeManager.DownloadProgress(OfflineModeManager.DownloadState.IN_PROGRESS, listOf(fileDatabaseManager.databaseFileData), 2),
         OfflineModeManager.DownloadProgress(
           OfflineModeManager.DownloadState.IN_PROGRESS,
           listOf(fileDatabaseManager.databaseFileData, fileDatabaseManager.databaseFileData),
@@ -111,9 +88,8 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
           listOf(fileDatabaseManager.databaseFileData, fileDatabaseManager.databaseFileData),
           2,
         ),
-      ),
-      results,
-    )
+      )
+      .inOrder()
   }
 
   fun testDownloadFilesCanceled() {
@@ -123,17 +99,14 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
     val downloadFirstFile = CompletableDeferred<Unit>()
 
     // Act
-    val flow =
-      offlineModeManager.downloadFiles(listOf(liveDb1, liveDb2), processDescriptor, null) { _, _ ->
-      }
+    val flow = offlineModeManager.downloadFiles(listOf(liveDb1, liveDb2), processDescriptor, null) { _, _ -> }
     val job =
       scope.launch {
         try {
           flow
             .onEach {
               // get first one and delay others
-              if (it.filesDownloaded.isNotEmpty()) CompletableDeferred<Unit>().await()
-              else downloadFirstFile.complete(Unit)
+              if (it.filesDownloaded.isNotEmpty()) CompletableDeferred<Unit>().await() else downloadFirstFile.complete(Unit)
             }
             .toList(mutableListOf())
           fail()
@@ -147,9 +120,9 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
     }
 
     // Assert
-    assertTrue(hasBeenCanceled)
+    assertThat(hasBeenCanceled).isTrue()
 
-    assertEquals(listOf(fileDatabaseManager.databaseFileData), fileDatabaseManager.cleanedUpFiles)
+    assertThat(fileDatabaseManager.cleanedUpFiles).containsExactly(fileDatabaseManager.databaseFileData)
   }
 
   fun testDownloadFailed() = runBlocking {
@@ -159,13 +132,7 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
       .thenThrow(FileDatabaseException::class.java)
     whenever(fileDatabaseManager.loadDatabaseFileData("processName", processDescriptor, liveDb2))
       .thenThrow(DeviceNotFoundException::class.java)
-    offlineModeManager =
-      OfflineModeManagerImpl(
-        project,
-        fileDatabaseManager,
-        uiDispatcher,
-        isFileDownloadAllowed = { true },
-      )
+    offlineModeManager = OfflineModeManagerImpl(project, fileDatabaseManager, uiDispatcher, isFileDownloadAllowed = { true })
 
     var handleErrorInvoked = false
     var handleErrorInvokeCount = 0
@@ -179,58 +146,36 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
     runDispatching { flow.toList(mutableListOf()) }
 
     // Assert
-    assertTrue(handleErrorInvoked)
-    assertEquals(2, handleErrorInvokeCount)
+    assertThat(handleErrorInvoked).isTrue()
+    assertThat(handleErrorInvokeCount).isEqualTo(2)
 
-    assertTrue(trackerService.offlineDownloadFailed!!)
-    assertEquals(1, trackerService.offlineDownloadFailedCount)
+    assertThat(trackerService.offlineDownloadFailed!!).isTrue()
+    assertThat(trackerService.offlineDownloadFailedCount).isEqualTo(1)
   }
 
   fun testDoesNotEnterOfflineModeIfUserDoesNotTrustProject() {
     // Prepare
     var errorMessage: String? = null
-    offlineModeManager =
-      OfflineModeManagerImpl(
-        project,
-        fileDatabaseManager,
-        uiDispatcher,
-        isFileDownloadAllowed = { false },
-      )
+    offlineModeManager = OfflineModeManagerImpl(project, fileDatabaseManager, uiDispatcher, isFileDownloadAllowed = { false })
 
     // Act
-    val flow =
-      offlineModeManager.downloadFiles(
-        listOf(liveDb1, liveDb2, inMemoryDb),
-        processDescriptor,
-        null,
-      ) { s, _ ->
-        errorMessage = s
-      }
+    val flow = offlineModeManager.downloadFiles(listOf(liveDb1, liveDb2, inMemoryDb), processDescriptor, null) { s, _ -> errorMessage = s }
     val results = runDispatching { flow.toList(mutableListOf()) }
 
     // Assert
-    assertEquals(
-      listOf(
-        OfflineModeManager.DownloadProgress(
-          OfflineModeManager.DownloadState.IN_PROGRESS,
-          emptyList(),
-          2,
-        ),
-        OfflineModeManager.DownloadProgress(
-          OfflineModeManager.DownloadState.COMPLETED,
-          emptyList(),
-          2,
-        ),
-      ),
-      results,
-    )
+    assertThat(results)
+      .containsExactly(
+        OfflineModeManager.DownloadProgress(OfflineModeManager.DownloadState.IN_PROGRESS, emptyList(), 2),
+        OfflineModeManager.DownloadProgress(OfflineModeManager.DownloadState.COMPLETED, emptyList(), 2),
+      )
+      .inOrder()
 
-    assertEquals(
-      "For security reasons offline mode is disabled when " +
-        "the process being inspected does not correspond to the project open in studio " +
-        "or when the project has been generated from a prebuilt apk.",
-      errorMessage,
-    )
+    assertThat(errorMessage)
+      .isEqualTo(
+        "For security reasons offline mode is disabled when " +
+          "the process being inspected does not correspond to the project open in studio " +
+          "or when the project has been generated from a prebuilt apk."
+      )
   }
 
   fun testUserIsNotWarnedMultipleTimesAfterTrustingProject() {
@@ -245,8 +190,8 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
             false
           },
         )
-      assertFalse(canDownloadFiles)
-      assertTrue(askUserCalled0)
+      assertThat(canDownloadFiles).isFalse()
+      assertThat(askUserCalled0).isTrue()
 
       var askUserCalled1 = false
       canDownloadFiles =
@@ -258,8 +203,8 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
             true
           },
         )
-      assertTrue(canDownloadFiles)
-      assertTrue(askUserCalled1)
+      assertThat(canDownloadFiles).isTrue()
+      assertThat(askUserCalled1).isTrue()
 
       var askUserCalled2 = false
       canDownloadFiles =
@@ -271,8 +216,8 @@ class OfflineModeManagerTest : LightPlatformTestCase() {
             true
           },
         )
-      assertTrue(canDownloadFiles)
-      assertFalse(askUserCalled2)
+      assertThat(canDownloadFiles).isTrue()
+      assertThat(askUserCalled2).isFalse()
     }
   }
 }

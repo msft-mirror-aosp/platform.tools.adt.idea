@@ -23,10 +23,8 @@ import com.intellij.openapi.roots.SourceFolder
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import org.jetbrains.android.compose.stubComposableAnnotation
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
+import org.jetbrains.kotlin.idea.codeInsight.inspections.shared.FunctionNameInspection
 import org.jetbrains.kotlin.idea.codeInsight.inspections.shared.TestFunctionNameInspection
-import org.jetbrains.kotlin.idea.k1.codeinsight.inspections.FunctionNameInspection as FunctionNameInspectionForK1
-import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.FunctionNameInspection
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -40,22 +38,14 @@ class ComposeSuppressorTest {
 
   @Before
   fun setup() {
-    fixture.enableInspections(
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        FunctionNameInspection::class.java
-      } else {
-        FunctionNameInspectionForK1::class.java
-      }
-    )
+    fixture.enableInspections(FunctionNameInspection::class.java)
     fixture.enableInspections(TestFunctionNameInspection::class.java)
     fixture.stubComposableAnnotation()
 
     val module = projectRule.project.modules.single()
     val androidTestSourceRoot = fixture.tempDirFixture.findOrCreateDir("src/androidTest")
     runInEdt {
-      ApplicationManager.getApplication().runWriteAction<SourceFolder> {
-        PsiTestUtil.addSourceRoot(module, androidTestSourceRoot, true)
-      }
+      ApplicationManager.getApplication().runWriteAction<SourceFolder> { PsiTestUtil.addSourceRoot(module, androidTestSourceRoot, true) }
     }
   }
 
@@ -65,15 +55,15 @@ class ComposeSuppressorTest {
       fixture.addFileToProject(
         "src/main/com/example/views.kt",
         """
-      package com.example
+        package com.example
 
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyView() {}
+        @Composable
+        fun MyView() {}
 
-      fun <weak_warning descr="Function name 'NormalFunction' should start with a lowercase letter">NormalFunction</weak_warning>() {}
-      """
+        fun <weak_warning descr="Function name 'NormalFunction' should start with a lowercase letter">NormalFunction</weak_warning>() {}
+        """
           .trimIndent(),
       )
 
@@ -87,15 +77,15 @@ class ComposeSuppressorTest {
       fixture.addFileToProject(
         "src/androidTest/com/example/views.kt",
         """
-      package com.example
+        package com.example
 
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      @Composable
-      fun MyView() {}
+        @Composable
+        fun MyView() {}
 
-      fun <weak_warning descr="Test function name 'NormalFunction' should start with a lowercase letter">NormalFunction</weak_warning>() {}
-      """
+        fun <weak_warning descr="Test function name 'NormalFunction' should start with a lowercase letter">NormalFunction</weak_warning>() {}
+        """
           .trimIndent(),
       )
 

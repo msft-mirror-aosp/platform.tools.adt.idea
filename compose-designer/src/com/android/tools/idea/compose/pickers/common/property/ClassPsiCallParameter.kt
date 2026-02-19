@@ -28,9 +28,8 @@ import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtValueArgument
 
 /**
- * [PsiCallParameterPropertyItem] for @Preview parameters that can take an Enum from the project.
- * Can assign a fully qualified class to the value. While trying to import the class in to the
- * parameter's file.
+ * [PsiCallParameterPropertyItem] for @Preview parameters that can take an Enum from the project. Can assign a fully qualified class to the
+ * value. While trying to import the class in to the parameter's file.
  */
 internal class ClassPsiCallParameter(
   project: Project,
@@ -39,7 +38,8 @@ internal class ClassPsiCallParameter(
   parameterName: Name,
   parameterTypeNameIfStandard: Name?,
   argumentExpression: KtExpression?,
-  initialValue: String?,
+  defaultValue: String?,
+  initialValue: String? = null,
 ) :
   PsiCallParameterPropertyItem(
     project,
@@ -48,15 +48,15 @@ internal class ClassPsiCallParameter(
     parameterName,
     parameterTypeNameIfStandard,
     argumentExpression,
-    initialValue,
+    defaultValue,
+    initialValue = initialValue,
   ) {
 
   /**
    * Sets the property value and attempts to shorten the reference.
    *
-   * This method updates the property with a fully qualified value (`fqValue`), and then triggers
-   * the IDE's `ShortenReferencesFacility` to automatically add the necessary import statements and
-   * simplify the reference in the code.
+   * This method updates the property with a fully qualified value (`fqValue`), and then triggers the IDE's `ShortenReferencesFacility` to
+   * automatically add the necessary import statements and simplify the reference in the code.
    *
    * For example, if you have:
    * ```
@@ -66,8 +66,7 @@ internal class ClassPsiCallParameter(
    * Calling this function with:
    * - `fqValue` = `"android.content.res.Configuration.UI_MODE_TYPE_NORMAL"`
    *
-   * Will result in the following code, with the import for `Configuration` being added
-   * automatically:
+   * Will result in the following code, with the import for `Configuration` being added automatically:
    * ```
    * import android.content.res.Configuration
    *
@@ -80,9 +79,7 @@ internal class ClassPsiCallParameter(
   fun importAndSetValue(fqValue: String, trackableValue: PreviewPickerValue) {
     writeNewValue(fqValue, true, trackableValue)
     argumentExpression?.let { expression ->
-      runWriteCommandAction<PsiElement>(project) {
-        ShortenReferencesFacility.getInstance().shorten(expression)
-      }
+      runWriteCommandAction<PsiElement>(project) { ShortenReferencesFacility.getInstance().shorten(expression) }
     }
   }
 }

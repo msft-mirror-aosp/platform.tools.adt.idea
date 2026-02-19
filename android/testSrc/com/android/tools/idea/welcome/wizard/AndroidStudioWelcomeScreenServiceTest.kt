@@ -18,14 +18,15 @@ package com.android.tools.idea.welcome.wizard
 import com.android.tools.idea.concurrency.executeOnPooledThread
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.sdk.IdeSdks
+import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
 import com.android.tools.idea.welcome.config.InstallerData
-import com.intellij.openapi.projectRoots.Sdk
+import com.android.tools.sdk.AndroidSdkData
+import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.Messages
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
@@ -36,6 +37,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -50,13 +52,17 @@ class AndroidStudioWelcomeScreenServiceTest {
 
   private val projectRule = AndroidProjectRule.inMemory()
 
-  @get:Rule
-  val chain =
-    RuleChain(projectRule, EdtRule()) // AndroidProjectRule must get initialized off the EDT thread
+  @get:Rule val chain = RuleChain(projectRule, EdtRule()) // AndroidProjectRule must get initialized off the EDT thread
 
   @Before
   fun setUp() {
     AndroidStudioWelcomeScreenService.instance.wizardWasShown = false
+    AndroidSdks.getInstance().setSdkData(null)
+  }
+
+  @After
+  fun tearDown() {
+    AndroidSdks.getInstance().setSdkData(null)
   }
 
   @Test
@@ -89,14 +95,10 @@ class AndroidStudioWelcomeScreenServiceTest {
   fun getWizardMode_returnsNewInstall_whenSdkNotUpToDate() {
     val mockPersistentData = mock(AndroidFirstRunPersistentData::class.java)
     whenever(mockPersistentData.isSdkUpToDate).thenReturn(false)
-    val mockIdeSdks = mock(IdeSdks::class.java)
+    val mockAndroidSdks = mock(AndroidSdks::class.java)
 
     assertTrue {
-      AndroidStudioWelcomeScreenService.instance.getWizardMode(
-        mockPersistentData,
-        null,
-        mockIdeSdks,
-      ) == FirstRunWizardMode.NEW_INSTALL
+      AndroidStudioWelcomeScreenService.instance.getWizardMode(mockPersistentData, null, mockAndroidSdks) == FirstRunWizardMode.NEW_INSTALL
     }
   }
 
@@ -105,14 +107,10 @@ class AndroidStudioWelcomeScreenServiceTest {
     StudioFlags.NPW_FIRST_RUN_SHOW.overrideForTest(true, projectRule.fixture.testRootDisposable)
     val mockPersistentData = mock(AndroidFirstRunPersistentData::class.java)
     whenever(mockPersistentData.isSdkUpToDate).thenReturn(true)
-    val mockIdeSdks = mock(IdeSdks::class.java)
+    val mockAndroidSdks = mock(AndroidSdks::class.java)
 
     assertTrue {
-      AndroidStudioWelcomeScreenService.instance.getWizardMode(
-        mockPersistentData,
-        null,
-        mockIdeSdks,
-      ) == FirstRunWizardMode.NEW_INSTALL
+      AndroidStudioWelcomeScreenService.instance.getWizardMode(mockPersistentData, null, mockAndroidSdks) == FirstRunWizardMode.NEW_INSTALL
     }
   }
 
@@ -120,14 +118,10 @@ class AndroidStudioWelcomeScreenServiceTest {
   fun getWizardMode_returnsMissingSdk_whenPersistentDataShowsSdkUpToDateButNoSdkInstalled() {
     val mockPersistentData = mock(AndroidFirstRunPersistentData::class.java)
     whenever(mockPersistentData.isSdkUpToDate).thenReturn(true)
-    val mockIdeSdks = mock(IdeSdks::class.java)
+    val mockAndroidSdks = mock(AndroidSdks::class.java)
 
     assertTrue {
-      AndroidStudioWelcomeScreenService.instance.getWizardMode(
-        mockPersistentData,
-        null,
-        mockIdeSdks,
-      ) == FirstRunWizardMode.MISSING_SDK
+      AndroidStudioWelcomeScreenService.instance.getWizardMode(mockPersistentData, null, mockAndroidSdks) == FirstRunWizardMode.MISSING_SDK
     }
   }
 
@@ -135,16 +129,10 @@ class AndroidStudioWelcomeScreenServiceTest {
   fun getWizardMode_returnsNull_whenSdkInstalledAndUpToDate() {
     val mockPersistentData = mock(AndroidFirstRunPersistentData::class.java)
     whenever(mockPersistentData.isSdkUpToDate).thenReturn(true)
-    val mockIdeSdks = mock(IdeSdks::class.java)
-    whenever(mockIdeSdks.eligibleAndroidSdks).thenReturn(listOf(mock(Sdk::class.java)))
+    val mockAndroidSdks = mock(AndroidSdks::class.java)
+    whenever(mockAndroidSdks.tryToChooseAndroidSdk()).thenReturn(mock(AndroidSdkData::class.java))
 
-    assertTrue {
-      AndroidStudioWelcomeScreenService.instance.getWizardMode(
-        mockPersistentData,
-        null,
-        mockIdeSdks,
-      ) == null
-    }
+    assertTrue { AndroidStudioWelcomeScreenService.instance.getWizardMode(mockPersistentData, null, mockAndroidSdks) == null }
   }
 
   @Test
@@ -153,14 +141,11 @@ class AndroidStudioWelcomeScreenServiceTest {
     whenever(mockPersistentData.isSdkUpToDate).thenReturn(false)
     val mockInstallerData = mock(InstallerData::class.java)
     whenever(mockInstallerData.isCurrentVersion).thenReturn(true)
-    val mockIdeSdks = mock(IdeSdks::class.java)
+    val mockAndroidSdks = mock(AndroidSdks::class.java)
 
     assertTrue {
-      AndroidStudioWelcomeScreenService.instance.getWizardMode(
-        mockPersistentData,
-        mockInstallerData,
-        mockIdeSdks,
-      ) == FirstRunWizardMode.INSTALL_HANDOFF
+      AndroidStudioWelcomeScreenService.instance.getWizardMode(mockPersistentData, mockInstallerData, mockAndroidSdks) ==
+        FirstRunWizardMode.INSTALL_HANDOFF
     }
   }
 
@@ -172,14 +157,11 @@ class AndroidStudioWelcomeScreenServiceTest {
 
     val mockInstallerData = mock(InstallerData::class.java)
     whenever(mockInstallerData.isCurrentVersion).thenReturn(true)
-    val mockIdeSdks = mock(IdeSdks::class.java)
+    val mockAndroidSdks = mock(AndroidSdks::class.java)
 
     assertTrue {
-      AndroidStudioWelcomeScreenService.instance.getWizardMode(
-        mockPersistentData,
-        mockInstallerData,
-        mockIdeSdks,
-      ) == FirstRunWizardMode.INSTALL_HANDOFF
+      AndroidStudioWelcomeScreenService.instance.getWizardMode(mockPersistentData, mockInstallerData, mockAndroidSdks) ==
+        FirstRunWizardMode.INSTALL_HANDOFF
     }
   }
 
@@ -189,17 +171,7 @@ class AndroidStudioWelcomeScreenServiceTest {
       whenever(HttpConnectionUtils.openHttpConnection(any())).thenThrow(IOException::class.java)
 
       mockStatic(Messages::class.java).use { mockMessages ->
-        whenever(
-            Messages.showIdeaMessageDialog(
-              anyOrNull(),
-              any(),
-              any(),
-              any(),
-              any(),
-              anyOrNull(),
-              anyOrNull(),
-            )
-          )
+        whenever(Messages.showIdeaMessageDialog(anyOrNull(), any(), any(), any(), any(), anyOrNull(), anyOrNull<DoNotAskOption>()))
           .thenReturn(1)
         val checkComplete = CompletableFuture<Boolean>()
         executeOnPooledThread {
@@ -209,15 +181,7 @@ class AndroidStudioWelcomeScreenServiceTest {
         pumpEventsAndWaitForFuture(checkComplete, 5, TimeUnit.SECONDS)
 
         mockMessages.verify {
-          Messages.showIdeaMessageDialog(
-            anyOrNull(),
-            any(),
-            any(),
-            any(),
-            any(),
-            anyOrNull(),
-            anyOrNull(),
-          )
+          Messages.showIdeaMessageDialog(anyOrNull(), any(), any(), any(), any(), anyOrNull(), anyOrNull<DoNotAskOption>())
         }
       }
     }
@@ -228,8 +192,7 @@ class AndroidStudioWelcomeScreenServiceTest {
     val checkComplete = CompletableFuture<Boolean>()
     executeOnPooledThread {
       mockStatic(HttpConnectionUtils::class.java) {
-        whenever(HttpConnectionUtils.openHttpConnection(any()))
-          .thenThrow(NoClassDefFoundError::class.java)
+        whenever(HttpConnectionUtils.openHttpConnection(any())).thenThrow(NoClassDefFoundError::class.java)
 
         AndroidStudioWelcomeScreenService.instance.checkInternetConnection()
         checkComplete.complete(true)

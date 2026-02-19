@@ -46,32 +46,24 @@ class ComposeStateObjectRendererTest {
       package androidx.compose.runtime.snapshots
 
       class SnapshotStateList<T> {}
-    """
+      """
         .trimIndent()
-    projectRule.fixture.addFileToProject(
-      "src/androidx/compose/runtime/snapshots/SnapshotStateList.kt",
-      source,
-    )
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/snapshots/SnapshotStateList.kt", source)
 
     // prepare
     val debugProcess: DebugProcessImpl =
       mockDebugProcess(project, projectRule.testRootDisposable) {
         val vm = this@mockDebugProcess.virtualMachineProxy.virtualMachine
 
-        val listType =
-          classType("java.util.List") { method("size", "()I") { value(MockIntegerValue(7, vm)) } }
+        val listType = classType("java.util.List") { method("size", "()I") { value(MockIntegerValue(7, vm)) } }
 
         classType("androidx.compose.runtime.snapshots.SnapshotStateList") {
-          method("getDebuggerDisplayValue", "()Ljava/util/List;") {
-            value(MockClassObjectReference(listType, vm))
-          }
+          method("getDebuggerDisplayValue", "()Ljava/util/List;") { value(MockClassObjectReference(listType, vm)) }
         }
       }
 
     val thisObjectType: ReferenceType =
-      debugProcess.virtualMachineProxy
-        .classesByName("androidx.compose.runtime.snapshots.SnapshotStateList")
-        .first()
+      debugProcess.virtualMachineProxy.classesByName("androidx.compose.runtime.snapshots.SnapshotStateList").first()
 
     debugProcess.invokeOnDebuggerManagerThread {
       // 1. check `Compose SnapshotStateList` is the first selected renderer by default.
@@ -79,13 +71,10 @@ class ComposeStateObjectRendererTest {
         NodeRendererSettings.getInstance()
           .getAllRenderers(projectRule.project)
           .filter { it.isEnabled }
-          .first {
-            (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true
-          }
+          .first { (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true }
       assertThat(renderer.name).isEqualTo("Compose State Object")
 
-      val thisObjectValue =
-        MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
+      val thisObjectValue = MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
       val evaluationContext = mockEvaluationContext(debugProcess, thisObjectValue)
       val thisValueDescriptor = MockValueDescriptor(project, thisObjectValue)
 
@@ -96,8 +85,7 @@ class ComposeStateObjectRendererTest {
 
       // 3. check if the children renderer is the same as the label renderer.
       val childrenRenderer = (renderer as CompoundReferenceRenderer).childrenRenderer
-      assertThat(childrenRenderer.uniqueId)
-        .isEqualTo("androidx.compose.runtime.snapshots.SnapshotStateList")
+      assertThat(childrenRenderer.uniqueId).isEqualTo("androidx.compose.runtime.snapshots.SnapshotStateList")
     }
   }
 
@@ -108,20 +96,16 @@ class ComposeStateObjectRendererTest {
       package androidx.compose.runtime.snapshots
 
       class SnapshotStateMap<K, V> {}
-    """
+      """
         .trimIndent()
-    projectRule.fixture.addFileToProject(
-      "src/androidx/compose/runtime/snapshots/SnapshotStateMap.kt",
-      source,
-    )
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/snapshots/SnapshotStateMap.kt", source)
 
     // prepare
     val debugProcess: DebugProcessImpl =
       mockDebugProcess(project, projectRule.testRootDisposable) {
         val vm = this@mockDebugProcess.virtualMachineProxy.virtualMachine
 
-        val mapType =
-          classType("java.util.Map") { method("size", "()I") { value(MockIntegerValue(5, vm)) } }
+        val mapType = classType("java.util.Map") { method("size", "()I") { value(MockIntegerValue(5, vm)) } }
 
         classType("androidx.compose.runtime.snapshots.SnapshotStateMap") {
           method("getDebuggerDisplayValue") { value(MockClassObjectReference(mapType, vm)) }
@@ -129,9 +113,7 @@ class ComposeStateObjectRendererTest {
       }
 
     val thisObjectType: ReferenceType =
-      debugProcess.virtualMachineProxy
-        .classesByName("androidx.compose.runtime.snapshots.SnapshotStateMap")
-        .first()
+      debugProcess.virtualMachineProxy.classesByName("androidx.compose.runtime.snapshots.SnapshotStateMap").first()
 
     debugProcess.invokeOnDebuggerManagerThread {
       // 1. check `"Compose SnapshotStateList"` is the first selected renderer by default.
@@ -139,13 +121,10 @@ class ComposeStateObjectRendererTest {
         NodeRendererSettings.getInstance()
           .getAllRenderers(projectRule.project)
           .filter { it.isEnabled }
-          .first {
-            (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true
-          }
+          .first { (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true }
       assertThat(renderer.name).isEqualTo("Compose State Object")
 
-      val thisObjectValue =
-        MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
+      val thisObjectValue = MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
       val evaluationContext = mockEvaluationContext(debugProcess, thisObjectValue)
       val thisValueDescriptor = MockValueDescriptor(project, thisObjectValue)
 
@@ -156,8 +135,7 @@ class ComposeStateObjectRendererTest {
 
       // 3. check if the children renderer is the same as the label renderer.
       val childrenRenderer = (renderer as CompoundReferenceRenderer).childrenRenderer
-      assertThat(childrenRenderer.uniqueId)
-        .isEqualTo("androidx.compose.runtime.snapshots.SnapshotStateMap")
+      assertThat(childrenRenderer.uniqueId).isEqualTo("androidx.compose.runtime.snapshots.SnapshotStateMap")
     }
   }
 
@@ -170,12 +148,9 @@ class ComposeStateObjectRendererTest {
       open class SnapshotMutableStateImpl<T> {}
 
       class ParcelableSnapshotMutableState : SnapshotMutableStateImpl<T>
-    """
+      """
         .trimIndent()
-    projectRule.fixture.addFileToProject(
-      "src/androidx/compose/runtime/SnapshotMutableStateImpl.kt",
-      source,
-    )
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/SnapshotMutableStateImpl.kt", source)
 
     val debugProcess: DebugProcessImpl =
       mockDebugProcess(project, projectRule.testRootDisposable) {
@@ -186,18 +161,13 @@ class ComposeStateObjectRendererTest {
             method("getDebuggerDisplayValue") { value(MockIntegerValue(1, vm)) }
           }
 
-        classType(
-          "androidx.compose.runtime.ParcelableSnapshotMutableState",
-          snapshotMutableStateImplType as ClassType,
-        ) {
+        classType("androidx.compose.runtime.ParcelableSnapshotMutableState", snapshotMutableStateImplType as ClassType) {
           method("getDebuggerDisplayValue") { value(MockIntegerValue(2, vm)) }
         }
       }
 
     val thisObjectType: ReferenceType =
-      debugProcess.virtualMachineProxy
-        .classesByName("androidx.compose.runtime.ParcelableSnapshotMutableState")
-        .first()
+      debugProcess.virtualMachineProxy.classesByName("androidx.compose.runtime.ParcelableSnapshotMutableState").first()
 
     debugProcess.invokeOnDebuggerManagerThread {
       // check `Compose SnapshotState` is the first selected renderer by default.
@@ -205,14 +175,11 @@ class ComposeStateObjectRendererTest {
         NodeRendererSettings.getInstance()
           .getAllRenderers(project)
           .filter { it.isEnabled }
-          .first {
-            (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true
-          }
+          .first { (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true }
 
       assertThat(renderer.name).isEqualTo("Compose State Object")
 
-      val thisObjectValue =
-        MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
+      val thisObjectValue = MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
       val thisValueDescriptor = MockValueDescriptor(project, thisObjectValue)
       val evaluationContext = mockEvaluationContext(debugProcess, thisObjectValue)
 
@@ -224,8 +191,7 @@ class ComposeStateObjectRendererTest {
 
       // check if the children renderer is the same as the label renderer.
       val childrenRenderer = (renderer as CompoundReferenceRenderer).childrenRenderer
-      assertThat(childrenRenderer.uniqueId)
-        .isEqualTo("androidx.compose.runtime.SnapshotMutableStateImpl")
+      assertThat(childrenRenderer.uniqueId).isEqualTo("androidx.compose.runtime.SnapshotMutableStateImpl")
     }
   }
 
@@ -236,12 +202,9 @@ class ComposeStateObjectRendererTest {
       package androidx.compose.runtime
 
       private class DerivedSnapshotState<T> {}
-    """
+      """
         .trimIndent()
-    projectRule.fixture.addFileToProject(
-      "src/androidx/compose/runtime/DerivedSnapshotState.kt",
-      source,
-    )
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/DerivedSnapshotState.kt", source)
 
     val debugProcess: DebugProcessImpl =
       mockDebugProcess(project, projectRule.testRootDisposable) {
@@ -250,16 +213,12 @@ class ComposeStateObjectRendererTest {
         val stringType = classType("java.lang.String")
 
         classType("androidx.compose.runtime.DerivedSnapshotState") {
-          method("getDebuggerDisplayValue") {
-            value(MockStringReference("This is fake string value.", stringType, vm))
-          }
+          method("getDebuggerDisplayValue") { value(MockStringReference("This is fake string value.", stringType, vm)) }
         }
       }
 
     val thisObjectType: ReferenceType =
-      debugProcess.virtualMachineProxy
-        .classesByName("androidx.compose.runtime.DerivedSnapshotState")
-        .first()
+      debugProcess.virtualMachineProxy.classesByName("androidx.compose.runtime.DerivedSnapshotState").first()
 
     debugProcess.invokeOnDebuggerManagerThread {
       // check `Compose SnapshotState` is the first selected renderer by default.
@@ -267,13 +226,10 @@ class ComposeStateObjectRendererTest {
         NodeRendererSettings.getInstance()
           .getAllRenderers(projectRule.project)
           .filter { it.isEnabled }
-          .first {
-            (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true
-          }
+          .first { (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true }
       assertThat(renderer.name).isEqualTo("Compose State Object")
 
-      val thisObjectValue =
-        MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
+      val thisObjectValue = MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
       val evaluationContext = mockEvaluationContext(debugProcess, thisObjectValue)
       val thisValueDescriptor = MockValueDescriptor(project, thisObjectValue)
 
@@ -285,8 +241,7 @@ class ComposeStateObjectRendererTest {
 
       // check if the children renderer is the same as the label renderer.
       val childrenRenderer = (renderer as CompoundReferenceRenderer).childrenRenderer
-      assertThat(childrenRenderer.uniqueId)
-        .isEqualTo("androidx.compose.runtime.DerivedSnapshotState")
+      assertThat(childrenRenderer.uniqueId).isEqualTo("androidx.compose.runtime.DerivedSnapshotState")
     }
   }
 
@@ -297,12 +252,9 @@ class ComposeStateObjectRendererTest {
       package androidx.compose.runtime.snapshots
 
       class SnapshotStateList<T> {}
-    """
+      """
         .trimIndent()
-    projectRule.fixture.addFileToProject(
-      "src/androidx/compose/runtime/snapshots/SnapshotStateList.kt",
-      source,
-    )
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/snapshots/SnapshotStateList.kt", source)
 
     // prepare
     val debugProcess: DebugProcessImpl =
@@ -312,9 +264,7 @@ class ComposeStateObjectRendererTest {
       }
 
     val thisObjectType: ReferenceType =
-      debugProcess.virtualMachineProxy
-        .classesByName("androidx.compose.runtime.snapshots.SnapshotStateList")
-        .first()
+      debugProcess.virtualMachineProxy.classesByName("androidx.compose.runtime.snapshots.SnapshotStateList").first()
 
     debugProcess.invokeOnDebuggerManagerThread {
       // 1. Check if `Compose State Object` is the first selected renderer by default since
@@ -323,13 +273,10 @@ class ComposeStateObjectRendererTest {
         NodeRendererSettings.getInstance()
           .getAllRenderers(projectRule.project)
           .filter { it.isEnabled }
-          .first {
-            (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true
-          }
+          .first { (it as? CompoundReferenceRenderer)?.isApplicableAsync(thisObjectType)?.get() == true }
       assertThat(renderer.name).isEqualTo("Compose State Object")
 
-      val thisObjectValue =
-        MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
+      val thisObjectValue = MockClassObjectReference(thisObjectType, debugProcess.virtualMachineProxy.virtualMachine)
       val evaluationContext = mockEvaluationContext(debugProcess, thisObjectValue)
       val thisValueDescriptor = MockValueDescriptor(project, thisObjectValue)
 
@@ -337,8 +284,7 @@ class ComposeStateObjectRendererTest {
       // `Unable to evaluate the expression No such instance method: 'getDebuggerDisplayValue'`.
       renderer.calcLabel(thisValueDescriptor, evaluationContext, mock())
       debugProcess.managerThread.processRemaining()
-      assertThat(thisValueDescriptor.valueText)
-        .startsWith("instance of androidx.compose.runtime.snapshots.SnapshotStateList(")
+      assertThat(thisValueDescriptor.valueText).startsWith("instance of androidx.compose.runtime.snapshots.SnapshotStateList(")
     }
   }
 }

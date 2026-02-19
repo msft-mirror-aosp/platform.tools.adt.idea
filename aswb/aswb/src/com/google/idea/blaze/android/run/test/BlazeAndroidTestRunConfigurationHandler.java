@@ -19,40 +19,32 @@ import com.android.tools.idea.execution.common.DeployableToDevice;
 import com.android.tools.idea.run.ValidationError;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.idea.blaze.android.run.ApkBuildStepProvider;
+import com.google.idea.blaze.android.run.BazelApkBuildStepProvider;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationCommonState;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationHandler;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationValidationUtil;
 import com.google.idea.blaze.android.run.LaunchMetrics;
-import com.google.idea.blaze.android.run.runner.ApkBuildStep;
+import com.google.idea.blaze.android.run.runner.BlazeAndroidDeployAndLaunchStrategy;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidRunConfigurationRunner;
-import com.google.idea.blaze.android.run.runner.BlazeAndroidRunContext;
-import com.google.idea.blaze.android.run.runner.FullApkBuildStep;
+import com.google.idea.blaze.android.run.runner.BlazeApkBuildStep;
 import com.google.idea.blaze.android.run.test.BlazeAndroidTestLaunchMethodsProvider.AndroidTestLaunchMethod;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
-import com.google.idea.blaze.base.model.primitives.Label;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
-import com.google.idea.blaze.base.projectview.ProjectViewManager;
-import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.BlazeConfigurationNameBuilder;
 import com.google.idea.blaze.base.run.ExecutorType;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner;
+import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFetcher;
 import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
-import com.google.idea.blaze.base.sync.projectstructure.ModuleFinder;
-import com.google.idea.blaze.java.AndroidBlazeRules;
+import com.google.idea.blaze.common.Label;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.Executor;
 import com.intellij.execution.JavaExecutionUtil;
 import com.intellij.execution.configurations.RuntimeConfigurationException;
 import com.intellij.execution.runners.ExecutionEnvironment;
-import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import java.util.List;
 import javax.annotation.Nullable;
-import org.jetbrains.android.facet.AndroidFacet;
 
 /**
  * {@link com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationHandler} for
@@ -89,18 +81,12 @@ public class BlazeAndroidTestRunConfigurationHandler
         BlazeAndroidRunConfigurationHandler.getCommandConfig(env);
 
     BlazeAndroidRunConfigurationValidationUtil.validate(project);
-    Module module =
-        ModuleFinder.getInstance(env.getProject())
-            .findModuleByName(BlazeDataStorage.WORKSPACE_MODULE_NAME);
-    AndroidFacet facet = module != null ? AndroidFacet.getInstance(module) : null;
-    ProjectViewSet projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
 
     ImmutableList<String> blazeFlags =
         configState
             .getCommonState()
             .getExpandedBuildFlags(
                 project,
-                projectViewSet,
                 BlazeCommandName.TEST,
                 BlazeInvocationContext.runConfigContext(
                     ExecutorType.fromExecutor(env.getExecutor()), configuration.getType(), false));
@@ -111,49 +97,38 @@ public class BlazeAndroidTestRunConfigurationHandler
     // We collect metrics from a few different locations. In order to tie them all
     // together, we create a unique launch id.
     String launchId = LaunchMetrics.newLaunchId();
-    Label label = Label.create(configuration.getSingleTarget().toString());
+    String labelString = configuration.getSingleTargetPattern();
+    if (labelString == null) {
+      throw new ExecutionException("No target pattern specified for configuration.");
+    }
+    Label label = Label.of(labelString);
 
-    ApkBuildStep buildStep =
-        getTestBuildStep(
-            project, configState, configuration, blazeFlags, exeFlags, launchId, label);
+    boolean useMobileInstall =
+      AndroidTestLaunchMethod.MOBILE_INSTALL.equals(configState.getLaunchMethod());
+    BlazeApkBuildStep buildStep =
+      BazelApkBuildStepProvider
+        .getAitBuildStep(
+          project,
+          useMobileInstall,
+          /* nativeDebuggingEnabled= */ true,
+          label,
+          blazeFlags,
+          exeFlags,
+          launchId);
+    BlazeTestResultFetcher testResultsHolder = new BlazeTestResultFetcher();
 
-    BlazeAndroidRunContext runContext =
-        new BlazeAndroidTestRunContext(
-            project, facet, configuration, env, configState, label, blazeFlags, buildStep);
+    BlazeAndroidDeployAndLaunchStrategy launchStrategy = new AndroidTestDeployAndLaunchStrategy(
+        project,
+        configState,
+        label,
+        blazeFlags,
+        testResultsHolder
+    );
 
     LaunchMetrics.logTestLaunch(
         launchId, configState.getLaunchMethod().name(), env.getExecutor().getId());
 
-    return new BlazeAndroidRunConfigurationRunner(module, runContext, configuration);
-  }
-
-  private static ApkBuildStep getTestBuildStep(
-      Project project,
-      BlazeAndroidTestRunConfigurationState configState,
-      BlazeCommandRunConfiguration configuration,
-      ImmutableList<String> blazeFlags,
-      ImmutableList<String> exeFlags,
-      String launchId,
-      Label label)
-      throws ExecutionException {
-    if (configuration.getTargetKind()
-        == AndroidBlazeRules.RuleTypes.ANDROID_INSTRUMENTATION_TEST.getKind()) {
-      boolean useMobileInstall =
-          AndroidTestLaunchMethod.MOBILE_INSTALL.equals(configState.getLaunchMethod());
-      return ApkBuildStepProvider.getInstance(Blaze.getBuildSystemName(project))
-          .getAitBuildStep(
-              project,
-              useMobileInstall,
-              /* nativeDebuggingEnabled= */ true,
-              label,
-              blazeFlags,
-              exeFlags,
-              launchId);
-    } else {
-      // TODO(b/248317444): This path is only invoked for the deprecated {@code android_test}
-      // targets, and should eventually be removed.
-      return new FullApkBuildStep(project, label, blazeFlags, /* nativeDebuggingEnabled= */ true);
-    }
+    return new BlazeAndroidRunConfigurationRunner(launchStrategy, configuration, buildStep, buildStep.getDeployInfoExtractor(), null);
   }
 
   @Override
@@ -163,7 +138,7 @@ public class BlazeAndroidTestRunConfigurationHandler
 
   /**
    * We collect errors rather than throwing to avoid missing fatal errors by exiting early for a
-   * warning. We use a separate method for the collection so the compiler prevents us from
+   * warning. We use a separate method for the collection so the collection prevents us from
    * accidentally throwing.
    */
   private List<ValidationError> validate() {
@@ -176,7 +151,7 @@ public class BlazeAndroidTestRunConfigurationHandler
   @Override
   @Nullable
   public String suggestedName(BlazeCommandRunConfiguration configuration) {
-    TargetExpression target = configuration.getSingleTarget();
+    String target = configuration.getSingleTargetPattern();
     if (target == null) {
       return null;
     }

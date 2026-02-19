@@ -33,7 +33,7 @@ class AndroidModularizeKotlinRefactoringTest : AndroidTestCase() {
 
   override fun configureAdditionalModules(
     projectBuilder: TestFixtureBuilder<IdeaProjectTestFixture>,
-    modules: List<MyAdditionalModuleData>
+    modules: List<MyAdditionalModuleData>,
   ) {
     addModuleWithAndroidFacet(projectBuilder, modules, "library", PROJECT_TYPE_LIBRARY, true)
   }
@@ -44,16 +44,18 @@ class AndroidModularizeKotlinRefactoringTest : AndroidTestCase() {
       "/res/values/values.xml",
       // language=xml
       """
-        <resources>
-          <string name="appString">Hello from app</string>
-        </resources>
-        """.trimIndent()
+      <resources>
+        <string name="appString">Hello from app</string>
+      </resources>
+      """
+        .trimIndent(),
     )
 
-    val activity = myFixture.addFileToProject(
-      "/src/p1/p2/MainActivity.kt",
-      // language=kotlin
-      """
+    val activity =
+      myFixture.addFileToProject(
+        "/src/p1/p2/MainActivity.kt",
+        // language=kotlin
+        """
         package p1.p2
 
         import android.app.Activity
@@ -61,8 +63,9 @@ class AndroidModularizeKotlinRefactoringTest : AndroidTestCase() {
         class MainActivity : Activity() {
           val s = R.string.appString
         }
-        """.trimIndent()
-    )
+        """
+          .trimIndent(),
+      )
     myFixture.configureFromExistingVirtualFile(activity.virtualFile)
 
     val moveHandler = if (KotlinPluginModeProvider.isK2Mode()) K2MoveFilesHandler() else MoveKotlinFileHandler()
@@ -70,8 +73,11 @@ class AndroidModularizeKotlinRefactoringTest : AndroidTestCase() {
     @OptIn(KaAllowAnalysisOnEdt::class)
     allowAnalysisOnEdt {
       runWriteAction {
-        val psiDirectory = RefactoringUtil.createPackageDirectoryInSourceRoot(
-          PackageWrapper(myFixture.psiManager, "p1.p2"), myAdditionalModules[0].sourceRoots[0])
+        val psiDirectory =
+          RefactoringUtil.createPackageDirectoryInSourceRoot(
+            PackageWrapper(myFixture.psiManager, "p1.p2"),
+            myAdditionalModules[0].sourceRoots[0],
+          )
 
         moveHandler.findUsages(activity, psiDirectory, true, true)
       }

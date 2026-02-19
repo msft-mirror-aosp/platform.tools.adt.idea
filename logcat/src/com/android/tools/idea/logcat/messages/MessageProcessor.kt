@@ -96,9 +96,7 @@ constructor(
 
   @TestOnly
   internal fun start() {
-    val exceptionHandler = CoroutineExceptionHandler { _, e ->
-      LOGGER.error("Error processing logcat message", e)
-    }
+    val exceptionHandler = CoroutineExceptionHandler { _, e -> LOGGER.error("Error processing logcat message", e) }
     logcatPresenter.createCoroutineScope(workerThread).launch(exceptionHandler) {
       // TODO(b/200322275): Manage the life cycle of textAccumulator in a more GC friendly way.
       var textAccumulator = TextAccumulator()
@@ -122,14 +120,8 @@ constructor(
         // for details.
         val now = clock.millis()
         @Suppress("OPT_IN_USAGE")
-        if (
-          messageChannel.isEmpty ||
-            now - lastFlushTime > maxTimePerBatchMs ||
-            numMessages > maxMessagesPerBatch
-        ) {
-          val timeInAppendMessages = measureTimeMillis {
-            logcatPresenter.appendMessages(textAccumulator, context.get())
-          }
+        if (messageChannel.isEmpty || now - lastFlushTime > maxTimePerBatchMs || numMessages > maxMessagesPerBatch) {
+          val timeInAppendMessages = measureTimeMillis { logcatPresenter.appendMessages(textAccumulator, context.get()) }
           LOGGER.debug {
             val timeSinceStart = now - startTime
             val timeSinceLastFlush = now - lastFlushTime

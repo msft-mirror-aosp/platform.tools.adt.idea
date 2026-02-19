@@ -16,23 +16,21 @@
 package com.android.tools.profilers.perfetto
 
 import com.android.tools.adtui.model.Range
-import com.android.tools.profiler.proto.Cpu
 import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.profilers.cpu.CpuCapture
 import com.android.tools.profilers.cpu.MainProcessSelector
 import com.android.tools.profilers.cpu.TraceParser
-import com.android.tools.profilers.cpu.systemtrace.AtraceParser
 import com.android.tools.profilers.cpu.systemtrace.ProcessListSorter
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCaptureBuilder
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceSurfaceflingerManager
 import com.intellij.openapi.diagnostic.Logger
-import perfetto.protos.PerfettoTrace
 import java.io.File
 import java.util.Base64
 import java.util.concurrent.TimeUnit
+import perfetto.protos.PerfettoTrace
 
-class PerfettoParser(private val mainProcessSelector: MainProcessSelector,
-                     private val ideProfilerServices: IdeProfilerServices) : TraceParser {
+class PerfettoParser(private val mainProcessSelector: MainProcessSelector, private val ideProfilerServices: IdeProfilerServices) :
+  TraceParser {
 
   companion object {
     private val LOGGER = Logger.getInstance(PerfettoParser::class.java)
@@ -70,11 +68,12 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector,
             processHint = uiState.highlightProcess.cmdline
           }
           if (uiState.timelineStartTs != 0L && uiState.timelineEndTs != 0L) {
-            initialViewRange.set(TimeUnit.NANOSECONDS.toMicros(uiState.timelineStartTs).toDouble(),
-                                 TimeUnit.NANOSECONDS.toMicros(uiState.timelineEndTs).toDouble());
+            initialViewRange.set(
+              TimeUnit.NANOSECONDS.toMicros(uiState.timelineStartTs).toDouble(),
+              TimeUnit.NANOSECONDS.toMicros(uiState.timelineEndTs).toDouble(),
+            )
           }
-        }
-        catch (throwable:Throwable) {
+        } catch (throwable: Throwable) {
           // Failed to parse / decode ui metadata log and continue.
           LOGGER.warn("Trace contained ui-state, however it failed to parse correctly. Ui state will not be loaded", throwable)
         }
@@ -84,9 +83,12 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector,
       val userSelectedProcess = mainProcessSelector.apply(processListSorter.sort(processList))
       checkNotNull(userSelectedProcess) { "It was not possible to select a process for this trace." }
       val selectedProcess = processList.first { processModel -> processModel.id == userSelectedProcess }
-      val processesToQuery = (listOf(selectedProcess) + listOfNotNull(processList.find {
-        it.getSafeProcessName().endsWith(SystemTraceSurfaceflingerManager.SURFACEFLINGER_PROCESS_NAME)
-      })).distinct()
+      val processesToQuery =
+        (listOf(selectedProcess) +
+            listOfNotNull(
+              processList.find { it.getSafeProcessName().endsWith(SystemTraceSurfaceflingerManager.SURFACEFLINGER_PROCESS_NAME) }
+            ))
+          .distinct()
       val model = traceProcessor.loadCpuData(traceId, processesToQuery, selectedProcess, ideProfilerServices)
 
       // Track the power rail and battery counter count for power profiler usage metrics.
@@ -100,8 +102,30 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector,
 
       val builder = SystemTraceCpuCaptureBuilder(model)
 
-      if (initialViewRange.isEmpty()) {
-        initialViewRange.set(model.getCaptureStartTimestampUs().toDouble(), model.getCaptureEndTimestampUs().toDouble())
+      if (initialViewRange.isEmpty) {
+        val traceStartUs = model.getCaptureStartTimestampUs().toDouble()
+        val traceEndUs = model.getCaptureEndTimestampUs().toDouble()
+
+        // Default to the full duration of the captured trace
+        val fallbackRange = Range(traceStartUs, traceEndUs)
+        initialViewRange.set(fallbackRange)
+
+        // Fetch specific start/end markers from metadata, if available to refine the view
+        val tracingStartedNs =
+          traceProcessor.getTraceMetadata(traceId, "tracing_started_ns", ideProfilerServices).firstOrNull()?.toLongOrNull()
+        val tracingDisabledNs =
+          traceProcessor.getTraceMetadata(traceId, "tracing_disabled_ns", ideProfilerServices).firstOrNull()?.toLongOrNull()
+
+        if (tracingStartedNs != null && tracingDisabledNs != null) {
+          val mdStartUs = TimeUnit.NANOSECONDS.toMicros(tracingStartedNs).toDouble()
+          val mdEndUs = TimeUnit.NANOSECONDS.toMicros(tracingDisabledNs).toDouble()
+          val metadataRange = Range(mdStartUs, mdEndUs)
+          val visibleRange = fallbackRange.getIntersection(metadataRange)
+          // Update the view range if the intersection of start/end markers from metadata and trace events is valid
+          if (!visibleRange.isEmpty) {
+            initialViewRange.set(visibleRange)
+          }
+        }
       }
       return builder.build(traceId, userSelectedProcess, initialViewRange)
     }

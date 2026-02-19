@@ -9,9 +9,7 @@ MODULE                        : project_sm_src
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/project_sm_src [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    : <ROOT>/.idea/modules/project_sm_src.iml [-]
-    ModuleTypeName                : JAVA_MODULE
-    CONENT_ENTRY                  : file://<ROOT>_sm_src
+    CONTENT_ENTRY                 : file://<ROOT>_sm_src
         EXCLUDE_FOLDER                : file://<ROOT>_sm_src/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>_sm_src/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -124,6 +122,7 @@ MODULE                        : project_sm_src.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : google.simpleapplication
         testApplicationId             : google.simpleapplication.test
@@ -162,6 +161,7 @@ MODULE                        : project_sm_src.app
             AssetsDirectories             : <ROOT>_sm_src/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>_sm_src/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>_sm_src/app/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>_sm_src/app/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -176,6 +176,7 @@ MODULE                        : project_sm_src.app
                     AssetsDirectories             : <ROOT>_sm_src/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>_sm_src/app/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -189,6 +190,7 @@ MODULE                        : project_sm_src.app
                     AssetsDirectories             : <ROOT>_sm_src/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>_sm_src/app/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -210,6 +212,7 @@ MODULE                        : project_sm_src.app
             AssetsDirectories             : <ROOT>_sm_src/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>_sm_src/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>_sm_src/app/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>_sm_src/app/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -224,6 +227,7 @@ MODULE                        : project_sm_src.app
                     AssetsDirectories             : <ROOT>_sm_src/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>_sm_src/app/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -238,6 +242,7 @@ MODULE                        : project_sm_src.app
                     AssetsDirectories             : <ROOT>_sm_src/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>_sm_src/app/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>_sm_src/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]
@@ -260,6 +265,7 @@ MODULE                        : project_sm_src.app
             AssetsDirectories             : <ROOT>_sm_src/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>_sm_src/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>_sm_src/app/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>_sm_src/app/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug

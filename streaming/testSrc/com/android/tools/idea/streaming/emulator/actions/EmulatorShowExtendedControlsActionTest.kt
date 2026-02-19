@@ -19,6 +19,7 @@ import com.android.emulator.control.ThemingStyle
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
+import com.android.tools.idea.streaming.testutil.newEmulatorView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.ui.LafManager
 import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
@@ -27,18 +28,17 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
+import kotlin.time.Duration.Companion.seconds
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import kotlin.time.Duration.Companion.seconds
 
 /** Tests for [EmulatorShowExtendedControlsAction]. */
 @RunsInEdt
 class EmulatorShowExtendedControlsActionTest {
   private val emulatorViewRule = EmulatorViewRule()
-  @get:Rule
-  val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), EdtRule (), HeadlessDialogRule())
+  @get:Rule val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), EdtRule(), HeadlessDialogRule())
 
   @Test
   fun testShowExtendedControls() {

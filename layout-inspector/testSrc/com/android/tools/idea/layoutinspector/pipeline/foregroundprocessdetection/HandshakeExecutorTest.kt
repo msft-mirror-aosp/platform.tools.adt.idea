@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection
 
-import com.android.sdklib.AndroidApiLevel
-import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
+import com.android.tools.idea.appinspection.internal.process.toDeviceDescriptor
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
+import com.android.tools.idea.layoutinspector.pipeline.fakeDevice
 import com.android.tools.idea.transport.TransportClient
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
@@ -53,18 +53,10 @@ class HandshakeExecutorTest {
 
   private val pollingIntervalMs = 200L
 
-  private val deviceDescriptor =
-    object : DeviceDescriptor {
-      override val manufacturer = "manufacturer"
-      override val model = "mod"
-      override val serial = "serial"
-      override val isEmulator = false
-      override val apiLevel = AndroidApiLevel(0)
-      override val version = "version"
-      override val codename = "codename"
-    }
+  val device = fakeDevice()
+  val deviceDescriptor = device.toDeviceDescriptor()
 
-  private val stream = createFakeStream(1, deviceDescriptor)
+  private val stream = Common.Stream.newBuilder().setStreamId(1).setDevice(device).build()
 
   private lateinit var scope: CoroutineScope
   private lateinit var workDispatcher: CoroutineDispatcher
@@ -98,16 +90,7 @@ class HandshakeExecutorTest {
 
   @Test
   fun testDeviceConnectedInitiatesHandshake() {
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val receivedRequest = syncChannel.receive()
@@ -123,51 +106,24 @@ class HandshakeExecutorTest {
   @Test
   fun testSupportedStopsPolling() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.Supported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.Supported(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)))
       verifyNoMoreRequests()
     }
 
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED),
-        deviceDescriptor,
-        false,
-      )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
   @Test
   fun testConnectedDisconnectedStopsPolling() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
@@ -183,50 +139,24 @@ class HandshakeExecutorTest {
   @Test
   fun testNotSupportedStopsPolling() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.NotSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.NotSupported(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)))
       verifyNoMoreRequests()
     }
 
     verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED),
-        deviceDescriptor,
-        false,
-      )
+      .logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
   @Test
   fun testMultipleConnectedEventsInitiatesHandshakeOnlyOnce() {
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       syncChannel.receive()
@@ -243,26 +173,13 @@ class HandshakeExecutorTest {
   @Test
   fun testUnknownSupportedInitiatesHandshakePeriodically() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest2 = syncChannel.receive()
       assertThat(executeRequest2).isEqualTo(expectedRequest)
 
@@ -273,126 +190,64 @@ class HandshakeExecutorTest {
       assertThat(executeRequest4).isEqualTo(expectedRequest)
     }
 
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
   @Test
   fun testUnknownToSupportedStopsPolling() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest2 = syncChannel.receive()
       assertThat(executeRequest2).isEqualTo(expectedRequest)
 
       val executeRequest3 = syncChannel.receive()
       assertThat(executeRequest3).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.Supported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.Supported(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)))
       verifyNoMoreRequests()
     }
 
     // unknown
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // supported
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, false)
     verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED),
-        deviceDescriptor,
-        false,
-      )
-    verify(mockMetrics)
-      .logHandshakeConversion(
-        DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED,
-        deviceDescriptor,
-        false,
-      )
+      .logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED, deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
   @Test
   fun testUnknownToNotSupportedStopsPolling() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest2 = syncChannel.receive()
       assertThat(executeRequest2).isEqualTo(expectedRequest)
 
       val executeRequest3 = syncChannel.receive()
       assertThat(executeRequest3).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.NotSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.NotSupported(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)))
       verifyNoMoreRequests()
     }
 
     // unknown
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // not supported
     verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED),
-        deviceDescriptor,
-        false,
-      )
+      .logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor, false)
     verify(mockMetrics)
       .logHandshakeConversion(
         DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_NOT_SUPPORTED,
@@ -405,26 +260,13 @@ class HandshakeExecutorTest {
   @Test
   fun testUnknownToDisconnectedStopsPolling() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest2 = syncChannel.receive()
       assertThat(executeRequest2).isEqualTo(expectedRequest)
 
@@ -436,12 +278,7 @@ class HandshakeExecutorTest {
     }
 
     // unknown
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // unknown not resolved
     verify(mockMetrics)
       .logHandshakeConversion(
@@ -455,47 +292,22 @@ class HandshakeExecutorTest {
   @Test
   fun testSendingMultipleUnknownDevicesDoesntInitiateMultiplePollingSessions() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest2 = syncChannel.receive()
       assertThat(executeRequest2).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest3 = syncChannel.receive()
       assertThat(executeRequest3).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest4 = syncChannel.receive()
       assertThat(executeRequest4).isEqualTo(expectedRequest)
 
@@ -504,12 +316,7 @@ class HandshakeExecutorTest {
     }
 
     // unknown
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     // unknown not resolved
     verify(mockMetrics)
       .logHandshakeConversion(
@@ -523,37 +330,20 @@ class HandshakeExecutorTest {
   @Test
   fun testNotSupportedToSupportedLogsMetrics() {
     val expectedRequest = createHandshakeExecuteRequest(1)
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val executeRequest1 = syncChannel.receive()
       assertThat(executeRequest1).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest2 = syncChannel.receive()
       assertThat(executeRequest2).isEqualTo(expectedRequest)
 
       val executeRequest3 = syncChannel.receive()
       assertThat(executeRequest3).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.NotSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.NotSupported(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)))
 
       verifyNoMoreRequests()
 
@@ -561,59 +351,28 @@ class HandshakeExecutorTest {
       val executeRequest4 = syncChannel.receive()
       assertThat(executeRequest4).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val executeRequest5 = syncChannel.receive()
       assertThat(executeRequest5).isEqualTo(expectedRequest)
 
-      handshakeExecutor.post(
-        HandshakeState.Supported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.Supported(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)))
       verifyNoMoreRequests()
     }
 
     // unknown
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
     verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED),
-        deviceDescriptor,
-        false,
-      )
+      .logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED), deviceDescriptor, false)
     verify(mockMetrics)
       .logHandshakeConversion(
         DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_NOT_SUPPORTED,
         deviceDescriptor,
         false,
       )
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, true)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, true)
     verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        true,
-      )
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED),
-        deviceDescriptor,
-        true,
-      )
-    verify(mockMetrics)
-      .logHandshakeConversion(
-        DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED,
-        deviceDescriptor,
-        true,
-      )
+      .logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED, deviceDescriptor, true)
     verify(mockMetrics)
       .logHandshakeConversion(
         DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_NOT_SUPPORTED_TO_SUPPORTED,
@@ -625,33 +384,16 @@ class HandshakeExecutorTest {
 
   @Test
   fun testSimultaneousHandshakesAreNotStarted() {
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       handshakeExecutor.post(HandshakeState.Connected)
       val receivedRequest0 = syncChannel.receive()
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       val receivedRequest1 = syncChannel.receive()
       // the handshake is already running, posting connected here should be ignored
       handshakeExecutor.post(HandshakeState.Connected)
       // terminate the handshake
-      handshakeExecutor.post(
-        HandshakeState.Supported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.Supported(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)))
       verifyNoMoreRequests()
 
       val expectedRequest = createHandshakeExecuteRequest(1)
@@ -659,56 +401,25 @@ class HandshakeExecutorTest {
       assertThat(receivedRequest1).isEqualTo(expectedRequest)
     }
 
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN), deviceDescriptor, false)
+    verify(mockMetrics).logHandshakeResult(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED), deviceDescriptor, false)
     verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN),
-        deviceDescriptor,
-        false,
-      )
-    verify(mockMetrics)
-      .logHandshakeResult(
-        createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED),
-        deviceDescriptor,
-        false,
-      )
-    verify(mockMetrics)
-      .logHandshakeConversion(
-        DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED,
-        deviceDescriptor,
-        false,
-      )
+      .logHandshakeConversion(DynamicLayoutInspectorAutoConnectInfo.HandshakeConversion.FROM_UNKNOWN_TO_SUPPORTED, deviceDescriptor, false)
     verifyNoMoreInteractions(mockMetrics)
   }
 
   @Test
   fun testIsHandshakeInProgress() {
-    val handshakeExecutor =
-      HandshakeExecutor(
-        deviceDescriptor,
-        stream,
-        scope,
-        workDispatcher,
-        mockClient,
-        mockMetrics,
-        pollingIntervalMs,
-      )
+    val handshakeExecutor = HandshakeExecutor(deviceDescriptor, stream, scope, workDispatcher, mockClient, mockMetrics, pollingIntervalMs)
     runBlocking {
       assertThat(handshakeExecutor.isHandshakeInProgress).isFalse()
       handshakeExecutor.post(HandshakeState.Connected)
       assertThat(handshakeExecutor.isHandshakeInProgress).isTrue()
       syncChannel.receive()
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       assertThat(handshakeExecutor.isHandshakeInProgress).isTrue()
       syncChannel.receive()
-      handshakeExecutor.post(
-        HandshakeState.Supported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.Supported(createTrackingForegroundProcessSupportedEvent(SupportType.SUPPORTED)))
       assertThat(handshakeExecutor.isHandshakeInProgress).isFalse()
 
       verifyNoMoreRequests()
@@ -716,18 +427,10 @@ class HandshakeExecutorTest {
       handshakeExecutor.post(HandshakeState.Connected)
       assertThat(handshakeExecutor.isHandshakeInProgress).isTrue()
       syncChannel.receive()
-      handshakeExecutor.post(
-        HandshakeState.UnknownSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.UnknownSupported(createTrackingForegroundProcessSupportedEvent(SupportType.UNKNOWN)))
       assertThat(handshakeExecutor.isHandshakeInProgress).isTrue()
       syncChannel.receive()
-      handshakeExecutor.post(
-        HandshakeState.NotSupported(
-          createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)
-        )
-      )
+      handshakeExecutor.post(HandshakeState.NotSupported(createTrackingForegroundProcessSupportedEvent(SupportType.NOT_SUPPORTED)))
       assertThat(handshakeExecutor.isHandshakeInProgress).isFalse()
 
       verifyNoMoreRequests()
@@ -742,12 +445,8 @@ class HandshakeExecutorTest {
     }
   }
 
-  private fun createTrackingForegroundProcessSupportedEvent(
-    supportType: SupportType
-  ): LayoutInspector.TrackingForegroundProcessSupported {
-    return LayoutInspector.TrackingForegroundProcessSupported.newBuilder()
-      .setSupportType(supportType)
-      .build()
+  private fun createTrackingForegroundProcessSupportedEvent(supportType: SupportType): LayoutInspector.TrackingForegroundProcessSupported {
+    return LayoutInspector.TrackingForegroundProcessSupported.newBuilder().setSupportType(supportType).build()
   }
 
   /** Verifies that no more events are sent on the sync channel */
@@ -766,26 +465,5 @@ class HandshakeExecutorTest {
         .setStreamId(streamId)
         .build()
     return ExecuteRequest.newBuilder().setCommand(command).build()
-  }
-
-  @Suppress("SameParameterValue")
-  private fun createFakeStream(streamId: Long, device: DeviceDescriptor): Common.Stream {
-    return Common.Stream.newBuilder()
-      .setStreamId(streamId)
-      .setDevice(device.toTransportDevice(streamId))
-      .build()
-  }
-
-  private fun DeviceDescriptor.toTransportDevice(id: Long): Common.Device {
-    return Common.Device.newBuilder()
-      .setDeviceId(id)
-      .setSerial(serial)
-      .setApiLevel(apiLevel.majorVersion)
-      .setApiLevelMinor(apiLevel.minorVersion)
-      .setFeatureLevel(apiLevel.majorVersion)
-      .setModel(model)
-      .setCpuAbi("arm64-v8a")
-      .setState(Common.Device.State.ONLINE)
-      .build()
   }
 }

@@ -16,6 +16,8 @@
 package com.google.idea.blaze.java.qsync
 
 import com.google.idea.blaze.base.qsync.QuerySyncManager
+import com.google.idea.blaze.qsync.java.AddDependencyGenSrcsJars.Companion.ENABLED_NAVIGATION_POLICY
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.CachedValueProvider.Result
@@ -36,10 +38,12 @@ class QuerySyncKtNavigationPolicy : KotlinAnalysisApiBasedDeclarationNavigationP
   private val localCache = ThreadLocal.withInitial { mutableMapOf<ClassId, KtClsFile>() }
 
   override fun getNavigationElement(ktDeclaration: KtDeclaration): KtElement {
+    if (!ENABLED_NAVIGATION_POLICY.value) return super.getNavigationElement(ktDeclaration)
+
     val classIdToKtClsFile = localCache.get()
     var classId: ClassId? = null
     val project = ktDeclaration.project
-    if (!project.isQuerySyncProject()) {
+    if (!project.isQuerySyncProject() || DaemonCodeAnalyzer.getInstance(project).isRunning) {
       return super.getNavigationElement(ktDeclaration)
     }
 
@@ -47,11 +51,12 @@ class QuerySyncKtNavigationPolicy : KotlinAnalysisApiBasedDeclarationNavigationP
       val psiFile = ktDeclaration.containingFile
       if (psiFile is KtClsFile) {
         // Determine ClassID based on declaration type
-        classId = if (ktDeclaration is KtClassLikeDeclaration) {
-          ktDeclaration.getClassId()
-        } else {
-          ktDeclaration.containingClassOrObject?.getClassId()
-        }
+        classId =
+          if (ktDeclaration is KtClassLikeDeclaration) {
+            ktDeclaration.getClassId()
+          } else {
+            ktDeclaration.containingClassOrObject?.getClassId()
+          }
 
         if (classId != null) {
           classIdToKtClsFile[classId] = psiFile
@@ -69,11 +74,7 @@ class QuerySyncKtNavigationPolicy : KotlinAnalysisApiBasedDeclarationNavigationP
     }
   }
 
-  override fun getClassesByClassId(
-    classId: ClassId,
-    project: Project,
-    scope: Scope
-  ): Sequence<KtClassOrObject> {
+  override fun getClassesByClassId(classId: ClassId, project: Project, scope: Scope): Sequence<KtClassOrObject> {
     val ktClsFile = localCache.get()[classId] ?: return super.getClassesByClassId(classId, project, scope)
 
     val psiFile = getSourceFile(ktClsFile, project)
@@ -92,10 +93,10 @@ class QuerySyncKtNavigationPolicy : KotlinAnalysisApiBasedDeclarationNavigationP
     return CachedValuesManager.getCachedValue(ktClsFile) {
       Result.create(
         ClassFileKtSourceFinder(ktClsFile).findSourceFile()
-        ?: ClassFileGenSrcJarJavaSourceFinder(ktClsFile).findSourceFile()
-        ?: ClassFileSrcJarJavaSourceFinder(ktClsFile).findSourceFile(),
+          ?: ClassFileGenSrcJarJavaSourceFinder(ktClsFile).findSourceFile()
+          ?: ClassFileSrcJarJavaSourceFinder(ktClsFile).findSourceFile(),
         ktClsFile,
-        QuerySyncManager.getInstance(project).projectModificationTracker
+        QuerySyncManager.getInstance(project).projectModificationTracker,
       )
     }
   }

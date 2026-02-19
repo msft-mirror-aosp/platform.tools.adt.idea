@@ -28,9 +28,9 @@ import org.jetbrains.android.dom.manifest.Application
 import org.jetbrains.android.dom.manifest.ApplicationComponent
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisFromWriteAction
 import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisFromWriteAction
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.android.isSubclassOf
@@ -46,27 +46,27 @@ import org.jetbrains.kotlin.psi.psiUtil.isAbstract
 import org.jetbrains.kotlin.psi.psiUtil.isPrivate
 import org.jetbrains.kotlin.psi.psiUtil.isProtected
 
-abstract class AbstractRegisterComponentAction<T : ApplicationComponent>(
-    text: String,
-    private val componentClassName: String,
-) : SelfTargetingIntention<KtClass>(KtClass::class.java, { text }) {
+abstract class AbstractRegisterComponentAction<T : ApplicationComponent>(text: String, private val componentClassName: String) :
+    SelfTargetingIntention<KtClass>(KtClass::class.java, { text }) {
 
     abstract fun Application.getCurrentComponents(): List<T>
+
     abstract fun Application.addComponent(): T
+
     abstract fun T.getComponentClass(): AndroidAttributeValue<PsiClass>
 
     final override fun isApplicableTo(element: KtClass, caretOffset: Int): Boolean {
         val androidFacet = AndroidFacet.getInstance(element.containingFile) ?: return false
         val manifest = Manifest.getMainManifest(androidFacet) ?: return false
         return !element.isLocal &&
-               !element.isAbstract() &&
-               !element.isPrivate() &&
-               !element.isProtected() &&
-               !element.isInner() &&
-               !element.name.isNullOrEmpty() &&
-               !element.insideBody(caretOffset) &&
-               element.isSubclassOfComponentType() &&
-               !element.isRegisteredComponent(manifest)
+            !element.isAbstract() &&
+            !element.isPrivate() &&
+            !element.isProtected() &&
+            !element.isInner() &&
+            !element.name.isNullOrEmpty() &&
+            !element.insideBody(caretOffset) &&
+            element.isSubclassOfComponentType() &&
+            !element.isRegisteredComponent(manifest)
     }
 
     @OptIn(KaAllowAnalysisOnEdt::class)
@@ -76,23 +76,16 @@ abstract class AbstractRegisterComponentAction<T : ApplicationComponent>(
                 @OptIn(KaAllowAnalysisFromWriteAction::class) // TODO(b/310045274)
                 allowAnalysisFromWriteAction {
                     analyze(this@isSubclassOfComponentType) {
-                        isSubclassOf(
-                            this@isSubclassOfComponentType,
-                            ClassId.topLevel(FqName(componentClassName)),
-                            strict = true
-                        )
+                        isSubclassOf(this@isSubclassOfComponentType, ClassId.topLevel(FqName(componentClassName)), strict = true)
                     }
                 }
             }
-        }
-        else {
+        } else {
             (descriptor as? ClassDescriptor)?.defaultType?.isSubclassOf(componentClassName, strict = true) ?: false
         }
 
     private fun KtClass.isRegisteredComponent(manifest: Manifest): Boolean =
-        manifest.application.getCurrentComponents().any {
-            it.getComponentClass().value?.qualifiedName == fqName?.asString()
-        }
+        manifest.application.getCurrentComponents().any { it.getComponentClass().value?.qualifiedName == fqName?.asString() }
 
     final override fun applyTo(element: KtClass, editor: Editor?) {
         AndroidFacet.getInstance(element.containingFile)?.let(Manifest::getMainManifest)?.let { manifest ->

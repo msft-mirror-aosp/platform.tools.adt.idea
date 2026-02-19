@@ -22,10 +22,10 @@ import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.FakeForegroundProcessDetection
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorProjectService
-import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.model.NotificationModel
@@ -36,9 +36,9 @@ import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetectio
 import com.android.tools.idea.layoutinspector.resource.data.Display
 import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
 import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.EmbeddedRendererPanel
 import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.LayoutInspectorRenderer
 import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.OnDeviceRendererPanel
-import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.StudioRendererPanel
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
@@ -90,8 +90,8 @@ class LayoutInspectorManagerTest {
         container = JPanel(),
         displays =
           listOf(
-            displayViewRule.newEmulatorView(displayId = Display.MAIN_DISPLAY_ID),
-            displayViewRule.newEmulatorView(displayId = 1),
+            displayViewRule.newEmulatorDisplayView(displayId = Display.MAIN_DISPLAY_ID),
+            displayViewRule.newEmulatorDisplayView(displayId = 1),
           ),
       )
     tab2 =
@@ -101,8 +101,8 @@ class LayoutInspectorManagerTest {
         container = JPanel(),
         displays =
           listOf(
-            displayViewRule.newEmulatorView(displayId = Display.MAIN_DISPLAY_ID),
-            displayViewRule.newEmulatorView(displayId = 1),
+            displayViewRule.newEmulatorDisplayView(displayId = Display.MAIN_DISPLAY_ID),
+            displayViewRule.newEmulatorDisplayView(displayId = 1),
           ),
       )
     xrTab =
@@ -110,22 +110,12 @@ class LayoutInspectorManagerTest {
         deviceId = DeviceId.ofPhysicalDevice("tab3"),
         content = BorderLayoutPanel(),
         container = JPanel(),
-        displays =
-          listOf(
-            displayViewRule.newEmulatorView(
-              avdCreator = { path -> FakeEmulator.createXrHeadsetAvd(path) }
-            )
-          ),
+        displays = listOf(displayViewRule.newEmulatorDisplayView(avdCreator = { path -> FakeEmulator.createXrHeadsetAvd(path) })),
       )
-    fakeToolWindowManager =
-      FakeToolWindowManager(displayViewRule.project, listOf(tab1, tab2, xrTab))
+    fakeToolWindowManager = FakeToolWindowManager(displayViewRule.project, listOf(tab1, tab2, xrTab))
 
     // replace ToolWindowManager with fake one
-    displayViewRule.project.replaceService(
-      ToolWindowManager::class.java,
-      fakeToolWindowManager,
-      displayViewRule.disposable,
-    )
+    displayViewRule.project.replaceService(ToolWindowManager::class.java, fakeToolWindowManager, displayViewRule.disposable)
     // Initiate state observer singleton.
     RunningDevicesStateObserver.getInstance(displayViewRule.project)
 
@@ -157,8 +147,7 @@ class LayoutInspectorManagerTest {
         foregroundProcessDetection = fakeForegroundProcessDetection,
         inspectorClientSettings = InspectorClientSettings(displayViewRule.project),
         launcher = launcher,
-        layoutInspectorModel =
-          model(displayViewRule.disposable) { view(ROOT, Rectangle(0, 0, 100, 100)) {} },
+        layoutInspectorModel = model(displayViewRule.disposable) { view(ROOT, Rectangle(0, 0, 100, 100)) {} },
         notificationModel = notificationModel,
         treeSettings = FakeTreeSettings(),
       )
@@ -180,7 +169,7 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
@@ -217,7 +206,7 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     fakeToolWindowManager.toolWindow.hide()
     waitForCondition(2, TimeUnit.SECONDS) { !fakeToolWindowManager.toolWindow.isVisible }
@@ -229,7 +218,7 @@ class LayoutInspectorManagerTest {
     waitForCondition(2, TimeUnit.SECONDS) { fakeToolWindowManager.toolWindow.isVisible }
 
     // The UI should be re-inject from scratch when the tool window is visible again.
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
   }
 
   @Test
@@ -240,7 +229,7 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
@@ -254,7 +243,7 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
@@ -269,17 +258,17 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
 
     verifyUiRemoved(tab1)
-    verifyUiInjected<StudioRendererPanel>(tab2)
+    verifyUiInjected<EmbeddedRendererPanel>(tab2)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
     verifyUiRemoved(tab1)
-    verifyUiInjected<StudioRendererPanel>(tab2)
+    verifyUiInjected<EmbeddedRendererPanel>(tab2)
 
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, false)
 
@@ -293,12 +282,12 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     // adding a new tab that doesn't have Layout Inspector enabled
     fakeToolWindowManager.addContent(tab2)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
     verifyUiRemoved(tab2)
   }
 
@@ -314,11 +303,11 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
 
     verifyUiRemoved(tab1)
-    verifyUiInjected<StudioRendererPanel>(tab2)
+    verifyUiInjected<EmbeddedRendererPanel>(tab2)
 
     fakeToolWindowManager.setSelectedContent(tab1)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
     verifyUiRemoved(tab2)
   }
 
@@ -332,9 +321,7 @@ class LayoutInspectorManagerTest {
 
     // Displays are added asynchronously. Wait for them to be added.
     tab1.displays.forEach { display ->
-      waitForCondition(2.seconds) {
-        display.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty()
-      }
+      waitForCondition(2.seconds) { display.component.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty() }
     }
 
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
@@ -349,23 +336,21 @@ class LayoutInspectorManagerTest {
 
     // Displays are added asynchronously. Wait for them to be added.
     tab2.displays.forEach { display ->
-      waitForCondition(2.seconds) {
-        display.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty()
-      }
+      waitForCondition(2.seconds) { display.component.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty() }
     }
 
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     verifyUiRemoved(tab1)
-    verifyUiInjected<StudioRendererPanel>(tab2)
+    verifyUiInjected<EmbeddedRendererPanel>(tab2)
 
     fakeToolWindowManager.setSelectedContent(tab1)
 
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
     verifyUiRemoved(tab2)
 
     fakeToolWindowManager.removeContent(tab1)
@@ -376,7 +361,7 @@ class LayoutInspectorManagerTest {
     assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
-    verifyUiInjected<StudioRendererPanel>(tab2)
+    verifyUiInjected<EmbeddedRendererPanel>(tab2)
 
     fakeToolWindowManager.removeContent(tab2)
 
@@ -392,40 +377,28 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
     val toolbar =
-      tab1.container.allChildren().filterIsInstance<ActionToolbar>().first {
-        it.component.name == "LayoutInspector.MainToolbar"
-      }
-    FakeUi(
-      toolbar.component,
-      createFakeWindow = true,
-      parentDisposable = displayViewRule.disposable,
-    )
+      tab1.container.allChildren().filterIsInstance<ActionToolbar>().first { it.component.name == "LayoutInspector.MainToolbar" }
+    FakeUi(toolbar.component, createFakeWindow = true, parentDisposable = displayViewRule.disposable)
 
-    waitForCondition(2.seconds) {
-      toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any()
-    }
-    val toggleDeepInspectAction =
-      toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()
-    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction)))
-      .isFalse()
+    waitForCondition(2.seconds) { toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any() }
+    val toggleDeepInspectAction = toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isFalse()
 
     toggleDeepInspectAction.actionPerformed(createTestActionEvent(toggleDeepInspectAction))
-    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction)))
-      .isTrue()
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isTrue()
 
     tab1.displays.forEach { display ->
-      val renderer = display.allChildren().filterIsInstance<StudioRendererPanel>().first()
+      val renderer = display.component.allChildren().filterIsInstance<EmbeddedRendererPanel>().first()
       waitForCondition(2.seconds) { renderer.interceptClicks }
     }
 
-    layoutInspector.processModel?.selectedProcess = MODERN_DEVICE.createProcess()
+    layoutInspector.processModel?.selectedProcess = DEVICE_1.createProcess()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction)))
-      .isFalse()
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isFalse()
 
     tab1.displays.forEach { display ->
-      val renderer = display.allChildren().filterIsInstance<StudioRendererPanel>().first()
+      val renderer = display.component.allChildren().filterIsInstance<EmbeddedRendererPanel>().first()
       waitForCondition(2.seconds) { !renderer.interceptClicks }
     }
   }
@@ -442,7 +415,7 @@ class LayoutInspectorManagerTest {
 
     assertThat(layoutInspector.inspectorClientSettings.inLiveMode).isFalse()
 
-    layoutInspector.processModel?.selectedProcess = MODERN_DEVICE.createProcess()
+    layoutInspector.processModel?.selectedProcess = DEVICE_1.createProcess()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     assertThat(layoutInspector.inspectorClientSettings.inLiveMode).isTrue()
@@ -456,33 +429,22 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
     val toolbar =
-      tab1.container.allChildren().filterIsInstance<ActionToolbar>().first {
-        it.component.name == "LayoutInspector.MainToolbar"
-      }
-    FakeUi(
-      toolbar.component,
-      createFakeWindow = true,
-      parentDisposable = displayViewRule.disposable,
-    )
+      tab1.container.allChildren().filterIsInstance<ActionToolbar>().first { it.component.name == "LayoutInspector.MainToolbar" }
+    FakeUi(toolbar.component, createFakeWindow = true, parentDisposable = displayViewRule.disposable)
 
-    waitForCondition(10.seconds) {
-      toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any()
-    }
-    val toggleDeepInspectAction =
-      toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()
-    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction)))
-      .isFalse()
+    waitForCondition(10.seconds) { toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any() }
+    val toggleDeepInspectAction = toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isFalse()
     tab1.displays.forEach { display ->
-      val renderer = display.allChildren().filterIsInstance<StudioRendererPanel>().first()
+      val renderer = display.component.allChildren().filterIsInstance<EmbeddedRendererPanel>().first()
       assertThat(renderer.interceptClicks).isFalse()
     }
 
     toggleDeepInspectAction.actionPerformed(createTestActionEvent(toggleDeepInspectAction))
 
-    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction)))
-      .isTrue()
+    assertThat(toggleDeepInspectAction.isSelected(createTestActionEvent(toggleDeepInspectAction))).isTrue()
     tab1.displays.forEach { display ->
-      val renderer = display.allChildren().filterIsInstance<StudioRendererPanel>().first()
+      val renderer = display.component.allChildren().filterIsInstance<EmbeddedRendererPanel>().first()
       waitForCondition(2.seconds) { renderer.interceptClicks }
     }
 
@@ -496,9 +458,8 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
-    assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector)
-      .containsExactly(tab1.deviceId)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
+    assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector).containsExactly(tab1.deviceId)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, false)
 
@@ -513,9 +474,8 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
-    assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector)
-      .containsExactly(tab1.deviceId)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
+    assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector).containsExactly(tab1.deviceId)
 
     Disposer.dispose(layoutInspectorManager)
 
@@ -531,19 +491,16 @@ class LayoutInspectorManagerTest {
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
     var isWorkbenchDisposed = false
-    val workbench =
-      tab1.container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>().first()
+    val workbench = tab1.container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>().first()
     Disposer.register(workbench) { isWorkbenchDisposed = true }
 
     var isRendererDisposed = mutableListOf<Boolean>()
 
     tab1.displays.forEach { display ->
       // Displays are added asynchronously. Wait for them to be added.
-      waitForCondition(2.seconds) {
-        display.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty()
-      }
+      waitForCondition(2.seconds) { display.component.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty() }
 
-      val renderer = display.allChildren().filterIsInstance<LayoutInspectorRenderer>().first()
+      val renderer = display.component.allChildren().filterIsInstance<LayoutInspectorRenderer>().first()
       Disposer.register(renderer) { isRendererDisposed.add(true) }
     }
 
@@ -611,12 +568,12 @@ class LayoutInspectorManagerTest {
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
 
-    verifyUiInjected<StudioRendererPanel>(tab1)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
 
     layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
 
     verifyUiRemoved(tab1)
-    verifyUiInjected<StudioRendererPanel>(tab2)
+    verifyUiInjected<EmbeddedRendererPanel>(tab2)
   }
 
   @Test
@@ -625,9 +582,8 @@ class LayoutInspectorManagerTest {
     val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
 
     layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
-    verifyUiInjected<StudioRendererPanel>(tab1)
-    assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector)
-      .containsExactly(tab1.deviceId)
+    verifyUiInjected<EmbeddedRendererPanel>(tab1)
+    assertThat(LayoutInspectorManagerGlobalState.tabsWithLayoutInspector).containsExactly(tab1.deviceId)
 
     layoutInspectorManager.disable()
 

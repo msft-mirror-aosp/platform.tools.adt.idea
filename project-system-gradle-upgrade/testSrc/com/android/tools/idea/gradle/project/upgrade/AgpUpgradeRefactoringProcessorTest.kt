@@ -27,12 +27,12 @@ import com.intellij.openapi.projectRoots.impl.JavaAwareProjectJdkTableImpl
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.testFramework.RunsInEdt
+import java.util.Comparator
 import org.junit.After
 import org.junit.Assert
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
-import java.util.Comparator
 
 @RunsInEdt
 class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
@@ -72,25 +72,9 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     verifyFileContents(buildFile, TestFileName(filename))
   }
 
-  // At the moment, the only processor which adds content to build files (as opposed to modifying or deleting existing content) is the
-  // Java8 processor.
-  private fun everythingButJava8EnabledNoEffectOn(filename: String) {
-    writeToBuildFile(TestFileName(filename))
-    val latestKnownVersion = AgpVersion.parse(ANDROID_GRADLE_PLUGIN_VERSION)
-    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("1.0.0"), latestKnownVersion)
-    processor.componentRefactoringProcessors.forEach { it.isEnabled = it !is Java8DefaultRefactoringProcessor }
-    processor.run()
-    verifyFileContents(buildFile, TestFileName(filename))
-  }
-
   @Test
   fun testEverythingDisabledNoEffectOnAgpVersion() {
     everythingDisabledNoEffectOn("AgpVersion/VersionInLiteral")
-  }
-
-  @Test
-  fun testEverythingDisabledNoEffectOnJava8Default() {
-    everythingDisabledNoEffectOn("Java8Default/SimpleApplicationNoLanguageLevel")
   }
 
   @Test
@@ -117,13 +101,8 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   }
 
   @Test
-  fun testEverythingButJava8EnabledNoEffectOnEmpty() {
-    everythingButJava8EnabledNoEffectOn("AgpUpgrade/Empty")
-  }
-
-  @Test
-  fun testEverythingButJava8EnabledNoEffectOnMinimal() {
-    everythingButJava8EnabledNoEffectOn("AgpUpgrade/Minimal")
+  fun testEverythingEnabledNoEffectOnMinimal() {
+    everythingEnabledNoEffectOn("AgpUpgrade/Minimal")
   }
 
   @Test
@@ -160,15 +139,6 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     processor.componentRefactoringProcessors.forEach { it.isEnabled = false }
     processor.run()
     assertThat(processor.targets).isNotEmpty()
-  }
-
-  @Test
-  fun testEnabledEffectOnJava8Default() {
-    writeToBuildFile(TestFileName("Java8Default/SimpleApplicationNoLanguageLevel"))
-    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("4.1.2"), AgpVersion.parse("4.2.0"))
-    processor.componentRefactoringProcessors.forEach { it.isEnabled = it is Java8DefaultRefactoringProcessor }
-    processor.run()
-    verifyFileContents(buildFile, TestFileName("Java8Default/SimpleApplicationNoLanguageLevelExpected"))
   }
 
   @Test
@@ -232,11 +202,11 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   @Test
   fun testEnabledEffectOnGradleVersion() {
     writeToGradleWrapperPropertiesFile(TestFileName("GradleVersion/OldGradleVersion"))
-    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("3.5.0"), AgpVersion.parse("4.1.0"))
+    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("4.2.0"), AgpVersion.parse("8.8.0"))
     processor.componentRefactoringProcessors.forEach { it.isEnabled = it is GradleVersionRefactoringProcessor }
     processor.run()
 
-    val expectedText = FileUtil.loadFile(TestFileName("GradleVersion/OldGradleVersion410Expected").toFile(testDataPath, ""))
+    val expectedText = FileUtil.loadFile(TestFileName("GradleVersion/OldGradleVersion880Expected").toFile(testDataPath, ""))
     val actualText = VfsUtilCore.loadText(gradleWrapperPropertiesFile)
     Assert.assertEquals(expectedText, actualText)
   }
@@ -244,10 +214,10 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   @Test
   fun testEnabledEffectOnGradlePlugins() {
     writeToBuildFile(TestFileName("GradlePlugins/KotlinPluginVersionInLiteral"))
-    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("3.4.0"), AgpVersion.parse("4.1.0"))
+    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("4.2.0"), AgpVersion.parse("9.0.0"))
     processor.componentRefactoringProcessors.forEach { it.isEnabled = it is GradlePluginsRefactoringProcessor }
     processor.run()
-    verifyFileContents(buildFile, TestFileName("GradlePlugins/KotlinPluginVersionInLiteralExpected"))
+    verifyFileContents(buildFile, TestFileName("GradlePlugins/KotlinPluginVersionInLiteral90Expected"))
   }
 
   @Test
@@ -271,7 +241,10 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("4.0.0"), AgpVersion.parse("8.0.0"))
     processor.componentRefactoringProcessors.forEach { it.isEnabled = it.isMigrateFailureRetention() }
     processor.run()
-    verifyFileContents(buildFile, TestFileName("RemoveFailureRetentionAndEmulatorSnapshots/RemoveFailureRetentionAndEmulatorSnapshotsExpected"))
+    verifyFileContents(
+      buildFile,
+      TestFileName("RemoveFailureRetentionAndEmulatorSnapshots/RemoveFailureRetentionAndEmulatorSnapshotsExpected"),
+    )
   }
 
   @Test
@@ -342,13 +315,14 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     val latestKnownVersion = AgpVersion.parse(ANDROID_GRADLE_PLUGIN_VERSION)
     val earliestSupportedVersion = AgpVersion.parse(SdkConstants.GRADLE_PLUGIN_MINIMUM_FORCED_UPGRADE_VERSION)
     val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("1.0.0"), latestKnownVersion)
-    val processorsByEnd = processor.componentRefactoringProcessors.mapNotNull {
-      when (val info = it.necessityInfo) {
-        is PointNecessity -> it to info.change
-        is RegionNecessity -> it to info.originalRemoved
-        else -> null
+    val processorsByEnd =
+      processor.componentRefactoringProcessors.mapNotNull {
+        when (val info = it.necessityInfo) {
+          is PointNecessity -> it to info.change
+          is RegionNecessity -> it to info.originalRemoved
+          else -> null
+        }
       }
-    }
     assertThat(processorsByEnd.filter { it.second < earliestSupportedVersion }).isEmpty()
   }
 
@@ -356,16 +330,17 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   fun testNecessityOrder() {
     val latestKnownVersion = AgpVersion.parse(ANDROID_GRADLE_PLUGIN_VERSION)
     val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("1.0.0"), latestKnownVersion)
-    val processorsWithEndAndStart = processor.componentRefactoringProcessors.mapNotNull {
-      when (val info = it.necessityInfo) {
-        is PointNecessity -> Triple(it, info.change, info.change)
-        is RegionNecessity -> Triple(it, info.originalRemoved, info.replacementAvailable)
-        else -> null
+    val processorsWithEndAndStart =
+      processor.componentRefactoringProcessors.mapNotNull {
+        when (val info = it.necessityInfo) {
+          is PointNecessity -> Triple(it, info.change, info.change)
+          is RegionNecessity -> Triple(it, info.originalRemoved, info.replacementAvailable)
+          else -> null
+        }
       }
-    }
     // There is no guarantee that we will be able to order by both start and end versions.  Somewhat arbitrarily we prefer the
     // ordering by end, then start.
-    val comparator = Comparator.comparing(Triple<*,AgpVersion,AgpVersion>::second).thenComparing(Triple<*,AgpVersion,AgpVersion>::third)
+    val comparator = Comparator.comparing(Triple<*, AgpVersion, AgpVersion>::second).thenComparing(Triple<*, AgpVersion, AgpVersion>::third)
     assertThat(processorsWithEndAndStart).isOrdered(comparator)
   }
 }

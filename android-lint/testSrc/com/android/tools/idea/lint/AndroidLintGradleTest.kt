@@ -22,6 +22,7 @@ import com.android.tools.idea.lint.common.AndroidLintInspectionBase
 import com.android.tools.idea.lint.common.AndroidLintSimilarGradleDependencyInspection
 import com.android.tools.idea.lint.common.AndroidLintUseTomlInsteadInspection
 import com.android.tools.idea.lint.common.AndroidLintUseValueOfInspection
+import com.android.tools.idea.lint.common.AndroidLintVisibleForTestsInspection
 import com.android.tools.idea.lint.common.AndroidLintWrongGradleMethodInspection
 import com.android.tools.idea.lint.inspections.AndroidLintAligned16KBInspection
 import com.android.tools.idea.lint.inspections.AndroidLintDuplicateActivityInspection
@@ -57,9 +58,11 @@ import java.io.File
 import java.util.Locale
 import org.jetbrains.android.AndroidTestBase
 import org.jetbrains.android.AndroidTestBase.getAndroidPluginHome
+import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.fail
+import org.junit.Assume
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -108,12 +111,7 @@ class AndroidLintGradleTest {
     projectRule.loadProject(TestProjectPaths.TEST_ARTIFACTS_LINT)
 
     val debug = fixture.loadFile("app/src/debug/AndroidManifest.xml")
-    fixture.checkLint(
-      debug,
-      AndroidLintMockLocationInspection(),
-      "android.permission.ACCESS_|MOCK_LOCATION",
-      "No warnings.",
-    )
+    fixture.checkLint(debug, AndroidLintMockLocationInspection(), "android.permission.ACCESS_|MOCK_LOCATION", "No warnings.")
     val main = fixture.loadFile("app/src/main/AndroidManifest.xml")
 
     fixture.checkLint(
@@ -174,20 +172,9 @@ class AndroidLintGradleTest {
     """,
     )
 
-    val androidTestFile =
-      fixture.loadFile("app/src/androidTest/java/google/testartifacts/ExampleTest.java")
-    fixture.checkLint(
-      androidTestFile,
-      AndroidLintNewApiInspection(),
-      "LocalDate.n|ow",
-      "No warnings.",
-    )
-    fixture.checkLint(
-      androidTestFile,
-      AndroidLintNewApiInspection(),
-      "collection.st|ream",
-      "No warnings.",
-    )
+    val androidTestFile = fixture.loadFile("app/src/androidTest/java/google/testartifacts/ExampleTest.java")
+    fixture.checkLint(androidTestFile, AndroidLintNewApiInspection(), "LocalDate.n|ow", "No warnings.")
+    fixture.checkLint(androidTestFile, AndroidLintNewApiInspection(), "collection.st|ream", "No warnings.")
   }
 
   @Test
@@ -228,11 +215,11 @@ class AndroidLintGradleTest {
       AndroidLintUseTomlInsteadInspection(),
       "com.android.support:appcompat-v|7:28.0.0",
       """
-        Warning: Use version catalog instead
-            implementation("com.android.support:appcompat-v7:28.0.0")
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Fix: Replace with new library catalog declaration for appcompat-v7
-            Fix: Suppress UseTomlInstead with a comment
+      Warning: Use version catalog instead
+          implementation("com.android.support:appcompat-v7:28.0.0")
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          Fix: Replace with new library catalog declaration for appcompat-v7
+          Fix: Suppress UseTomlInstead with a comment
       """
         .trimIndent(),
     )
@@ -242,11 +229,11 @@ class AndroidLintGradleTest {
       AndroidLintUseTomlInsteadInspection(),
       "com.android.support:appcompat-v|7:28.0.0",
       """
-        Warning: Use version catalog instead
-            implementation("com.android.support:appcompat-v7:28.0.0")
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Fix: Replace with new library catalog declaration for appcompat-v7
-            Fix: Suppress UseTomlInstead with a comment
+      Warning: Use version catalog instead
+          implementation("com.android.support:appcompat-v7:28.0.0")
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          Fix: Replace with new library catalog declaration for appcompat-v7
+          Fix: Suppress UseTomlInstead with a comment
       """
         .trimIndent(),
     )
@@ -261,7 +248,7 @@ class AndroidLintGradleTest {
       AndroidLintSimilarGradleDependencyInspection(),
       "androidx-core-ktx = { group = \"androidx.|core\", name = \"core-ktx\", version.ref = \"coreKtx\" }\n",
       """
-        No warnings.
+      No warnings.
       """
         .trimIndent(),
     )
@@ -269,6 +256,7 @@ class AndroidLintGradleTest {
 
   @Test
   fun testTomlWarningFor16KbAlignment() {
+    Assume.assumeTrue(KotlinPluginModeProvider.isK2Mode())
     projectRule.loadProject(TestProjectPaths.TEST_SIMILAR_DEPENDENCIES_IN_VERSION_CATALOG)
     val appBuildFile = fixture.loadFile("gradle/libs.versions.toml")
     fixture.checkLint(
@@ -374,6 +362,36 @@ class AndroidLintGradleTest {
     )
   }
 
+  @Test
+  fun testComAndroidTestProject() {
+    projectRule.loadProject(TestProjectPaths.TEST_ONLY_VISIBILITY)
+
+    val appFile = fixture.loadFile("app/src/main/java/com/example/myapplication/Utils.kt")
+    fixture.checkLint(
+      appFile,
+      AndroidLintVisibleForTestsInspection(),
+      "fo|o(x+1)" to
+        """
+        Warning: This method should only be accessed from tests or within private scope
+            fun add(x: Int) = foo(x+1)
+                              ~~~
+            Fix: Suppress VisibleForTests with an annotation
+        """
+          .trimIndent(),
+    )
+
+    val testFile = fixture.loadFile("test/src/main/java/com/example/mylibrary/Test.kt")
+    fixture.checkLint(
+      testFile,
+      AndroidLintVisibleForTestsInspection(),
+      "fo|o(2)" to
+        """
+        No warnings.
+        """
+          .trimIndent(),
+    )
+  }
+
   fun doGlobalInspectionTest(
     tool: GlobalInspectionTool,
     scope: AnalysisScope,
@@ -381,15 +399,9 @@ class AndroidLintGradleTest {
     // We can't just override
     //    getTestDataDirectoryWorkspaceRelativePath() = "tools/adt/idea/android-lint/testData"
     // here because that interferes with the loadProject() operations running initially
-    fixture.testDataPath =
-      File(File(getAndroidPluginHome()).parentFile, "android-lint/testData").path
+    fixture.testDataPath = File(File(getAndroidPluginHome()).parentFile, "android-lint/testData").path
     val testDir = "/lint/global/${PlatformTestUtil.getTestName(nameRule.methodName, true)}"
-    return AndroidTestBase.doGlobalInspectionTest(
-      fixture,
-      GlobalInspectionToolWrapper(tool),
-      testDir,
-      scope,
-    )
+    return AndroidTestBase.doGlobalInspectionTest(fixture, GlobalInspectionToolWrapper(tool), testDir, scope)
   }
 }
 
@@ -411,12 +423,7 @@ fun PsiFile.findCaretOffset(caret: String): Int {
   return index + delta
 }
 
-fun CodeInsightTestFixture.checkLint(
-  psiFile: PsiFile,
-  inspection: AndroidLintInspectionBase,
-  caret: String,
-  expected: String,
-) {
+fun CodeInsightTestFixture.checkLint(psiFile: PsiFile, inspection: AndroidLintInspectionBase, caret: String, expected: String) {
   checkLint(psiFile, inspection, caret to expected)
 }
 
@@ -433,8 +440,7 @@ fun CodeInsightTestFixture.checkLint(
     val sb = StringBuilder()
     val target = psiFile.findCaretOffset(caret)
     editor.caretModel.moveToOffset(target)
-    val highlights =
-      doHighlighting(HighlightSeverity.WARNING).asSequence().sortedBy { it.startOffset }
+    val highlights = doHighlighting(HighlightSeverity.WARNING).asSequence().sortedBy { it.startOffset }
     for (highlight in highlights) {
       val startIndex = highlight.startOffset
       val endOffset = highlight.endOffset
@@ -503,11 +509,7 @@ fun CodeInsightTestFixture.checkLintBatch(
   for (descriptor in descriptors) {
     if (descriptor is ProblemDescriptor) {
       val element = descriptor.psiElement
-      sb
-        .append(element.containingFile.virtualFile.name)
-        .append(":")
-        .append(element.getLineNumber())
-        .append(": ")
+      sb.append(element.containingFile.virtualFile.name).append(":").append(element.getLineNumber()).append(": ")
       val highlightType = descriptor.highlightType
       val severity =
         when (highlightType) {
@@ -520,9 +522,7 @@ fun CodeInsightTestFixture.checkLintBatch(
           else -> highlightType.name.lowercase(Locale.ROOT).capitalize()
         }
       sb.append(severity).append(": ")
-      sb
-        .append(descriptor.toString().removePrefix("<html>").removeSuffix("</html>").trim())
-        .append("\n")
+      sb.append(descriptor.toString().removePrefix("<html>").removeSuffix("</html>").trim()).append("\n")
       val fixes = descriptor.fixes
       if (fixes != null) {
         for (fix in fixes) {

@@ -41,11 +41,7 @@ object RenderingBundle {
     return readFromBundleAndFormat(bundle!!, key, *params)
   }
 
-  private fun readFromBundleAndFormat(
-    bundle: ResourceBundle,
-    key: String,
-    vararg params: Any,
-  ): String {
+  private fun readFromBundleAndFormat(bundle: ResourceBundle, key: String, vararg params: Any): String {
     val rawValue = bundle.getString(key)
     val locale = bundle.locale
     val format = MessageFormat(rawValue, locale)

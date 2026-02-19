@@ -34,11 +34,29 @@ iml_module(
     name = "intellij.android.gradle.dsl.android",
     srcs = ["src"],
     iml_files = ["intellij.android.gradle.dsl.android.iml"],
+    module_visibility = [
+        # Gradle Project System tools
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
+        "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd",
+        "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade",
+        # Templates and Wizards
+        "//tools/adt/idea/android-npw:intellij.android.newProjectWizard",
+        "//tools/adt/idea/android-templates:intellij.android.templates",
+        # Kotlin Android Gradle Configurator
+        "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
+        # Project System Token implementation modules
+        "//tools/studio/google/cloud/testing/test-recorder/gradle:test-recorder.gradle",
+        # Android Ndk
+        "//tools/vendor/google/android-ndk:android-ndk",
+        # AI plugin
+        "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
+    ],
     resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
+        "//tools/adt/idea/gradle-dsl-plugin:intellij.android.gradle.dsl.plugin",
     ],
 )

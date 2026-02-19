@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.gradle.variant.conflict
 
-import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.testutils.TestUtils
+import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.testing.AndroidGradleTests
 import com.android.tools.idea.testing.AndroidModuleDependency
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
@@ -24,22 +24,15 @@ import com.android.tools.idea.testing.AndroidProjectBuilder
 import org.jetbrains.android.AndroidTestCase
 
 abstract class ConflictsTestCase : AndroidTestCase() {
-  protected fun appModuleBuilder(
-    appPath: String = ":app",
-    selectedVariant: String = "debug",
-    dependOnVariant: String? = "debug"
-  ) = AndroidModuleModelBuilder(
-    appPath,
-    selectedVariant,
-    AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":lib", dependOnVariant)) })
-  )
+  protected fun appModuleBuilder(appPath: String = ":app", selectedVariant: String = "debug", dependOnVariant: String? = "debug") =
+    AndroidModuleModelBuilder(
+      appPath,
+      selectedVariant,
+      AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":lib", dependOnVariant)) }),
+    )
 
   protected fun libModuleBuilder(selectedVariant: String = "debug") =
-    AndroidModuleModelBuilder(
-      ":lib",
-      selectedVariant,
-      AndroidProjectBuilder(projectType = { IdeAndroidProjectType.PROJECT_TYPE_LIBRARY })
-    )
+    AndroidModuleModelBuilder(":lib", selectedVariant, AndroidProjectBuilder(projectType = { IdeAndroidProjectType.PROJECT_TYPE_LIBRARY }))
 
   override fun setUp() {
     super.setUp()

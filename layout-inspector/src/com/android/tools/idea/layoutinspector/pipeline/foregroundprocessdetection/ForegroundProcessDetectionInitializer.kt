@@ -20,6 +20,7 @@ import com.android.tools.idea.appinspection.api.process.SimpleProcessListener
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
+import com.android.tools.idea.layoutinspector.setLayoutInspectorSelectedProcess
 import com.android.tools.idea.transport.TransportClient
 import com.android.tools.idea.transport.TransportService
 import com.android.tools.idea.transport.manager.TransportStreamManager
@@ -31,8 +32,8 @@ import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
- * Object used to create an initialized instance of [ForegroundProcessDetection]. Doing this in a
- * designated object is useful to facilitate testing.
+ * Object used to create an initialized instance of [ForegroundProcessDetection]. Doing this in a designated object is useful to facilitate
+ * testing.
  */
 object ForegroundProcessDetectionInitializer {
 
@@ -58,7 +59,7 @@ object ForegroundProcessDetectionInitializer {
         override fun onProcessConnected(process: ProcessDescriptor) {
           synchronized(lock) {
             if (missingForegroundProcess?.pid == process.pid) {
-              processModel.selectedProcess = process
+              processModel.setLayoutInspectorSelectedProcess(process)
               logger.info(
                 "Foreground process restored to \"${process.name}\" " +
                   "on device \"${process.device.manufacturer} ${process.device.model}\" " +
@@ -92,7 +93,7 @@ object ForegroundProcessDetectionInitializer {
         }
 
         // set the foreground process to be the selected process.
-        processModel.selectedProcess = foregroundProcess.matchToProcessDescriptor(processModel)
+        processModel.setLayoutInspectorSelectedProcess(foregroundProcess.matchToProcessDescriptor(processModel))
       }
     }
   }
@@ -112,8 +113,7 @@ object ForegroundProcessDetectionInitializer {
     deviceModel: DeviceModel,
     coroutineScope: CoroutineScope,
     streamManager: TransportStreamManager,
-    foregroundProcessListener: ForegroundProcessListener =
-      getDefaultForegroundProcessListener(parentDisposable, deviceModel, processModel),
+    foregroundProcessListener: ForegroundProcessListener = getDefaultForegroundProcessListener(parentDisposable, deviceModel, processModel),
     transportClient: TransportClient = getDefaultTransportClient(),
     metrics: ForegroundProcessDetectionMetrics,
     layoutInspectorMetrics: LayoutInspectorMetrics = LayoutInspectorMetrics,

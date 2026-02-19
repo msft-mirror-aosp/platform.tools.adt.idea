@@ -1,5 +1,6 @@
 """This file contains Bazel build rules for the Android Studio release distribution"""
 
+load("@rules_java//java:defs.bzl", "java_binary")
 load("//build/bazel/rules/gathering:prebuilt_package_metadata.bzl", "prebuilt_package_metadata")
 load("//build/bazel/rules/gathering:write_package_metadata.bzl", "write_package_metadata")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "AppIconInfo", "replace_app_icon")
@@ -77,6 +78,9 @@ type_channel_mappings = {
     "Stable": "Stable",
 }
 
+def _lnzipper_resources(_os, _num_inputs):
+    return {"cpu": 16, "memory": 4096}
+
 def _zipper(ctx, desc, map, out, deps = []):
     files = [f for (p, f) in map if f]
     zipper_files = [r + "=" + (f.path if f else "") + "\n" for r, f in map]
@@ -120,6 +124,7 @@ def _lnzipper(ctx, desc, filemap, out, keep_symlink = True, attrs = {}, deps = [
         outputs = [out],
         executable = ctx.executable._lnzipper,
         execution_requirements = {"no-sandbox": "true", "no-remote": "true", "cpu:16": ""},
+        resource_set = _lnzipper_resources,
         arguments = args,
         progress_message = "lnzipping %s" % desc,
         mnemonic = "lnzipper",
@@ -241,8 +246,9 @@ def _studio_plugin_os(ctx, platform, plugin_jars, plugin_dir):
     return files
 
 def _depset_subtract(depset1, depset2):
-    dict1 = {e1: None for e1 in depset1.to_list()}
-    return [e2 for e2 in depset2.to_list() if e2 not in dict1]
+    # Use label here so that aliases are treated the same as their actuals.
+    dict1 = {e1.label: None for e1 in depset1.to_list()}
+    return [e2 for e2 in depset2.to_list() if e2.label not in dict1]
 
 def _label_str(label):
     if label.workspace_name:
@@ -541,26 +547,24 @@ def _get_channel_info(version_type):
 
 def _form_version_full(ctx):
     """Forms version_full based on code name, version type, and release number"""
-    config = ctx.attr.configuration[_ConfigurationInfo]
-    channel = _get_channel_info(config.version_type)
-
     code_name_and_patch_components = (ctx.attr.version_code_name +
                                       " | " +
                                       "{0}.{1}.{2}")
+    patch_name = _form_patch_name(ctx)
+    patch_name_suffix = " " + patch_name if patch_name else ""
+    return code_name_and_patch_components + patch_name_suffix
 
+def _form_patch_name(ctx):
+    """E.g., Canary 4, RC 1, Patch 1, Nightly 2025-01-01"""
+    config = ctx.attr.configuration[_ConfigurationInfo]
+    channel = _get_channel_info(config.version_type)
     if channel == "Stable":
         if ctx.attr.version_release_number <= 1:
-            return code_name_and_patch_components
-
-        return code_name_and_patch_components + " Patch " + str(ctx.attr.version_release_number - 1)
+            return ""
+        return "Patch " + str(ctx.attr.version_release_number - 1)
     if config.version_suffix:
-        return code_name_and_patch_components + " " + config.version_suffix
-
-    return (code_name_and_patch_components +
-            " " +
-            config.version_type +
-            " " +
-            str(ctx.attr.version_release_number))
+        return config.version_suffix
+    return config.version_type + " " + str(ctx.attr.version_release_number)
 
 def _form_studio_version_component(intellij_info, studio_micro):
     """Returns the 4th component of the full 5-component build number, identifying a specific Studio release"""
@@ -635,6 +639,7 @@ def _produce_manifest(ctx, platform, platform_files):
     args += ["--resources_jar", resources_jar.path]
     args += ["--channel", channel]
     args += ["--code_name", ctx.attr.version_code_name]
+    args += ["--patch_name", _form_patch_name(ctx)]
 
     ctx.actions.run(
         inputs = [build_txt, resources_jar, ctx.info_file, ctx.version_file],
@@ -925,7 +930,7 @@ def _android_studio_impl(ctx):
     _produce_update_message_html(ctx)
 
     host_platform = platform_by_name[ctx.attr.host_platform_name]
-    script = ctx.actions.declare_file("%s/%s.py" % (ctx.attr.name, ctx.attr.name))
+    script = ctx.actions.declare_file("%s/%s.py" % (ctx.attr.name, ctx.attr.config_profile))
     studio_files = _studio_runner(ctx, ctx.attr.name, all_files[host_platform], script)
 
     # Leave everything that is not the main zips as implicit outputs
@@ -962,6 +967,7 @@ _android_studio = rule(
         "version_release_number": attr.int(),
         "update_message_template": attr.label(allow_single_file = True),
         "configuration": attr.label(providers = [_ConfigurationInfo]),
+        "config_profile": attr.string(),
         "_singlejar": attr.label(
             default = Label("@bazel_tools//tools/jdk:singlejar"),
             cfg = "exec",
@@ -1070,7 +1076,7 @@ def android_studio(
         name,
         plugins,
         configurations,
-        legacy_default_configuration,
+        legacy_default_configuration = None,
         generate_package_metadata = False,
         **kwargs):
     if generate_package_metadata:
@@ -1084,17 +1090,16 @@ def android_studio(
     for configuration in configurations:
         config_name = Label(configuration).name
         configured_targets["." + config_name] = configuration
-        if config_name == legacy_default_configuration:
+        if legacy_default_configuration and config_name == legacy_default_configuration:
             configured_targets[""] = configuration
             default_configuration = configuration
-    if not default_configuration:
-        fail("Default configuration " + legacy_default_configuration + " not found in list of configurations")
 
     for suffix, configuration in configured_targets.items():
         _android_studio(
             name = name + suffix,
             compress = is_release(),
             configuration = configuration,
+            config_profile = name,
             host_platform_name = select({
                 "@platforms//os:linux": LINUX.name,
                 "//tools/base/bazel/platforms:macos-x86_64": MAC.name,
@@ -1372,6 +1377,7 @@ def intellij_platform_import(name, spec):
         name = name + "-dist",
         dir = "",
         dir_relative_to_repository = True,
+        compress = True,  # Workaround for b/467773803: IntelliJ 2025.3 is too large for zipper output.
         files = native.glob(
             include = ["**"],
             exclude = ["spec.bzl", "BUILD.bazel", "WORKSPACE"],
@@ -1626,4 +1632,62 @@ def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars):
             "//tools/base/bazel/platforms:macos-arm64": jars_darwin_aarch64,
             "//conditions:default": jars_linux,
         }),
+    )
+
+def _studio_project_model_generator_impl(ctx):
+    out_dir = ctx.actions.declare_directory(ctx.attr.out_dir_name)
+    project_path = ctx.attr.project_path
+    manifest_path = ctx.attr.manifest_path
+    runfiles_path = ctx.executable.tool.path + ".runfiles"
+    tool_runfiles = ctx.attr.tool[DefaultInfo].default_runfiles.files
+    all_args = [out_dir.path, project_path, manifest_path] + ctx.attr.tool_args
+
+    ctx.actions.run(
+        outputs = [out_dir],
+        inputs = depset(ctx.files.srcs, transitive = [tool_runfiles]),
+        executable = ctx.executable.tool,
+        arguments = all_args,
+        env = {
+            "RUNFILES_DIR": runfiles_path,
+            "TEST_SRCDIR": runfiles_path,
+            "TEST_WORKSPACE": ctx.workspace_name,
+            "HOME": ".",
+            "USER_HOME": ".",
+            "JAVA_TOOL_OPTIONS": "-Djava.awt.headless=true",
+        },
+        mnemonic = "TargetGen",
+        progress_message = "Generating directory %s" % out_dir.path,
+    )
+    return [DefaultInfo(files = depset([out_dir]), runfiles = ctx.runfiles(files = [out_dir]))]
+
+studio_project_model_generator = rule(
+    implementation = _studio_project_model_generator_impl,
+    attrs = {
+        "srcs": attr.label_list(allow_files = True),
+        "tool": attr.label(executable = True, mandatory = True, cfg = "target"),
+        "out_dir_name": attr.string(mandatory = True),
+        "project_path": attr.string(mandatory = True),
+        "manifest_path": attr.string(mandatory = True),
+        "tool_args": attr.string_list(),
+    },
+)
+
+def studio_project_model(name, manifest_path, out_dir_name, project_path, srcs = [], visibility = None):
+    generator_name = name + "_generator"
+    java_binary(
+        name = generator_name,
+        testonly = True,
+        main_class = "com.android.tools.idea.ProjectIndexAndGradleSyncGenerator",
+        data = srcs,
+        runtime_deps = ["//tools/adt/idea/android/integration:project_model_generator_lib"],
+    )
+    studio_project_model_generator(
+        name = name,
+        srcs = srcs,
+        testonly = True,
+        manifest_path = manifest_path,
+        out_dir_name = out_dir_name,
+        project_path = project_path,
+        tool = ":" + generator_name,
+        visibility = visibility,
     )

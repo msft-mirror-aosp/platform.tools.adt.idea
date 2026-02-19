@@ -16,7 +16,11 @@
 package com.android.tools.rendering.classloading
 
 import kotlin.reflect.jvm.javaMethod
-import org.objectweb.asm.*
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.Label
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
 import org.objectweb.asm.commons.GeneratorAdapter
 import org.objectweb.asm.commons.Method
 
@@ -28,22 +32,19 @@ object CooperativeInterruptTransformLoopBreaker {
 }
 
 object CooperativeInterruptTransformThreadLocalRandom {
-  @JvmStatic
-  fun nextInt(min: Int, max: Int): Int =
-    java.util.concurrent.ThreadLocalRandom.current().nextInt(min, max)
+  @JvmStatic fun nextInt(min: Int, max: Int): Int = java.util.concurrent.ThreadLocalRandom.current().nextInt(min, max)
 }
 
 fun java.lang.reflect.Method.toMethodType(): Method = Method(name, Type.getMethodDescriptor(this))
 
 /**
- * Class transformation that inserts checks of [Thread#isInterrupted] into the loops, allowing the
- * thread to be interrupted even in cases where the code does not check for it explicitly.
+ * Class transformation that inserts checks of [Thread#isInterrupted] into the loops, allowing the thread to be interrupted even in cases
+ * where the code does not check for it explicitly.
  *
  * @param delegate the [ClassVisitor] to generate the output of this transformation.
- * @param checkPercentage the percentage in the [1, 100] range to do interrupt checks. The interrupt
- *   condition will only be checked in 1% of the loops.
- * @param shouldInstrument callback that receives class and method name determines whether it should
- *   be transformed.
+ * @param checkPercentage the percentage in the [1, 100] range to do interrupt checks. The interrupt condition will only be checked in 1% of
+ *   the loops.
+ * @param shouldInstrument callback that receives class and method name determines whether it should be transformed.
  */
 class CooperativeInterruptTransform
 @JvmOverloads
@@ -53,29 +54,17 @@ constructor(
   private val shouldInstrument: (String, String) -> Boolean = { _, _ -> true },
 ) : ClassVisitor(Opcodes.ASM9, delegate), ClassVisitorUniqueIdProvider {
   init {
-    if (checkPercentage !in 1..100)
-      throw IllegalArgumentException("checkPercentage must be in [1, 100]")
+    if (checkPercentage !in 1..100) throw IllegalArgumentException("checkPercentage must be in [1, 100]")
   }
 
-  override val uniqueId: String =
-    "${CooperativeInterruptTransform::className},$checkPercentage,$shouldInstrument"
+  override val uniqueId: String = "${CooperativeInterruptTransform::className},$checkPercentage,$shouldInstrument"
   private val loopBreakerType = Type.getType(CooperativeInterruptTransformLoopBreaker::class.java)
-  private val loopCheckMethod =
-    CooperativeInterruptTransformLoopBreaker::checkLoop.javaMethod!!.toMethodType()
-  private val threadLocalRandomType =
-    Type.getType(CooperativeInterruptTransformThreadLocalRandom::class.java)
-  private val threadLocalRandomNextIntMethod =
-    CooperativeInterruptTransformThreadLocalRandom::nextInt.javaMethod!!.toMethodType()
+  private val loopCheckMethod = CooperativeInterruptTransformLoopBreaker::checkLoop.javaMethod!!.toMethodType()
+  private val threadLocalRandomType = Type.getType(CooperativeInterruptTransformThreadLocalRandom::class.java)
+  private val threadLocalRandomNextIntMethod = CooperativeInterruptTransformThreadLocalRandom::nextInt.javaMethod!!.toMethodType()
   private var className = ""
 
-  override fun visit(
-    version: Int,
-    access: Int,
-    name: String?,
-    signature: String?,
-    superName: String?,
-    interfaces: Array<out String>?,
-  ) {
+  override fun visit(version: Int, access: Int, name: String?, signature: String?, superName: String?, interfaces: Array<out String>?) {
     className = name ?: ""
     super.visit(version, access, name, signature, superName, interfaces)
   }

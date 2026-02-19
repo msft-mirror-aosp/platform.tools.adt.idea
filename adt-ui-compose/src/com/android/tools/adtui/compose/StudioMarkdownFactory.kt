@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:Suppress("UnstableApiUsage")
+
 package com.android.tools.adtui.compose
 
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,10 +54,7 @@ internal object StudioMarkdownFactory : MarkdownFactory {
       inlinesStyling
         ?: InlinesStyling.create(
           baseTextStyle,
-          editorTextStyle.copy(
-            fontSize = baseTextStyle.fontSize * .85,
-            background = inlineCodeBackgroundColor,
-          ),
+          editorTextStyle.copy(fontSize = baseTextStyle.fontSize * .85, background = inlineCodeBackgroundColor),
         )
 
     return MarkdownStyling.create(
@@ -74,16 +73,10 @@ internal object StudioMarkdownFactory : MarkdownFactory {
     )
   }
 
-  override fun createDefaultStyling(
-    defaultTextStyle: TextStyle,
-    editorTextStyle: TextStyle,
-  ): MarkdownStyling = MarkdownStyling.create(defaultTextStyle, editorTextStyle)
+  override fun createDefaultStyling(defaultTextStyle: TextStyle, editorTextStyle: TextStyle): MarkdownStyling =
+    MarkdownStyling.create(defaultTextStyle, editorTextStyle)
 
-  override fun createUndecoratedCodeStyling(
-    editorTextStyle: TextStyle,
-    padding: PaddingValues,
-    background: Color,
-  ): MarkdownStyling.Code =
+  override fun createUndecoratedCodeStyling(editorTextStyle: TextStyle, padding: PaddingValues, background: Color): MarkdownStyling.Code =
     MarkdownStyling.Code.create(
       editorTextStyle,
       indented =

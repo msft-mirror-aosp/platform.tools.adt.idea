@@ -25,6 +25,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.Messages
 import java.util.concurrent.CancellationException
 
@@ -42,10 +43,7 @@ class ConfigurationCacheTestBuildFlowRunner(val project: Project) {
     }
   }
 
-  fun startTestBuildsFlow(
-    originalBuildRequestData: GradleBuildInvoker.Request.RequestData,
-    isFeatureConsideredStable: Boolean
-  ) {
+  fun startTestBuildsFlow(originalBuildRequestData: GradleBuildInvoker.Request.RequestData, isFeatureConsideredStable: Boolean) {
     runFirstConfigurationCacheTestBuildWithConfirmation(originalBuildRequestData, isFeatureConsideredStable)
   }
 
@@ -56,24 +54,28 @@ class ConfigurationCacheTestBuildFlowRunner(val project: Project) {
     isFeatureConsideredStable: Boolean,
   ) {
     invokeLater(ModalityState.nonModal()) {
-      val confirmationResult = Messages.showIdeaMessageDialog(
-        project,
-        """
+      val confirmationResult =
+        Messages.showIdeaMessageDialog(
+          project,
+          """
           |This test will rerun the latest build twice to check that Gradle can serialize the task graph
           |and then reuse it from the cache. The builds will run in the background and they will fail
           |with details if any incompatibilities are detected.
-        """.trimMargin(),
-        confirmationDialogHeader,
-        arrayOf("Run Builds", Messages.getCancelButton()), 0,
-        Messages.getInformationIcon(), null
-      )
+          """
+            .trimMargin(),
+          confirmationDialogHeader,
+          arrayOf("Run Builds", Messages.getCancelButton()),
+          0,
+          Messages.getInformationIcon(),
+          null as DoNotAskOption?, // Disambiguate to use the non-deprecated overload
+        )
       if (confirmationResult == Messages.OK) {
         scheduleRebuildWithCCOptionAndRunOnSuccess(originalBuildRequestData, firstBuild = true, onBuildFailure = this::showFailureMessage) {
           invokeLater {
             scheduleRebuildWithCCOptionAndRunOnSuccess(
               originalBuildRequestData,
               firstBuild = false,
-              onBuildFailure = this::showFailureMessage
+              onBuildFailure = this::showFailureMessage,
             ) {
               showFinalSuccessMessage(isFeatureConsideredStable, originalBuildRequestData)
             }
@@ -85,34 +87,39 @@ class ConfigurationCacheTestBuildFlowRunner(val project: Project) {
 
   private fun showFinalSuccessMessage(
     isFeatureConsideredStable: Boolean,
-    originalBuildRequestData: GradleBuildInvoker.Request.RequestData
+    originalBuildRequestData: GradleBuildInvoker.Request.RequestData,
   ) {
     invokeLater(ModalityState.nonModal()) {
-      val message = if (isFeatureConsideredStable) {
-        """
-        |Both trial builds with Configuration cache on were successful. You can turn on
-        |Configuration cache in gradle.properties.
-        |
-        |Note: We only tested a basic scenario for your build compatibility with Configuration cache,
-        |there may be more hidden incompatibilities with different tasks’ runs in the future.
-        """.trimMargin()
-      }
-      else {
-        """
-        |Both trial builds with Configuration cache on were successful. You can turn on
-        |Configuration cache in gradle.properties.
-        |
-        |Note: Configuration cache is an experimental feature of Gradle and there may be
-        |incompatibilities with different tasks’ runs in the future.
-        """.trimMargin()
-      }
-      val confirmationResult = Messages.showIdeaMessageDialog(
-        project,
-        message,
-        confirmationDialogHeader,
-        arrayOf("Enable Configuration Cache", Messages.getCancelButton()), 0,
-        Messages.getInformationIcon(), null
-      )
+      val message =
+        if (isFeatureConsideredStable) {
+          """
+          |Both trial builds with Configuration cache on were successful. You can turn on
+          |Configuration cache in gradle.properties.
+          |
+          |Note: We only tested a basic scenario for your build compatibility with Configuration cache,
+          |there may be more hidden incompatibilities with different tasks’ runs in the future.
+          """
+            .trimMargin()
+        } else {
+          """
+          |Both trial builds with Configuration cache on were successful. You can turn on
+          |Configuration cache in gradle.properties.
+          |
+          |Note: Configuration cache is an experimental feature of Gradle and there may be
+          |incompatibilities with different tasks’ runs in the future.
+          """
+            .trimMargin()
+        }
+      val confirmationResult =
+        Messages.showIdeaMessageDialog(
+          project,
+          message,
+          confirmationDialogHeader,
+          arrayOf("Enable Configuration Cache", Messages.getCancelButton()),
+          0,
+          Messages.getInformationIcon(),
+          null as DoNotAskOption?, // Disambiguate to use the non-deprecated overload
+        )
       if (confirmationResult == Messages.OK) {
         StudioProvidedInfo.turnOnConfigurationCacheInProperties(project, originalBuildRequestData, isFeatureConsideredStable)
       }
@@ -123,34 +130,38 @@ class ConfigurationCacheTestBuildFlowRunner(val project: Project) {
     originalBuildRequestData: GradleBuildInvoker.Request.RequestData,
     firstBuild: Boolean,
     onBuildFailure: (GradleInvocationResult) -> Unit,
-    onSuccess: () -> Unit
+    onSuccess: () -> Unit,
   ) {
-    val request = GradleBuildInvoker.Request.Builder(project, originalBuildRequestData, null)
-      .setCommandLineArguments(originalBuildRequestData.commandLineArguments.plus("--configuration-cache"))
-      .build()
+    val request =
+      GradleBuildInvoker.Request.Builder(project, originalBuildRequestData, null)
+        .setCommandLineArguments(originalBuildRequestData.commandLineArguments.plus("--configuration-cache"))
+        .build()
 
     testConfigurationCacheBuildRequest = request
     runningFirstConfigurationCacheBuild = firstBuild
 
     val future = GradleBuildInvoker.getInstance(project).executeTasks(request)
-    Futures.addCallback(future, object : FutureCallback<GradleInvocationResult> {
-      override fun onSuccess(result: GradleInvocationResult) {
-        runningFirstConfigurationCacheBuild = false
-        testConfigurationCacheBuildRequest = null
-        if (result!!.isBuildSuccessful) onSuccess()
-        else onBuildFailure(result)
-      }
-
-      override fun onFailure(t: Throwable) {
-        runningFirstConfigurationCacheBuild = false
-        testConfigurationCacheBuildRequest = null
-        if (t !is CancellationException) {
-          // All build errors should be part of the normal execution and handled by 'onSuccess' above.
-          // Ending up here probably means bugs in gradle executing infrastructure.
-          Logger.getInstance("Build Analyzer").error("Unexpected error on running Configuration Cache trial build.", t)
+    Futures.addCallback(
+      future,
+      object : FutureCallback<GradleInvocationResult> {
+        override fun onSuccess(result: GradleInvocationResult) {
+          runningFirstConfigurationCacheBuild = false
+          testConfigurationCacheBuildRequest = null
+          if (result!!.isBuildSuccessful) onSuccess() else onBuildFailure(result)
         }
-      }
-    }, MoreExecutors.directExecutor())
+
+        override fun onFailure(t: Throwable) {
+          runningFirstConfigurationCacheBuild = false
+          testConfigurationCacheBuildRequest = null
+          if (t !is CancellationException) {
+            // All build errors should be part of the normal execution and handled by 'onSuccess' above.
+            // Ending up here probably means bugs in gradle executing infrastructure.
+            Logger.getInstance("Build Analyzer").error("Unexpected error on running Configuration Cache trial build.", t)
+          }
+        }
+      },
+      MoreExecutors.directExecutor(),
+    )
   }
 
   private fun showFailureMessage(result: GradleInvocationResult) {
@@ -160,18 +171,22 @@ class ConfigurationCacheTestBuildFlowRunner(val project: Project) {
           project,
           "Build was cancelled.",
           confirmationDialogHeader,
-          arrayOf(Messages.getOkButton()), 0,
-          Messages.getInformationIcon(), null
+          arrayOf(Messages.getOkButton()),
+          0,
+          Messages.getInformationIcon(),
+          null as DoNotAskOption?, // Disambiguate to use the non-deprecated overload
         )
       }
-      //TODO (b/186203445): we have configuration cache exception with a detailed message and a link to the html report inside.
+      // TODO (b/186203445): we have configuration cache exception with a detailed message and a link to the html report inside.
       // So I can present that in the Dialog. find cause recursively?
       Messages.showIdeaMessageDialog(
         project,
         "Build failed. Please, check build output for a detailed report of incompatibilities detected by Gradle.",
         confirmationDialogHeader,
-        arrayOf(Messages.getOkButton()), 0,
-        Messages.getErrorIcon(), null
+        arrayOf(Messages.getOkButton()),
+        0,
+        Messages.getErrorIcon(),
+        null as DoNotAskOption?, // Disambiguate to use the non-deprecated overload
       )
     }
   }

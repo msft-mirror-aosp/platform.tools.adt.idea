@@ -42,8 +42,7 @@ fun KotlinBuiltIns.getKotlinType(
   moduleDescriptor: ModuleDescriptor,
   isNonNull: Boolean = true,
 ): KotlinType {
-  val modulePackageName =
-    moduleDescriptor.module.toModule()?.getModuleSystem()?.getPackageName() ?: ""
+  val modulePackageName = moduleDescriptor.module.toModule()?.getModuleSystem()?.getPackageName() ?: ""
   val resolvedTypeStr = getPsiTypeStr(modulePackageName, typeStr, defaultValue)
 
   // array type
@@ -67,17 +66,11 @@ fun KotlinBuiltIns.getKotlinType(
   }
 }
 
-private fun KotlinBuiltIns.getKotlinClassType(
-  fqName: FqName,
-  moduleDescriptor: ModuleDescriptor,
-): KotlinType {
+private fun KotlinBuiltIns.getKotlinClassType(fqName: FqName, moduleDescriptor: ModuleDescriptor): KotlinType {
   val classId = JavaToKotlinClassMap.mapJavaToKotlin(fqName)
-  val classDescriptor =
-    if (classId != null) getBuiltInClassByFqName(classId.asSingleFqName()) else null
+  val classDescriptor = if (classId != null) getBuiltInClassByFqName(classId.asSingleFqName()) else null
   return classDescriptor?.defaultType
-    ?: ClassId.topLevel(fqName).let {
-      moduleDescriptor.findClassAcrossModuleDependencies(it)?.defaultType
-    }
+    ?: ClassId.topLevel(fqName).let { moduleDescriptor.findClassAcrossModuleDependencies(it)?.defaultType }
     ?: fqName.getUnresolvedType()
 }
 

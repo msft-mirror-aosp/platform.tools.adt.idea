@@ -1,4 +1,5 @@
 <idea-plugin>
+  <depends>com.android.tools.gradle.dsl</depends>
   <extensionPoints>
     <extensionPoint qualifiedName="com.android.tools.idea.gradle.dsl.gradleDeclarativeBuildModelProvider"
                     interface="com.android.tools.idea.gradle.dsl.model.GradleDeclarativeBuildModelProvider"
@@ -9,12 +10,13 @@
   </extensionPoints>
 
   <extensions defaultExtensionNs="com.android.tools.idea.gradle.dsl">
-    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.crashlytics.CrashlyticsBlockModelProvider"/>
-    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.crashlytics.FirebaseCrashlyticsBlockModelProvider"/>
-    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.android.AndroidBlockModelProvider"/>
-    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.android.AndroidDeclarativeBlockModelProvider"/>
-    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.android.AndroidDefaultDslModelBlockProvider"/>
-    <gradleDeclarativeBuildModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.android.AndroidGradleDeclarativeBuildModelProvider"/>
-    <gradleDeclarativeSettingsModelProvider implementation="com.android.tools.idea.gradle.dsl.android.model.android.AndroidGradleDeclarativeSettingsModelProvider"/>
+    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.model.crashlytics.CrashlyticsBlockModelProvider"/>
+    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.model.crashlytics.FirebaseCrashlyticsBlockModelProvider"/>
+    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.model.android.AndroidBlockModelProvider"/>
+    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.model.android.KmpAndroidBlockModelProvider"/>
+    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.model.android.AndroidDeclarativeBlockModelProvider"/>
+    <blockModelProvider implementation="com.android.tools.idea.gradle.dsl.model.android.AndroidDefaultDslModelBlockProvider"/>
+    <gradleDeclarativeBuildModelProvider implementation="com.android.tools.idea.gradle.dsl.model.android.AndroidGradleDeclarativeBuildModelProvider"/>
+    <gradleDeclarativeSettingsModelProvider implementation="com.android.tools.idea.gradle.dsl.model.android.AndroidGradleDeclarativeSettingsModelProvider"/>
   </extensions>
 </idea-plugin>

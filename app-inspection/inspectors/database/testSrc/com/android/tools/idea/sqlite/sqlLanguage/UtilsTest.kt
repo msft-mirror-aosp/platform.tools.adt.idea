@@ -19,16 +19,12 @@ import com.android.tools.idea.lang.androidSql.parser.AndroidSqlParserDefinition
 import com.android.tools.idea.sqlite.controllers.SqliteParameter
 import com.android.tools.idea.sqlite.model.SqliteStatementType
 import com.android.tools.idea.sqlite.utils.toSqliteValues
+import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.testFramework.UsefulTestCase.assertEmpty
 import java.util.LinkedList
-import junit.framework.TestCase
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,416 +42,268 @@ class UtilsTest {
   @Test
   fun testReplaceParametersNothingIsReplaced() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = 42")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = 42")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = 42", parsedSqliteStatement.statementText)
-    assertEmpty(parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = 42")
+    assertThat(parsedSqliteStatement.parameters).isEmpty()
   }
 
   @Test
   fun testReplaceParametersNamedParameter1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = :anId")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = :anId")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter(":anId")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter(":anId"))
   }
 
   @Test
   fun testReplaceParametersNamedParameters1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where id = :anId and name = :aName",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = :anId and name = :aName")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ? and name = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(
-      listOf(SqliteParameter(":anId"), SqliteParameter(":aName")),
-      parsedSqliteStatement.parameters,
-    )
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ? and name = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter(":anId"), SqliteParameter(":aName")).inOrder()
   }
 
   @Test
   fun testReplaceParametersNamedParameter2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = @anId")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = @anId")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter("@anId")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("@anId"))
   }
 
   @Test
   fun testReplaceParametersNamedParameters2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where id = @anId and name = @aName",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = @anId and name = @aName")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ? and name = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(
-      listOf(SqliteParameter("@anId"), SqliteParameter("@aName")),
-      parsedSqliteStatement.parameters,
-    )
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ? and name = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("@anId"), SqliteParameter("@aName")).inOrder()
   }
 
   @Test
   fun testReplaceParametersNamedParameter3() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = \$anId")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = \$anId")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter("\$anId")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("\$anId"))
   }
 
   @Test
   fun testReplaceParametersNamedParameters3() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where id = \$anId and name = \$aName",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = \$anId and name = \$aName")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ? and name = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(
-      listOf(SqliteParameter("\$anId"), SqliteParameter("\$aName")),
-      parsedSqliteStatement.parameters,
-    )
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ? and name = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("\$anId"), SqliteParameter("\$aName")).inOrder()
   }
 
   @Test
   fun testReplaceParametersMixedNamedParameters() {
     // Prepare
     val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where id = @anId and name = :aName and other = \$other",
-      )
+      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = @anId and name = :aName and other = \$other")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals(
-      "select * from Foo where id = ? and name = ? and other = ?",
-      parsedSqliteStatement.statementText,
-    )
-    TestCase.assertEquals(
-      listOf(SqliteParameter("@anId"), SqliteParameter((":aName")), SqliteParameter("\$other")),
-      parsedSqliteStatement.parameters,
-    )
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ? and name = ? and other = ?")
+    assertThat(parsedSqliteStatement.parameters)
+      .containsExactly(SqliteParameter("@anId"), SqliteParameter((":aName")), SqliteParameter("\$other"))
+      .inOrder()
   }
 
   @Test
   fun testReplacePositionalParameter1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = ?")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = ?")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter("id")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("id"))
   }
 
   @Test
   fun testReplacePositionalParameters1() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where id = ? and name = ?",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = ? and name = ?")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ? and name = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(
-      listOf(SqliteParameter("id"), SqliteParameter("name")),
-      parsedSqliteStatement.parameters,
-    )
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ? and name = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("id"), SqliteParameter("name")).inOrder()
   }
 
   @Test
   fun testReplacePositionalParameter2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = ?1")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = ?1")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter("id")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("id"))
   }
 
   @Test
   fun testReplacePositionalParameters2() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(
-        project,
-        "select * from Foo where id = ?1 and name = ?2",
-      )
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = ?1 and name = ?2")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = ? and name = ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(
-      listOf(SqliteParameter("id"), SqliteParameter("name")),
-      parsedSqliteStatement.parameters,
-    )
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = ? and name = ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("id"), SqliteParameter("name")).inOrder()
   }
 
   @Test
   fun testReplacePositionalParameterInComparison() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id > ?")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id > ?")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id > ?", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter("id")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id > ?")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("id"))
   }
 
   @Test
   fun testReplacePositionalParameterInExpressionAndComparison() {
     // Prepare
-    val psiFile =
-      AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = (? >> name)")
+    val psiFile = AndroidSqlParserDefinition.parseSqlQuery(project, "select * from Foo where id = (? >> name)")
 
     // Act
     val parsedSqliteStatement = replaceNamedParametersWithPositionalParameters(psiFile)
 
     // Assert
-    assertEquals("select * from Foo where id = (? >> name)", parsedSqliteStatement.statementText)
-    TestCase.assertEquals(listOf(SqliteParameter("id")), parsedSqliteStatement.parameters)
+    assertThat(parsedSqliteStatement.statementText).isEqualTo("select * from Foo where id = (? >> name)")
+    assertThat(parsedSqliteStatement.parameters).containsExactly(SqliteParameter("id"))
   }
 
   @Test
   fun testGetSqliteStatementType() {
-    assertEquals(SqliteStatementType.SELECT, getSqliteStatementType(project, "SELECT * FROM tab"))
-    assertEquals(
-      SqliteStatementType.SELECT,
-      getSqliteStatementType(project, "/* comment */ SELECT * FROM tab"),
-    )
-    assertEquals(
-      SqliteStatementType.SELECT,
-      getSqliteStatementType(project, "SELECT /* comment */ * FROM tab"),
-    )
-    assertEquals(
-      SqliteStatementType.EXPLAIN,
-      getSqliteStatementType(project, "EXPLAIN SELECT * FROM tab"),
-    )
-    assertEquals(
-      SqliteStatementType.EXPLAIN,
-      getSqliteStatementType(project, "EXPLAIN /* comment */ SELECT * FROM tab"),
-    )
-    assertEquals(
-      SqliteStatementType.EXPLAIN,
-      getSqliteStatementType(project, "/* comment */ EXPLAIN SELECT * FROM tab"),
-    )
-    assertEquals(
-      SqliteStatementType.UPDATE,
-      getSqliteStatementType(project, "UPDATE tab SET name = 'name' WHERE id = 1"),
-    )
-    assertEquals(
-      SqliteStatementType.UPDATE,
-      getSqliteStatementType(
-        project,
-        "UPDATE tab SET name = 'name' WHERE id IN (SELECT id FROM tab)",
-      ),
-    )
-    assertEquals(
-      SqliteStatementType.DELETE,
-      getSqliteStatementType(project, "DELETE FROM tab WHERE id > 0"),
-    )
-    assertEquals(
-      SqliteStatementType.DELETE,
-      getSqliteStatementType(
-        project,
-        "DELETE FROM tab WHERE id IN (SELECT id FROM tab WHERE id > 42)",
-      ),
-    )
-    assertEquals(
-      SqliteStatementType.INSERT,
-      getSqliteStatementType(project, "INSERT INTO tab VALUES (42)"),
-    )
-    assertEquals(
-      SqliteStatementType.UNKNOWN,
-      getSqliteStatementType(project, "SELECT * FROM t1; EXPLAIN SELECT * FROM t1;"),
-    )
+    assertThat(getSqliteStatementType(project, "SELECT * FROM tab")).isEqualTo(SqliteStatementType.SELECT)
+    assertThat(getSqliteStatementType(project, "/* comment */ SELECT * FROM tab")).isEqualTo(SqliteStatementType.SELECT)
+    assertThat(getSqliteStatementType(project, "SELECT /* comment */ * FROM tab")).isEqualTo(SqliteStatementType.SELECT)
+    assertThat(getSqliteStatementType(project, "EXPLAIN SELECT * FROM tab")).isEqualTo(SqliteStatementType.EXPLAIN)
+    assertThat(getSqliteStatementType(project, "EXPLAIN /* comment */ SELECT * FROM tab")).isEqualTo(SqliteStatementType.EXPLAIN)
+    assertThat(getSqliteStatementType(project, "/* comment */ EXPLAIN SELECT * FROM tab")).isEqualTo(SqliteStatementType.EXPLAIN)
+    assertThat(getSqliteStatementType(project, "UPDATE tab SET name = 'name' WHERE id = 1")).isEqualTo(SqliteStatementType.UPDATE)
+    assertThat(getSqliteStatementType(project, "UPDATE tab SET name = 'name' WHERE id IN (SELECT id FROM tab)"))
+      .isEqualTo(SqliteStatementType.UPDATE)
+    assertThat(getSqliteStatementType(project, "DELETE FROM tab WHERE id > 0")).isEqualTo(SqliteStatementType.DELETE)
+    assertThat(getSqliteStatementType(project, "DELETE FROM tab WHERE id IN (SELECT id FROM tab WHERE id > 42)"))
+      .isEqualTo(SqliteStatementType.DELETE)
+    assertThat(getSqliteStatementType(project, "INSERT INTO tab VALUES (42)")).isEqualTo(SqliteStatementType.INSERT)
+    assertThat(getSqliteStatementType(project, "SELECT * FROM t1; EXPLAIN SELECT * FROM t1;")).isEqualTo(SqliteStatementType.UNKNOWN)
 
-    assertEquals(
-      SqliteStatementType.PRAGMA_QUERY,
-      getSqliteStatementType(project, "pragma table_info('sqlite_master')"),
-    )
-    assertEquals(
-      SqliteStatementType.PRAGMA_QUERY,
-      getSqliteStatementType(project, "PRAGMA cache_size"),
-    )
-    assertEquals(
-      SqliteStatementType.PRAGMA_UPDATE,
-      getSqliteStatementType(project, "PRAGMA cache_size = 2"),
-    )
-    assertEquals(
-      SqliteStatementType.UNKNOWN,
-      getSqliteStatementType(project, "PRAGMA cache_size ="),
-    )
+    assertThat(getSqliteStatementType(project, "pragma table_info('sqlite_master')")).isEqualTo(SqliteStatementType.PRAGMA_QUERY)
+    assertThat(getSqliteStatementType(project, "PRAGMA cache_size")).isEqualTo(SqliteStatementType.PRAGMA_QUERY)
+    assertThat(getSqliteStatementType(project, "PRAGMA cache_size = 2")).isEqualTo(SqliteStatementType.PRAGMA_UPDATE)
+    assertThat(getSqliteStatementType(project, "PRAGMA cache_size =")).isEqualTo(SqliteStatementType.UNKNOWN)
 
-    assertEquals(
-      SqliteStatementType.SELECT,
-      getSqliteStatementType(project, "WITH one AS (SELECT 1) SELECT * FROM one"),
-    )
-    assertEquals(
-      SqliteStatementType.SELECT,
-      getSqliteStatementType(
-        project,
-        "WITH one AS (SELECT 1), two  AS (SELECT 2) SELECT * FROM one, two",
-      ),
-    )
-    assertEquals(
-      SqliteStatementType.UPDATE,
-      getSqliteStatementType(project, "WITH one AS (SELECT 1) UPDATE tab SET name = 1 WHERE id = 1"),
-    )
-    assertEquals(
-      SqliteStatementType.INSERT,
-      getSqliteStatementType(project, "WITH one AS (SELECT 1) INSERT INTO tab VALUES (1)"),
-    )
-    assertEquals(
-      SqliteStatementType.DELETE,
-      getSqliteStatementType(
-        project,
-        "WITH one AS (SELECT 1) DELETE FROM tab WHERE id IN (SELECT * FROM one)",
-      ),
-    )
-    assertEquals(
-      SqliteStatementType.UNKNOWN,
-      getSqliteStatementType(project, "WITH one AS (SELECT 1)"),
-    )
-    assertEquals(
-      SqliteStatementType.UNKNOWN,
-      getSqliteStatementType(project, "WITH one AS (SELECT 1) EXPLAIN SELECT * FROM one"),
-    )
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1) SELECT * FROM one")).isEqualTo(SqliteStatementType.SELECT)
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1), two  AS (SELECT 2) SELECT * FROM one, two"))
+      .isEqualTo(SqliteStatementType.SELECT)
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1) UPDATE tab SET name = 1 WHERE id = 1"))
+      .isEqualTo(SqliteStatementType.UPDATE)
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1) INSERT INTO tab VALUES (1)")).isEqualTo(SqliteStatementType.INSERT)
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1) DELETE FROM tab WHERE id IN (SELECT * FROM one)"))
+      .isEqualTo(SqliteStatementType.DELETE)
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1)")).isEqualTo(SqliteStatementType.UNKNOWN)
+    assertThat(getSqliteStatementType(project, "WITH one AS (SELECT 1) EXPLAIN SELECT * FROM one")).isEqualTo(SqliteStatementType.UNKNOWN)
   }
 
   @Test
   fun testGetWrappableStatement() {
-    assertEquals("SELECT * FROM t1", getWrappableStatement(project, "SELECT * FROM t1"))
-    assertEquals("SELECT * FROM t1", getWrappableStatement(project, "SELECT * FROM t1;"))
-    assertEquals(
-      "SELECT * FROM t1; SELECT * FROM t2",
-      getWrappableStatement(project, "SELECT * FROM t1; SELECT * FROM t2;"),
-    )
-    assertEquals("SELECT * FROM t1 ", getWrappableStatement(project, "SELECT * FROM t1 -- comment"))
-    assertEquals("SELECT * FROM t1 ", getWrappableStatement(project, "SELECT * FROM t1 --comment"))
-    assertEquals("SELECT * FROM t1", getWrappableStatement(project, "SELECT * FROM t1--comment"))
-    assertEquals(
-      "SELECT * FROM t1 /* comment */",
-      getWrappableStatement(project, "SELECT * FROM t1 /* comment */"),
-    )
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1")).isEqualTo("SELECT * FROM t1")
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1;")).isEqualTo("SELECT * FROM t1")
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1; SELECT * FROM t2;")).isEqualTo("SELECT * FROM t1; SELECT * FROM t2")
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1 -- comment")).isEqualTo("SELECT * FROM t1 ")
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1 --comment")).isEqualTo("SELECT * FROM t1 ")
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1--comment")).isEqualTo("SELECT * FROM t1")
+    assertThat(getWrappableStatement(project, "SELECT * FROM t1 /* comment */")).isEqualTo("SELECT * FROM t1 /* comment */")
   }
 
   @Test
   fun testHasParsingError() {
-    assertTrue(hasParsingError(project, "random string"))
-    assertTrue(hasParsingError(project, "SELECT"))
-    assertTrue(hasParsingError(project, "SELECT * FROM"))
-    assertTrue(hasParsingError(project, "SELECT * FROM tab;;"))
-    assertTrue(hasParsingError(project, "SELECT * FROM tab; SELECT * FROM tab"))
-    assertTrue(hasParsingError(project, "INSERT INTO t1 VALUES ()"))
-    assertTrue(hasParsingError(project, "CREATE TABLE t1"))
-    assertTrue(hasParsingError(project, "SELECT * FROM tab WHERE id IN (SELECT * __error__ )"))
-    assertFalse(hasParsingError(project, "SELECT * FROM tab"))
-    assertFalse(hasParsingError(project, "SELECT * FROM tab;"))
-    assertFalse(hasParsingError(project, "INSERT INTO t1 VALUES (42)"))
-    assertFalse(hasParsingError(project, "ALTER TABLE t1 ADD COLUMN c2 int"))
-    assertFalse(hasParsingError(project, "ALTER TABLE t1 ADD COLUMN c2 int"))
-    assertFalse(hasParsingError(project, "ALTER TABLE t1 RENAME TO t2"))
-    assertFalse(hasParsingError(project, "UPDATE t1 SET id = 42 WHERE name = 'foo'"))
-    assertFalse(hasParsingError(project, "CREATE TABLE t1 (c1)"))
-    assertFalse(hasParsingError(project, "DROP TABLE t1"))
-    assertFalse(hasParsingError(project, "EXPLAIN SELECT * FROM t1"))
+    assertThat(hasParsingError(project, "random string")).isTrue()
+    assertThat(hasParsingError(project, "SELECT")).isTrue()
+    assertThat(hasParsingError(project, "SELECT * FROM")).isTrue()
+    assertThat(hasParsingError(project, "SELECT * FROM tab;;")).isTrue()
+    assertThat(hasParsingError(project, "SELECT * FROM tab; SELECT * FROM tab")).isTrue()
+    assertThat(hasParsingError(project, "INSERT INTO t1 VALUES ()")).isTrue()
+    assertThat(hasParsingError(project, "CREATE TABLE t1")).isTrue()
+    assertThat(hasParsingError(project, "SELECT * FROM tab WHERE id IN (SELECT * __error__ )")).isTrue()
+    assertThat(hasParsingError(project, "SELECT * FROM tab")).isFalse()
+    assertThat(hasParsingError(project, "SELECT * FROM tab;")).isFalse()
+    assertThat(hasParsingError(project, "INSERT INTO t1 VALUES (42)")).isFalse()
+    assertThat(hasParsingError(project, "ALTER TABLE t1 ADD COLUMN c2 int")).isFalse()
+    assertThat(hasParsingError(project, "ALTER TABLE t1 ADD COLUMN c2 int")).isFalse()
+    assertThat(hasParsingError(project, "ALTER TABLE t1 RENAME TO t2")).isFalse()
+    assertThat(hasParsingError(project, "UPDATE t1 SET id = 42 WHERE name = 'foo'")).isFalse()
+    assertThat(hasParsingError(project, "CREATE TABLE t1 (c1)")).isFalse()
+    assertThat(hasParsingError(project, "DROP TABLE t1")).isFalse()
+    assertThat(hasParsingError(project, "EXPLAIN SELECT * FROM t1")).isFalse()
   }
 
   @Test
   fun testInlineParameters() {
-    assertEquals(
-      "SELECT * FROM t1",
-      inlineParameterValues(getSqliteStatement("SELECT * FROM t1"), LinkedList(emptyList())),
-    )
+    assertThat(inlineParameterValues(getSqliteStatement("SELECT * FROM t1"), LinkedList(emptyList()))).isEqualTo("SELECT * FROM t1")
 
-    assertEquals(
-      "SELECT * FROM t1 where id > '42'",
-      inlineParameterValues(
-        getSqliteStatement("SELECT * FROM t1 where id > ?"),
-        LinkedList(listOf("42").toSqliteValues()),
-      ),
-    )
+    assertThat(inlineParameterValues(getSqliteStatement("SELECT * FROM t1 where id > ?"), LinkedList(listOf("42").toSqliteValues())))
+      .isEqualTo("SELECT * FROM t1 where id > '42'")
 
-    assertEquals(
-      "SELECT * FROM t1 where id > null",
-      inlineParameterValues(
-        getSqliteStatement("SELECT * FROM t1 where id > ?"),
-        LinkedList(listOf(null).toSqliteValues()),
-      ),
-    )
+    assertThat(inlineParameterValues(getSqliteStatement("SELECT * FROM t1 where id > ?"), LinkedList(listOf(null).toSqliteValues())))
+      .isEqualTo("SELECT * FROM t1 where id > null")
 
-    assertEquals(
-      "SELECT * FROM t1 where id > ?",
-      inlineParameterValues(
-        getSqliteStatement("SELECT * FROM t1 where id > ?"),
-        LinkedList(emptyList()),
-      ),
-    )
+    assertThat(inlineParameterValues(getSqliteStatement("SELECT * FROM t1 where id > ?"), LinkedList(emptyList())))
+      .isEqualTo("SELECT * FROM t1 where id > ?")
   }
 
-  private fun getSqliteStatement(sqliteStatement: String) =
-    AndroidSqlParserDefinition.parseSqlQuery(project, sqliteStatement)
+  private fun getSqliteStatement(sqliteStatement: String) = AndroidSqlParserDefinition.parseSqlQuery(project, sqliteStatement)
 }

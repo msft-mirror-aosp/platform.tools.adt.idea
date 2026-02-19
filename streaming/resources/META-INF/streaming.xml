@@ -92,7 +92,8 @@
               icon="StudioIcons.Emulator.Toolbar.FOLD" text="Fold/Unfold"
               description="Select from the states defined by the device to test how your app responds to them" popup="true"/>
       <action id="android.emulator.virtual.sensors" class="com.android.tools.idea.streaming.emulator.actions.EmulatorShowVirtualSensorsAction"
-              text="Virtual Sensors" description="Show virtual sensors controls for the device"/>
+              icon="icons.StudioIcons.Emulator.Menu.VIRTUAL_SENSORS" text="Virtual Sensors"
+              description="Show virtual sensors controls for the device"/>
       <action id="android.device.wear1.button" class="com.android.tools.idea.streaming.actions.StreamingWear1ButtonAction"
               icon="StudioIcons.Emulator.Wear.BUTTON_1" text="Button 1" description="Press the first button of the device">
         <keyboard-shortcut first-keystroke="control shift 1" keymap="$default"/>
@@ -118,10 +119,16 @@
         <keyboard-shortcut first-keystroke="meta shift L" keymap="Mac OS X 10.5+"/>
       </action>
       <action id="android.emulator.glasses1.button" class="com.android.tools.idea.streaming.emulator.actions.EmulatorGlasses1ButtonAction"
-              icon="StudioIcons.Emulator.Glasses.BUTTON_1" text="Button 1" description="Press the first button of the device">
+              icon="StudioIcons.Emulator.XR.GLASSES_CAMERA" text="Camera" description="Press the Camera button of the device">
         <keyboard-shortcut first-keystroke="control shift 1" keymap="$default"/>
         <keyboard-shortcut first-keystroke="meta shift 1" keymap="Mac OS X"/>
         <keyboard-shortcut first-keystroke="meta shift 1" keymap="Mac OS X 10.5+"/>
+      </action>
+      <action id="android.emulator.glasses2.button" class="com.android.tools.idea.streaming.emulator.actions.EmulatorGlasses2ButtonAction"
+          icon="StudioIcons.Emulator.Toolbar.POWER" text="Display" description="Press the Display button of the device">
+        <keyboard-shortcut first-keystroke="control shift 2" keymap="$default"/>
+        <keyboard-shortcut first-keystroke="meta shift 2" keymap="Mac OS X"/>
+        <keyboard-shortcut first-keystroke="meta shift 2" keymap="Mac OS X 10.5+"/>
       </action>
       <action id="android.device.back.button" class="com.android.tools.idea.streaming.actions.StreamingBackButtonAction"
               icon="StudioIcons.Emulator.Toolbar.BACK" text="Back" description="Press the Back button of the device">
@@ -143,7 +150,7 @@
       </action>
       <action id="android.streaming.xr.interaction"
               class="com.android.tools.idea.streaming.actions.StreamingXrInputModeAction$Interaction"
-              icon="StudioIcons.LayoutEditor.Motion.GESTURE"
+              icon="StudioIcons.Emulator.XR.INTERACT"
               text="Interact with Apps"
               description="Mouse and keyboard are used to interact with running apps">
         <keyboard-shortcut first-keystroke="control I" keymap="$default"/>
@@ -218,7 +225,7 @@
         <keyboard-shortcut first-keystroke="meta shift S" keymap="Mac OS X 10.5+"/>
       </action>
       <action id="android.device.screen.record" class="com.android.tools.idea.ui.screenrecording.ScreenRecorderAction"
-              icon="StudioIcons.Common.VIDEO_CAPTURE" text="Record Screen" description="Record a video of the device display">
+              icon="StudioIcons.Emulator.Toolbar.SCREEN_RECORD" text="Record Screen" description="Record a video of the device display">
         <keyboard-shortcut first-keystroke="control shift V" keymap="$default"/>
         <keyboard-shortcut first-keystroke="meta shift V" keymap="Mac OS X"/>
         <keyboard-shortcut first-keystroke="meta shift V" keymap="Mac OS X 10.5+"/>
@@ -310,10 +317,12 @@
       </group>
       <separator/>
       <reference ref="android.device.power.button"/>
-      <reference ref="android.device.volume.up.button"/>
-      <reference ref="android.device.volume.down.button"/>
+      <reference ref="android.emulator.glasses2.button"/>
+      <reference ref="android.emulator.glasses1.button"/>
       <reference ref="android.device.wear1.button"/>
       <reference ref="android.device.wear2.button"/>
+      <reference ref="android.device.volume.up.button"/>
+      <reference ref="android.device.volume.down.button"/>
       <separator/>
       <reference ref="android.device.rotate.left"/>
       <reference ref="android.device.rotate.right"/>
@@ -321,7 +330,6 @@
       <separator/>
       <reference ref="android.device.sleep"/>
       <reference ref="android.emulator.tilt"/>
-      <reference ref="android.emulator.glasses1.button"/>
       <reference ref="android.device.back.button"/>
       <reference ref="android.device.home.button"/>
       <reference ref="android.device.overview.button"/>

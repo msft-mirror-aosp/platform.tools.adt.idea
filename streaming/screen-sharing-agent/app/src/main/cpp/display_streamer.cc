@@ -16,7 +16,7 @@
 
 #include "display_streamer.h"
 
-#include <chrono>
+#include <algorithm>
 #include <cmath>
 
 #include "accessors/surface_control.h"
@@ -37,7 +37,7 @@ constexpr int NUM_DEQUE_ATTEMPTS = 2;
 constexpr int MAX_SUBSEQUENT_ERRORS = 5;
 constexpr int MIN_VIDEO_RESOLUTION = 128;
 constexpr duration INITIAL_FRAME_TIMEOUT = 200ms;
-constexpr duration FRAME_TIMEOUT = 30s;
+constexpr duration MAX_FRAME_TIMEOUT = 30s;
 constexpr int COLOR_FormatSurface = 0x7F000789;  // See android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface.
 constexpr int MAX_FRAME_RATE = 60;
 constexpr int REDUCED_FRAME_RATE = 30;  // Frame rate used for watches.
@@ -134,8 +134,9 @@ Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_vi
   Size video_size = ComputeVideoSize(display_info.logical_size, codec_info, max_video_resolution);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_WIDTH, video_size.width);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_HEIGHT, video_size.height);
+  bool useReducedFrameRate = Agent::device_type() == DeviceType::GLASSES || Agent::device_type() == DeviceType::WATCH;
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_FRAME_RATE,
-                        min(codec_info.max_frame_rate, Agent::device_type() == DeviceType::WATCH ? REDUCED_FRAME_RATE : MAX_FRAME_RATE));
+                        min(codec_info.max_frame_rate, useReducedFrameRate ? REDUCED_FRAME_RATE : MAX_FRAME_RATE));
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_BIT_RATE, bit_rate);
   media_status_t status = AMediaCodec_configure(codec, media_format, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
   if (status != AMEDIA_OK) {
@@ -153,6 +154,7 @@ DisplayStreamer::DisplayStreamer(int32_t display_id, const CodecInfo* codec_info
                                  int32_t initial_video_orientation, int32_t max_bit_rate, SocketWriter* writer)
     : display_rotation_watcher_(this),
       display_id_(display_id),
+      frame_timeout_(INITIAL_FRAME_TIMEOUT),
       codec_info_(codec_info),
       writer_(writer),
       bit_rate_(max_bit_rate > 0 ? max_bit_rate : DEFAULT_BIT_RATE),
@@ -160,34 +162,18 @@ DisplayStreamer::DisplayStreamer(int32_t display_id, const CodecInfo* codec_info
       video_orientation_(initial_video_orientation) {
 }
 
-DisplayStreamer::~DisplayStreamer() {
-  if (thread_.get_id() != this_thread::get_id() && thread_.joinable()) {
-    thread_.join();
-  }
-}
+DisplayStreamer::~DisplayStreamer() = default;
 
 void DisplayStreamer::Start() {
-  if (streamer_stopped_.exchange(false)) {
-    Log::D("Display %d: starting video stream", display_id_);
-    thread_ = thread([this]() {
-      Jvm::AttachCurrentThread((string("DisplayStreamer ") + to_string(display_id_)).c_str());
-      Run();
-      Jvm::DetachCurrentThread();
-      Log::D("Display %d: streaming terminated", display_id_);
-    });
-  }
+  thread_handle_.Start(StringPrintf("DisplayStreamer for display %d", display_id_), [this]() { Run(); });
 }
 
 void DisplayStreamer::Stop() {
-  if (!streamer_stopped_.exchange(true)) {
-    Log::D("Display %d: stopping video stream", display_id_);
-    StopCodec();
-    if (thread_.get_id() != this_thread::get_id() && thread_.joinable()) {
-      thread_.join();
-    }
-    DeleteCodec();
-    ReleaseVirtualDisplay(Jvm::GetJni());
-  }
+  thread_handle_.Stop();
+  StopCodec();
+  thread_handle_.Join();
+  DeleteCodec();
+  ReleaseVirtualDisplay(Jvm::GetJni());
 }
 
 void DisplayStreamer::OnDisplayAdded(int32_t display_id) {
@@ -217,18 +203,28 @@ void DisplayStreamer::Run() {
   VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = frame_number_};
   FrameStreamStopReason stop_reason = FrameStreamStopReason::CODEC_STOPPED;
   int error_count = 0;
+  uint32_t frame_before_timeout = 0;
 
-  while (stop_reason != FrameStreamStopReason::END_OF_STREAM && !streamer_stopped_ && !Agent::IsShuttingDown()) {
+  while (stop_reason != FrameStreamStopReason::END_OF_STREAM && !thread_handle_.IsStopping() && !Agent::IsShuttingDown()) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
-    if (display_id_ != PRIMARY_DISPLAY_ID && (!display_info.IsValid() || !display_info.IsOn())) {
-      Log::W("Display %d: turned off", display_id_);
-      DisplayManager::OnDisplayRemoved(jni, display_id_);
-      break;
+    if (!display_info.IsValid() || !display_info.IsOn()) {
+      Log::I("Display %d: turned off", display_id_);
+      if (display_id_ != PRIMARY_DISPLAY_ID) {
+        DisplayManager::OnDisplayRemoved(jni, display_id_);
+        break;
+      }
     }
     Log::D("Display %d: display_info: %s", display_id_, display_info.ToDebugString().c_str());
-    if (stop_reason != FrameStreamStopReason::TIMEOUT) {
+    if (stop_reason == FrameStreamStopReason::TIMEOUT) {
+      frame_before_timeout = frame_number_;
+      frame_timeout_ = min<std::chrono::milliseconds>(frame_timeout_ * 2, MAX_FRAME_TIMEOUT);  // Exponential backoff.
+    } else {
+      frame_before_timeout = 0;
+      frame_timeout_ = INITIAL_FRAME_TIMEOUT;
       ReleaseVirtualDisplay(jni);
     }
+    Log::D("Display %d: stop_reason=%d, frame_number_=%u frame_before_timeout=%u frame_timeout_=%lld ms",
+           display_id_, stop_reason, frame_number_, frame_before_timeout, frame_timeout_.count());
     if (virtual_display_.IsNull() && display_token_.IsNull()) {
       string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
       if (Agent::feature_level() >= 34) {
@@ -242,6 +238,7 @@ void DisplayStreamer::Run() {
         }
       }
     }
+    NativeWindow surface;
     {
       unique_lock lock(mutex_);
       if (codec_stop_pending_) {
@@ -262,17 +259,17 @@ void DisplayStreamer::Run() {
           codec_, *codec_info_, max_video_resolution_.Rotated(rotation_correction), bit_rate_, media_format, display_info, display_id_);
       Log::D("Display %d: rotation=%d rotation_correction=%d video_size=%dx%d",
              display_id_, display_info.rotation, rotation_correction, video_size.width, video_size.height);
-      media_status_t status = AMediaCodec_createInputSurface(codec_, &surface_);  // Requires API 26.
+      media_status_t status = AMediaCodec_createInputSurface(codec_, &surface);  // Requires API 26.
       if (status != AMEDIA_OK) {
         Log::Fatal(INPUT_SURFACE_CREATION_ERROR, "Display %d: AMediaCodec_createInputSurface returned %d", display_id_, status);
       }
       if (Agent::feature_level() >= 34) {
         virtual_display_.Resize(video_size.width, video_size.height, display_info_.logical_density_dpi);
-        virtual_display_.SetSurface(surface_);
+        virtual_display_.SetSurface(surface);
       } else {
         int32_t height = lround(static_cast<double>(video_size.width) * display_info.logical_size.height / display_info.logical_size.width);
         int32_t y = (video_size.height - height) / 2;
-        SurfaceControl::ConfigureProjection(jni, display_token_, surface_, display_info, { 0, y, video_size.width, height });
+        SurfaceControl::ConfigureProjection(jni, display_token_, surface, display_info, { 0, y, video_size.width, height });
       }
       StartCodecUnlocked();
       codec_running_ = true;
@@ -286,11 +283,10 @@ void DisplayStreamer::Run() {
           (bit_rate_reduced_ ? VideoPacketHeader::FLAG_BIT_RATE_REDUCED : 0);
       packet_header.bit_rate = bit_rate_;
     }
-    AMediaFormat* sync_frame_request = AMediaFormat_new();
+    MediaFormat sync_frame_request = AMediaFormat_new();
     AMediaFormat_setInt32(sync_frame_request, AMEDIACODEC_KEY_REQUEST_SYNC_FRAME, 0);
     stop_reason = ProcessFramesUntilCodecStopped(&packet_header, sync_frame_request);
-    Log::D("ProcessFramesUntilCodecStopped returned %d", stop_reason);
-    AMediaFormat_delete(sync_frame_request);
+    Log::D("Display %d: ProcessFramesUntilCodecStopped returned %d", display_id_, stop_reason);
     StopCodec();
     DeleteCodec();
     if (virtual_display_.IsNotNull()) {
@@ -298,8 +294,6 @@ void DisplayStreamer::Run() {
     } else {
       SurfaceControl::SetSurface(jni, display_token_, nullptr);
     }
-    ANativeWindow_release(surface_);
-    surface_ = nullptr;
     if (stop_reason == FrameStreamStopReason::CODEC_ERROR) {
       if (++error_count >= MAX_SUBSEQUENT_ERRORS && !ReduceBitRate()) {
         ExitCode exitCode = bit_rate_ <= MIN_BIT_RATE ? WEAK_VIDEO_ENCODER : REPEATED_VIDEO_ENCODER_ERRORS;
@@ -309,23 +303,23 @@ void DisplayStreamer::Run() {
     } else {
       error_count = 0;
       if (stop_reason == FrameStreamStopReason::TIMEOUT) {
-        // Write an empty video packet.
-        int64_t timestamp = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
-        packet_header.origination_timestamp_us = timestamp;
-        packet_header.packet_size = 0;
-        if (Log::IsEnabled(Log::Level::VERBOSE)) {
-          Log::V("Display %d: writing an video packet", display_id_);
-        }
-        auto res = writer_->Write(&packet_header, VideoPacketHeader::SIZE);
-        if (res == SocketWriter::Result::DISCONNECTED) {
-          stop_reason = FrameStreamStopReason::END_OF_STREAM;
+        if (frame_number_ == frame_before_timeout) {
+          // Two consecutive timeouts. Sending an empty frame.
+          packet_header.frame_number = ++frame_number_;
+          int64_t timestamp = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+          packet_header.origination_timestamp_us = timestamp;
+          packet_header.packet_size = 0;
+          Log::D("Display %d: sending an empty video frame #%d due to a timeout", display_id_, frame_number_);
+          auto res = writer_->Write(&packet_header, VideoPacketHeader::SIZE);
+          if (res == SocketWriter::Result::DISCONNECTED) {
+            stop_reason = FrameStreamStopReason::END_OF_STREAM;
+          }
         }
       }
     }
   }
 
   ReleaseVirtualDisplay(jni);
-  AMediaFormat_delete(media_format);
   WindowManager::RemoveRotationWatcher(jni, display_id_, &display_rotation_watcher_);
   DisplayManager::RemoveDisplayListener(this);
 
@@ -339,18 +333,18 @@ DisplayStreamer::FrameStreamStopReason DisplayStreamer::ProcessFramesUntilCodecS
   bool continue_streaming = true;
   bool request_sync_frame = true;
   int32_t error_count = 0;
+  auto initial_frame_number = frame_number_;
   while (continue_streaming && IsCodecRunning()) {
     CodecOutputBuffer codec_buffer(codec_, StringPrintf("Display %d: ", display_id_));
-    if (frame_number_ == initial_frame_number_) {
+    if (frame_number_ == initial_frame_number) {
       Log::D("Display %d: calling AMediaCodec_dequeueOutputBuffer", display_id_);
     }
-    duration timeout = frame_number_ == initial_frame_number_ ? INITIAL_FRAME_TIMEOUT : FRAME_TIMEOUT;
     steady_clock::time_point start_time = steady_clock::now();
-    if (!codec_buffer.Deque(duration_cast<microseconds>(timeout).count())) {
+    if (!codec_buffer.Deque(duration_cast<microseconds>(frame_timeout_).count())) {
       if (!IsCodecRunning()) {
         return FrameStreamStopReason::CODEC_STOPPED;
       }
-      if (steady_clock::now() - start_time >= timeout) {
+      if (steady_clock::now() - start_time >= frame_timeout_) {
         return FrameStreamStopReason::TIMEOUT;
       }
       if (codec_buffer.error_code() == AMEDIACODEC_INFO_TRY_AGAIN_LATER || ++error_count >= NUM_DEQUE_ATTEMPTS) {
@@ -360,6 +354,7 @@ DisplayStreamer::FrameStreamStopReason DisplayStreamer::ProcessFramesUntilCodecS
     }
 
     error_count = 0;
+    frame_timeout_ = MAX_FRAME_TIMEOUT;  // Use a lenient timeout for frames after the initial one.
     continue_streaming = !codec_buffer.IsEndOfStream();
     // Skip an AV1-specific data packet that is not a part of AV1 bitstream.
     // See https://aomediacodec.github.io/av1-spec/#obu-header-semantics.
@@ -367,7 +362,7 @@ DisplayStreamer::FrameStreamStopReason DisplayStreamer::ProcessFramesUntilCodecS
       continue;
     }
 
-    if (frame_number_ == initial_frame_number_) {
+    if (frame_number_ == initial_frame_number) {
       Log::D("Display %d: video frame #%d produced by the encoder", display_id_, frame_number_ + 1) ;
     }
 
@@ -457,31 +452,26 @@ DisplayInfo DisplayStreamer::GetDisplayInfo() {
 }
 
 void DisplayStreamer::CreateCodec() {
-  if (codec_ != nullptr) {
+  if (codec_.IsNotNull()) {
     Log::Fatal(VIDEO_ENCODER_INITIALIZATION_ERROR, "Display %d: video encoder already created", display_id_);
   }
   Log::D("Display %d: creating codec", display_id_);
   codec_ = AMediaCodec_createCodecByName(codec_info_->name.c_str());
-  if (codec_ == nullptr) {
+  if (codec_.IsNull()) {
     Log::Fatal(VIDEO_ENCODER_INITIALIZATION_ERROR, "Display %d: unable to create a %s video encoder",
                display_id_, codec_info_->name.c_str());
   }
 }
 
 void DisplayStreamer::DeleteCodec() {
-  if (codec_ != nullptr) {
+  if (codec_.IsNotNull()) {
     Log::D("Display %d: deleting codec", display_id_);
-    media_status_t status = AMediaCodec_delete(codec_);
-    codec_ = nullptr;
-    if (status != AMEDIA_OK) {
-      Log::W("Display %d: AMediaCodec_delete returned %d", display_id_, status);
-    }
+    codec_.Reset();
   }
 }
 
 void DisplayStreamer::StartCodecUnlocked() {
   Log::D("Display %d: starting codec", display_id_);
-  initial_frame_number_ = frame_number_;
   media_status_t status = AMediaCodec_start(codec_);
   if (status != AMEDIA_OK) {
     Log::Fatal(VIDEO_ENCODER_START_ERROR, "Display %d: AMediaCodec_start returned %d", display_id_, status);

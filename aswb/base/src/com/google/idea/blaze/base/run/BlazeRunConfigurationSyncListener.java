@@ -62,7 +62,6 @@ public class BlazeRunConfigurationSyncListener implements SyncListener {
       SyncResult syncResult) {
     final var projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
     updateExistingRunConfigurations(project);
-    removeInvalidRunConfigurations(project);
     if (syncMode == SyncMode.STARTUP || syncMode == SyncMode.NO_BUILD) {
       return;
     }
@@ -80,33 +79,16 @@ public class BlazeRunConfigurationSyncListener implements SyncListener {
               Sets.newLinkedHashSet(projectViewSet.listItems(TargetSection.KEY));
           // We only auto-generate configurations for rules listed in the project view.
           for (TargetExpression target : targetExpressions) {
-            if (!(target instanceof Label) || labelsWithConfigs.contains(target)) {
+            Label label = Label.createIfValid(target.toString());
+            if (label == null || labelsWithConfigs.contains(label)) {
               continue;
             }
-            Label label = (Label) target;
             labelsWithConfigs.add(label);
             maybeAddRunConfiguration(project, blazeProjectData, label);
           }
         });
   }
 
-  private static void removeInvalidRunConfigurations(Project project) {
-    RunManagerImpl manager = RunManagerImpl.getInstanceImpl(project);
-    List<RunnerAndConfigurationSettings> toRemove =
-        manager
-            .getConfigurationSettingsList(BlazeCommandRunConfigurationType.getInstance())
-            .stream()
-            .filter(s -> isInvalidRunConfig(s.getConfiguration()))
-            .collect(Collectors.toList());
-    if (!toRemove.isEmpty()) {
-      manager.removeConfigurations(toRemove);
-    }
-  }
-
-  private static boolean isInvalidRunConfig(RunConfiguration config) {
-    return config instanceof BlazeCommandRunConfiguration
-        && ((BlazeCommandRunConfiguration) config).pendingSetupFailed();
-  }
 
   /**
    * On each sync, re-calculate target kind for all existing run configurations, in case the target
@@ -179,9 +161,9 @@ public class BlazeRunConfigurationSyncListener implements SyncListener {
     for (RunConfiguration configuration : configurations) {
       if (configuration instanceof BlazeRunConfiguration) {
         BlazeRunConfiguration config = (BlazeRunConfiguration) configuration;
-        config.getTargets().stream()
-            .filter(t -> t instanceof Label)
-            .map(t -> (Label) t)
+        config.getTargetPatterns().stream()
+            .map(Label::createIfValid)
+            .filter(java.util.Objects::nonNull)
             .forEach(labelsWithConfigs::add);
       }
     }

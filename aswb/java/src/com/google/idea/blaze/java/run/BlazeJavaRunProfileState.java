@@ -35,20 +35,15 @@ import com.google.idea.blaze.base.issueparser.ToolWindowTaskIssueOutputFilter;
 import com.google.idea.blaze.base.model.primitives.Kind;
 import com.google.idea.blaze.base.model.primitives.RuleType;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
-import com.google.idea.blaze.base.projectview.ProjectViewManager;
-import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.ExecutorType;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner;
 import com.google.idea.blaze.base.run.smrunner.BlazeTestEventsHandler;
-import com.google.idea.blaze.base.run.smrunner.BlazeTestUiSession;
 import com.google.idea.blaze.base.run.smrunner.SmRunnerUtils;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFetcher;
 import com.google.idea.blaze.base.scope.BlazeContext;
-import com.google.idea.blaze.base.scope.OutputSink;
 import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.common.PrintOutput;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.java.TargetKindUtil;
 import com.intellij.execution.DefaultExecutionResult;
@@ -60,8 +55,6 @@ import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.execution.ui.ConsoleView;
-import com.intellij.execution.ui.ConsoleViewContentType;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtilRt;
 import java.io.File;
@@ -77,7 +70,6 @@ import kotlin.Unit;
  * when using a debug executor.
  */
 public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfileState {
-  private static final Logger logger = Logger.getInstance(BlazeJavaRunProfileState.class);
   private static final String JAVA_RUNFILES_ENV = "JAVA_RUNFILES=";
   private static final String TEST_DIAGNOSTICS_OUTPUT_DIR_ENV = "TEST_DIAGNOSTICS_OUTPUT_DIR=";
   private static final String TEST_SIZE_ENV = "TEST_SIZE=";
@@ -174,47 +166,27 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
 
   private PrepareBazelCommandResult prepareBazelCommand(Project project, BuildInvoker invoker) {
     BlazeCommand.Builder blazeCommand;
-    BlazeTestUiSession testUiSession = null;
     final var testResultFinderStrategy = new BlazeTestResultFetcher();
-    if (useTestUi()
-        && BlazeTestEventsHandler.targetsSupported(project, getConfiguration().getTargets())) {
-      testUiSession =
-        BlazeTestUiSession.create(
-          ImmutableList.<String>builder()
-            .add("--runs_per_test=1")
-            .add("--flaky_test_attempts=1")
-            .build(),
-          testResultFinderStrategy);
-    }
-    if (testUiSession != null) {
+    final var useTestUiSession = useTestUi()
+                              && BlazeTestEventsHandler.targetsSupported(project, getConfiguration().getTargetPatterns());
       blazeCommand =
         getBlazeCommandBuilder(
           project,
-          invoker,
           getConfiguration(),
-          testUiSession.getBlazeFlags(),
+          useTestUiSession ? ImmutableList.of("--runs_per_test=1", "--flaky_test_attempts=1") : ImmutableList.of(),
           getExecutorType(),
           kotlinxCoroutinesJavaAgent);
-      ConsoleView consoleView = SmRunnerUtils.getConsoleView(project, getConfiguration(), getEnvironment().getExecutor(),
-                                                             testUiSession.getTestResultFinderStrategy());
-      setConsoleBuilder(
-        new TextConsoleBuilderImpl(project) {
-          @Override
-          protected ConsoleView createConsole() {
-            return consoleView;
-          }
-        });
-    }
-    else {
-      blazeCommand =
-        getBlazeCommandBuilder(
-          project,
-          invoker,
-          getConfiguration(),
-          ImmutableList.of(),
-          getExecutorType(),
-          kotlinxCoroutinesJavaAgent);
-    }
+      if (useTestUiSession) {
+        ConsoleView consoleView = SmRunnerUtils.getConsoleView(project, getConfiguration(), getEnvironment().getExecutor(),
+                                                               testResultFinderStrategy);
+        setConsoleBuilder(
+          new TextConsoleBuilderImpl(project) {
+            @Override
+            protected ConsoleView createConsole() {
+              return consoleView;
+            }
+          });
+      }
     PrepareBazelCommandResult result = new PrepareBazelCommandResult(blazeCommand, testResultFinderStrategy);
     return result;
   }
@@ -245,7 +217,6 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
   @VisibleForTesting
   static BlazeCommand.Builder getBlazeCommandBuilder(
     Project project,
-    BuildInvoker invoker,
     BlazeCommandRunConfiguration configuration,
     List<String> extraBlazeFlags,
     ExecutorType executorType,
@@ -253,8 +224,6 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
 
     List<String> blazeFlags = new ArrayList<>(extraBlazeFlags);
 
-    ProjectViewSet projectViewSet =
-      Preconditions.checkNotNull(ProjectViewManager.getInstance(project).getProjectViewSet());
     BlazeJavaRunConfigState handlerState = getState(configuration);
 
     BlazeCommandName blazeCommand =
@@ -263,16 +232,12 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
       blazeCommand = BlazeCommandName.COVERAGE;
     }
 
-    BlazeCommand.Builder command = handlerState.getBlazeBinaryState().getBlazeBinary() != null
-        ? BlazeCommand.builder(invoker, blazeCommand, handlerState.getBlazeBinaryState().getBlazeBinary())
-        : BlazeCommand.builder(invoker, blazeCommand);
-    command.addTargets(configuration.getTargets())
+    BlazeCommand.Builder command = BlazeCommand.builder(blazeCommand);
+    command.addTargetStrings(configuration.getTargetPatterns())
         .addBlazeFlags(
           BlazeFlags.blazeFlags(
             project,
-            projectViewSet,
             blazeCommand,
-            BlazeContext.create(),
             BlazeInvocationContext.runConfigContext(
               executorType, configuration.getType(), false)))
         .addBlazeFlags(blazeFlags)
@@ -308,7 +273,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
   }
 
   private File getDownloadDir() {
-    String testTargetString = getConfiguration().getSingleTarget().toString();
+    String testTargetString = getConfiguration().getSingleTargetPattern();
     return new File(
       FileUtilRt.getTempDirectory(),
       testTargetString.substring(testTargetString.lastIndexOf(":") + 1) + ".runfiles");
@@ -321,32 +286,11 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
 
   private String getEntryPointScript() {
     return CharMatcher.is('/')
-      .trimLeadingFrom(getConfiguration().getSingleTarget().toString())
+      .trimLeadingFrom(getConfiguration().getSingleTargetPattern())
       .replace(':', '/');
   }
 
   private static String testArg(String flag) {
     return "--test_arg=" + flag;
-  }
-
-  //TODO(akhildixit) - the following output sink is the same as the one in BlazeCommandGenericRunConfigurationRunner.java.
-  // Extract it into a separate class to avoid code duplication.
-  private static class WritingOutputSink implements OutputSink<PrintOutput> {
-    private final ConsoleView console;
-
-    public WritingOutputSink(ConsoleView console) {
-      this.console = console;
-    }
-
-    @Override
-    public Propagation onOutput(PrintOutput output) {
-      // Add ANSI support to the console to view colored output
-      console.print(
-        output.getText().replaceAll("\u001B\\[[;\\d]*m", "") + "\n",
-        output.getOutputType() == PrintOutput.OutputType.ERROR
-        ? ConsoleViewContentType.ERROR_OUTPUT
-        : ConsoleViewContentType.NORMAL_OUTPUT);
-      return Propagation.Continue;
-    }
   }
 }

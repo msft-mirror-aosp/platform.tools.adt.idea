@@ -28,21 +28,15 @@ import javax.swing.JComponent
 import org.jetbrains.android.util.AndroidBundle.message
 
 /**
- * Displays the deployment issues for each device and a warning or error icon when the user deploys
- * their app.
+ * Displays the deployment issues for each device and a warning or error icon when the user deploys their app.
  *
- * In case of a warning the user can proceed with the deployment and choose not to show this dialog
- * during the current session.
+ * In case of a warning the user can proceed with the deployment and choose not to show this dialog during the current session.
  */
 internal class SelectedDevicesErrorDialog
-internal constructor(
-  private val project: Project,
-  private val devices: Iterable<DeploymentTargetDevice>,
-) : DialogWrapper(project) {
+internal constructor(private val project: Project, private val devices: Iterable<DeploymentTargetDevice>) : DialogWrapper(project) {
   companion object {
     @JvmField
-    internal val DO_NOT_SHOW_WARNING_ON_DEPLOYMENT =
-      com.intellij.openapi.util.Key.create<Boolean>("do.not.show.warning.on.deployment")
+    internal val DO_NOT_SHOW_WARNING_ON_DEPLOYMENT = com.intellij.openapi.util.Key.create<Boolean>("do.not.show.warning.on.deployment")
   }
 
   private val anyDeviceHasError = devices.any { it.launchCompatibility.state == State.ERROR }
@@ -58,8 +52,7 @@ internal constructor(
 
           override fun getDoNotShowMessage() = message("do.not.ask.for.this.session")
 
-          override fun isSelectedByDefault() =
-            project.getUserData(DO_NOT_SHOW_WARNING_ON_DEPLOYMENT) == true
+          override fun isSelectedByDefault() = project.getUserData(DO_NOT_SHOW_WARNING_ON_DEPLOYMENT) == true
         }
       )
     }
@@ -82,11 +75,7 @@ internal constructor(
         row {
           val icon = if (anyDeviceHasError) StudioIcons.Common.ERROR else StudioIcons.Common.WARNING
           icon(IconUtil.scale(icon, null, 2.5f))
-          panel {
-            devices.forEach {
-              row { label("<html>${it.launchCompatibility.reason} on device ${it.name}</html>") }
-            }
-          }
+          panel { devices.forEach { row { label("<html>${it.launchCompatibility.reason} on device ${it.name}</html>") } } }
         }
       }
       .withBorder(JBEmptyBorder(16))

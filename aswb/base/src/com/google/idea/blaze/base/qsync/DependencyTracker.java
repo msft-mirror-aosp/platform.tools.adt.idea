@@ -20,11 +20,13 @@ import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.qsync.deps.OutputGroup;
+import com.google.idea.blaze.qsync.deps.OutputInfo;
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage;
 import com.google.idea.common.experiments.BoolExperiment;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,7 @@ public interface DependencyTracker {
   /** Request to {@link #buildDependenciesForTargets(BlazeContext, DependencyBuildRequest)}. */
   class DependencyBuildRequest {
     public enum RequestType {
+      SPECIAL_TARGETS,
       /**
        * Build multiple targets and mark all dependencies as built even if they produce no
        * artifacts.
@@ -56,7 +59,8 @@ public interface DependencyTracker {
        * artifacts.
        */
       WHOLE_PROJECT,
-      FILE_PREVIEWS
+      FILE_PREVIEWS,
+      LIVE_EDIT_BUILD_APK
     };
 
     final RequestType requestType;
@@ -69,6 +73,10 @@ public interface DependencyTracker {
 
     public static DependencyBuildRequest multiTarget(Collection<Label> targets) {
       return new DependencyBuildRequest(RequestType.MULTIPLE_TARGETS, ImmutableSet.copyOf(targets));
+    }
+
+    public static DependencyBuildRequest specialTarget(Collection<Label> targets) {
+      return new DependencyBuildRequest(RequestType.SPECIAL_TARGETS, ImmutableSet.copyOf(targets));
     }
 
     public static DependencyBuildRequest wholeProject() {
@@ -84,7 +92,7 @@ public interface DependencyTracker {
         .mapMulti(DependencyBuildRequest::languageToOutputGroups)
         .collect(Collectors.toCollection(() -> EnumSet.noneOf(OutputGroup.class)));
 
-      if (type.equals(RequestType.FILE_PREVIEWS)) {
+      if (type.equals(RequestType.FILE_PREVIEWS) || type.equals(RequestType.LIVE_EDIT_BUILD_APK)) {
         outputGroups.add(OutputGroup.TRANSITIVE_RUNTIME_JARS);
         outputGroups.add(OutputGroup.EXTERNAL_TRANSITIVE_RUNTIME_JARS);
       }
@@ -112,4 +120,12 @@ public interface DependencyTracker {
   }
 
   DependencyBuilder getBuilder();
+
+  /**
+   * Updates the artifact tracker with the given build output, enabling code analysis for the given
+   * targets.
+   */
+  void updateDependenciesFromOutputInfo(
+      BlazeContext context, OutputInfo outputInfo, Set<Label> targets)
+      throws BuildException;
 }

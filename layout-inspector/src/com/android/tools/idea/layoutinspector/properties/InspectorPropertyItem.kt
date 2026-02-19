@@ -28,6 +28,7 @@ import com.android.utils.HashCodes
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private const val DEFAULT_DENSITY = 160 // Same as Density.MEDIUM.dpiValue
 private const val DEFAULT_DENSITY_FLOAT = 160.0f
@@ -91,8 +92,7 @@ open class InspectorPropertyItem(
   /**
    * The integer value of a dimension or -1 for other types.
    *
-   * Note: for a DIMENSION_FLOAT this value should be converted using
-   * Float.fromBits(dimensionValue).
+   * Note: for a DIMENSION_FLOAT this value should be converted using Float.fromBits(dimensionValue).
    */
   var dimensionValue: Int = computeDimensionValue(initialType)
     private set
@@ -122,8 +122,7 @@ open class InspectorPropertyItem(
       dimensionValue = computeDimensionValue(type)
     }
 
-  override fun hashCode(): Int =
-    HashCodes.mix(namespace.hashCode(), attrName.hashCode(), source?.hashCode() ?: 0)
+  override fun hashCode(): Int = HashCodes.mix(namespace.hashCode(), attrName.hashCode(), source?.hashCode() ?: 0)
 
   override fun equals(other: Any?): Boolean =
     other is InspectorPropertyItem &&
@@ -131,6 +130,12 @@ open class InspectorPropertyItem(
       attrName == other.attrName &&
       source == other.source &&
       javaClass == other.javaClass
+
+  /** Update the value of the property. Return true if child elements were added or removed. */
+  open fun updateValue(newValue: InspectorPropertyItem): Boolean {
+    value = newValue.snapshotValue
+    return false
+  }
 
   override val helpSupport =
     object : HelpSupport {
@@ -156,7 +161,7 @@ open class InspectorPropertyItem(
     val dpi = resourceLookup.dpi ?: return "${pixels}px"
     return when (PropertiesSettings.dimensionUnits) {
       DimensionUnits.PIXELS -> "${pixels}px"
-      DimensionUnits.DP -> "${pixels * DEFAULT_DENSITY / dpi}dp"
+      DimensionUnits.DP -> "${(pixels.toFloat() * DEFAULT_DENSITY / dpi).roundToInt()}dp"
     }
   }
 
@@ -167,11 +172,7 @@ open class InspectorPropertyItem(
     val resourceLookup = lookup.resourceLookup
     // If we are unable to get the dpi from the device, just show pixels
     val dpi = resourceLookup.dpi ?: return "${formatFloat(pixels)}px"
-    if (
-      name == ATTR_TEXT_SIZE &&
-        resourceLookup.fontScale != 0.0f &&
-        PropertiesSettings.dimensionUnits == DimensionUnits.DP
-    ) {
+    if (name == ATTR_TEXT_SIZE && resourceLookup.fontScale != 0.0f && PropertiesSettings.dimensionUnits == DimensionUnits.DP) {
       val spFactor = pixelsToSpFactor
       if (spFactor != null) {
         return "${DecimalFormat("0.0", DecimalFormatSymbols.getInstance(Locale.ENGLISH)).format(pixels * spFactor)}sp"
@@ -227,12 +228,8 @@ open class InspectorPropertyItem(
 
   @Slow
   fun resolveDimensionType(view: ViewNode) {
-    if (
-      (type == PropertyType.INT32 || type == PropertyType.FLOAT) &&
-        lookup.resourceLookup.isDimension(view, name)
-    ) {
-      type =
-        if (type == PropertyType.INT32) PropertyType.DIMENSION else PropertyType.DIMENSION_FLOAT
+    if ((type == PropertyType.INT32 || type == PropertyType.FLOAT) && lookup.resourceLookup.isDimension(view, name)) {
+      type = if (type == PropertyType.INT32) PropertyType.DIMENSION else PropertyType.DIMENSION_FLOAT
     }
   }
 }

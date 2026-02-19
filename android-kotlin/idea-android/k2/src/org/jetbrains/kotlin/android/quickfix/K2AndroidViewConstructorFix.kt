@@ -34,10 +34,8 @@ import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.psiUtil.containingClass
 import org.jetbrains.kotlin.psi.psiUtil.getNonStrictParentOfType
 
-class K2AndroidViewConstructorFix(
-    element: KtSuperTypeEntry,
-    private val useThreeParameterConstructor: Boolean
-) : AbstractKotlinApplicableQuickFix<KtSuperTypeEntry>(element) {
+class K2AndroidViewConstructorFix(element: KtSuperTypeEntry, private val useThreeParameterConstructor: Boolean) :
+    AbstractKotlinApplicableQuickFix<KtSuperTypeEntry>(element) {
     override fun getFamilyName(): String = KotlinAndroidViewConstructorUtils.DESCRIPTION
 
     // Called from the EDT.
@@ -59,13 +57,9 @@ class K2AndroidViewConstructorFix(
                 return null
             }
 
-            @OptIn(KaExperimentalApi::class)
-            val superConstructors = superType.scope?.getConstructors() ?: return null
-            val superConstructorClassSignatures = superConstructors.map { constructor ->
-                constructor.valueParameters.map { param ->
-                    classId(param.returnType)
-                }
-            }
+            @OptIn(KaExperimentalApi::class) val superConstructors = superType.scope?.getConstructors() ?: return null
+            val superConstructorClassSignatures =
+                superConstructors.map { constructor -> constructor.valueParameters.map { param -> classId(param.returnType) } }
 
             if (KotlinAndroidViewConstructorUtils.REQUIRED_CONSTRUCTOR_SIGNATURE !in superConstructorClassSignatures) {
                 return null
@@ -83,17 +77,16 @@ class K2AndroidViewConstructorFix(
             return K2AndroidViewConstructorFix(superTypeEntry, useThreeParameterConstructor)
         }
 
-        val FACTORY = KotlinQuickFixFactory.IntentionBased<SupertypeNotInitialized> { diagnostic ->
-            listOfNotNull(createForDiagnostic(diagnostic))
-        }
+        val FACTORY =
+            KotlinQuickFixFactory.IntentionBased<SupertypeNotInitialized> { diagnostic -> listOfNotNull(createForDiagnostic(diagnostic)) }
 
         private fun KaSession.classId(type: KaType): ClassId? = type.expandedSymbol?.classId
+
         private fun KaSession.isAndroidView(type: KaType): Boolean = type.isSubtypeOf(KotlinAndroidViewConstructorUtils.REQUIRED_SUPERTYPE)
     }
 }
 
 class K2AndroidViewConstructorFixRegistrar : KotlinQuickFixRegistrar() {
-    override val list: KotlinQuickFixesList = KtQuickFixesListBuilder.registerPsiQuickFix {
-        registerFactory(K2AndroidViewConstructorFix.FACTORY)
-    }
+    override val list: KotlinQuickFixesList =
+        KtQuickFixesListBuilder.registerPsiQuickFix { registerFactory(K2AndroidViewConstructorFix.FACTORY) }
 }

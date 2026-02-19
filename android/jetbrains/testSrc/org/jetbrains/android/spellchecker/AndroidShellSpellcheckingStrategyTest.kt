@@ -16,8 +16,8 @@
 package org.jetbrains.android.spellchecker
 
 import com.google.common.truth.Truth.assertThat
+import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
-import com.intellij.spellchecker.inspections.SpellCheckingInspection
 import org.jetbrains.android.AndroidTestCase
 
 /**
@@ -28,19 +28,23 @@ import org.jetbrains.android.AndroidTestCase
 class AndroidShellSpellcheckingStrategyTest : AndroidTestCase() {
   override fun setUp() {
     super.setUp()
-    myFixture.enableInspections(setOf(SpellCheckingInspection::class.java))
+    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
   }
 
   fun testIgnoredGradlewScript() {
     val gradlewScript = myFixture.copyFileToProject("spellchecker/gradlew", "gradlew")
+    assertThat(gradlewScript.fileType.name).isEqualTo("Shell Script")
     myFixture.configureFromExistingVirtualFile(gradlewScript)
     myFixture.checkHighlighting(true, false, false)
   }
 
   fun testNotIgnoredShellScript() {
     val typosScript = myFixture.copyFileToProject("spellchecker/gradlew", "typos")
+    assertThat(typosScript.fileType.name).isEqualTo("Shell Script")
     myFixture.configureFromExistingVirtualFile(typosScript)
+    assertThat(myFixture.file.text).isNotEmpty()
     val highlightingResults = myFixture.doHighlighting()
+
     assertThat(highlightingResults.filter { it.severity == SpellCheckerSeveritiesProvider.TYPO }).isNotEmpty()
   }
 }
