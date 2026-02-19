@@ -44,7 +44,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -114,24 +113,13 @@ internal class EmbeddedCompilerClientImplTest {
           EmptyProgressIndicator(),
         )
       assertTrue(result.toString(), result is CompilationResult.Success)
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        assertEquals(
-          """
-          SourceKt.class
-          """
-            .trimIndent(),
-          outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-        )
-      } else {
-        assertEquals(
-          """
-          EmbeddedCompilerClientImplTest_simple compilation request.app.main.kotlin_module
-          SourceKt.class
-          """
-            .trimIndent(),
-          outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-        )
-      }
+      assertEquals(
+        """
+        SourceKt.class
+        """
+          .trimIndent(),
+        outputDirectory.toFileNameSet().sorted().joinToString("\n"),
+      )
     }
   }
 
@@ -176,25 +164,13 @@ internal class EmbeddedCompilerClientImplTest {
           EmptyProgressIndicator(),
         )
       assertInstanceOf<CompilationResult.Success>(result)
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        assertEquals(
-          """
-          SourceKt.class
-          """
-            .trimIndent(),
-          outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-        )
-      } else {
-        assertEquals(
-          """
-          EmbeddedCompilerClientImplTest_multi module compilation request succeeds.app.main.kotlin_module
-          EmbeddedCompilerClientImplTest_multi module compilation request succeeds.lib.main.kotlin_module
-          SourceKt.class
-          """
-            .trimIndent(),
-          outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-        )
-      }
+      assertEquals(
+        """
+        SourceKt.class
+        """
+          .trimIndent(),
+        outputDirectory.toFileNameSet().sorted().joinToString("\n"),
+      )
     }
   }
 
@@ -253,24 +229,13 @@ internal class EmbeddedCompilerClientImplTest {
                 EmptyProgressIndicator(),
               )
             assertTrue(result.toString(), result is CompilationResult.Success)
-            if (KotlinPluginModeProvider.isK2Mode()) {
-              assertEquals(
-                """
-                SourceKt.class
-                """
-                  .trimIndent(),
-                outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-              )
-            } else {
-              assertEquals(
-                """
-                EmbeddedCompilerClientImplTest_parallel requests.app.main.kotlin_module
-                SourceKt.class
-                """
-                  .trimIndent(),
-                outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-              )
-            }
+            assertEquals(
+              """
+              SourceKt.class
+              """
+                .trimIndent(),
+              outputDirectory.toFileNameSet().sorted().joinToString("\n"),
+            )
           }
         }
       }
@@ -321,25 +286,13 @@ internal class EmbeddedCompilerClientImplTest {
             EmptyProgressIndicator(),
           )
         assertTrue(result.toString(), result is CompilationResult.Success)
-        if (KotlinPluginModeProvider.isK2Mode()) {
-          assertEquals(
-            """
-            SourceKt.class
-            """
-              .trimIndent(),
-            outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-          )
-        } else {
-          assertEquals(
-            """
-            EmbeddedCompilerClientImplTest_inline test.app.main.kotlin_module
-            InlineKt.class
-            SourceKt.class
-            """
-              .trimIndent(),
-            outputDirectory.toFileNameSet().sorted().joinToString("\n"),
-          )
-        }
+        assertEquals(
+          """
+          SourceKt.class
+          """
+            .trimIndent(),
+          outputDirectory.toFileNameSet().sorted().joinToString("\n"),
+        )
       }
     }
   }

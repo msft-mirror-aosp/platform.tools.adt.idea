@@ -27,7 +27,6 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.fail
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -357,11 +356,7 @@ class BasicCompileTest {
     )
 
     val output = compile(file, cache)
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      Assert.assertNotNull(output.irClasses.singleOrNull { it.name == "CustomJvmName__RenamedFileKt" })
-    } else {
-      Assert.assertNotNull(output.irClasses.singleOrNull { it.name == "CustomJvmName" }) // CustomJvmName.class doesn't change
-    }
+    Assert.assertNotNull(output.irClasses.singleOrNull { it.name == "CustomJvmName__RenamedFileKt" })
     Assert.assertTrue(output.classesMap["CustomJvmName__RenamedFileKt"]!!.isNotEmpty())
   }
 
@@ -672,15 +667,11 @@ class BasicCompileTest {
       compile(file)
       Assert.fail("A.kt contains a call to an invisible function invisibleFunction()")
     } catch (e: LiveEditUpdateException) {
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        Assert.assertTrue(
-          e.message!!.contains(
-            "[INVISIBLE_REFERENCE] Cannot access 'fun invisibleFunction(): Unit': it is protected in 'Child'. A.kt at line 10"
-          )
+      Assert.assertTrue(
+        e.message!!.contains(
+          "[INVISIBLE_REFERENCE] Cannot access 'fun invisibleFunction(): Unit': it is protected in 'Child'. A.kt at line 10"
         )
-      } else {
-        Assert.assertTrue(e.message?.contains("Analyze Error. INVISIBLE_MEMBER") == true)
-      }
+      )
     }
   }
 }

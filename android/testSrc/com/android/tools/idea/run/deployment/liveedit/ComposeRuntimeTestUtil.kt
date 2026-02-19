@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.extensions.ProjectExtensionDescriptor
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.fir.extensions.KotlinFirCompilerPluginConfigurationForIdeProvider
 
 /**
@@ -42,17 +41,10 @@ import org.jetbrains.kotlin.idea.fir.extensions.KotlinFirCompilerPluginConfigura
  * references to the @Composable annotation, we actually don't need anything from that runtime during the compiler. The main reason to
  * include that is because the compose compiler plugin expects the runtime to be path of the classpath or else it'll throw an error.
  */
-private val composeRuntimePathForK1 =
-  TestUtils.resolveWorkspacePath("tools/adt/idea/compose-ide-plugin/testData/lib/compose-runtime-1.4.0-SNAPSHOT.jar").toString()
 private val composeRuntimePathForK2 =
   TestUtils.resolveWorkspacePath("tools/adt/idea/compose-ide-plugin/testData/lib/compose-runtime-desktop-1.7.0.jar").toString()
 val composeRuntimePath
-  get() =
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      composeRuntimePathForK2
-    } else {
-      composeRuntimePathForK1
-    }
+  get() = composeRuntimePathForK2
 
 @OptIn(ExperimentalCompilerApi::class)
 private val composeExtensionStorage by lazy {

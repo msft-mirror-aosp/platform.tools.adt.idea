@@ -34,7 +34,6 @@ import junit.framework.Assert
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.After
 import org.junit.Before
@@ -188,12 +187,7 @@ class ComposableCompileTest {
     val output = compile(file, cache)
 
     Assert.assertTrue(-1369675262 in output.groupIds)
-    val groupIdForNestedLambda =
-      if (!KotlinPluginModeProvider.isK2Mode()) {
-        22704048
-      } else {
-        2076812637
-      }
+    val groupIdForNestedLambda = 2076812637
     Assert.assertTrue(groupIdForNestedLambda in output.groupIds)
   }
 
@@ -266,15 +260,9 @@ class ComposableCompileTest {
 
     Assert.assertEquals(3, output.groupIds.size)
 
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(1639534479))
-      Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(877730311))
-      Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(-1350204187))
-    } else {
-      Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(1639534479))
-      Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(-1050554150))
-      Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(-1350204187))
-    }
+    Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(1639534479))
+    Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(877730311))
+    Assert.assertTrue("groupids = " + output.groupIds.toString(), output.groupIds.contains(-1350204187))
     Assert.assertEquals(
       InvalidateMode.INVALIDATE_GROUPS,
       output.invalidateMode,

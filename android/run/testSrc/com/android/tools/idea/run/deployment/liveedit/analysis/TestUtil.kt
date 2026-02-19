@@ -41,7 +41,6 @@ import com.android.tools.idea.run.deployment.liveedit.getCompilerConfiguration
 import com.android.tools.idea.run.deployment.liveedit.getPsiValidationState
 import com.android.tools.idea.run.deployment.liveedit.k2.backendCodeGenForK2
 import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
-import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.android.tools.idea.run.deployment.liveedit.withClasses
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.ApplicationManager
@@ -55,8 +54,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
-import org.jetbrains.kotlin.codegen.state.GenerationState
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.base.util.KOTLIN_FILE_TYPES
 import org.jetbrains.kotlin.idea.util.module
 import org.jetbrains.kotlin.psi.KtFile
@@ -115,29 +112,10 @@ fun AndroidProjectRule.Typed<*, Nothing>.directApiCompile(inputFiles: List<KtFil
       Computable<List<ByteArray>> {
         runWithCompileLock {
           val output = mutableListOf<ByteArray>()
-          if (KotlinPluginModeProvider.isK2Mode()) {
-            @OptIn(KaExperimentalApi::class)
-            inputFiles.forEach { inputFile ->
-              val result = backendCodeGenForK2(inputFile, inputFile.module!!, getCompilerConfiguration(inputFile.module!!, inputFile))
-              result.output.filter { it.path.endsWith(".class") }.forEach { output.add(it.content) }
-            }
-          } else {
-            val resolution = fetchResolution(project, inputFiles)
-            val analysisResult = analyze(inputFiles, resolution)
-            val generationState: GenerationState =
-              backendCodeGen(
-                ApplicationLiveEditServices.LegacyForTests(project),
-                project,
-                analysisResult,
-                inputFiles,
-                inputFiles.first().module!!,
-                emptySet(),
-              )
-            generationState.factory
-              .asList()
-              .filter { it.relativePath.endsWith(".class") }
-              .map { it.asByteArray() }
-              .forEach { output.add(it) }
+          @OptIn(KaExperimentalApi::class)
+          inputFiles.forEach { inputFile ->
+            val result = backendCodeGenForK2(inputFile, inputFile.module!!, getCompilerConfiguration(inputFile.module!!, inputFile))
+            result.output.filter { it.path.endsWith(".class") }.forEach { output.add(it.content) }
           }
           output
         }
