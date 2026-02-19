@@ -8,7 +8,6 @@ import com.android.annotations.concurrency.Slow;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.gradle.util.ModuleTypeComparator;
 import com.android.tools.idea.help.AndroidWebHelpProvider;
-import com.android.tools.idea.instantapp.InstantApps;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.credentialStore.CredentialAttributes;
 import com.intellij.credentialStore.CredentialAttributesKt;
@@ -44,7 +43,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -132,7 +130,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   }
 
   private void updateModuleDropdown() {
-    List<AndroidFacet> facets = myIsBundle ? filteredFacets(myFacets) : myFacets;
+    List<AndroidFacet> facets = myFacets;
     mySelection = null;
     myModuleCombo.setEnabled(facets.size() > 1);
     if (!facets.isEmpty()) {
@@ -146,11 +144,6 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
       myModuleCombo.setModel(new CollectionComboBoxModel<>(facets, mySelection));
       updateSelection(mySelection);
     }
-  }
-
-  // Instant Apps cannot be built as bundles
-  private List<AndroidFacet> filteredFacets(List<AndroidFacet> facets) {
-    return facets.stream().filter(f -> !InstantApps.isInstantAppApplicationModule(f)).collect(Collectors.toList());
   }
 
   private void updateSelection(@Nullable AndroidFacet selectedItem) {
