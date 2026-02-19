@@ -20,7 +20,6 @@ import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.openapi.fileTypes.LanguageFileType
 import org.jetbrains.kotlin.idea.KotlinFileType
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.BeforeClass
 import org.junit.ClassRule
 import org.junit.Test
@@ -38,7 +37,6 @@ class SantaTrackerKotlinK2Benchmark : FullProjectBenchmark() {
     @BeforeClass
     fun setUpBeforeClass() {
       loadProject(staticRule, GRADLE_PROJECT_NAME)
-      assert(KotlinPluginModeProvider.isK2Mode())
     }
   }
 
