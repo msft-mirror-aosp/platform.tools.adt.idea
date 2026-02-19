@@ -426,6 +426,9 @@ fun createSourceProvidersFromModel(model: GradleAndroidModel): SourceProviders {
 
         override val keepRulesDirectoryUrls: Sequence<String>
           get() = emptySequence()
+
+        override val aarKeepRulesDirectoryUrls: Sequence<String>
+          get() = emptySequence()
       },
     )
   }
@@ -452,6 +455,9 @@ fun createSourceProvidersFromModel(model: GradleAndroidModel): SourceProviders {
           get() = emptySequence()
 
         override val keepRulesDirectoryUrls: Sequence<String>
+          get() = emptySequence()
+
+        override val aarKeepRulesDirectoryUrls: Sequence<String>
           get() = emptySequence()
       },
     )
@@ -547,6 +553,9 @@ private fun createIdeaSourceProviderFromModelSourceProvider(
 
         override val keepRulesDirectoryUrls: Sequence<String>
           get() = it.keepRulesDirectories.asSequence().toUrls()
+
+        override val aarKeepRulesDirectoryUrls: Sequence<String>
+          get() = it.aarKeepRulesDirectories?.asSequence()?.toUrls() ?: emptySequence()
       },
   )
 }

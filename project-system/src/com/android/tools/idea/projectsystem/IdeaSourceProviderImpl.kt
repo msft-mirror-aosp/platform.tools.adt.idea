@@ -42,6 +42,7 @@ class NamedIdeaSourceProviderImpl(override val name: String, override val scopeT
     val customSourceDirectories: Map<String, Sequence<String>>
     val baselineProfileDirectoryUrls: Sequence<String>
     val keepRulesDirectoryUrls: Sequence<String>
+    val aarKeepRulesDirectoryUrls: Sequence<String>
   }
 
   private val manifestFileUrl: String?
@@ -83,6 +84,9 @@ class NamedIdeaSourceProviderImpl(override val name: String, override val scopeT
 
   override val keepRulesDirectoryUrls: Iterable<String>
     get() = core.keepRulesDirectoryUrls.asIterable()
+
+  override val aarKeepRulesDirectoryUrls: Iterable<String>
+    get() = core.aarKeepRulesDirectoryUrls.asIterable()
 
   @Volatile private var myManifestFile: VirtualFile? = null
 
@@ -148,6 +152,9 @@ class NamedIdeaSourceProviderImpl(override val name: String, override val scopeT
   override val keepRulesDirectories: Iterable<VirtualFile>
     get() = core.keepRulesDirectoryUrls.toVirtualFiles()
 
+  override val aarKeepRulesDirectories: Iterable<VirtualFile>
+    get() = core.aarKeepRulesDirectoryUrls.toVirtualFiles()
+
   override fun toString(): String = "$name($scopeType)"
 }
 
@@ -173,6 +180,7 @@ class IdeaSourceProviderImpl(override val scopeType: ScopeType, val core: Core) 
     val customSourceDirectories: Map<String, Sequence<String>>
     val baselineProfileDirectoryUrls: Sequence<String>
     val keepRulesDirectoryUrls: Sequence<String>
+    val aarKeepRulesDirectoryUrls: Sequence<String>
   }
 
   override val manifestFileUrls: Iterable<String>
@@ -217,6 +225,9 @@ class IdeaSourceProviderImpl(override val scopeType: ScopeType, val core: Core) 
   override val keepRulesDirectoryUrls: Iterable<String>
     get() = core.keepRulesDirectoryUrls.asIterable()
 
+  override val aarKeepRulesDirectoryUrls: Iterable<String>
+    get() = core.aarKeepRulesDirectoryUrls.asIterable()
+
   override val manifestFiles: Iterable<VirtualFile>
     get() = core.manifestFileUrls.toVirtualFiles()
 
@@ -259,6 +270,9 @@ class IdeaSourceProviderImpl(override val scopeType: ScopeType, val core: Core) 
 
   override val keepRulesDirectories: Iterable<VirtualFile>
     get() = core.keepRulesDirectoryUrls.toVirtualFiles()
+
+  override val aarKeepRulesDirectories: Iterable<VirtualFile>
+    get() = core.aarKeepRulesDirectoryUrls.toVirtualFiles()
 }
 
 /** A builder to build [IdeaSourceProvider] in a Java-friendly way. */
@@ -297,6 +311,8 @@ interface NamedIdeaSourceProviderBuilder {
 
   fun withKeepRulesDirectoryUrls(urls: Collection<String>): NamedIdeaSourceProviderBuilder
 
+  fun withAarKeepRulesDirectoryUrls(urls: Collection<String>): NamedIdeaSourceProviderBuilder
+
   fun build(): NamedIdeaSourceProvider
 
   companion object {
@@ -322,6 +338,7 @@ interface NamedIdeaSourceProviderBuilder {
     val customSourceDirectories: Map<String, Collection<String>> = emptyMap(),
     val baselineProfileDirectoryUrls: Collection<String> = emptyList(),
     val keepRulesDirectoryUrls: Collection<String> = emptyList(),
+    val aarKeepRulesDirectoryUrls: Collection<String> = emptyList(),
   ) : NamedIdeaSourceProviderBuilder {
     override fun withName(name: String): NamedIdeaSourceProviderBuilder = copy(name = name)
 
@@ -359,6 +376,9 @@ interface NamedIdeaSourceProviderBuilder {
       copy(baselineProfileDirectoryUrls = urls)
 
     override fun withKeepRulesDirectoryUrls(urls: Collection<String>): NamedIdeaSourceProviderBuilder = copy(keepRulesDirectoryUrls = urls)
+
+    override fun withAarKeepRulesDirectoryUrls(urls: Collection<String>): NamedIdeaSourceProviderBuilder =
+      copy(aarKeepRulesDirectoryUrls = urls)
 
     override fun build(): NamedIdeaSourceProvider =
       NamedIdeaSourceProviderImpl(
@@ -405,6 +425,9 @@ interface NamedIdeaSourceProviderBuilder {
 
           override val keepRulesDirectoryUrls: Sequence<String>
             get() = this@Builder.keepRulesDirectoryUrls.asSequence()
+
+          override val aarKeepRulesDirectoryUrls: Sequence<String>
+            get() = this@Builder.aarKeepRulesDirectoryUrls.asSequence()
         },
       )
   }

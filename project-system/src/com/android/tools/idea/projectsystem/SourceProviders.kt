@@ -367,6 +367,9 @@ fun createMergedSourceProvider(scopeType: ScopeType, providers: List<NamedIdeaSo
 
         override val keepRulesDirectoryUrls: Sequence<String>
           get() = providers.asSequence().map { it.keepRulesDirectoryUrls.asSequence() }.flatten()
+
+        override val aarKeepRulesDirectoryUrls: Sequence<String>
+          get() = providers.asSequence().map { it.aarKeepRulesDirectoryUrls.asSequence() }.flatten()
       },
   )
 }
@@ -388,6 +391,7 @@ fun emptySourceProvider(scopeType: ScopeType): IdeaSourceProvider {
     override val mlModelsDirectoryUrls: Iterable<String> = emptyList()
     override val baselineProfileDirectoryUrls: Iterable<String> = emptyList()
     override val keepRulesDirectoryUrls: Iterable<String> = emptyList()
+    override val aarKeepRulesDirectoryUrls: Iterable<String> = emptyList()
 
     override val manifestFiles: Iterable<VirtualFile> = emptyList()
     override val manifestDirectories: Iterable<VirtualFile> = emptyList()
@@ -406,6 +410,7 @@ fun emptySourceProvider(scopeType: ScopeType): IdeaSourceProvider {
 
     override val baselineProfileDirectories: Iterable<VirtualFile> = emptyList()
     override val keepRulesDirectories: Iterable<VirtualFile> = emptyList()
+    override val aarKeepRulesDirectories: Iterable<VirtualFile> = emptyList()
   }
 }
 

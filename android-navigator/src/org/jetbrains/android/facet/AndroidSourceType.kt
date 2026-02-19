@@ -130,6 +130,10 @@ sealed class AndroidSourceType(val name: String, val icon: Icon?, val isGenerate
     override fun getSources(provider: IdeaSourceProvider): List<VirtualFile> = copyOf(provider.keepRulesDirectories)
   }
 
+  object AAR_KEEP_RULES : AndroidSourceType("aarKeepRules", AllIcons.Modules.SourceRoot) {
+    override fun getSources(provider: IdeaSourceProvider): List<VirtualFile> = copyOf(provider.aarKeepRulesDirectories)
+  }
+
   class Custom(name: String) : AndroidSourceType(name, AllIcons.Modules.ResourcesRoot, isGenerated = false, isCustom = true) {
     override fun getSources(provider: IdeaSourceProvider): List<VirtualFile> =
       copyOf(provider.custom[name]?.directories ?: emptyList<VirtualFile>())
@@ -180,4 +184,5 @@ val BUILT_IN_TYPES: List<AndroidSourceType> =
     AndroidSourceType.ML,
     AndroidSourceType.BASELINE_PROFILES,
     AndroidSourceType.KEEP_RULES,
+    AndroidSourceType.AAR_KEEP_RULES,
   )

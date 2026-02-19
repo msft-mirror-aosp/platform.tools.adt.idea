@@ -18,6 +18,7 @@ package com.android.tools.idea.navigator.runsIndexingWithGradle
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectOther
+import com.android.tools.idea.gradle.project.sync.snapshots.withAdditionalPatch
 import com.android.tools.idea.testing.AndroidGradleTests
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
@@ -82,6 +83,28 @@ class AndroidGradleProjectViewSnapshotComparisonTest : SnapshotComparisonTest {
   fun testTestSuites() {
     try {
       val preparedProject = projectRule.prepareTestProject(TestProject.TEST_SUITES)
+      val text = preparedProject.open { project: Project -> project.dumpAndroidProjectView() }
+
+      assertIsEqualToSnapshot(text)
+    } finally {
+      AndroidGradleTests.restoreJdk()
+    }
+  }
+
+  @Test
+  @RunsInEdt
+  fun testAarKeepRules() {
+    try {
+      val preparedProject =
+        projectRule.prepareTestProject(
+          TestProject.INCLUDE_FROM_LIB.withAdditionalPatch {
+            val aarKeepRules = it.resolve("lib/src/main/aarKeepRules")
+            aarKeepRules.mkdirs()
+            val file = aarKeepRules.resolve("rules.keep")
+            file.createNewFile()
+            file.writeText("#")
+          }
+        )
       val text = preparedProject.open { project: Project -> project.dumpAndroidProjectView() }
 
       assertIsEqualToSnapshot(text)

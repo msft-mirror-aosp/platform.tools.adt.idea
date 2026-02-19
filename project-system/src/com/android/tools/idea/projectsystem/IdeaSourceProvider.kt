@@ -76,6 +76,9 @@ interface IdeaSourceProvider {
   val keepRulesDirectoryUrls: Iterable<String>
   val keepRulesDirectories: Iterable<VirtualFile>
 
+  val aarKeepRulesDirectoryUrls: Iterable<String>
+  val aarKeepRulesDirectories: Iterable<VirtualFile>
+
   interface Custom {
     val directoryUrls: Iterable<String>
     val directories: Iterable<VirtualFile>

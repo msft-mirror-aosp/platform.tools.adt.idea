@@ -154,6 +154,12 @@ class LegacyDelegate constructor(private val facet: AndroidFacet) : NamedIdeaSou
   override val keepRulesDirectories: Iterable<VirtualFile>
     get() = emptySet()
 
+  override val aarKeepRulesDirectoryUrls: Iterable<String>
+    get() = emptySet()
+
+  override val aarKeepRulesDirectories: Iterable<VirtualFile>
+    get() = emptySet()
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other == null || javaClass != other.javaClass) return false
