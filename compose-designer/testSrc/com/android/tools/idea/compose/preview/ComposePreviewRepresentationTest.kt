@@ -178,7 +178,6 @@ class ComposePreviewRepresentationTest {
 
   @After
   fun tearDown() {
-    StudioFlags.COMPOSE_UI_CHECK_FOR_WEAR.clearOverride()
     StudioFlags.COMPOSE_PREVIEW_RESIZING.clearOverride()
     composePreviewEssentialsModeEnabled = false
   }
@@ -253,11 +252,13 @@ class ComposePreviewRepresentationTest {
     val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
     val problemsView = ProblemsView.getToolWindow(project)!!
 
-    val contentManager = runBlocking(Dispatchers.EDT) { problemsView.contentManager }
-    withContext(Dispatchers.EDT) {
-      ProblemsViewToolWindowUtils.addTab(project, SharedIssuePanelProvider(project))
-      assertEquals(1, contentManager.contents.size)
-    }
+    val contentManager =
+      withContext(Dispatchers.EDT) {
+        val contentManager = problemsView.contentManager
+        ProblemsViewToolWindowUtils.addTab(project, SharedIssuePanelProvider(project))
+        assertEquals(1, contentManager.contents.size)
+        contentManager
+      }
 
     // Start UI Check mode
     setModeAndWaitForRefresh(PreviewMode.UiCheck(UiCheckInstance(uiCheckElement, isWearPreview = false)))
@@ -875,8 +876,6 @@ class ComposePreviewRepresentationTest {
 
   @Test
   fun testWearUiCheckMode() {
-    StudioFlags.COMPOSE_UI_CHECK_FOR_WEAR.overrideForTest(true, projectRule.fixture.testRootDisposable)
-
     val testPsiFile = runWriteActionAndWait {
       fixture.addFileToProjectAndInvalidate(
         "Test.kt",

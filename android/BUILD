@@ -362,6 +362,7 @@ filegroup(
         "//tools/base/third_party/kotlin:kotlin-m2repository",
         "//tools/base/threading-agent:threading_agent.jar",
         "//tools/base/tracer:trace_agent",
+        "//tools/vendor/google/automation:android_automation_agent_plugin",
         "//tools/vendor/google/ml/aiplugin/ij-platform/atlas:atlas_artifacts",
     ] + select({
         "@platforms//os:windows": [],
@@ -668,7 +669,6 @@ iml_module(
         "//tools/adt/idea/execution/common:intellij.android.execution.common",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
-        "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k1",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k2",
         "//tools/adt/idea/android/editing/documentation:intellij.android.core.editing.documentation",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",

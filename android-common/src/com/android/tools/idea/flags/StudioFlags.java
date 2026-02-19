@@ -942,6 +942,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_GRADLE_AUTO_SYNC_SETTING_IN_NON_EXPERIMENTAL_UI =
     new BooleanFlag(GRADLE_IDE, "gradle.sync.control.enabled.stable", "Allow disabling of Auto Sync via non-experimental settings",
                     "Allow opting-out from Gradle Auto Syncing via non-experimental part of settings.");
+
+  public static final Flag<Boolean> EXECUTE_GRADLE_JVM_COMPATIBILITY_CHECK = new BooleanFlag(
+    GRADLE_IDE, "execute.gradle.jvm.compatibility.check", "Execute Gradle JVM compatibility check",
+    "Run during project opening the Gradle JVM compatibility check to ensure configuration is compatible with selected Gradle and AGP versions.");
+
   /**
    * Don't read this directly, use AgpVersions.agpVersionStudioFlagOverride which handles the 'stable' alias
    */
@@ -1483,11 +1488,6 @@ public final class StudioFlags {
   // region Preview Common
   private static final FlagGroup PREVIEW_COMMON = new FlagGroup(FLAGS, "preview", "Preview");
 
-  public static final Flag<Boolean> PREVIEW_RENDER_QUALITY = new BooleanFlag(
-    PREVIEW_COMMON, "render.quality", "Enable the usage of a render quality management mechanism for Preview tools",
-    "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position"
-  );
-
   public static final Flag<Long> PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = new LongFlag(
     PREVIEW_COMMON, "render.quality.debounce.time", "Render quality debounce time",
     "Milliseconds to wait before adjusting the quality of Previews, after a scroll or zoom change happens",
@@ -1501,12 +1501,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> PREVIEW_ESSENTIALS_MODE = new BooleanFlag(
     PREVIEW_COMMON, "essentials.mode", "Enable Preview Essentials Mode",
     "If enabled, Preview Essentials Mode will be enabled."
-  );
-
-  public static final Flag<Boolean> ADD_PREVIEW_IMAGE_TO_AI_REQUEST_FOR_CODE_GENERATION = new BooleanFlag(
-    PREVIEW_COMMON, "add.image.to.ai.request.for.preview",
-    "Add preview image to AI request for code generation",
-    "If enabled, adds current preview image to an AI request for code generation."
   );
 
   public static final Flag<Boolean> FIND_PREVIEWS_FROM_PREVIEW_SOURCESET = new BooleanFlag(
@@ -1623,26 +1617,11 @@ public final class StudioFlags {
     "If enabled, limits the number of allocations that user code can do in a single render action"
     );
 
-  public static final Flag<Boolean> COMPOSE_INVALIDATE_ON_RESOURCE_CHANGE = new BooleanFlag(
-    COMPOSE, "preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
-    "Invalidates the preview is there is a resource change"
-    );
-
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC = new BooleanFlag(
     COMPOSE, "preview.generate.preview.action.agentic", "Use agents to generate Compose Previews",
     "Uses agentic approach when generating Compose Previews corresponding to the selected @Composable."
   );
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_EXTRA_PARAMETER_CONTEXT = new BooleanFlag(
-    COMPOSE, "preview.generate.extra.parameter.context", "Enable additional parameter context when generating Compose Previews",
-    "Enables an experiment of adding extra context when generating Compose Previews. The extra context will include information that should help instantiate parameters required by the Composable method used in the preview."
-    );
-
-  public static final Flag<Boolean> COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
-    COMPOSE, "ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
-    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices."
-    );
 
   public static final Flag<Boolean> COMPOSE_UI_CHECK_FIX_WITH_AI = new BooleanFlag(
     COMPOSE, "ui.check.fix.with.ai", "Enable fix with AI button to fix UI Check errors",
@@ -1654,6 +1633,9 @@ public final class StudioFlags {
     "Enables a button to fix with AI render errors related to previews"
   );
 
+  public static final Flag<Boolean> COMPOSE_ENABLE_GDP_MCP_DIALOG = new BooleanFlag(
+    COMPOSE, "enable.gdp.mcp.dialog", "Enable GDP MCP server dialog",
+    "Enables the dialog prompting to enable the GDP MCP server.");
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI_AGENTIC = new BooleanFlag(
     COMPOSE, "transform.ui.with.ai.agentic", "Use agent for Transform UI with Gemini",

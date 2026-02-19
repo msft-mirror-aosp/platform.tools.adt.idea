@@ -18,6 +18,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/journeys/aiplugin.android.journeys.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/journeys/aiplugin.android.journeys.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/npa-evals/aiplugin.android.npa.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/npa-evals/aiplugin.android.npa.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/rag-evals/aiplugin.android.rag.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/rag-evals/aiplugin.android.rag.evals.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/skills-evals/aiplugin.android.skills.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/skills-evals/aiplugin.android.skills.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/uitools-evals/aiplugin.android.uitools.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/uitools-evals/aiplugin.android.uitools.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/upgrade-evals/aiplugin.android.upgrade.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/upgrade-evals/aiplugin.android.upgrade.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/backends/aicode/aiplugin.backends.aicode.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/backends/aicode/aiplugin.backends.aicode.iml" />
@@ -75,6 +76,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/android-keys/android-keys.iml" filepath="$PROJECT_DIR$/../../vendor/google/android-keys/android-keys.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/android-ndk/android-ndk.iml" filepath="$PROJECT_DIR$/../../vendor/google/android-ndk/android-ndk.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/android-ndk/android-ndk.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/android-ndk/android-ndk.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/automation/agent/android.automation.agent.iml" filepath="$PROJECT_DIR$/../../vendor/google/automation/agent/android.automation.agent.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/build-analyzer/common/android.build-analyzer.common.iml" filepath="$PROJECT_DIR$/../../base/build-analyzer/common/android.build-analyzer.common.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/game-tools/main/android.game-tools.main.iml" filepath="$PROJECT_DIR$/../../vendor/google/game-tools/main/android.game-tools.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/game-tools/packaging/android.game-tools.packaging.iml" filepath="$PROJECT_DIR$/../../vendor/google/game-tools/packaging/android.game-tools.packaging.iml" />
@@ -355,7 +357,6 @@
       <module fileurl="file://$PROJECT_DIR$/jps-model/intellij.android.jps.model.iml" filepath="$PROJECT_DIR$/jps-model/intellij.android.jps.model.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-kotlin/idea-android/intellij.android.kotlin.idea.iml" filepath="$PROJECT_DIR$/android-kotlin/idea-android/intellij.android.kotlin.idea.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-kotlin/idea-android/common/intellij.android.kotlin.idea.common.iml" filepath="$PROJECT_DIR$/android-kotlin/idea-android/common/intellij.android.kotlin.idea.common.iml" />
-      <module fileurl="file://$PROJECT_DIR$/android-kotlin/idea-android/k1/intellij.android.kotlin.idea.k1.iml" filepath="$PROJECT_DIR$/android-kotlin/idea-android/k1/intellij.android.kotlin.idea.k1.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-kotlin/idea-android/k2/intellij.android.kotlin.idea.k2.iml" filepath="$PROJECT_DIR$/android-kotlin/idea-android/k2/intellij.android.kotlin.idea.k2.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-kotlin/idea-android/idea-android-output-parser/intellij.android.kotlin.output.parser.iml" filepath="$PROJECT_DIR$/android-kotlin/idea-android/idea-android-output-parser/intellij.android.kotlin.output.parser.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-kotlin/intellij.android.kotlin.tests.iml" filepath="$PROJECT_DIR$/android-kotlin/intellij.android.kotlin.tests.iml" />

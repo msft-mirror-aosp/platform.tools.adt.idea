@@ -51,9 +51,7 @@ import com.android.sdklib.internal.avd.ColdBoot
 import com.android.tools.idea.avd.EditVirtualDeviceDialog.Mode
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
-import com.android.tools.idea.concurrency.AndroidDispatchers.diskIoThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
 import com.android.tools.idea.glassespairing.GlassesPairingWizard
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
@@ -154,7 +152,7 @@ class StudioLocalEmulatorDeviceHandle(
   private suspend fun startAvd(avdInfo: AvdInfo, bootMode: BootMode): Unit =
     // Note: the original DeviceManager does this in UI thread, but this may call
     // @Slow methods so switch
-    withContext(workerThread) { avdManagerConnection.startAvd(project, avdInfo, bootMode = bootMode) }
+    withContext(Dispatchers.Default) { avdManagerConnection.startAvd(project, avdInfo, bootMode = bootMode) }
 
   override val activationAction =
     object : ActivationAction {
@@ -215,7 +213,7 @@ class StudioLocalEmulatorDeviceHandle(
               logger.debug("Failed to shutdown via emulator console; falling back to AvdManager", e)
             }
           }
-          withContext(workerThread) { avdManagerConnection.stopAvd(avdInfo) }
+          withContext(Dispatchers.Default) { avdManagerConnection.stopAvd(avdInfo) }
         }
       }
     }
@@ -269,7 +267,7 @@ class StudioLocalEmulatorDeviceHandle(
       override val presentation = defaultPresentation.fromContext().enabledIfStopped()
 
       override suspend fun wipeData() {
-        withContext(diskIoThread) {
+        withContext(Dispatchers.IO) {
           if (!avdManagerConnection.wipeUserData(avdInfo)) {
             withContext(uiThread) {
               Messages.showErrorDialog(
@@ -288,7 +286,7 @@ class StudioLocalEmulatorDeviceHandle(
       override val presentation = defaultPresentation.fromContext().enabledIfStopped()
 
       override suspend fun delete() {
-        withContext(diskIoThread) {
+        withContext(Dispatchers.IO) {
           if (!avdManagerConnection.deleteAvd(avdInfo)) {
             withContext(uiThread) {
               if (

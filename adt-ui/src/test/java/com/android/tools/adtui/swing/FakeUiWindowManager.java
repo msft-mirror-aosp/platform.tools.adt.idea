@@ -32,12 +32,12 @@ import com.intellij.openapi.wm.ex.IdeFrameEx;
 import com.intellij.openapi.wm.ex.ProgressIndicatorEx;
 import com.intellij.openapi.wm.ex.StatusBarEx;
 import com.intellij.openapi.wm.ex.WindowManagerEx;
-import com.intellij.openapi.wm.impl.DesktopLayout;
 import com.intellij.openapi.wm.impl.IdeFrameImpl;
 import com.intellij.openapi.wm.impl.ProjectFrameHelper;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.Window;
@@ -125,7 +125,7 @@ public final class FakeUiWindowManager extends WindowManagerEx {
 
   @Override
   public final Component getFocusedComponent(@NotNull Window window) {
-    return null;
+    return KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
   }
 
   @Override

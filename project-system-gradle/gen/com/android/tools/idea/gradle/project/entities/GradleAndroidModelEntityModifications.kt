@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,25 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
+import com.android.tools.idea.projectsystem.gradle.getHolderModule
+import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.util.NlsSafe
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
+import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.EntityStorage
 import com.intellij.platform.workspace.storage.EntityType
+import com.intellij.platform.workspace.storage.EqualsBy
 import com.intellij.platform.workspace.storage.ExternalMappingKey
 import com.intellij.platform.workspace.storage.GeneratedCodeApiVersion
 import com.intellij.platform.workspace.storage.MutableEntityStorage
+import com.intellij.platform.workspace.storage.SymbolicEntityId
 import com.intellij.platform.workspace.storage.WorkspaceEntity
 import com.intellij.platform.workspace.storage.WorkspaceEntityBuilder
+import com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId
 import com.intellij.platform.workspace.storage.annotations.Parent
 import com.intellij.workspaceModel.ide.legacyBridge.findModuleEntity
 
@@ -45,7 +52,8 @@ interface GradleAndroidModelEntityBuilder : WorkspaceEntityBuilder<GradleAndroid
   var resolvedVariant: IdeVariantImpl?
 }
 
-internal object GradleAndroidModelEntityType : EntityType<GradleAndroidModelEntity, GradleAndroidModelEntityBuilder>() {
+internal object GradleAndroidModelEntityType :
+  EntityType<GradleAndroidModelEntity, GradleAndroidModelEntityBuilder>() {
   override val entityClass: Class<GradleAndroidModelEntity> get() = GradleAndroidModelEntity::class.java
   operator fun invoke(
     gradleAndroidModel: GradleAndroidModelImpl,
@@ -63,7 +71,8 @@ internal object GradleAndroidModelEntityType : EntityType<GradleAndroidModelEnti
 fun MutableEntityStorage.modifyGradleAndroidModelEntity(
   entity: GradleAndroidModelEntity,
   modification: GradleAndroidModelEntityBuilder.() -> Unit,
-): GradleAndroidModelEntity = modifyEntity(GradleAndroidModelEntityBuilder::class.java, entity, modification)
+): GradleAndroidModelEntity =
+  modifyEntity(GradleAndroidModelEntityBuilder::class.java, entity, modification)
 
 var ModuleEntityBuilder.gradleAndroidModel: GradleAndroidModelEntityBuilder?
   by WorkspaceEntity.extensionBuilder(GradleAndroidModelEntity::class.java)
@@ -75,4 +84,5 @@ fun GradleAndroidModelEntity(
   gradleAndroidModel: GradleAndroidModelImpl,
   entitySource: EntitySource,
   init: (GradleAndroidModelEntityBuilder.() -> Unit)? = null,
-): GradleAndroidModelEntityBuilder = GradleAndroidModelEntityType(gradleAndroidModel, entitySource, init)
+): GradleAndroidModelEntityBuilder =
+  GradleAndroidModelEntityType(gradleAndroidModel, entitySource, init)

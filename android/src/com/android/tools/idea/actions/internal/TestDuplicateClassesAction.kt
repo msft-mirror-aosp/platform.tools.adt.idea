@@ -93,29 +93,8 @@ class TestDuplicateClassesAction : DumbAwareAction("Test Duplicate Classes") {
         setOf(
           "androidx.annotation",
           "com.android.tools.journeys.proto", // b/476493309
-          // b/476493791 below here
-          "com.google.api",
-          "com.google.apps.card.v1",
-          "com.google.cloud.audit",
-          "com.google.cloud.location",
-          "com.google.cloud",
-          "com.google.geo.type",
-          "com.google.logging.type",
-          "com.google.longrunning",
-          "com.google.shopping.type",
-          // end b/476493791
-          "com.google.type",
           "kotlinx.atomicfu.locks",
           "kotlinx.atomicfu",
-          // b/476502383 below here
-          "org.sqlite.core",
-          "org.sqlite.date",
-          "org.sqlite.javax",
-          "org.sqlite.jdbc3",
-          "org.sqlite.jdbc4",
-          "org.sqlite.util",
-          "org.sqlite",
-          // end b/476502383
         ),
 
       // The below are all coming from the platform: we can't do anything about them directly.

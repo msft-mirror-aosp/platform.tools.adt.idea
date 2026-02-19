@@ -39,6 +39,7 @@ import com.intellij.openapi.ui.Messages
 import java.awt.Component
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
@@ -86,7 +87,7 @@ internal class EditVirtualDeviceDialog(
         avdBuilder.avdFolder = avdManager.uniquifyAvdFolder(avdBuilder.avdName)
       }
     }
-    withContext(AndroidDispatchers.diskIoThread) {
+    withContext(Dispatchers.IO) {
       when (mode) {
         Mode.EDIT -> avdManager.editAvd(avdInfo, avdBuilder)
         Mode.DUPLICATE -> avdManager.duplicateAvd(avdInfo, avdBuilder)
@@ -98,7 +99,7 @@ internal class EditVirtualDeviceDialog(
   companion object {
     suspend fun show(project: Project?, parent: Component?, avdInfo: AvdInfo, mode: Mode): Boolean {
       val skins =
-        withContext(AndroidDispatchers.workerThread) {
+        withContext(Dispatchers.Default) {
           SkinComboBoxModel.merge(listOf(NoSkin.INSTANCE), SkinCollector.updateAndCollect()).toImmutableList()
         }
       val baseDevice = DeviceManagerConnection.getDefaultDeviceManagerConnection().getDevice(avdInfo.deviceName, avdInfo.deviceManufacturer)
