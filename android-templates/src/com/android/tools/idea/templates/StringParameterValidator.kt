@@ -61,12 +61,6 @@ import org.jetbrains.android.facet.AndroidRootUtil
 import org.jetbrains.android.util.AndroidUtils
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.analysis.api.platform.declarations.createDeclarationProvider
-import org.jetbrains.kotlin.caches.resolve.KotlinCacheService
-import org.jetbrains.kotlin.idea.base.facet.platform.platform
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
-import org.jetbrains.kotlin.idea.base.projectStructure.productionSourceInfo
-import org.jetbrains.kotlin.idea.base.util.K1ModeProjectStructureApi
-import org.jetbrains.kotlin.idea.core.KotlinIndicesHelper
 import org.jetbrains.kotlin.name.FqName
 
 /**
@@ -118,7 +112,6 @@ private fun StringParameter.getErrorMessageForViolatedConstraint(c: Constraint, 
  *
  * @return All constraints of this parameter that are violated by the proposed value.
  */
-@OptIn(K1ModeProjectStructureApi::class) // For the K1 code paths only.
 @VisibleForTesting
 fun StringParameter.validateStringType(
   project: Project?,
@@ -169,19 +162,10 @@ fun StringParameter.validateStringType(
       }
       KOTLIN_FUNCTION -> {
         project ?: return false
-        if (KotlinPluginModeProvider.isK2Mode()) {
-          val packageFqName = if (packageName != null) FqName(packageName) else FqName.ROOT
-          val declarationProvider = project.createDeclarationProvider(searchScope, contextualModule = null)
-          val topLevelCallableNames = declarationProvider.getTopLevelCallableNamesInPackage(packageFqName)
-          topLevelCallableNames.any { it.identifierOrNullIfSpecial == value }
-        } else {
-          module ?: return false
-          val moduleInfo = module.productionSourceInfo!!
-          val platform = module.platform
-          val facade = KotlinCacheService.getInstance(project).getResolutionFacadeByModuleInfo(moduleInfo, platform)!!
-          val helper = KotlinIndicesHelper(facade, searchScope, { true })
-          helper.getTopLevelCallablesByName(value).isNotEmpty()
-        }
+        val packageFqName = if (packageName != null) FqName(packageName) else FqName.ROOT
+        val declarationProvider = project.createDeclarationProvider(searchScope, contextualModule = null)
+        val topLevelCallableNames = declarationProvider.getTopLevelCallableNamesInPackage(packageFqName)
+        topLevelCallableNames.any { it.identifierOrNullIfSpecial == value }
       }
       CLASS -> project != null && existsClassFile(project, searchScope, provider, fqName)
       PACKAGE,
