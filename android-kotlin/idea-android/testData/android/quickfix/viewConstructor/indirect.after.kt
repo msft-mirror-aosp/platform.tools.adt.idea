@@ -1,5 +1,4 @@
 // "Add Android View constructors using '@JvmOverloads'" "true"
-// K1-ERROR: SUPERTYPE_NOT_INITIALIZED: TextView
 // K2-ERROR: SUPERTYPE_NOT_INITIALIZED: TextView
 // K2-ERROR: NONE_APPLICABLE: class Foo : TextView
 // WITH_STDLIB

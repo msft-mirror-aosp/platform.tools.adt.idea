@@ -26,7 +26,6 @@ import com.intellij.testFramework.PlatformTestUtil
 import java.io.File
 import junit.framework.TestCase
 import org.jetbrains.kotlin.android.KotlinAndroidTestCase
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 
 abstract class AbstractAndroidResourceIntentionTest : KotlinAndroidTestCase() {
     fun doTest(path: String) {
@@ -88,7 +87,7 @@ abstract class AbstractAndroidResourceIntentionTest : KotlinAndroidTestCase() {
 
     private fun getExpectedDirectoryName(): String {
         val baseExpectedDirectory = "expected"
-        val suffix = if (KotlinPluginModeProvider.isK2Mode()) "k2" else "k1"
+        val suffix = "k2"
 
         return if (File("${myFixture.testDataPath}/${baseExpectedDirectory}.${suffix}").isDirectory) {
             "${baseExpectedDirectory}.${suffix}"

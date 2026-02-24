@@ -39,9 +39,7 @@ import junit.framework.ComparisonFailure
 import junit.framework.TestCase
 import org.jetbrains.android.LightJavaCodeInsightFixtureAdtTestCase
 import org.jetbrains.kotlin.android.DirectiveBasedActionUtils
-import org.jetbrains.kotlin.android.InTextDirectivesUtils
 import org.jetbrains.kotlin.android.KotlinTestUtils
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.psi.KtFile
 
 // Largely copied from the Kotlin test framework (after taking over android-kotlin sources).
@@ -89,10 +87,6 @@ abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureAdtTes
 
         myFixture.configureByFiles(*testFiles.toTypedArray())
 
-        if (KotlinPluginModeProvider.isK1Mode() && InTextDirectivesUtils.isDirectiveDefined(originalFileText, "// SKIP-K1")) {
-            return
-        }
-
         CommandProcessor.getInstance()
             .executeCommand(
                 project,
@@ -106,11 +100,7 @@ abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureAdtTes
                         val actionShouldBeAvailable = actionHint.shouldPresent()
 
                         if (psiFile is KtFile) {
-                            if (KotlinPluginModeProvider.isK2Mode()) {
-                                DirectiveBasedActionUtils.checkForUnexpectedErrorsK2(psiFile)
-                            } else {
-                                DirectiveBasedActionUtils.checkForUnexpectedErrorsK1(psiFile)
-                            }
+                            DirectiveBasedActionUtils.checkForUnexpectedErrorsK2(psiFile)
                         }
 
                         doAction(
