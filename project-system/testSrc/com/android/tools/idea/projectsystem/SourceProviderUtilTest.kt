@@ -148,7 +148,6 @@ class SourceProviderUtilTest {
     customSourceDirectories: Map<String, List<File>> = mapOf("toml" to listOf(File("toml"))),
     baselineProfileDirectories: List<File> = listOf(File("baslineProfiles")),
     keepRulesDirectories: List<File> = listOf(File("keepRules")),
-    aarKeepRulesDirectories: List<File> = listOf(File("aarKeepRules")),
   ) =
     NamedIdeaSourceProviderImpl(
       name,
@@ -196,9 +195,6 @@ class SourceProviderUtilTest {
 
           override val keepRulesDirectoryUrls: Sequence<String>
             get() = keepRulesDirectories.map { root.resolve(it).toIdeaUrl() }.asSequence()
-
-          override val aarKeepRulesDirectoryUrls: Sequence<String>
-            get() = aarKeepRulesDirectories.map { root.resolve(it).toIdeaUrl() }.asSequence()
         },
     )
 }
