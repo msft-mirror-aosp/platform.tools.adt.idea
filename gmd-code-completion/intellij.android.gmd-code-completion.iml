@@ -14,9 +14,9 @@
     <orderEntry type="module-library">
       <library name="google_api_services_testing">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-storage/v1-rev20230301-2.0.0/google-api-services-storage-v1-rev20230301-2.0.0.jar!/" />
-          <root url="jar://$MODULE_DIR$/../../../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-toolresults/v1beta3-rev20230410-2.0.0/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar!/" />
-          <root url="jar://$MODULE_DIR$/../../../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-testing/v1-rev20250327-2.0.0/google-api-services-testing-v1-rev20250327-2.0.0.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-storage/v1-rev20230301-2.0.0/google-api-services-storage-v1-rev20230301-2.0.0.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-toolresults/v1beta3-rev20230410-2.0.0/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-testing/v1-rev20250327-2.0.0/google-api-services-testing-v1-rev20250327-2.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -38,6 +38,7 @@
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="library" name="cloudresourcemanager" level="project" />
     <orderEntry type="module" module-name="firebase" />
+    <orderEntry type="module" module-name="analytics" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
