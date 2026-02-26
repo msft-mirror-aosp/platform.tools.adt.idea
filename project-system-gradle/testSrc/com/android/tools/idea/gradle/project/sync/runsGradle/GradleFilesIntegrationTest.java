@@ -439,7 +439,6 @@ public class GradleFilesIntegrationTest {
                                   virtualFile);
   }
 
-  @Ignore("b/481734567 - Enable with new declarative changes")
   @Test
   public void testModifiedWhenAddingTextChildInDeclarativeSettingsFile() {
     runWithDeclarativeSupport(() -> {
@@ -450,7 +449,6 @@ public class GradleFilesIntegrationTest {
     });
   }
 
-  @Ignore("b/481734567 - Enable with new declarative changes")
   @Test
   public void testModifiedWhenAddingTextChildInDeclarativeBuildFile() {
     runWithDeclarativeSupport(() -> {
@@ -484,7 +482,6 @@ public class GradleFilesIntegrationTest {
     runKtsFakeModificationTest((factory, file) -> file.add(factory.createNewLine(1)), false, virtualFile);
   }
 
-  @Ignore("b/481734567 - Enable with new declarative changes")
   @Test
   public void testNotModifiedWhenAddingWhitespaceInDeclarativeSettingsFile() {
     runWithDeclarativeSupport(() -> {
@@ -501,7 +498,6 @@ public class GradleFilesIntegrationTest {
     runKtsFakeModificationTest((factory, file) -> file.add(factory.createNewLine(1)), false, virtualFile);
   }
 
-  @Ignore("b/481734567 - Enable with new declarative changes")
   @Test
   public void testNotModifiedWhenAddingWhitespaceInDeclarativeBuildFile() {
     runWithDeclarativeSupport(() -> {
