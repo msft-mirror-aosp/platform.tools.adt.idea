@@ -176,15 +176,6 @@ class NewAndroidComponentActionTest {
   }
 
   @Test
-  fun instantTypePresentationShouldBeDisabledForIapp() {
-    mySelectedAndroidFacet.configuration.projectType = AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP
-
-    NewAndroidComponentAction(Category.Other, "templateName", 0).update(myActionEvent)
-
-    assertThat(myActionEvent.presentation.isEnabled).isFalse()
-  }
-
-  @Test
   fun libraryTypePresentationShouldBeEnabledForIapp() {
     mySelectedAndroidFacet.configuration.projectType = AndroidProjectTypes.PROJECT_TYPE_LIBRARY
 
@@ -196,15 +187,6 @@ class NewAndroidComponentActionTest {
   @Test
   fun testTypePresentationShouldBeEnabledForIapp() {
     mySelectedAndroidFacet.configuration.projectType = AndroidProjectTypes.PROJECT_TYPE_TEST
-
-    NewAndroidComponentAction(Category.Other, "templateName", 0).update(myActionEvent)
-
-    assertThat(myActionEvent.presentation.isEnabled).isTrue()
-  }
-
-  @Test
-  fun featureTypePresentationShouldBeEnabledForIapp() {
-    mySelectedAndroidFacet.configuration.projectType = AndroidProjectTypes.PROJECT_TYPE_FEATURE
 
     NewAndroidComponentAction(Category.Other, "templateName", 0).update(myActionEvent)
 

@@ -16,10 +16,13 @@
 package com.android.tools.idea.profilers.capture.unified
 
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory
+import com.android.tools.sherlock.common.system.editor.PerfettoFileEditor
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorLocation
 import com.intellij.openapi.fileEditor.FileEditorState
+import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
@@ -31,8 +34,14 @@ import org.jetbrains.annotations.Nls
 
 /** A [com.intellij.openapi.fileEditor.FileEditor] for displaying profiler captures in a main editor tab. */
 class UnifiedProfilerFileEditor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
+  private val delegate: FileEditor? =
+    if (UnifiedProfilerEditorProvider.canViewInUnifiedProfiler(file)) {
+      PerfettoFileEditor(project, file)
+    } else {
+      null
+    }
 
-  private val component: JComponent = JLabel("Unified Profiler Capture View for ${file.name}", SwingConstants.CENTER)
+  private val component: JComponent = delegate?.component ?: JLabel("Unified Profiler Capture View for ${file.name}", SwingConstants.CENTER)
 
   init {
     importFileIntoAndroidProfiler(project, file)
@@ -40,31 +49,41 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
 
   override fun getComponent() = component
 
-  override fun getPreferredFocusedComponent() = component
+  override fun getPreferredFocusedComponent() = delegate?.preferredFocusedComponent ?: component
 
   @Nls(capitalization = Nls.Capitalization.Title) override fun getName() = "Profiler Capture"
 
-  override fun setState(state: FileEditorState) {}
+  override fun setState(state: FileEditorState) {
+    delegate?.setState(state)
+  }
 
-  override fun isModified() = false
+  override fun isModified() = delegate?.isModified ?: false
 
-  override fun isValid() = file.isValid
+  override fun isValid() = delegate?.isValid ?: file.isValid
 
   override fun getFile() = file
 
-  override fun addPropertyChangeListener(listener: PropertyChangeListener) {}
+  override fun addPropertyChangeListener(listener: PropertyChangeListener) {
+    delegate?.addPropertyChangeListener(listener)
+  }
 
-  override fun removePropertyChangeListener(listener: PropertyChangeListener) {}
+  override fun removePropertyChangeListener(listener: PropertyChangeListener) {
+    delegate?.removePropertyChangeListener(listener)
+  }
 
-  override fun getCurrentLocation(): FileEditorLocation? = null
+  override fun getCurrentLocation(): FileEditorLocation? = delegate?.currentLocation
+
+  override fun getState(level: FileEditorStateLevel): FileEditorState {
+    return delegate?.getState(level) ?: FileEditorState.INSTANCE
+  }
 
   /**
    * There are three ways to open a trace file:
    * - UI Import: Session -> Editor (Standard flow)
    * - File Action: Editor, Device Explorer -> Session (Lazy registration)
-   * - Live Capture: We filter out artifacts to delegate session creation to the Editor flow.
-   * This prevents duplicate entries in 'Past Recordings', specifically for System Traces.
-   * for detailed explanation please check the comment https://b.corp.google.com/issues/472667234#comment3
+   * - Live Capture: We filter out artifacts to delegate session creation to the Editor flow. This prevents duplicate entries in 'Past
+   *   Recordings', specifically for System Traces. for detailed explanation please check the comment
+   *   https://b.corp.google.com/issues/472667234#comment3
    */
   private fun importFileIntoAndroidProfiler(project: Project, file: VirtualFile) {
     val window = ToolWindowManager.getInstance(project).getToolWindow(AndroidProfilerToolWindowFactory.ID)
@@ -80,5 +99,7 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     }
   }
 
-  override fun dispose() {}
+  override fun dispose() {
+    delegate?.let { Disposer.dispose(it) }
+  }
 }

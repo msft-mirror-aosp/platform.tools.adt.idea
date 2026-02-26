@@ -40,6 +40,8 @@ import com.android.tools.idea.lint.common.LintResult;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.MergedManifestManager;
 import com.android.tools.idea.model.MergedManifestSnapshot;
+import com.android.tools.idea.model.MergedManifestSnapshotFactory;
+import com.android.tools.idea.model.MergedManifestSupplier;
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator;
 import com.android.tools.idea.projectsystem.IdeaSourceProvider;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
@@ -73,6 +75,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -306,24 +309,40 @@ public class AndroidLintIdeClient extends LintIdeClient {
 
   private static final String MERGED_MANIFEST_INFO = "lint-merged-manifest-info";
 
+  private static final Key<MergedManifestSnapshot> KEY = Key.create("lint-merged-manifest-snapshot");
+
   @Nullable
   @Override
   public org.w3c.dom.Document getMergedManifest(@NotNull com.android.tools.lint.detector.api.Project project) {
     final Module module = findModuleForLintProject(myProject, project);
-    if (module != null) {
-      MergedManifestSnapshot mergedManifest = MergedManifestManager.getFreshSnapshot(module);
-      org.w3c.dom.Document document = mergedManifest.getDocument();
-      if (document != null) {
-        Element root = document.getDocumentElement();
-        if (root != null && !isMergeManifestNode(root)) {
-          resolveMergeManifestSources(document, project.getDir());
-          document.setUserData(MERGED_MANIFEST_INFO, mergedManifest, null);
-        }
-        return document;
+    if (module == null) return null;
+    MergedManifestSnapshot mergedManifest = getMergedManifestSnapshot(module);
+    org.w3c.dom.Document document = mergedManifest.getDocument();
+    if (document != null) {
+      Element root = document.getDocumentElement();
+      if (root != null && !isMergeManifestNode(root)) {
+        resolveMergeManifestSources(document, project.getDir());
+        document.setUserData(MERGED_MANIFEST_INFO, mergedManifest, null);
       }
+      return document;
     }
-
     return null;
+  }
+
+  private @NotNull MergedManifestSnapshot getMergedManifestSnapshot(@NotNull Module module) {
+    MergedManifestSupplier supplier = MergedManifestManager.getInstance(module).getSupplier();
+    MergedManifestSnapshot snapshot = module.getUserData(KEY);
+    MergedManifestSnapshot mergedManifest;
+    if (AndroidFacet.getInstance(module) != null) {
+      mergedManifest = supplier.getOrCreateSnapshot(snapshot, this::getMergedManifestSnapshot);
+    }
+    else {
+      mergedManifest = MergedManifestSnapshotFactory.createEmptyMergedManifestSnapshot(module, null, null);
+    }
+    if (snapshot != mergedManifest) {
+      module.putUserData(KEY, mergedManifest);
+    }
+    return mergedManifest;
   }
 
   @Override
@@ -352,7 +371,7 @@ public class AndroidLintIdeClient extends LintIdeClient {
     for (Actions.Record record : records) {
       if (record.getActionType() == Actions.ActionType.ADDED ||
           record.getActionType() == Actions.ActionType.MERGED) {
-        Node sourceNode = ManifestUtils.getSourceNode(mergedManifest.getModule(), record);
+        Node sourceNode = ManifestUtils.getSourceNode(mergedManifest.getModule(), record, this::getMergedManifestSnapshot);
         if (sourceNode != null) {
           // Cache for next time
           File file = record.getActionLocation().getFile().getSourceFile();

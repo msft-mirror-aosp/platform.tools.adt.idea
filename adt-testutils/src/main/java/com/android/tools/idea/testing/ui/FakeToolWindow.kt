@@ -27,6 +27,7 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType
 import com.intellij.openapi.wm.impl.InternalDecorator
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.content.ContentManagerListener
@@ -57,6 +58,7 @@ internal constructor(
   private var icon: Icon,
   private val manager: ToolWindowManager,
   project: Project,
+  private val toolWindowId: String,
 ) : ToolWindowHeadlessManagerImpl.MockToolWindow(project) {
 
   var tabActions: List<AnAction> = emptyList()
@@ -65,29 +67,35 @@ internal constructor(
   var titleActions: List<AnAction> = emptyList()
     private set
 
+  var hideOnEmptyContext: Boolean = false
+    private set
+
   private var available = true
   private var visible = false
   private var active = false
+  private var focused = false
   private var type = ToolWindowType.DOCKED
   private val decorator = mock<InternalDecorator>()
 
-  override fun setAvailable(available: Boolean) {
-    this.available = available
+  override fun setToHideOnEmptyContent(value: Boolean) {
+    hideOnEmptyContext = value
   }
 
-  override fun isAvailable(): Boolean {
-    return available
+  override fun getId(): String = toolWindowId
+
+  override fun setAvailable(value: Boolean) {
+    available = value
   }
 
-  override fun getDecorator(): InternalDecorator {
-    return decorator
-  }
+  override fun isAvailable(): Boolean = available
+
+  override fun getDecorator(): InternalDecorator = decorator
 
   override fun show(runnable: Runnable?) {
     if (!visible) {
       windowFactory.createToolWindowContent(project, this)
       visible = true
-      notifyStateChanged(ToolWindowManagerListener.ToolWindowManagerEventType.ShowToolWindow)
+      notifyStateChanged(ToolWindowManagerEventType.ShowToolWindow)
       runnable?.run()
     }
   }
@@ -95,15 +103,19 @@ internal constructor(
   override fun hide(runnable: Runnable?) {
     if (visible) {
       visible = false
-      notifyStateChanged(ToolWindowManagerListener.ToolWindowManagerEventType.HideToolWindow)
+      notifyStateChanged(ToolWindowManagerEventType.HideToolWindow)
       runnable?.run()
     }
   }
 
-  override fun activate(runnable: Runnable?) {
+  override fun activate(runnable: Runnable?, autoFocusContents: Boolean, forced: Boolean) {
     active = true
-    super.activate(runnable)
+    focused = autoFocusContents
+    notifyStateChanged(ToolWindowManagerEventType.ActivateToolWindow)
+    runnable?.run()
   }
+
+  fun isFocused(): Boolean = visible && focused
 
   override fun isVisible() = visible
 
@@ -114,21 +126,17 @@ internal constructor(
   }
 
   override fun setTitleActions(actions: List<AnAction>) {
-    this.titleActions = actions
+    titleActions = actions
   }
 
-  override fun getType(): ToolWindowType {
-    return type
-  }
+  override fun getType(): ToolWindowType = type
 
   override fun setType(type: ToolWindowType, runnable: Runnable?) {
     this.type = type
     runnable?.run()
   }
 
-  override fun getIcon(): Icon {
-    return icon
-  }
+  override fun getIcon(): Icon = icon
 
   override fun setIcon(icon: Icon) {
     this.icon = icon
@@ -138,19 +146,21 @@ internal constructor(
     contentManager.addContentManagerListener(listener)
   }
 
-  private fun notifyStateChanged(changeType: ToolWindowManagerListener.ToolWindowManagerEventType) {
-    @Suppress("UnstableApiUsage") project.messageBus.syncPublisher(ToolWindowManagerListener.TOPIC).stateChanged(manager, this, changeType)
+  private fun notifyStateChanged(changeType: ToolWindowManagerEventType) {
+    val publisher = project.messageBus.syncPublisher(ToolWindowManagerListener.TOPIC)
+    @Suppress("UnstableApiUsage") publisher.stateChanged(manager, this, changeType)
+    if (changeType == ToolWindowManagerEventType.ShowToolWindow) {
+      publisher.toolWindowShown(this)
+    }
   }
 }
 
-private class FakeToolWindowManager(windowFactory: ToolWindowFactory, private val toolWindowId: String, icon: Icon, project: Project) :
+private class FakeToolWindowManager(windowFactory: ToolWindowFactory, toolWindowId: String, icon: Icon, project: Project) :
   ToolWindowHeadlessManagerImpl(project) {
 
-  var toolWindow = FakeToolWindow(windowFactory, icon, this, project)
+  val toolWindow = FakeToolWindow(windowFactory, icon, this, project, toolWindowId)
 
-  override fun getToolWindow(id: String?): ToolWindow? {
-    return if (id == toolWindowId) toolWindow else super.getToolWindow(id)
-  }
+  override fun getToolWindow(id: String?): ToolWindow? = if (id == toolWindow.id) toolWindow else super.getToolWindow(id)
 
   override fun notifyByBalloon(options: ToolWindowBalloonShowOptions) {
     toolWindowBalloons.add(options)

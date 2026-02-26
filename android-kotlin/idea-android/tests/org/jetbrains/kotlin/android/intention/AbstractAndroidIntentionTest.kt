@@ -24,7 +24,6 @@ import java.io.File
 import org.jetbrains.kotlin.android.ConfigLibraryUtil
 import org.jetbrains.kotlin.android.InTextDirectivesUtils
 import org.jetbrains.kotlin.android.KotlinAndroidTestCase
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.utils.KotlinPaths
 
 abstract class AbstractAndroidIntentionTest : KotlinAndroidTestCase() {
@@ -32,10 +31,6 @@ abstract class AbstractAndroidIntentionTest : KotlinAndroidTestCase() {
         val testFileText = FileUtil.loadFile(File(testDataPath, path))
         val intentionClassName =
             InTextDirectivesUtils.findStringWithPrefixes(testFileText, "// INTENTION_CLASS: ") ?: error("Intention class not found!")
-
-        if (KotlinPluginModeProvider.isK2Mode() && InTextDirectivesUtils.isDirectiveDefined(testFileText, "// SKIP_K2")) {
-            return
-        }
 
         val notAvailable = InTextDirectivesUtils.isDirectiveDefined(testFileText, "// NOT_AVAILABLE")
         val withRuntime = InTextDirectivesUtils.isDirectiveDefined(testFileText, "// WITH_RUNTIME")

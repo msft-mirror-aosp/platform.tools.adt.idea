@@ -38,7 +38,6 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.util.PathUtil
 import java.io.File
 import org.jetbrains.android.augment.ResourceLightField
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 
 data class HighlightProjectTestDef(
   override val testProject: TestProject,
@@ -136,22 +135,13 @@ data class HighlightProjectTestDef(
     private fun validateNonTransitiveRClass(fixture: JavaCodeInsightTestFixture) {
       val unresolvedReferenceWarnings =
         fixture.doHighlighting(HighlightSeverity.WARNING).map { it.description }.filter { it.startsWith("[UNRESOLVED_REFERENCE]") }
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        assertThat(unresolvedReferenceWarnings).isEmpty()
-      } else {
-        assertThat(unresolvedReferenceWarnings).containsExactly("[UNRESOLVED_REFERENCE] Unresolved reference: R")
-      }
+      assertThat(unresolvedReferenceWarnings).isEmpty()
     }
 
     private fun validateNonTransitiveRClassTrue(fixture: JavaCodeInsightTestFixture) {
       val unresolvedReferenceWarnings =
         fixture.doHighlighting(HighlightSeverity.WARNING).map { it.description }.filter { it.startsWith("[UNRESOLVED_REFERENCE]") }
-      val expectedWarnings =
-        if (KotlinPluginModeProvider.isK2Mode()) {
-          arrayOf("[UNRESOLVED_REFERENCE] Unresolved reference 'view_in_lib'.")
-        } else {
-          arrayOf("[UNRESOLVED_REFERENCE] Unresolved reference: R", "[UNRESOLVED_REFERENCE] Unresolved reference: view_in_lib")
-        }
+      val expectedWarnings = arrayOf("[UNRESOLVED_REFERENCE] Unresolved reference 'view_in_lib'.")
       assertThat(unresolvedReferenceWarnings).containsExactly(*expectedWarnings)
     }
 

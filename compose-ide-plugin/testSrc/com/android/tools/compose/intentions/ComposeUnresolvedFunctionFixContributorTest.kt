@@ -22,7 +22,6 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import org.jetbrains.android.compose.addComposeRuntimeDep
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -82,11 +81,8 @@ class ComposeUnresolvedFunctionFixContributorTest {
           TODO("Not yet implemented")
       }
     """
-    val expectedTextForFE10 = expectedText + '\n'
 
-    // TODO(b/267429486): Revisit after implementing the K2 version of `CreateCallableFromUsageFix`.
-    if (KotlinPluginModeProvider.isK2Mode()) myFixture.checkResult(expectedText.trimIndent())
-    else myFixture.checkResult(expectedTextForFE10.trimIndent())
+    myFixture.checkResult(expectedText.trimIndent())
   }
 
   @Test
@@ -112,11 +108,9 @@ class ComposeUnresolvedFunctionFixContributorTest {
 
     WriteCommandAction.runWriteCommandAction(myFixture.project) { action!!.invoke(myFixture.project, myFixture.editor, myFixture.file) }
 
-    // TODO(b/267429486): Revisit after implementing the K2 version of `CreateCallableFromUsageFix`.
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      myFixture.checkResult(
-        // language=kotlin
-        """
+    myFixture.checkResult(
+      // language=kotlin
+      """
       package com.example
 
       import $COMPOSABLE_ANNOTATION_FQ_NAME
@@ -131,30 +125,8 @@ class ComposeUnresolvedFunctionFixContributorTest {
           TODO("Not yet implemented")
       }
     """
-          .trimIndent()
-      )
-    } else {
-      myFixture.checkResult(
-        // language=kotlin
-        """
-      package com.example
-
-      import $COMPOSABLE_ANNOTATION_FQ_NAME
-
-      @Composable
-      fun NewsStory() {
-          UnresolvedFunction<Int>(45, f = { 43 }, "OK".length)
-      }
-
-      @Composable
-      fun <T> UnresolvedFunction(t: T, f: () -> T, length: T) {
-          TODO("Not yet implemented")
-      }
-
-    """
-          .trimIndent()
-      )
-    }
+        .trimIndent()
+    )
   }
 
   @Test
@@ -224,7 +196,6 @@ class ComposeUnresolvedFunctionFixContributorTest {
 
     WriteCommandAction.runWriteCommandAction(myFixture.project) { action!!.invoke(myFixture.project, myFixture.editor, myFixture.file) }
 
-    val extraEmptyLine = if (KotlinPluginModeProvider.isK2Mode()) "" else "\n"
     myFixture.checkResult(
       // language=kotlin
       """
@@ -240,7 +211,7 @@ class ComposeUnresolvedFunctionFixContributorTest {
       @Composable
       fun UnresolvedFunction(content: @Composable () -> Unit) {
           TODO("Not yet implemented")
-      }$extraEmptyLine
+      }
       """
         .trimIndent()
     )

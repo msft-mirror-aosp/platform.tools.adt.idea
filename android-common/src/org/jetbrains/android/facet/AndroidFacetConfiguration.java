@@ -17,8 +17,6 @@ package org.jetbrains.android.facet;
 
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_APP;
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_DYNAMIC_FEATURE;
-import static com.android.AndroidProjectTypes.PROJECT_TYPE_FEATURE;
-import static com.android.AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP;
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_LIBRARY;
 
 import com.intellij.facet.FacetConfiguration;
@@ -67,14 +65,12 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
 
   public boolean isAppProject() {
     int projectType = getState().PROJECT_TYPE;
-    return projectType == PROJECT_TYPE_APP || projectType == PROJECT_TYPE_INSTANTAPP;
+    return projectType == PROJECT_TYPE_APP;
   }
 
   public boolean isAppOrFeature() {
     int projectType = getState().PROJECT_TYPE;
     return projectType == PROJECT_TYPE_APP ||
-           projectType == PROJECT_TYPE_INSTANTAPP ||
-           projectType == PROJECT_TYPE_FEATURE ||
            projectType == PROJECT_TYPE_DYNAMIC_FEATURE;
   }
 
@@ -87,11 +83,6 @@ public class AndroidFacetConfiguration implements FacetConfiguration, Persistent
   @Override
   public void loadState(@NotNull AndroidFacetProperties properties) {
     myProperties = properties;
-  }
-
-  public boolean canBeDependency() {
-    int projectType = getState().PROJECT_TYPE;
-    return projectType == PROJECT_TYPE_LIBRARY || projectType == PROJECT_TYPE_FEATURE;
   }
 
   public boolean isLibraryProject() {

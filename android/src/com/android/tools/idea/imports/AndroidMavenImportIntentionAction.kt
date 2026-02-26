@@ -65,10 +65,7 @@ import org.jetbrains.kotlin.idea.base.facet.implementedModules
 import org.jetbrains.kotlin.idea.base.facet.implementingModules
 import org.jetbrains.kotlin.idea.base.facet.isMultiPlatformModule
 import org.jetbrains.kotlin.idea.base.facet.platform.platform
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.base.psi.imports.addImport
-import org.jetbrains.kotlin.idea.base.utils.fqname.fqName
-import org.jetbrains.kotlin.idea.structuralsearch.resolveExprType
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.platform.jvm.isJvm
@@ -77,7 +74,6 @@ import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtUserType
-import org.jetbrains.kotlin.types.error.ErrorType
 
 private const val ALL_RECEIVER_TYPES = "*"
 
@@ -403,21 +399,14 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
         left = left.firstChild
       }
       val receiverExpr = (receiverExpression as? KtDotQualifiedExpression)?.selectorExpression ?: receiverExpression
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        allowAnalysisOnEdt {
-          @OptIn(KaAllowAnalysisFromWriteAction::class)
-          allowAnalysisFromWriteAction {
-            analyze(receiverExpr) {
-              (receiverExpr.expressionType as? KaClassType)?.classId?.asFqNameString()?.let {
-                return left.text to it
-              }
+      allowAnalysisOnEdt {
+        @OptIn(KaAllowAnalysisFromWriteAction::class)
+        allowAnalysisFromWriteAction {
+          analyze(receiverExpr) {
+            (receiverExpr.expressionType as? KaClassType)?.classId?.asFqNameString()?.let {
+              return left.text to it
             }
           }
-        }
-      } else {
-        val receiverType = receiverExpr.resolveExprType()?.takeUnless { it is ErrorType }
-        receiverType?.fqName?.asString()?.let {
-          return left.text to it
         }
       }
 

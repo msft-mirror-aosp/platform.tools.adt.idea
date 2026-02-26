@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
+import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * A collection of all feature flags used by Android Studio. These flags can be used to gate
@@ -272,6 +273,10 @@ public final class StudioFlags {
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.");
 
+  public static final Flag<Boolean> NPW_EMPTY_CAL_APP_TEMPLATE = new BooleanFlag(
+    NPW, "emptycalapp.template", "Enable Empty CAL App Template",
+    "Enable Empty Car App Library App template in the New Project Wizard.");
+
   static class AndroidApiFlag extends CustomTypeFlag<AndroidApiLevel> {
     public AndroidApiFlag(FlagGroup group, String name, String displayName, String description, AndroidApiLevel defaultValue) {
       super(AndroidApiLevel.class, group, name, displayName, description, defaultValue, AndroidApiFlagConverter, examples);
@@ -413,6 +418,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> GENERATE_VECTOR_DRAWABLE_TOOL = new BooleanFlag(
     DESIGN_TOOLS, "generate.vector.drawable.tool", "Enable the Generate Vector Drawable agent tool",
     "If enabled, an agent tool to generate vector drawables will be available for agents.");
+
+  public static final Flag<Boolean> MATERIAL_SYMBOLS_TOOL = new BooleanFlag(
+    DESIGN_TOOLS, "material.symbols.tool", "Enable the Material Symbols Search agent tool",
+    "If enabled, an agent tool to search and find Material Symbol AVD and Compose icons will be available to the agent.");
   //endregion
 
   //region Layout Editor
@@ -1940,7 +1949,7 @@ public final class StudioFlags {
   // endregion Firebase Test Lab
 
   // region App Insights
-  private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
+  @VisibleForTesting public static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
 
   public static final Flag<Boolean> GEMINI_ASSISTED_CONTEXT_FETCH =
     new BooleanFlag(
@@ -2265,6 +2274,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "g1.integration.enabled",
                     "Enable the integration with Google one.",
                     "When enabled, the studio-bot will show UI and upgrade paths corresponding to the Google one subscription held by the user.");
+
+  public static final Flag<Boolean> STUDIOBOT_IS_ASK_MODE_IN_DROPDOWN_ENABLED =
+    new BooleanFlag(STUDIOBOT, "ask.mode.in.dropdown.enabled",
+                    "Enable Ask mode in dropdown",
+                    "If enabled, Ask mode is available as a dropdown option instead of a separate tab.");
 
   public static final Flag<Boolean> STUDIOBOT_IS_SKILLS_ENABLED =
     new BooleanFlag(STUDIOBOT, "skills.enabled",

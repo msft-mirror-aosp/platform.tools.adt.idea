@@ -16,7 +16,6 @@
 package com.android.tools.idea.vitals.ui
 
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsConfigurationManager
 import com.android.tools.idea.insights.AppInsightsModel
@@ -27,10 +26,10 @@ import com.android.tools.idea.insights.ai.GeminiAiInsightsOnboardingProvider
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.AppInsightsTrackerImpl
+import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.AppInsightsClient
-import com.android.tools.idea.insights.client.GeminiAiInsightClient
 import com.android.tools.idea.insights.client.channelBuilderForAddress
 import com.android.tools.idea.insights.events.ExplicitRefresh
 import com.android.tools.idea.insights.getHolderModules
@@ -49,6 +48,7 @@ import com.android.tools.idea.vitals.datamodel.VitalsConnection
 import com.google.gct.login2.GoogleLoginService
 import com.google.gct.login2.LoginFeature
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -215,7 +215,7 @@ class VitalsConfigurationManager(
         }
         val uiScope =
           try {
-            AndroidCoroutineScope(this@VitalsConfigurationManager, AndroidDispatchers.uiThread)
+            AndroidCoroutineScope(this@VitalsConfigurationManager, Dispatchers.EDT)
           } catch (e: IncorrectOperationException) {
             // Project is disposed.
             return@launch
@@ -242,7 +242,7 @@ class VitalsConfigurationManager(
                 project,
                 GeminiAiInsightsOnboardingProvider(project),
                 codeContextResolver,
-                GeminiAiInsightClient(project, codeContextResolver),
+                AiInsightClient.getClient(project, codeContextResolver),
               ),
             cache = cache,
           )

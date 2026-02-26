@@ -21,11 +21,9 @@ import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.ThemingStyle
 import com.android.mockito.kotlin.whenever
 import com.android.sdklib.AndroidVersion
-import com.android.testutils.ImageDiffUtil
-import com.android.testutils.TestUtils
+import com.android.testutils.GoldenImageRule
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
-import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.actions.createTestEvent
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.actions.updateAndGetActionPresentation
@@ -42,7 +40,9 @@ import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
+import com.android.tools.idea.streaming.actions.ZoomAction
 import com.android.tools.idea.streaming.core.SplitPanel
+import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.expandFloatingToolbar
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDescriptor
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel.MultiDisplayStateStorage
@@ -140,6 +140,7 @@ class EmulatorToolWindowPanelTest {
 
   private val projectRule = ProjectRule()
   private val emulatorRule = FakeEmulatorRule()
+  private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/EmulatorToolWindowPanelTest/golden")
   @get:Rule
   val ruleChain =
     RuleChain(
@@ -148,6 +149,7 @@ class EmulatorToolWindowPanelTest {
       emulatorRule,
       ClipboardSynchronizationDisablementRule(),
       PortableUiFontRule(),
+      goldenImageRule,
       EdtRule(),
     )
 
@@ -533,6 +535,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Rotate Right" }).isNull()
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Home" }).isNull()
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Overview" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Hardware Input" }).isNull()
 
     panel.destroyContent()
     assertThat(panel.primaryDisplayView).isNull()
@@ -964,10 +967,10 @@ class EmulatorToolWindowPanelTest {
     val call1 = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(call1.request)).isEqualTo("format: RGB888 width: 168 height: 287")
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(168)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isFalse()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isFalse()
 
     emulatorView.zoom(ZoomType.IN)
     fakeUi.layoutAndDispatchEvents()
@@ -976,10 +979,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call1.completion.isCancelled).isTrue() // The previous call has been cancelled.
     assertThat(call1.completion.isDone).isTrue() // The previous call is no longer active.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(320)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isFalse()
-    assertThat(emulatorView.canZoomToFit()).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isTrue()
 
     emulatorView.zoom(ZoomType.IN)
     fakeUi.layoutAndDispatchEvents()
@@ -987,10 +990,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(640)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isTrue()
 
     panel.size = Dimension(800, 1200)
     fakeUi.layoutAndDispatchEvents()
@@ -998,10 +1001,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(640)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isTrue()
 
     emulatorView.zoom(ZoomType.FIT)
     fakeUi.layoutAndDispatchEvents()
@@ -1009,10 +1012,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(674)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isFalse()
 
     panel.size = Dimension(850, 1200)
     fakeUi.layoutAndDispatchEvents()
@@ -1020,10 +1023,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(716)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isFalse()
 
     panel.size = Dimension(1200, 1200)
     fakeUi.layoutAndDispatchEvents()
@@ -1031,10 +1034,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(960)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isTrue()
 
     emulatorView.zoom(ZoomType.OUT)
     fakeUi.layoutAndDispatchEvents()
@@ -1042,10 +1045,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(640)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isTrue()
-    assertThat(emulatorView.canZoomToActual()).isTrue()
-    assertThat(emulatorView.canZoomToFit()).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isTrue()
 
     emulatorView.zoom(ZoomType.ACTUAL)
     fakeUi.layoutAndDispatchEvents()
@@ -1053,10 +1056,10 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
     assertThat(emulatorView.displayRectangle!!.width).isEqualTo(320)
-    assertThat(emulatorView.canZoomIn()).isTrue()
-    assertThat(emulatorView.canZoomOut()).isFalse()
-    assertThat(emulatorView.canZoomToActual()).isFalse()
-    assertThat(emulatorView.canZoomToFit()).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
+    assertThat(emulatorView.canZoom(ZoomType.OUT)).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isFalse()
+    assertThat(emulatorView.canZoom(ZoomType.FIT)).isTrue()
   }
 
   @Test
@@ -1095,7 +1098,7 @@ class EmulatorToolWindowPanelTest {
     emulator.clearGrpcCallLog()
     val largestDisplayPanel = fakeUi.getComponent<EmulatorDisplayPanel> { it.displayId == 2 }
     var frameNumber = largestDisplayPanel.displayView.frameNumber
-    val zoomToActualButton = largestDisplayPanel.getDescendant<ActionButton> { it.action.templateText == "100%" }
+    val zoomToActualButton = largestDisplayPanel.getDescendant<ActionButton> { it.action is ZoomAction.Actual }
     fakeUi.mouseClickOn(zoomToActualButton)
     fakeUi.layoutAndDispatchEvents()
     val streamScreenshotCall4k = emulator.getNextGrpcCall(2.seconds)
@@ -1335,12 +1338,6 @@ class EmulatorToolWindowPanelTest {
         SystemInfo.isWindows -> maxPercentDifferentWindows
         else -> maxPercentDifferentLinux
       }
-    ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), scaledImage, maxPercentDifferent)
-  }
-
-  private fun getGoldenFile(name: String): Path {
-    return TestUtils.resolveWorkspacePathUnchecked("$TEST_DATA_PATH/golden/${name}.png")
+    goldenImageRule.assertImageSimilar(goldenImageName, scaledImage, maxPercentDifferent)
   }
 }
-
-private const val TEST_DATA_PATH = "tools/adt/idea/streaming/testData/EmulatorToolWindowPanelTest"

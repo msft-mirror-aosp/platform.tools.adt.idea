@@ -23,16 +23,11 @@ import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
-import org.jetbrains.kotlin.diagnostics.Severity
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
-import org.jetbrains.kotlin.idea.caches.resolve.analyzeWithContent
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
 
 // Adapted from the Kotlin test framework (after taking over android-kotlin sources).
 object DirectiveBasedActionUtils {
-    val FRONTEND
-        get() = if (KotlinPluginModeProvider.isK2Mode()) "K2" else "K1"
+    const val FRONTEND = "K2"
 
     private fun Array<out String>.expandByFrontend(separator: Char, prefix: String): List<String> {
         val frontend = FRONTEND
@@ -80,15 +75,6 @@ object DirectiveBasedActionUtils {
             actual,
             expected,
         )
-    }
-
-    fun checkForUnexpectedErrorsK1(file: KtFile, diagnosticsProvider: (KtFile) -> Diagnostics = { it.analyzeWithContent().diagnostics }) {
-        checkForUnexpectedErrorsBase(file) { ktFile ->
-            diagnosticsProvider(ktFile)
-                .filter { it.severity == Severity.ERROR }
-                .map { "${it.factoryName}: ${it.psiElement.text.lines().first()}" }
-                .sorted()
-        }
     }
 
     @OptIn(KaAllowAnalysisOnEdt::class)

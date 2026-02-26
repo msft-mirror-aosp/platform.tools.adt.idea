@@ -20,7 +20,6 @@ import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.loadNewFile
 import org.jetbrains.android.compose.stubComposableAnnotation
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -113,7 +112,6 @@ class ComposeOverrideImplementsAnnotationsFilterTest {
     val intention = fixture.availableIntentions.singleOrNull { it.familyName == "Implement members" } ?: error("Intention not found")
     fixture.launchAction(intention)
 
-    val argumentType = if (KotlinPluginModeProvider.isK2Mode()) "@Composable (() -> Unit)" else "@Composable () -> Unit"
     fixture.checkResult(
       // language=kotlin
       """
@@ -126,7 +124,7 @@ class ComposeOverrideImplementsAnnotationsFilterTest {
       }
 
       class Implementation : Interface {
-          override fun Function(argument: $argumentType) {
+          override fun Function(argument: @Composable (() -> Unit)) {
               TODO("Not yet implemented")
           }
       }

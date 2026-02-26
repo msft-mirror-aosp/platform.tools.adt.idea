@@ -20,7 +20,6 @@ import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrClass
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrMethod
 import com.android.tools.idea.run.deployment.liveedit.setUpComposeInProjectFixture
 import com.android.tools.idea.testing.AndroidProjectRule
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
@@ -150,12 +149,7 @@ class ComposeAnalysisTest {
     groupTable.assertRestartLambda(test)
     assertEquals("test", test.name)
 
-    val outer =
-      if (!KotlinPluginModeProvider.isK2Mode()) {
-        groupTable.assertGroup(169591811)
-      } else {
-        groupTable.assertGroup(-270222928)
-      }
+    val outer = groupTable.assertGroup(-270222928)
     groupTable.assertRestartLambda(outer)
     assertEquals("outer", outer.name)
 
@@ -198,12 +192,7 @@ class ComposeAnalysisTest {
     groupTable.assertRestartLambda(test)
     assertEquals("test", test.name)
 
-    val outer =
-      if (!KotlinPluginModeProvider.isK2Mode()) {
-        groupTable.assertGroup(169591811)
-      } else {
-        groupTable.assertGroup(-270222928)
-      }
+    val outer = groupTable.assertGroup(-270222928)
     groupTable.assertRestartLambda(outer)
     assertEquals("outer", outer.name)
 
@@ -233,15 +222,9 @@ class ComposeAnalysisTest {
     // No restart lambdas for composable functions that return values
     groupTable.assertGroupTable(groupCount = 1, restartLambdaCount = 0, lambdaGroupCount = 0, innerClassCount = 0)
 
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      ensureComposeCalls(output, START_REPLACE_GROUP)
-      val compute = groupTable.assertGroup(1273468969)
-      assertEquals("compute", compute.name)
-    } else {
-      ensureComposeCalls(output, START_REPLACEABLE_GROUP)
-      val compute = groupTable.assertGroup(1273468969)
-      assertEquals("compute", compute.name)
-    }
+    ensureComposeCalls(output, START_REPLACE_GROUP)
+    val compute = groupTable.assertGroup(1273468969)
+    assertEquals("compute", compute.name)
   }
 
   @Test
@@ -273,7 +256,7 @@ class ComposeAnalysisTest {
           }
         }
       }
-      
+
       @Composable
       fun Text(text: String) {
         // Pretend this does something
@@ -281,11 +264,7 @@ class ComposeAnalysisTest {
       """
       )
 
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      ensureComposeCalls(output, START_RESTART_GROUP, START_REUSABLE_GROUP, START_MOVABLE_GROUP)
-    } else {
-      ensureComposeCalls(output, START_RESTART_GROUP, START_REUSABLE_GROUP, START_MOVABLE_GROUP, START_REPLACEABLE_GROUP)
-    }
+    ensureComposeCalls(output, START_RESTART_GROUP, START_REUSABLE_GROUP, START_MOVABLE_GROUP)
 
     // This test doesn't care about the contents of the group table; only that we successfully construct it without errors
     computeGroupTableForTest(output)

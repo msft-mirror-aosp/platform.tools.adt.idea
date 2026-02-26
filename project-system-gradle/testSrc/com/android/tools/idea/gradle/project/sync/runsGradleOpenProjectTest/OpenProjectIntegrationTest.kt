@@ -58,7 +58,6 @@ import com.intellij.testFramework.utils.io.deleteRecursively
 import java.io.File
 import java.nio.file.Path
 import org.gradle.util.GradleVersion
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.junit.After
 import org.junit.Ignore
 import org.junit.Rule
@@ -101,10 +100,9 @@ class OpenProjectIntegrationTest {
     Truth.assertThat(after).isEqualTo(before)
   }
 
+  @Ignore("b/364570943")
   @Test
   fun testReopenProject_kmpWithAndroid() {
-    // TODO b/364570943 ignored test for K2 due to KTIJ-32501
-    if (KotlinPluginModeProvider.isK2Mode()) return
     val preparedProject = projectRule.prepareTestProject(TestProject.ANDROID_KOTLIN_MULTIPLATFORM)
     val before =
       preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { project -> project.saveAndDump() }

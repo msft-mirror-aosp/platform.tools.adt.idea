@@ -17,7 +17,6 @@
 
 package com.google.idea.blaze.base.qsync
 
-import com.google.idea.common.experiments.BoolExperiment
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.base.Joiner
 import com.google.common.collect.ImmutableMap
@@ -43,7 +42,6 @@ import com.google.idea.blaze.base.settings.BlazeUserSettings
 import com.google.idea.blaze.base.sync.SyncListener
 import com.google.idea.blaze.base.sync.SyncMode
 import com.google.idea.blaze.base.sync.SyncResult
-import com.google.idea.blaze.base.targetmaps.SourceToTargetMap
 import com.google.idea.blaze.base.util.SaveUtil
 import com.google.idea.blaze.common.AtomicFileWriter
 import com.google.idea.blaze.common.Label
@@ -219,7 +217,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
 
   fun assertProjectLoaded() = checkNotNull(loadedProject) { "Project not loaded yet" }
 
-  val sourceToTargetMap: SourceToTargetMap
+  val sourceToTargetMap: QuerySyncSourceToTargetMap
     get() = assertProjectLoaded().sourceToTargetMap
 
   @CanIgnoreReturnValue
@@ -240,7 +238,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
         }
       } else {
         updateCurrentSnapshot(context) {
-          applySyncResult(assertProjectLoaded().analyzePostQuerySyncData(context, existingPostQuerySyncData))
+          applySyncResult(assertProjectLoaded().computeCoreSyncResult(context, existingPostQuerySyncData))
         }
       }
       val buildTriggered = autoEnableCodeAnalysis(context, startup = true)
@@ -481,6 +479,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     if (
       lastProjectUpdateFromSnapshot.queryData == newSnapshot.queryData &&
         lastProjectUpdateFromSnapshot.graph == newSnapshot.graph &&
+        lastProjectUpdateFromSnapshot.projectStructureData == newSnapshot.projectStructureData &&
         lastProjectUpdateFromArtifactState == newArtifactState
     ) {
       context.output(PrintOutput("No changes found. Not updating the project structure."))
@@ -488,7 +487,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     }
     val loadedProject = assertProjectLoaded()
     val snapshot = currentSnapshot.getOrDefault(QuerySyncProjectSnapshot.EMPTY)
-    val result = loadedProject.createProjectStructure(context, snapshot.queryData, snapshot.graph)
+    val result = loadedProject.createProjectStructure(context, snapshot.queryData, snapshot.graph, snapshot.projectStructureData)
     val updatedSnapshot =
       onNewSnapshot(
         context,
@@ -497,6 +496,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
           artifactState = result.artifactState,
           queryData = snapshot.queryData,
           graph = snapshot.graph,
+          projectStructureData = snapshot.projectStructureData,
           project = result.projectStructure,
           incompleteTargets = emptySet(),
         ),
@@ -821,5 +821,5 @@ fun QuerySyncManager.updateCurrentSnapshot(context: BlazeContext, mutator: Query
 }
 
 fun QuerySyncProjectSnapshot.applySyncResult(coreSyncResult: QuerySyncProject.CoreSyncResult): QuerySyncProjectSnapshot {
-  return copy(queryData = coreSyncResult.postQuerySyncData, graph = coreSyncResult.graph)
+  return copy(queryData = coreSyncResult.postQuerySyncData, graph = coreSyncResult.graph, projectStructureData = coreSyncResult.projectStructureData)
 }
