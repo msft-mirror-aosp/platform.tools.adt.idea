@@ -40,7 +40,6 @@ import com.google.wireless.android.sdk.stats.DisplayDetails
 import com.google.wireless.android.sdk.stats.IdePlugin
 import com.google.wireless.android.sdk.stats.IdePluginInfo
 import com.google.wireless.android.sdk.stats.IntelliJNewUIState
-import com.google.wireless.android.sdk.stats.K2ModeEvent
 import com.google.wireless.android.sdk.stats.MachineDetails
 import com.google.wireless.android.sdk.stats.ProductDetails
 import com.google.wireless.android.sdk.stats.ProductDetails.SoftwareLifeCycleChannel
@@ -86,7 +85,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.apache.http.client.utils.URIBuilder
 import org.jetbrains.android.AndroidPluginDisposable
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 
 /** Tracks Android Studio specific metrics */
 object AndroidStudioUsageTracker {
@@ -239,12 +237,6 @@ object AndroidStudioUsageTracker {
     }
 
     UsageTracker.log(AndroidStudioEvent.newBuilder().setKind(EventKind.IDE_PLUGIN_INFO).setIdePluginInfo(pluginInfoProto))
-
-    UsageTracker.log(
-      AndroidStudioEvent.newBuilder()
-        .setKind(EventKind.K2_MODE_EVENT)
-        .setK2ModeEvent(K2ModeEvent.newBuilder().setIsEnabled(KotlinPluginModeProvider.isK2Mode()))
-    )
   }
 
   private fun reportSafeModeStats() {
