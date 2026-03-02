@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmName("GradleModuleModelEntityModifications")package com.android.tools.idea.gradle.project.entities
+@file:JvmName("GradleProjectPathEntityModifications")package com.android.tools.idea.gradle.project.entities
 
-import com.android.tools.idea.gradle.project.model.GradleModuleModel
-import com.intellij.openapi.module.Module
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
-import com.intellij.platform.workspace.jps.entities.ModuleId
-import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.EntityType
 import com.intellij.platform.workspace.storage.GeneratedCodeApiVersion
@@ -32,39 +30,39 @@ import com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId
 import com.intellij.platform.workspace.storage.annotations.Parent
 
 @GeneratedCodeApiVersion(3)
- interface GradleModuleModelEntityBuilder: WorkspaceEntityBuilder<GradleModuleModelEntity> {
+ interface GradleProjectPathEntityBuilder: WorkspaceEntityBuilder<GradleProjectPathEntity> {
     override  var entitySource: EntitySource
      var module: ModuleEntityBuilder
-     var gradleModuleModel: GradleModuleModel
+     var gradleProjectPath: GradleProjectPath
 }
 
-internal object GradleModuleModelEntityType : EntityType<GradleModuleModelEntity, GradleModuleModelEntityBuilder>() {
-    override val entityClass: Class<GradleModuleModelEntity> get() = GradleModuleModelEntity::class.java
+internal object GradleProjectPathEntityType : EntityType<GradleProjectPathEntity, GradleProjectPathEntityBuilder>() {
+    override val entityClass: Class<GradleProjectPathEntity> get() = GradleProjectPathEntity::class.java
     operator fun invoke(
-        gradleModuleModel: GradleModuleModel,
+        gradleProjectPath: GradleProjectPath,
         entitySource: EntitySource,
-        init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
-    ): GradleModuleModelEntityBuilder {
+        init: (GradleProjectPathEntityBuilder.() -> Unit)? = null,
+    ): GradleProjectPathEntityBuilder {
         val builder = builder()
-        builder.gradleModuleModel = gradleModuleModel
+        builder.gradleProjectPath = gradleProjectPath
         builder.entitySource = entitySource
         init?.invoke(builder)
         return builder
     }
 }
 
- fun MutableEntityStorage.modifyGradleModuleModelEntity(
-  entity: GradleModuleModelEntity,
-  modification: GradleModuleModelEntityBuilder.() -> Unit,
-): GradleModuleModelEntity = modifyEntity(GradleModuleModelEntityBuilder::class.java, entity, modification)
- var ModuleEntityBuilder.gradleModuleModel: GradleModuleModelEntityBuilder?
-    by WorkspaceEntity.extensionBuilder(GradleModuleModelEntity::class.java)
+ fun MutableEntityStorage.modifyGradleProjectPathEntity(
+  entity: GradleProjectPathEntity,
+  modification: GradleProjectPathEntityBuilder.() -> Unit,
+): GradleProjectPathEntity = modifyEntity(GradleProjectPathEntityBuilder::class.java, entity, modification)
+ var ModuleEntityBuilder.gradleProjectPath: GradleProjectPathEntityBuilder?
+    by WorkspaceEntity.extensionBuilder(GradleProjectPathEntity::class.java)
 
 
 @JvmOverloads
-@JvmName("createGradleModuleModelEntity")
- fun GradleModuleModelEntity(
-    gradleModuleModel: GradleModuleModel,
+@JvmName("createGradleProjectPathEntity")
+ fun GradleProjectPathEntity(
+    gradleProjectPath: GradleProjectPath,
     entitySource: EntitySource,
-    init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
-    ): GradleModuleModelEntityBuilder = GradleModuleModelEntityType(gradleModuleModel, entitySource, init)
+    init: (GradleProjectPathEntityBuilder.() -> Unit)? = null,
+    ): GradleProjectPathEntityBuilder = GradleProjectPathEntityType(gradleProjectPath, entitySource, init)
