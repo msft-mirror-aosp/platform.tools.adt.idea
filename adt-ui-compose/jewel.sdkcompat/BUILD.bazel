@@ -2,7 +2,10 @@ load("//tools/base/bazel:bazel.bzl", "iml_alias", "iml_module")
 
 iml_module(
     name = "jewel.sdkcompat.253",
-    compatible_intellij_platforms = ["intellij_2025_3"],
+    compatible_intellij_platforms = [
+        "intellij_2025_3",
+        "sherlock-sdk",
+    ],
     iml_files = ["jewel.sdkcompat.iml"],
     visibility = ["//visibility:public"],
     exports = [
@@ -35,7 +38,6 @@ iml_module(
     srcs = ["api252"],
     compatible_intellij_platforms = [
         "intellij_ce_2025_2",
-        "sherlock-sdk",
     ],
     iml_files = ["jewel.sdkcompat.iml"],
     visibility = ["//visibility:public"],
@@ -135,7 +137,7 @@ iml_alias(
         "intellij_ce_2025_1": "jewel.sdkcompat.251",
         "intellij_ce_2025_2": "jewel.sdkcompat.252",
         "intellij_2025_3": "jewel.sdkcompat.253",
-        "sherlock-sdk": "jewel.sdkcompat.252",
+        "sherlock-sdk": "jewel.sdkcompat.253",
     },
     visibility = ["//visibility:public"],
 )
