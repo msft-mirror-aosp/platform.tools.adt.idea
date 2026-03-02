@@ -57,7 +57,7 @@
     <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.deployer" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="utp-core-proto-jarjar" level="project" />
+    <orderEntry type="library" scope="TEST" name="test-result-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.lint-api" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-proto" level="project" />
     <orderEntry type="library" scope="TEST" name="android-test-plugin-host-device-info-proto" level="project" />

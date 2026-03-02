@@ -22,7 +22,7 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="studio-proto" level="project" />
-    <orderEntry type="library" name="utp-core-proto-jarjar" level="project" />
+    <orderEntry type="library" name="test-result-proto" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />

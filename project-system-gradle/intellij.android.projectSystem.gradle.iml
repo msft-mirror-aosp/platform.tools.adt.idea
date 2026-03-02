@@ -46,7 +46,7 @@
     <orderEntry type="module" module-name="android.sdktools.tracer" />
     <orderEntry type="module" module-name="android.kotlin-multiplatform-models" />
     <orderEntry type="library" name="kotlin-multiplatform-android-models-proto" level="project" />
-    <orderEntry type="library" name="utp-core-proto-jarjar" level="project" />
+    <orderEntry type="library" name="test-result-proto" level="project" />
     <orderEntry type="library" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="module" module-name="android.sdktools.lint-checks" />
     <orderEntry type="library" name="studio-plugin-org.toml.lang" level="project" />

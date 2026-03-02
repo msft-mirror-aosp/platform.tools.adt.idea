@@ -43,7 +43,7 @@
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="module" module-name="android.sdktools.sdklib" />
     <orderEntry type="library" name="android-test-plugin-host-device-info-proto" level="project" />
-    <orderEntry type="library" name="utp-core-proto-jarjar" level="project" />
+    <orderEntry type="library" name="test-result-proto" level="project" />
     <orderEntry type="library" name="studio-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />

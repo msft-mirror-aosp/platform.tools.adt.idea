@@ -30,7 +30,7 @@
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.testutils" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.psd" />
     <orderEntry type="module" module-name="android.sdktools.builder-model" />
-    <orderEntry type="library" name="utp-core-proto-jarjar" level="project" />
+    <orderEntry type="library" name="test-result-proto" level="project" />
     <orderEntry type="library" name="android-test-plugin-host-device-info-proto" level="project" />
     <orderEntry type="library" name="android-core-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.server-flags" />
