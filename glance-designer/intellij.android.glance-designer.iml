@@ -24,5 +24,6 @@
     <orderEntry type="module" module-name="intellij.android.preview-elements" />
     <orderEntry type="module" module-name="intellij.android.rendering" />
     <orderEntry type="module" module-name="intellij.android.compose-common" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
   </component>
 </module>

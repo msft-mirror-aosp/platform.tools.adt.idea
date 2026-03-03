@@ -12,5 +12,6 @@
     <orderEntry type="library" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.flags" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
   </component>
 </module>

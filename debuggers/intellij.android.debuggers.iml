@@ -46,5 +46,10 @@
     </orderEntry>
     <orderEntry type="module" module-name="android.sdktools.deployer" />
     <orderEntry type="library" name="studio-proto" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.backend" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
   </component>
 </module>

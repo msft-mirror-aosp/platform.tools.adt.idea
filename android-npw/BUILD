@@ -47,6 +47,9 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/sdk-updates:intellij.android.sdkUpdates",
         "//tools/adt/idea/ml-api:intellij.android.ml-api",
+        "@intellij//:intellij.java.ui",
+        "@intellij//:intellij.java",
+        "@intellij//:intellij.java.impl",
     ],
 )
 
@@ -200,6 +203,7 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:intellij.java.ui",
     ],
 )
 

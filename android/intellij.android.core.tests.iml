@@ -40,6 +40,7 @@
     <orderEntry type="library" name="studio-plugin-com.intellij.properties" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.platform.images" level="project" />
     <orderEntry type="module" module-name="android.sdktools.manifest-parser" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />

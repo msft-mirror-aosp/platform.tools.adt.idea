@@ -27,6 +27,9 @@
   <depends>com.intellij.gradle</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>org.jetbrains.plugins.gradle</depends>
+  <dependencies>
+    <module name="intellij.platform.uast"/>
+  </dependencies>
   <idea-version since-build="242"/>
   <!-- This is temporary mechanism to mark certain plugins as K2-compatible. See IntelliJ commit cf213fb139 for details. -->
   <extensions defaultExtensionNs="org.jetbrains.kotlin">

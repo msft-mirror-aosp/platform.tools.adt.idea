@@ -29,6 +29,16 @@
   <depends>com.intellij.java</depends>
   <dependencies>
     <module name="intellij.spellchecker"/>
+    <module name="intellij.java.indexing"/>
+    <module name="intellij.uiDesigner"/>
+    <module name="intellij.java.execution"/>
+    <module name="intellij.java.analysis"/>
+    <module name="intellij.java.impl"/>
+    <module name="intellij.java.execution.impl"/>
+    <module name="intellij.java.analysis.impl"/>
+    <module name="intellij.java.indexing.impl"/>
+    <module name="intellij.java"/>
+    <module name="intellij.platform.uast"/>
   </dependencies>
 
   <!-- This is temporary mechanism to mark certain plugins as K2-compatible. See IntelliJ commit cf213fb139 for details. -->

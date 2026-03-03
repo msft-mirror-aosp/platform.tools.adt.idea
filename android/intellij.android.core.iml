@@ -119,5 +119,26 @@
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.flags" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker.xml" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl.refactorings" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.gradle.java.groovy" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.backend" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.backend" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.frontend" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.images.xdebugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.frontend" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.emmet" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.compiler" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.compiler.impl" level="project" />
   </component>
 </module>

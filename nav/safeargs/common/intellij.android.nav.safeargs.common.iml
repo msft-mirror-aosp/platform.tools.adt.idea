@@ -21,5 +21,6 @@
     <orderEntry type="module" module-name="intellij.android.core" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.render-resources" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />
   </component>
 </module>

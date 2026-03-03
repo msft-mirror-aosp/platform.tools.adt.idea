@@ -26,6 +26,17 @@
   <depends>com.intellij.java</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>com.intellij.modules.json</depends>
+  <dependencies>
+    <module name="intellij.java.impl" />
+    <module name="intellij.compose.ide.plugin.gradleTooling.rt" />
+    <module name="intellij.java.debugger.impl" />
+    <module name="intellij.java" />
+    <module name="intellij.platform.uast" />
+    <module name="intellij.compose.ide.plugin.shared" />
+    <module name="intellij.java.impl.refactorings" />
+    <module name="intellij.java.debugger" />
+    <plugin id="com.intellij.compose" />
+  </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">
     <dependencySupport coordinate="androidx.compose.runtime:runtime" kind="java" displayName="Jetpack Compose"/>
