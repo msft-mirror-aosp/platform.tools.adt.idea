@@ -35,7 +35,7 @@ import org.jetbrains.annotations.Nls
 /** A [com.intellij.openapi.fileEditor.FileEditor] for displaying profiler captures in a main editor tab. */
 class UnifiedProfilerFileEditor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
   private val delegate: FileEditor? =
-    if (UnifiedProfilerEditorProvider.canViewInUnifiedProfiler(file)) {
+    if (UnifiedProfilerEditorProvider.isSupportedByPerfettoEditor(file)) {
       PerfettoFileEditor(project, file)
     } else {
       null
