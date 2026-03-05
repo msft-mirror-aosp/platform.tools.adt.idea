@@ -51,7 +51,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.getProjectCacheFileName
 import com.intellij.util.application
-import com.intellij.xdebugger.impl.XDebuggerActionsCollector
+import com.intellij.platform.debugger.impl.shared.XDebuggerActionsCollector
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
