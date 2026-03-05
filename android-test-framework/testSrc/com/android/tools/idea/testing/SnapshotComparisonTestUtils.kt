@@ -26,7 +26,6 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.io.path.writeText
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 
 /**
  * See implementing classes for usage examples.
@@ -60,14 +59,6 @@ interface SnapshotComparisonTest {
 
 /** Snapshot filename suffixes ordered by matching priority, where [BASELINE] must be last. */
 enum class SnapshotSuffix(val suffix: String) {
-  K2_PHASED("_K2_phased") {
-    override val isEnabled
-      get() = KotlinPluginModeProvider.isK2Mode() && StudioFlags.PHASED_SYNC_ENABLED.get()
-  },
-  K2("_K2") {
-    override val isEnabled
-      get() = KotlinPluginModeProvider.isK2Mode()
-  },
   PHASED("_phased") {
     override val isEnabled
       get() = StudioFlags.PHASED_SYNC_ENABLED.get()

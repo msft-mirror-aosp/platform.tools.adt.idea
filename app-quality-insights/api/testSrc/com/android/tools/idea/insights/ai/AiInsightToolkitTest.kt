@@ -221,7 +221,7 @@ class AiInsightToolkitTest {
       |Please reference the provided source code if they are helpful.
       |Exception:
       |```
-      |retrofit2.HttpException: HTTP 401 
+      |retrofit2.HttpException: HTTP 401
       |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.build(ResponseWrapper.kt:23)
       |${'\t'}dev.firebase.appdistribution.api_service.ResponseWrapper${'$'}Companion.fetchOrError(ResponseWrapper.kt:31)
       |```
@@ -257,6 +257,17 @@ class AiInsightToolkitTest {
 
     assertThat(toolkit.fetchInsight(CONNECTION1, ISSUE1.id, null, ISSUE1.issueDetails.fatality, ISSUE1.sampleEvent))
       .isInstanceOf(LoadingState.UnsupportedOperation::class.java)
+  }
+
+  @Test
+  fun `toolkit returns new insight with force regenerate`() = runBlocking {
+    val cache = AiInsightCache()
+    cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
+    val toolkit = createToolkit(cache)
+
+    val insight = toolkit.fetchInsight(CONNECTION1, ISSUE1.id, null, ISSUE1.issueDetails.fatality, ISSUE1.sampleEvent, true)
+    assertThat(insight.valueOrNull()).isNotNull()
+    assertThat(insight.valueOrNull()).isNotEqualTo(DEFAULT_AI_INSIGHT)
   }
 
   private fun createToolkit(

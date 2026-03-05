@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.run.editor;
+package com.android.tools.idea.streaming.emulator.actions
 
-import com.android.tools.idea.run.TargetSelectionMode;
+import com.android.sdklib.deviceprovisioner.DeviceType
 
-public final class CloudTestMatrixTargetProvider extends TestDeployTargetProvider {
-  public CloudTestMatrixTargetProvider() {
-    super(TargetSelectionMode.FIREBASE_DEVICE_MATRIX, "Firebase Test Lab Device Matrix");
-  }
-
-  @Override
-  protected boolean isApplicable(boolean testConfiguration) {
-    return testConfiguration;
-  }
-}
+/** Simulates pressing the Camera button on an AI Glasses virtual device. */
+internal class EmulatorGlassesCameraButtonAction :
+  EmulatorPushButtonAction("Stem1", configFilter = { it.deviceType == DeviceType.AI_GLASSES })

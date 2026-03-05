@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmName("GradleModuleModelEntityModifications")
-
-package com.android.tools.idea.gradle.project.entities
+@file:JvmName("GradleModuleModelEntityModifications")package com.android.tools.idea.gradle.project.entities
 
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
 import com.intellij.openapi.module.Module
@@ -34,43 +32,39 @@ import com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId
 import com.intellij.platform.workspace.storage.annotations.Parent
 
 @GeneratedCodeApiVersion(3)
-interface GradleModuleModelEntityBuilder : WorkspaceEntityBuilder<GradleModuleModelEntity> {
-  override var entitySource: EntitySource
-  var module: ModuleEntityBuilder
-  var gradleModuleModel: GradleModuleModel
+ interface GradleModuleModelEntityBuilder: WorkspaceEntityBuilder<GradleModuleModelEntity> {
+    override  var entitySource: EntitySource
+     var module: ModuleEntityBuilder
+     var gradleModuleModel: GradleModuleModel
 }
 
-internal object GradleModuleModelEntityType :
-  EntityType<GradleModuleModelEntity, GradleModuleModelEntityBuilder>() {
-  override val entityClass: Class<GradleModuleModelEntity> get() = GradleModuleModelEntity::class.java
-  operator fun invoke(
-    gradleModuleModel: GradleModuleModel,
-    entitySource: EntitySource,
-    init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
-  ): GradleModuleModelEntityBuilder {
-    val builder = builder()
-    builder.gradleModuleModel = gradleModuleModel
-    builder.entitySource = entitySource
-    init?.invoke(builder)
-    return builder
-  }
+internal object GradleModuleModelEntityType : EntityType<GradleModuleModelEntity, GradleModuleModelEntityBuilder>() {
+    override val entityClass: Class<GradleModuleModelEntity> get() = GradleModuleModelEntity::class.java
+    operator fun invoke(
+        gradleModuleModel: GradleModuleModel,
+        entitySource: EntitySource,
+        init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
+    ): GradleModuleModelEntityBuilder {
+        val builder = builder()
+        builder.gradleModuleModel = gradleModuleModel
+        builder.entitySource = entitySource
+        init?.invoke(builder)
+        return builder
+    }
 }
 
-fun MutableEntityStorage.modifyGradleModuleModelEntity(
+ fun MutableEntityStorage.modifyGradleModuleModelEntity(
   entity: GradleModuleModelEntity,
   modification: GradleModuleModelEntityBuilder.() -> Unit,
-): GradleModuleModelEntity =
-  modifyEntity(GradleModuleModelEntityBuilder::class.java, entity, modification)
-
-var ModuleEntityBuilder.gradleModuleModel: GradleModuleModelEntityBuilder?
-  by WorkspaceEntity.extensionBuilder(GradleModuleModelEntity::class.java)
+): GradleModuleModelEntity = modifyEntity(GradleModuleModelEntityBuilder::class.java, entity, modification)
+ var ModuleEntityBuilder.gradleModuleModel: GradleModuleModelEntityBuilder?
+    by WorkspaceEntity.extensionBuilder(GradleModuleModelEntity::class.java)
 
 
 @JvmOverloads
 @JvmName("createGradleModuleModelEntity")
-fun GradleModuleModelEntity(
-  gradleModuleModel: GradleModuleModel,
-  entitySource: EntitySource,
-  init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
-): GradleModuleModelEntityBuilder =
-  GradleModuleModelEntityType(gradleModuleModel, entitySource, init)
+ fun GradleModuleModelEntity(
+    gradleModuleModel: GradleModuleModel,
+    entitySource: EntitySource,
+    init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
+    ): GradleModuleModelEntityBuilder = GradleModuleModelEntityType(gradleModuleModel, entitySource, init)

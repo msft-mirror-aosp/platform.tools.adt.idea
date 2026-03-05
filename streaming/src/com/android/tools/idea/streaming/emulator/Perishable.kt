@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.streaming.emulator.actions
+package com.android.tools.idea.streaming.emulator
 
-import com.android.sdklib.deviceprovisioner.DeviceType
+import kotlinx.datetime.Instant
 
-/** Simulates pressing the Display button on an AI Glasses virtual device. */
-internal class EmulatorGlasses2ButtonAction : EmulatorPushButtonAction("Stem2", configFilter = { it.deviceType == DeviceType.AI_GLASSES })
+/** Represents an object that has an expiration time. */
+interface Perishable {
+  val expirationTime: Instant
+}

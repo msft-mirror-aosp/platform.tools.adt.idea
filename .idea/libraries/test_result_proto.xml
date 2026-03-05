@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="test-result-proto">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../bazel-bin/tools/base/android-test/test-result-proto/libstudio.test-result-proto.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -131,7 +131,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:studio-grpc",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/.idea/libraries:transport-proto",
-        "//tools/adt/idea/.idea/libraries:utp-core-proto-jarjar",
+        "//tools/adt/idea/.idea/libraries:test-result-proto",
         "//tools/adt/idea/.idea/libraries:zxing-core",
         "//tools/adt/idea/android/lib:instantapps-api",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:background-inspector-proto",
@@ -670,14 +670,12 @@ studio_plugin(
 )
 
 studio_plugin(
-    name = "com.google.gct.testing",
-    directory = "firebase-testing",
+    name = "com.android.gmdcodecompletion",
+    directory = "gmd-code-completion",
     libs = [
-        "//prebuilts/tools/common/m2:JSch",
         "//prebuilts/tools/common/m2:google_api_services_testing",
     ],
     modules = {
-        "firebase-testing.jar": ["//tools/studio/google/cloud/testing/firebase-testing:firebase-testing"],
         "gmd-code-completion.jar": ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"],
     },
     visibility = ["//visibility:public"],
@@ -834,6 +832,8 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/core/terminal:aiplugin.core.terminal",
             "//tools/vendor/google/ml/aiplugin/core/aicore:aiplugin.core.aicore",
             "//tools/vendor/google/ml/aiplugin/agents/agents-core:aiplugin.agents.agents-core",
+            "//tools/vendor/google/ml/aiplugin/v2/agent-sdk:aiplugin.v2.agent-sdk",
+            "//tools/vendor/google/ml/aiplugin/v2/datamodel:aiplugin.v2.datamodel",
             "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
             "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
             "//tools/vendor/google/ml/aiplugin/android/enterprise:aiplugin.android.enterprise",
@@ -944,6 +944,25 @@ android_studio_configuration(
     version_type = STUDIO_VERSION,
 )
 
+STUDIO_BASE_PLUGINS = [
+    "//tools/adt/idea/studio:org.jetbrains.android",
+    "//tools/adt/idea/studio:com.android.tools.apk",
+    "//tools/adt/idea/studio:com.android.tools.ndk",
+    "//tools/adt/idea/studio:com.android.tools.design",
+    "//tools/adt/idea/studio:androidx.compose.plugins.idea",
+    "//tools/adt/idea/studio:com.google.services.git4insights",
+    "//tools/adt/idea/studio:com.google.services.firebase",
+    "//tools/adt/idea/studio:com.google.tools.ij.aiplugin",
+    "//tools/adt/idea/studio:com.google.gct.directaccess",
+    "//tools/adt/idea/studio:com.android.gmdcodecompletion",
+    "//tools/adt/idea/studio:com.android.tools.idea.smali",
+    "//tools/adt/idea/studio:com.google.gct.test.recorder",
+    "//tools/adt/idea/studio:com.google.urlassistant",
+    "//tools/adt/idea/studio:com.google.targetsdkversionassistant",
+    "//tools/adt/idea/studio:com.android.tools.gradle.dcl",
+    "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
+]
+
 android_studio(
     name = "android-studio",
     codesign_entitlements = "codesign/entitlements.xml",
@@ -956,26 +975,31 @@ android_studio(
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
     platform = "@intellij//:intellij-sdk",
-    plugins = [
-        ":org.jetbrains.android",
-        ":com.android.tools.apk",
-        ":com.android.tools.ndk",
-        ":com.android.tools.design",
-        ":androidx.compose.plugins.idea",
-        ":com.google.services.git4insights",
-        ":com.google.services.firebase",
-        ":com.google.tools.ij.aiplugin",
-        ":com.google.gct.directaccess",
-        ":com.google.gct.testing",
-        ":com.android.tools.idea.smali",
-        ":com.google.gct.test.recorder",
-        ":com.google.urlassistant",
-        ":com.google.targetsdkversionassistant",
-        ":com.android.tools.gradle.dcl",
-        ":com.android.tools.gradle.dsl",
-    ],
+    plugins = STUDIO_BASE_PLUGINS,
     selector = "AndroidStudio",
     update_message_template = ":update_message.html",
+    version_code_name = STUDIO_CODENAME,
+    version_micro_patch = STUDIO_MICRO_PATCH,
+    version_release_number = STUDIO_RELEASE_NUMBER,
+    visibility = ["//visibility:public"],
+)
+
+# Customized build of Android Studio that includes the automation plugin
+android_studio(
+    name = "android-studio-agent",
+    codesign_entitlements = "//tools/adt/idea/studio:codesign/entitlements.xml",
+    configurations = [
+        "//tools/adt/idea/studio:nightly",
+    ],
+    generate_package_metadata = True,
+    jre = "//prebuilts/studio/jdk:jdk-bundle",
+    legacy_default_configuration = STUDIO_CONFIG,
+    platform = "@intellij//:intellij-sdk",
+    plugins = STUDIO_BASE_PLUGINS + [
+        "//tools/vendor/google/automation:com.android.tools.idea.automation",
+    ],
+    selector = "AndroidStudio",
+    update_message_template = "//tools/adt/idea/studio:update_message.html",
     version_code_name = STUDIO_CODENAME,
     version_micro_patch = STUDIO_MICRO_PATCH,
     version_release_number = STUDIO_RELEASE_NUMBER,
@@ -1227,7 +1251,6 @@ iml_module(
         "//tools/vendor/google/git4insights",
         "//tools/vendor/google/firebase",
         "//tools/studio/google/cloud/testing/directaccess",
-        "//tools/studio/google/cloud/testing/firebase-testing",
         "//tools/vendor/google/login:google-login",
         "//tools/adt/idea/smali:intellij.android.smali",
         "//tools/studio/google/cloud/testing/test-recorder",

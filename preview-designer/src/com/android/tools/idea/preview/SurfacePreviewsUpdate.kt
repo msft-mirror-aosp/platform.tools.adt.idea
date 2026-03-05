@@ -201,6 +201,9 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
         previewElement to newModel
       }
       .let { elementModelList ->
+        if (this@NlDesignSurface.isDisposed()) {
+          return@let emptyList()
+        }
         // Reorder existing models and add placeholders altogether to improve performance and UX in
         // comparison with adding/reordering them one by one.
         this@NlDesignSurface.addModelsWithoutRender(elementModelList.map { it.second }).mapIndexed { idx, sceneManager ->

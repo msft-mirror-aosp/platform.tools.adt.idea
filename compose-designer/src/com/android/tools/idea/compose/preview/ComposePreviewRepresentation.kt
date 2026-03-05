@@ -91,6 +91,7 @@ import com.android.tools.idea.preview.representation.CommonPreviewStateManager
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
 import com.android.tools.idea.preview.updatePreviewsAndRefresh
+import com.android.tools.idea.preview.util.PreviewFilePointer
 import com.android.tools.idea.projectsystem.needsBuild
 import com.android.tools.idea.rendering.RenderUtils
 import com.android.tools.idea.rendering.isErrorResult
@@ -133,7 +134,6 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.problems.WolfTheProblemSolver
 import com.intellij.psi.PsiFile
-import com.intellij.psi.SmartPointerManager
 import com.intellij.ui.AncestorListenerAdapter
 import com.intellij.util.messages.Topic
 import com.intellij.util.ui.UIUtil
@@ -184,6 +184,7 @@ private val accessibilityModelUpdater: NlModelUpdaterInterface = AccessibilityMo
  * @param previewFlowManager the [PreviewFlowManager] that manages flows of [ComposePreviewElementInstance]
  * @param previewElement the [ComposePreviewElementInstance] associated to this model
  * @param fastPreviewSurface the [FastPreviewSurface] of the preview
+ * @param interactiveNavigationHandler the [InteractiveNavigationHandler] used to enable back navigation in Interactive mode
  */
 private fun createPreviewElementDataProvider(
   project: Project,
@@ -191,6 +192,7 @@ private fun createPreviewElementDataProvider(
   previewFlowManager: PreviewFlowManager<out ComposePreviewElementInstance<*>>,
   previewElement: PsiComposePreviewElementInstance,
   fastPreviewSurface: FastPreviewSurface,
+  interactiveNavigationHandler: InteractiveNavigationHandler,
 ) =
   object :
     NlDataProvider(
@@ -205,6 +207,7 @@ private fun createPreviewElementDataProvider(
       PREVIEW_VIEW_MODEL_STATUS,
       FastPreviewSurface.KEY,
       PreviewInvalidationManager.KEY,
+      InteractiveNavigationHandler.KEY,
     ) {
     override fun getData(dataId: String): Any? =
       when (dataId) {
@@ -219,6 +222,7 @@ private fun createPreviewElementDataProvider(
         PREVIEW_VIEW_MODEL_STATUS.name -> composePreviewManager.status()
         FastPreviewSurface.KEY.name -> fastPreviewSurface
         PreviewInvalidationManager.KEY.name -> composePreviewManager
+        InteractiveNavigationHandler.KEY.name -> interactiveNavigationHandler
         else -> null
       }
   }
@@ -305,10 +309,18 @@ class ComposePreviewRepresentation(
   private val log = Logger.getInstance(ComposePreviewRepresentation::class.java)
   private val isDisposed = AtomicBoolean(false)
 
-  private val psiFilePointer = runReadAction { SmartPointerManager.createPointer(psiFile) }
+  private val psiFilePointer =
+    PreviewFilePointer(psiFile) {
+      // If file reference changes, make sure to invalidate and refresh again
+      // as the last refresh might have failed midway due to this change.
+      invalidate()
+      requestRefresh()
+    }
+
   private val project
     get() = psiFilePointer.project
 
+  private val interactiveNavigationHandler = InteractiveNavigationHandler()
   override val caretNavigationHandler = CaretNavigationHandlerImpl()
 
   private val previewBuildListenersManager =
@@ -349,7 +361,7 @@ class ComposePreviewRepresentation(
   /** Gives access to the rendered preview elements. For testing only. Users of this class should not use this method. */
   @TestOnly fun renderedPreviewElementsInstancesFlowForTest() = composePreviewFlowManager.renderedPreviewElementsFlow
 
-  private val renderingBuildStatusManager = RenderingBuildStatusManager.create(this, psiFile)
+  private val renderingBuildStatusManager = RenderingBuildStatusManager.create(this, psiFilePointer)
 
   /**
    * This field will be false until the preview has rendered at least once. If the preview has not rendered once we do not have enough
@@ -500,6 +512,7 @@ class ComposePreviewRepresentation(
           composePreviewFlowManager,
           previewElement,
           this@ComposePreviewRepresentation,
+          interactiveNavigationHandler,
         )
 
       override fun toXml(previewElement: PsiComposePreviewElementInstance) =
@@ -969,7 +982,7 @@ class ComposePreviewRepresentation(
     composeWorkBench.hasRendered = true
     surface.sceneManagers.forEach {
       ComposeAnimationToolbarUpdater.update(this, it) { AnimationToolingUsageTracker.getInstance(surface) }
-      InteractivePreviewBackNavigationUpdater.update(this, it)
+      InteractivePreviewBackNavigationUpdater.update(this, it, interactiveNavigationHandler)
     }
 
     // Only update the hasRenderedAtLeastOnce field if we rendered at least one preview. Otherwise,
@@ -1000,6 +1013,7 @@ class ComposePreviewRepresentation(
    * in Focus mode.
    */
   private fun updateResizePanel() {
+    if (isDisposed.get()) return
     activeResizePanelInFocusMode?.let { panel ->
       val focusedSceneManager = surface.sceneManagers.singleOrNull()
       if (focusedSceneManager != null) {

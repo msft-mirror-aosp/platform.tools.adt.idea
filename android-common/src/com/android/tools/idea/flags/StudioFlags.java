@@ -948,10 +948,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_GRADLE_AUTO_SYNC_SETTING_UI =
     new BooleanFlag(GRADLE_IDE, "gradle.sync.control.enabled", "Allow disabling of Auto Sync", "Allow opting-out from Gradle Auto Syncing.");
 
-  public static final Flag<Boolean> SHOW_GRADLE_AUTO_SYNC_SETTING_IN_NON_EXPERIMENTAL_UI =
-    new BooleanFlag(GRADLE_IDE, "gradle.sync.control.enabled.stable", "Allow disabling of Auto Sync via non-experimental settings",
-                    "Allow opting-out from Gradle Auto Syncing via non-experimental part of settings.");
-
   public static final Flag<Boolean> EXECUTE_GRADLE_JVM_COMPATIBILITY_CHECK = new BooleanFlag(
     GRADLE_IDE, "execute.gradle.jvm.compatibility.check", "Execute Gradle JVM compatibility check",
     "Run during project opening the Gradle JVM compatibility check to ensure configuration is compatible with selected Gradle and AGP versions.");
@@ -1105,6 +1101,19 @@ public final class StudioFlags {
     "enable.multiple.device.specs",
     "Multiple Device Specs",
     "Allows Studio to pass multiple device spec files separately to AGP along with target device spec.");
+
+  public static final Flag<Boolean> SIGNED_BUILD_ADV_FEATURE = new BooleanFlag(
+    GRADLE_IDE,
+    "enable.adv.in.signed.build.feature",
+    "ADV Registration in signed build feature",
+    "Include information about ADV in the signed build wizard."
+  );
+
+  public static final Flag<Boolean> SIGNED_BUILD_ADV_ENFORCEMENT_STARTED = new BooleanFlag(
+    GRADLE_IDE,
+    "adv.enforcement.started",
+    "ADV enforcement has started",
+    "Update the ADV message to indicate that registration is enforced.");
 
   //endregion
 
@@ -1651,6 +1660,9 @@ public final class StudioFlags {
     "Uses agentic approach when performing transform UI with Gemini."
     );
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_SUBCOMPONENT_CONTEXT_CHANGE_UI = new BooleanFlag(
+    COMPOSE, "preview.subcomponent.change.ui", "Enable subcomponent context to be sent to AI",
+    "Enables the change UI to have subcomponent selection when entering through clicking on preview.");
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_SCREENSHOT_TO_CODE = new BooleanFlag(
     COMPOSE, "preview.screenshot.to.code", "Enable screenshot to code action",
@@ -2285,6 +2297,11 @@ public final class StudioFlags {
                     "Enable Studio Bot Skills.",
                     "When enabled, the studio-bot agents will be able to use skills.");
 
+  public static final Flag<Boolean> STUDIOBOT_IS_IDE_HISTORY_EVENTS_IN_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "ide.history.enabled",
+                    "Enable IDE history in context",
+                    "When enabled, the agent will be told about IDE events.");
+
   public static final Flag<Boolean> STUDIOBOT_IS_QUICK_EDIT_ENABLED =
     new BooleanFlag(STUDIOBOT, "quick.edit.enabled",
                     "Enable the quick edit support.",
@@ -2859,7 +2876,7 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.journeys.engine.dep",
     "The name of the Journeys test engine dependency used by the Journeys test suite",
     "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
-    "com.android.tools.journeys:journeys-junit-engine:0.2.1"
+    "com.android.tools.journeys:journeys-junit-engine:0.2.2"
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JUNIT_PLATFORM_ENGINE_DEP = new StringFlag(
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.junit.platform.engine.dep",
@@ -2985,6 +3002,17 @@ public final class StudioFlags {
       "Enables IDE support for AGP test suites. This value is overridden to `true` when Journeys with Gemini is enabled."
     );
   // endregion AGP Test Suites
+
+  // region Android Lint
+  private static final FlagGroup LINT = new FlagGroup(FLAGS, "lint", "Android Lint");
+  public static final Flag<Boolean> ANALYSIS_SCRIPTS =
+    new BooleanFlag(
+      LINT,
+      "analysis.scripts",
+      "Enable support for analysis scripts",
+      "Enable support for analysis scripts"
+    );
+  // endregion Android Lint
 
   private StudioFlags() { }
 

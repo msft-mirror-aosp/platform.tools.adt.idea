@@ -32,9 +32,13 @@ import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.ModalityUiUtil;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
@@ -81,19 +85,17 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   private JBLabel myKeyAliasLabel;
   private JBLabel myKeyPasswordLabel;
   private final ExportSignedPackageWizard myWizard;
-  private final boolean myUseGradleForSigning;
   private boolean myIsBundle;
   @VisibleForTesting
   AndroidFacet mySelection;
   @VisibleForTesting final List<AndroidFacet> myFacets;
+  @VisibleForTesting FileSystem myFileSystem = FileSystems.getDefault();
 
   public KeystoreStep(@NotNull ExportSignedPackageWizard wizard,
-                      boolean useGradleForSigning,
                       @NotNull List<AndroidFacet> facets) {
     setupUI();
     myWizard = wizard;
     myFacets = facets;
-    myUseGradleForSigning = useGradleForSigning;
     Project project = wizard.getProject();
 
     GenerateSignedApkSettings settings = GenerateSignedApkSettings.getInstance(project);
@@ -522,16 +524,14 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
       throw new CommitStepException(AndroidBundle.message("android.export.package.specify.key.password.error"));
     }
 
-    if (myUseGradleForSigning) {
-      myWizard.setGradleSigningInfo(new GradleSigningInfo(keyStoreLocation, keyStorePassword, keyAlias, keyPassword));
+    myWizard.setGradleSigningInfo(new GradleSigningInfo(keyStoreLocation, keyStorePassword, keyAlias, keyPassword));
+
+    // Validate the keystore information
+    KeyStore keyStore = loadKeyStore(myFileSystem.getPath(keyStoreLocation));
+    if (keyStore == null) {
+      throw new CommitStepException(AndroidBundle.message("android.export.package.keystore.error.title"));
     }
-    else {
-      KeyStore keyStore = loadKeyStore(new File(keyStoreLocation));
-      if (keyStore == null) {
-        throw new CommitStepException(AndroidBundle.message("android.export.package.keystore.error.title"));
-      }
-      loadKeyAndSaveToWizard(keyStore, keyAlias, keyPassword);
-    }
+    loadKeyAndSaveToWizard(keyStore, keyAlias, keyPassword);
 
     Project project = myWizard.getProject();
     GenerateSignedApkSettings settings = GenerateSignedApkSettings.getInstance(project);
@@ -547,18 +547,18 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     myWizard.setFacet(getSelectedFacet());
   }
 
-  private KeyStore loadKeyStore(File keystoreFile) throws CommitStepException {
+  private KeyStore loadKeyStore(Path keystoreFile) throws CommitStepException {
     char[] password = myKeyStorePasswordField.getPassword();
-    FileInputStream fis = null;
+    InputStream fis = null;
     AndroidUtils.checkPassword(password);
-    if (!keystoreFile.isFile()) {
-      throw new CommitStepException(AndroidBundle.message("android.cannot.find.file.error", keystoreFile.getPath()));
+    if (!Files.isRegularFile(keystoreFile)) {
+      throw new CommitStepException(AndroidBundle.message("android.cannot.find.file.error", keystoreFile.toString()));
     }
     KeyStore keyStore;
     try {
       keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
       //noinspection IOResourceOpenedButNotSafelyClosed
-      fis = new FileInputStream(keystoreFile);
+      fis = Files.newInputStream(keystoreFile, StandardOpenOption.READ);
       keyStore.load(fis, password);
     }
     catch (Exception e) {

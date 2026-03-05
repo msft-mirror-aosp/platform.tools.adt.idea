@@ -17,10 +17,7 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.emulator.control.Posture.PostureValue
 import com.android.mockito.kotlin.whenever
-import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
-import com.android.testutils.ImageDiffUtil
-import com.android.testutils.ProcessHandleProviderRule
-import com.android.testutils.TestUtils
+import com.android.testutils.GoldenImageRule
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.executeAction
@@ -29,12 +26,9 @@ import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
-import com.android.tools.adtui.swing.findDescendant
-import com.android.tools.adtui.swing.getDescendant
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.analytics.UsageTrackerRule
-import com.android.tools.idea.avdmanager.EmulatorLogListener
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.EmulatorSettings
@@ -75,7 +69,6 @@ import com.intellij.openapi.actionSystem.IdeActions.ACTION_REDO
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_SELECT_ALL
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_UNDO
 import com.intellij.openapi.actionSystem.KeyboardShortcut
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapUtil
@@ -85,7 +78,6 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.EditorNotificationPanel
-import com.intellij.util.ui.JBUI
 import java.awt.Component
 import java.awt.DefaultKeyboardFocusManager
 import java.awt.Dimension
@@ -153,11 +145,15 @@ class EmulatorViewTest {
   }
 
   private val emulatorViewRule = EmulatorViewRule()
-  @get:Rule val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), ProcessHandleProviderRule(), EdtRule())
+  private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/EmulatorViewTest/golden")
+  @get:Rule val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), goldenImageRule, EdtRule())
   @get:Rule val usageTrackerRule = UsageTrackerRule()
   private lateinit var view: EmulatorView
   private val fakeEmulator: FakeEmulator by lazy { emulatorViewRule.getFakeEmulator(view) }
   private lateinit var fakeUi: FakeUi
+
+  private val project
+    get() = emulatorViewRule.project
 
   private val testRootDisposable
     get() = emulatorViewRule.disposable
@@ -190,7 +186,7 @@ class EmulatorViewTest {
           inputEvents.add(event)
         }
       }
-    val inputListenerManager = emulatorViewRule.project.getService(DeviceInputListenerManager::class.java)
+    val inputListenerManager = project.getService(DeviceInputListenerManager::class.java)
     inputListenerManager.addDeviceInputListener(fakeEmulator.serialNumber, inputListener)
 
     // Check initial appearance.
@@ -939,7 +935,7 @@ class EmulatorViewTest {
     fakeEmulator.virtualSceneCameraActive = true
 
     // Disable hardware input with shift key
-    executeAction("android.streaming.hardware.input", view, emulatorViewRule.project, modifiers = SHIFT_DOWN_MASK)
+    executeAction("android.streaming.hardware.input", view, project, modifiers = SHIFT_DOWN_MASK)
 
     // Check if notification panel is disappeared
     waitForCondition(200, MILLISECONDS) { fakeUi.findComponent<EditorNotificationPanel>() != null }
@@ -983,7 +979,7 @@ class EmulatorViewTest {
     assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1274 y: 744 buttons: 1 }")
 
     // Disable hardware input
-    executeAction("android.streaming.hardware.input", view, emulatorViewRule.project, modifiers = CTRL_DOWN_MASK)
+    executeAction("android.streaming.hardware.input", view, project, modifiers = CTRL_DOWN_MASK)
 
     // Check if multitouch indicator is shown
     fakeUi.layoutAndDispatchEvents()
@@ -1058,37 +1054,6 @@ class EmulatorViewTest {
     fakeUi.screenScale = 1.5
     call = getStreamScreenshotCallAndWaitForFrame()
     assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 545 height: 820")
-  }
-
-  @Test
-  fun testLogNotifications() {
-    val notificationHolderPanel = NotificationHolderPanel(createEmulatorDisplayPanel())
-    fakeUi = FakeUi(notificationHolderPanel, 2.0)
-
-    fakeUi.root.size = Dimension(200, 300)
-    fakeUi.layoutAndDispatchEvents()
-    getStreamScreenshotCallAndWaitForFrame()
-    focusManager.focusOwner = view
-
-    val messageBus = ApplicationManager.getApplication().messageBus
-    val avdFolder = view.emulator.emulatorConfig.avdFolder
-
-    val processHandle = ProcessHandleProvider.getProcessHandle(view.emulator.emulatorId.pid)!!
-    messageBus
-      .syncPublisher(EmulatorLogListener.TOPIC)
-      .messageLogged(processHandle, avdFolder, EmulatorLogListener.Severity.WARNING, true, "Attention!")
-    waitForCondition(2.seconds) { notificationHolderPanel.findDescendant<EditorNotificationPanel>() != null }
-    var notificationPanel = notificationHolderPanel.getDescendant<EditorNotificationPanel>()
-    assertThat(notificationPanel.text).isEqualTo("Attention!")
-    assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.WARNING_BACKGROUND)
-
-    messageBus
-      .syncPublisher(EmulatorLogListener.TOPIC)
-      .messageLogged(processHandle, avdFolder, EmulatorLogListener.Severity.ERROR, true, "Crashed!")
-    waitForCondition(2.seconds) { notificationHolderPanel.findDescendant<EditorNotificationPanel>() != null }
-    notificationPanel = notificationHolderPanel.getDescendant<EditorNotificationPanel>()
-    assertThat(notificationPanel.text).isEqualTo("Crashed!")
-    assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.ERROR_BACKGROUND)
   }
 
   @Test
@@ -1204,15 +1169,11 @@ class EmulatorViewTest {
   private fun assertAppearance(goldenImageName: String) {
     val image = fakeUi.render()
     val scaledDownImage = ImageUtils.scale(image, 0.5)
-    ImageDiffUtil.assertImageSimilar(getGoldenFile(goldenImageName), scaledDownImage, 0.0)
+    goldenImageRule.assertImageSimilar(goldenImageName, scaledDownImage, 0.0)
   }
-
-  private fun getGoldenFile(name: String): Path = TestUtils.resolveWorkspacePathUnchecked("${GOLDEN_FILE_PATH}/${name}.png")
 }
 
 private fun UsageTrackerRule.deviceMirroringSessions(): List<AndroidStudioEvent> =
   usages.filter { it.studioEvent.kind == AndroidStudioEvent.EventKind.DEVICE_MIRRORING_SESSION }.map { it.studioEvent }
 
 private fun getKeyStroke(action: String) = KeymapUtil.getKeyStroke(KeymapUtil.getActiveKeymapShortcuts(action))!!
-
-private const val GOLDEN_FILE_PATH = "tools/adt/idea/streaming/testData/EmulatorViewTest/golden"
