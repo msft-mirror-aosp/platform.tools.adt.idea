@@ -14,7 +14,6 @@
   ~ limitations under the License.
   -->
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="/META-INF/project-system-gradle-plugin-k2.xml" includeUnless="idea.kotlin.plugin.use.k1"/>
   <depends>com.intellij.gradle</depends>
   <depends>org.jetbrains.plugins.gradle</depends>
   <depends>org.jetbrains.kotlin</depends>
@@ -201,6 +200,7 @@
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <mppProjectResolve implementation="org.jetbrains.kotlin.android.extensions.KotlinMppAndroidProjectResolverExtension"/>
+    <psiReferenceProvider implementation="com.android.tools.idea.gradle.catalog.KtsAndroidReferenceProviderContributor"/>
   </extensions>
   <extensions defaultExtensionNs="com.android.tools.idea.editors.manifest">
     <manifestPanelToken implementation="com.android.tools.idea.editors.manifest.ManifestPanelGradleToken"/>
