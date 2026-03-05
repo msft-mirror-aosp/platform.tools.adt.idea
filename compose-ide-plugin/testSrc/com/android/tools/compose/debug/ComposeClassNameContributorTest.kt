@@ -13,17 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("UsagesOfObsoleteApi")
-
 package com.android.tools.compose.debug
 
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.runReadAction
-import com.intellij.testFramework.assertInstanceOf
-import kotlin.test.fail
-import org.jetbrains.kotlin.idea.debugger.base.util.ClassNameCalculator
-import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
 import org.junit.Assert
@@ -31,7 +26,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-class ComposeClassNameCalculatorTest {
+class ComposeClassNameContributorTest {
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   @Before
@@ -55,7 +50,7 @@ class ComposeClassNameCalculatorTest {
   }
 
   @Test
-  fun testTopLevelComposableFunction_noAdditionalClassName() {
+  fun testTopLevelComposableFunction_noAdditionalClassNameForFunction() {
     val file =
       projectRule.fixture.addFileToProject(
         "src/App.kt",
@@ -69,8 +64,11 @@ class ComposeClassNameCalculatorTest {
       )
 
     runReadAction {
-      val classNames = ComposeClassNameCalculator().getClassNames(file as KtFile)
-      Assert.assertEquals(emptyMap<KtElement, String>(), classNames)
+      val fileCandidates = ComposeClassNameContributor().contributeClassNameCandidatesForElement(file as KtFile)
+      Assert.assertEquals(listOf("ComposableSingletons\$AppKt"), fileCandidates)
+
+      val functionCandidates = ComposeClassNameContributor().contributeClassNameCandidatesForElement(file.findDescendantOfType<KtFunction>()!!)
+      Assert.assertEquals(emptyList<String>(), functionCandidates)
     }
   }
 
@@ -95,18 +93,9 @@ class ComposeClassNameCalculatorTest {
       )
 
     runReadAction {
-      val classNames = ComposeClassNameCalculator().getClassNames(file as KtFile)
-      if (classNames.isEmpty()) {
-        fail("No class name provided by ${ComposeClassNameCalculator::class.simpleName}")
-      }
-
-      if (classNames.size != 1) {
-        fail("Expected only a single class name, but got $classNames")
-      }
-
-      val (element, className) = classNames.entries.first()
-      assertInstanceOf<KtLambdaExpression>(element)
-      Assert.assertEquals("a.ComposableSingletons\$AppKt", className)
+      val lambda = (file as KtFile).findDescendantOfType<KtLambdaExpression>()!!
+      val classNames = ComposeClassNameContributor().contributeClassNameCandidatesForElement(lambda)
+      Assert.assertEquals(listOf("a.ComposableSingletons\$AppKt"), classNames)
     }
   }
 
@@ -130,46 +119,9 @@ class ComposeClassNameCalculatorTest {
       )
 
     runReadAction {
-      val classNames = ComposeClassNameCalculator().getClassNames(file as KtFile)
-      if (classNames.isEmpty()) {
-        fail("No class name provided by ${ComposeClassNameCalculator::class.simpleName}")
-      }
-
-      if (classNames.size != 1) {
-        fail("Expected only a single class name, but got $classNames")
-      }
-
-      val (element, className) = classNames.entries.first()
-      assertInstanceOf<KtLambdaExpression>(element)
-      Assert.assertEquals("ComposableSingletons\$AppKt", className)
-    }
-  }
-
-  @Test
-  fun testIntegrationWithExtensionPoint() {
-    val file =
-      projectRule.fixture.addFileToProject(
-        "src/a/App.kt",
-        """
-        import androidx.compose.runtime.Composable
-
-        @Composable
-        fun MyComposable(child: @Composable () -> Unit) {}
-
-         @Composable
-        fun App() {
-          MyComposable { } // <- This Lambda is expected to generate a special class by compose
-        }
-        """
-          .trimIndent(),
-      )
-
-    runReadAction {
-      val allClassNames = ClassNameCalculator.getClassNames(file as KtFile)
-      Assert.assertEquals(
-        mapOf(file to "AppKt", file.findDescendantOfType<KtLambdaExpression>() to "ComposableSingletons\$AppKt"),
-        allClassNames,
-      )
+      val lambda = (file as KtFile).findDescendantOfType<KtLambdaExpression>()!!
+      val classNames = ComposeClassNameContributor().contributeClassNameCandidatesForElement(lambda)
+      Assert.assertEquals(listOf("ComposableSingletons\$AppKt"), classNames)
     }
   }
 
@@ -194,8 +146,8 @@ class ComposeClassNameCalculatorTest {
       ) as KtFile
 
     runReadAction {
-      val calculated = ComposeClassNameCalculator().getClassNames(file)
-      val cached = ComposeClassNameCalculator().getClassNames(file)
+      val calculated = ComposeClassNameContributor().contributeClassNameCandidatesForElement(file).first()
+      val cached = ComposeClassNameContributor().contributeClassNameCandidatesForElement(file).first()
 
       Assert.assertSame(calculated, cached)
     }
