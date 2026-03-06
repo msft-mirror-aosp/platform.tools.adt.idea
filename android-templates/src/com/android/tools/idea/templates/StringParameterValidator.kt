@@ -60,6 +60,7 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.AndroidRootUtil
 import org.jetbrains.android.util.AndroidUtils
 import org.jetbrains.annotations.SystemIndependent
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.platform.declarations.createDeclarationProvider
 import org.jetbrains.kotlin.name.FqName
 
@@ -112,6 +113,7 @@ private fun StringParameter.getErrorMessageForViolatedConstraint(c: Constraint, 
  *
  * @return All constraints of this parameter that are violated by the proposed value.
  */
+@OptIn(KaPlatformInterface::class)
 @VisibleForTesting
 fun StringParameter.validateStringType(
   project: Project?,

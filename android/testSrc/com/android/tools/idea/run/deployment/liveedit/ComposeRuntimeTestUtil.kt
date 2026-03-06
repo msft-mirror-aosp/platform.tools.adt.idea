@@ -27,12 +27,14 @@ import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.runInEdtAndWait
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KotlinCompilerPluginsProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.extensions.ExtensionPointDescriptor
 import org.jetbrains.kotlin.extensions.ProjectExtensionDescriptor
 import org.jetbrains.kotlin.idea.fir.extensions.KotlinFirCompilerPluginConfigurationForIdeProvider
 
@@ -59,10 +61,10 @@ private val composeExtensionStorage by lazy {
   storage
 }
 
-@OptIn(ExperimentalCompilerApi::class)
+@OptIn(ExperimentalCompilerApi::class, KaPlatformInterface::class)
 private val composeCompilerPluginProviderForTest by lazy {
   object : KotlinCompilerPluginsProvider {
-    override fun <T : Any> getRegisteredExtensions(module: KaModule, extensionType: ProjectExtensionDescriptor<T>): List<T> {
+    override fun <T : Any> getRegisteredExtensions(module: KaModule, extensionType: ExtensionPointDescriptor<T>): List<T> {
       val registrars = composeExtensionStorage.registeredExtensions[extensionType] ?: return emptyList()
       @Suppress("UNCHECKED_CAST")
       return registrars as List<T>
@@ -76,6 +78,7 @@ private val composeCompilerPluginProviderForTest by lazy {
  * Register the plugin for the given project rule. If you are using the default model via [AndroidProjectRule.inMemory], you should probably
  * use [setUpComposeInProjectFixture] which will also add the Compose Runtime dependency to the project.
  */
+@OptIn(KaPlatformInterface::class)
 fun registerComposeCompilerPlugin(project: Project) {
   // Register the compose compiler plugin much like what Intellij would normally do.
   if (project.getService(KotlinCompilerPluginsProvider::class.java) == composeCompilerPluginProviderForTest) return
