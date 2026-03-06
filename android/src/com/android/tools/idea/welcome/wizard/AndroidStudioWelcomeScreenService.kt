@@ -29,6 +29,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.net.HttpConnectionUtils
+import com.intellij.util.net.HttpProxyConfigurable
 import com.intellij.util.net.JdkProxyProvider
 import com.intellij.util.net.ProxySettings
 import com.intellij.util.net.editConfigurable
@@ -142,7 +143,7 @@ class AndroidStudioWelcomeScreenService {
       )
     val showSetupProxy = selection == 0
     if (showSetupProxy) {
-      ProxySettings.getInstance().editConfigurable(null)
+      HttpProxyConfigurable.editConfigurable(null)
     }
     return showSetupProxy
   }
