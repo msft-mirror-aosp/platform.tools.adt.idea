@@ -20,9 +20,7 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
-import org.jetbrains.kotlin.idea.completion.BasicLookupElementFactory.Companion.SHORT_NAMES_RENDERER
 import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.renderer.DescriptorRenderer.ValueParametersHandler
 
 /** Represents parts of a Composable function to be used for rendering in various menus or dialogs. */
 data class ComposableFunctionRenderParts(val totalParameterCount: Int, val parameters: String?, val tail: String?)
@@ -36,15 +34,3 @@ fun KtDeclaration.getComposableFunctionRenderParts(): ComposableFunctionRenderPa
     }
   }
 }
-
-/** A version of [SHORT_NAMES_RENDERER] that adds `, ...)` at the end of the parameters list. */
-private val SHORT_NAMES_RENDERER_WITH_DOTS =
-  SHORT_NAMES_RENDERER.withOptions {
-    valueParametersHandler =
-      object : ValueParametersHandler by ValueParametersHandler.DEFAULT {
-        override fun appendAfterValueParameters(parameterCount: Int, builder: StringBuilder) {
-          if (parameterCount > 0) builder.append(", ")
-          builder.append("...)")
-        }
-      }
-  }
