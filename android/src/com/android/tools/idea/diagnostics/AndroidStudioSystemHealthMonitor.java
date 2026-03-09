@@ -668,7 +668,7 @@ public final class AndroidStudioSystemHealthMonitor {
         attachments.add(attachment);
       });
       MessagePool.getInstance().addIdeFatalMessage(
-        LogMessage.createEvent(event.getThrowable(), event.getMessage(), attachments.toArray(new Attachment[0]))
+        new LogMessage(event.getThrowable(), event.getMessage(), attachments)
       );
       return true;
     }
