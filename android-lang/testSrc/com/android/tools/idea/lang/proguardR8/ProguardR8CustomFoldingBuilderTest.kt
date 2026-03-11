@@ -45,7 +45,7 @@ class ProguardR8CustomFoldingBuilderTest(private val fileType: LanguageFileType)
         .trimIndent(),
     )
 
-    val res = (myFixture as CodeInsightTestFixtureImpl).getFoldingDescription(false)
+    val res = (myFixture as CodeInsightTestFixtureImpl).getFoldingDescription(false, false)
 
     assertThat(res)
       .isEqualTo(
