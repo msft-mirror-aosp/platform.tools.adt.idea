@@ -36,7 +36,7 @@ import com.intellij.testFramework.utils.editor.reloadFromDisk
 import com.intellij.testFramework.utils.vfs.createFile
 import java.io.File
 import kotlin.io.path.absolutePathString
-import org.jetbrains.plugins.gradle.codeInspection.toml.UnusedVersionCatalogEntryInspection
+import com.intellij.gradle.java.toml.codeInspection.UnusedVersionCatalogEntryInspection
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
