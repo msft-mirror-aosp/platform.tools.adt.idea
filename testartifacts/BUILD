@@ -11,6 +11,7 @@ iml_module(
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
     visibility = ["//visibility:public"],
+    exports = ["//tools/adt/idea/testartifacts:libjourneys-java-proto"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
@@ -21,7 +22,7 @@ iml_module(
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/android-common:intellij.android.common",
-        "//tools/base/ddmlib:studio.android.sdktools.ddmlib",
+        "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/base/sdklib:studio.android.sdktools.sdklib",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",

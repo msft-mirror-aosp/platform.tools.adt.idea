@@ -54,7 +54,6 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
     sourceFile: KtFile,
     compiledFiles: List<OutputFile>,
     irCache: IrClassCache,
-    inlineCandidateCache: SourceInlineCandidateCache,
     outputs: LiveEditCompilerOutput.Builder,
   ) {
     val startTimeNs = System.nanoTime()
@@ -70,7 +69,7 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
     val modifiedMethods = mutableListOf<IrMethod>()
     val requiresReinit = mutableListOf<IrClass>()
     for (classFile in classFiles.filterNot { it in keyMetaFiles }) {
-      val changes = handleClassFile(applicationLiveEditServices, classFile, sourceFile, irCache, inlineCandidateCache, outputs)
+      val changes = handleClassFile(applicationLiveEditServices, classFile, sourceFile, irCache, outputs)
       irClasses.add(changes.clazz)
 
       modifiedMethods.addAll(changes.modifiedMethods)
@@ -158,7 +157,6 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
     classFile: OutputFile,
     sourceFile: KtFile,
     irCache: IrClassCache,
-    inlineCandidateCache: SourceInlineCandidateCache,
     output: LiveEditCompilerOutput.Builder,
   ): ChangeInfo {
     val classBytes = classFile.asByteArray()
@@ -189,7 +187,6 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
         throw unsupportedSourceModificationAddedUserClass("added new class ${newClass.name} in ${newClass.sourceFile}", sourceFile)
       }
 
-      inlineCandidateCache.computeIfAbsent(newClass.name) { SourceInlineCandidate(sourceFile, it) }.setByteCode(classBytes)
       output.addClass(
         LiveEditCompiledClass(
           name = newClass.name,
@@ -208,7 +205,6 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
     // need to send it to the device in case it or one of its dependencies has a different name than the version in the APK.
     if (diff != null || isFirstDiff) {
       // Update the inline cache for all classes, both normal and support.
-      inlineCandidateCache.computeIfAbsent(newClass.name) { SourceInlineCandidate(sourceFile, it) }.setByteCode(classBytes)
       output.addClass(
         LiveEditCompiledClass(
           name = newClass.name,

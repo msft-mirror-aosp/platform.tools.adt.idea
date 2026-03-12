@@ -30,7 +30,7 @@
     <orderEntry type="module" module-name="intellij.android.layoutlib-loader" />
     <orderEntry type="library" name="google-baksmali" level="project" />
     <orderEntry type="library" name="google-dexlib2" level="project" />
-    <orderEntry type="module" module-name="android.sdktools.binary-resources" />
+    <orderEntry type="library" name="libbinary-resources" level="project" />
     <orderEntry type="module" module-name="android.sdktools.analyzer" />
     <orderEntry type="module" module-name="android.sdktools.pixelprobe" />
     <orderEntry type="module" module-name="analytics-tracker" />

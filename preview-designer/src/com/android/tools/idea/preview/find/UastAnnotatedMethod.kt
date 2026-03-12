@@ -48,7 +48,7 @@ class UastAnnotatedMethod(private val method: UMethod, private val previewParame
           .firstOrNull { it.qualifiedName in previewParameterAnnotationFqns }
           ?.let { anno ->
             val name = (parameter.javaPsi as PsiParameter).name
-            name to UastAnnotationAttributesProvider(anno, emptyMap())
+            name to UastAnnotationAttributesProvider(anno, emptyMap(), method)
           }
       }
 }

@@ -103,8 +103,6 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
   @VisibleForTesting val irClassCache = MutableIrClassCache()
 
   private val compiler = LiveEditCompiler(project, irClassCache)
-  val inlineCandidateCache
-    get() = compiler.inlineCandidateCache
 
   // We want to log only a percentage of LE events, but we also always want to log the *first* event after a deployment.
   private val leLogFraction = 0.1

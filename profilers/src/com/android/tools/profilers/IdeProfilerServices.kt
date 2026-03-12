@@ -15,8 +15,9 @@
  */
 package com.android.tools.profilers
 
+import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.tools.idea.codenavigation.CodeNavigator
-import com.android.tools.idea.transport.EventStreamServer
+import com.android.tools.idea.projectsystem.DependencyType
 import com.android.tools.profilers.analytics.FeatureTracker
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorService
@@ -210,4 +211,14 @@ interface IdeProfilerServices {
 
   /** If profileableMode is true, performs the ProfileProfileableAction, otherwise performs the ProfileDebuggableAction. */
   fun buildAndLaunchAction(profileableMode: Boolean, device: ProcessListModel.ProfilerDeviceSelection)
+
+  /**
+   * Adds a dependency to the current project.
+   *
+   * @param artifact The artifact to add.
+   * @param dependencyType The type of dependency (e.g., implementation, debugImplementation).
+   * @param callback A callback to be executed after the user accepts/rejects the dependency addition (or if it's already present).
+   */
+  fun addDependency(artifact: GoogleMavenArtifactId, dependencyType: DependencyType): CompletableFuture<Boolean> =
+    CompletableFuture.completedFuture(false)
 }

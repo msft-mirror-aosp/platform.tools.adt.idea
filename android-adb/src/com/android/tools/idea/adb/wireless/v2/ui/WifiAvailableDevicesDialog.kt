@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -62,6 +63,7 @@ import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService
 import com.android.tools.idea.adb.wireless.TrackingMdnsService
 import com.android.tools.idea.adb.wireless.Urls
 import com.android.tools.idea.adb.wireless.WiFiPairingService
+import com.android.tools.idea.adb.wireless.isAdbVersionTooLow
 import com.android.tools.idea.adb.wireless.needsUpdate
 import com.android.tools.idea.adddevicedialog.EmptyStatePanel
 import com.android.tools.idea.adddevicedialog.SearchBar
@@ -106,6 +108,7 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
 
   private val dialog: SimpleDialog
   private val model = WifiPairableDeviceModel()
+  private var refreshKey by mutableIntStateOf(0)
 
   private val panelPreferredSize: JBDimension
     get() = JBDimension(700, 650)
@@ -115,13 +118,18 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
   @Composable
   internal fun WifiDialog() {
     val state by
-      produceState<MdnsSupportState?>(null) {
+      produceState<MdnsSupportState?>(null, refreshKey) {
         val supportState = wifiPairingService.checkMdnsSupport()
         if (supportState != MdnsSupportState.Supported) {
           value = supportState
           return@produceState
         }
         if (!wifiPairingService.isTrackMdnsServiceAvailable()) {
+          value = MdnsSupportState.AdbVersionTooLow
+          return@produceState
+        }
+        val adbVersion = wifiPairingService.getAdbVersion()
+        if (isAdbVersionTooLow(adbVersion)) {
           value = MdnsSupportState.AdbVersionTooLow
           return@produceState
         }
@@ -151,6 +159,7 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
               "Please update to the latest version of \"platform-tools\" using the SDK manager.",
             ),
           links = listOf(Urls.openSdkManager to "Open SDK Manager", Urls.learnMore to "Learn more"),
+          onRefresh = { refreshKey++ },
         )
       MdnsSupportState.AdbVersionTooLow ->
         ErrorStateDisplay(
@@ -161,12 +170,14 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
               "Please update to the latest version of \"platform-tools\" using the SDK manager.",
             ),
           links = listOf(Urls.openSdkManager to "Open SDK Manager", Urls.learnMore to "Learn more"),
+          onRefresh = { refreshKey++ },
         )
       MdnsSupportState.AdbInvocationError ->
         ErrorStateDisplay(
           title = "ADB Invocation Error",
           messages = listOf("There was an unexpected error during Wi-Fi pairing initialization."),
           links = listOf(Urls.learnMore to "Learn more"),
+          onRefresh = { refreshKey++ },
         )
       MdnsSupportState.AdbDisabled ->
         ErrorStateDisplay(
@@ -178,6 +189,7 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
               "2. Make sure you are not using a manually managed ADB server.",
             ),
           links = listOf(Urls.openAdbSettings to "Open ADB Settings", Urls.learnMore to "Learn more"),
+          onRefresh = { refreshKey++ },
         )
     }
   }
@@ -236,36 +248,42 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
   }
 
   @Composable
-  private fun ErrorStateDisplay(title: String, messages: List<String>, links: List<Pair<String, String>>) {
+  private fun ErrorStateDisplay(title: String, messages: List<String>, links: List<Pair<String, String>>, onRefresh: (() -> Unit)? = null) {
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-      Text(
-        buildAnnotatedString {
-          pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-          append(title)
-          pop()
-          appendLine()
-          appendLine()
-
-          messages.forEach { message ->
-            append(message)
+      Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+          buildAnnotatedString {
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            append(title)
+            pop()
             appendLine()
-          }
-          appendLine()
+            appendLine()
 
-          links.forEach { (url, text) ->
-            withLink(
-              LinkAnnotation.Url(
-                url = url,
-                styles = TextLinkStyles(style = SpanStyle(color = LocalLinkStyle.current.colors.content)),
-                linkInteractionListener = { WifiPairingLinkHandler.handleLinkActivation(url) },
-              )
-            ) {
-              append(text)
+            messages.forEach { message ->
+              append(message)
+              appendLine()
             }
             appendLine()
+
+            links.forEach { (url, text) ->
+              withLink(
+                LinkAnnotation.Url(
+                  url = url,
+                  styles = TextLinkStyles(style = SpanStyle(color = LocalLinkStyle.current.colors.content)),
+                  linkInteractionListener = { WifiPairingLinkHandler.handleLinkActivation(url) },
+                )
+              ) {
+                append(text)
+              }
+              appendLine()
+            }
           }
+        )
+        if (onRefresh != null) {
+          Spacer(Modifier.height(16.dp))
+          OutlinedButton(onClick = onRefresh) { Text("Refresh") }
         }
-      )
+      }
     }
   }
 

@@ -12,7 +12,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="aapt-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.analyzer" />
-    <orderEntry type="module" module-name="android.sdktools.binary-resources" />
+    <orderEntry type="library" name="libbinary-resources" level="project" />
     <orderEntry type="module" module-name="android.sdktools.profgen" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="analytics-tracker" />

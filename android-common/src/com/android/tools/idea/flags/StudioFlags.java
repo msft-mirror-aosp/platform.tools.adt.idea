@@ -1854,6 +1854,13 @@ public final class StudioFlags {
     "Enable AI glasses emulator and phone emulator pairing wizard",
     "Enables the pairing assistant for glasses and phone emulators."
   );
+
+  public static final Flag<Boolean> EMULATOR_AEHD_TO_WHPX_CONVERSION = new BooleanFlag(
+    DEVICE_MANAGER,
+    "emulator.aehd.to.whpx.conversion",
+    "Emulator AEHD to WHPX Conversion",
+    "Migreate emulator AEHD users to use WHPX instead."
+  );
   // endregion
 
   // region Play Policy Insights
@@ -1875,6 +1882,14 @@ public final class StudioFlags {
       "Play Policy Insights target library version",
       "Force a specific version of the Play Policy Insights.",
       "");
+
+  public static final Flag<String> PLAY_POLICY_INSIGHTS_HOLDOUT_RATIO =
+    new StringFlag(
+      PLAY_POLICY_INSIGHTS,
+      "play.policy.insights.holdout.ratio",
+      "Play Policy Insights Holdout Ratio",
+      "Holdout some Play Policy lint checks for a subset of applications.",
+      "0.0");
   // endregion Play Policy Insights
 
   // region Firebase Test Lab
@@ -2540,6 +2555,12 @@ public final class StudioFlags {
                     "When enabled, a setting and various UI is made visible to configure local models, and when provided and " +
                     "enabled it add local model option to Chat model picker.");
 
+  public static Flag<Boolean> LOCAL_GEMMA_ENABLED =
+    new BooleanFlag(STUDIOBOT, "local.gemma.enabled",
+                    "Enable local Gemma model.",
+                    "When enabled, a setting and various UI is made visible to configure the local Gemma model, and when provided and " +
+                    "enabled it adds Gemma model option to Chat model picker.");
+
   public static Flag<Boolean> REMOTE_MODELS_ENABLED =
     new BooleanFlag(STUDIOBOT, "remote.models.enabled",
                     "Add remote models for Chat.",
@@ -2655,6 +2676,16 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "regenerate.chat.request.button.enabled",
                     "Enable regenerating past chat queries.",
                     "Enable regenerating past chat queries by hovering and clicking a regenerate button.");
+
+  public static final Flag<Boolean> STUDIOBOT_TRAJECTORY_UI_TOOL_WINDOW_ENABLED =
+    new BooleanFlag(STUDIOBOT, "trajectory.ui.toolwindow.enabled",
+                    "Enable Trajectory UI in Tool Window",
+                    "Enables viewing the Trajectory based UI as a Tool Window");
+
+  public static final Flag<Boolean> STUDIOBOT_TRAJECTORY_UI_EDITOR_ACTION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "trajectory.ui.editor.action.enabled",
+                    "Enable Trajectory UI in Editor Tabs",
+                    "Enables viewing the Trajectory based UI on Editor tabs through a global Action.");
 
   public static final Flag<Boolean> GEMINI_DEBUGGER_TOOLS_ENABLED =
     new BooleanFlag(STUDIOBOT, "debugger.tools",
@@ -2772,6 +2803,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "new.subagent.mode",
                     "Enable new Sub-Agent mode",
                     "This enable the new sub-agent infrastructure,bringing in the task and run_skill tool");
+
+  public static final Flag<Boolean> STUDIOBOT_AGY_HARNESS =
+    new BooleanFlag(STUDIOBOT, "agy.harness",
+                    "Enable support for Antigravity Harness",
+                    "Enables the integration to connect and use Antigravity Harness");
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
@@ -3013,6 +3049,17 @@ public final class StudioFlags {
       "Enable support for analysis scripts"
     );
   // endregion Android Lint
+
+  // region Marketing Data Collection
+  private static final FlagGroup MARKETING_DATA_COLLECTION = new FlagGroup(FLAGS, "marketing.data.collection", "Marketing Data Collection");
+  public static final Flag<Boolean> MARKETING_DATA_COLLECTION_ENABLED =
+    new BooleanFlag(
+      MARKETING_DATA_COLLECTION,
+      "enabled",
+      "Enable Marketing Data Collection",
+      "Enables the collection of usage data for Gemini marketing activation."
+    );
+  // endregion AGP Test Suites
 
   private StudioFlags() { }
 

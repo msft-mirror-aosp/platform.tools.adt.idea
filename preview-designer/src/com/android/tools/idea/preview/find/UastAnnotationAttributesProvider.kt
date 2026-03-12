@@ -18,15 +18,25 @@ package com.android.tools.idea.preview.find
 import com.android.tools.preview.AnnotationAttributesProvider
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.util.text.nullize
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClassLiteralExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UMethod
 
 /** [AnnotationAttributesProvider] implementation based on [UAnnotation]. */
-class UastAnnotationAttributesProvider(private val annotation: UAnnotation, private val defaultValues: Map<String, String?>) :
-  AnnotationAttributesProvider {
+class UastAnnotationAttributesProvider(
+  private val annotation: UAnnotation,
+  private val defaultValues: Map<String, String?>,
+  private val ktResolveContext: UMethod?,
+) : AnnotationAttributesProvider {
 
-  override fun <T> getAttributeValue(attributeName: String): T? = annotation.findAttributeValue(attributeName)?.getValueOfType()
+  override fun <T> getAttributeValue(attributeName: String): T? =
+    annotation.findAttributeValue(attributeName)?.getValueOfType() ?: findAttributeConstantValue(attributeName) as? T
 
   override fun getIntAttribute(attributeName: String): Int? {
     return getAttributeValue(attributeName) ?: defaultValues[attributeName]?.toInt()
@@ -45,10 +55,31 @@ class UastAnnotationAttributesProvider(private val annotation: UAnnotation, priv
   }
 
   override fun <T> getDeclaredAttributeValue(attributeName: String): T? =
-    annotation.findDeclaredAttributeValue(attributeName)?.getValueOfType() as T?
+    annotation.findDeclaredAttributeValue(attributeName)?.getValueOfType() ?: findAttributeConstantValue(attributeName) as? T
 
   override fun findClassNameValue(name: String): String? =
-    (annotation.findAttributeValue(name) as? UClassLiteralExpression)?.type?.canonicalText
+    (annotation.findAttributeValue(name) as? UClassLiteralExpression)?.type?.canonicalText ?: findAttributeClassLiteralClassId(name)
+
+  /**
+   * Be aware not to get some [org.jetbrains.kotlin.analysis.api.lifetime.KaLifetimeOwner] from the `analyze` block, as this can lead to
+   * serious memory leaks.
+   */
+  private inline fun <T> findAttributeValue(attributeName: String, f: (KaAnnotationValue) -> T): T? {
+    val context = ktResolveContext?.sourcePsi as? KtElement ?: return null
+    val entry = annotation.sourcePsi as? KtAnnotationEntry ?: return null
+    val declaration = entry.parent.parent as? KtDeclaration ?: return null
+    return analyze(context) {
+      val argument =
+        declaration.symbol.annotations.singleOrNull { it.psi == entry }?.arguments?.singleOrNull { it.name.asString() == attributeName }
+      argument?.expression?.let(f)
+    }
+  }
+
+  private fun findAttributeConstantValue(attributeName: String): Any? =
+    findAttributeValue(attributeName) { (it as? KaAnnotationValue.ConstantValue)?.value?.value }
+
+  private fun findAttributeClassLiteralClassId(attributeName: String): String? =
+    findAttributeValue(attributeName) { (it as? KaAnnotationValue.ClassLiteralValue)?.classId?.asFqNameString() }
 }
 
 private inline fun <T> UExpression.getValueOfType(): T? {

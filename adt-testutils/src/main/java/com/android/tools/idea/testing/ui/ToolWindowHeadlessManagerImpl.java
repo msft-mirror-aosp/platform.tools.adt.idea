@@ -24,6 +24,7 @@ import com.intellij.openapi.wm.ex.ToolWindowManagerEx;
 import com.intellij.openapi.wm.impl.DesktopLayout;
 import com.intellij.openapi.wm.impl.IdeFocusManagerHeadless;
 import com.intellij.openapi.wm.impl.InternalDecorator;
+import com.intellij.toolWindow.InternalDecoratorImpl;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
@@ -38,6 +39,7 @@ import com.intellij.util.containers.ContainerUtil;
 import java.awt.Rectangle;
 import java.awt.event.InputEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -62,8 +64,11 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
   private final Map<String, ToolWindow> myToolWindows = new HashMap<>();
   private final Project myProject;
 
-  public ToolWindowHeadlessManagerImpl(Project project) {
+  private final InternalDecoratorFactory myInternalDecoratorFactory;
+
+  public ToolWindowHeadlessManagerImpl(Project project, @Nullable InternalDecoratorFactory internalDecoratorFactory) {
     myProject = project;
+    myInternalDecoratorFactory = internalDecoratorFactory;
   }
 
   @Override
@@ -77,7 +82,7 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
   }
 
   public @NotNull ToolWindow doRegisterToolWindow(@NotNull String id) {
-    MockToolWindow toolWindow = new MockToolWindow(myProject);
+    MockToolWindow toolWindow = new MockToolWindow(myProject, myInternalDecoratorFactory);
     myToolWindows.put(id, toolWindow);
     return toolWindow;
   }
@@ -193,9 +198,13 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
   }
 
   public static void split(@NotNull Content content, int dropSide) {
+    split(content, dropSide, -1);
+  }
+
+  public static void split(@NotNull Content content, int dropSide, int dropIndex) {
     ContentManager contentManager = content.getManager();
     if (contentManager != null) {
-      ((MockContentManager) contentManager).splitWithContent(content, dropSide, -1);
+      ((MockContentManager) contentManager).splitWithContent(content, dropSide, dropIndex);
     }
   }
 
@@ -203,18 +212,25 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
     ((MockContentManager) contentManager).unsplit(toSelect);
   }
 
-  public static class MockToolWindow implements ToolWindowEx {
-    final ContentManager myContentManager = new MockContentManager();
-    private final Project project;
+  public InternalDecoratorFactory getInternalDecoratorFactory() {
+    return myInternalDecoratorFactory;
+  }
 
-    public MockToolWindow(@NotNull Project project) {
-      this.project = project;
+  public static class MockToolWindow implements ToolWindowEx {
+    private final InternalDecoratorFactory myInternalDecoratorFactory;
+    final ContentManager myContentManager;
+    private final Project myProject;
+
+    public MockToolWindow(@NotNull Project project, @Nullable InternalDecoratorFactory internalDecoratorFactory) {
+      myInternalDecoratorFactory = internalDecoratorFactory;
+      myContentManager = new MockContentManager(myInternalDecoratorFactory);
+      myProject = project;
       Disposer.register(project, myContentManager);
     }
 
     @Override
     public @NotNull Project getProject() {
-      return project;
+      return myProject;
     }
 
     @Override
@@ -452,6 +468,13 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
     private @Nullable MockContentManager myParent;
     private @Nullable Content mySelected;
     private boolean mySplitUnsplitInProgress;
+    private final InternalDecoratorFactory myInternalDecoratorFactory;
+    private final InternalDecoratorImpl myInternalDecorator ;
+
+    MockContentManager(@Nullable InternalDecoratorFactory internalDecoratorFactory) {
+      myInternalDecoratorFactory = internalDecoratorFactory;
+      myInternalDecorator = createInternalDecorator();
+    }
 
     @Override
     public @NotNull ActionCallback getReady(@NotNull Object requestor) {
@@ -468,6 +491,9 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
       myContents.add(order == -1 ? myContents.size() : order, content);
       if (content instanceof ContentImpl && content.getManager() == null) {
         ((ContentImpl)content).setManager(this);
+      }
+      if (myInternalDecorator != null) {
+        myInternalDecorator.add(content.getComponent());
       }
       Disposer.register(this, content);
       ContentManagerEvent e = new ContentManagerEvent(this, content, myContents.indexOf(content), ContentManagerEvent.ContentOperation.add);
@@ -565,6 +591,15 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
     }
 
     @Override
+    public @NotNull List<@NotNull Content> getContentsRecursively() {
+      List<Content> result = new ArrayList<>(Arrays.asList(getContents()));
+      for (MockContentManager child : myNestedManagers) {
+        result.addAll(child.getContentsRecursively());
+      }
+      return result;
+    }
+
+    @Override
     public int getIndexOfContent(@NotNull Content content) {
       return myContents.indexOf(content);
     }
@@ -576,7 +611,14 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
 
     @Override
     public Content @NotNull [] getSelectedContents() {
-      return mySelected != null ? new Content[]{mySelected} : new Content[0];
+      List<Content> result = new ArrayList<>();
+      if (mySelected != null) {
+        result.add(mySelected);
+      }
+      for (MockContentManager child : myNestedManagers) {
+        result.addAll(Arrays.asList(child.getSelectedContents()));
+      }
+      return result.toArray(new Content[0]);
     }
 
     @Override
@@ -600,6 +642,9 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
       }
       if (wasSelected) {
         removeFromSelection(content);
+      }
+      if (myInternalDecorator != null) {
+        myInternalDecorator.remove(content.getComponent());
       }
       boolean result = myContents.remove(content);
       if (dispose) Disposer.dispose(content);
@@ -726,9 +771,9 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
         addContent(content, dropIndex);
         return;
       }
-      MockContentManager firstChild = new MockContentManager();
+      MockContentManager firstChild = new MockContentManager(myInternalDecoratorFactory);
       Disposer.register(this, firstChild);
-      MockContentManager secondChild = new MockContentManager();
+      MockContentManager secondChild = new MockContentManager(myInternalDecoratorFactory);
       Disposer.register(this, secondChild);
       addNestedManager(firstChild);
       addNestedManager(secondChild);
@@ -816,5 +861,14 @@ public class ToolWindowHeadlessManagerImpl extends ToolWindowManagerEx {
     private void removeNestedManager(@NotNull MockContentManager manager) {
       myNestedManagers.remove(manager);
     }
+
+    private InternalDecoratorImpl createInternalDecorator() {
+      return myInternalDecoratorFactory == null ? null : myInternalDecoratorFactory.createInternalDecorator(this);
+    }
+  }
+
+  public interface InternalDecoratorFactory {
+    @SuppressWarnings("UnstableApiUsage")
+    InternalDecoratorImpl createInternalDecorator(ContentManager contentManager);
   }
 }

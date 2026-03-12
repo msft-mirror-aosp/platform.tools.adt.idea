@@ -23,11 +23,11 @@
   </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
-    <content url="file://$MODULE_DIR$/src">
-      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
-    </content>
     <content url="file://$MODULE_DIR$/resources">
       <sourceFolder url="file://$MODULE_DIR$/resources" type="java-resource" />
+    </content>
+    <content url="file://$MODULE_DIR$/src">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
@@ -39,7 +39,7 @@
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.common" />
-    <orderEntry type="module" module-name="android.sdktools.ddmlib" />
+    <orderEntry type="module" module-name="android.sdktools.ddmlib-studio" />
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="module" module-name="android.sdktools.sdklib" />
     <orderEntry type="library" name="android-test-plugin-host-device-info-proto" level="project" />
@@ -48,7 +48,7 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
     <orderEntry type="module" module-name="intellij.android.artwork-compose" />
-    <orderEntry type="module-library">
+    <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
           <root url="jar://$MODULE_DIR$/../../../../bazel-bin/tools/base/journeys/journeys-protos/libjourneys-java-proto.jar!/" />

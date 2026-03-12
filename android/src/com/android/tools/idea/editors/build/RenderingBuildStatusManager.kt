@@ -21,6 +21,7 @@ import com.android.tools.compile.fast.isSuccess
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.editors.fast.fastPreviewCompileFlow
+import com.android.tools.idea.module.module
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager.BuildStatus
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.rendering.BuildTargetReference
@@ -57,7 +58,6 @@ import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport
 import org.jetbrains.kotlin.fileClasses.isJvmMultifileClassFile
-import org.jetbrains.kotlin.idea.util.projectStructure.module
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.analysisContext

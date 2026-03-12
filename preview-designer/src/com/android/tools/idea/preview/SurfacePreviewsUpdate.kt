@@ -27,6 +27,7 @@ import com.android.tools.idea.common.surface.organization.OrganizationGroupType
 import com.android.tools.idea.concurrency.getPsiFileSafely
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.module.module
 import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.navigation.AbstractPreviewNavigationHandler
@@ -51,7 +52,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.idea.util.projectStructure.module
 
 /**
  * Refresh the preview with the existing [PreviewElement]s.

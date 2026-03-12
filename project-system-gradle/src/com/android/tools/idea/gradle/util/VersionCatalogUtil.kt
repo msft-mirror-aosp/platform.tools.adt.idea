@@ -19,7 +19,6 @@ import com.android.ide.common.repository.keysMatch
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
-import org.jetbrains.kotlin.idea.util.projectStructure.module
 import org.jetbrains.plugins.gradle.service.resolve.getVersionCatalogFiles
 import org.toml.lang.psi.TomlFile
 import org.toml.lang.psi.TomlHeaderOwner

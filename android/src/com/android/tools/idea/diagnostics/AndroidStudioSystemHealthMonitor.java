@@ -59,7 +59,6 @@ import com.google.wireless.android.sdk.stats.StudioExceptionDetails;
 import com.google.wireless.android.sdk.stats.StudioPerformanceStats;
 import com.google.wireless.android.sdk.stats.UIActionStats;
 import com.google.wireless.android.sdk.stats.UIActionStats.InvocationKind;
-import com.intellij.ExtensionPoints;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.diagnostic.EventWatcher;
 import com.intellij.diagnostic.IdePerformanceListener;
@@ -669,7 +668,7 @@ public final class AndroidStudioSystemHealthMonitor {
         attachments.add(attachment);
       });
       MessagePool.getInstance().addIdeFatalMessage(
-        LogMessage.createEvent(event.getThrowable(), event.getMessage(), attachments.toArray(new Attachment[0]))
+        new LogMessage(event.getThrowable(), event.getMessage(), attachments)
       );
       return true;
     }
@@ -699,7 +698,7 @@ public final class AndroidStudioSystemHealthMonitor {
 
   private void reportThrowableToCrash(Throwable t) {
     incrementAndSaveExceptionCount(t);
-    ErrorReportSubmitter reporter = ExtensionPoints.ERROR_HANDLER_EP.findExtension(AndroidStudioErrorReportSubmitter.class);
+    ErrorReportSubmitter reporter = ErrorReportSubmitter.EP_NAME.findExtension(AndroidStudioErrorReportSubmitter.class);
     if (reporter != null) {
       StackTrace stackTrace = ExceptionRegistry.INSTANCE.register(t);
       String signature = ExceptionDataCollection.Companion.calculateSignature(t);
@@ -1195,7 +1194,7 @@ public final class AndroidStudioSystemHealthMonitor {
       return;
     }
 
-    ErrorReportSubmitter reporter = ExtensionPoints.ERROR_HANDLER_EP.findExtension(AndroidStudioErrorReportSubmitter.class);
+    ErrorReportSubmitter reporter = ErrorReportSubmitter.EP_NAME.findExtension(AndroidStudioErrorReportSubmitter.class);
     if (reporter != null) {
       IdeaLoggingEvent e = new AndroidStudioCrashEvents(descriptions);
       reporter.submit(new IdeaLoggingEvent[]{e}, null, null, info -> {

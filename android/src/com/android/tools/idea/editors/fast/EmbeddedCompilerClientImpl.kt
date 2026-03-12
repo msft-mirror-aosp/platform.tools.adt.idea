@@ -16,7 +16,6 @@
 package com.android.tools.idea.editors.fast
 
 import com.android.tools.compile.fast.CompilationResult
-import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
 import com.android.tools.idea.run.deployment.liveedit.getCompilerConfiguration
@@ -94,12 +93,6 @@ private constructor(
 
   /** The embedded compiler does not have a daemon to start so is always running. */
   override val isRunning: Boolean = true
-
-  /**
-   * The Live Edit inline candidates cache. The cache can only be accessed with the Compile lock (see [runWithCompileLock]). The cache is
-   * automatically invalidated on build.
-   */
-  private val inlineCandidateCache = LiveEditService.getInstance(project).inlineCandidateCache()
 
   /**
    * Compiles the given list of inputs. All inputs must belong to the same module. The output will be generated in the given

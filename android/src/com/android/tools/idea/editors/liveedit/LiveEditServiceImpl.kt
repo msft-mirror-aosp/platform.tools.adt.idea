@@ -32,7 +32,6 @@ import com.android.tools.idea.run.deployment.liveedit.LiveEditLogger
 import com.android.tools.idea.run.deployment.liveedit.LiveEditNotifications
 import com.android.tools.idea.run.deployment.liveedit.LiveEditProjectMonitor
 import com.android.tools.idea.run.deployment.liveedit.LiveEditStatus
-import com.android.tools.idea.run.deployment.liveedit.SourceInlineCandidateCache
 import com.android.tools.idea.run.profiler.AbstractProfilerExecutorGroup.Companion.getExecutorSetting
 import com.android.tools.idea.run.profiler.ProfilingMode
 import com.android.tools.idea.run.util.LaunchUtils
@@ -198,10 +197,6 @@ class LiveEditServiceImpl(val project: Project, var executor: Executor, override
           }
         },
       )
-  }
-
-  override fun inlineCandidateCache(): SourceInlineCandidateCache {
-    return deployMonitor.inlineCandidateCache
   }
 
   companion object {

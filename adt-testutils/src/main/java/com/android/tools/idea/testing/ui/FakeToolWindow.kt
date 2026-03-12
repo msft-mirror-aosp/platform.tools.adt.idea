@@ -59,7 +59,8 @@ internal constructor(
   private val manager: ToolWindowManager,
   project: Project,
   private val toolWindowId: String,
-) : ToolWindowHeadlessManagerImpl.MockToolWindow(project) {
+  internalDecoratorFactory: ToolWindowHeadlessManagerImpl.InternalDecoratorFactory,
+) : ToolWindowHeadlessManagerImpl.MockToolWindow(project, internalDecoratorFactory) {
 
   var tabActions: List<AnAction> = emptyList()
     private set
@@ -156,9 +157,9 @@ internal constructor(
 }
 
 private class FakeToolWindowManager(windowFactory: ToolWindowFactory, toolWindowId: String, icon: Icon, project: Project) :
-  ToolWindowHeadlessManagerImpl(project) {
+  ToolWindowHeadlessManagerImpl(project, FakeInternalDecoratorFactory()) {
 
-  val toolWindow = FakeToolWindow(windowFactory, icon, this, project, toolWindowId)
+  val toolWindow = FakeToolWindow(windowFactory, icon, this, project, toolWindowId, internalDecoratorFactory)
 
   override fun getToolWindow(id: String?): ToolWindow? = if (id == toolWindow.id) toolWindow else super.getToolWindow(id)
 

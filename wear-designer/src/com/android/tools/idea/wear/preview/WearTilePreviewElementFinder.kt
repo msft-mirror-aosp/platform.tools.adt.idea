@@ -17,6 +17,7 @@ package com.android.tools.idea.wear.preview
 
 import com.android.SdkConstants
 import com.android.annotations.concurrency.Slow
+import com.android.tools.idea.module.getModule
 import com.android.tools.idea.preview.find.AnnotationPreviewNameHelper
 import com.android.tools.idea.preview.find.FilePreviewElementFinder
 import com.android.tools.idea.preview.find.NodeInfo
@@ -68,7 +69,6 @@ import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
-import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UElement
@@ -185,7 +185,7 @@ private suspend fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(uMethod: 
   val defaultValues = readAction { annotation.findPreviewDefaultValues() }
 
   val rootAnnotation = subtreeInfo?.topLevelAnnotation ?: annotation
-  val attributesProvider = UastAnnotationAttributesProvider(annotation, defaultValues)
+  val attributesProvider = UastAnnotationAttributesProvider(annotation, defaultValues, uMethod)
   val previewElementDefinitionPsi = readAction { rootAnnotation.toSmartPsiPointer() }
   val annotatedMethod =
     UastAnnotatedMethod(
