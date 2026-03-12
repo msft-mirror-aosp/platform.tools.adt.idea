@@ -30,7 +30,10 @@ aswb_library(
     javacopts = ["-Xep:FutureReturnValueIgnored:OFF"],
     resource_strip_prefix = "tools/adt/idea/aswb/base/src",
     resources = glob(["src/resources/**/*"]),
-    visibility = PLUGIN_PACKAGES_VISIBILITY,
+    visibility = [
+        "//tools/adt/idea/aswb:__subpackages__",
+        "//tools/vendor/google3/aswb:__subpackages__",
+    ],
     exports = [
         "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/command/buildresult/bepparser",
         "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/project/analysis/ijar",
@@ -397,7 +400,7 @@ aswb_library(
     deps = [
         ":base",
         ":unit_test_utils",
-        "//tools/adt/idea/aswb/aswb:aswb_lib",
+        "//tools/adt/idea/aswb/aswb:plugin_library",
         "//tools/adt/idea/aswb/proto:proto_deps",
         "//tools/adt/idea/aswb/shared:artifact",
         "//tools/adt/idea/aswb/shared:vcs",
