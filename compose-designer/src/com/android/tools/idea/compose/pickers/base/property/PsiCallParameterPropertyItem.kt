@@ -32,6 +32,7 @@ import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.text.nullize
 import java.util.concurrent.Callable
+import org.jetbrains.kotlin.K1Deprecation
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.idea.core.deleteElementAndCleanParent
 import org.jetbrains.kotlin.name.Name
@@ -163,6 +164,7 @@ internal open class PsiCallParameterPropertyItem(
     }
   }
 
+  @OptIn(K1Deprecation::class)
   fun deleteParameter() {
     runModification {
       argumentExpression?.parent?.deleteElementAndCleanParent()
