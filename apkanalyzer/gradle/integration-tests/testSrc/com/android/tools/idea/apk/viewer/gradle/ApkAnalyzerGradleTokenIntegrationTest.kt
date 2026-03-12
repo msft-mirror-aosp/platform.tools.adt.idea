@@ -53,8 +53,7 @@ class ApkAnalyzerGradleTokenIntegrationTest(private val agpVersion: AgpVersionSo
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
     fun tests(): Collection<AgpVersionSoftwareEnvironmentDescriptor> {
-      // not supported before AGP 4.1 b/191146142
-      return applicableAgpVersions().filter { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_42 }
+      return applicableAgpVersions().filter { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_70 }
     }
   }
 }
