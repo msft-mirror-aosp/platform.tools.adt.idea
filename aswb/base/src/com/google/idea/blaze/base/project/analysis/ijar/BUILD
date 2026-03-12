@@ -1,8 +1,8 @@
-load("//tools/adt/idea/aswb/build_defs:build_defs.bzl", "aswb_library")
 load(
     "//tools/adt/idea/aswb:build-visibility.bzl",
     "G3PLUGINS_VISIBILITY",
 )
+load("//tools/adt/idea/aswb/build_defs:build_defs.bzl", "aswb_library")
 
 aswb_library(
     name = "ijar",
@@ -10,7 +10,7 @@ aswb_library(
         "*.kt",
         "*.java",
     ]),
-    visibility = G3PLUGINS_VISIBILITY,
+    visibility = ["//tools/adt/idea/aswb/base:__subpackages__"],
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/querysync",
