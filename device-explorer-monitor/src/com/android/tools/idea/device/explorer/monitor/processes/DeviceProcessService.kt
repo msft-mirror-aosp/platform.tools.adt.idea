@@ -39,7 +39,6 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.serviceContainer.NonInjectable
 import com.intellij.util.concurrency.AppExecutorUtil
-import java.nio.file.Path
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -206,9 +205,9 @@ constructor(
   }
 
   @UiThread
-  fun restoreApplication(project: Project, device: IDevice, path: Path) {
+  fun restoreApplication(project: Project, device: IDevice) {
     val backupManager = BackupManager.getInstance(project)
-    backupManager.restoreModal(device.serialNumber, path, BackupManager.Source.DEVICE_EXPLORER)
+    backupManager.restoreModal(device.serialNumber, BackupManager.Source.DEVICE_EXPLORER)
   }
 
   private fun reportError(title: String, messageToReport: String) {
