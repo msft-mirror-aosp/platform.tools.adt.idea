@@ -148,7 +148,7 @@ private const val ZOOM_TOOLBAR_VISIBLE_PROPERTY = "com.android.tools.idea.stream
 private const val ZOOM_TOOLBAR_VISIBLE_DEFAULT = true
 private const val EMULATOR_DISCOVERY_INTERVAL_MILLIS = 1000L
 
-private val CONTENT_DEVICE_ID_KEY = Key.create<DeviceId>("DeviceId")
+private val CONTENT_DEVICE_ID_KEY = Key.create<StreamingDeviceId>("StreamingDeviceId")
 
 private val ATTENTION_REQUEST_EXPIRATION = 30.seconds
 private val REMOTE_DEVICE_REQUEST_EXPIRATION = 60.seconds
@@ -182,7 +182,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   private var mirroringConfirmationDialogShowing = false
 
   /** When the tool window is hidden, the state of the UI for all emulators, otherwise empty. */
-  private val savedUiState = hashMapOf<DeviceId, UiState>()
+  private val savedUiState = hashMapOf<StreamingDeviceId, UiState>()
   private val emulators = hashSetOf<EmulatorController>()
 
   private var onlineDevices = mapOf<String, ConnectedDevice>()
@@ -452,7 +452,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       for (content in contentManager.contents) {
         val deviceId = content.deviceId ?: continue
         when (deviceId) {
-          is DeviceId.EmulatorDeviceId -> {
+          is StreamingDeviceId.EmulatorDeviceId -> {
             val emulator = emulators.find { it.emulatorId == deviceId.emulatorId }
             if (emulator == null || emulator.isShuttingDown) {
               savedUiState.remove(deviceId)
@@ -460,7 +460,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
             }
           }
 
-          is DeviceId.PhysicalDeviceId -> {
+          is StreamingDeviceId.PhysicalDeviceId -> {
             val clientWithHandle = deviceClients[deviceId.serialNumber]
             if (clientWithHandle == null) {
               savedUiState.remove(deviceId)
@@ -563,7 +563,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       val activation =
         max(
           recentAttentionRequests.remove(deviceId.serialNumber) ?: ActivationLevel.CREATE_TAB,
-          (deviceId as? DeviceId.EmulatorDeviceId)?.emulatorId?.avdFolder?.let(recentAvdLaunches::remove) ?: ActivationLevel.CREATE_TAB,
+          (deviceId as? StreamingDeviceId.EmulatorDeviceId)?.emulatorId?.avdFolder?.let(recentAvdLaunches::remove)
+            ?: ActivationLevel.CREATE_TAB,
         )
       if (activation >= ActivationLevel.SELECT_TAB) {
         content.select(activation)
@@ -645,14 +646,14 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
   }
 
-  private fun findContentByDeviceId(deviceId: DeviceId): Content? = findContent { it.deviceId == deviceId }
+  private fun findContentByDeviceId(streamingDeviceId: StreamingDeviceId): Content? = findContent { it.deviceId == streamingDeviceId }
 
   private fun findContentByEmulatorId(emulatorId: EmulatorId): Content? = findContent {
-    (it.deviceId as? DeviceId.EmulatorDeviceId)?.emulatorId == emulatorId
+    (it.deviceId as? StreamingDeviceId.EmulatorDeviceId)?.emulatorId == emulatorId
   }
 
   private fun findContentByAvdFolder(avdFolder: Path): Content? = findContent {
-    (it.deviceId as? DeviceId.EmulatorDeviceId)?.emulatorId?.avdFolder == avdFolder
+    (it.deviceId as? StreamingDeviceId.EmulatorDeviceId)?.emulatorId?.avdFolder == avdFolder
   }
 
   private fun findContentBySerialNumber(serialNumber: String): Content? = findContent { it.deviceId?.serialNumber == serialNumber }
@@ -1009,7 +1010,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
         add(Separator.getInstance())
       }
 
-      val avds = getStartableVirtualDevices().sortedWith(compareBy( { it.displayName }, { it.androidVersion }))
+      val avds = getStartableVirtualDevices().sortedWith(compareBy({ it.displayName }, { it.androidVersion }))
       if (avds.isNotEmpty()) {
         add(Separator("Virtual Devices"))
         for (avd in avds) {
@@ -1520,6 +1521,6 @@ private fun <K : Any, V> buildWeakCache(expiration: Duration): Cache<K, V> =
 
 private fun <K : Any, V> Cache<K, V>.remove(key: K): V? = getIfPresent(key)?.also { invalidate(key) }
 
-private var Content.deviceId: DeviceId?
+private var Content.deviceId: StreamingDeviceId?
   get() = CONTENT_DEVICE_ID_KEY.get(this)
   set(deviceId) = CONTENT_DEVICE_ID_KEY.set(this, deviceId)
