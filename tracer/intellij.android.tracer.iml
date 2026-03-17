@@ -12,5 +12,6 @@
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="module" module-name="android.sdktools.tracer" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
   </component>
 </module>
