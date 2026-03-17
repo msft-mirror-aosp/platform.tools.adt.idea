@@ -57,7 +57,6 @@ class ProjectTemplateDataBuilder(val isNewProject: Boolean) {
 
   internal fun setEssentials(project: Project) {
     applicationName = project.name
-    kotlinVersion = determineKotlinVersionOrDefault(project, isNewProject)
     // If we create a new project, then we have a checkbox for androidX support
     if (!isNewProject) {
       androidXSupport = project.isAndroidx()
@@ -65,6 +64,7 @@ class ProjectTemplateDataBuilder(val isNewProject: Boolean) {
       builtInKotlinDefaultEnabled = gradleProjectSystem.getBuiltInKotlinDefaultEnabled()
       if (agpVersion == null) agpVersion = gradleProjectSystem.getHeuristicAgpVersion()
     }
+    kotlinVersion = determineKotlinVersionOrDefault(project, isNewProject, agpVersion)
   }
 
   /** Sets basic information which is available in [Project]. */
