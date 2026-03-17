@@ -20,9 +20,11 @@ import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.utils.createChildScope
 import com.android.sdklib.SystemImageTags
+import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
 import com.android.sdklib.deviceprovisioner.DeviceAction
 import com.android.sdklib.deviceprovisioner.DeviceProvisioner
 import com.android.sdklib.deviceprovisioner.FakeAvdManager
+import com.android.sdklib.deviceprovisioner.FakeAvdScanner
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
 import com.android.sdklib.deviceprovisioner.makeAvdInfo
 import com.android.sdklib.deviceprovisioner.testContext
@@ -38,6 +40,7 @@ import javax.swing.Icon
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
@@ -61,7 +64,8 @@ class StudioLocalEmulatorProvisionerPluginTest {
   fun setUp() {
     avdManager = FakeAvdManager(session, temporaryDirectoryRule.newPath())
     plugin =
-      LocalEmulatorProvisionerFactory().create(session.scope, session, projectRule.project, avdManager::rescanAvds)
+      LocalEmulatorProvisionerFactory()
+        .create(session.scope, session, projectRule.project, avdScanner = FakeAvdScanner(avdManager, session.scope))
         as StudioLocalEmulatorProvisionerPlugin
     provisioner = DeviceProvisioner.create(session.scope, session, listOf(plugin))
   }
@@ -96,14 +100,15 @@ class StudioLocalEmulatorProvisionerPluginTest {
   /** Verify that DeviceActions are implemented as fields rather than via getters. */
   @Test
   fun actionPresentationIdentity() = runTest {
+    val handleScope = this.createChildScope()
     val handle =
       StudioLocalEmulatorDeviceHandle(
         null,
         baseDeviceHandle =
           LocalEmulatorDeviceHandle(
             context = testContext(this),
-            refreshDevices = {},
-            scope = this.createChildScope(),
+            avdScanner = NullAvdScanner(handleScope),
+            scope = handleScope,
             extensions = emptyList(),
             initialAvdInfo = makeAvdInfo(createInMemoryFileSystemAndFolder("avds"), 1),
           ),
@@ -168,4 +173,10 @@ class StudioLocalEmulatorProvisionerPluginTest {
     // The action should become disabled.
     yieldUntil { activationAction.presentation.value.enabled == false }
   }
+}
+
+private class NullAvdScanner(coroutineScope: CoroutineScope) : AbstractAvdScanner(coroutineScope) {
+  override fun scanAvds(): List<AvdInfo> = emptyList()
+
+  override fun logError(message: String, exception: Throwable) = throw exception
 }

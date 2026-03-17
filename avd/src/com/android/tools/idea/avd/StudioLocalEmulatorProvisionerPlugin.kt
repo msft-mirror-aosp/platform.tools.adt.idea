@@ -19,6 +19,7 @@ import com.android.adblib.ConnectedDevice
 import com.android.adblib.tools.aiglasses.AiGlassesPairing
 import com.android.sdklib.deviceprovisioner.ActivationAction
 import com.android.sdklib.deviceprovisioner.AvdDeviceError
+import com.android.sdklib.deviceprovisioner.AvdScanner
 import com.android.sdklib.deviceprovisioner.BootSnapshotAction
 import com.android.sdklib.deviceprovisioner.ColdBootAction
 import com.android.sdklib.deviceprovisioner.CreateDeviceAction
@@ -98,6 +99,7 @@ class StudioLocalEmulatorProvisionerPlugin(
   val basePlugin: LocalEmulatorProvisionerPlugin,
   val context: LocalEmulatorContext,
   val project: Project?,
+  val avdScanner: AvdScanner,
 ) : DeviceProvisionerPlugin by basePlugin {
   private val accelerationError = MutableStateFlow(AccelerationErrorCode.ALREADY_INSTALLED)
 
@@ -109,8 +111,8 @@ class StudioLocalEmulatorProvisionerPlugin(
     }
   }
 
-  fun refreshDevices() {
-    basePlugin.refreshDevices()
+  suspend fun refreshDevices() {
+    avdScanner.rescan()
   }
 
   override val devices: StateFlow<List<StudioLocalEmulatorDeviceHandle>> =
@@ -194,8 +196,8 @@ class StudioLocalEmulatorDeviceHandle(
   private val avdInfo by baseDeviceHandle::avdInfo
   private val onDiskAvdInfo by baseDeviceHandle::onDiskAvdInfo
 
-  private fun refreshDevices() {
-    baseDeviceHandle.refreshDevices()
+  private suspend fun refreshDevices() {
+    baseDeviceHandle.avdScanner.rescan()
   }
 
   private val defaultPresentation: DeviceAction.DefaultPresentation = StudioDefaultDeviceActionPresentation
