@@ -17,6 +17,7 @@ package com.android.tools.asdriver.tests;
 
 import com.android.testutils.TestUtils;
 import com.android.tools.asdriver.tests.base.IdeInstallation;
+import com.android.tools.asdriver.tests.Workspace;
 import com.android.tools.testlib.AndroidSdk;
 import com.android.tools.testlib.Display;
 import com.android.tools.testlib.Emulator;
@@ -198,9 +199,10 @@ public class SherlockInstallation extends IdeInstallation<Sherlock> {
     TestLogger.log("Emulator#runEmulator");
     String curEmulatorName = String.format("emu%d", emulators.size());
     Path systemImageDir = Workspace.getRoot(systemImage.path);
+    boolean useSnapshot = System.getProperty("emulator.test.snapshot.path") != null;
     Emulator.createEmulator(fileSystem, curEmulatorName, systemImageDir);
     // Increase grpc port by one after spawning an emulator to avoid conflict
-    Emulator emulator = Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort++, extraEmulatorFlags);
+    Emulator emulator = Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort++, extraEmulatorFlags, useSnapshot ? Emulator.BootMode.FROM_SNAPSHOT_NO_SNAPSHOT_SAVE : Emulator.BootMode.COLD_BOOT_NO_SNAPSHOT_SAVE);
     emulators.add(emulator);
     return emulator;
   }
