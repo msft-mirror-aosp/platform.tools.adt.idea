@@ -89,7 +89,7 @@ class AddDeviceWizardTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.waitUntilDoesNotExist(hasText("Loading system images", substring = true))
-        wizard.performAction(wizard.finishAction)
+        wizard.performAction(wizard.nextAction)
         composeTestRule.waitForIdle()
         wizard.awaitClose()
       }
@@ -128,7 +128,7 @@ class AddDeviceWizardTest {
       composeTestRule.onNodeWithText("Camera").assertDoesNotExist()
       composeTestRule.waitForIdle()
 
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       assertThat(Files.list(avdRoot).map { it.fileName.toString() }.toList())
@@ -168,7 +168,7 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
 
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       val avdFolder = avdRoot.listDirectoryEntries("*.avd").single()
@@ -215,7 +215,7 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
 
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       val avdFolder = avdRoot.listDirectoryEntries("*.avd").single()
@@ -291,7 +291,7 @@ class AddDeviceWizardTest {
       // Go forward and back
       wizard.performAction(wizard.nextAction)
       composeTestRule.waitForIdle()
-      wizard.performAction(wizard.prevAction)
+      composeTestRule.onNodeWithText("Previous").performClick()
 
       // Sort order is preserved; ZPhone is still selected; details still visible
       composeTestRule.onNodeWithText("APhone").assertDoesNotExist()
@@ -324,7 +324,6 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
       assertThat(wizard.nextAction.enabled).isFalse()
-      assertThat(wizard.finishAction.enabled).isFalse()
 
       composeTestRule.onNodeWithText("No system images available.").assertIsDisplayed()
     }
@@ -349,7 +348,6 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
       assertThat(wizard.nextAction.enabled).isFalse()
-      assertThat(wizard.finishAction.enabled).isFalse()
 
       composeTestRule.onNodeWithText("No system images available matching the current set of filters.").assertIsDisplayed()
     }
