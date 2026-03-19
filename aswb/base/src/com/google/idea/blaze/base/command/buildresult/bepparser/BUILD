@@ -18,6 +18,5 @@ aswb_library(
         "//tools/adt/idea/aswb/shared:exception",
         "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
