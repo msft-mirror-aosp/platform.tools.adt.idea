@@ -29,6 +29,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
+import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.io.path.bufferedWriter
@@ -41,7 +42,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.idea.base.plugin.artifacts.KotlinArtifacts
-import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.name.NameUtils
 
 @Service(Service.Level.PROJECT)
