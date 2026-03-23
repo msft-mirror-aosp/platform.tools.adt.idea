@@ -74,7 +74,7 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
 
       fun addPixel8() {
         val wizard = createTestAddDeviceWizard(source)
@@ -112,7 +112,7 @@ class AddDeviceWizardTest {
         createLocalSystemImage("android-automotive", listOf(SystemImageTags.AUTOMOTIVE_TAG), AndroidVersion(34, null, 9, false))
       repoPackages.setLocalPkgInfos(listOf(api34Ext9Auto))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
@@ -147,7 +147,7 @@ class AddDeviceWizardTest {
       val api36Glasses = createLocalSystemImage("ai-glasses", listOf(SystemImageTags.AI_GLASSES_TAG), AndroidVersion(36, null, 9, false))
       repoPackages.setLocalPkgInfos(listOf(api36Glasses))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
@@ -194,7 +194,7 @@ class AddDeviceWizardTest {
         )
       repoPackages.setLocalPkgInfos(listOf(api34XrOst))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
@@ -234,10 +234,8 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
-
       val wizard = TestComposeWizard {
-        with(AddDeviceWizard(source, null, { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
+        with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
       }
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
@@ -274,7 +272,7 @@ class AddDeviceWizardTest {
           .build()
       )
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
@@ -307,10 +305,8 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
-
       val wizard = TestComposeWizard {
-        with(AddDeviceWizard(source, null, { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
+        with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
       }
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
@@ -335,10 +331,10 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_atd", listOf(SystemImageTags.GOOGLE_ATD_TAG), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
 
       val wizard = TestComposeWizard {
-        with(AddDeviceWizard(source, null, { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
+        with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
       }
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
@@ -354,6 +350,4 @@ class AddDeviceWizardTest {
   }
 }
 
-private fun createTestAddDeviceWizard(source: LocalVirtualDeviceSource) = TestComposeWizard {
-  with(AddDeviceWizard(source, null, accelerationCheck = { AccelerationErrorCode.ALREADY_INSTALLED })) { DeviceGridPage() }
-}
+private fun createTestAddDeviceWizard(wizard: AddDeviceWizard) = TestComposeWizard { with(wizard) { DeviceGridPage() } }
