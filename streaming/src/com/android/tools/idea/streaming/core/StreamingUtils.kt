@@ -271,7 +271,7 @@ internal val DeviceHandle.pairedPhoneId: DeviceId?
   get() = state.properties.pairedPhoneId
 
 internal val DeviceHandle.pairedGlassesId: DeviceId?
-  get() = state.properties.pairedGlassesId
+  get() = state.properties.pairedGlassesInfos.firstOrNull()?.id
 
 internal val DeviceHandle.deviceType: DeviceType?
   get() = state.properties.deviceType

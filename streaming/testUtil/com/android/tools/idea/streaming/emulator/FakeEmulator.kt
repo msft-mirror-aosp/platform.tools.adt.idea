@@ -64,6 +64,7 @@ import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
+import com.android.sdklib.deviceprovisioner.PairedGlassesInfo
 import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
 import com.android.sdklib.deviceprovisioner.RunningAvd.RunType
 import com.android.sdklib.repository.targets.SystemImageManager
@@ -993,7 +994,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           .apply {
             when (deviceType) {
               DeviceType.AI_GLASSES -> pairedPhoneId = pairedDeviceId
-              else -> pairedGlassesId = pairedDeviceId
+              else -> {
+                if (pairedDeviceId != null) {
+                  pairedGlassesInfos = listOf(PairedGlassesInfo(pairedDeviceId, null))
+                } else {
+                  pairedGlassesInfos = emptyList()
+                }
+              }
             }
           }
           .build()
