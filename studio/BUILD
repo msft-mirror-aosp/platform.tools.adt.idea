@@ -5,7 +5,6 @@ load("//tools/adt/idea/studio:searchable-options/android-studio/content.bzl", "S
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "android_studio_configuration", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
-load("//tools/vendor/google/alt-lang:exports.bzl", "STUDIO_NDK_PLUGINS")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_CONFIG", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
 package(
@@ -946,6 +945,7 @@ android_studio_configuration(
 STUDIO_BASE_PLUGINS = [
     "//tools/adt/idea/studio:org.jetbrains.android",
     "//tools/adt/idea/studio:com.android.tools.apk",
+    "//tools/adt/idea/studio:com.android.tools.ndk",
     "//tools/adt/idea/studio:com.android.tools.design",
     "//tools/adt/idea/studio:androidx.compose.plugins.idea",
     "//tools/adt/idea/studio:com.google.services.git4insights",
@@ -959,7 +959,7 @@ STUDIO_BASE_PLUGINS = [
     "//tools/adt/idea/studio:com.google.targetsdkversionassistant",
     "//tools/adt/idea/studio:com.android.tools.gradle.dcl",
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
-] + STUDIO_NDK_PLUGINS
+]
 
 android_studio(
     name = "android-studio",
