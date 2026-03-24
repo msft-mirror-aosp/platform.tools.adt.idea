@@ -76,5 +76,6 @@
     <orderEntry type="library" scope="TEST" name="equalsverifier" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-tanvd.grazi" level="project" />
     <orderEntry type="library" scope="TEST" name="google-api-client" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.idea.reposearch" level="project" />
   </component>
 </module>
