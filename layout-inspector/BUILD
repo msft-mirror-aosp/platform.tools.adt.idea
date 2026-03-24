@@ -1,5 +1,4 @@
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE")
-load("//tools/adt/idea/emulator-snapshots:emulator_jvm_flags.bzl", "emulator_snapshot_jvm_flags")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
@@ -191,7 +190,6 @@ layout_inspector_view_data = [
     "//prebuilts/studio/sdk:emulator",
     "//prebuilts/studio/sdk:platform-tools",
     "//tools/adt/idea/layout-inspector/integration/testData:emptyApplication",
-    "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
     INTEGRATION_TEST_GRADLE_VERSION,
     INTEGRATION_TEST_SYSTEM_IMAGE,
 ]
@@ -212,7 +210,6 @@ iml_test(
     name = "LayoutInspectorViewIntegrationTest",
     timeout = "long",
     data = layout_inspector_view_data,
-    jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.layout-inspector.integration",
     tags_linux = ["block-network"],
     tags_windows = [
@@ -226,7 +223,6 @@ iml_test(
     name = "EmbeddedLayoutInspectorIntegrationTest",
     timeout = "long",
     data = layout_inspector_view_data,
-    jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.layout-inspector.integration",
     tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
@@ -241,7 +237,6 @@ iml_test(
     name = "OnDeviceRenderingIntegrationTest",
     timeout = "long",
     data = layout_inspector_view_data,
-    jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.layout-inspector.integration",
     tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],

@@ -1,5 +1,4 @@
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION")
-load("//tools/adt/idea/emulator-snapshots:emulator_jvm_flags.bzl", "emulator_snapshot_jvm_flags")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 
 # managed by go/iml_to_build
@@ -37,11 +36,9 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         "//tools/adt/idea/android/integration:instrumenttestapp_project_model",
         "//tools/adt/idea/android/integration:run_instrumented_test_project_deps",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_atd_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
         "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images",
     ],
-    jvm_flags = emulator_snapshot_jvm_flags("@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images"),
     module = ":intellij.android.core.integration.instrumentation",
     tags = [
         "studio-e2e-test",
@@ -66,11 +63,9 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         "//tools/adt/idea/android/integration:instrumenttestapp_project_model",
         "//tools/adt/idea/android/integration:run_instrumented_test_project_deps",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_atd_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
         "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images",
     ],
-    jvm_flags = emulator_snapshot_jvm_flags("@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images"),
     module = ":intellij.android.core.integration.instrumentation",
     tags = [
         "studio-e2e-test",
