@@ -77,7 +77,17 @@ public class ProjectBuildModelImpl implements ProjectBuildModel {
   @Nullable
   public GradleBuildModel getModuleBuildModel(@NotNull Module module) {
     VirtualFile file = myBuildModelContext.getGradleBuildFile(module);
-    return file == null ? null : getModuleBuildModel(file);
+    if (file == null) {
+      return null;
+    }
+
+    if (DeclarativeStudioSupport.isEnabled()) {
+      GradleDeclarativeBuildModel declarativeModel = getDeclarativeModuleBuildModel(file);
+      if (declarativeModel != null) {
+        return declarativeModel;
+      }
+    }
+    return getModuleBuildModel(file);
   }
 
   @Override
@@ -140,7 +150,6 @@ public class ProjectBuildModelImpl implements ProjectBuildModel {
   @Override
   @Nullable
   public GradleDeclarativeSettingsModel getDeclarativeSettingsModel() {
-    if (!DeclarativeStudioSupport.isEnabled()) return null;
     VirtualFile virtualFile = getProjectSettingsFile();
     if (virtualFile == null) return null;
     if (!virtualFile.getName().equals(FN_SETTINGS_GRADLE_DECLARATIVE)) return null;
