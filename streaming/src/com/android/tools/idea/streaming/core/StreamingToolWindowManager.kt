@@ -298,7 +298,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       @AnyThread
       override fun connectionStateChanged(emulator: EmulatorController, connectionState: ConnectionState) {
         if (connectionState == ConnectionState.DISCONNECTED) {
-          @Suppress("WrongThread") // b/496344769
           invokeLaterIfNeeded {
             if (removeEmulatorPanel(emulator)) {
               emulators.remove(emulator)
@@ -388,7 +387,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   @AnyThread
   private fun onDeviceHeadsUp(serialNumber: String, activation: ActivationLevel, project: Project) {
     if (project == toolWindow.project) {
-      @Suppress("WrongThread") // b/496344769
       invokeLaterIfNeeded {
         val excludedDevice = devicesExcludedFromMirroring.remove(serialNumber)
         when {
@@ -1019,7 +1017,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   @AnyThread
   private fun deviceConnected(serialNumber: String, device: ConnectedDevice) {
     val config = DeviceConfiguration(device.state.properties, useTitleAsName = isLocalEmulator(serialNumber))
-    @Suppress("WrongThread") // b/496344769
     invokeLaterIfNeeded { deviceConnected(serialNumber, device.handle, config) }
   }
 
@@ -1169,7 +1166,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   }
 
   @AnyThread
-  private fun invokeLaterIfNeeded(block: @UiThread () -> Unit) {
+  @Suppress("WrongThread") // b/379742474
+  private fun invokeLaterIfNeeded(@UiThread block: () -> Unit) {
     if (EDT.isCurrentThreadEdt()) {
       block()
     } else {
@@ -1186,7 +1184,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
     override fun userInvolvementRequired(device1SerialNumber: String, device2SerialNumber: String, project: Project) {
       if (project == toolWindow.project) {
-        @Suppress("WrongThread") // b/496344769
         invokeLaterIfNeeded { showInSplitView(device1SerialNumber, device2SerialNumber) }
       }
     }
@@ -1282,7 +1279,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       coroutineScope = createCoroutineScope(executor.asCoroutineDispatcher())
       coroutineScope.launch {
         deviceProvisioner.mirrorableDevicesBySerialNumber().collect { newOnlineDevices ->
-          @Suppress("WrongThread") // b/496344769
           invokeLaterIfNeeded {
             onlineDevices = newOnlineDevices
             onlineDevicesChanged()
