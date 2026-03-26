@@ -110,7 +110,7 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
     targets: Collection<BazelBuildTargetReference>,
     label: Label,
     scope: QuerySyncActionStatsScope,
-  ): @UiThread Deferred<Boolean> {
+  ): Deferred<Boolean> {
     val project = targets.project
     val coroutineScope = project.service<BazelBuildServicesCoroutineScope>().scope
 

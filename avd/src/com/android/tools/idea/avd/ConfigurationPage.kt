@@ -85,7 +85,7 @@ internal fun WizardPageScope.ConfigurationPage(
   skins: ImmutableCollection<Skin>,
   deviceNameValidator: DeviceNameValidator,
   sdkHandler: AndroidSdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler(),
-  finish: @UiThread suspend (VirtualDevice) -> Boolean,
+  @UiThread finish: suspend (VirtualDevice) -> Boolean,
 ) {
   val systemImageState by systemImageStateFlow.collectAsState(SystemImageState.INITIAL)
 
@@ -191,7 +191,7 @@ private fun defaultDeviceSkin(device: Device, fileSystem: FileSystem): Path {
 private suspend fun WizardDialogScope.finish(
   device: VirtualDevice,
   parent: Component,
-  finish: @UiThread suspend (VirtualDevice) -> Boolean,
+  @UiThread finish: suspend (VirtualDevice) -> Boolean,
   sdkHandler: AndroidSdkHandler,
 ) {
   if (ensureSystemImageIsPresent(sdkHandler, device, parent)) {
