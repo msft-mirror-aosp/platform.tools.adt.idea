@@ -11,9 +11,9 @@
     <option name="languageVersion" value="2.0" />
   </component>
   <component name="KotlinCompilerSettings">
-    <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xcontext-receivers -opt-in=org.jetbrains.kotlin.analysis.api.permissions.KaAllowProhibitedAnalyzeFromWriteAction" />
+    <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xcontext-parameters -opt-in=org.jetbrains.kotlin.analysis.api.permissions.KaAllowProhibitedAnalyzeFromWriteAction" />
   </component>
   <component name="KotlinJpsPluginSettings">
-    <option name="version" value="2.3.10" />
+    <option name="version" value="2.3.20" />
   </component>
 </project>
