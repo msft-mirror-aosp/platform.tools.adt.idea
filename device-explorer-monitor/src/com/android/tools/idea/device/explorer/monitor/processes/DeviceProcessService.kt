@@ -15,16 +15,15 @@
  */
 package com.android.tools.idea.device.explorer.monitor.processes
 
+import com.android.adblib.AdbPackageManagerException
 import com.android.adblib.ConnectedDevice
 import com.android.adblib.activityManager
 import com.android.adblib.ddmlibcompatibility.debugging.associatedIDevice
-import com.android.adblib.selector
+import com.android.adblib.packageManager
 import com.android.adblib.serialNumber
 import com.android.adblib.shell
-import com.android.adblib.tools.UninstallResult
 import com.android.adblib.tools.debugging.jdwpProcessTracker
 import com.android.adblib.tools.debugging.sendDdmsExit
-import com.android.adblib.tools.uninstall
 import com.android.annotations.concurrency.UiThread
 import com.android.ddmlib.Client
 import com.android.tools.idea.backup.BackupManager
@@ -146,9 +145,10 @@ constructor(
       withContext(workerThreadDispatcher) {
         val packageName = process.packageName
         if (packageName != null) {
-          val result = device.session.deviceServices.uninstall(device.selector, packageName)
-          if (result.status != UninstallResult.Status.SUCCESS) {
-            thisLogger().info("Uninstall App $packageName failed with output: ${result.output}")
+          try {
+            device.packageManager.uninstall(packageName)
+          } catch (e: AdbPackageManagerException) {
+            thisLogger().info("Uninstalling app `$packageName` failed with an exception: ${e.errorOutput}")
             withContext(uiThreadDispatcher) { reportError("uninstall app", "Failed to uninstall app.") }
           }
         } else {
