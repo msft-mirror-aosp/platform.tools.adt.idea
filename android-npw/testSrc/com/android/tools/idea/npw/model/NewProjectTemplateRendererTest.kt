@@ -158,7 +158,7 @@ class NewProjectTemplateRendererTest {
     val newProjectModel = spy(NewProjectModel())
     val render = spy(newProjectModel.ProjectTemplateRenderer())
     val projectTemplateDataBuilder = spy(newProjectModel.projectTemplateDataBuilder)
-    val projectTemplateData = createSimpleProjectTemplateData(gradleVersion)
+    val projectTemplateData = createSimpleProjectTemplateData(gradleVersion, dslLanguage)
 
     newProjectModel.project = projectRule.project
     doReturn(projectTemplateData).whenever(projectTemplateDataBuilder).build()
@@ -180,7 +180,7 @@ class NewProjectTemplateRendererTest {
     return render
   }
 
-  private fun createSimpleProjectTemplateData(gradleVersion: GradleVersion) =
+  private fun createSimpleProjectTemplateData(gradleVersion: GradleVersion, dslLanguage: DslLanguage): ProjectTemplateData =
     ProjectTemplateData(
       false,
       AgpVersions.newProject,
@@ -195,6 +195,7 @@ class NewProjectTemplateRendererTest {
       null,
       null,
       true,
+      dslLanguage = dslLanguage,
     )
 
   private fun assertFoojayPlugin(isApplied: Boolean) {

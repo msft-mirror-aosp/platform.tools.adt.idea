@@ -292,6 +292,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
             language = this@NewProjectModel.language.value
             agpVersion = resolvedAgpVersion
             additionalMavenRepos = this@NewProjectModel.additionalMavenRepos.get()
+            dslLanguage = this@NewProjectModel.dslLanguage.get()
           }
           .build()
     }
@@ -329,12 +330,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         RenderingContext(project, null, "New Project", projectTemplateData, showErrors = true, dryRun = dryRun, moduleRoot = null)
       val executor = if (dryRun) FindReferencesRecipeExecutor(context) else DefaultRecipeExecutor(context)
       val recipe: Recipe = { data: TemplateData ->
-        androidProjectRecipe(
-          data = data as ProjectTemplateData,
-          appTitle = applicationName.get(),
-          language = language.value,
-          dslLanguage = dslLanguage.get(),
-        )
+        androidProjectRecipe(data = data as ProjectTemplateData, appTitle = applicationName.get(), language = language.value)
       }
 
       recipe.render(context, executor, AndroidStudioEvent.TemplateRenderer.ANDROID_PROJECT)
