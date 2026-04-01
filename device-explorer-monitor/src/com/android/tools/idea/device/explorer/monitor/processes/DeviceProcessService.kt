@@ -21,7 +21,6 @@ import com.android.adblib.activityManager
 import com.android.adblib.ddmlibcompatibility.debugging.associatedIDevice
 import com.android.adblib.packageManager
 import com.android.adblib.serialNumber
-import com.android.adblib.shell
 import com.android.adblib.tools.debugging.jdwpProcessTracker
 import com.android.adblib.tools.debugging.sendDdmsExit
 import com.android.annotations.concurrency.UiThread
@@ -127,9 +126,10 @@ constructor(
       withContext(workerThreadDispatcher) {
         val packageName = process.packageName
         if (packageName != null) {
-          val result = device.shell.executeAsText("pm clear $packageName")
-          if (result.stdout.trim() != "Success") {
-            thisLogger().info("Clear App Data $packageName failed with output: ${result.stdout} ${result.stderr}")
+          try {
+            device.packageManager.clear(packageName)
+          } catch (e: AdbPackageManagerException) {
+            thisLogger().info("Clear App Data $packageName failed with output: ${e.errorOutput}")
             withContext(uiThreadDispatcher) { reportError("clear app data", "Failed to clear app data.") }
           }
         } else {
