@@ -63,10 +63,14 @@ class AndroidProjectRootListener private constructor(private val project: Projec
   /** Called when module roots have changed in the associated [project]. */
   private fun moduleRootsOrDependenciesChanged() {
     coroutineScope.launch {
-      if (!project.isDisposed) {
+      if (!project.isDisposed && hasAndroidFacets()) {
         RootsChangedDumbModeTask(project, this@AndroidProjectRootListener).queue(project)
       }
     }
+  }
+
+  private fun hasAndroidFacets(): Boolean {
+    return ModuleManager.getInstance(project).modules.any { AndroidFacet.getInstance(it) != null }
   }
 
   companion object {
