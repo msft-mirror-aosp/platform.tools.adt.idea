@@ -78,7 +78,11 @@ class DeviceMenuActionTest {
   @JvmField @Rule val projectRule = AndroidProjectRule.withAndroidModel().onEdt()
   @get:Rule
   val flagRules =
-    RuleChain(FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true), FlagRule(StudioFlags.XR_GLASSES_DEVICE_SUPPORT_ENABLED, true))
+    RuleChain(
+      FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true),
+      FlagRule(StudioFlags.AI_GLASSES_DISPLAYLESS_DEVICE_SUPPORT_ENABLED, true),
+      FlagRule(StudioFlags.XR_GLASSES_DEVICE_SUPPORT_ENABLED, true),
+    )
 
   private fun getReferenceDevicesExpected(): String {
     return """
@@ -178,7 +182,7 @@ class DeviceMenuActionTest {
               XR
               XR Headset (1280 × 1279 dp, xhdpi)
               XR Glasses (960 × 600 dp, xhdpi)
-              AI Glasses (450 × 450 dp, mdpi)
+              AI Glasses (Display) (450 × 450 dp, mdpi)
               ------------------------------------------------------
               Generic Devices
                   Small Phone (360 × 640 dp, xhdpi)
