@@ -282,6 +282,7 @@ class AndroidRunConfigurationsTest {
     preparedProject.open { project ->
       val runManager = RunManager.getInstance(project)
       assertThat(runManager.allConfigurationsList).isEmpty()
+      assertThat(runManager.allConfigurationsList.filterIsInstance<AndroidDeclarativeWatchFaceConfiguration>()).isEmpty()
     }
   }
 
