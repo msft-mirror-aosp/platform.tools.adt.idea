@@ -18,7 +18,6 @@ package com.android.tools.idea.profilers;
 import com.android.annotations.NonNull;
 import com.android.annotations.Nullable;
 import com.android.ddmlib.*;
-import com.android.tools.datastore.poller.MemoryDataPoller;
 import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,7 +31,7 @@ import java.util.function.Consumer;
 public class StudioLegacyAllocationTracker implements LegacyAllocationTracker {
 
   private static Logger getLogger() {
-    return Logger.getInstance(MemoryDataPoller.class);
+    return Logger.getInstance(StudioLegacyAllocationTracker.class);
   }
 
   private IDevice myDevice;
