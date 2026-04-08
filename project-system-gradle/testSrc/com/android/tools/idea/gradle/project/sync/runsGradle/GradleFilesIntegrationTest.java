@@ -440,7 +440,6 @@ public class GradleFilesIntegrationTest {
   }
 
   @Test
-  @Ignore("b/500308639")
   public void testModifiedWhenAddingTextChildInDeclarativeSettingsFile() {
     runWithDeclarativeSupport(() -> {
       loadSimpleDeclarativeApplication();
@@ -451,7 +450,6 @@ public class GradleFilesIntegrationTest {
   }
 
   @Test
-  @Ignore("b/500308639")
   public void testModifiedWhenAddingTextChildInDeclarativeBuildFile() {
     runWithDeclarativeSupport(() -> {
       loadSimpleDeclarativeApplication();
@@ -485,7 +483,6 @@ public class GradleFilesIntegrationTest {
   }
 
   @Test
-  @Ignore("b/500308639")
   public void testNotModifiedWhenAddingWhitespaceInDeclarativeSettingsFile() {
     runWithDeclarativeSupport(() -> {
       loadSimpleDeclarativeApplication();
@@ -502,7 +499,6 @@ public class GradleFilesIntegrationTest {
   }
 
   @Test
-  @Ignore("b/500308639")
   public void testNotModifiedWhenAddingWhitespaceInDeclarativeBuildFile() {
     runWithDeclarativeSupport(() -> {
       loadSimpleDeclarativeApplication();
