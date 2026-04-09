@@ -17,9 +17,7 @@ package com.android.tools.compose.debug.utils
 
 import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.evaluation.EvaluationContext
-import com.intellij.debugger.engine.events.DebuggerCommandImpl
 import com.intellij.debugger.engine.requests.RequestManagerImpl
-import com.intellij.debugger.impl.PrioritizedTask
 import com.intellij.debugger.jdi.VirtualMachineProxyImpl
 import com.intellij.debugger.requests.ClassPrepareRequestor
 import com.intellij.openapi.Disposable
@@ -128,16 +126,6 @@ class MockDebugProcessImpl(project: Project) : DebugProcessImpl(project) {
   override fun getRequestsManager(): RequestManagerImpl = mockRequestManager
 
   override fun isAttached() = true
-
-  override fun stop(forceTerminate: Boolean) {
-    // For mocks, we manually close the process to avoid leaks caused by the fact that
-    // StopCommand doesn't trigger closeCurrentProcess() for mocks (due to missing VM events).
-    managerThread.terminateAndInvoke(object : DebuggerCommandImpl(PrioritizedTask.Priority.HIGH) {
-      override fun action() {
-        closeCurrentProcess(false)
-      }
-    }, 3000)
-  }
 
   override fun invokeMethod(evaluationContext: EvaluationContext, objRef: ObjectReference, method: Method, args: List<Value>): Value {
     val referenceType: ReferenceType =
