@@ -67,7 +67,8 @@ class ComposeClassNameContributorTest {
       val fileCandidates = ComposeClassNameContributor().contributeClassNameCandidatesForElement(file as KtFile)
       Assert.assertEquals(listOf("ComposableSingletons\$AppKt"), fileCandidates)
 
-      val functionCandidates = ComposeClassNameContributor().contributeClassNameCandidatesForElement(file.findDescendantOfType<KtFunction>()!!)
+      val functionCandidates =
+        ComposeClassNameContributor().contributeClassNameCandidatesForElement(file.findDescendantOfType<KtFunction>()!!)
       Assert.assertEquals(emptyList<String>(), functionCandidates)
     }
   }

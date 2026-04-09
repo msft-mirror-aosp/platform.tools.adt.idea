@@ -31,7 +31,6 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.util.net.HttpConnectionUtils
 import com.intellij.util.net.HttpProxyConfigurable
 import com.intellij.util.net.JdkProxyProvider
-import com.intellij.util.net.ProxySettings
 import com.intellij.util.net.editConfigurable
 import java.io.IOException
 

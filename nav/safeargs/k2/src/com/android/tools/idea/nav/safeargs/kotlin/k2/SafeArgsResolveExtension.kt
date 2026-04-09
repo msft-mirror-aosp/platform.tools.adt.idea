@@ -62,11 +62,9 @@ class SafeArgsResolveExtension(private val module: Module) : KaResolveExtension(
   private val allClasses: List<KaResolveExtensionFile>
     get() = args + directions
 
-  @OptIn(KaSpiExtensionPoint::class)
-  override fun getKtFiles(): List<KaResolveExtensionFile> = allClasses
+  @OptIn(KaSpiExtensionPoint::class) override fun getKtFiles(): List<KaResolveExtensionFile> = allClasses
 
-  @OptIn(KaSpiExtensionPoint::class)
-  override fun getContainedPackages(): Set<FqName> = allClasses.map { it.getFilePackageName() }.toSet()
+  @OptIn(KaSpiExtensionPoint::class) override fun getContainedPackages(): Set<FqName> = allClasses.map { it.getFilePackageName() }.toSet()
 
   @OptIn(KaSpiExtensionPoint::class)
   override fun getShadowedScope(): GlobalSearchScope {
