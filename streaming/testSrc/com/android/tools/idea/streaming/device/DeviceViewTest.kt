@@ -26,6 +26,7 @@ import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.UserScaleFactorRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.analytics.crash.CrashReport
@@ -91,6 +92,7 @@ import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestDataProvider
 import com.intellij.testFramework.assertInstanceOf
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ConcurrencyUtil
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap
 import java.awt.Dimension
@@ -159,6 +161,7 @@ internal class DeviceViewTest {
   private val crashReporterRule = CrashReporterRule()
   private val notificationRule = NotificationRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/DeviceViewTest/golden")
+  private val userScaleRule = UserScaleFactorRule()
   @get:Rule
   val ruleChain =
     RuleChain(
@@ -169,6 +172,7 @@ internal class DeviceViewTest {
       ClipboardSynchronizationDisablementRule(),
       goldenImageRule,
       EdtRule(),
+      userScaleRule,
     )
   @get:Rule val usageTrackerRule = UsageTrackerRule()
   private lateinit var device: FakeScreenSharingAgentRule.FakeDevice
@@ -593,7 +597,7 @@ internal class DeviceViewTest {
     waitForFrame()
 
     // Check zoom.
-    assertThat(view.scale).isWithin(1e-4).of(fakeUi.screenScale * fakeUi.root.height / device.displaySize.height)
+    assertThat(view.scale).isWithin(1e-4).of(screenScale * fakeUi.root.height / device.displaySize.height)
     assertThat(view.canZoom(ZoomType.IN)).isTrue()
     assertThat(view.canZoom(ZoomType.OUT)).isFalse()
     assertThat(view.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -642,7 +646,7 @@ internal class DeviceViewTest {
         when {
           view.displayOrientationQuadrants % 2 == 0 -> SetMaxVideoResolutionMessage(view.displayId, Dimension(270, 586))
           SystemInfo.isMac && !isRunningInBazelTest() -> SetMaxVideoResolutionMessage(view.displayId, Dimension(294, 372))
-          else -> SetMaxVideoResolutionMessage(view.displayId, Dimension(294, 380))
+          else -> SetMaxVideoResolutionMessage(view.displayId, Dimension(294, 360))
         }
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(expected)
       executeAction("android.device.rotate.right", view, project)
@@ -659,7 +663,7 @@ internal class DeviceViewTest {
     createDeviceView(100, 200, 1.5)
     waitForFrame()
 
-    fakeUi.screenScale = 2.0
+    JBUIScale.setUserScaleFactorForTest(2.0f)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetMaxVideoResolutionMessage(view.displayId, Dimension(200, 400)))
   }
 
@@ -975,7 +979,7 @@ internal class DeviceViewTest {
     StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS.overrideForTest(200, testRootDisposable)
     agent.startDelayMillis = 500
     val loggedWarnings = executeCapturingLoggedWarnings {
-      createDeviceViewWithoutWaitingForAgent(500, 1000, screenScale = 1.0)
+      createDeviceViewWithoutWaitingForAgent(500, 1000)
       val errorMessage = fakeUi.getComponent<JEditorPane>()
       waitForCondition(2.seconds) { fakeUi.isShowing(errorMessage) }
       assertThat(extractText(errorMessage.text)).isEqualTo("Device agent is not responding")
@@ -1246,11 +1250,12 @@ internal class DeviceViewTest {
   }
 
   private fun createDeviceView(width: Int, height: Int, screenScale: Double = 2.0) {
-    createDeviceViewWithoutWaitingForAgent(width, height, screenScale)
+    JBUIScale.setUserScaleFactorForTest(screenScale.toFloat())
+    createDeviceViewWithoutWaitingForAgent(width, height)
     waitForCondition(15, SECONDS) { agent.isRunning }
   }
 
-  private fun createDeviceViewWithoutWaitingForAgent(width: Int, height: Int, screenScale: Double) {
+  private fun createDeviceViewWithoutWaitingForAgent(width: Int, height: Int) {
     val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
     // DeviceView has to be disposed before DeviceClient.
@@ -1259,7 +1264,7 @@ internal class DeviceViewTest {
     val displayPanel = DeviceDisplayPanel(disposable, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, project, false)
     displayPanel.size = Dimension(width, height)
     view = displayPanel.displayView
-    fakeUi = FakeUi(displayPanel, screenScale)
+    fakeUi = FakeUi(displayPanel, createFakeWindow = true)
   }
 
   private fun assertAppearance(goldenImageName: String) {
@@ -1321,3 +1326,6 @@ private fun CrashReport.toPartMap(): Map<String, String> {
   }
   return parts
 }
+
+val screenScale: Double
+  get() = JBUIScale.scale(1.0f).toDouble()
