@@ -58,6 +58,7 @@ import junit.framework.Assert.fail
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
@@ -133,6 +134,7 @@ class AndroidJavaDebuggerTest {
     assertThat(processHandler.getUserData(AndroidSessionInfo.ANDROID_DEVICE_API_LEVEL)).isEqualTo(AndroidVersion(26))
   }
 
+  @Ignore("b/501224305")
   @Test
   fun testSessionCreated() = runTest {
     val stats = RunStatsService.get(project).create().also { executionEnvironment.putUserData(RunStats.KEY, it) }
