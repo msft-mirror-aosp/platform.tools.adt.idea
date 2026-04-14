@@ -30,6 +30,14 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
-    <orderEntry type="module" module-name="jewel.sdkcompat" exported="" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.foundation" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.ideLafBridge" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.core" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.ideLafBridgeStyling" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.ui" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.skiko" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.compose.foundation.desktop" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.compose.runtime.desktop" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.extensions.gfmTables" level="project" />
   </component>
 </module>
