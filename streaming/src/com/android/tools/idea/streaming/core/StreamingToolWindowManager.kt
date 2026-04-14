@@ -1091,7 +1091,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     return clientWithHandle
   }
 
-  private suspend fun showDeviceActionPopup(anchorComponent: Component?, dataContext: DataContext) {
+  private fun showDeviceActionPopup(anchorComponent: Component?, dataContext: DataContext) {
     val actionGroup = createDeviceActions()
 
     val popup =
@@ -1117,7 +1117,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     (popup as? ListPopupImpl)?.list?.clearSelection()
   }
 
-  private suspend fun createDeviceActions(): DefaultActionGroup {
+  private fun createDeviceActions(): DefaultActionGroup {
     return DefaultActionGroup().apply {
       val deviceDescriptions = devicesExcludedFromMirroring.values.toTypedArray().sorted()
       if (deviceDescriptions.isNotEmpty()) {
@@ -1159,8 +1159,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
   }
 
-  private suspend fun getStartableVirtualDevices(): List<AvdInfo> {
-    val avds = withContext(Dispatchers.IO) { AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(false) }
+  private fun getStartableVirtualDevices(): List<AvdInfo> {
+    val avds = AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(false)
     val runningAvdFolders = RunningAvdTracker.getInstance().runningAvds.filter { !it.value.isShuttingDown }.keys
     return avds.filter {
       it.dataFolderPath !in runningAvdFolders &&
@@ -1352,8 +1352,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       val component = event.getData(PlatformCoreDataKeys.CONTEXT_COMPONENT)
       val actionComponent = if (component is ActionButtonComponent) component else event.findComponentForAction(this)
       val dataContext = event.dataContext
-
-      toolWindowScope.launch(Dispatchers.IO) { showDeviceActionPopup(actionComponent, dataContext) }
+      showDeviceActionPopup(actionComponent, dataContext)
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
