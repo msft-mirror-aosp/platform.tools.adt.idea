@@ -93,7 +93,7 @@ internal open class PsiCallParameterPropertyItem(
     get() {
       if (!isCachedValueValid) {
         val expression = argumentExpression
-        val literalValue = expression?.tryEvaluateLiteralAsText()
+        val literalValue = ReadAction.compute<String?, Throwable> { expression?.tryEvaluateLiteralAsText() }
         if (literalValue != null || expression == null) {
           cachedValue = literalValue
           isCachedValueValid = true
@@ -102,7 +102,7 @@ internal open class PsiCallParameterPropertyItem(
             triggerAsyncValueUpdate()
           } else {
             // If called from a background thread, we can perform the analysis synchronously
-            cachedValue = analyze(expression) { expression.tryEvaluateConstantAsText(this) }
+            cachedValue = ReadAction.compute<String?, Throwable> { analyze(expression) { expression.tryEvaluateConstantAsText(this) } }
             isCachedValueValid = true
           }
         }

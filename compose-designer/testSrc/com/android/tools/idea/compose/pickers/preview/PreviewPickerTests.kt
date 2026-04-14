@@ -125,7 +125,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun `updating model updates the psi correctly`() = runBlocking {
     Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
@@ -161,7 +160,6 @@ class PreviewPickerTests {
     assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotation)
   }
 
-  @RunsInEdt
   @Test
   fun `supported parameters displayed correctly`() = runBlocking {
     @Language("kotlin")
@@ -189,7 +187,6 @@ class PreviewPickerTests {
     assertEquals("0x0000FF00", runReadAction { model.properties["", "backgroundColor"].value })
   }
 
-  @RunsInEdt
   @Test
   fun `preview default values`() = runBlocking {
     @Language("kotlin")
@@ -235,7 +232,6 @@ class PreviewPickerTests {
     assertEquals(null, model.properties["", "backgroundColor"].defaultValue)
   }
 
-  @RunsInEdt
   @Test
   fun fontScaleEditing() = runBlocking {
     @Language("kotlin")
@@ -272,7 +268,6 @@ class PreviewPickerTests {
     checkFontScaleChange("8.f", "8.0")
   }
 
-  @RunsInEdt
   @Test
   fun fontScaleValidation() = runBlocking {
     @Language("kotlin")
@@ -302,7 +297,6 @@ class PreviewPickerTests {
     assertValidationError("NaN")
   }
 
-  @RunsInEdt
   @Test
   fun testUiModeImports() {
     runBlocking<Unit> {
@@ -361,7 +355,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun testWallpaperImports() {
     runBlocking<Unit> {
@@ -399,7 +392,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun showBackgroundEditing() = runBlocking {
     @Language("kotlin")
@@ -542,7 +534,6 @@ class PreviewPickerTests {
     assertEquals(PreviewPickerValue.UI_MODE_NOT_NIGHT, testTracker.valuesRegistered[1])
   }
 
-  @RunsInEdt
   @Test
   fun testDeviceTrackedPerModification() {
     // We need the sdk to be able to figure out devices set by ID, including the initial/default
