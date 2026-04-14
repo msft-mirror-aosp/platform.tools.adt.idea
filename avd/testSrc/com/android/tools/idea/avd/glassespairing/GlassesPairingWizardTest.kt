@@ -21,6 +21,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.android.adblib.ConnectedDevice
+import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.sdklib.AndroidTargetHash
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.testTimeSource
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -74,6 +76,11 @@ import org.mockito.kotlin.mock
 class GlassesPairingWizardTest {
   @get:Rule val temporaryDirectoryRule = TemporaryDirectoryRule()
   @get:Rule val composeTestRule = createStudioComposeTestRule()
+
+  @After
+  fun tearDown() {
+    GlassesPairingWizard.resetForTesting()
+  }
 
   @Test
   fun testGlassesPairingWizard() {
@@ -414,14 +421,13 @@ class GlassesPairingWizardTest {
     val job1 = launch { GlassesPairingWizard.showCore(null, null, devicesFlow, glasses) { _, _, _, _, _, _ -> controllers.removeAt(0) } }
 
     // Wait for first wizard to be active
-    delay(100)
+    yieldUntil { controller1.showCalled }
     assertThat(controller1.showCalled).isTrue()
 
     // Try to show again for same glasses
     val result2 = GlassesPairingWizard.showCore(null, null, devicesFlow, glasses) { _, _, _, _, _, _ -> controllers.removeAt(0) }
 
     assertThat(result2).isNull()
-    assertThat(controller1.focusedCount).isEqualTo(1)
     assertThat(controller2.showCalled).isFalse()
 
     // Close first wizard
@@ -430,7 +436,7 @@ class GlassesPairingWizardTest {
   }
 
   @Test
-  fun testShowAllowsMultipleDevices() = runTest {
+  fun testShowRejectsMultipleDevices() = runTest {
     val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
     val devicesFlow = MutableStateFlow(emptyList<DeviceHandle>())
     val glasses1 =
@@ -468,19 +474,52 @@ class GlassesPairingWizardTest {
 
     val job1 = launch { GlassesPairingWizard.showCore(null, null, devicesFlow, glasses1) { _, _, _, _, _, _ -> controllers.removeAt(0) } }
 
-    delay(50)
+    yieldUntil { controller1.showCalled }
     assertThat(controller1.showCalled).isTrue()
 
-    val job2 = launch { GlassesPairingWizard.showCore(null, null, devicesFlow, glasses2) { _, _, _, _, _, _ -> controllers.removeAt(0) } }
+    // Second launch should return null immediately
+    val result2 = GlassesPairingWizard.showCore(null, null, devicesFlow, glasses2) { _, _, _, _, _, _ -> controllers.removeAt(0) }
 
-    delay(50)
-    // Both should be running
-    assertThat(controller2.showCalled).isTrue()
+    assertThat(result2).isNull()
+    assertThat(controller2.showCalled).isFalse()
 
     controller1.close(false)
-    controller2.close(false)
     job1.join()
-    job2.join()
+  }
+
+  @Test
+  fun testIsAnyWizardOpen() = runTest {
+    val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
+    val devicesFlow = MutableStateFlow(emptyList<DeviceHandle>())
+    val glasses =
+      FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+        "g1",
+        coroutineScope,
+        DeviceState.Disconnected(
+          DeviceProperties.buildForTest {
+            icon = EmptyIcon.DEFAULT
+            manufacturer = "Google"
+            model = "AI Glasses"
+            deviceType = DeviceType.AI_GLASSES
+            androidVersion = AndroidVersion(36, 1)
+          }
+        ),
+      )
+
+    val controller = TestWizardController()
+    val controllers = mutableListOf(controller)
+
+    assertThat(GlassesPairingWizard.isWizardOpen.value).isFalse()
+
+    val job = launch { GlassesPairingWizard.showCore(null, null, devicesFlow, glasses) { _, _, _, _, _, _ -> controllers.removeAt(0) } }
+
+    yieldUntil { GlassesPairingWizard.isWizardOpen.value }
+    assertThat(GlassesPairingWizard.isWizardOpen.value).isTrue()
+
+    controller.close(false)
+    job.join()
+
+    assertThat(GlassesPairingWizard.isWizardOpen.value).isFalse()
   }
 
   @Test
@@ -582,16 +621,11 @@ class GlassesPairingWizardTest {
 
 private class TestWizardController : WizardController {
   val completion = CompletableDeferred<Boolean>()
-  var focusedCount = 0
   var showCalled = false
 
   override suspend fun show(): Boolean {
     showCalled = true
     return completion.await()
-  }
-
-  override fun focus() {
-    focusedCount++
   }
 
   fun close(result: Boolean) {
