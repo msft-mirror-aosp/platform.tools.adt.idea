@@ -26,7 +26,7 @@ import com.intellij.openapi.project.Project
  * in Android Studio.
  */
 class GeminiPerfettoAiService(private val project: Project) : PerfettoAiService {
-  override fun generateQuery(prompt: String) {
+  override fun generateQuery(prompt: String, traceFilePath: String) {
     val systemInstruction =
       """
       You are a specialist in generating Perfetto SQL queries.
@@ -35,7 +35,7 @@ class GeminiPerfettoAiService(private val project: Project) : PerfettoAiService 
       """
         .trimIndent()
 
-    sendPromptWithSkill("Generate Perfetto SQL Query: $prompt", systemInstruction)
+    sendPromptWithSkill("Generate Perfetto SQL Query: $prompt. The trace file is available at: $traceFilePath", systemInstruction)
   }
 
   /**
