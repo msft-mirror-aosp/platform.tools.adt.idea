@@ -49,6 +49,7 @@ import com.google.wireless.android.play.playlog.proto.ClientAnalytics
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.GlassesPairingEvent
 import com.intellij.openapi.project.Project
+import com.intellij.testFramework.ApplicationRule
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -76,6 +77,7 @@ import org.mockito.kotlin.mock
 class GlassesPairingWizardTest {
   @get:Rule val temporaryDirectoryRule = TemporaryDirectoryRule()
   @get:Rule val composeTestRule = createStudioComposeTestRule()
+  @get:Rule val applicationRule = ApplicationRule()
 
   @After
   fun tearDown() {
@@ -598,7 +600,7 @@ class GlassesPairingWizardTest {
 
       composeTestRule.setContent { wizard.Content() }
 
-      composeTestRule.onNodeWithText("Create new device...").performClick()
+      composeTestRule.onNodeWithText("Create a new compatible device").performClick()
 
       // The onClick handler is running in 'coroutineScope' (which is 'this').
       // Since it's StandardTestDispatcher, it needs help to progress.
