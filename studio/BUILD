@@ -1,9 +1,11 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@rules_java//java:defs.bzl", "java_binary")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("//tools/adt/idea/studio:searchable-options/android-studio/content.bzl", "SEARCHABLE_OPTIONS")
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "android_studio_configuration", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
+load("//tools/vendor/google/alt-lang:exports.bzl", "STUDIO_NDK_LSP_PLUGINS", "STUDIO_NDK_SEARCHABLE_OPTIONS_PLUGINS")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_CONFIG", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
 package(
@@ -318,7 +320,6 @@ studio_plugin(
             "//tools/vendor/google/android-keys:android-keys",
             "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
             "//tools/vendor/google/marketing:marketing",
-            "//tools/adt/idea/glasses-pairing:glasses-pairing",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -498,11 +499,11 @@ studio_plugin(
 studio_plugin(
     name = "com.android.tools.apk",
     directory = "android-apk",
+    libs = ["//tools/vendor/google/android-apk:org.eclipse.cdt"],
     modules = {"android-apk.jar": ["//tools/vendor/google/android-apk:android-apk"]},
     visibility = ["//visibility:public"],
     deps = [
         ":com.android.tools.idea.smali",
-        ":com.android.tools.ndk",
         ":org.jetbrains.android",
         "@intellij//:com.intellij.java",
     ],
@@ -511,7 +512,6 @@ studio_plugin(
 studio_plugin(
     name = "com.android.tools.ndk",
     directory = "android-ndk",
-    libs = ["//tools/vendor/google/android-ndk/lib:org.eclipse.cdt"],
     modules = {"android-ndk.jar": ["//tools/vendor/google/android-ndk:android-ndk"]},
     resources = {
         "resources/lldb": [
@@ -551,7 +551,6 @@ studio_plugin(
             "//tools/adt/idea/compose-designer:intellij.android.compose-designer",
             "//tools/adt/idea/design-plugin:intellij.android.design-plugin",
             "//tools/adt/idea/design-plugin/descriptor:intellij.android.design-plugin.descriptor",
-            "//tools/adt/idea/designer/customview:intellij.android.designer.customview",
             "//tools/adt/idea/designer:intellij.android.designer",
             "//tools/adt/idea/designer/gradle:intellij.android.designer.gradle",
             "//tools/adt/idea/glance-designer:intellij.android.glance-designer",
@@ -829,7 +828,9 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/v2/agent-sdk:aiplugin.v2.agent-sdk",
             "//tools/vendor/google/ml/aiplugin/v2/agent-sdk-api:aiplugin.v2.agent-sdk-api",
             "//tools/vendor/google/ml/aiplugin/v2/agent-ui:aiplugin.v2.agent-ui",
+            "//tools/vendor/google/ml/aiplugin/v2/agent-ui-container:aiplugin.v2.agent-ui-container",
             "//tools/vendor/google/ml/aiplugin/v2/agent-ui-api:aiplugin.v2.agent-ui-api",
+            "//tools/vendor/google/ml:aiplugin.v2.agent-uistate",
             "//tools/vendor/google/ml/aiplugin/v2/datamodel:aiplugin.v2.datamodel",
             "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
             "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
@@ -944,10 +945,9 @@ android_studio_configuration(
     version_type = STUDIO_VERSION,
 )
 
-STUDIO_BASE_PLUGINS = [
+STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:org.jetbrains.android",
     "//tools/adt/idea/studio:com.android.tools.apk",
-    "//tools/adt/idea/studio:com.android.tools.ndk",
     "//tools/adt/idea/studio:com.android.tools.design",
     "//tools/adt/idea/studio:androidx.compose.plugins.idea",
     "//tools/adt/idea/studio:com.google.services.git4insights",
@@ -963,6 +963,12 @@ STUDIO_BASE_PLUGINS = [
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
 ]
 
+STUDIO_BASE_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_LSP_PLUGINS
+
+# Searchable options can't be controlled by --//tools/vendor/google/alt-lang/lsp4ij/as-plugin:enabled flag
+# because select() objects cannot be iterated over in Starlark macros during the loading phase.
+STUDIO_SEARCHABLE_OPTIONS_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_SEARCHABLE_OPTIONS_PLUGINS
+
 android_studio(
     name = "android-studio",
     codesign_entitlements = "codesign/entitlements.xml",
@@ -976,6 +982,33 @@ android_studio(
     legacy_default_configuration = STUDIO_CONFIG,
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS,
+    searchable_options_metadata = SEARCHABLE_OPTIONS,
+    searchable_options_plugin_lst = STUDIO_SEARCHABLE_OPTIONS_PLUGINS,
+    selector = "AndroidStudio",
+    update_message_template = ":update_message.html",
+    version_code_name = STUDIO_CODENAME,
+    version_micro_patch = STUDIO_MICRO_PATCH,
+    version_release_number = STUDIO_RELEASE_NUMBER,
+    visibility = ["//visibility:public"],
+)
+
+android_studio(
+    name = "android-studio-with-optional-plugins",
+    codesign_entitlements = "codesign/entitlements.xml",
+    configurations = [
+        ":canary",
+        ":nightly",
+        ":stable",
+    ],
+    generate_package_metadata = False,
+    jre = "//prebuilts/studio/jdk:jdk-bundle",
+    legacy_default_configuration = STUDIO_CONFIG,
+    platform = "@intellij//:intellij-sdk",
+    plugins = STUDIO_BASE_PLUGINS + [
+        "//tools/vendor/google/optional-plugins:plugins",
+    ],
+    searchable_options_metadata = SEARCHABLE_OPTIONS,
+    searchable_options_plugin_lst = STUDIO_SEARCHABLE_OPTIONS_PLUGINS,
     selector = "AndroidStudio",
     update_message_template = ":update_message.html",
     version_code_name = STUDIO_CODENAME,
@@ -999,6 +1032,10 @@ android_studio(
     plugins = STUDIO_BASE_PLUGINS + [
         "//tools/vendor/google/automation:com.android.tools.idea.automation",
     ],
+    searchable_options_deps = {
+        "nightly": [":android-studio.nightly.searchable-options"],
+        "canary": [":android-studio.canary.searchable-options"],
+    },
     selector = "AndroidStudio",
     update_message_template = "//tools/adt/idea/studio:update_message.html",
     version_code_name = STUDIO_CODENAME,
@@ -1264,6 +1301,7 @@ iml_module(
         "//tools/adt/idea/gradle-dsl-plugin:intellij.android.gradle.dsl.plugin",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/vendor/google/optional-plugins",
     ],
 )
 
@@ -1449,6 +1487,7 @@ iml_module(
         "@intellij//:intellij.cidr.util.serializer",
         "@intellij//:intellij.cidr.util.ui",
         "@intellij//:intellij.cidr.workspaceModel",
+        "@intellij//:intellij.cmake.psi",
         "@intellij//:intellij.compose.ide.plugin.gradleTooling.rt",
         "@intellij//:intellij.debugger.streams.backend",
         "@intellij//:intellij.debugger.streams.core",
@@ -1661,6 +1700,7 @@ iml_module(
         "@intellij//:intellij.cidr.util.serializer",
         "@intellij//:intellij.cidr.util.ui",
         "@intellij//:intellij.cidr.workspaceModel",
+        "@intellij//:intellij.cmake.psi",
         "@intellij//:intellij.compose.ide.plugin.gradleTooling.rt",
         "@intellij//:intellij.debugger.streams.backend",
         "@intellij//:intellij.debugger.streams.core",
@@ -1828,4 +1868,16 @@ iml_module(
         "@intellij//:intellij.xml.langInjection.xpath",
         "@intellij//:intellij.yaml.backend",
     ],
+)
+
+exports_files([
+    "searchable-options/update_searchable_options.py",
+    "searchable-options/searchable_options_test.py",
+])
+
+# This target finds all the update_searchable_options target of all the
+# android_studio definitions in the workspace and run them sequentially.
+sh_binary(
+    name = "update_searchable_options",
+    srcs = ["//tools/adt/idea/studio:searchable-options/update_searchable_options.sh"],
 )

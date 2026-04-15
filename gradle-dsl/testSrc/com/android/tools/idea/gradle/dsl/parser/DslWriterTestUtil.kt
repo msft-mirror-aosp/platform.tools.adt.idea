@@ -125,10 +125,7 @@ fun compareWithExpectedPsi(project: Project, dslFile: GradleDslFile, expected: S
         fileExpected,
         project,
         ":",
-        _root_ide_package_.com.android.tools.idea.gradle.dsl.model.BuildModelContext.create(
-          project,
-          _root_ide_package_.org.mockito.Mockito.mock(),
-        ),
+        com.android.tools.idea.gradle.dsl.model.BuildModelContext.create(project, org.mockito.Mockito.mock()),
       ) {}
   dslFileExpected.parse()
   val expectedOutput = DebugUtil.psiToString(dslFileExpected.psiElement!!, false, false)

@@ -234,7 +234,13 @@ class ComposeModifierCompletionContributor : CompletionContributor() {
     val visibilityChecker = createUseSiteVisibilityChecker(fileSymbol, receiverExpression, originalPosition)
 
     return KtSymbolFromIndexProvider(file)
-      .getExtensionCallableSymbolsByNameFilter({ name -> prefixMatcher.prefixMatches(name.asString()) }, listOf(receiverType))
+      .getExtensionCallableSymbolsByNameFilter(
+        { name ->
+          val nameAsString = name.asString()
+          prefixMatcher.prefixMatches(nameAsString) || prefixMatcher.prefixMatches("Modifier.$nameAsString")
+        },
+        listOf(receiverType),
+      )
       .filter(visibilityChecker::isVisible)
       .toList()
   }

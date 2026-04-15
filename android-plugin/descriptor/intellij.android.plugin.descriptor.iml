@@ -10,5 +10,7 @@
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.properties" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.json" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-Git4Idea" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-org.jetbrains.plugins.gradle" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-org.intellij.groovy" level="project" />
   </component>
 </module>

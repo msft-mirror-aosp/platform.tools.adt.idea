@@ -29,5 +29,6 @@
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.plugin" />
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
+    <orderEntry type="module" module-name="optional-plugins" />
   </component>
 </module>

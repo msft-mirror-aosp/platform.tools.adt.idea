@@ -15,6 +15,7 @@
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.common.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adb" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.tools" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.ddmlib-studio" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
@@ -31,5 +32,6 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="android.sdktools.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adb.testUtil" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.ddmlibcompatibility" scope="TEST" />
   </component>
 </module>

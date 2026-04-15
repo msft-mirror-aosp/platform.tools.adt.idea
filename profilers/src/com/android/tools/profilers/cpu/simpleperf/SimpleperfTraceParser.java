@@ -204,7 +204,7 @@ public class SimpleperfTraceParser implements TraceParser {
       ByteBuffer buffer = byteBufferFromFile(trace, ByteOrder.LITTLE_ENDIAN);
       verifyMagicNumber(buffer);
     } catch (IllegalStateException | IOException e) {
-      getLog().warn("There was an error trying to read the trace file header.", e);
+      getLog().info("There was an error trying to read the trace file header.", e);
       // If magic number verification fails, then return false
        return false;
     }

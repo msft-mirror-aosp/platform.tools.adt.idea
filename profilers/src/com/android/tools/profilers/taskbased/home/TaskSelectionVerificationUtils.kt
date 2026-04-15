@@ -74,7 +74,7 @@ object TaskSelectionVerificationUtils {
     val isProcessPreferred = isSelectedProcessPreferred(selectedProcess, profilers)
     val isTaskSupported =
       if (selectedTaskType == ProfilerTaskType.LEAKCANARY) {
-        profilers.ideServices.featureConfig.isLeakCanaryMilestone2Enabled
+        true
       } else {
         profilers.ideServices.isTaskSupportedOnStartup(selectedTaskType)
       }
@@ -167,7 +167,7 @@ object TaskSelectionVerificationUtils {
 
     val isTaskSupported =
       if (selectedTaskType == ProfilerTaskType.LEAKCANARY) {
-        profilers.ideServices.featureConfig.isLeakCanaryMilestone2Enabled
+        true
       } else {
         profilers.ideServices.isTaskSupportedOnStartup(selectedTaskType)
       }
@@ -293,6 +293,7 @@ data class StartTaskSelectionError(val startTaskSelectionErrorCode: StartTaskSel
     LEAKCANARY_NOT_FOUND,
     LEAKCANARY_CHECK_IN_PROGRESS,
     LEAKCANARY_CHECK_TIMEOUT,
+    TASK_HAS_DEBUGGER_ATTACHED,
     // Generalized error to cover the rest of task start errors.
     GENERAL_ERROR,
   }
