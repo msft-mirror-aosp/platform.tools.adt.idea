@@ -19,6 +19,7 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.K1Deprecation
 import org.jetbrains.kotlin.idea.highlighter.AbstractKotlinHighlightVisitor.Companion.suppressHighlight
 import org.jetbrains.kotlin.idea.highlighter.AbstractKotlinHighlightVisitor.Companion.unsuppressHighlight
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
@@ -47,6 +48,7 @@ class KtsCatalogAnnotator : Annotator {
 
   companion object {
 
+    @OptIn(K1Deprecation::class)
     private fun KtDotQualifiedExpression.markChildrenAsSuppressHighlight() {
       this.children.forEach {
         when (it) {
@@ -57,6 +59,7 @@ class KtsCatalogAnnotator : Annotator {
       }
     }
 
+    @OptIn(K1Deprecation::class)
     private fun KtDotQualifiedExpression.markChildrenAsUnsuppressHighlight() {
       this.children.forEach {
         when (it) {

@@ -23,5 +23,14 @@
     <orderEntry type="module" module-name="intellij.android.android-material" />
     <orderEntry type="module" module-name="intellij.android.completion" />
     <orderEntry type="library" name="studio-plugin-com.intellij.modules.json" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl.refactorings" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.compose.ide.plugin.shared" level="project" />
+    <orderEntry type="library" name="studio-plugin-com.intellij.compose" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.compose.ide.plugin.gradleTooling.rt" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
   </component>
 </module>

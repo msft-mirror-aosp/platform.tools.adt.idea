@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.cli.common.arguments.toLanguageVersionSettings
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.projectStructure.languageVersionSettings
@@ -52,7 +53,7 @@ fun getCompilerConfiguration(module: Module, file: KtFile): CompilerConfiguratio
     error("$file must belong to $module")
   }
   val compilerConfiguration =
-    CompilerConfiguration().apply {
+    CompilerConfiguration.create().apply {
       put(CommonConfigurationKeys.MODULE_NAME, module.name)
       KotlinFacet.get(module)?.let { kotlinFacet ->
         val moduleName =

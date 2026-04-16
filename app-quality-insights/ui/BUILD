@@ -29,6 +29,7 @@ iml_module(
         "@intellij//:intellij.libraries.grpc",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "@intellij//:intellij.java.execution",
     ],
 )
 
@@ -74,5 +75,6 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:intellij.libraries.grpc",
+        "@intellij//:intellij.java.execution",
     ],
 )

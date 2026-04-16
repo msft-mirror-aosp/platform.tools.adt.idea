@@ -67,6 +67,7 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
       val hprofFileSizeBytes = hprofFile.length()
       analyzeAndHandleResult(hprofFile, hprofFileSizeBytes, downloadDurationMs)
       sendHeapDumpCompleteCommand(heapDumpEndTime)
+      logger.info("Host analysis process completed.")
     } catch (e: OutOfMemoryError) {
       // Android Studio OOMs before Shark runs (e.g., during download or byte allocation)
       logger.error("Host analysis process failed due to OOM.", e)
@@ -97,8 +98,19 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
         .setType(Commands.Command.CommandType.HEAP_DUMP)
         .setShouldEndSession(false)
         .build()
-    val response = profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(dumpCommand).build())
-    return response.commandId
+    try {
+      val response = profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(dumpCommand).build())
+      logger.info(
+        "Sent HEAP_DUMP command to transport with ID: ${response.commandId}. streamId: ${dumpCommand.streamId}, pid: ${dumpCommand.pid}, sessionId: ${dumpCommand.sessionId}"
+      )
+      return response.commandId
+    } catch (e: Exception) {
+      logger.warn(
+        "Failed to send HEAP_DUMP command to transport. streamId: ${dumpCommand.streamId}, pid: ${dumpCommand.pid}, sessionId: ${dumpCommand.sessionId}",
+        e,
+      )
+      throw e
+    }
   }
 
   /** Waits for the heap dump status event and returns the HeapDumpInfo. */
@@ -113,6 +125,7 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
         processId = { profilers.session.pid },
         callback = { event ->
           val status = event.memoryHeapdumpStatus.status
+          logger.info("Received MEMORY_HEAP_DUMP_STATUS event: ${status.status}")
           if (status.status == Memory.HeapDumpStatus.Status.SUCCESS) {
             logger.info("Heap dump process started on device for id ${status.startTime}. Waiting for completion signal.")
             future.complete(Memory.HeapDumpInfo.newBuilder().setStartTime(status.startTime).build())
@@ -147,6 +160,8 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
           if (event.memoryHeapdump.info.startTime != heapDumpInfo.startTime)
             return@TransportEventListener false // Belongs to a different heap dump.
 
+          logger.info("Received MEMORY_HEAP_DUMP event. Success: ${event.memoryHeapdump.info.success}")
+
           if (event.memoryHeapdump.info.success) {
             val endTime = event.memoryHeapdump.info.endTime
             logger.info("Detected heap dump completion event for id ${heapDumpInfo.startTime} with end time $endTime (ns).")
@@ -171,6 +186,7 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
     val bytesRequest =
       Transport.BytesRequest.newBuilder().setStreamId(profilers.session.streamId).setId(heapDumpInfo.startTime.toString()).build()
     val fileResponse = profilers.client.transportClient.getFile(bytesRequest)
+    logger.info("Downloaded heap dump file from transport to: ${fileResponse.filePath}")
     val hprofFile = if (fileResponse.filePath.isEmpty()) null else File(fileResponse.filePath)
     if (hprofFile == null || !hprofFile.exists()) {
       throw LeakCanaryProcessingException(
@@ -192,6 +208,9 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
     if (analysisResult is HeapAnalysisSuccess) {
       val analysis = LeakCanaryParser().parseLogcatMessage(analysisResult.toString())
       if (analysis != null) {
+        logger.info(
+          "Shark analysis finished successfully. File Size: $hprofFileSizeBytes, Download time: $downloadDurationMs ms, Analysis time: $analysisDurationMs ms"
+        )
         sendAnalysisResultCommand(analysis)
         profilers.ideServices.mainExecutor.execute {
           onHostAnalysisFinished(analysis, hprofFileSizeBytes, downloadDurationMs, analysisDurationMs)
@@ -234,8 +253,17 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
         .setSendLeakcanaryAnalysis(analysisData)
         .build()
 
-    profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(command).build())
-    logger.info("Sent SEND_LEAKCANARY_ANALYSIS command to transport.")
+    try {
+      profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(command).build())
+      logger.info(
+        "Sent SEND_LEAKCANARY_ANALYSIS command to transport. streamId: ${command.streamId}, pid: ${command.pid}, sessionId: ${command.sessionId}"
+      )
+    } catch (e: Exception) {
+      logger.warn(
+        "Failed to send SEND_LEAKCANARY_ANALYSIS command to transport. streamId: ${command.streamId}, pid: ${command.pid}, sessionId: ${command.sessionId}",
+        e,
+      )
+    }
   }
 
   /** Sends a command to perfa to indicate that the host-side heap dump download and analysis is complete. */
@@ -250,6 +278,16 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
         .setType(Commands.Command.CommandType.SIGNAL_HEAP_DUMP_COMPLETE)
         .setSignalHeapDumpComplete(data)
         .build()
-    profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(command).build())
+    try {
+      profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(command).build())
+      logger.info(
+        "Sent SIGNAL_HEAP_DUMP_COMPLETE command to transport. streamId: ${command.streamId}, pid: ${command.pid}, sessionId: ${command.sessionId}"
+      )
+    } catch (e: Exception) {
+      logger.warn(
+        "Failed to send SIGNAL_HEAP_DUMP_COMPLETE command to transport. streamId: ${command.streamId}, pid: ${command.pid}, sessionId: ${command.sessionId}",
+        e,
+      )
+    }
   }
 }

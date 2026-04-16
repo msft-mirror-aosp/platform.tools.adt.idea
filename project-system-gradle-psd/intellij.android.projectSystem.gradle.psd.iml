@@ -35,5 +35,8 @@
     <orderEntry type="module" module-name="android.sdktools.lint-api" />
     <orderEntry type="module" module-name="android.sdktools.lint-checks" />
     <orderEntry type="module" module-name="analytics" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.compiler.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.compiler" level="project" />
   </component>
 </module>

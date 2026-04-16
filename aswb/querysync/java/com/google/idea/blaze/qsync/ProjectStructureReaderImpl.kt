@@ -43,8 +43,7 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
       return ProjectStructureData.EMPTY
     }
 
-    val sourcesMap: ConcurrentHashMap<Path, HashMap<QuerySyncLanguage?, MutableList<Path>>> =
-      ConcurrentHashMap()
+    val sourcesMap: ConcurrentHashMap<Path, HashMap<QuerySyncLanguage?, MutableList<Path>>> = ConcurrentHashMap()
     val languages: MutableSet<QuerySyncLanguage> = ConcurrentHashMap.newKeySet()
 
     val fileProcessor = FileProcessor(workspaceRoot, fileExtensions)
@@ -91,8 +90,8 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
       }
     }
 
-    val directoryProcessor = DirectoryProcessor { currentDir ->
-      val contents = directoryProcessorImpl.processDirectory(currentDir)
+    val directoryProcessor = DirectoryProcessor { rootDir, currentDir ->
+      val contents = directoryProcessorImpl.processDirectory(rootDir, currentDir)
       if (contents != null) {
         for (file in contents.files) {
           val result = fileProcessor.processRegularFile(file, currentDir)
@@ -106,19 +105,12 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
 
     val finalSourcesMap: Map<Path, SourceSet> =
       sourcesMap.mapValues { (_, langMap) ->
-        val javaSources =
-          langMap[QuerySyncLanguage.JVM]?.sorted() ?: emptyList()
-        val nonJavaSources =
-          langMap
-            .filterKeys { it != QuerySyncLanguage.JVM }
-            .values
-            .flatten()
-            .sorted()
+        val javaSources = langMap[QuerySyncLanguage.JVM]?.sorted() ?: emptyList()
+        val nonJavaSources = langMap.filterKeys { it != QuerySyncLanguage.JVM }.values.flatten().sorted()
         SourceSet(javaSourceFiles = javaSources, nonJavaSourceFiles = nonJavaSources)
       }
 
-    val result =
-      ProjectStructureData(packageSourceSets = finalSourcesMap, activeLanguages = languages)
+    val result = ProjectStructureData(packageSourceSets = finalSourcesMap, activeLanguages = languages)
 
     val numJavaFiles = finalSourcesMap.values.sumOf { it.javaSourceFiles.size }
     val numNonJavaFiles = finalSourcesMap.values.sumOf { it.nonJavaSourceFiles.size }

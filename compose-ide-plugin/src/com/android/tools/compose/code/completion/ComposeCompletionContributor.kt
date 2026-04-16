@@ -40,6 +40,7 @@ import java.io.BufferedReader
 import javax.swing.Icon
 import javax.swing.ImageIcon
 import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -379,14 +380,16 @@ private fun InsertionContext.getNextElementAfterOffset(): PsiElement? =
 /** A class used to keep the result of analysis API for information about parameters. */
 private data class FunctionInfo(val endsInRequiredLambda: Boolean, val endsInVarargLambda: Boolean, val hasParametersBeforeLambda: Boolean)
 
+@OptIn(KaExperimentalApi::class)
 private fun KtNamedFunction.getFunctionInfoForCompletion(): FunctionInfo =
   analyze(this) {
     val allParameters = symbol.valueParameters
 
     val lastParameter = allParameters.lastOrNull()
-    val endsInRequiredLambda = lastParameter?.let { !it.isVararg && it.returnType is KaFunctionType && !it.hasDefaultValue } ?: false
+    val endsInRequiredLambda =
+      lastParameter?.let { !it.isVararg && it.returnType is KaFunctionType && !it.hasDeclaredDefaultValue } ?: false
 
-    val endsInVarargLambda = lastParameter?.let { it.isVararg && it.returnType is KaFunctionType && !it.hasDefaultValue } ?: false
+    val endsInVarargLambda = lastParameter?.let { it.isVararg && it.returnType is KaFunctionType && !it.hasDeclaredDefaultValue } ?: false
 
     val hasParametersBeforeLambda = endsInRequiredLambda && allParameters.size > 1
 

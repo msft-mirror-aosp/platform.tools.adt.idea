@@ -51,6 +51,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.platform.modification.publishModuleOutOfBlockModificationEvent
 import org.jetbrains.kotlin.idea.util.toKaModulesForModificationEvents
 
@@ -135,6 +136,7 @@ class MergedManifestModificationListener(project: Project) :
     }
   }
 
+  @OptIn(KaPlatformInterface::class)
   private fun flushCaches(facet: AndroidFacet) {
     val ktModules =
       facet.module

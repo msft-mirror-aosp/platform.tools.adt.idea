@@ -72,8 +72,8 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
   val checkState = _checkState.asStateFlow()
 
   // Total timeout for the entire check sequence: Agent Attach + Broadcast Round Trip.
-  // Derived from: Agent Attach (7s) + Broadcast (2s) + Buffer (2s) = 11s.
-  private val LEAKCANARY_CHECK_TIMEOUT_MS = 11000L
+  // Derived from: Agent Attach (7s) + Broadcast (3s) + Buffer (4s) = 14s.
+  private val LEAKCANARY_CHECK_TIMEOUT_MS = 14000L
   // Timeout for the JVMTI agent to attach. Cold attachment can take 3-5s on slower devices.
   private val AGENT_ATTACH_TIMEOUT_MS = 7000L
 
@@ -137,6 +137,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
             if (isCompleted.compareAndSet(false, true)) {
               timer.cancel()
               val threshold = event.leakcanaryThreshold.threshold
+              logger.info("Stored LeakCanary threshold $threshold in preferences.")
               profilers.ideServices.mainExecutor.execute {
                 profilers.ideServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", threshold)
               }
@@ -161,9 +162,15 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
       try {
         val response =
           profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(fetchThresholdCommand).build())
+        logger.info(
+          "Sent GET_LEAKCANARY_THRESHOLD command to transport. streamId: ${fetchThresholdCommand.streamId}, pid: ${fetchThresholdCommand.pid}, sessionId: ${fetchThresholdCommand.sessionId}"
+        )
         commandIdFuture.complete(response.commandId)
       } catch (e: Exception) {
-        logger.warn(e, "Failed to fetch retained visible threshold")
+        logger.warn(
+          e,
+          "Failed to send GET_LEAKCANARY_THRESHOLD command. streamId: ${fetchThresholdCommand.streamId}, pid: ${fetchThresholdCommand.pid}, sessionId: ${fetchThresholdCommand.sessionId}",
+        )
         if (isCompleted.compareAndSet(false, true)) {
           timer.cancel()
           profilers.transportPoller.unregisterListener(listener)
@@ -193,6 +200,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
   }
 
   override fun enter(args: TaskArgs): Boolean {
+    logger.info("Entering LeakCanary task.")
     if (args is LeakCanaryTaskArgs) {
       pendingArgs = args
     }
@@ -230,6 +238,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
   }
 
   override fun startTask(args: TaskArgs) {
+    logger.info("Starting LeakCanary task.")
     if (stage == null) {
       handleError("Cannot start the task as the InterimStage was null")
       return
@@ -248,10 +257,12 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
   }
 
   override fun stopCapture(stage: LeakCanaryModel) {
+    logger.info("Stopping active LeakCanary capture.")
     stage.stopListening()
   }
 
   override fun loadTask(args: TaskArgs): Boolean {
+    logger.info("Loading LeakCanary task from historical artifact.")
     if (args !is LeakCanaryTaskArgs) {
       handleError("The task arguments (TaskArgs) supplier are not of the expected type (LeakCanaryTaskArgs)")
       return false
@@ -277,6 +288,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
     val configs = sessionsManager.studioProfilers.ideServices.getTaskCpuProfilerConfigs(featureLevel)
     val leakCanaryConfig = configs.filterIsInstance<LeakCanaryConfiguration>().firstOrNull()
     val mode = leakCanaryConfig?.mode ?: StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE
+    logger.info("Creating start task args in mode: $mode")
     return LeakCanaryTaskArgs(isStartupTask, null, mode)
   }
 
@@ -298,6 +310,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
    * loading indicator.
    */
   private fun updateStateToChecking(processId: String) {
+    logger.info("LeakCanary check state: CHECKING for $processId")
     lastCheckedProcessId.set(processId)
     _checkState.value = LeakCanaryCheckState.CHECKING
     isCheckInProgress.set(true)
@@ -309,6 +322,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
     profilers.ideServices.mainExecutor.execute {
       // The isCheckInProgress guard prevents a delayed timeout from overwriting a successful check.
       if (isProcessLastChecked(processId) && isCheckInProgress.get()) {
+        logger.warn("LeakCanary check state: TIMEOUT for $processId")
         isPresent.set(false)
         isCheckInProgress.set(false)
         _checkState.value = LeakCanaryCheckState.TIMEOUT
@@ -358,11 +372,13 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
    */
   override fun checkSupportForDeviceAndProcess(device: Common.Device, process: Common.Process): StartTaskSelectionError? {
     if (profilers.ideServices.isDebuggerAttached(device.serial, process.pid)) {
+      logger.info("LeakCanary unsupported: Debugger is attached to ${process.pid}")
       updateStateToIdle()
       return StartTaskSelectionError(StartTaskSelectionErrorCode.TASK_HAS_DEBUGGER_ATTACHED)
     }
     val isFeatureSupported = SupportLevel.of(process.exposureLevel).isFeatureSupported(SupportLevel.Feature.MEMORY_LEAK_WITH_LEAKCANARY)
     if (!isFeatureSupported) {
+      logger.info("LeakCanary unsupported: Process ${process.pid} is not profileable")
       updateStateToIdle()
       return StartTaskSelectionError(StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS)
     }
@@ -499,7 +515,11 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
             // A threshold greater than 0 confirms the Studio-LeakCanary library is present and responding.
             val found = event.leakcanaryThreshold.threshold > 0
             if (found) {
-              profilers.ideServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", event.leakcanaryThreshold.threshold)
+              val threshold = event.leakcanaryThreshold.threshold
+              logger.info("Stored LeakCanary threshold $threshold in preferences.")
+              profilers.ideServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", threshold)
+            } else {
+              logger.info("LeakCanary library not detected in app for $processId")
             }
             updateStateToCompleted(processId, found, tracker)
             true // Match found, unregister listener.
@@ -515,9 +535,14 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
     try {
       // Execute the command via gRPC. This network call blocks the background thread until it finishes.
       val response = profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(command).build())
+      logger.info(
+        "Sent GET_LEAKCANARY_THRESHOLD command to transport for $processId. streamId: ${command.streamId}, pid: ${command.pid}, sessionId: ${command.sessionId}"
+      )
       commandIdFuture.complete(response.commandId)
     } catch (e: Exception) {
-      logger.warn("PROFILER: Failed to send GET_LEAKCANARY_THRESHOLD command for $processId\n${e.message}")
+      logger.warn(
+        "PROFILER: Failed to send GET_LEAKCANARY_THRESHOLD command for $processId. streamId: ${command.streamId}, pid: ${command.pid}, sessionId: ${command.sessionId}\n${e.message}"
+      )
       // If the gRPC network call fails, we must manually clean up the listener to prevent a memory leak.
       profilers.transportPoller.unregisterListener(listener)
       updateStateToTimeout(processId)
@@ -543,6 +568,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
         processId = { process.pid },
         callback = { event ->
           if (event.agentData.status == Common.AgentData.Status.ATTACHED) {
+            logger.info("Agent attached for ${process.pid}")
             agentAttachedFuture.complete(true)
             true // Match found, unregister listener.
           } else {
@@ -576,13 +602,18 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
     try {
       // Fire the command to the device.
       profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(attachCommand).build())
+      logger.info(
+        "Sent ATTACH_AGENT command to transport. streamId: ${attachCommand.streamId}, pid: ${attachCommand.pid}, sessionId: ${attachCommand.sessionId}, agentLib: ${attachCommand.attachAgent.agentLibFileName}, agentConfig: ${attachCommand.attachAgent.agentConfigPath}, packageName: ${attachCommand.attachAgent.packageName}"
+      )
       return try {
         // Block the background thread until the listener catches the ATTACHED event or we hit the 7-second timeout.
         agentAttachedFuture.get(AGENT_ATTACH_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
       } catch (e: Exception) {
+        logger.warn("Agent failed to attach for ${process.pid}: ${e.message}")
         false
       }
     } catch (e: Exception) {
+      logger.warn("Agent failed to attach for ${process.pid}: ${e.message}")
       return false
     } finally {
       // Always clean up the listener to prevent memory leaks, regardless of success, failure, or thread crash.

@@ -86,6 +86,7 @@ import com.intellij.pom.java.LanguageLevel
 import java.io.File
 import java.io.IOException
 import java.net.URL
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Locale
 import java.util.Optional
@@ -102,11 +103,16 @@ import org.jetbrains.android.util.AndroidUtils
 private val logger: Logger
   get() = logger<NewProjectModel>()
 
-/** The source project type for migration/import. */
-enum class SourceProjectType {
-  IOS,
-  REACT_NATIVE,
-  OTHER,
+/**
+ * The source project type for migration/import.
+ *
+ * @param importProjectType The equivalent [GeminiPluginApi.ImportProjectType].
+ */
+enum class SourceProjectType(val importProjectType: GeminiPluginApi.ImportProjectType) {
+  IOS(GeminiPluginApi.ImportProjectType.IOS),
+  REACT_NATIVE(GeminiPluginApi.ImportProjectType.REACT_NATIVE),
+  FLUTTER(GeminiPluginApi.ImportProjectType.FLUTTER),
+  UNKNOWN(GeminiPluginApi.ImportProjectType.UNKNOWN),
 }
 
 interface ProjectModelData {
@@ -127,7 +133,9 @@ interface ProjectModelData {
   val prompt: StringProperty
   val displayText: StringProperty
   val sourceProjectType: ObjectValueProperty<SourceProjectType>
+  val importSourcePath: StringProperty
   val imageAttachments: ObjectValueProperty<List<VirtualFile>>
+  val userSkillDirectories: ObjectValueProperty<List<File>>
 }
 
 class NewProjectModel : WizardModel(), ProjectModelData {
@@ -149,9 +157,10 @@ class NewProjectModel : WizardModel(), ProjectModelData {
   override val prompt = StringValueProperty("")
   override val displayText = StringValueProperty("")
   override val imageAttachments: ObjectValueProperty<List<VirtualFile>> = ObjectValueProperty(listOf())
+  override val userSkillDirectories: ObjectValueProperty<List<File>> = ObjectValueProperty(listOf())
   val launchFirebaseWizard = BoolValueProperty(false)
-  val isImportProject = BoolValueProperty(false)
   override val sourceProjectType = ObjectValueProperty<SourceProjectType>(SourceProjectType.IOS)
+  override val importSourcePath = StringValueProperty("")
 
   private fun runRenderer(renderer: (Project) -> Unit) {
     object : Task.Backgroundable(null, message("android.compile.messages.generating.r.java.content.name"), false) {
@@ -160,6 +169,17 @@ class NewProjectModel : WizardModel(), ProjectModelData {
           val projectBaseDirectory = File(projectLocation.get())
           val newProject =
             GradleProjectImporter.getInstance().createProject(projectName, projectBaseDirectory, useDefaultProjectAsTemplate = true)
+
+          // Copy user skills
+          val skillDirs = userSkillDirectories.get()
+          if (skillDirs.isNotEmpty()) {
+            val agentsDir = File(projectBaseDirectory, ".agents")
+            agentsDir.mkdirs()
+            skillDirs.forEach { skillDir ->
+              val targetDir = File(agentsDir, skillDir.name)
+              skillDir.copyRecursively(targetDir, overwrite = true)
+            }
+          }
 
           // Arguably some of these things should be in the OpenProjectTask's beforeOpen
           newProject.service<ProjectSystemService>().setProviderId(GradleProjectSystemProvider.ID)
@@ -177,14 +197,15 @@ class NewProjectModel : WizardModel(), ProjectModelData {
               // ExternalToolWindowManager). We want the Gemini window to be shown instead, so
               // delay opening the Gemini window until after Gradle has finished.
               ToolWindowManager.getInstance(newProject).invokeLater {
-                if (isImportProject.get()) {
+                val sPath = importSourcePath.get()
+                if (sPath.isNotEmpty()) {
                   GeminiPluginApi.getInstance()
                     .launchImportProjectAgent(
                       newProject,
                       prompt.get(),
                       imageAttachments.get(),
                       displayText.get().takeIf { it.isNotBlank() },
-                      sourceProjectType = sourceProjectType.get().name,
+                      importProjectType = sourceProjectType.get().importProjectType,
                     )
                 } else {
                   GeminiPluginApi.getInstance().launchNewProjectAgent(newProject, prompt.get(), imageAttachments.get())
@@ -320,8 +341,18 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       try {
         val projectRoot = VfsUtilCore.virtualToIoFile(project.baseDir)
         setGradleWrapperExecutable(projectRoot)
-      } catch (e: IOException) {
-        logger.warn("Failed to update Gradle wrapper permissions", e)
+
+        val sPath = importSourcePath.get()
+        if (sPath.isNotEmpty()) {
+          val importSourceLink = File(projectRoot, "importSource")
+          if (!importSourceLink.exists()) {
+            Files.createSymbolicLink(importSourceLink.toPath(), Paths.get(sPath))
+            // This is required so the new link is visible to the VFS
+            VfsUtil.markDirtyAndRefresh(false, true, true, project.baseDir)
+          }
+        }
+      } catch (e: Exception) {
+        logger.warn("Failed to update Gradle wrapper permissions or create symbolic link", e)
       }
     }
 

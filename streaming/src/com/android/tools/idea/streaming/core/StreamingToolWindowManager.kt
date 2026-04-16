@@ -118,9 +118,9 @@ import com.intellij.util.Alarm
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.concurrency.AppExecutorUtil.createBoundedApplicationPoolExecutor
 import com.intellij.util.containers.ContainerUtil
-import com.intellij.util.ui.EDT
 import icons.StudioIcons
 import java.awt.Component
+import java.awt.EventQueue
 import java.awt.event.ContainerEvent
 import java.awt.event.ContainerListener
 import java.awt.event.KeyEvent
@@ -141,6 +141,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -208,14 +209,14 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   private val recentRemoteDeviceRequesters = buildWeakCache<DeviceHandle, ContentManager>(REMOTE_DEVICE_REQUEST_EXPIRATION)
 
   private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
-  private val toolWindowScope = createCoroutineScope(extraContext = Dispatchers.EDT)
+  private val toolWindowScope = createCoroutineScope()
 
   private var pairedDevicesLayoutUpdateRequired: Boolean = false
     set(value) {
       if (field != value) {
         field = value
         if (value) {
-          invokeLater {
+          launchOnEdt {
             delay(500.milliseconds)
             updatePairedDevicesLayouts()
             field = false
@@ -403,7 +404,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     alarm.addRequest(recentAttentionRequests::cleanUp, ATTENTION_REQUEST_EXPIRATION.inWholeMicroseconds)
     if (isLocalEmulator(serialNumber)) {
       val deferred = RunningEmulatorCatalog.getInstance().updateNow()
-      invokeLater {
+      launchOnEdt {
         try {
           val emulators = deferred.await()
           onEmulatorHeadsUp(serialNumber, emulators, activation)
@@ -548,19 +549,22 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
   private fun adoptContentManager(contentManager: ContentManager) {
     if (contentManager !in contentManagers) {
-      contentManagers.add(contentManager)
-      contentManager.addContentManagerListener(contentManagerListener)
-      contentManager.addSelectedPanelDataProvider()
-      contentManager.component.containingDecorator?.addContainerListener(decoratorListener)
-      Disposer.register(contentManager) {
-        contentManagers.remove(contentManager)
-        // When the tool window switches from a split to a non-split state by dragging a tab,
-        // ToolWindowContentUi.update is not called after component tree takes its final shape.
-        // This causes the tool window name to become visible when it should be hidden.
-        // To compensate for that we trigger a layout update explicitly.
-        toolWindow.updateContentUi()
+      if (Disposer.tryRegister(contentManager) { removeContentManager(contentManager) }) {
+        contentManagers.add(contentManager)
+        contentManager.addContentManagerListener(contentManagerListener)
+        contentManager.addSelectedPanelDataProvider()
+        contentManager.component.containingDecorator?.addContainerListener(decoratorListener)
       }
     }
+  }
+
+  private fun removeContentManager(contentManager: ContentManager) {
+    contentManagers.remove(contentManager)
+    // When the tool window switches from a split to a non-split state by dragging a tab,
+    // ToolWindowContentUi.update is not called after component tree takes its final shape.
+    // This causes the tool window name to become visible when it should be hidden.
+    // To compensate for that we trigger a layout update explicitly.
+    toolWindow.updateContentUi()
   }
 
   private fun addEmulatorPanel(emulator: EmulatorController) {
@@ -1087,7 +1091,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     return clientWithHandle
   }
 
-  private suspend fun showDeviceActionPopup(anchorComponent: Component?, dataContext: DataContext) {
+  private fun showDeviceActionPopup(anchorComponent: Component?, dataContext: DataContext) {
     val actionGroup = createDeviceActions()
 
     val popup =
@@ -1113,7 +1117,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     (popup as? ListPopupImpl)?.list?.clearSelection()
   }
 
-  private suspend fun createDeviceActions(): DefaultActionGroup {
+  private fun createDeviceActions(): DefaultActionGroup {
     return DefaultActionGroup().apply {
       val deviceDescriptions = devicesExcludedFromMirroring.values.toTypedArray().sorted()
       if (deviceDescriptions.isNotEmpty()) {
@@ -1155,8 +1159,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
   }
 
-  private suspend fun getStartableVirtualDevices(): List<AvdInfo> {
-    val avds = withContext(Dispatchers.IO) { AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(false) }
+  private fun getStartableVirtualDevices(): List<AvdInfo> {
+    val avds = AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(false)
     val runningAvdFolders = RunningAvdTracker.getInstance().runningAvds.filter { !it.value.isShuttingDown }.keys
     return avds.filter {
       it.dataFolderPath !in runningAvdFolders &&
@@ -1166,17 +1170,26 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   }
 
   @AnyThread
-  private fun invokeLater(block: suspend CoroutineScope.() -> Unit) {
+  private fun launchOnEdt(block: suspend CoroutineScope.() -> Unit) {
     toolWindowScope.launch(Dispatchers.EDT) { block() }
+  }
+
+  @AnyThread
+  private fun invokeLater(@UiThread block: () -> Unit) {
+    EventQueue.invokeLater {
+      if (toolWindowScope.isActive) {
+        block()
+      }
+    }
   }
 
   @AnyThread
   @Suppress("WrongThread") // b/379742474
   private fun invokeLaterIfNeeded(@UiThread block: () -> Unit) {
-    if (EDT.isCurrentThreadEdt()) {
+    if (EventQueue.isDispatchThread()) {
       block()
     } else {
-      toolWindowScope.launch(Dispatchers.EDT) { block() }
+      invokeLater(block)
     }
   }
 
@@ -1320,7 +1333,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       if (!contentShown) {
         toolWindowScope.launch(Dispatchers.IO) {
           RunningEmulatorCatalog.getInstance().updateNow().await()
-          withContext(Dispatchers.EDT) { updateLiveIndicator() }
+          invokeLater { updateLiveIndicator() }
         }
       }
     }
@@ -1339,8 +1352,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       val component = event.getData(PlatformCoreDataKeys.CONTEXT_COMPONENT)
       val actionComponent = if (component is ActionButtonComponent) component else event.findComponentForAction(this)
       val dataContext = event.dataContext
-
-      toolWindowScope.launch { showDeviceActionPopup(actionComponent, dataContext) }
+      showDeviceActionPopup(actionComponent, dataContext)
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT

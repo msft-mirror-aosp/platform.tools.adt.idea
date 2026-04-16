@@ -28,6 +28,8 @@ interface AiInsightContributor {
 
   fun canContribute(): Boolean
 
+  fun isModelAvailable(): Boolean
+
   fun showOnboarding(project: Project)
 
   companion object {
@@ -41,6 +43,8 @@ interface AiInsightContributor {
 @TestOnly
 class StubAiInsightContributor : AiInsightContributor {
   override fun canContribute() = java.lang.Boolean.getBoolean("appinsights.generate.fake.insight")
+
+  override fun isModelAvailable() = false
 
   override fun showOnboarding(project: Project) = Unit
 

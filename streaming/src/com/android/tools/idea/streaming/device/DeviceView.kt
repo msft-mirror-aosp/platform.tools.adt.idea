@@ -438,12 +438,6 @@ internal class DeviceView(
 
   override fun canZoom(): Boolean = connectionState == ConnectionState.CONNECTED
 
-  override fun onScreenScaleChanged() {
-    if (isConnected && physicalWidth > 0 && physicalHeight > 0) {
-      updateVideoSize()
-    }
-  }
-
   override fun computeActualSize(framing: Framing): Dimension {
     require(framing == Framing.OUTER) { "Unexpected framing value $framing" }
     return computeActualSize(displayOrientationQuadrants)
@@ -585,7 +579,12 @@ internal class DeviceView(
     if (!isConnected) {
       return
     }
-    val isMouse = deviceConfig.deviceType == DeviceType.XR_HEADSET || isHardwareInputEnabled()
+    val isHover =
+      action == MotionEventMessage.ACTION_HOVER_MOVE ||
+        action == MotionEventMessage.ACTION_HOVER_ENTER ||
+        action == MotionEventMessage.ACTION_HOVER_EXIT
+    // Hand and eye tracking is not supported yet.
+    val isMouse = deviceConfig.deviceType == DeviceType.XR_HEADSET || isHover || isHardwareInputEnabled()
     val buttonState =
       (if (modifiers and BUTTON1_DOWN_MASK != 0 && isMouse) MotionEventMessage.BUTTON_PRIMARY else 0) or
         (if (modifiers and BUTTON2_DOWN_MASK != 0) MotionEventMessage.BUTTON_TERTIARY else 0) or

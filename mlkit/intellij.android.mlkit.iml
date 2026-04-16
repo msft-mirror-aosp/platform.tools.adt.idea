@@ -29,5 +29,6 @@
     <orderEntry type="module" module-name="intellij.android.newProjectWizard" />
     <orderEntry type="module" module-name="intellij.android.templates" />
     <orderEntry type="module" module-name="intellij.android.render-resources" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />
   </component>
 </module>

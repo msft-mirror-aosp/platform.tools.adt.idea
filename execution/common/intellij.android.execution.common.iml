@@ -29,5 +29,8 @@
     <orderEntry type="module" module-name="android.sdktools.adblib" />
     <orderEntry type="module" module-name="intellij.android.backup.api" />
     <orderEntry type="module" module-name="android.sdktools.adblib.tools" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
   </component>
 </module>

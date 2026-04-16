@@ -33,25 +33,15 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
 import com.intellij.openapi.application.InitialConfigImportState;
 import com.intellij.openapi.application.PathManager;
-import com.intellij.openapi.externalSystem.model.DataNode;
-import com.intellij.openapi.externalSystem.model.Key;
-import com.intellij.openapi.externalSystem.model.project.ProjectData;
-import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
-import com.intellij.openapi.externalSystem.service.project.manage.AbstractProjectDataService;
-import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.util.registry.Registry;
-import java.util.Collection;
 import java.util.List;
 import kotlin.sequences.SequencesKt;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
-import org.jetbrains.kotlin.idea.core.script.v1.settings.KotlinScriptingSettingsStorage;
+import org.jetbrains.kotlin.idea.core.script.v1.settings.KotlinScriptingSettings;
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionProvider;
-import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeData;
-import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeProjectDataService;
 
 /**
  * Performs Gradle-specific IDE initialization
@@ -165,7 +155,7 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
       if (scriptDefinitionProvider != null) {
         SequencesKt.asIterable(scriptDefinitionProvider.getCurrentDefinitions()).forEach(
           scriptDefinitions -> {
-            var settings = KotlinScriptingSettingsStorage.Companion.getInstance(project);
+            var settings = KotlinScriptingSettings.getInstance(project);
             if (settings.isScriptDefinitionEnabled(scriptDefinitions) && settings.autoReloadConfigurations(scriptDefinitions)) {
               settings.setAutoReloadConfigurations(scriptDefinitions, false);
             }

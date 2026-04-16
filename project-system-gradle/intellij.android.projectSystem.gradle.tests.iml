@@ -23,6 +23,9 @@
     <orderEntry type="module" module-name="intellij.android.kotlin.idea" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.kotlin.idea.common" scope="RUNTIME" />
     <orderEntry type="library" name="studio-plugin-org.toml.lang" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.gradle.java.toml" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />

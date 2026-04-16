@@ -35,6 +35,8 @@ iml_module(
         "//tools/adt/idea/logcat:logcat-proto",
         "//prebuilts/r8",
         "@intellij//:com.intellij.modules.json",
+        "@intellij//:intellij.java.debugger",
+        "@intellij//:intellij.java.indexing",
     ],
 )
 
@@ -86,6 +88,9 @@ iml_module(
     deps = [
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/logcat:logcat-proto",
+        "@intellij//:intellij.java.indexing",
+        "@intellij//:intellij.java.debugger.impl",
+        "@intellij//:intellij.java.debugger",
     ],
 )
 

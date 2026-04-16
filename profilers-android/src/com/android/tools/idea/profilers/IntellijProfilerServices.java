@@ -681,11 +681,6 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
-    public boolean isTaskTitleV2Enabled() {
-      return StudioFlags.PROFILER_TASK_TITLE_V2.get();
-    }
-
-    @Override
     public boolean isSystemTraceInEditorEnabled() {
       return StudioFlags.PROFILER_SYSTEM_TRACE_IN_EDITOR.get();
     }
@@ -693,6 +688,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     @Override
     public boolean isMethodTraceInEditorEnabled() {
       return StudioFlags.PROFILER_METHOD_TRACE_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isProfilerHomeTabV2Enabled() {
+      return StudioFlags.PROFILER_HOME_TAB_V2.get();
     }
   }
 }

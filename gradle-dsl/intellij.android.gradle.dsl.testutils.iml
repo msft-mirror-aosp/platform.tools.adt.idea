@@ -18,6 +18,7 @@
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-org.jetbrains.kotlin" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-org.toml.lang" level="project" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="module" module-name="intellij.android.gradle.dsl" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />

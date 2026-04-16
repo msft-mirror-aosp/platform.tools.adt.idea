@@ -45,5 +45,6 @@
     <orderEntry type="module" module-name="android.sdktools.common" />
     <orderEntry type="module" module-name="analytics" />
     <orderEntry type="module" module-name="intellij.android.testartifacts" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
   </component>
 </module>

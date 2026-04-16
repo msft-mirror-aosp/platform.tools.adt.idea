@@ -19,6 +19,7 @@ import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.actions.enableRichTooltip
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.FloatingToolbarContainer
+import com.android.tools.idea.streaming.emulator.actions.isEmulator
 import com.android.tools.idea.streaming.xr.XrInputMode
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -49,19 +50,9 @@ sealed class StreamingXrInputModeAction(private val inputMode: XrInputMode) : To
     super.update(event)
     event.presentation.isEnabledAndVisible =
       getDeviceType(event) == DeviceType.XR_HEADSET &&
-        (inputMode != XrInputMode.HAND || StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.get()) &&
-        (inputMode != XrInputMode.EYE || StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.get())
+        (inputMode != XrInputMode.HAND || (StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.get() && isEmulator(event))) &&
+        (inputMode != XrInputMode.EYE || (StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.get() && isEmulator(event)))
     event.presentation.enableRichTooltip(this)
-  }
-
-  class InteractionMouse : StreamingXrInputModeAction(XrInputMode.MOUSE) {
-
-    override fun update(event: AnActionEvent) {
-      super.update(event)
-      if (!StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.get() && !StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.get()) {
-        event.presentation.isEnabledAndVisible = false
-      }
-    }
   }
 
   class InteractionHand : StreamingXrInputModeAction(XrInputMode.HAND)
@@ -78,9 +69,12 @@ sealed class StreamingXrInputModeAction(private val inputMode: XrInputMode) : To
 
     override fun update(event: AnActionEvent) {
       super.update(event)
-      if (StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.get() || StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.get()) {
+      if (isHandOrEyeTrackingEnabled(event)) {
         event.presentation.isEnabledAndVisible = false
       }
     }
   }
 }
+
+internal fun isHandOrEyeTrackingEnabled(event: AnActionEvent): Boolean =
+  isEmulator(event) && (StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.get() || StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.get())

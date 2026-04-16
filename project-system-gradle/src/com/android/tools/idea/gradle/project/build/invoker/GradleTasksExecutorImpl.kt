@@ -120,9 +120,9 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     val frame = (WindowManager.getInstance() as WindowManagerEx).findFrameFor(project)
     val statusBar = (if (frame == null) null else frame.statusBar as StatusBarEx?) ?: return false
     for (backgroundProcess in statusBar.backgroundProcessModels) {
-      val task = backgroundProcess.getFirst()
+      val task = backgroundProcess.first
       if (task is TaskImpl) {
-        val second = backgroundProcess.getSecond()
+        val second = backgroundProcess.second
         if (second.isRunning()) {
           return true
         }

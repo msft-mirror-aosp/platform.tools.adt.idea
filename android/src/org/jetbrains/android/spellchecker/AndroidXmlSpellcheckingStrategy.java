@@ -104,6 +104,11 @@ public class AndroidXmlSpellcheckingStrategy extends XmlSpellcheckingStrategy im
   }
 
   @Override
+  public boolean useTextLevelSpellchecking(PsiElement element) {
+    return false;
+  }
+
+  @Override
   protected boolean isComment(@NotNull PsiElement element) {
     ParserDefinition parserDefinition = LanguageParserDefinitions.INSTANCE.forLanguage(element.getLanguage());
     return parserDefinition.getCommentTokens().contains(element.getNode().getElementType());

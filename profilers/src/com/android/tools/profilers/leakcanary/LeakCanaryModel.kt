@@ -127,6 +127,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
       setLeakCanaryMode(config.mode)
       if (config.source == LeakCanaryMode.STUDIO) {
         _retainedObjectThreshold.value = config.threshold
+        logger.info("Setting retained object threshold to ${config.threshold}")
       }
 
       // If the user has explicitly changed the settings from the default, suppress the banner permanently.
@@ -160,11 +161,13 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
 
   /** Temporarily dismisses the feature banner for the current session. */
   fun dismissBanner() {
+    logger.info("Dismissing LeakCanary banner.")
     _isBannerVisible.value = false
   }
 
   /** Permanently hides the feature banner across all sessions by updating user preferences. */
   fun setBannerDoNotShowAgain() {
+    logger.info("Permanently hiding LeakCanary banner.")
     profilers.ideServices.persistentProfilerPreferences.setBoolean(KEY_LEAKCANARY_BANNER_DO_NOT_SHOW, true)
     updateBannerVisibility()
   }
@@ -184,6 +187,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
   }
 
   fun startListening() {
+    logger.info("Starting LeakCanary tracking.")
     updateModeFromSettings()
     profilers.updater.register(this)
     setIsRecording(true)
@@ -195,6 +199,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
   }
 
   fun requestStopRecording() {
+    logger.info("Requesting to stop LeakCanary task.")
     _isStopping.value = true
     if (objectRetainedCount.value > 0 && analysisProgress.value == 0) {
       forceHeapDump()
@@ -204,6 +209,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
   }
 
   fun stopListening(isUserInitiated: Boolean = true) {
+    logger.info("Stopping LeakCanary task. isUserInitiated: $isUserInitiated")
     if (isUserInitiated) {
       myTaskTracker.trackLeakCanaryUiAction(LeakCanaryUiAction.STOP_RECORDING_CLICKED)
       if (heapDumper.isHeapDumpInProgress() || _analysisProgress.value in 1..99) {
@@ -228,6 +234,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
    * Studio-side heap dumper (LeakCanaryHeapDumper).
    */
   fun forceHeapDump() {
+    logger.info("User requested force heap dump.")
     myTaskTracker.trackLeakCanaryUiAction(LeakCanaryUiAction.FORCE_DUMP_CLICKED)
     if (leakcanaryMode == StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE) {
       val forceDumpCommand =
@@ -240,8 +247,14 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
       profilers.ideServices.poolExecutor.execute {
         try {
           profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(forceDumpCommand).build())
+          logger.info(
+            "Sent FORCE_DUMP_LEAKCANARY_ON_DEVICE command to transport. streamId: ${forceDumpCommand.streamId}, pid: ${forceDumpCommand.pid}, sessionId: ${forceDumpCommand.sessionId}"
+          )
         } catch (e: Exception) {
-          logger.warn("Failed to execute force dump on device command", e)
+          logger.warn(
+            "Failed to execute FORCE_DUMP_LEAKCANARY_ON_DEVICE command. streamId: ${forceDumpCommand.streamId}, pid: ${forceDumpCommand.pid}, sessionId: ${forceDumpCommand.sessionId}",
+            e,
+          )
         }
       }
     } else {
@@ -264,11 +277,14 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
 
   @VisibleForTesting
   fun clearLeaks() {
+    logger.info("Cleared LeakCanary leaks.")
     _leaks.value = listOf()
     onLeakSelection(null)
   }
 
   fun onLeakSelection(newLeak: Leak?) {
+    val className = newLeak?.displayedLeakTrace?.firstOrNull()?.nodes?.lastOrNull()?.className ?: "Unknown"
+    logger.info("Leak selected in UI: $className")
     if (newLeak != null && _selectedLeak.value != newLeak) {
       myTaskTracker.trackLeakCanaryUiAction(LeakCanaryUiAction.NEW_LEAK_SELECTED)
     }
@@ -281,6 +297,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
       val thresholdValue = profilers.ideServices.temporaryProfilerPreferences.getInt("LEAKCANARY_THRESHOLD", -1)
       if (thresholdValue != -1) {
         _retainedObjectThreshold.value = thresholdValue
+        logger.info("Setting retained object threshold to $thresholdValue")
       }
 
       if (thresholdValue == -1) {
@@ -338,6 +355,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
         startTime = { startTime },
         callback = { event ->
           val errorType = event.leakcanaryDeviceError.errorType
+          logger.warn("Received LEAKCANARY_DEVICE_ERROR event. Error: $errorType")
           when (errorType) {
             LEAKCANARY_ERROR_APP_CONTEXT_NULL -> {
               myTaskTracker.trackStartTaskFailed(TaskStartFailedMetadata(leakCanaryStartStatus = LeakCanaryStartErrorCode.APP_CONTEXT_NULL))
@@ -392,9 +410,15 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
       try {
         val response =
           profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(fetchThresholdCommand).build())
+        logger.info(
+          "Sent GET_LEAKCANARY_THRESHOLD command to transport. streamId: ${fetchThresholdCommand.streamId}, pid: ${fetchThresholdCommand.pid}, sessionId: ${fetchThresholdCommand.sessionId}"
+        )
         commandIdFuture.complete(response.commandId)
       } catch (e: Exception) {
-        logger.warn("Failed to fetch retained visible threshold", e)
+        logger.warn(
+          "Failed to fetch retained visible threshold. streamId: ${fetchThresholdCommand.streamId}, pid: ${fetchThresholdCommand.pid}, sessionId: ${fetchThresholdCommand.sessionId}",
+          e,
+        )
         profilers.transportPoller.unregisterListener(listener)
       }
     }
@@ -500,6 +524,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
    * @param endSession: true to end the session when stopping tracking.
    */
   private fun toggleLeakCanaryTracking(session: Common.Session, enable: Boolean, endSession: Boolean) {
+    logger.info("Sending ${if (enable) "START" else "STOP"} LeakCanary tracking command to device.")
     val startLeakCanaryTaskData = StartLeakCanaryTaskData.newBuilder().setMode(leakcanaryMode).build()
 
     val cmd =
@@ -517,8 +542,14 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
     profilers.ideServices.poolExecutor.execute {
       try {
         profilers.client.transportClient.execute(Transport.ExecuteRequest.newBuilder().setCommand(cmd).build())
+        logger.info(
+          "Sent ${if (enable) "START_LEAKCANARY_TASK" else "STOP_LEAKCANARY_TASK"} command to transport. streamId: ${cmd.streamId}, pid: ${cmd.pid}, sessionId: ${cmd.sessionId}"
+        )
       } catch (e: Exception) {
-        logger.warn("Failed to toggle LeakCanary tracking", e)
+        logger.warn(
+          "Failed to execute ${if (enable) "START_LEAKCANARY_TASK" else "STOP_LEAKCANARY_TASK"} command. streamId: ${cmd.streamId}, pid: ${cmd.pid}, sessionId: ${cmd.sessionId}",
+          e,
+        )
       }
     }
   }
@@ -529,6 +560,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
   fun loadFromPastSession(startTimestamp: Long, endTimeStamp: Long, session: Common.Session) {
     // Get all LeakCanary events from start time to end time.
     val analysisEvents = getAllLeakCanaryEvents(session, startTimestamp, endTimeStamp)
+    logger.info("Loaded past LeakCanary session with ${analysisEvents.size} analysis events.")
     analysisEvents.forEach { analysis ->
       if (analysis is AnalysisSuccess) {
         addLeaks(analysis.leaks)
@@ -598,6 +630,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
   }
 
   fun goToDeclaration(node: Node) {
+    logger.info("User clicked go to declaration for: ${node.className}")
     myTaskTracker.trackLeakCanaryUiAction(LeakCanaryUiAction.GO_TO_DECLARATION_CLICKED)
     val codeLocationSupplier: () -> CodeLocation = { CodeLocation.Builder(node.className.removeSuffix("[]")).build() }
     val navigator = this.studioProfilers.ideServices.codeNavigator
@@ -624,6 +657,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
   }
 
   fun trackUiAction(action: LeakCanaryUiAction) {
+    logger.info("Tracked LeakCanary UI action: $action")
     myTaskTracker.trackLeakCanaryUiAction(action)
   }
 

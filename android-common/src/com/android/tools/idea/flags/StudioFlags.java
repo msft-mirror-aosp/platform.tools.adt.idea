@@ -365,10 +365,6 @@ public final class StudioFlags {
     PROFILER, "task.based.ux", "Task-based UX",
     "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)");
 
-  public static final Flag<Boolean> PROFILER_TASK_TITLE_V2 = new BooleanFlag(
-    PROFILER, "task.title.v2", "Task Title V2",
-    "Enables more distinguishable descriptions for profiler tasks");
-
   public static final Flag<Boolean> PROFILER_LEAKCANARY = new BooleanFlag(
     PROFILER, "leakcanary", "LeakCanary",
     "Enables the integration of leakCanary and display of leaks");
@@ -379,6 +375,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_SYSTEM_TRACE_IN_EDITOR = new BooleanFlag(
     PROFILER, "system.trace.in.editor", "Open System Trace in Editor",
     "Opens System Trace files in a new editor tab");
+
+  public static final Flag<Boolean> PROFILER_HOME_TAB_V2 = new BooleanFlag(
+    PROFILER, "home.tab.v2", "Home Tab V2",
+    "Enable the redesigned Home Tab in Profilers");
 
   public static final Flag<Boolean> PROFILER_METHOD_TRACE_IN_EDITOR = new BooleanFlag(
     PROFILER, "method.trace.in.editor", "Open Method Trace in Editor",
@@ -1413,17 +1413,17 @@ public final class StudioFlags {
     "If enabled, causes the translations editor to reload data when resource files are edited"
   );
 
-  public static final Flag<Boolean> REMOTE_SDK_DOCUMENTATION_FETCH_VIA_CONTENT_SERVING_API_ENABLED = new BooleanFlag(
-    EDITOR, "remote.sdk.documentation.fetch.via.content.serving.api.enabled",
-    "Enable use of the ContentServing API for fetching Android SDK documentation.",
-    "If enabled, calls a OnePlatform HTTP API instead of the developers.android.com web server for documentation."
-    );
-
   public static final Flag<Boolean> RESTRICT_TO_COMPLETION_WEIGHER = new BooleanFlag(
     EDITOR, "restrict.to.completion.weigher",
     "Enable use of the weigher that demotes elements annotated with @RestrictTo.",
     "If enabled, the APIs that are annotated with @RestrictTo will have lower priority in the completion list."
     );
+
+  public static final Flag<Boolean> EDITOR_ENABLE_CHANGE_REVIEW_AGENT = new BooleanFlag(
+    EDITOR, "enable.change.review.agent",
+    "Enable the Change Review agent.",
+    "If enabled, the change review agent is available."
+  );
 
   //endregion
 
@@ -2045,6 +2045,10 @@ public final class StudioFlags {
     new BooleanFlag(APP_LINKS_ASSISTANT, "use.agent.sdk.v2",
                     "Use the V2 agent SDK for deep linking AI features",
                     "When enabled, the user will be redirected to use the trajectory based agent SDK.");
+  public static final Flag<Boolean> APP_LINKS_ASSISTANT_INTEGRATE_MANIFEST_UPDATE_IN_AGENT =
+    new BooleanFlag(APP_LINKS_ASSISTANT, "integrate.manifest.update.in.agent",
+                    "Integrate Manifest Update in App Links Agent",
+                    "When enabled, the App Links Assistant agent will automatically handle manifest updates.");
   // endregion App Links Assistant
 
   // region TargetSDKVersion Upgrade Assistant
@@ -2300,6 +2304,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "skills.enabled",
                     "Enable Studio Bot Skills.",
                     "When enabled, the studio-bot agents will be able to use skills.");
+
+  public static final Flag<Boolean> STUDIOBOT_IS_SKILLS_V2_ENABLED =
+    new BooleanFlag(STUDIOBOT, "skills.v2.enabled",
+                    "Enable Studio Bot Skills V2.",
+                    "When enabled, the studio-bot agents will be able to use version 2 of skills.");
 
   public static final Flag<Boolean> STUDIOBOT_IS_IDE_HISTORY_EVENTS_IN_CONTEXT =
     new BooleanFlag(STUDIOBOT, "ide.history.enabled",

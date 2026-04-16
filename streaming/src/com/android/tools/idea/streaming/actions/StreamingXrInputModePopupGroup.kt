@@ -15,33 +15,33 @@
  */
 package com.android.tools.idea.streaming.actions
 
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.xr.XrInputMode
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Toggleable
 import icons.StudioIcons
 
 /** Displays a popup menu of XR input modes. */
-internal class StreamingXrInputModePopupGroup : DefaultActionGroup() {
+internal class StreamingXrInputModePopupGroup : DefaultActionGroup(), Toggleable {
 
   override fun update(event: AnActionEvent) {
     val presentation = event.presentation
     val controller = getXrInputController(event)
-    if (
-      controller?.isXrInputAvailable != true ||
-        !(StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.get() || StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.get())
-    ) {
+    if (controller?.isXrInputAvailable != true || !isHandOrEyeTrackingEnabled(event)) {
       presentation.isEnabledAndVisible = false
       return
     }
 
+    val inputMode = controller.inputMode
     presentation.icon =
-      when (controller.inputMode) {
+      when (inputMode) {
         XrInputMode.HAND -> StudioIcons.Emulator.XR.HAND_TRACKING
         XrInputMode.EYE -> StudioIcons.Emulator.XR.EYE_GAZE
         else -> StudioIcons.Emulator.XR.INTERACT
       }
+
+    Toggleable.setSelected(presentation, inputMode == XrInputMode.HAND || inputMode == XrInputMode.EYE || inputMode == XrInputMode.MOUSE)
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT

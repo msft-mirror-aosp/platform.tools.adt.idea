@@ -65,5 +65,8 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
   </component>
 </module>

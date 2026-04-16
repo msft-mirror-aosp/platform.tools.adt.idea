@@ -22,10 +22,11 @@ import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.deployer.Deployer;
 import com.android.tools.deployer.DeployerApplicationTerminator;
-import com.android.tools.deployer.DeployerException;
-import com.android.tools.deployer.InstallOptions;
+import com.android.tools.deployer.common.DeployerException;
+import com.android.tools.deployer.common.InstallOptions;
+import com.android.tools.deployer.install.InstallMode;
 import com.android.tools.deployer.model.App;
-import com.android.tools.deployer.tasks.Canceller;
+import com.android.tools.deployer.common.Canceller;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.ApkInfo;
 import com.intellij.openapi.diagnostic.Logger;
@@ -33,7 +34,6 @@ import com.intellij.openapi.project.Project;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 
 public class DeployTask extends AbstractDeployTask {
@@ -148,9 +148,9 @@ public class DeployTask extends AbstractDeployTask {
     options.setSkipVerification(device, apkInfo.getApplicationId());
 
     LOG.info("Installing application: " + apkInfo.getApplicationId());
-    Deployer.InstallMode installMode = Deployer.InstallMode.DELTA;
+    InstallMode installMode = InstallMode.DELTA;
     if (!StudioFlags.DELTA_INSTALL.get()) {
-        installMode = Deployer.InstallMode.FULL;
+        installMode = InstallMode.FULL;
     }
 
     options.setCancelChecker(canceller);
@@ -178,7 +178,7 @@ public class DeployTask extends AbstractDeployTask {
       return "App restart successful without requiring a re-install.";
     } else {
       return "App restart successful without re-installing the following APK(s): " +
-             skippedApkList.stream().collect(Collectors.joining(", "));
+             String.join(", ", skippedApkList);
     }
   }
 }

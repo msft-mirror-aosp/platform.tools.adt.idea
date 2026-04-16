@@ -26,6 +26,7 @@ import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.HiDpiRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.analytics.crash.CrashReport
@@ -159,6 +160,7 @@ internal class DeviceViewTest {
   private val crashReporterRule = CrashReporterRule()
   private val notificationRule = NotificationRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/DeviceViewTest/golden")
+  private val hiDpiRule = HiDpiRule()
   @get:Rule
   val ruleChain =
     RuleChain(
@@ -169,6 +171,7 @@ internal class DeviceViewTest {
       ClipboardSynchronizationDisablementRule(),
       goldenImageRule,
       EdtRule(),
+      hiDpiRule,
     )
   @get:Rule val usageTrackerRule = UsageTrackerRule()
   private lateinit var device: FakeScreenSharingAgentRule.FakeDevice
@@ -201,7 +204,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testFrameListener() {
-    createDeviceView(200, 300, 2.0)
+    createDeviceView(200, 300, retinaMode = true)
     var frameListenerCalls = 0u
 
     val frameListener = AbstractDisplayView.FrameListener { _, _, _, _ -> ++frameListenerCalls }
@@ -230,7 +233,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testResizingRotationAndMouseInput() {
-    createDeviceView(200, 300, 2.0)
+    createDeviceView(200, 300, retinaMode = true)
     assertThat(agent.commandLine)
       .matches(
         "CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process" +
@@ -263,13 +266,13 @@ internal class DeviceViewTest {
       // Check mouse input.
       fakeUi.mouse.moveTo(40, 30)
       assertThat(getNextControlMessageAndWaitForFrame())
-        .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, false))
+        .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, true))
       assertThat(getNextControlMessageAndWaitForFrame())
-        .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, false))
+        .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, true))
 
       fakeUi.mouse.press(40, 30)
       assertThat(getNextControlMessageAndWaitForFrame())
-        .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, false))
+        .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, true))
       assertThat(getNextControlMessageAndWaitForFrame())
         .isEqualTo(MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
 
@@ -330,17 +333,17 @@ internal class DeviceViewTest {
     // Check mouse leaving the device view while hovering.
     fakeUi.mouse.moveTo(55, 10)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, true))
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, true))
     fakeUi.mouse.moveTo(60, -10)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, true))
   }
 
   @Test
   fun testUpsideDownMouseInput() {
-    createDeviceView(200, 300, 2.0)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
@@ -373,7 +376,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testRightClick() {
-    createDeviceView(200, 300, 2.0)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
@@ -399,7 +402,7 @@ internal class DeviceViewTest {
         additionalDeviceProperties = mapOf(DevicePropertyNames.RO_BUILD_CHARACTERISTICS to "nosdcard,watch"),
       )
 
-    createDeviceView(100, 150, 2.0)
+    createDeviceView(100, 150, retinaMode = true)
     assertThat(agent.commandLine)
       .matches(
         "CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process" +
@@ -414,7 +417,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testMultiTouch() {
-    createDeviceView(50, 100, 2.0)
+    createDeviceView(50, 100, retinaMode = true)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
 
@@ -427,16 +430,16 @@ internal class DeviceViewTest {
     fakeUi.keyboard.setFocus(view)
     fakeUi.mouse.moveTo(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, true))
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, true))
     fakeUi.keyboard.press(VK_CONTROL)
     fakeUi.layoutAndDispatchEvents()
     assertAppearance("MultiTouch1")
 
     fakeUi.mouse.press(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, true))
     assertThat(getNextControlMessageAndWaitForFrame())
       .isEqualTo(
         MotionEventMessage(
@@ -485,7 +488,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testKeyboardInput() {
-    createDeviceView(150, 250, 1.5)
+    createDeviceView(150, 250, retinaMode = true)
     waitForFrame()
 
     // Check keyboard input.
@@ -589,11 +592,11 @@ internal class DeviceViewTest {
 
   @Test
   fun testZoom() {
-    createDeviceView(100, 200, 2.0)
+    createDeviceView(100, 200, retinaMode = true)
     waitForFrame()
 
     // Check zoom.
-    assertThat(view.scale).isWithin(1e-4).of(fakeUi.screenScale * fakeUi.root.height / device.displaySize.height)
+    assertThat(view.scale).isWithin(1e-4).of(fakeUi.screenScalingFactor * fakeUi.root.height / device.displaySize.height)
     assertThat(view.canZoom(ZoomType.IN)).isTrue()
     assertThat(view.canZoom(ZoomType.OUT)).isFalse()
     assertThat(view.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -655,17 +658,8 @@ internal class DeviceViewTest {
   }
 
   @Test
-  fun testScreenScaleChange() {
-    createDeviceView(100, 200, 1.5)
-    waitForFrame()
-
-    fakeUi.screenScale = 2.0
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetMaxVideoResolutionMessage(view.displayId, Dimension(200, 400)))
-  }
-
-  @Test
   fun testClipboardSynchronization() {
-    createDeviceView(100, 200, 1.5)
+    createDeviceView(100, 200, retinaMode = true)
     waitForFrame()
 
     val settings = DeviceMirroringSettings.getInstance()
@@ -682,7 +676,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testBitRateReduction() {
-    createDeviceView(500, 1000, screenScale = 1.0)
+    createDeviceView(500, 1000)
     waitForFrame()
 
     agent.bitRate = 2000000
@@ -741,7 +735,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testAgentCrashAndReconnect() {
-    createDeviceView(500, 1000, screenScale = 1.0)
+    createDeviceView(500, 1000)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
@@ -907,7 +901,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testEmptyFrame() {
-    createDeviceView(200, 300)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
 
     runBlocking { agent.produceEmptyVideoFrame(PRIMARY_DISPLAY_ID) }
@@ -917,7 +911,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testInvalidFrameRecovery() {
-    createDeviceView(200, 300)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
 
     val loggedErrors = executeCapturingLoggedWarnings {
@@ -932,7 +926,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testMetricsCollection() {
-    createDeviceView(200, 300, 2.0)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
     Disposer.dispose(view)
     val mirroringSessions = usageTrackerRule.deviceMirroringSessions()
@@ -975,7 +969,7 @@ internal class DeviceViewTest {
     StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS.overrideForTest(200, testRootDisposable)
     agent.startDelayMillis = 500
     val loggedWarnings = executeCapturingLoggedWarnings {
-      createDeviceViewWithoutWaitingForAgent(500, 1000, screenScale = 1.0)
+      createDeviceViewWithoutWaitingForAgent(500, 1000)
       val errorMessage = fakeUi.getComponent<JEditorPane>()
       waitForCondition(2.seconds) { fakeUi.isShowing(errorMessage) }
       assertThat(extractText(errorMessage.text)).isEqualTo("Device agent is not responding")
@@ -1099,7 +1093,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testDisableMultiTouchDuringHardwareInput() {
-    createDeviceView(50, 100)
+    createDeviceView(50, 100, retinaMode = true)
     waitForFrame()
     assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
 
@@ -1113,9 +1107,9 @@ internal class DeviceViewTest {
     fakeUi.keyboard.setFocus(view)
     fakeUi.mouse.moveTo(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, true))
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, true))
     fakeUi.keyboard.press(VK_CONTROL)
     fakeUi.layoutAndDispatchEvents()
     assertAppearance("MultiTouch1")
@@ -1191,7 +1185,7 @@ internal class DeviceViewTest {
         Dimension(2560, 2558),
         additionalDeviceProperties = mapOf(DevicePropertyNames.RO_BUILD_CHARACTERISTICS to "nosdcard,xr"),
       )
-    createDeviceView(200, 300)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
 
     fakeUi.mouse.moveTo(50, 100)
@@ -1235,7 +1229,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testErrorNotification() {
-    createDeviceView(200, 300, 2.0)
+    createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
     runBlocking { agent.writeToStderr("NOTIFICATION Notification to be shown to the user\n") }
     waitForCondition(2.seconds) { notificationRule.notifications.isNotEmpty() }
@@ -1245,12 +1239,15 @@ internal class DeviceViewTest {
     assertThat(notification.type).isEqualTo(NotificationType.WARNING)
   }
 
-  private fun createDeviceView(width: Int, height: Int, screenScale: Double = 2.0) {
-    createDeviceViewWithoutWaitingForAgent(width, height, screenScale)
+  private fun createDeviceView(width: Int, height: Int, retinaMode: Boolean = false) {
+    if (retinaMode) {
+      hiDpiRule.setRetinaMode()
+    }
+    createDeviceViewWithoutWaitingForAgent(width, height)
     waitForCondition(15, SECONDS) { agent.isRunning }
   }
 
-  private fun createDeviceViewWithoutWaitingForAgent(width: Int, height: Int, screenScale: Double) {
+  private fun createDeviceViewWithoutWaitingForAgent(width: Int, height: Int) {
     val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
     // DeviceView has to be disposed before DeviceClient.
@@ -1259,7 +1256,7 @@ internal class DeviceViewTest {
     val displayPanel = DeviceDisplayPanel(disposable, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, project, false)
     displayPanel.size = Dimension(width, height)
     view = displayPanel.displayView
-    fakeUi = FakeUi(displayPanel, screenScale)
+    fakeUi = FakeUi(displayPanel, createFakeWindow = true)
   }
 
   private fun assertAppearance(goldenImageName: String) {

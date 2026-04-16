@@ -35,5 +35,9 @@
     <orderEntry type="module" module-name="android.sdktools.flags" />
     <orderEntry type="module" module-name="intellij.android.gmaven" />
     <orderEntry type="library" name="agp-version" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl.refactorings" level="project" />
   </component>
 </module>

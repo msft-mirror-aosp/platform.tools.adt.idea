@@ -17,5 +17,9 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
   </component>
 </module>
