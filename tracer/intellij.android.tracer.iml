@@ -7,11 +7,21 @@
       <sourceFolder url="file://$MODULE_DIR$/resources" type="java-resource" />
     </content>
     <orderEntry type="inheritedJdk" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="library" name="studio-sdk" level="project" />
-    <orderEntry type="module" module-name="android.sdktools.tracer" />
-    <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
+    <orderEntry type="module-library" exported="">
+      <library name="androidx-tracing-desktop">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/androidx/tracing/tracing-desktop/2.0.0-alpha06/tracing-desktop-2.0.0-alpha06.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/androidx/tracing/tracing-wire-desktop/2.0.0-alpha06/tracing-wire-desktop-2.0.0-alpha06.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/wire/wire-runtime-jvm/6.0.0/wire-runtime-jvm-6.0.0.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/okio/okio-jvm/3.9.0/okio-jvm-3.9.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+      </library>
+    </orderEntry>
   </component>
 </module>
