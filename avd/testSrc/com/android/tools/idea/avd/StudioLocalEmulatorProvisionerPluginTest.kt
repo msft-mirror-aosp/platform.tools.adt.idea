@@ -35,6 +35,7 @@ import com.android.sdklib.deviceprovisioner.makeAvdInfo
 import com.android.sdklib.deviceprovisioner.testContext
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus
+import com.android.sdklib.internal.avd.UserSettingsKey
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.tools.idea.avd.glassespairing.GlassesPairingLockService
@@ -273,7 +274,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
         avdRoot,
         2,
         tag = SystemImageTags.AI_GLASSES_TAG,
-        userSettings = mapOf("paired.phone.avd" to deviceId(phonePath).toString()),
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
       )
 
     avdManager.createAvd(phoneInfo)
@@ -303,11 +304,11 @@ class StudioLocalEmulatorProvisionerPluginTest {
     // The mock avdManager ignores refreshDevices disk updates, so we check disk files directly
     yieldUntil {
       val settings = Files.readAllLines(phoneAvdPath.resolve("user-settings.ini"))
-      !settings.any { it.startsWith("paired.glasses.avd.id") }
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX) }
     }
     yieldUntil {
       val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
-      !settings.any { it.startsWith("paired.phone.avd") }
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }
     }
   }
 
@@ -323,7 +324,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
         avdRoot,
         2,
         tag = SystemImageTags.AI_GLASSES_TAG,
-        userSettings = mapOf("paired.phone.avd" to deviceId(phonePath).toString()),
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
       )
 
     avdManager.createAvd(phoneInfo)
@@ -351,7 +352,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
     // Check disk file to verify glasses was unpaired
     yieldUntil {
       val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
-      !settings.any { it.startsWith("paired.phone.avd") }
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }
     }
   }
 
@@ -368,7 +369,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
           avdRoot,
           2,
           tag = SystemImageTags.AI_GLASSES_TAG,
-          userSettings = mapOf("paired.phone.avd" to deviceId(phonePath).toString()),
+          userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
         )
 
       avdManager.createAvd(phoneInfo)
@@ -389,7 +390,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
       Files.createDirectories((glassesHandle.state.properties as LocalEmulatorProperties).avdPath)
 
       val glassesAvdPath = (glassesHandle.state.properties as LocalEmulatorProperties).avdPath
-      Files.write(glassesAvdPath.resolve("user-settings.ini"), listOf("paired.phone.avd=${phoneHandle.id}"))
+      Files.write(glassesAvdPath.resolve("user-settings.ini"), listOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1=${phoneHandle.id}"))
 
       // Ensure memory property is resolved
       yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
@@ -403,7 +404,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
         // The mock avdManager ignores refreshDevices disk updates, so we check disk files directly
         // Glasses should STILL HAVE the phone reference because the write failed
         val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
-        assertThat(settings.any { it.startsWith("paired.phone.avd") }).isTrue()
+        assertThat(settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }).isTrue()
       } finally {
         // Clean up: make it writable again so tearDown can delete the folder
         glassesAvdPath.resolve("user-settings.ini").toFile().setWritable(true)
@@ -422,7 +423,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
         avdRoot,
         2,
         tag = SystemImageTags.AI_GLASSES_TAG,
-        userSettings = mapOf("paired.phone.avd" to deviceId(phonePath).toString()),
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
       )
 
     avdManager.createAvd(phoneInfo)
@@ -456,7 +457,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
 
     // Assert still paired
     val phoneSettings = Files.readAllLines(phoneAvdPath.resolve("user-settings.ini"))
-    assertThat(phoneSettings.any { it.startsWith("paired.glasses.avd.id") }).isTrue()
+    assertThat(phoneSettings.any { it.startsWith(UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX) }).isTrue()
     assertThat(glassesHandle.state.properties.pairedPhoneId).isEqualTo(phoneHandle.id)
   }
 
@@ -473,7 +474,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
         avdRoot,
         2,
         tag = SystemImageTags.AI_GLASSES_TAG,
-        userSettings = mapOf("paired.phone.avd" to deviceId(phonePath).toString()),
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
       )
     avdManager.createAvd(phoneInfo)
     avdManager.createAvd(glassesInfo)
