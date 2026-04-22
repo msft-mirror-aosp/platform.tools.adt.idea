@@ -59,6 +59,7 @@ import com.android.tools.preview.config.toDeviceConfig
 import com.android.tools.preview.config.toMutableConfig
 import com.google.wireless.android.sdk.stats.EditorPickerEvent.EditorPickerAction.PreviewPickerModification.PreviewPickerValue
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtExpression
@@ -245,7 +246,7 @@ internal class DeviceParameterPropertyItem(
         newValue?.let {
           val deviceConfig = getCurrentDeviceConfig()
           val trackableValue = setter(deviceConfig, newValue)
-          writeNewValue(deviceConfig.deviceSpec(), false, trackableValue)
+          invokeLater { writeNewValue(deviceConfig.deviceSpec(), false, trackableValue) }
         }
       }
   }

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.pickers.base.property
 
+import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.model.stdui.EDITOR_NO_ERROR
 import com.android.tools.adtui.model.stdui.EditingSupport
 import com.android.tools.adtui.model.stdui.EditingValidation
@@ -26,6 +27,7 @@ import com.google.wireless.android.sdk.stats.EditorPickerEvent.EditorPickerActio
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.codeStyle.CodeStyleManager
@@ -43,7 +45,8 @@ import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 
-private const val WRITE_COMMAND = "Psi Parameter Modification"
+private val WRITE_COMMAND = { parameterName: String -> "Parameter $parameterName Modification" }
+private const val DELETE_COMMAND = "Delete Parameter"
 
 /**
  * A [PsiPropertyItem] for a named parameter.
@@ -109,6 +112,7 @@ internal open class PsiCallParameterPropertyItem(
       }
       return cachedValue
     }
+    @UiThread
     set(value) {
       val newValue = value?.trim()?.nullize()
       val trackable = if (newValue == null) PreviewPickerValue.CLEARED else PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
@@ -149,6 +153,7 @@ internal open class PsiCallParameterPropertyItem(
    * [trackableValue] should be an option that bests represents [newValue]. Use [PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED] if none of
    * the options matches the meaning of the value, or [PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE] if the assigned value is unexpected.
    */
+  @UiThread
   fun writeNewValue(newValue: String?, writeAsIs: Boolean, trackableValue: PreviewPickerValue) {
     model.tracker.registerModification(name, trackableValue, CurrentDeviceKey.getData(model))
     if (newValue == null) {
@@ -164,17 +169,18 @@ internal open class PsiCallParameterPropertyItem(
     }
   }
 
+  @UiThread
   @OptIn(K1Deprecation::class)
   fun deleteParameter() {
-    runModification {
+    runModification(DELETE_COMMAND) {
       argumentExpression?.parent?.deleteElementAndCleanParent()
       argumentExpression = null
     }
-    model.firePropertyValuesChanged()
   }
 
+  @UiThread
   private fun writeParameter(parameterString: String) {
-    runModification {
+    runModification(WRITE_COMMAND(parameterString)) {
       var newValueArgument = model.psiFactory.createArgument(parameterString)
       val currentArgumentExpression = argumentExpression
 
@@ -186,9 +192,15 @@ internal open class PsiCallParameterPropertyItem(
       argumentExpression = newValueArgument.getArgumentExpression()
       argumentExpression?.parent?.let { CodeStyleManager.getInstance(it.project).reformat(it) }
     }
-    model.firePropertyValuesChanged()
   }
 
-  private fun runModification(invoke: () -> Unit) =
-    WriteCommandAction.runWriteCommandAction(project, WRITE_COMMAND, null, invoke, model.ktFile)
+  @UiThread
+  private fun runModification(commandName: String, modification: () -> Unit) {
+    WriteAction.run<Throwable> {
+      // We must not change PSI outside command or undo-transparent action in a PSI file and we want the change to be editable via Undo/Redo
+      // operations.
+      WriteCommandAction.runWriteCommandAction(project, commandName, null, modification, model.ktFile)
+    }
+    model.firePropertyValuesChanged()
+  }
 }
