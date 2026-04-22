@@ -90,7 +90,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -155,7 +154,7 @@ internal interface GlassesPairer {
 
 internal object DefaultGlassesPairer : GlassesPairer {
   override fun pair(glasses: DeviceHandle, phone: DeviceHandle, project: Project?, onMacRetrieved: (String) -> Unit): Flow<PairingState> {
-    return pairGlassesToPhone(glasses, phone, project, onMacRetrieved = onMacRetrieved)
+    return pairGlassesToPhone(glasses, phone, onMacRetrieved = onMacRetrieved)
   }
 }
 
@@ -587,7 +586,6 @@ internal fun launchGlassesAndPhone(glasses: DeviceHandle, phone: DeviceHandle): 
 internal fun pairGlassesToPhone(
   glasses: DeviceHandle,
   phone: DeviceHandle,
-  project: Project?,
   launchFlow: () -> Flow<PairingState> = { launchGlassesAndPhone(glasses, phone) },
   onMacRetrieved: (String) -> Unit,
 ): Flow<PairingState> {
@@ -624,7 +622,6 @@ internal fun pairGlassesToPhone(
       }
 
       try {
-        project?.userInvolvementRequired(phone)
         runPairingSequence(phoneDevice, glassesDevice, phoneName, glassesName, logger, onMacRetrieved)
       } catch (cause: ShellCommandException) {
         GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_SHELL_COMMAND)
