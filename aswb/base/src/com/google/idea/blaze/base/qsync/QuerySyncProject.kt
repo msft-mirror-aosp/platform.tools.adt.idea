@@ -36,10 +36,10 @@ import com.google.idea.blaze.common.artifact.BuildArtifactCache
 import com.google.idea.blaze.common.vcs.VcsState
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.BlazeQueryParser
-import com.google.idea.blaze.qsync.GraphToProjectConverter
 import com.google.idea.blaze.qsync.ProjectBuilder
 import com.google.idea.blaze.qsync.ProjectStructureReader
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
+import com.google.idea.blaze.qsync.fromGraph
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -123,26 +123,36 @@ class QuerySyncProject(
   @JvmRecord
   data class QueryCoreSyncResult(
     val postQuerySyncData: PostQuerySyncData,
-    val graph: BuildGraphData,
-    val projectStructureData: ProjectStructureData,
+    val graph: BuildGraphData
   )
 
   @Throws(BuildException::class)
-  fun syncQueryCore(context: BlazeContext, lastQuery: PostQuerySyncData?): QueryCoreSyncResult {
-    SaveUtil.saveAllFiles()
+  fun syncQueryCore(context: BlazeContext, postQuerySyncData: PostQuerySyncData): QueryCoreSyncResult {
+    return computeQueryCoreSyncResult(context, postQuerySyncData)
+  }
+
+  fun computePostQuerySyncData(context: BlazeContext, lastQuery: PostQuerySyncData?): PostQuerySyncData {
     val postQuerySyncData =
       if (lastQuery == null) projectQuerier.fullQuery(projectDefinition, context)
       else projectQuerier.update(projectDefinition, lastQuery, context)
-    return computeQueryCoreSyncResult(context, postQuerySyncData)
+    return postQuerySyncData
   }
 
   fun computeQueryCoreSyncResult(context: BlazeContext, postQuerySyncData: PostQuerySyncData): QueryCoreSyncResult {
     val graph = buildGraphData(postQuerySyncData, context)
+   return QueryCoreSyncResult(postQuerySyncData, graph)
+  }
+
+  fun computeProjectStructureData(
+    context: BlazeContext,
+    projectDefinition: ProjectDefinition,
+    graph: BuildGraphData,
+  ): ProjectStructureData {
     val projectStructureData =
       (if (readProjectStructureFromDirectory) {
-        readProjectStructureFromDirectory(context, postQuerySyncData.projectDefinition())
-      } else null) ?: GraphToProjectConverter.initializeProjectStructureData(graph)
-    return QueryCoreSyncResult(postQuerySyncData, graph, projectStructureData)
+        readProjectStructureFromDirectory(context, projectDefinition)
+      } else null) ?: ProjectStructureData.fromGraph(context, graph, projectDefinition.projectIncludes)
+    return projectStructureData
   }
 
   private fun readProjectStructureFromDirectory(context: Context<*>, projectDefinition: ProjectDefinition): ProjectStructureData? =

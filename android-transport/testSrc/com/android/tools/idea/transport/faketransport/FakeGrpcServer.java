@@ -34,7 +34,6 @@ import com.android.tools.profiler.proto.MemoryProfiler.MemoryStartRequest;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryStartResponse;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryStopRequest;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryStopResponse;
-import com.android.tools.profiler.proto.MemoryServiceGrpc;
 import com.android.tools.idea.io.grpc.BindableService;
 import com.android.tools.idea.io.grpc.stub.StreamObserver;
 import com.android.tools.profiler.proto.Trace;
@@ -63,13 +62,9 @@ public class FakeGrpcServer extends FakeGrpcChannel {
    */
   @NotNull
   public static FakeGrpcServer createFakeGrpcServer(String name, BindableService transportService, BindableService profilerService) {
-    EventService eventService = new EventService();
-    MemoryService memoryService = new MemoryService();
     FakeGrpcServer server =
-      new FakeGrpcServer(name, transportService, profilerService, eventService, memoryService);
+      new FakeGrpcServer(name, transportService, profilerService);
     // Set the links between the services and the server.
-    eventService.myServer = server;
-    memoryService.myServer = server;
     TransportService.setTestChannelName(server.getName());
     return server;
   }
@@ -111,73 +106,5 @@ public class FakeGrpcServer extends FakeGrpcChannel {
       }
     }
   }
-
-  private static class EventService extends EventServiceGrpc.EventServiceImplBase {
-    private FakeGrpcServer myServer;
-
-    @Override
-    public void startMonitoringApp(EventStartRequest request, StreamObserver<EventStartResponse> response) {
-      myServer.addProfiledProcess(request.getSession());
-      response.onNext(EventStartResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void stopMonitoringApp(EventStopRequest request, StreamObserver<EventStopResponse> response) {
-      myServer.removeProfiledProcess(request.getSession());
-      response.onNext(EventStopResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getActivityData(EventDataRequest request, StreamObserver<ActivityDataResponse> response) {
-      response.onNext(ActivityDataResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getSystemData(EventDataRequest request, StreamObserver<SystemDataResponse> response) {
-      response.onNext(SystemDataResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-  }
-
-  private static class MemoryService extends MemoryServiceGrpc.MemoryServiceImplBase {
-    private FakeGrpcServer myServer;
-
-    @Override
-    public void startMonitoringApp(MemoryStartRequest request, StreamObserver<MemoryStartResponse> response) {
-      myServer.addProfiledProcess(request.getSession());
-      response.onNext(MemoryStartResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void stopMonitoringApp(MemoryStopRequest request, StreamObserver<MemoryStopResponse> response) {
-      myServer.removeProfiledProcess(request.getSession());
-      response.onNext(MemoryStopResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getData(MemoryRequest request, StreamObserver<MemoryData> response) {
-      response.onNext(MemoryData.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getJvmtiData(MemoryRequest request, StreamObserver<MemoryData> response) {
-      response.onNext(MemoryData.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void listHeapDumpInfos(ListDumpInfosRequest request,
-                                  StreamObserver<ListHeapDumpInfosResponse> response) {
-      response.onNext(ListHeapDumpInfosResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-  }
-
 
 }

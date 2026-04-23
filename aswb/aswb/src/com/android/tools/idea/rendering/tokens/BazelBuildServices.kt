@@ -22,6 +22,7 @@ import com.android.tools.idea.run.classes.BazelClassFileFinder
 import com.android.tools.idea.run.classes.BuildOutcome
 import com.android.tools.idea.run.classes.BuildOutcomeCache
 import com.google.common.annotations.VisibleForTesting
+import com.google.common.base.Stopwatch
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.SettableFuture
 import com.google.idea.blaze.base.logging.ComposablePreviewsEvent
@@ -45,6 +46,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
+import java.time.Duration
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
@@ -115,6 +117,8 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
     return coroutineScope.async {
       val buildResultSettableFuture = SettableFuture.create<BuildSystemFilePreviewServices.BuildListener.BuildResult>()
       try {
+        val stopwatch = Stopwatch.createStarted()
+
         withContext(Dispatchers.EDT) {
           listeners.forEach { listener ->
             listener.buildStarted(BuildSystemFilePreviewServices.BuildListener.BuildMode.COMPILE, buildResultSettableFuture)
@@ -134,6 +138,9 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
 
         val succeeded = qSyncManager.runOperationWithToolWindow(this, scope, QuerySyncManager.TaskOrigin.USER_ACTION, operation)
         buildResultSettableFuture.set(newBuildResult(succeeded, project))
+
+        log(label, project, stopwatch.elapsed())
+
         succeeded
       } catch (e: CancellationException) {
         buildOutcomeCache.invalidate(label, ProjectSystemBuildManager.BuildStatus.CANCELLED)
@@ -167,11 +174,7 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
     context: BlazeContext,
   ) {
     try {
-      val finder = buildOutcomeCache.cacheOutput(project, label, output, context).classFileFinder
-
-      if (finder is BazelClassFileFinder) {
-        EventLoggingService.getInstance().log(ComposablePreviewsEvent(project, finder.jarCountForLoggingOnly))
-      }
+      buildOutcomeCache.cacheOutput(project, label, output, context)
     } catch (exception: Exception) {
       val status =
         when (exception) {
@@ -214,6 +217,14 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
       if (succeeded) ProjectSystemBuildManager.BuildStatus.SUCCESS else ProjectSystemBuildManager.BuildStatus.FAILED,
       GlobalSearchScope.projectScope(project),
     )
+  }
+
+  private fun log(label: Label, project: Project, buildDuration: Duration) {
+    val outcome = checkNotNull(buildOutcomeCache.get(label)) { "The cache should have a mapping for $label" }
+    val finder = outcome.classFileFinder
+
+    EventLoggingService.getInstance()
+      .log(ComposablePreviewsEvent(project, buildDuration, if (finder is BazelClassFileFinder) finder.jarCountForLoggingOnly else null))
   }
 }
 

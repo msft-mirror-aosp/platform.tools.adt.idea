@@ -19,11 +19,36 @@ import java.nio.file.Path
 
 /** Data class to hold the source files within a single build package. */
 data class SourceSet(
-  /** Java/Kotlin source files, relative to the workspace root. */
+  /** The path to the directory containing the sources, relative to the workspace root. */
+  val rootPath: Path,
+  /** Java/Kotlin source files, relative to the rootPath. */
   val javaSourceFiles: List<Path> = emptyList(),
-  /** Other source files (e.g. C++, Proto), relative to the workspace root. */
+  /** Other source files (e.g. C++, Proto), relative to the rootPath. */
   val nonJavaSourceFiles: List<Path> = emptyList(),
-)
+) {
+  init {
+    fun validatePath(name: String, path: Path) {
+      require(!path.isAbsolute) { "$name must be relative: $path" }
+      require(path.normalize() == path) { "$name must be normalized: $path" }
+      require(!path.toString().startsWith("..")) { "$name must not start with ..: $path" }
+    }
+
+    validatePath("rootPath", rootPath)
+    javaSourceFiles.forEach { validatePath("javaSourceFile", it) }
+    nonJavaSourceFiles.forEach { validatePath("nonJavaSourceFile", it) }
+  }
+}
+
+/** Data class to hold the source sets associated with a project structure root. */
+data class ProjectStructureRoot(val projectStructureRootPath: Path, val packageSourceSets: Map<Path, List<SourceSet>>) {
+  init {
+    packageSourceSets.values.flatten().forEach { sourceSet ->
+      require(sourceSet.rootPath.startsWith(projectStructureRootPath)) {
+        "SourceSet rootPath (${sourceSet.rootPath}) must start with projectStructureRootPath ($projectStructureRootPath)"
+      }
+    }
+  }
+}
 
 /**
  * A data class to hold the information required to setup a basic project structure.
@@ -31,12 +56,12 @@ data class SourceSet(
  * This class encapsulates a subset of data from [BuildGraphData] that is needed by [GraphToProjectConverter] to setup a basic project. Its
  * contents can be instantiated from a directory traversal and without running `bazel query`.
  */
-data class ProjectStructureData(
-  /** Map from build package path (relative to workspace root) to its source files. */
-  val packageSourceSets: Map<Path, SourceSet>,
-  val activeLanguages: Set<QuerySyncLanguage>,
-) {
+data class ProjectStructureData private constructor(val roots: List<ProjectStructureRoot>, val activeLanguages: Set<QuerySyncLanguage>) {
   companion object {
-    @JvmField val EMPTY = ProjectStructureData(packageSourceSets = emptyMap(), activeLanguages = emptySet())
+    fun create(roots: List<ProjectStructureRoot>, activeLanguages: Set<QuerySyncLanguage>): ProjectStructureData {
+      return ProjectStructureData(roots, activeLanguages.toHashSet())
+    }
+
+    @JvmField val EMPTY = create(roots = emptyList(), activeLanguages = emptySet())
   }
 }

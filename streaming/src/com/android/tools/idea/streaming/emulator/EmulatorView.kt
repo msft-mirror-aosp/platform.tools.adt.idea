@@ -230,7 +230,7 @@ internal class EmulatorView(
     get() = lastScreenshot?.displayShape ?: DisplayShape(0, 0, initialOrientation)
 
   private val initialOrientation: Int
-    get() = if (displayId == PRIMARY_DISPLAY_ID && deviceType == DeviceType.HANDHELD) emulatorConfig.initialOrientationQuadrants else 0
+    get() = if (displayId == PRIMARY_DISPLAY_ID) emulatorConfig.initialOrientationQuadrants else 0
 
   private val deviceDisplayRegion: Rectangle
     get() = screenshotShape.activeDisplayRegion ?: Rectangle(deviceDisplaySize)
@@ -242,7 +242,7 @@ internal class EmulatorView(
     get() = screenshotShape.activeDisplayRegion?.size ?: displaySize ?: emulatorConfig.displaySize
 
   override val hasInnerPart: Boolean
-    get() = emulatorConfig.environmentSize != null
+    get() = emulatorConfig.environmentSize != null && emulatorConfig.displayWidth > 0 && emulatorConfig.displayWidth > 0
 
   override var framing: Framing
     get() = super.framing

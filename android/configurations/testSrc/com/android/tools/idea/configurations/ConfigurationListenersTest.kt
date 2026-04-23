@@ -15,18 +15,17 @@
  */
 package com.android.tools.idea.configurations
 
-import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.ConfigurationListeners
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 class ConfigurationListenersTest {
+
   @Test
   fun testBulkEditingStateAndNesting() {
     val listeners = ConfigurationListeners()
 
     assertThat(listeners.isBulkEditing).named("Should not be bulk editing initially").isFalse()
-
     // Start level 1
     listeners.startBulkEditing()
     assertThat(listeners.isBulkEditing).isTrue()
@@ -44,19 +43,23 @@ class ConfigurationListenersTest {
     val shouldNotify2 = listeners.finishBulkEditing()
     assertThat(shouldNotify2).named("Should notify when final bulk edit finishes").isTrue()
     assertThat(listeners.isBulkEditing).named("Should no longer be bulk editing").isFalse()
+
+    // Finish one more time (unbalanced)
+    val shouldNotify3 = listeners.finishBulkEditing()
+    assertThat(shouldNotify3).named("Should not notify if already at 0").isFalse()
+    assertThat(listeners.isBulkEditing).named("Should still not be bulk editing").isFalse()
   }
 
   @Test
   fun testListenerNotifications() {
     val listeners = ConfigurationListeners()
+
     var receivedFlags = 0
 
-    listeners.addListener(
-      ConfigurationListener { flags: Int ->
-        receivedFlags = flags
-        true
-      }
-    )
+    listeners.addListener { flags ->
+      receivedFlags = flags
+      true
+    }
 
     listeners.notifyListeners(42)
     assertThat(receivedFlags).named("Listener should receive the exact flags dispatched").isEqualTo(42)

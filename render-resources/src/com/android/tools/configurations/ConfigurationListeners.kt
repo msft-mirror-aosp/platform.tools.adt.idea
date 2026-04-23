@@ -15,37 +15,52 @@
  */
 package com.android.tools.configurations
 
-import com.google.common.collect.ImmutableList
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
-/** Handles pub/sub notifications and bulk editing counts for [Configuration]. */
+/**
+ * Handles pub/sub notifications and bulk editing counts for [Configuration]. Optimized for high-concurrency environments using lock-free
+ * data structures.
+ */
 class ConfigurationListeners {
-  private val listeners: MutableList<ConfigurationListener> = ArrayList()
-  private var bulkEditingCount = 0
+  // CopyOnWriteArrayList allows safe, concurrent iteration without synchronized blocks.
+  // It is highly optimized for observer patterns where reads vastly outnumber writes.
+  private val listeners = CopyOnWriteArrayList<ConfigurationListener>()
+
+  // AtomicInteger prevents thread contention when starting/finishing bulk edits
+  private val bulkEditingCount = AtomicInteger(0)
+
+  val isBulkEditing: Boolean
+    get() = bulkEditingCount.get() > 0
 
   fun startBulkEditing() {
-    bulkEditingCount++
+    bulkEditingCount.incrementAndGet()
   }
 
   fun finishBulkEditing(): Boolean {
-    bulkEditingCount--
-    return bulkEditingCount == 0
+    // We use a CAS loop instead of decrementAndGet() to ensure the counter never drops below zero.
+    // This prevents the state from becoming invalid if finishBulkEditing() is called more times
+    // than startBulkEditing() (e.g. due to unbalanced lifecycle calls).
+    while (true) {
+      val current = bulkEditingCount.get()
+      if (current <= 0) return false
+      if (bulkEditingCount.compareAndSet(current, current - 1)) {
+        return current == 1
+      }
+    }
   }
 
-  val isBulkEditing: Boolean
-    get() = bulkEditingCount > 0
-
   fun addListener(listener: ConfigurationListener) {
-    synchronized(listeners) { listeners.add(listener) }
+    listeners.addIfAbsent(listener)
   }
 
   fun removeListener(listener: ConfigurationListener) {
-    synchronized(listeners) { listeners.remove(listener) }
+    listeners.remove(listener)
   }
 
   fun notifyListeners(changedFlags: Int) {
-    val currentListeners: ImmutableList<ConfigurationListener>
-    synchronized(listeners) { currentListeners = ImmutableList.copyOf(listeners) }
-    for (listener in currentListeners) {
+    // Safe to iterate directly! No synchronized(listeners) block needed.
+    for (listener in listeners) {
       listener.changed(changedFlags)
     }
   }

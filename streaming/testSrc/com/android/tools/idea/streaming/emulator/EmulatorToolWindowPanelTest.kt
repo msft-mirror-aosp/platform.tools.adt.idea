@@ -564,6 +564,61 @@ class EmulatorToolWindowPanelTest {
   }
 
   @Test
+  fun testAiGlassesDisplaylessToolbarActions() {
+    val avdFolder = FakeEmulator.createAiGlassesDisplaylessAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
+    panel = createWindowPanel(avdFolder)
+
+    assertThat(panel.primaryDisplayView).isNull()
+
+    panel.createContent(true)
+    val emulatorView = panel.primaryDisplayView ?: fail()
+    assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_GLASS)
+
+    // Check appearance.
+    var frameNumber = emulatorView.frameNumber
+    assertThat(frameNumber).isEqualTo(0u)
+    panel.size = Dimension(430, 450)
+    fakeUi.layoutAndDispatchEvents()
+    val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 430 height: 362")
+    assertAppearance("AiGlassesDisplaylessToolbarActions1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+    emulator.clearGrpcCallLog()
+
+    var button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Turn Microphone On/Off" }
+    assertThat(button.isSelected).isFalse()
+    fakeUi.mouseClickOn(button)
+    var call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setMicrophoneState")
+    assertThat(shortDebugString(call.request)).isEqualTo("realAudioEnabled: true")
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.mouseClickOn(button)
+    call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(shortDebugString(call.request)).isEqualTo("")
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(button.isSelected).isFalse()
+
+    button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Camera" }
+    fakeUi.mouseClickOn(button)
+    val streamInputCall = emulator.getNextGrpcCall(2.seconds)
+    assertThat(streamInputCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { key: \"Stem1\" }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"Stem1\" }")
+
+    // Check that the buttons not applicable to displayless AI Glasses are hidden.
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Display" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Power" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Rotate Left" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Rotate Right" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Home" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Overview" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Hardware Input" }).isNull()
+
+    panel.destroyContent()
+    assertThat(panel.primaryDisplayView).isNull()
+    streamScreenshotCall.waitForCancellation(2.seconds)
+  }
+
+  @Test
   fun testXrMouseInput() {
     panel = createWindowPanelForXr()
 
@@ -588,13 +643,13 @@ class EmulatorToolWindowPanelTest {
       xrInputController.inputMode = inputMode
       fakeUi.mouse.moveTo(100, 100)
       val call = streamInputCall ?: getNextGrpcCallIgnoringStreamScreenshot().also { streamInputCall = it }
-      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 428 y: 258 }")
+      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 378 y: 296 }")
       fakeUi.mouse.press(100, 100)
-      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 428 y: 258 buttons: 1 }")
+      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 378 y: 296 buttons: 1 }")
       fakeUi.mouse.dragTo(500, 200)
-      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2135 y: 684 buttons: 1 }")
+      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2190 y: 749 buttons: 1 }")
       fakeUi.mouse.release()
-      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2135 y: 684 }")
+      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2190 y: 749 }")
     }
   }
 
@@ -708,14 +763,14 @@ class EmulatorToolWindowPanelTest {
     fakeUi.mouse.press(100, 100)
     fakeUi.mouse.dragTo(500, 100)
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { y: -2.264211 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { y: -2.2241366 }")
     fakeUi.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { x: -2.264211 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { x: -2.2241366 }")
     fakeUi.mouse.dragTo(500, 10) // Exit the EmulatorView component.
     fakeUi.mouse.dragTo(300, 35) // Enter the EmulatorView component in a different location.
     fakeUi.mouse.dragTo(100, 435)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-      .isEqualTo("xr_head_rotation_event { x: -2.264211 y: 1.1321055 }")
+      .isEqualTo("xr_head_rotation_event { x: -2.2241366 y: 1.1120683 }")
   }
 
   @Test
@@ -742,14 +797,14 @@ class EmulatorToolWindowPanelTest {
     fakeUi.mouse.press(100, 100)
     fakeUi.mouse.dragTo(500, 100)
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_x: -2.882883 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_x: -2.8318584 }")
     fakeUi.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_y: 2.882883 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_y: 2.8318584 }")
     fakeUi.mouse.dragTo(500, 10) // Exit the EmulatorView component.
     fakeUi.mouse.dragTo(300, 35) // Enter the EmulatorView component in a different location.
     fakeUi.mouse.dragTo(100, 435)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-      .isEqualTo("xr_head_movement_event { delta_x: 1.4414415 delta_y: 2.882883 }")
+      .isEqualTo("xr_head_movement_event { delta_x: 1.4159292 delta_y: 2.8318584 }")
     fakeUi.mouse.release()
 
     // Moving forward and backward by rotating the mouse wheel.
@@ -762,7 +817,7 @@ class EmulatorToolWindowPanelTest {
     xrInputController.inputMode = XrInputMode.LOCATION_IN_SPACE_Z
     fakeUi.mouse.press(100, 100)
     fakeUi.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_z: -2.882883 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_z: -2.8318584 }")
     fakeUi.mouse.release()
   }
 

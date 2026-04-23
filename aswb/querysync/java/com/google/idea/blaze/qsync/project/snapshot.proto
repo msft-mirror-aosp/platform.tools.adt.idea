@@ -54,12 +54,18 @@ message WorkspaceSnapshot {
 }
 
 message ProjectStructureData {
-  repeated SourceSet package_source_sets = 1;
+  repeated ProjectStructureRoot roots = 3;
   repeated LanguageClass active_languages = 2;
+}
+
+message ProjectStructureRoot {
+  string project_structure_root_path = 1;
+  repeated SourceSet package_source_sets = 2;
 }
 
 message SourceSet {
   string workspace_relative_path = 1;
   repeated string java_source_files = 2;
   repeated string non_java_source_files = 3;
+  string root_path = 4;
 }

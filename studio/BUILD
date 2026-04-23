@@ -1119,13 +1119,9 @@ android_studio(
 )
 
 py_test(
-    name = "test_studio",
-    srcs = ["tests/test_studio.py"],
+    name = "test_studio_artifacts",
+    srcs = ["tests/test_studio_artifacts.py"],
     data = [
-        "tests/expected_linux.txt",
-        "tests/expected_mac.txt",
-        "tests/expected_mac_arm.txt",
-        "tests/expected_win.txt",
         ":android-studio.linux.zip",
         ":android-studio.mac.zip",
         ":android-studio.mac_arm.zip",
@@ -1537,7 +1533,6 @@ iml_module(
         "@intellij//:com.intellij.plugins.visualstudiokeymap",
         "@intellij//:com.intellij.properties",
         "@intellij//:com.intellij.tasks",
-        "@intellij//:com.intellij.turboComplete",
         "@intellij//:com.jetbrains.performancePlugin",
         "@intellij//:com.jetbrains.sh",
         "@intellij//:hg4idea",
@@ -1800,7 +1795,6 @@ iml_module(
         "@intellij//:intellij.toml.backend",
         "@intellij//:intellij.toml.frontend",
         "@intellij//:intellij.toml.json",
-        "@intellij//:intellij.turboComplete.languages.kotlin.k1",
         "@intellij//:intellij.uiDesigner",
         "@intellij//:intellij.vcs.git.coverage",
         "@intellij//:intellij.vcs.git.frontend",
@@ -2102,7 +2096,6 @@ iml_module(
         "@intellij//:intellij.toml.backend",
         "@intellij//:intellij.toml.frontend",
         "@intellij//:intellij.toml.json",
-        "@intellij//:intellij.turboComplete.languages.kotlin.k1",
         "@intellij//:intellij.uiDesigner",
         "@intellij//:intellij.vcs.git.coverage",
         "@intellij//:intellij.vcs.git.frontend",
@@ -2125,6 +2118,8 @@ iml_module(
 exports_files([
     "searchable-options/update_searchable_options.py",
     "searchable-options/searchable_options_test.py",
+    "tests/test_studio_files.py",
+    "tests/update_expected_studio_files.py",
 ])
 
 # This target finds all the update_searchable_options target of all the

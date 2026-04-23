@@ -31,6 +31,7 @@ import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder
 import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelImpl
 import com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.SdkOrPreviewTransform
+import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind
 import com.android.tools.idea.gradle.dsl.parser.android.CompileSdkBlockDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSimpleExpression
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement
@@ -54,6 +55,7 @@ class CompileSdkPropertyModelImpl(
     ): CompileSdkPropertyModelImpl {
       val context = parent.dslFile.context
       val compileSdkBlockVersion = VersionConstraint.agpFrom(COMPILE_SDK_BLOCK_VERSION)
+      val isDeclarative = parent.dslFile.parser.kind == Kind.DECLARATIVE
 
       val createInPosition = maybeCreateAfter?.let { parent.children.indexOf(it.rawElement).takeIf { it >= 0 } }?.plus(1)
 
@@ -75,7 +77,7 @@ class CompileSdkPropertyModelImpl(
       }
 
       // agpVersion is null for oldDsl tests
-      if (context.agpVersion != null && compileSdkBlockVersion.isOkWith(context.agpVersion)) {
+      if (context.agpVersion != null && compileSdkBlockVersion.isOkWith(context.agpVersion) && !isDeclarative) {
         // new DSL is possible
         val newCompileSdkBlock =
           if (createInPosition == null) {

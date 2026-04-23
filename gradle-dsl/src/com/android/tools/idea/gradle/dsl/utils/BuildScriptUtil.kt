@@ -43,10 +43,8 @@ internal fun findGradleSettingsFile(dirPath: File): File {
   if (groovySettingsFile.isFile) return groovySettingsFile
   val kotlinSettingsFile = File(dirPath, FN_SETTINGS_GRADLE_KTS)
   if (kotlinSettingsFile.isFile) return kotlinSettingsFile
-  if (DeclarativeStudioSupport.isEnabled()) {
-    val gradleDeclarativeSettingsFile = File(dirPath, FN_SETTINGS_GRADLE_DECLARATIVE)
-    if (gradleDeclarativeSettingsFile.isFile) return gradleDeclarativeSettingsFile
-  }
+  val gradleDeclarativeSettingsFile = File(dirPath, FN_SETTINGS_GRADLE_DECLARATIVE)
+  if (gradleDeclarativeSettingsFile.isFile) return gradleDeclarativeSettingsFile
 
   // Default to Groovy if none exist.
   return groovySettingsFile

@@ -49,7 +49,6 @@ import com.android.tools.profilers.ProfilersTestData;
 import com.android.tools.idea.transport.TransportServiceUtils;
 import com.android.tools.profilers.RecordingOption;
 import com.android.tools.profilers.StudioProfilers;
-import com.android.tools.profilers.event.FakeEventService;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeInstanceObject;
@@ -95,7 +94,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     super();
     myTransportService = new FakeTransportService(myTimer, true, featureLevel);
     MemoryProfilerTestUtils.setMockStartTraceStatus(myTransportService, myTimer, Trace.TraceStartStatus.Status.SUCCESS);
-    myGrpcChannel = new FakeGrpcChannel("MemoryProfilerStageTestChannel", myTransportService, new FakeEventService());
+    myGrpcChannel = new FakeGrpcChannel("MemoryProfilerStageTestChannel", myTransportService);
   }
 
   @Override
@@ -848,9 +847,9 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myProfilers.getSessionsManager().endCurrentSession();
     // First tick sends the END_SESSION command and triggers the stop recording
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    // Second tick sends the STOP_TRACE command and updates state
+    // Second tick sends the STOP_TRACE command
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(myStage.isTrackingAllocations()).isFalse();
+    assertThat(myTransportService.getRegisteredCommand(Commands.Command.CommandType.STOP_TRACE)).isNotNull();
   }
 
   @Test

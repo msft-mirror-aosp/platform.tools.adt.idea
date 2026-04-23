@@ -193,6 +193,10 @@ public final class StudioFlags {
     NPW, "show.fragment.gallery", "Show fragment gallery",
     "Show fragment gallery which contains fragment based templates");
 
+  public static final Flag<Boolean> NPW_SHOW_DCL = new BooleanFlag(
+    NPW, "show.dcl", "Show DCL in Combobox",
+    "Show Declarative as an option in the build script Combobox");
+
   public static final Flag<Boolean> NPW_PICK_LATEST_PATCH_AGP = new BooleanFlag(
     NPW, "use.patch.releases", "Use the latest patch release of AGP",
     "When enabled Studio will pick future patch releases of AGP for new projects.");
@@ -371,6 +375,10 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android");
+
+  public static final Flag<Boolean> PROFILER_LEAKCANARY_STUDIOBOT = new BooleanFlag(
+    PROFILER, "leakcanary.studiobot", "LeakCanary AI Integration",
+    "Enables AI analysis for memory leaks detected by LeakCanary.");
 
   public static final Flag<Boolean> PROFILER_SYSTEM_TRACE_IN_EDITOR = new BooleanFlag(
     PROFILER, "system.trace.in.editor", "Open System Trace in Editor",
@@ -1265,6 +1273,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD = new BooleanFlag(
     EMBEDDED_EMULATOR, "allow.ai.glasses", "Allow AI glasses AVD to run embedded",
     "Enables running an AI glasses AVD in the Running Devices tool window");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_DESKTOP_SDK37PLUS_AVD = new BooleanFlag(
+    EMBEDDED_EMULATOR, "allow.desktop.sdk37plus", "Allow Desktop AVD (SDK 37+) to run embedded",
+    "Enables running a Desktop AVD (SDK 37+) in the Running Devices tool window");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.tracking", "Enable hand tracking input mode for XR AVDs",
     "Enables hand tracking input mode for XR AVDs");
@@ -2559,11 +2570,16 @@ public final class StudioFlags {
                     "When enabled, a setting and various UI is made visible to configure the local Gemma model, and when provided and " +
                     "enabled it adds Gemma model option to Chat model picker.");
 
-  public static Flag<Boolean> REMOTE_MODELS_ENABLED =
+  public static final Flag<Boolean> REMOTE_MODELS_ENABLED =
     new BooleanFlag(STUDIOBOT, "remote.models.enabled",
                     "Add remote models for Chat.",
                     "When enabled, a setting and various UI is made visible to configure remote models, and when provided and " +
                     "enabled it add remote model option to Chat model picker.");
+
+  public static final Flag<Boolean> STUDIOBOT_AUTO_REFRESH_MODELS =
+    new BooleanFlag(STUDIOBOT, "auto.refresh.models",
+                    "Automatically refresh models in background.",
+                    "When enabled, a background job will run every 24 hours to fetch available models for active providers.");
 
   public static final Flag<Boolean> STUDIOBOT_INCLUDE_GRADLE_PROJECT_STRUCTURE_TOOLS_BY_DEFAULT =
     new BooleanFlag(STUDIOBOT, "include.gradle.project.structure.tools.by.default",
@@ -2684,6 +2700,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "ui.v2.enabled",
                     "Enable v2 agent UI (sessions in editor tabs)",
                     "Disables the toolwindow-based v1 agent UI and replaces it with the v2 editor tabs-based agent UI. Requires restart.");
+
+  public static final Flag<Boolean> STUDIOBOT_PERSONALIZED_GREETING_DISABLED =
+    new BooleanFlag(STUDIOBOT, "personalized.greeting.disabled",
+                    "Disable personalized greeting",
+                    "When false, shows 'Hi userName' if the user name is available; otherwise shows 'Hello'.");
 
   public static final Flag<Boolean> GEMINI_DEBUGGER_TOOLS_ENABLED =
     new BooleanFlag(STUDIOBOT, "debugger.tools",
@@ -2854,6 +2875,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_MARKETING_DIALOG =
     new BooleanFlag(GOOGLE_LOGIN, "show.marketing.dialog", "Show marketing dialog",
                     "Show marketing dialog after user logs in");
+  public static final Flag<Boolean> ENABLE_FSTS =
+    new BooleanFlag(GOOGLE_LOGIN, "enable.fsts", "Enable flexible scoped tokens",
+                    "Enable flexible scoped tokens and disable feature selection UI");
   // endregion Google Login
 
   // region Backup

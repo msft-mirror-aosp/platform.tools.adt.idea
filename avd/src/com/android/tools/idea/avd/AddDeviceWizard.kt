@@ -197,10 +197,11 @@ internal class AddDeviceWizard(
     val lazyListState = getOrCreateState { LazyListState() }
     val tableSortState = getOrCreateState { TableSortState<VirtualDeviceProfile>() }
     val filterState = getOrCreateState { VirtualDeviceFilterState() }
-    val selectionState = getOrCreateState { TableSelectionState<VirtualDeviceProfile>() }
 
     DeviceLoadingPage(profiles) { profiles ->
       val profiles = remember(profiles) { profiles.filter(virtualDeviceFilter) }
+      val selectionState = getOrCreateState { TableSelectionState<VirtualDeviceProfile>(profiles.find { it.name == "Medium Phone" }) }
+
       // Holds a Device that should be selected as a result of a DeviceUiAction; e.g. when a new
       // Device is created, we select it automatically.
       var dialogSelectedDevice by remember { mutableStateOf<Device?>(null) }
@@ -309,9 +310,7 @@ internal class AddDeviceWizard(
 
   private suspend fun finish(device: VirtualDevice): Boolean {
     val avdInfo = withContext(Dispatchers.IO) { VirtualDevices(avdManager).add(device) }
-    if (avdInfo != null) {
-      onAdd(avdInfo)
-    }
+    onAdd(avdInfo)
     return true
   }
 }

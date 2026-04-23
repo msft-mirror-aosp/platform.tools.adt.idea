@@ -133,7 +133,7 @@ fun isReferenceDevice(device: Device): Boolean {
 }
 
 private fun sizeGroupNexus(device: Device): DeviceGroup {
-  val screen = device.defaultHardware.screen
+  val screen = device.defaultHardware.screen ?: return DeviceGroup.OTHER
   // For foldables the device definition diagonal might be for the unfolded device, calculate ourselves.
   val diagonalLength =
     if (!screen.isFoldable) screen.diagonalLength

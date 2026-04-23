@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.avd.glassespairing
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.adblib.ConnectedDevice
@@ -55,7 +57,6 @@ import com.android.sdklib.deviceprovisioner.pairWithNestedState
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.adtui.compose.ComposeWizard
 import com.android.tools.adtui.compose.WizardAction
-import com.android.tools.adtui.compose.WizardButton
 import com.android.tools.adtui.compose.WizardPageScope
 import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avd.VirtualDeviceProfile
@@ -66,6 +67,7 @@ import com.android.tools.idea.run.DeviceHeadsUpListener
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.GlassesPairingEvent
 import com.intellij.openapi.application.UI
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
@@ -76,6 +78,7 @@ import java.awt.Dimension
 import java.awt.Window
 import java.io.IOException
 import java.text.Collator
+import javax.swing.JComponent
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -87,18 +90,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -107,17 +108,24 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.jewel.foundation.LocalComponent
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.ExternalLink
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IndeterminateHorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
+
+private const val GLASSES_PAIRING_AUTH_IMAGE_PATH = "/screens/glasses_auth.png"
+private const val GLASSES_CORE_CONNECTING_IMAGE_PATH = "/screens/glasses_core.png"
 
 internal interface WizardController {
   suspend fun show(): Boolean
@@ -136,6 +144,20 @@ fun interface AddDeviceDialog {
   ): AvdInfo?
 }
 
+// Data class to carry the result of the wizard, allowing both the phone and MAC
+// to be propagated back to the provisioner plugin without re-fetching via ADB.
+data class GlassesPairingResult(val phone: DeviceHandle, val glassesMacAddress: String)
+
+internal interface GlassesPairer {
+  fun pair(glasses: DeviceHandle, phone: DeviceHandle, project: Project?, onMacRetrieved: (String) -> Unit): Flow<PairingState>
+}
+
+internal object DefaultGlassesPairer : GlassesPairer {
+  override fun pair(glasses: DeviceHandle, phone: DeviceHandle, project: Project?, onMacRetrieved: (String) -> Unit): Flow<PairingState> {
+    return pairGlassesToPhone(glasses, phone, onMacRetrieved = onMacRetrieved)
+  }
+}
+
 @Stable
 class GlassesPairingWizard
 internal constructor(
@@ -143,18 +165,15 @@ internal constructor(
   private val coroutineScope: CoroutineScope,
   devicesFlow: Flow<List<DeviceHandle>>,
   private val glassesHandle: DeviceHandle,
-  private val pair: (glasses: DeviceHandle, phone: DeviceHandle, project: Project?) -> Flow<PairingState> = ::pairGlassesToPhone,
+  private val pairer: GlassesPairer = DefaultGlassesPairer,
   private val isCompatible: (DeviceHandle) -> Boolean = ::isAiGlassesCompatible,
   private val addDeviceDialog: AddDeviceDialog = AddDeviceDialog(::showAddDeviceDialog),
   private val avdScanner: () -> AbstractAvdScanner = { AvdScannerService.instance },
 ) {
   companion object {
-    private val _isWizardOpen = MutableStateFlow(false)
-    val isWizardOpen: StateFlow<Boolean> = _isWizardOpen.asStateFlow()
-
     @VisibleForTesting
     fun resetForTesting() {
-      _isWizardOpen.value = false
+      service<GlassesPairingLockService>().setWizardOpen(false)
     }
 
     /**
@@ -168,7 +187,7 @@ internal constructor(
       project: Project?,
       devicesFlow: Flow<List<DeviceHandle>>,
       glassesHandle: DeviceHandle,
-    ): DeviceHandle? =
+    ): GlassesPairingResult? =
       showCore(parent, project, devicesFlow, glassesHandle) { p, t, par, min, pref, c ->
         ComposeWizardController(ComposeWizard(p, t, par, min, pref, c))
       }
@@ -180,13 +199,14 @@ internal constructor(
       devicesFlow: Flow<List<DeviceHandle>>,
       glassesHandle: DeviceHandle,
       factory: (Project?, String, Component?, Dimension, Dimension, @Composable WizardPageScope.() -> Unit) -> WizardController,
-    ): DeviceHandle? {
+    ): GlassesPairingResult? {
       if (!StudioFlags.AI_GLASSES_PHONE_EMULATOR_PAIRING_WIZARD_ENABLED.get()) {
         return null
       }
 
+      val lockService = service<GlassesPairingLockService>()
       // If a wizard is already running, return null.
-      if (isWizardOpen.value) {
+      if (lockService.isWizardOpen.value) {
         return null
       }
 
@@ -194,27 +214,30 @@ internal constructor(
       val coroutineScope = CoroutineScope(SupervisorJob())
       val wizard = GlassesPairingWizard(project, coroutineScope, devicesFlow, glassesHandle)
       val controller =
-        factory(project, "Glasses Pairing Assistant", parent, JBUI.size(400, 200), JBUI.size(600, 350)) {
+        factory(project, "Glasses Pairing Assistant", parent, JBUI.size(400, 200), JBUI.size(800, 500)) {
           with(wizard) { SelectDevicePage() }
         }
 
-      _isWizardOpen.value = true
-
+      lockService.setWizardOpen(true)
       try {
         if (controller.show()) {
-          return wizard.phone?.handle
+          val phoneHandle = wizard.phone?.handle ?: return null
+          val mac = wizard.glassesMacAddress ?: return null
+          val result = GlassesPairingResult(phoneHandle, mac)
+          return result
         }
         return null
       } finally {
         // Ensure we cancel the wizard's scope and reset the global open state when it closes
         // (either normally or via exception).
         wizard.coroutineScope.cancel()
-        _isWizardOpen.value = false
+        lockService.setWizardOpen(false)
       }
     }
   }
 
   private var phone: DeviceRow? by mutableStateOf(null)
+  @Volatile internal var glassesMacAddress: String? = null
 
   private val deviceRowFlow: StateFlow<ImmutableList<DeviceRow>> =
     devicesFlow
@@ -232,10 +255,14 @@ internal constructor(
       .flatMapLatest {
         flow {
             try {
-              // We use a large timeout (10 minutes) to account for potential slow cold boots of both devices,
+              // We use a large timeout (15 minutes) to account for potential slow cold boots of both devices,
               // which can take significant time on some machines/configurations (e.g no GPU, cold boot, etc),
               // in addition to time for the user to navigate the pairing flow.
-              withTimeout(10.minutes) { pair(it.glasses, it.phone, project).collect { emit(it) } }
+              withTimeout(15.minutes) {
+                pairer
+                  .pair(glasses = it.glasses, phone = it.phone, project = project, onMacRetrieved = { mac -> glassesMacAddress = mac })
+                  .collect { emit(it) }
+              }
             } catch (cause: TimeoutCancellationException) {
               GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_TIMEOUT)
               emit(PairingState.Error("Pairing timed out", "The pairing process timed out."))
@@ -260,19 +287,54 @@ internal constructor(
       }
       .stateIn(coroutineScope, started = SharingStarted.Eagerly, initialValue = PairingState.NotStarted)
 
+  fun WizardPageScope.launchCreateCompatibleDevice(component: JComponent, state: SelectableLazyListState) {
+    coroutineScope.launch {
+      val createdAvd =
+        addDeviceDialog.show(
+          project = project,
+          parent = component,
+          virtualDeviceFilter = { it.formFactor == FormFactors.PHONE },
+          systemImageFilter = { it.tags.contains(SystemImageTags.AI_GLASSES_COMPATIBLE_TAG) },
+        )
+      // Force focus back to this panel after the dialog closes; because this dialog is non-modal, it doesn't happen on its own
+      withContext(Dispatchers.UI) { ((component as? Window) ?: SwingUtilities.getWindowAncestor(component))?.toFront() }
+      if (createdAvd != null) {
+        avdScanner().rescan()
+        coroutineScope.launch {
+          val createdRow =
+            withTimeoutOrNull(5.seconds) {
+              deviceRowFlow.mapNotNull { rows -> rows.find { it.state.properties.title == createdAvd.displayName } }.first()
+            }
+
+          if (createdRow != null) {
+            phone = createdRow
+            val currentSorted = deviceRowFlow.value.sortedWith(compareBy(Collator.getInstance()) { it.name })
+            val index = currentSorted.indexOfFirst { it.handle.id == createdRow.handle.id }
+            if (index >= 0) {
+              state.selectedKeys = setOf(createdRow.handle.id)
+              state.scrollToItem(index)
+            }
+          }
+        }
+      }
+    }
+  }
+
   @Composable
   internal fun WizardPageScope.SelectDevicePage() {
     val devices: ImmutableList<DeviceRow> by deviceRowFlow.collectAsState()
     val sortedDevices = remember(devices) { devices.sortedWith(compareBy(Collator.getInstance()) { it.name }).toImmutableList() }
 
+    val component = LocalComponent.current
     val state = getOrCreateState { SelectableLazyListState(LazyListState()) }
     Column(Modifier.padding(20.dp)) {
       if (sortedDevices.isEmpty()) {
-        PairingStateHorizontalProgress(
-          header = "No compatible AVDs found.",
-          detail =
-            "Glasses pairing requires a Canary system image that includes AI Glasses support.\n\n" + "Please create one in Device Manager.",
-          showProgressBar = false,
+        LargeText(text = "No compatible AVDs found.")
+        Text("Glasses pairing requires a Phone AVD with a system image that includes AI Glasses support.", Modifier.padding(top = 20.dp))
+        ExternalLink(
+          "Create a compatible device",
+          onClick = { launchCreateCompatibleDevice(component, state) },
+          Modifier.padding(top = 10.dp),
         )
       } else {
         LargeText("Select a device to pair", Modifier.padding(bottom = 8.dp))
@@ -283,49 +345,16 @@ internal constructor(
             GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
           },
           state,
+          Modifier.weight(1f),
+        )
+        ExternalLink(
+          "Create a new compatible device",
+          onClick = { launchCreateCompatibleDevice(component, state) },
+          Modifier.padding(top = 10.dp),
         )
       }
     }
-    leftSideButtons =
-      remember(sortedDevices) {
-        listOf(
-          WizardButton(
-            "Create new device...",
-            WizardAction {
-              coroutineScope.launch {
-                val createdAvd =
-                  addDeviceDialog.show(
-                    project = project,
-                    parent = component,
-                    virtualDeviceFilter = { it.formFactor == FormFactors.PHONE },
-                    systemImageFilter = { it.tags.contains(SystemImageTags.AI_GLASSES_COMPATIBLE_TAG) },
-                  )
-                // Force focus back to this panel after the dialog closes; because this dialog is non-modal, it doesn't happen on its own
-                withContext(Dispatchers.UI) { ((component as? Window) ?: SwingUtilities.getWindowAncestor(component))?.toFront() }
-                if (createdAvd != null) {
-                  avdScanner().rescan()
-                  coroutineScope.launch {
-                    val createdRow =
-                      withTimeoutOrNull(5.seconds) {
-                        deviceRowFlow.mapNotNull { rows -> rows.find { it.state.properties.title == createdAvd.displayName } }.first()
-                      }
 
-                    if (createdRow != null) {
-                      phone = createdRow
-                      val currentSorted = deviceRowFlow.value.sortedWith(compareBy(Collator.getInstance()) { it.name })
-                      val index = currentSorted.indexOfFirst { it.handle.id == createdRow.handle.id }
-                      if (index >= 0) {
-                        state.selectedKeys = setOf(createdRow.handle.id)
-                        state.scrollToItem(index)
-                      }
-                    }
-                  }
-                }
-              }
-            },
-          )
-        )
-      }
     nextAction =
       when (val phone = phone) {
         null -> WizardAction.Disabled
@@ -355,21 +384,49 @@ private fun PairingState(pairingState: PairingState, phone: DeviceRow) {
   Column(Modifier.padding(vertical = 20.dp, horizontal = 20.dp)) {
     when (pairingState) {
       is PairingState.AwaitingAuthorization -> {
-        LargeText(pairingState.heading)
+        Row(Modifier.fillMaxWidth()) {
+          Column(Modifier.weight(1f)) {
+            LargeText(pairingState.heading)
 
-        Row(Modifier.padding(40.dp)) {
-          CircularProgressIndicator()
-          Spacer(Modifier.size(5.dp))
-          Text(pairingState.detailText ?: "Waiting for user to accept Companion app permissions on ${phone.name}...")
+            Row(Modifier.padding(40.dp)) {
+              CircularProgressIndicator()
+              Spacer(Modifier.size(5.dp))
+              Text(pairingState.detailText ?: "Waiting for user to accept Companion app permissions on ${phone.name}...")
+            }
+          }
+
+          val painterProvider = rememberResourcePainterProvider(GLASSES_PAIRING_AUTH_IMAGE_PATH, GlassesPairingWizard::class.java)
+          val painter by painterProvider.getPainter()
+
+          Image(
+            painter = painter,
+            contentDescription = null,
+            modifier = Modifier.size(width = 244.dp, height = 400.dp),
+            contentScale = ContentScale.Fit,
+          )
         }
       }
       is PairingState.GlassesCoreConnecting -> {
-        LargeText(pairingState.heading)
+        Row(Modifier.fillMaxWidth()) {
+          Column(Modifier.weight(1f)) {
+            LargeText(pairingState.heading)
 
-        Row(Modifier.padding(40.dp)) {
-          CircularProgressIndicator()
-          Spacer(Modifier.size(5.dp))
-          Text(pairingState.detailText ?: "Waiting for user to accept XR Services permissions on ${phone.name}...")
+            Row(Modifier.padding(40.dp)) {
+              CircularProgressIndicator()
+              Spacer(Modifier.size(5.dp))
+              Text(pairingState.detailText ?: "Waiting for user to accept XR Services permissions on ${phone.name}...")
+            }
+          }
+
+          val painterProvider = rememberResourcePainterProvider(GLASSES_CORE_CONNECTING_IMAGE_PATH, GlassesPairingWizard::class.java)
+          val painter by painterProvider.getPainter()
+
+          Image(
+            painter = painter,
+            contentDescription = null,
+            modifier = Modifier.size(width = 244.dp, height = 400.dp),
+            contentScale = ContentScale.Fit,
+          )
         }
       }
       is PairingState.Complete -> {
@@ -483,10 +540,12 @@ internal enum class LaunchState {
 
 internal fun launchAvd(handle: DeviceHandle): Flow<LaunchState> = flow {
   withTimeout(60.seconds) { handle.stateFlow.takeWhile { it.isTransitioning }.collect { emit(LaunchState.Waiting) } }
-  if (handle.state.isReady) emit(LaunchState.Ready)
-  else {
+  if (handle.state.isReady) {
+    emit(LaunchState.Ready)
+  } else {
     emit(LaunchState.Launching)
-    withTimeout(360.seconds) { handle.activationAction!!.activate() }
+    val activationAction = handle.activationAction ?: throw DeviceActionException("Device cannot be activated")
+    withTimeout(360.seconds) { activationAction.activate() }
     emit(LaunchState.Booting)
     withTimeout(120.seconds) { handle.awaitReady() }
     emit(LaunchState.Ready)
@@ -512,25 +571,34 @@ internal fun Project.userInvolvementRequired(device1: DeviceHandle, device2: Dev
 private fun isAiGlassesCompatible(handle: DeviceHandle) =
   (handle.state.properties as? LocalEmulatorProperties)?.isAiGlassesCompatible == true
 
-internal suspend fun FlowCollector<PairingState>.launchGlassesAndPhone(glasses: DeviceHandle, phone: DeviceHandle) = coroutineScope {
+internal fun launchGlassesAndPhone(glasses: DeviceHandle, phone: DeviceHandle): Flow<PairingState> {
   val phoneName = phone.state.properties.title
   val glassesName = glasses.state.properties.title
 
-  launchAvd(glasses)
+  return launchAvd(glasses)
     .combine(launchAvd(phone)) { glassesState, phoneState -> PairingState.Launching(phoneName, phoneState, glassesName, glassesState) }
-    .onEach { emit(it) }
-    .first { it.phoneLaunchState == LaunchState.Ready && it.glassesLaunchState == LaunchState.Ready }
+    .transformWhile {
+      emit(it)
+      it.phoneLaunchState != LaunchState.Ready || it.glassesLaunchState != LaunchState.Ready
+    }
 }
 
-internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle, project: Project?): Flow<PairingState> {
+internal fun pairGlassesToPhone(
+  glasses: DeviceHandle,
+  phone: DeviceHandle,
+  launchFlow: () -> Flow<PairingState> = { launchGlassesAndPhone(glasses, phone) },
+  onMacRetrieved: (String) -> Unit,
+): Flow<PairingState> {
   val logger = logger<GlassesPairingWizard>()
   val phoneName = phone.state.properties.title
   val glassesName = glasses.state.properties.title
   return flow {
       try {
         GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_LAUNCH_STARTED)
-        launchGlassesAndPhone(glasses, phone)
-      } catch (_: TimeoutCancellationException) {
+        // The 9-minute timeout guards the concurrent launch of both emulators,
+        // while the outer 15-minute timeout (in the caller) covers the whole process.
+        withTimeout(9.minutes) { emitAll(launchFlow()) }
+      } catch (e: TimeoutCancellationException) {
         GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_TIMEOUT)
         emit(PairingState.Error("Timed out waiting for both $phoneName and $glassesName to start."))
         return@flow
@@ -554,8 +622,7 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle, proj
       }
 
       try {
-        project?.userInvolvementRequired(phone)
-        runPairingSequence(phoneDevice, glassesDevice, phoneName, glassesName, logger)
+        runPairingSequence(phoneDevice, glassesDevice, phoneName, glassesName, logger, onMacRetrieved)
       } catch (cause: ShellCommandException) {
         GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_SHELL_COMMAND)
         emit(
@@ -614,6 +681,7 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
   phoneName: String,
   glassesName: String,
   logger: Logger,
+  onMacRetrieved: (String) -> Unit,
 ) {
   with(AiGlassesPairing(phoneDevice.session)) {
     val glassesPairedCount =
@@ -645,7 +713,9 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
     if ((phoneDevice.getPairedBluetoothDeviceCount() ?: 0) > 0) {
       try {
         phoneDevice.sendUnpairCommand()
-      } catch (e: ShellCommandException) {}
+      } catch (e: ShellCommandException) {
+        logger.warn("Failed to send unpair command", e)
+      }
     }
 
     // Reset any prior pairing attempts
@@ -672,6 +742,7 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
       emit(PairingState.Error("Failed to retrieve Bluetooth address of $glassesName."))
       return
     }
+    onMacRetrieved(glassesBluetoothAddress)
 
     val phoneBluetoothAddress = phoneDevice.getBluetoothAddress()
     // If phoneBluetoothAddress is null, we may not have access to it; we just have to proceed

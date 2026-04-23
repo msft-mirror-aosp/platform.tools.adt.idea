@@ -57,13 +57,13 @@ private constructor(
   val additionalDisplays: Map<Int, Dimension> = emptyMap(),
   val skinFolder: Path? = null,
   val hasOrientationSensors: Boolean = false,
-  val hasAudioOutput: Boolean = false,
   val hasTransparentDisplay: Boolean = false,
   val hasTouchScreen: Boolean = false,
   val initialOrientationQuadrants: Int = 0,
   val displayModes: List<DisplayMode> = emptyList(),
   val postures: List<PostureDescriptor> = emptyList(),
   val touchpadSize: Dimension? = null,
+  val dimmingLevels: DoubleArray = doubleArrayOf(),
 ) {
 
   val displayWidth: Int
@@ -73,7 +73,7 @@ private constructor(
     get() = displaySize.height
 
   val isValid: Boolean
-    get() = displaySize.width > 0 && displaySize.height > 0 && androidVersion.androidApiLevel.majorVersion > 0
+    get() = (displaySize.width > 0 && displaySize.height > 0 || environmentSize != null) && androidVersion.androidApiLevel.majorVersion > 0
 
   val api: Int
     get() = androidVersion.androidApiLevel.majorVersion
@@ -84,33 +84,10 @@ private constructor(
      */
     fun readAvdDefinition(avdFolder: Path): EmulatorConfiguration {
       val hardwareIniFile = avdFolder.resolve("hardware-qemu.ini")
-      val keysToExtract =
-        setOf(
-          "android.sdk.root",
-          "hw.audioOutput",
-          "hw.initialOrientation",
-          "hw.lcd.height",
-          "hw.lcd.width",
-          "hw.lcd.density",
-          "hw.sensor.hinge.resizable.config",
-        )
+      val keysToExtract = setOf("android.sdk.root", "hw.sensor.hinge.resizable.config")
       val hardwareIni = readKeyValueFile(hardwareIniFile, keysToExtract)
       val sdkPath = hardwareIni["android.sdk.root"] ?: System.getenv(ANDROID_HOME_ENV) ?: ""
       val androidSdkRoot = avdFolder.resolve(sdkPath)
-      val displayWidth = parseInt(hardwareIni["hw.lcd.width"], 0)
-      val displayHeight = parseInt(hardwareIni["hw.lcd.height"], 0)
-      if (displayWidth <= 0 || displayHeight <= 0) {
-        throw RuntimeException("Invalid display size: $displayWidth x $displayHeight")
-      }
-      val density = parseInt(hardwareIni["hw.lcd.density"], 0)
-
-      val hasAudioOutput = hardwareIni["hw.audioOutput"]?.toBoolean() ?: true
-
-      val initialOrientation =
-        when {
-          "landscape".equals(hardwareIni["hw.initialOrientation"], ignoreCase = true) -> 1
-          else -> 0
-        }
 
       val configIniFile = avdFolder.resolve("config.ini")
       val configIni = readKeyValueFile(configIniFile)
@@ -119,8 +96,8 @@ private constructor(
 
       // TODO: Remove emulator version check after 2026-09-01.
       val environmentSizeSupported =
-        ApplicationManager.getApplication().isUnitTestMode ||
-          AvdManagerConnection.getDefaultAvdManagerConnection().emulator?.version?.let { it >= Revision(36, 6, 3) } ?: false
+        ApplicationManager.getApplication()?.isUnitTestMode != false ||
+          AvdManagerConnection.getDefaultAvdManagerConnection().emulator?.version?.let { it >= Revision(36, 6, 3) } == true
       val environmentSize =
         if (environmentSizeSupported) {
           val w = parseInt(configIni["environment.width"], 0)
@@ -129,6 +106,13 @@ private constructor(
         } else {
           null
         }
+
+      val displayWidth = parseInt(configIni["hw.lcd.width"], 0)
+      val displayHeight = parseInt(configIni["hw.lcd.height"], 0)
+      if ((displayWidth <= 0 || displayHeight <= 0) && !getConfigBoolean(configIni["hw.lcd.transparent"], false)) {
+        throw RuntimeException("Invalid display size: $displayWidth x $displayHeight")
+      }
+      val density = parseInt(configIni["hw.lcd.density"], 0)
 
       val skinPath = getSkinPath(configIni, androidSdkRoot)
       val tagIds = configIni[ConfigKey.TAG_IDS] ?: configIni[ConfigKey.TAG_ID]
@@ -146,6 +130,13 @@ private constructor(
             DeviceType.AI_GLASSES
           else -> DeviceType.HANDHELD
         }
+
+      val initialOrientation =
+        when {
+          deviceType == DeviceType.HANDHELD && "landscape".equals(configIni["hw.initialOrientation"], ignoreCase = true) -> 1
+          else -> 0
+        }
+
       val hasOrientationSensors = getConfigBoolean(configIni["hw.sensors.orientation"], true)
       val hasTransparentDisplay = getConfigBoolean(configIni["hw.lcd.transparent"], false)
       val hasTouchScreen = "no-touch" != configIni["hw.screen"]
@@ -236,6 +227,15 @@ private constructor(
       val touchpadHeight = parseInt(configIni["hw.touchpad0.height"], 0)
       val touchpadSize = if (touchpadWidth > 0 && touchpadHeight > 0) Dimension(touchpadWidth, touchpadHeight) else null
 
+      val dimmingLevels =
+        try {
+          configIni["hw.dimmingLevels"]?.split(',')?.map(String::toDouble)?.toDoubleArray() ?: doubleArrayOf()
+        } catch (_: NumberFormatException) {
+          throw RuntimeException(
+            "Unrecognized value of the hw.dimmingLevels property, \"${configIni["hw.dimmingLevels"]}\", in $configIniFile"
+          )
+        }
+
       return EmulatorConfiguration(
         avdFolder = avdFolder,
         avdName = avdName,
@@ -247,13 +247,13 @@ private constructor(
         additionalDisplays = ImmutableMap.copyOf(additionalDisplays),
         skinFolder = skinPath,
         hasOrientationSensors = hasOrientationSensors,
-        hasAudioOutput = hasAudioOutput,
         hasTransparentDisplay = hasTransparentDisplay,
         hasTouchScreen = hasTouchScreen,
         initialOrientationQuadrants = initialOrientation,
         displayModes = displayModes,
         postures = postures,
         touchpadSize = touchpadSize,
+        dimmingLevels = dimmingLevels,
       )
     }
 

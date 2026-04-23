@@ -81,8 +81,8 @@ private data class ReferenceDeviceMetrics(
 )
 
 /** Creates a [ReferenceDeviceMetrics] object from a [Device] instance. */
-private fun metricsFor(device: Device): ReferenceDeviceMetrics {
-  val screen = device.defaultState.hardware.screen
+private fun metricsFor(device: Device): ReferenceDeviceMetrics? {
+  val screen = device.defaultState.hardware.screen ?: return null
   return ReferenceDeviceMetrics(
     xDimension = screen.xDimension,
     yDimension = screen.yDimension,
@@ -513,7 +513,7 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
   }
 
   private fun getDeviceLabel(device: Device): String {
-    val screen = device.defaultHardware.screen
+    val screen = device.defaultHardware.screen ?: return device.displayName
     val density = screen.pixelDensity
     val xDp = screen.xDimension.toDp(density).roundToInt()
     val yDp = screen.yDimension.toDp(density).roundToInt()

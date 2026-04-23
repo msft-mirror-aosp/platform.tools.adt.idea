@@ -16,6 +16,8 @@
 package com.android.tools.idea.npw.module.recipes.androidProject
 
 import com.android.ide.common.repository.AgpVersion
+import com.android.tools.idea.wizard.template.DslLanguage.DCL
+import com.android.tools.idea.wizard.template.DslLanguage.KTS
 import com.android.tools.idea.wizard.template.withoutSkipLines
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -30,6 +32,7 @@ class AndroidProjectGradlePropertiesTest {
             agpVersion = AgpVersion.parse("8.13.2"),
             generateKotlin = true,
             overridePathCheck = false,
+            dslLanguage = KTS,
           )
           .withoutSkipLines()
       )
@@ -53,6 +56,11 @@ class AndroidProjectGradlePropertiesTest {
         # This option should only be used with decoupled projects. For more details, visit
         # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
         # org.gradle.parallel=true
+
+        # When enabled, the Configuration Cache allows Gradle to skip the configuration
+        # phase entirely if nothing that affects the build configuration (such as build scripts)
+        # has changed. Additionally, Gradle applies performance optimizations to task execution.
+        org.gradle.configuration-cache=true
 
         # AndroidX package structure to make it clearer which packages are bundled with the
         # Android operating system, and which are packaged with your app's APK
@@ -76,6 +84,7 @@ class AndroidProjectGradlePropertiesTest {
             agpVersion = AgpVersion.parse("9.0.0-alpha01"),
             generateKotlin = true,
             overridePathCheck = false,
+            dslLanguage = KTS,
           )
           .withoutSkipLines()
       )
@@ -100,10 +109,65 @@ class AndroidProjectGradlePropertiesTest {
         # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
         # org.gradle.parallel=true
 
+        # When enabled, the Configuration Cache allows Gradle to skip the configuration
+        # phase entirely if nothing that affects the build configuration (such as build scripts)
+        # has changed. Additionally, Gradle applies performance optimizations to task execution.
+        org.gradle.configuration-cache=true
+
         # Kotlin code style for this project: "official" or "obsolete":
         kotlin.code.style=official
         # Allow non-ASCII characters in project path on Windows
         android.overridePathCheck=false
+
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun checkWithDeclarative() {
+    assertThat(
+        androidProjectGradleProperties(
+            agpVersion = AgpVersion.parse("9.0.0-alpha01"),
+            generateKotlin = true,
+            overridePathCheck = false,
+            dslLanguage = DCL,
+          )
+          .withoutSkipLines()
+      )
+      .isEqualTo(
+        """
+
+        # Project-wide Gradle settings.
+
+        # IDE (e.g. Android Studio) users:
+        # Gradle settings configured through the IDE *will override*
+        # any settings specified in this file.
+
+        # For more details on how to configure your build environment visit
+        # http://www.gradle.org/docs/current/userguide/build_environment.html
+
+        # Specifies the JVM arguments used for the daemon process.
+        # The setting is particularly useful for tweaking memory settings.
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+
+        # When configured, Gradle will run in incubating parallel mode.
+        # This option should only be used with decoupled projects. For more details, visit
+        # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
+        # org.gradle.parallel=true
+
+        # When enabled, the Configuration Cache allows Gradle to skip the configuration
+        # phase entirely if nothing that affects the build configuration (such as build scripts)
+        # has changed. Additionally, Gradle applies performance optimizations to task execution.
+        org.gradle.configuration-cache=true
+
+        # Kotlin code style for this project: "official" or "obsolete":
+        kotlin.code.style=official
+        # Allow non-ASCII characters in project path on Windows
+        android.overridePathCheck=false
+        # Declarative declarations
+        android.experimental.declarative=true
+        org.gradle.kotlin.dsl.dcl=true
 
         """
           .trimIndent()
