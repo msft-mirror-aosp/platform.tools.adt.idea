@@ -30,5 +30,6 @@
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.client" />
     <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
+    <orderEntry type="module" module-name="login.onboarding" />
   </component>
 </module>

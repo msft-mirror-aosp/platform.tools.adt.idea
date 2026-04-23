@@ -51,7 +51,7 @@
     <orderEntry type="module" module-name="android.sdktools.android-annotations" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="analytics-tracker" />
-    <orderEntry type="library" scope="TEST" name="intellij-test-framework" level="project" />
+    <orderEntry type="module" module-name="login.onboarding" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
@@ -63,5 +63,6 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.core.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="library" scope="TEST" name="intellij-test-framework" level="project" />
   </component>
 </module>
