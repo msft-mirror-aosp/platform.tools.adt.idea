@@ -27,13 +27,13 @@ import com.android.sdklib.deviceprovisioner.DeactivationAction
 import com.android.sdklib.deviceprovisioner.DeviceAction
 import com.android.sdklib.deviceprovisioner.DeviceError
 import com.android.sdklib.deviceprovisioner.DeviceHandle
-import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceState.Connected
 import com.android.sdklib.deviceprovisioner.DeviceState.Disconnected
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.Extension
+import com.android.sdklib.deviceprovisioner.GlassesPairableDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorContext
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
@@ -196,14 +196,12 @@ class StudioLocalEmulatorDeviceHandle(
   private val deviceHandleFlow: StateFlow<List<StudioLocalEmulatorDeviceHandle>>,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
   private val edtDispatcher: CoroutineContext = Dispatchers.EDT,
-) : DeviceHandle by baseDeviceHandle, EditableDeviceHandle, DuplicatableDeviceHandle, ShowableOnDiskDeviceHandle, DeletableDeviceHandle {
-  fun addPairedGlasses(glassesId: DeviceId, mac: String) = baseDeviceHandle.addPairedGlasses(glassesId, mac)
-
-  fun removePairedGlasses(glassesId: DeviceId) = baseDeviceHandle.removePairedGlasses(glassesId)
-
-  fun updatePairedPhone(phone: StudioLocalEmulatorDeviceHandle?) = baseDeviceHandle.updatePairedPhone(phone?.baseDeviceHandle)
-
-  fun clearPairedGlasses() = baseDeviceHandle.clearPairedGlasses()
+) :
+  GlassesPairableDeviceHandle by baseDeviceHandle,
+  EditableDeviceHandle,
+  DuplicatableDeviceHandle,
+  ShowableOnDiskDeviceHandle,
+  DeletableDeviceHandle {
 
   private var activationJob: Job? = null
 
