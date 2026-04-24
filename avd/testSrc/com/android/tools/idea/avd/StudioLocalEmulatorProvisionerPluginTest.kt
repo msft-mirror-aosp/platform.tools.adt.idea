@@ -347,7 +347,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
 
     yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
 
-    phoneHandle.deleteAction.delete()
+    phoneHandle.delete()
 
     // Check disk file to verify glasses was unpaired
     yieldUntil {
@@ -399,7 +399,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
       glassesAvdPath.resolve("user-settings.ini").toFile().setWritable(false)
 
       try {
-        phoneHandle.deleteAction.delete()
+        phoneHandle.delete()
 
         // The mock avdManager ignores refreshDevices disk updates, so we check disk files directly
         // Glasses should STILL HAVE the phone reference because the write failed
