@@ -2230,6 +2230,12 @@ public final class StudioFlags {
                     "Enable experimental slash comments.",
                     "When enabled, experimental slash commands will be enabled.");
 
+  public static final Flag<Boolean> STUDIOBOT_RENDER_TOOL_ROLLBACK_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.render.tool.rollback.enabled",
+                    "Enable rollback action in the render tool.",
+                    "When enabled, allow the user to reverts project files to the state they were in when the preview was rendered.");
+
+
   public static final Flag<Boolean> STUDIOBOT_CONTEXT_ATTACHMENT_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.enable.context.attachment",
                     "Enable @file attachment and the context drawer.",
@@ -3098,6 +3104,17 @@ public final class StudioFlags {
       "Use What's New V2 with Compose"
     );
   // endregion What's New
+
+  // region Play Publishing
+  private static final FlagGroup PLAY_PUBLISHING = new FlagGroup(FLAGS, "play.publishing", "Play Publishing");
+  public static final Flag<Boolean> SHOW_PUBLISH_IN_BUILD =
+    new BooleanFlag(
+      PLAY_PUBLISHING,
+      "show.publish.in.build",
+      "Show Publish Bundle action",
+      "Show Publish Bundle action in Build menu"
+    );
+  // endregion Play Publishing
 
   private StudioFlags() { }
 
