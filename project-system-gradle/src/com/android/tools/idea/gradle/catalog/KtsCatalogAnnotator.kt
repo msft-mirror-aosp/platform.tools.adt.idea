@@ -19,12 +19,8 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.K1Deprecation
-import org.jetbrains.kotlin.idea.highlighter.AbstractKotlinHighlightVisitor.Companion.suppressHighlight
-import org.jetbrains.kotlin.idea.highlighter.AbstractKotlinHighlightVisitor.Companion.unsuppressHighlight
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
 // This annotator is to substitute "Unresolved Reference" of KTS files
 // Kts mechanism is linked to synthetics that are generated during sync
@@ -35,39 +31,11 @@ class KtsCatalogAnnotator : Annotator {
 
     if (element is KtDotQualifiedExpression && element.isEndOfDotExpression() && element.hasCatalogReference()) {
       // handle catalog reference
-      if (hasLiveCatalogReference(element)) {
-        element.markChildrenAsSuppressHighlight()
-      } else {
+      if (!hasLiveCatalogReference(element)) {
         holder.newAnnotation(HighlightSeverity.ERROR, "Unresolved reference to version catalog").create()
-        element.markChildrenAsUnsuppressHighlight()
       }
     }
   }
 
   private fun KtDotQualifiedExpression.hasCatalogReference() = references.any { ref -> ref is KtsDotExpressionVersionCatalogReference }
-
-  companion object {
-
-    @OptIn(K1Deprecation::class)
-    private fun KtDotQualifiedExpression.markChildrenAsSuppressHighlight() {
-      this.children.forEach {
-        when (it) {
-          is KtNameReferenceExpression -> it.suppressHighlight()
-          is KtDotQualifiedExpression -> it.markChildrenAsSuppressHighlight()
-          else -> Unit
-        }
-      }
-    }
-
-    @OptIn(K1Deprecation::class)
-    private fun KtDotQualifiedExpression.markChildrenAsUnsuppressHighlight() {
-      this.children.forEach {
-        when (it) {
-          is KtNameReferenceExpression -> it.unsuppressHighlight()
-          is KtDotQualifiedExpression -> it.markChildrenAsUnsuppressHighlight()
-          else -> Unit
-        }
-      }
-    }
-  }
 }
