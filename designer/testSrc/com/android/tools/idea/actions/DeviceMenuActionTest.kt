@@ -156,6 +156,7 @@ class DeviceMenuActionTest {
                   Small Desktop (1366 × 768 dp, mdpi)
                   Medium Desktop (1920 × 1080 dp, xhdpi)
                   Large Desktop (1920 × 1080 dp, mdpi)
+                  Desktop (Preview) (1920 × 1200 dp, hdpi)
               ------------------------------------------------------
               Wear
               Wear OS Square (180 × 180 dp, xhdpi)
