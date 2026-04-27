@@ -37,7 +37,7 @@ class SherlockFlagsTest {
   @Test
   fun testQueryGenerationFlag() {
     // Verify the default value.
-    assertThat(FeatureFlags.queryGenerationEnabled).isFalse()
+    assertThat(FeatureFlags.queryGenerationEnabled).isEqualTo(StudioFlags.PROFILER_PERFETTO_QUERY_GENERATION.get())
 
     // Verify we can override the value, and can read properly.
     StudioFlags.PROFILER_PERFETTO_QUERY_GENERATION.override(true)
@@ -50,7 +50,7 @@ class SherlockFlagsTest {
   @Test
   fun testAiTraceAnalysisFlag() {
     // Verify the default value.
-    assertThat(FeatureFlags.aiTraceAnalysisEnabled).isFalse()
+    assertThat(FeatureFlags.aiTraceAnalysisEnabled).isEqualTo(StudioFlags.PROFILER_PERFETTO_AI_TRACE_ANALYSIS.get())
 
     // Verify we can override the value, and can read properly.
     StudioFlags.PROFILER_PERFETTO_AI_TRACE_ANALYSIS.override(true)
