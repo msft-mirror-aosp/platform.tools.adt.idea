@@ -17,8 +17,6 @@ package com.android.tools.idea.startup;
 
 import com.android.tools.analytics.AnalyticsPublisher;
 import com.android.tools.analytics.AnalyticsSettings;
-import com.android.tools.analytics.AnalyticsState;
-import com.android.tools.analytics.AnalyticsStateManager;
 import com.android.tools.analytics.UsageTracker;
 import com.android.utils.ILogger;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
@@ -90,7 +88,6 @@ public final class AndroidStudioAnalyticsImpl {
         AnalyticsSettings.saveSettings();
         updated = true;
       }
-      AnalyticsStateManager.setDataSharing(allowed);
     }
     catch (IOException e) {
       getAndroidLogger().error(e, "Unable to update analytics settings");
@@ -121,7 +118,6 @@ public final class AndroidStudioAnalyticsImpl {
         AnalyticsSettings.setOptedIn(ijOptedIn);
         AnalyticsSettings.saveSettings();
       }
-      AnalyticsStateManager.setDataSharing(AnalyticsSettings.getOptedIn());
       UsageTracker.initialize(scheduler);
     } catch (Exception e) {
       logger.warning("Unable to initialize analytics tracker: " + e.getMessage());
@@ -132,7 +128,7 @@ public final class AndroidStudioAnalyticsImpl {
     UsageTracker.setMaxJournalSize(1000);
 
     ApplicationInfo application = ApplicationInfo.getInstance();
-    AnalyticsPublisher.initialize(logger, scheduler, application.getStrictVersion());
+    AnalyticsPublisher.updatePublisher(logger, scheduler, application.getStrictVersion());
   }
 
   private ILogger getAndroidLogger() {
