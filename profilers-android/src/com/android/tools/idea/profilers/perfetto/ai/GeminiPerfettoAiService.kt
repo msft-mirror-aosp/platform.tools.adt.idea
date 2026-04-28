@@ -38,6 +38,18 @@ class GeminiPerfettoAiService(private val project: Project) : PerfettoAiService 
     sendPromptWithSkill("Generate Perfetto SQL Query: $prompt. The trace file is available at: $traceFilePath", systemInstruction)
   }
 
+  override fun analyzeTrace(prompt: String, traceFilePath: String) {
+    val systemInstruction =
+      """
+      You are a specialist in analyzing Perfetto traces.
+      You help users understand trace events, find performance bottlenecks, and explain anomalies.
+      Use the 'perfetto-trace-analysis' skill for this request.
+      """
+        .trimIndent()
+
+    sendPromptWithSkill("Analyze Perfetto Trace: $prompt. The trace file is available at: $traceFilePath", systemInstruction)
+  }
+
   /**
    * Helper method to construct an LLM prompt and send it to the Gemini chat window.
    *
