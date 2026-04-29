@@ -155,7 +155,6 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
                         selectedVariantName,
                         shouldSkipRuntimeClasspathForLibraries(androidProject.flags, gradlePropertiesModel),
                         legacyAndroidGradlePluginProperties,
-                        buildModel.buildIdentifier.rootDir,
                       )
                   }
                   .onFailure { exceptionsPerProject += gradleProject to it }
