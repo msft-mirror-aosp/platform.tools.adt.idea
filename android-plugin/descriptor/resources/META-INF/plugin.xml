@@ -88,6 +88,7 @@
   <xi:include href="/META-INF/app-insights-api.xml"/>
   <xi:include href="/META-INF/app-insights.xml"/>
   <xi:include href="/META-INF/cli-server.xml"/>
+  <xi:include href="/META-INF/cli-command-handler.xml"/>
   <xi:include href="/META-INF/databinding.xml"/>
   <xi:include href="/META-INF/databinding-gradle.xml"/>
   <xi:include href="/META-INF/mlkit.xml"/>
