@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync;
 
 import static com.android.SdkConstants.FN_LOCAL_PROPERTIES;
-import static com.android.tools.idea.sdk.NdkPaths.validateAndroidNdk;
 import static com.android.tools.sdk.SdkPaths.validateAndroidSdk;
 import static com.intellij.openapi.util.io.FileUtil.filesEqual;
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -50,7 +49,6 @@ public class SdkSyncImpl implements SdkSync {
   @Override
   public void syncIdeAndProjectAndroidSdks(@NotNull LocalProperties localProperties, @Nullable Project project) {
     syncIdeAndProjectAndroidSdk(localProperties, new FindValidSdkPathTask(), project);
-    syncIdeAndProjectAndroidNdk(localProperties);
   }
 
   @VisibleForTesting
@@ -185,51 +183,6 @@ public class SdkSyncImpl implements SdkSync {
           setIdeSdk(localProperties, projectAndroidSdkPath);
         }
       });
-    }
-  }
-
-  private void syncIdeAndProjectAndroidNdk(@NotNull LocalProperties localProperties) {
-    if (StudioFlags.NDK_SIDE_BY_SIDE_ENABLED.get()) {
-      // When side-by-side NDK is enabled, don't force ndk.dir. Instead, the more
-      // recent gradle plugin will decide what the correct NDK folder is.
-      // If this is an older plugin that doesn't support side-by-side NDK then
-      // there may be a sync error about missing NDK. This should be fixed up after
-      // the sync failure with error handlers.
-      return;
-    }
-    File projectAndroidNdkPath = localProperties.getAndroidNdkPath();
-    File ideAndroidNdkPath = IdeSdks.getInstance().getAndroidNdkPath();
-
-    if (projectAndroidNdkPath != null) {
-      if (!validateAndroidNdk(projectAndroidNdkPath.toPath(), false).success) {
-        if (ideAndroidNdkPath != null) {
-          Logger.getInstance(SdkSync.class).warn(String.format("Replacing invalid NDK path %1$s with %2$s",
-                                                               projectAndroidNdkPath, ideAndroidNdkPath));
-          setProjectNdk(localProperties, ideAndroidNdkPath);
-          return;
-        }
-        Logger.getInstance(SdkSync.class).warn(String.format("Removing invalid NDK path: %s", projectAndroidNdkPath));
-        setProjectNdk(localProperties, null);
-      }
-      return;
-    }
-    setProjectNdk(localProperties, ideAndroidNdkPath);
-  }
-
-  private static void setProjectNdk(@NotNull LocalProperties localProperties, @Nullable File ndkPath) {
-    File currentNdkPath = localProperties.getAndroidNdkPath();
-    if (filesEqual(currentNdkPath, ndkPath)) {
-      return;
-    }
-    localProperties.setAndroidNdkPath(ndkPath);
-    try {
-      localProperties.save();
-    }
-    catch (IOException e) {
-      // ExternalSystemException appends the file's location from the lower level exception,
-      // so we only output the name here, to not show the full path twice.
-      String msg = String.format("Unable to save '%1$s'. The file path is: ", FN_LOCAL_PROPERTIES);
-      throw new ExternalSystemException(msg, e);
     }
   }
 
