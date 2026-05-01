@@ -241,13 +241,13 @@ internal class DeviceViewTest {
           " --socket=screen-sharing-agent-\\d+ --max_size=400,600 --flags=\\d+"
       )
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     // Check resizing.
     fakeUi.resizeRoot(100, 90)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetMaxVideoResolutionMessage(view.displayId, Dimension(200, 180)))
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(58, 0, 83, 180))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(58, 0, 83, 180))
 
     // Check mouse input in various orientations.
     val expectedCoordinates =
@@ -345,7 +345,7 @@ internal class DeviceViewTest {
   fun testUpsideDownMouseInput() {
     createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     executeAction("android.device.rotate.right", view, project)
@@ -378,7 +378,7 @@ internal class DeviceViewTest {
   fun testRightClick() {
     createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     view.rightClicksAreSentToDevice = true
@@ -410,7 +410,7 @@ internal class DeviceViewTest {
           " --socket=screen-sharing-agent-\\d+ --max_size=200,300 --flags=\\d+"
       )
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(0, 50, 200, 200))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(0, 50, 200, 200))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
     assertAppearance("RoundWatch1")
   }
@@ -419,7 +419,7 @@ internal class DeviceViewTest {
   fun testMultiTouch() {
     createDeviceView(50, 100, retinaMode = true)
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
 
     val mousePosition = Point(30, 30)
     val pointerInfo = mock<PointerInfo>()
@@ -737,7 +737,7 @@ internal class DeviceViewTest {
   fun testAgentCrashAndReconnect() {
     createDeviceView(500, 1000)
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     // Simulate crash of the screen sharing agent.
@@ -895,7 +895,7 @@ internal class DeviceViewTest {
     fakeUi.clickOn(button)
     waitForCondition(15, SECONDS) { agent.isRunning }
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
   }
 
@@ -1095,7 +1095,7 @@ internal class DeviceViewTest {
   fun testDisableMultiTouchDuringHardwareInput() {
     createDeviceView(50, 100, retinaMode = true)
     waitForFrame()
-    assertThat(view.displayRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(4, 0, 92, 200))
 
     val mousePosition = Point(30, 30)
     val pointerInfo = mock<PointerInfo>()
