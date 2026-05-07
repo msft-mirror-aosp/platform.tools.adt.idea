@@ -48,7 +48,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package1/BUILD"))))
@@ -88,7 +88,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/package2/BUILD"))))
@@ -108,7 +108,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -134,7 +134,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -164,7 +164,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.DELETE, Path.of("my/build/package2/BUILD"))))
@@ -187,7 +187,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -215,7 +215,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -243,7 +243,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build/package1")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build/package1")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package2/BUILD"))))
@@ -263,10 +263,8 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(
-                path ->
-                    path.startsWith(Path.of("my/build"))
-                        && !path.startsWith(Path.of("my/build/package2")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectExcludes(ImmutableSet.of(Path.of("my/build/package2")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package2/BUILD"))))
@@ -298,7 +296,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(summary)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -326,7 +324,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(summary)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -345,7 +343,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -364,7 +362,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -383,7 +381,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -400,7 +398,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/NewClass.java"))))
@@ -416,7 +414,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/newpackage/BUILD")),
@@ -434,7 +432,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/package/lib/BUILD")),
@@ -456,7 +454,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -473,7 +471,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.DELETE, Path.of("my/build/package/BUILD")),
@@ -494,7 +492,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -514,7 +512,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.DELETE, Path.of("my/build/package/BUILD")),
@@ -538,7 +536,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(ImmutableSet.of())
             .build()
             .getAffectedPackages();
@@ -557,7 +555,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -582,7 +580,7 @@ public class AffectedPackagesTest {
             .context(NOOP_CONTEXT)
             .lastQuery(query)
             // this represents the case of directories: .
-            .projectScope(path -> true)
+            .projectIncludes(ImmutableSet.of(Path.of("")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package1/BUILD"))))
