@@ -154,12 +154,12 @@
         <action id="android.emulator.environment.outdoor.nature.bright"
                 class="com.android.tools.idea.streaming.emulator.actions.EmulatorEnvironmentAction$OutdoorNatureBrightImage"
                 text="Outdoor Nature Bright" description="Select outdoor nature bright environment"/>
+        <action id="android.emulator.environment.empty"
+                class="com.android.tools.idea.streaming.emulator.actions.EmulatorEnvironmentAction$None"
+                text="No Environment" description="Select no environment"/>
         <action id="android.emulator.environment.custom"
                 class="com.android.tools.idea.streaming.emulator.actions.EmulatorEnvironmentAction$Custom"
                 text="Custom Environment..." description="Select a custom environment"/>
-        <action id="android.emulator.environment.empty"
-                class="com.android.tools.idea.streaming.emulator.actions.EmulatorEnvironmentAction$Empty"
-                text="No Environment" description="Select no environment"/>
       </group>
       <action id="android.device.home.button" class="com.android.tools.idea.streaming.actions.StreamingHomeButtonAction"
               icon="StudioIcons.Emulator.Toolbar.HOME" text="Home" description="Press the Home button of the device">
@@ -235,10 +235,18 @@
         <keyboard-shortcut first-keystroke="control R" keymap="Mac OS X"/>
         <keyboard-shortcut first-keystroke="control R" keymap="Mac OS X 10.5+"/>
       </action>
+      <action id="android.streaming.xr.passthrough.toggle"
+              class="com.android.tools.idea.streaming.actions.StreamingXrPassthroughToggleAction"
+              icon="StudioIcons.Emulator.XR.PASSTHROUGH_ON"
+              text="Toggle Passthrough" description="Turn passthrough on or off">
+        <keyboard-shortcut first-keystroke="control P" keymap="$default"/>
+        <keyboard-shortcut first-keystroke="control P" keymap="Mac OS X"/>
+        <keyboard-shortcut first-keystroke="control P" keymap="Mac OS X 10.5+"/>
+      </action>
       <action id="android.streaming.xr.passthrough"
               class="com.android.tools.idea.streaming.actions.StreamingXrPassthroughAction"
               icon="StudioIcons.Emulator.XR.PASSTHROUGH_ON"
-              text="Toggle Passthrough" description="Turn passthrough on or off">
+              text="Environment Visibility" description="Change passthrough and dimming level">
         <keyboard-shortcut first-keystroke="control P" keymap="$default"/>
         <keyboard-shortcut first-keystroke="control P" keymap="Mac OS X"/>
         <keyboard-shortcut first-keystroke="control P" keymap="Mac OS X 10.5+"/>
@@ -368,6 +376,7 @@
       </group>
     </group>
     <group id="android.streaming.xr.passthrough.group" class="com.android.tools.idea.streaming.actions.StreamingXrOnlyGroup">
+      <reference ref="android.streaming.xr.passthrough.toggle"/>
       <reference ref="android.streaming.xr.passthrough"/>
     </group>
 

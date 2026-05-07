@@ -91,36 +91,46 @@ private fun ComposableNode.countNodes(counts: Counts, depth: Int) {
 
 private data class Counts(var nodes: Int, var systemNodes: Int, var depth: Int)
 
-fun convertStateRead(
+fun convertRecompositionResponse(
   response: GetRecompositionStateReadResponse,
   lookup: ViewNodeAndResourceLookup,
-): Map<Int, List<RecomposeStateReadData>> {
-  val result = mutableMapOf<Int, List<RecomposeStateReadData>>()
+): Map<Int, RecompositionDetails> {
+  val result = mutableMapOf<Int, RecompositionDetails>()
   val stringTable = StringTableImpl(response.stringsList)
   val valueGenerator = ComposeParametersDataGenerator(stringTable, lookup)
-  response.readList.forEach { read -> result[read.recompositionNumber] = convertRecompositionStateRead(read, stringTable, valueGenerator) }
+  response.readList.forEach { read -> result[read.recompositionNumber] = convertStateReadGroup(read, stringTable, valueGenerator) }
   return result
 }
 
-fun convertRecompositionStateRead(
+fun convertStateReadGroup(
   read: StateReadGroup,
   stringTable: StringTable,
   valueGenerator: ComposeParametersDataGenerator,
-): List<RecomposeStateReadData> {
-  return read.readList.map { read ->
-    val item = valueGenerator.generateItem(-1L, -1L, ParameterKind.Unknown, read.value)
-    RecomposeStateReadData(
-      item,
-      read.valueInstanceHash,
-      read.invalidated,
-      read.stackTraceLineList.map {
-        TraceElement(
-          declaringClass = stringTable[it.declaringClass],
-          methodName = stringTable[it.methodName],
-          fileName = stringTable[it.fileName],
-          lineNumber = it.lineNumber,
-        )
-      },
-    )
-  }
+): RecompositionDetails {
+  val reads =
+    read.readList.map { read ->
+      // We do not offer expansions of values from a StateReadGroup since the data is probably out of date by now.
+      // The values of rootId, and composableId are inconsequential.
+      val item = valueGenerator.generateItem(rootId = -1L, composableId = -1L, ParameterKind.Unknown, read.value)
+      RecomposeStateReadData(
+        item,
+        read.valueInstanceHash,
+        read.invalidated,
+        read.stackTraceLineList.map {
+          TraceElement(
+            declaringClass = stringTable[it.declaringClass],
+            methodName = stringTable[it.methodName],
+            fileName = stringTable[it.fileName],
+            lineNumber = it.lineNumber,
+          )
+        },
+      )
+    }
+  val parameterChanges =
+    read.parameterChangesList.map {
+      // We do not offer expansions of values from a StateReadGroup since the data is probably out of date by now.
+      // The values of rootId, and composableId are inconsequential.
+      valueGenerator.generateItem(rootId = -1, composableId = -1, ParameterKind.Normal, it)
+    }
+  return RecompositionDetails(reads, parameterChanges)
 }

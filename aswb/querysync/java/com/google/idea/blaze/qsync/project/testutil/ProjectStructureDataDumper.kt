@@ -23,16 +23,16 @@ fun ProjectStructureData.dump(): String {
   return buildString {
     appendLine("activeLanguages: ${activeLanguages.sorted().joinToString(", ")}")
     for (root in roots.sortedBy { it.projectStructureRootPath }) {
-      if (root.packageSourceSets.isEmpty()) continue
+      if (root.buildPackages.isEmpty()) continue
       appendLine("root: ${root.projectStructureRootPath}")
-      for ((pkg, sourceSetList) in root.packageSourceSets.toSortedMap()) {
-        val nonEmptySourceSets = sourceSetList.filter { ss -> ss.javaSourceFiles.isNotEmpty() || ss.nonJavaSourceFiles.isNotEmpty() }
+      for ((pkg, buildPkg) in root.buildPackages.toSortedMap()) {
+        val nonEmptySourceSets = buildPkg.sourceSets.filter { ss -> ss.javaSourceFiles.isNotEmpty() || ss.nonJavaSourceFiles.isNotEmpty() }
         if (nonEmptySourceSets.isEmpty()) continue
 
         appendLine("  package: $pkg")
-        for (ss in nonEmptySourceSets) {
+        for (ss in nonEmptySourceSets.sortedBy { it.javaPackage }) {
           appendLine("    sourceSet:")
-
+          appendLine("      javaPackage: '${ss.javaPackage}'")
           if (ss.javaSourceFiles.isNotEmpty()) {
             appendLine("      javaSourceFiles:")
             val seenFiles = mutableSetOf<Path>()

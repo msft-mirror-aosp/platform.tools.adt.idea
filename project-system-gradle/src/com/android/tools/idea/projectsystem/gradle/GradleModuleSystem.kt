@@ -59,6 +59,7 @@ import com.android.tools.idea.projectsystem.RegisteredDependencyQueryId
 import com.android.tools.idea.projectsystem.RegisteringModuleSystem
 import com.android.tools.idea.projectsystem.SampleDataDirectoryProvider
 import com.android.tools.idea.projectsystem.ScopeType
+import com.android.tools.idea.projectsystem.SourceSetModuleClassFileFinder.CompileRootsScope
 import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
 import com.android.tools.idea.projectsystem.buildNamedModuleTemplatesFor
 import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifests
@@ -139,9 +140,17 @@ class GradleModuleSystem(
         null -> Type.TYPE_NON_ANDROID
       }
 
-  override val moduleClassFileFinder by lazy { GradleClassFileFinder.createWithoutTests(module) }
-  internal val androidTestsClassFileFinder: ClassFileFinder by lazy { GradleClassFileFinder.createIncludingAndroidTest(module) }
-  internal val screenshotTestsClassFileFinder: ClassFileFinder by lazy { GradleClassFileFinder.createIncludingScreenshotTest(module) }
+  override val moduleClassFileFinder by lazy { createModuleClassFileFinder(java.util.EnumSet.of(ScopeType.MAIN)) }
+
+  override fun createModuleClassFileFinder(scopes: java.util.EnumSet<ScopeType>): ClassFileFinder {
+    val compileRootsScope =
+      when {
+        scopes.contains(ScopeType.ANDROID_TEST) -> CompileRootsScope.MAIN_AND_ANDROID_TEST
+        scopes.contains(ScopeType.SCREENSHOT_TEST) -> CompileRootsScope.MAIN_AND_SCREENSHOT_TEST
+        else -> CompileRootsScope.MAIN
+      }
+    return GradleSourceSetModuleClassFileFinder(module, compileRootsScope)
+  }
 
   private val dependencyCompatibility = GradleDependencyCompatibilityAnalyzer(this, projectBuildModelHandler)
 

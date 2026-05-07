@@ -59,12 +59,15 @@ import com.android.tools.idea.streaming.emulator.EmulatorNotificationDispatcher
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
 import com.android.tools.idea.streaming.emulator.displayNameWithApi
+import com.android.utils.FlightRecorder
+import com.android.utils.TraceUtils.currentTime
 import com.android.utils.TraceUtils.simpleId
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.ToggleToolbarAction
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionButtonComponent
 import com.intellij.openapi.actionSystem.ActionManager
@@ -78,6 +81,7 @@ import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -230,26 +234,19 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   private val contentManagerListener =
     object : ContentManagerListener {
       override fun selectionChanged(event: ContentManagerEvent) {
+        FlightRecorder.log {
+          "$currentTime ContentManagerListener.selectionChanged ${event.content.deviceId} contentManager: ${event.content.manager.simpleId} ${event.content.temporarilyRemoved} contentManagers.size: ${contentManagers.size}"
+        }
         if (event.operation != ContentOperation.remove || !Content.TEMPORARY_REMOVED_KEY.get(event.content, false)) {
           viewSelectionChanged()
         }
       }
 
-      override fun contentAdded(event: ContentManagerEvent) {
-        val content = event.content
-        if (Content.TEMPORARY_REMOVED_KEY.get(content, false)) {
-          return
-        }
-        content.addPropertyChangeListener { evt ->
-          if (evt.propertyName == PROP_CONTENT_MANAGER) {
-            val contentManager = evt.newValue as? ContentManager
-            contentManager?.let { adoptContentManager(it) }
-          }
-        }
-      }
-
       override fun contentRemoveQuery(event: ContentManagerEvent) {
         val content = event.content
+        FlightRecorder.log {
+          "$currentTime ContentManagerListener.contentRemoveQuery ${content.tracingId} contentManager: ${content.manager.simpleId} ${content.temporarilyRemoved} contentManagers.size: ${contentManagers.size}"
+        }
         if (Content.TEMPORARY_REMOVED_KEY.get(content, false)) {
           return
         }
@@ -330,6 +327,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
 
   init {
+    FlightRecorder.initialize(10000)
     Disposer.register(toolWindow.disposable, this)
     EmulatorNotificationDispatcher.getInstance() // Make sure that EmulatorNotificationDispatcher is initialized.
     RunningEmulatorCatalog.getInstance().addListener(this, EMULATOR_DISCOVERY_INTERVAL_MILLIS * 10)
@@ -589,6 +587,15 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
         deviceId = panel.id
         setPreferredFocusedComponent(panel::preferredFocusableComponent)
       }
+    content.addPropertyChangeListener { evt ->
+      if (evt.propertyName == PROP_CONTENT_MANAGER) {
+        val contentManager = evt.newValue as? ContentManager
+        FlightRecorder.log {
+          "$currentTime Content.PropertyChangeListener ${content.tracingId} contentManager: ${contentManager.simpleId} contentManagers.size: ${contentManagers.size}"
+        }
+        contentManager?.let { adoptContentManager(it) }
+      }
+    }
 
     panel.zoomToolbarVisible = zoomToolbarIsVisible
 
@@ -608,6 +615,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       if (layout.side == PairLayout.FIRST_ONLY) {
         activation = ActivationLevel.ACTIVATE_TAB
       } else if (layout.side != PairLayout.SECOND_ONLY) {
+        FlightRecorder.log {
+          "$currentTime StreamingToolWindowManager.addPanel ${content.tracingId} splitting ${contentManager.simpleId} at ${layout.side} contentManagers.size: ${contentManagers.size}"
+        }
         @Suppress("UnstableApiUsage") (decorator as InternalDecoratorImpl).splitWithContent(content, layout.side, -1)
         contentAdded = true
         (content.component.containingDecorator?.parent as? Splitter)?.proportion = layout.splitRatio
@@ -617,6 +627,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       pairedDevicesLayoutUpdateRequired = true
     }
     if (!contentAdded) {
+      FlightRecorder.log {
+        "$currentTime StreamingToolWindowManager.addPanel ${content.tracingId} adding to ${contentManager.simpleId} contentManagers.size: ${contentManagers.size}"
+      }
       contentManager.addContent(content) // Add panel to the end.
     }
 
@@ -808,7 +821,52 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
         }
       }
     }
+    // Diagnostics and workaround for b/505398395.
+    for (content in toolWindow.contentManager.contentsRecursively) {
+      if (predicate(content)) {
+        val contentManager = content.manager
+        val message =
+          when {
+            contentManager in contentManagers ->
+              "b/505398395 Content manager ${contentManager.simpleId} is registered but ${content.tracingId} was missed contentManagers.size: ${contentManagers.size}"
+            else ->
+              "b/505398395 Found unregistered content manager ${contentManager.simpleId} owning ${content.tracingId} contentManagers.size: ${contentManagers.size}"
+          }
+        dumpTraceAndShowNotification(message)
+        repairContentManagesBookkeeping()
+        return content
+      }
+    }
     return null
+  }
+
+  private fun dumpTraceAndShowNotification(message: String) {
+    val trace = FlightRecorder.getAndClear()
+    if (trace.isEmpty()) {
+      logger.info("$message - no content managers registered")
+      return
+    }
+
+    val log = buildString {
+      appendLine(message)
+      appendLine("--- Content manager registration trace: ---")
+      trace.forEach { appendLine(it) }
+    }
+    logger.info(log)
+
+    if (ApplicationManager.getApplication().isInternal) {
+      RUNNING_DEVICES_NOTIFICATION_GROUP.createNotification(
+          "Internal error detected. Attach idea.log to b/505398395.",
+          NotificationType.ERROR,
+        )
+        .notify(project)
+    }
+  }
+
+  private fun repairContentManagesBookkeeping() {
+    for (content in toolWindow.contentManager.contentsRecursively) {
+      content.manager?.let { adoptContentManager(it) }
+    }
   }
 
   private fun updateLiveIndicator() {
@@ -1712,3 +1770,9 @@ private fun DeviceProvisioner.findPairedPhoneAvd(avd: AvdInfo): AvdInfo? {
   val avdManager = AvdManagerConnection.getDefaultAvdManagerConnection()
   return avdManager.getAvds(false).find { it.dataFolderPath == pairedPhoneFolder }
 }
+
+private val Content?.tracingId: String
+  get() = "$simpleId ${this?.description}"
+
+private val Content?.temporarilyRemoved: String
+  get() = if (Content.TEMPORARY_REMOVED_KEY.get(this, false)) "temporarily removed" else ""

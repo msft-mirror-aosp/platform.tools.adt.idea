@@ -24,19 +24,16 @@ import com.android.sdklib.deviceprovisioner.BootSnapshotAction
 import com.android.sdklib.deviceprovisioner.ColdBootAction
 import com.android.sdklib.deviceprovisioner.CreateDeviceAction
 import com.android.sdklib.deviceprovisioner.DeactivationAction
-import com.android.sdklib.deviceprovisioner.DeleteAction
 import com.android.sdklib.deviceprovisioner.DeviceAction
 import com.android.sdklib.deviceprovisioner.DeviceError
 import com.android.sdklib.deviceprovisioner.DeviceHandle
-import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceState.Connected
 import com.android.sdklib.deviceprovisioner.DeviceState.Disconnected
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.sdklib.deviceprovisioner.DuplicateAction
-import com.android.sdklib.deviceprovisioner.EditAction
 import com.android.sdklib.deviceprovisioner.Extension
+import com.android.sdklib.deviceprovisioner.GlassesPairableDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorContext
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
@@ -44,7 +41,6 @@ import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshot
 import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshotReader
 import com.android.sdklib.deviceprovisioner.PairGlassesAction
 import com.android.sdklib.deviceprovisioner.RepairDeviceAction
-import com.android.sdklib.deviceprovisioner.ShowAction
 import com.android.sdklib.deviceprovisioner.Snapshot
 import com.android.sdklib.deviceprovisioner.UnpairGlassesAction
 import com.android.sdklib.deviceprovisioner.WipeDataAction
@@ -65,7 +61,11 @@ import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.avdmanager.checkAcceleration
 import com.android.tools.idea.avdmanager.logHypervisorMigrationEvent
+import com.android.tools.idea.deviceprovisioner.DeletableDeviceHandle
+import com.android.tools.idea.deviceprovisioner.DuplicatableDeviceHandle
+import com.android.tools.idea.deviceprovisioner.EditableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.NotificationBannersExtension
+import com.android.tools.idea.deviceprovisioner.ShowableOnDiskDeviceHandle
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
@@ -196,16 +196,16 @@ class StudioLocalEmulatorDeviceHandle(
   private val deviceHandleFlow: StateFlow<List<StudioLocalEmulatorDeviceHandle>>,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
   private val edtDispatcher: CoroutineContext = Dispatchers.EDT,
-) : DeviceHandle by baseDeviceHandle {
-  fun addPairedGlasses(glassesId: DeviceId, mac: String) = baseDeviceHandle.addPairedGlasses(glassesId, mac)
-
-  fun removePairedGlasses(glassesId: DeviceId) = baseDeviceHandle.removePairedGlasses(glassesId)
-
-  fun updatePairedPhone(phone: StudioLocalEmulatorDeviceHandle?) = baseDeviceHandle.updatePairedPhone(phone?.baseDeviceHandle)
-
-  fun clearPairedGlasses() = baseDeviceHandle.clearPairedGlasses()
+) :
+  GlassesPairableDeviceHandle by baseDeviceHandle,
+  EditableDeviceHandle,
+  DuplicatableDeviceHandle,
+  ShowableOnDiskDeviceHandle,
+  DeletableDeviceHandle {
 
   private var activationJob: Job? = null
+
+  // Do not cache this; getDefaultAvdManagerConnection() changes when the local SDK path changes.
   private val avdManagerConnection
     get() = AvdManagerConnection.getDefaultAvdManagerConnection()
 
@@ -231,6 +231,10 @@ class StudioLocalEmulatorDeviceHandle(
     { par, proj, flow, handle ->
       GlassesPairingWizard.show(par, proj, flow, handle)
     }
+
+  internal fun refreshDevicesAsync() {
+    baseDeviceHandle.avdScanner.rescanAsync()
+  }
 
   private val defaultPresentation: DeviceAction.DefaultPresentation = StudioDefaultDeviceActionPresentation
 
@@ -334,8 +338,7 @@ class StudioLocalEmulatorDeviceHandle(
               runningAvdTracker.shuttingDown(avdInfo.dataFolderPath)
               return@deactivate
             } catch (e: IOException) {
-              // Connection to emulator console is closed, possibly due to a harmless race
-              // condition.
+              // Connection to emulator console is closed, possibly due to a harmless race condition.
               logger.debug("Failed to shutdown via emulator console; falling back to AvdManager", e)
             }
           }
@@ -344,16 +347,11 @@ class StudioLocalEmulatorDeviceHandle(
       }
     }
 
-  override val editAction =
-    object : EditAction {
-      override val presentation = MutableStateFlow(defaultPresentation.fromContext()).asStateFlow()
-
-      override suspend fun edit(parent: Component?) {
-        if (EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.EDIT)) {
-          refreshDevices()
-        }
-      }
+  override fun edit(project: Project?, parent: Component?) {
+    if (EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.EDIT)) {
+      refreshDevicesAsync()
     }
+  }
 
   override val repairDeviceAction =
     object : RepairDeviceAction {
@@ -369,24 +367,14 @@ class StudioLocalEmulatorDeviceHandle(
       }
     }
 
-  override val showAction: ShowAction =
-    object : ShowAction {
-      override val presentation = MutableStateFlow(defaultPresentation.fromContext().copy(label = "Show on Disk"))
+  override fun show() {
+    RevealFileAction.openDirectory(avdInfo.dataFolderPath)
+  }
 
-      override suspend fun show() {
-        RevealFileAction.openDirectory(avdInfo.dataFolderPath)
-      }
-    }
-
-  override val duplicateAction: DuplicateAction =
-    object : DuplicateAction {
-      override val presentation = MutableStateFlow(defaultPresentation.fromContext())
-
-      override suspend fun duplicate(parent: Component?) {
-        EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, mode = Mode.DUPLICATE)
-        refreshDevices()
-      }
-    }
+  override fun duplicate(project: Project?, parent: Component?) {
+    EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.DUPLICATE)
+    refreshDevicesAsync()
+  }
 
   override val wipeDataAction: WipeDataAction =
     object : WipeDataAction {
@@ -418,40 +406,37 @@ class StudioLocalEmulatorDeviceHandle(
       }
     }
 
-  override val deleteAction: DeleteAction =
-    object : DeleteAction {
-      override val presentation = defaultPresentation.fromContext().enabledIfStopped()
+  override fun isDeleteEnabled() = state.isStopped()
 
-      override suspend fun delete() {
-        withContext(ioDispatcher) {
-          val properties = state.properties
-          val hasCompanions = properties.pairedPhoneId != null || properties.pairedGlassesInfos.isNotEmpty()
-          if (avdManagerConnection.deleteAvd(avdInfo)) {
-            if (hasCompanions) {
-              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.CASCADING_WIPE_INITIATED)
-            }
-            unpairFromCompanions()
-          } else {
-            withContext(edtDispatcher) {
-              if (
-                MessageDialogBuilder.okCancel(
-                    "Could Not Delete All AVD Files",
-                    "There may be additional files remaining in the AVD directory. To fully delete " +
-                      "the AVD, open the directory and manually delete the files.",
-                  )
-                  .yesText("Open Directory")
-                  .noText("OK")
-                  .icon(Messages.getInformationIcon())
-                  .ask(project)
-              ) {
-                showAction.show()
-              }
-            }
+  override suspend fun delete(project: Project?) {
+    withContext(ioDispatcher) {
+      val properties = state.properties
+      val hasCompanions = properties.pairedPhoneId != null || properties.pairedGlassesInfos.isNotEmpty()
+      if (avdManagerConnection.deleteAvd(avdInfo)) {
+        if (hasCompanions) {
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.CASCADING_WIPE_INITIATED)
+        }
+        unpairFromCompanions()
+      } else {
+        withContext(edtDispatcher) {
+          if (
+            MessageDialogBuilder.okCancel(
+                "Could Not Delete All AVD Files",
+                "There may be additional files remaining in the AVD directory. To fully delete " +
+                  "the AVD, open the directory and manually delete the files.",
+              )
+              .yesText("Open Directory")
+              .noText("OK")
+              .icon(Messages.getInformationIcon())
+              .ask(project)
+          ) {
+            show()
           }
-          refreshDevices()
         }
       }
+      refreshDevices()
     }
+  }
 
   private suspend fun unpairFromCompanions(): Boolean {
     val properties = state.properties

@@ -452,7 +452,7 @@ class DeviceAdapterTest {
     AbstractDisplayView(project, 0, "StreamingContextMenuVirtualDevice") {
 
     init {
-      displayRectangle = Rectangle(deviceDisplaySize)
+      projectionRectangle = Rectangle(deviceDisplaySize)
       val mouseListener =
         object : MouseAdapter() {
           override fun mouseClicked(e: MouseEvent) {}

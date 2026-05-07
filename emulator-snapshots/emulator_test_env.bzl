@@ -20,11 +20,11 @@ EMULATOR_PATH_JVM_FLAGS = select({
 })
 
 _SYSTEM_IMAGE_TO_SNAPSHOT = {
-    "@system_image_android-30_default_x86_64//:x86_64-android-30-images": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_30_snapshot",
+    "//prebuilts/studio/sdk:system_image_android-30_default": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_30_snapshot",
     "//prebuilts/studio/sdk:system_image_android-31_default": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
     "//prebuilts/studio/sdk:system_image_android-33_default": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_aosp_atd_snapshot",
-    "@system_image_android-35_default_x86_64//:x86_64-android-35-images": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_35_snapshot",
+    "//prebuilts/studio/sdk:system_image_android-33_aosp_atd": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_aosp_atd_snapshot",
+    "//prebuilts/studio/sdk:system_image_android-35_default": "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_35_snapshot",
 }
 
 def emulator_test_jvm_flags(system_image):
@@ -41,6 +41,13 @@ def emulator_test_jvm_flags(system_image):
         "-Demulator.test.emulator.location=\"$(locations //prebuilts/studio/sdk:emulator)\"",
     ] + EMULATOR_PATH_JVM_FLAGS
 
+def _if_snapshots_enabled(value):
+    return select({
+        "//tools/adt/idea/emulator-snapshots:snapshots_enabled_linux": value,
+        "//tools/adt/idea/emulator-snapshots:snapshots_enabled_macos": value,
+        "//conditions:default": [],
+    })
+
 def emulator_snapshot_jvm_flags(system_image):
     """Returns JVM flags for emulator tests, using a snapshot if enabled.
 
@@ -54,10 +61,7 @@ def emulator_snapshot_jvm_flags(system_image):
     if not snapshot:
         return emulator_test_jvm_flags(system_image)
 
-    return emulator_test_jvm_flags(system_image) + select({
-        "//tools/adt/idea/emulator-snapshots:use_snapshots": ["-Demulator.test.snapshot.path=\"$(location " + snapshot + ")\""],
-        "//conditions:default": [],
-    })
+    return emulator_test_jvm_flags(system_image) + _if_snapshots_enabled(["-Demulator.test.snapshot.path=\"$(location " + snapshot + ")\""])
 
 def emulator_snapshot_data(system_image):
     """Returns the snapshot ZIP dependency for emulator tests if snapshots are enabled.
@@ -72,7 +76,4 @@ def emulator_snapshot_data(system_image):
     if not snapshot:
         return []
 
-    return select({
-        "//tools/adt/idea/emulator-snapshots:use_snapshots": [snapshot],
-        "//conditions:default": [],
-    })
+    return _if_snapshots_enabled([snapshot])

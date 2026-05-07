@@ -86,7 +86,7 @@ class ScreenshotResultView(private val project: Project? = null) : Disposable {
       onActionTriggered = toolbarAnalytics::logAction,
     )
 
-  private val multiViewPanels = listOf(newImagePanel, diffImagePanel, refImagePanel)
+  private val multiViewPanels = listOf(refImagePanel, diffImagePanel, newImagePanel)
 
   // Panels for the single-view tabs (with individual toolbars and titles)
   @VisibleForTesting
@@ -135,6 +135,8 @@ class ScreenshotResultView(private val project: Project? = null) : Disposable {
   var refImagePath: String = ""
   var diffImagePath: String = ""
   var testFailed: Boolean = false
+  var isSizeMismatch: Boolean = false
+  var sizeMismatchMessage: String? = null
 
   // Expose common actions for testing
   @VisibleForTesting
@@ -251,12 +253,12 @@ class ScreenshotResultView(private val project: Project? = null) : Disposable {
     val rightSplit =
       OnePixelSplitter(false, 0.5f).apply {
         firstComponent = diffImagePanel
-        secondComponent = refImagePanel
+        secondComponent = newImagePanel
       }
 
     val mainSplit =
       OnePixelSplitter(false, 0.33f).apply {
-        firstComponent = newImagePanel
+        firstComponent = refImagePanel
         secondComponent = rightSplit
       }
 
@@ -352,7 +354,9 @@ class ScreenshotResultView(private val project: Project? = null) : Disposable {
   fun updateView() {
     imageLoadFutures.forEach { it.cancel(true) }
     imageLoadFutures.clear()
-    val diffPlaceholder = if (testFailed) "No Diff Image" else "No Difference"
+    val diffPlaceholder =
+      sizeMismatchMessage?.let { msg -> "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>" }
+        ?: if (isSizeMismatch) "Size Mismatch" else if (testFailed) "No Diff Image" else "No Difference"
 
     // Load images for the "All" tab
     loadImageAsync(newImagePath, newImagePanel, "No Preview Image")

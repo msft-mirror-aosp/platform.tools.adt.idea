@@ -1,3 +1,6 @@
+Parameter changes:
+- alpha: 1.0
+
 State read value: [b, c] <invalidated> (Explain with AI)
     at androidx.compose.runtime.CompositionImpl.recordReadOf(Composition.kt:1015)
     at androidx.compose.runtime.Recomposer.readObserverOf$lambda$87(Recomposer.kt:1519)

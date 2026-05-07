@@ -11,5 +11,17 @@
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
+    <orderEntry type="library" name="protobuf-kotlin" level="project" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../bazel-bin/tools/adt/idea/play-publishing/proto/play_publishing_kt_proto.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
   </component>
 </module>

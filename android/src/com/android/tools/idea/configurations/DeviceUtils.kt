@@ -93,7 +93,7 @@ fun getSuitableDevices(configuration: Configuration): Map<DeviceGroup, List<Devi
 fun groupDevices(devices: List<Device>): Map<DeviceGroup, List<Device>> {
   val sorted =
     devices
-      .filterNot { Configuration.CUSTOM_DEVICE_ID == it.id || ConfigurationManager.isAvdDevice(it) }
+      .filterNot { Configuration.CUSTOM_DEVICE_ID == it.id || ConfigurationManager.isAvdDevice(it) || it.defaultHardware.screen == null }
       .sortedByDescending { it.displayName }
   return sorted
     .groupBy {

@@ -441,7 +441,7 @@ android-studio/jbr/release
 android-studio/lib/annotations.jar
 android-studio/lib/app-backend.jar
 android-studio/lib/app.jar
-android-studio/lib/build-marker-AI-261.22158.277.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-261.23567.138.__BUILD_NUMBER__
 android-studio/lib/eclipse.lsp4j.debug.jar
 android-studio/lib/eclipse.lsp4j.jar
 android-studio/lib/eclipse.lsp4j.jsonrpc.debug.jar
@@ -2372,6 +2372,7 @@ android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 android-studio/plugins/android/lib/build-analysis-results-proto.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/chime_kt_proto.jar
+android-studio/plugins/android/lib/cli_commands_proto.jar
 android-studio/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
 android-studio/plugins/android/lib/compilerCommon.antlr_runtime.shaded_jar.jar
 android-studio/plugins/android/lib/core-3.5.0.jar
@@ -2450,6 +2451,7 @@ android-studio/plugins/android/lib/org.eclipse.emf.ecore-2.12.0.jar
 android-studio/plugins/android/lib/perfetto-protos.jar
 android-studio/plugins/android/lib/perfetto_android_protos.jar
 android-studio/plugins/android/lib/pixelprobe.jar
+android-studio/plugins/android/lib/play_publishing_kt_proto.jar
 android-studio/plugins/android/lib/play_vitals_kt_proto.jar
 android-studio/plugins/android/lib/proto.jar
 android-studio/plugins/android/lib/protobuf-kotlin-3.24.4.jar
@@ -2473,11 +2475,12 @@ android-studio/plugins/android/lib/smali-util-3.0.9.jar
 android-studio/plugins/android/lib/sqlite-jdbc-3.51.1.0.jar
 android-studio/plugins/android/lib/studio-grpc.jar
 android-studio/plugins/android/lib/studio-proto.jar
+android-studio/plugins/android/lib/studio_cli_service_kt_proto.jar
 android-studio/plugins/android/lib/tensorflow-lite-metadata-0.1.0-rc2.jar
 android-studio/plugins/android/lib/traceprocessor_protos.jar
-android-studio/plugins/android/lib/tracing-desktop-2.0.0-alpha05.jar
+android-studio/plugins/android/lib/tracing-desktop-2.0.0-alpha06.jar
 android-studio/plugins/android/lib/tracing-perfetto-handshake-1.0.0-beta02.jar
-android-studio/plugins/android/lib/tracing-wire-desktop-2.0.0-alpha05.jar
+android-studio/plugins/android/lib/tracing-wire-desktop-2.0.0-alpha06.jar
 android-studio/plugins/android/lib/transport_java_proto.jar
 android-studio/plugins/android/lib/ui-animation-tooling-internal.jar
 android-studio/plugins/android/lib/utp.jar
@@ -3262,6 +3265,7 @@ android-studio/plugins/gradle-plugin/lib/modules/intellij.gradle.properties.jar
 android-studio/plugins/gradle-plugin/lib/modules/intellij.gradle.toml.jar
 android-studio/plugins/grazie/lib/ai.grazie.api.gateway.client.jvm.jar
 android-studio/plugins/grazie/lib/ai.grazie.client.ktor.jvm.jar
+android-studio/plugins/grazie/lib/ai.grazie.gec.util.jar
 android-studio/plugins/grazie/lib/ai.grazie.model.ner.jvm.jar
 android-studio/plugins/grazie/lib/ai.grazie.model.tree.jvm.jar
 android-studio/plugins/grazie/lib/ai.grazie.rule.engine.jar
@@ -3272,6 +3276,7 @@ android-studio/plugins/grazie/lib/com.hankcs-aho-corasick-double-array-trie.jar
 android-studio/plugins/grazie/lib/com.vdurmont-emoji-java.jar
 android-studio/plugins/grazie/lib/grazie.jar
 android-studio/plugins/grazie/lib/intellij.libraries.ai.grazie.spell.gec.engine.local.jar
+android-studio/plugins/grazie/lib/io.github.oshai.kotlin.logging.jvm.jar
 android-studio/plugins/grazie/lib/javax.measure-unit-api.jar
 android-studio/plugins/grazie/lib/modules/intellij.grazie.java.jar
 android-studio/plugins/grazie/lib/modules/intellij.grazie.properties.jar

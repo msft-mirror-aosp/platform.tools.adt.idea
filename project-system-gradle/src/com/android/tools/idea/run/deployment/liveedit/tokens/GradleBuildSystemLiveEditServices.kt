@@ -23,9 +23,9 @@ import com.android.tools.idea.projectsystem.ApplicationProjectContext
 import com.android.tools.idea.projectsystem.ClassContent
 import com.android.tools.idea.projectsystem.DependencyScopeType
 import com.android.tools.idea.projectsystem.GradleToken
+import com.android.tools.idea.projectsystem.SourceSetModuleClassFileFinder
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
-import com.android.tools.idea.projectsystem.gradle.GradleClassFileFinder
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.run.deployment.liveedit.setOptions
@@ -69,7 +69,7 @@ class GradleBuildSystemLiveEditServices :
 }
 
 internal class GradleApplicationLiveEditServices(private val module: Module) : ApplicationLiveEditServices {
-  val classFileFinder = GradleClassFileFinder.createWithoutTests(module)
+  val classFileFinder = SourceSetModuleClassFileFinder.createWithoutTests(module)
 
   data class GradleCompilationDependencies(val module: Module) : ApplicationLiveEditServices.CompilationDependencies {
     override fun getExternalLibraries(): List<Path> {

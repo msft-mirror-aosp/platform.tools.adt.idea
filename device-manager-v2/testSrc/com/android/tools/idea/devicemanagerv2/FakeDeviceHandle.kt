@@ -30,9 +30,11 @@ import com.android.sdklib.deviceprovisioner.DeviceTemplate
 import com.android.sdklib.deviceprovisioner.PairGlassesAction
 import com.android.sdklib.deviceprovisioner.RepairDeviceAction
 import com.android.tools.analytics.UsageTrackerRule
+import com.android.tools.idea.deviceprovisioner.DeletableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.DeviceManagerEvent
+import com.intellij.openapi.project.Project
 import icons.StudioIcons
 import java.awt.Component
 import kotlinx.coroutines.CoroutineScope
@@ -47,16 +49,13 @@ internal class FakeDeviceHandle(
   override val scope: CoroutineScope,
   override val sourceTemplate: DeviceTemplate? = null,
   initialProperties: DeviceProperties = DeviceProperties.buildForTest { icon = StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_PHONE },
-) : DeviceHandle {
+) : DeviceHandle, DeletableDeviceHandle {
   override val id = DeviceId("Fake", false, initialProperties.title)
   override val stateFlow = MutableStateFlow<DeviceState>(DeviceState.Disconnected(initialProperties))
   override val activationAction = FakeActivationAction()
   override val deactivationAction = FakeDeactivationAction()
   override val repairDeviceAction = FakeRepairDeviceAction()
-  override val showAction = FakeShowAction()
-  override val duplicateAction = FakeDuplicateAction()
   override val wipeDataAction = FakeWipeDataAction()
-  override val deleteAction = FakeDeleteAction()
   override val coldBootAction = FakeColdBootAction()
 
   override val pairGlassesAction = FakePairGlassesAction()
@@ -117,16 +116,6 @@ internal class FakeDeviceHandle(
     }
   }
 
-  inner class FakeShowAction : com.android.sdklib.deviceprovisioner.ShowAction {
-    var invoked = 0
-
-    override suspend fun show() {
-      invoked++
-    }
-
-    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
-  }
-
   inner class FakeWipeDataAction : com.android.sdklib.deviceprovisioner.WipeDataAction {
     var invoked = 0
 
@@ -137,24 +126,12 @@ internal class FakeDeviceHandle(
     override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
   }
 
-  inner class FakeDeleteAction : com.android.sdklib.deviceprovisioner.DeleteAction {
-    var invoked = 0
+  var deleteCount = 0
 
-    override suspend fun delete() {
-      invoked++
-    }
+  override fun isDeleteEnabled(): Boolean = true
 
-    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
-  }
-
-  inner class FakeDuplicateAction : com.android.sdklib.deviceprovisioner.DuplicateAction {
-    var invoked = 0
-
-    override suspend fun duplicate(parent: Component?) {
-      invoked++
-    }
-
-    override val presentation = MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
+  override suspend fun delete(project: Project?) {
+    deleteCount++
   }
 
   inner class FakePairGlassesAction : PairGlassesAction {

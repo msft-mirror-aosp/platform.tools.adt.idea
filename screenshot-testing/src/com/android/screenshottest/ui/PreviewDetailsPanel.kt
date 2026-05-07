@@ -112,7 +112,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       onActionTriggered = toolbarAnalytics::logAction,
     )
 
-  private val multiViewPanels = listOf(newImagePanel, diffImagePanel, refImagePanel)
+  private val multiViewPanels = listOf(refImagePanel, diffImagePanel, newImagePanel)
 
   // Panels for the individual tabbed views in single preview mode.
   private val newImagePanelSingle =
@@ -319,16 +319,16 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     singlePreviewPanel.repaint()
   }
 
-  /** Sets up the side-by-side view for New, Diff, and Reference images. This view has a common toolbar and synchronized scrolling. */
+  /** Sets up the side-by-side view for Reference, Diff, and New images. This view has a common toolbar and synchronized scrolling. */
   private fun setupAllImagesView(previewData: PreviewDetails): JComponent {
     val rightSplit =
       OnePixelSplitter(false, 0.5f).apply {
         firstComponent = diffImagePanel
-        secondComponent = refImagePanel
+        secondComponent = newImagePanel
       }
     val mainSplit =
       OnePixelSplitter(false, 0.33f).apply {
-        firstComponent = newImagePanel
+        firstComponent = refImagePanel
         secondComponent = rightSplit
       }
 
@@ -340,7 +340,16 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     horizontalModels.forEach { it.addChangeListener(horizontalSyncListener) }
     verticalModels.forEach { it.addChangeListener(verticalSyncListener) }
 
-    val diffPlaceholder = if (previewData.testResult == AndroidTestCaseResult.PASSED) NO_DIFFERENCE_TEXT else NO_DIFF_IMAGE_TEXT
+    val diffPlaceholder =
+      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+        NO_DIFFERENCE_TEXT
+      } else if (previewData.isSizeMismatch) {
+        previewData.sizeMismatchMessage?.let { msg ->
+          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
+        } ?: SIZE_MISMATCH_TEXT
+      } else {
+        NO_DIFF_IMAGE_TEXT
+      }
     loadImageAsync(previewData.srcImagePath, newImagePanel, NO_NEW_IMAGE_TEXT)
     loadImageAsync(previewData.diffImagePath, diffImagePanel, diffPlaceholder)
     loadImageAsync(previewData.destImagePath, refImagePanel, NO_REF_IMAGE_TEXT)
@@ -362,7 +371,16 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     imageContainer.add(refImagePanelSingle, ScreenshotViewType.REFERENCE.displayText)
 
     val cardLayout = imageContainer.layout as CardLayout
-    val diffPlaceholder = if (previewData.testResult == AndroidTestCaseResult.PASSED) NO_DIFFERENCE_TEXT else NO_DIFF_IMAGE_TEXT
+    val diffPlaceholder =
+      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+        NO_DIFFERENCE_TEXT
+      } else if (previewData.isSizeMismatch) {
+        previewData.sizeMismatchMessage?.let { msg ->
+          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
+        } ?: SIZE_MISMATCH_TEXT
+      } else {
+        NO_DIFF_IMAGE_TEXT
+      }
 
     when (viewType) {
       ScreenshotViewType.NEW -> loadImageAsync(previewData.srcImagePath, newImagePanelSingle, NO_NEW_IMAGE_TEXT)

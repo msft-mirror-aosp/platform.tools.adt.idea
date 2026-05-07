@@ -27,6 +27,7 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Commands.StartLeakCanaryTaskData
+import com.android.tools.profiler.proto.Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
@@ -37,6 +38,7 @@ import com.android.tools.profilers.leakcanary.LeakCanaryModel
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.ACTION_BAR_RECORDING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_ANALYSIS
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_CAPTURING_DUMP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_FORCE_DUMP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_RETAINED_OBJECT
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_WAITING_HEAP_DUMP
@@ -48,6 +50,7 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class LeakCanaryActionBarTest : WithFakeTimer {
   override val timer = FakeTimer()
@@ -66,6 +69,15 @@ class LeakCanaryActionBarTest : WithFakeTimer {
     ideProfilerServices = FakeIdeProfilerServices()
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
     leakCanaryModel = LeakCanaryModel(profilers)
+  }
+
+  @Test
+  fun `capturing dump message is shown when stopping with retained objects`() {
+    leakCanaryModel.setIsRecording(true)
+    leakCanaryModel.setIsStopping(true)
+    leakCanaryModel.setObjectRetainedCount(2)
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
+    composeTestRule.onNodeWithText(LEAKCANARY_CAPTURING_DUMP).assertIsDisplayed()
   }
 
   @Test
@@ -91,10 +103,7 @@ class LeakCanaryActionBarTest : WithFakeTimer {
       Commands.Command.CommandType.START_LEAKCANARY_TASK,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
     )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
-    )
+
     transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
@@ -190,6 +199,22 @@ class LeakCanaryActionBarTest : WithFakeTimer {
     leakCanaryModel.setIsRecording(true)
     // Button is disabled when 0 objects are retained.
     leakCanaryModel.setObjectRetainedCount(0)
+
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
+    composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()
+    composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `test force heap dump button visible but disabled when isForceDumpExecuting is true`() {
+    val mockHeapDumper: LeakCanaryHeapDumper = mock()
+    whenever(mockHeapDumper.triggerAndAnalyze()).thenReturn(true)
+    leakCanaryModel = LeakCanaryModel(profilers, mockHeapDumper)
+    leakCanaryModel.leakcanaryMode = ON_HOST
+    leakCanaryModel.setIsRecording(true)
+    leakCanaryModel.setObjectRetainedCount(1)
+    // Simulate user having just clicked the force dump button
+    leakCanaryModel.forceHeapDump()
 
     composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()

@@ -18,19 +18,35 @@ package com.google.idea.blaze.qsync
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.common.RuleKinds
+import com.google.idea.blaze.qsync.java.PackageReader
+import com.google.idea.blaze.qsync.java.choosePackageCandidate
 import com.google.idea.blaze.qsync.project.BuildGraphData
+import com.google.idea.blaze.qsync.project.BuildPackage
+import com.google.idea.blaze.qsync.project.FileExtensions
 import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.ProjectTarget.SourceType
 import com.google.idea.blaze.qsync.project.SourceSet
+import com.google.idea.blaze.qsync.project.getBuildPackage
+import com.google.idea.blaze.qsync.project.getJavaSourceFiles
+import java.nio.file.Files
 import java.nio.file.Path
 
 /** Extension method to create [ProjectStructureData] from a [BuildGraphData]. */
-fun ProjectStructureData.Companion.fromGraph(context: Context<*>, graph: BuildGraphData, projectIncludes: Set<Path>): ProjectStructureData {
+fun ProjectStructureData.Companion.fromGraph(
+  context: Context<*>,
+  graph: BuildGraphData,
+  projectIncludes: Set<Path>,
+  workspaceRoot: Path,
+  packageReader: PackageReader,
+  parallelPackageReader: PackageReader.ParallelReader,
+  fileExtensions: FileExtensions = FileExtensions(),
+  fileExists: (Path) -> Boolean = { path -> Files.isRegularFile(workspaceRoot.resolve(path)) },
+): ProjectStructureData {
   val javaSourceFiles = graph.getJavaSourceFiles()
-  val nonJavaSourceFiles = graph.getSourceFilesByRuleKindAndType({ t -> !RuleKinds.isJava(t) }, *SourceType.all()).values.flatten()
+  val nonJavaSourceFiles =
+    graph.getSourceFilesByRuleKindAndType({ t: String -> !RuleKinds.isJava(t) }, *SourceType.all()).values.flatten().distinct()
 
-  val packages = graph.packages()
   val directoryToContainingPackageMap = mutableMapOf<Path, Path?>()
 
   fun findBuildPackage(filePath: Path): Path? {
@@ -38,7 +54,7 @@ fun ProjectStructureData.Companion.fromGraph(context: Context<*>, graph: BuildGr
     return directoryToContainingPackageMap.getOrPut(parent) {
       var current: Path? = parent
       while (current != null) {
-        if (packages.contains(current)) {
+        if (graph.getBuildPackage(current) != null) {
           return@getOrPut current
         }
         current = current.parent
@@ -47,9 +63,25 @@ fun ProjectStructureData.Companion.fromGraph(context: Context<*>, graph: BuildGr
     }
   }
 
-  val javaSourcesMap = mutableMapOf<Path, MutableList<Path>>()
+  val filesByDir = javaSourceFiles.groupBy { it.parent ?: Path.of("") }
+  val candidateFiles = filesByDir.values.mapNotNull { files -> choosePackageCandidate(files, fileExtensions, fileExists) }
+
+  val candidateFileToPackageMap = parallelPackageReader.readPackages(context, packageReader, candidateFiles)
+
+  val fileToPackageMap = mutableMapOf<Path, String>()
+  for (files in filesByDir.values) {
+    val candidate = choosePackageCandidate(files, fileExtensions, fileExists)
+    val javaPackage = candidate?.let { candidateFileToPackageMap[it] } ?: ""
+    for (file in files) {
+      fileToPackageMap[file] = javaPackage
+    }
+  }
+
+  val javaSourcesMap = mutableMapOf<Path, MutableMap<String, MutableList<Path>>>()
   for (file in javaSourceFiles) {
-    findBuildPackage(file)?.let { pkgPath -> javaSourcesMap.computeIfAbsent(pkgPath) { mutableListOf() }.add(file) }
+    val buildPackage = findBuildPackage(file) ?: continue
+    val javaPackage = fileToPackageMap[file] ?: ""
+    javaSourcesMap.computeIfAbsent(buildPackage) { mutableMapOf() }.computeIfAbsent(javaPackage) { mutableListOf() }.add(file)
   }
 
   val nonJavaSourcesMap = mutableMapOf<Path, MutableList<Path>>()
@@ -57,39 +89,51 @@ fun ProjectStructureData.Companion.fromGraph(context: Context<*>, graph: BuildGr
     findBuildPackage(file)?.let { pkgPath -> nonJavaSourcesMap.computeIfAbsent(pkgPath) { mutableListOf() }.add(file) }
   }
 
-  val finalSourcesMap =
-    (javaSourcesMap.keys + nonJavaSourcesMap.keys).associateWith { pkg ->
-      listOf(
-        SourceSet(
-          rootPath = pkg,
-          javaSourceFiles = javaSourcesMap[pkg]?.map { pkg.relativize(it) }?.distinct()?.sorted() ?: emptyList(),
-          nonJavaSourceFiles = nonJavaSourcesMap[pkg]?.map { pkg.relativize(it) }?.sorted() ?: emptyList(),
-        )
+  val allBuildPackages = (javaSourcesMap.keys + nonJavaSourcesMap.keys).distinct()
+  val finalBuildPackages =
+    allBuildPackages.associateWith { buildPackage ->
+      val javaPackages = javaSourcesMap[buildPackage]?.keys ?: emptySet()
+      val allPackages = if (nonJavaSourcesMap.containsKey(buildPackage)) javaPackages + "" else javaPackages
+
+      BuildPackage(
+        path = buildPackage,
+        sourceSets =
+          allPackages.map { javaPackage ->
+            val javaSources = javaSourcesMap[buildPackage]?.get(javaPackage) ?: emptyList()
+            val nonJavaSources = if (javaPackage.isEmpty()) nonJavaSourcesMap[buildPackage] ?: emptyList() else emptyList()
+            SourceSet(
+              rootPath = buildPackage,
+              javaSourceFiles = javaSources.map { buildPackage.relativize(it) }.distinct().sorted(),
+              nonJavaSourceFiles = nonJavaSources.map { buildPackage.relativize(it) }.distinct().sorted(),
+              javaPackage = javaPackage,
+            )
+          },
       )
     }
 
-  val sourcesByRoot = associateByProjectRoot(finalSourcesMap, projectIncludes, context)
+  val sourcesByRoot = associateByProjectRoot(finalBuildPackages, projectIncludes, context)
 
   val roots =
-    sourcesByRoot.map { (includeRoot, packageMap) ->
-      ProjectStructureRoot(projectStructureRootPath = includeRoot, packageSourceSets = packageMap)
+    sourcesByRoot.map { (includeRoot, buildPackages) ->
+      ProjectStructureRoot(projectStructureRootPath = includeRoot, buildPackages = buildPackages)
     }
 
   return ProjectStructureData.create(roots = roots, activeLanguages = graph.getActiveLanguages())
 }
 
 private fun associateByProjectRoot(
-  finalSourcesMap: Map<Path, List<SourceSet>>,
+  finalBuildPackages: Map<Path, BuildPackage>,
   projectIncludes: Set<Path>,
   context: Context<*>,
-): Map<Path, Map<Path, List<SourceSet>>> {
+): Map<Path, Map<Path, BuildPackage>> {
   val sortedIncludes = projectIncludes.sortedByDescending { it.nameCount }
-  val result = mutableMapOf<Path, MutableMap<Path, List<SourceSet>>>()
+  val result = mutableMapOf<Path, MutableMap<Path, BuildPackage>>()
 
-  for ((pkgPath, sourceSetList) in finalSourcesMap) {
+  for ((pkgPath, buildPkg) in finalBuildPackages) {
     val includeRoot = sortedIncludes.find { pkgPath.startsWith(it) }
     if (includeRoot != null) {
-      result.computeIfAbsent(includeRoot) { mutableMapOf() }[pkgPath] = sourceSetList
+      val rootMap = result.computeIfAbsent(includeRoot) { mutableMapOf() }
+      rootMap[pkgPath] = buildPkg
     } else {
       context.output(PrintOutput.log("WARNING: Package $pkgPath is outside all project structure roots"))
     }

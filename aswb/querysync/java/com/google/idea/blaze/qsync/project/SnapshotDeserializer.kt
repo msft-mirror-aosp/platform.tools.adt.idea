@@ -55,7 +55,14 @@ class SnapshotDeserializer private constructor() {
         deserializer.projectStructureData = deserializer.visitProjectStructureData(proto.projectStructureData)
       }
       deserializer.visitQuerySummay(proto.querySummary)
-      return SerializedProjectStructureAndQueryData(deserializer.syncDataBuilder.build(), deserializer.projectStructureData)
+      return SerializedProjectStructureAndQueryData(
+        deserializer.syncDataBuilder.build(),
+        deserializer.projectStructureData
+          ?: let {
+            context.output(PrintOutput.output("Incomplete sync data; performing full sync"))
+            return@readFrom null
+          },
+      )
     }
   }
 
@@ -87,15 +94,21 @@ class SnapshotDeserializer private constructor() {
       proto.rootsList.map { rootProto ->
         ProjectStructureRoot(
           projectStructureRootPath = Path.of(rootProto.projectStructureRootPath),
-          packageSourceSets =
-            rootProto.packageSourceSetsList.associate { sourceSet ->
-              Path.of(sourceSet.workspaceRelativePath) to
-                listOf(
-                  SourceSet(
-                    rootPath = Path.of(sourceSet.rootPath),
-                    javaSourceFiles = sourceSet.javaSourceFilesList.map { Path.of(it) },
-                    nonJavaSourceFiles = sourceSet.nonJavaSourceFilesList.map { Path.of(it) },
-                  )
+          buildPackages =
+            rootProto.buildPackagesList.associate { buildPkgProto ->
+              val pkgPath = Path.of(buildPkgProto.buildPackagePath)
+              pkgPath to
+                BuildPackage(
+                  path = pkgPath,
+                  sourceSets =
+                    buildPkgProto.sourceSetsList.map { sourceSet ->
+                      SourceSet(
+                        rootPath = Path.of(sourceSet.rootPath),
+                        javaSourceFiles = sourceSet.javaSourceFilesList.map { Path.of(it) },
+                        nonJavaSourceFiles = sourceSet.nonJavaSourceFilesList.map { Path.of(it) },
+                        javaPackage = sourceSet.javaPackage,
+                      )
+                    },
                 )
             },
         )

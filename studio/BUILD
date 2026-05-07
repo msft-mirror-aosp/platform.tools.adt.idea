@@ -96,8 +96,8 @@ studio_plugin(
         "//prebuilts/tools/common/m2:shark-graph-2.14",
         "//prebuilts/tools/common/m2:shark-hprof-2.14",
         "//prebuilts/tools/common/m2:shark-log-2.14",
-        "//prebuilts/tools/common/m2:tracing-desktop-2.0.0-alpha05",
-        "//prebuilts/tools/common/m2:tracing-wire-desktop-2.0.0-alpha05",
+        "//prebuilts/tools/common/m2:tracing-desktop-2.0.0-alpha06",
+        "//prebuilts/tools/common/m2:tracing-wire-desktop-2.0.0-alpha06",
         "//prebuilts/tools/common/m2:wire-runtime-jvm-6.0.0",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
@@ -137,6 +137,8 @@ studio_plugin(
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:background-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:workmanager-inspector-proto",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:play_vitals_kt_proto",
+        "//tools/adt/idea/cli-server/command-handler:cli_commands_proto",
+        "//tools/adt/idea/cli-server/server:studio_cli_service_kt_proto",
         "//tools/adt/idea/compose-designer:ui-animation-tooling-internal",
         "//tools/adt/idea/logcat:logcat-proto",
         "//tools/adt/idea/logcat/proto:logcat-proto",
@@ -159,6 +161,7 @@ studio_plugin(
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
         "//tools/adt/idea/testartifacts:libjourneys-java-proto",
         "//tools/vendor/google/marketing:chime_kt_proto",
+        "//tools/adt/idea/play-publishing:play_publishing_kt_proto",
     ],
     license_files = [
         "//prebuilts/r8:license",
@@ -264,6 +267,7 @@ studio_plugin(
             "//tools/adt/idea/logcat:intellij.android.logcat",
             "//tools/adt/idea/logcat/gradle:intellij.android.logcat.gradle",
             "//tools/vendor/google/login:google-login",
+            "//tools/vendor/google/login/onboarding:login.onboarding",
             "//tools/adt/idea/mlkit:intellij.android.mlkit",
             "//tools/adt/idea/nav/safeargs:intellij.android.nav.safeargs",
             "//tools/adt/idea/nav/safeargs/common:intellij.android.nav.safeargs.common",
@@ -321,6 +325,8 @@ studio_plugin(
             "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
             "//tools/vendor/google/marketing:marketing",
             "//tools/adt/idea/play-publishing:intellij.android.play-publishing",
+            "//tools/adt/idea/cli-server/server:cli-server.server",
+            "//tools/adt/idea/cli-server/command-handler:cli-server.command-handler",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -538,7 +544,12 @@ studio_plugin(
 studio_plugin(
     name = "com.android.tools.ndk",
     directory = "android-ndk",
-    modules = {"android-ndk.jar": ["//tools/vendor/google/android-ndk:android-ndk"]},
+    modules = {
+        "android-ndk.jar": [
+            "//tools/vendor/google/android-ndk:android-ndk",
+            "//tools/vendor/google/android-ndk-api:android-ndk-api",
+        ],
+    },
     resources = {
         "resources/lldb": [
             "//prebuilts/tools:lldb-bundle",
@@ -887,6 +898,9 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/agents/agents-core:aiplugin.agents.agents-core",
             "//tools/vendor/google/ml/aiplugin/v2/agent-controller:aiplugin.v2.agent-controller",
             "//tools/vendor/google/ml/aiplugin/v2/agent-sdk:aiplugin.v2.agent-sdk",
+            "//tools/vendor/google/ml/aiplugin/v2/agent-harness-sdk:aiplugin.v2.agent-harness-sdk",
+            "//tools/vendor/google/ml/aiplugin/v2/agent-tool-sdk:aiplugin.v2.agent-tool-sdk",
+            "//tools/vendor/google/ml/aiplugin/v2/agent-runtime:aiplugin.v2.agent-runtime",
             "//tools/vendor/google/ml/aiplugin/v2/agent-sdk-api:aiplugin.v2.agent-sdk-api",
             "//tools/vendor/google/ml/aiplugin/v2/agent-ui:aiplugin.v2.agent-ui",
             "//tools/vendor/google/ml/aiplugin/v2/agent-ui-container:aiplugin.v2.agent-ui-container",
@@ -903,6 +917,7 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/android-plugin/descriptor:aiplugin.android-plugin.descriptor",
             "//tools/vendor/google/ml/aiplugin/backends/aicode:aiplugin.backends.aicode",
             "//tools/vendor/google/ml/aiplugin/backends/local:aiplugin.backends.local",
+            "//tools/vendor/google/ml/aiplugin/backends/runtime/llamacpp:aiplugin.backends.runtime.llamacpp",
             "//tools/vendor/google/ml/aiplugin/backends/third-party:aiplugin.backends.third-party",
             "//tools/vendor/google/ml/aiplugin/editor/prediction-services:aiplugin.editor.prediction-services",
             "//tools/vendor/google/ml/aiplugin/editor/prediction:aiplugin.editor.prediction",
@@ -1340,6 +1355,7 @@ java_binary(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core",
     ],
 )
 
@@ -1360,8 +1376,6 @@ iml_module(
         "//tools/vendor/google/git4insights",
         "//tools/vendor/google/firebase",
         "//tools/studio/google/cloud/testing/directaccess",
-        "//tools/vendor/google/login:google-login",
-        "//tools/adt/idea/smali:intellij.android.smali",
         "//tools/studio/google/cloud/testing/test-recorder",
         "//tools/vendor/google/url-assistant",
         "//tools/vendor/google/targetsdkversion-upgrade-assistant",
@@ -1373,6 +1387,7 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/vendor/google/optional-plugins",
+        "//tools/adt/idea/smali:intellij.android.smali",
     ],
 )
 
@@ -2128,4 +2143,11 @@ exports_files([
 sh_binary(
     name = "update_searchable_options",
     srcs = ["//tools/adt/idea/studio:searchable-options/update_searchable_options.sh"],
+)
+
+# This target finds all the update_expected_studio_files target of all the
+# android_studio definitions in the workspace and run them sequentially.
+sh_binary(
+    name = "update_expected_studio_files",
+    srcs = ["//tools/adt/idea/studio:tests/update_expected_studio_files.sh"],
 )

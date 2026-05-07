@@ -40,6 +40,7 @@ import com.google.idea.blaze.qsync.ProjectBuilder
 import com.google.idea.blaze.qsync.ProjectStructureReader
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.fromGraph
+import com.google.idea.blaze.qsync.java.PackageReader
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -47,6 +48,7 @@ import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.TargetsToBuild
+import com.google.idea.blaze.qsync.project.pathToLabel
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.intellij.openapi.project.Project
 import java.io.IOException
@@ -108,6 +110,8 @@ class QuerySyncProject(
   val handledRuleKinds: Set<String>,
   val protoRules: BuildGraphData.ProtoRules,
   private val projectStructureReader: ProjectStructureReader,
+  val packageReader: PackageReader,
+  val parallelPackageReader: PackageReader.ParallelReader,
   private val readProjectStructureFromDirectory: Boolean,
 ) : ReadonlyQuerySyncProject {
   override val projectData: QuerySyncProjectData
@@ -120,18 +124,14 @@ class QuerySyncProject(
       return projectData
     }
 
-  @JvmRecord
-  data class QueryCoreSyncResult(
-    val postQuerySyncData: PostQuerySyncData,
-    val graph: BuildGraphData
-  )
+  @JvmRecord data class QueryCoreSyncResult(val postQuerySyncData: PostQuerySyncData, val graph: BuildGraphData)
 
   @Throws(BuildException::class)
   fun syncQueryCore(context: BlazeContext, postQuerySyncData: PostQuerySyncData): QueryCoreSyncResult {
     return computeQueryCoreSyncResult(context, postQuerySyncData)
   }
 
-  fun computePostQuerySyncData(context: BlazeContext, lastQuery: PostQuerySyncData?): PostQuerySyncData {
+  fun runQueryAndComputePostQuerySyncData(context: BlazeContext, lastQuery: PostQuerySyncData?): PostQuerySyncData {
     val postQuerySyncData =
       if (lastQuery == null) projectQuerier.fullQuery(projectDefinition, context)
       else projectQuerier.update(projectDefinition, lastQuery, context)
@@ -140,7 +140,7 @@ class QuerySyncProject(
 
   fun computeQueryCoreSyncResult(context: BlazeContext, postQuerySyncData: PostQuerySyncData): QueryCoreSyncResult {
     val graph = buildGraphData(postQuerySyncData, context)
-   return QueryCoreSyncResult(postQuerySyncData, graph)
+    return QueryCoreSyncResult(postQuerySyncData, graph)
   }
 
   fun computeProjectStructureData(
@@ -151,7 +151,15 @@ class QuerySyncProject(
     val projectStructureData =
       (if (readProjectStructureFromDirectory) {
         readProjectStructureFromDirectory(context, projectDefinition)
-      } else null) ?: ProjectStructureData.fromGraph(context, graph, projectDefinition.projectIncludes)
+      } else null)
+        ?: ProjectStructureData.fromGraph(
+          context,
+          graph,
+          projectDefinition.projectIncludes,
+          workspaceRoot.path(),
+          packageReader,
+          parallelPackageReader,
+        )
     return projectStructureData
   }
 
@@ -169,9 +177,29 @@ class QuerySyncProject(
    *   (recursively).
    */
   fun getProjectTargets(workspaceRelativePaths: Collection<Path>): Set<TargetsToBuild> {
-    return snapshotHolder()
-      ?.let { snapshot -> workspaceRelativePaths.map { path -> snapshot.graph.getProjectTargets(path) }.toSet() }
-      .orEmpty()
+    val snapshot = snapshotHolder.current.getOrNull() ?: return emptySet()
+    return workspaceRelativePaths
+      .map { path ->
+        if (path.endsWith("BUILD") || path.endsWith("BUILD.bazel")) {
+          val packagePath = path.parent ?: Path.of("")
+          val packageLabel = Label.fromWorkspacePackageAndName("", packagePath, Label.PACKAGE_TARGET_NAME)
+          snapshot.graph.getProjectTargetsForBuildPackage(packageLabel)
+        } else {
+          val packageLabel = Label.fromWorkspacePackageAndName("", path, Label.PACKAGE_TARGET_NAME)
+          val subpackagesTargets = snapshot.graph.getProjectTargetsForBuildPackageWithSubpackages(packageLabel)
+          if (!subpackagesTargets.isEmpty()) {
+            subpackagesTargets
+          } else {
+            val sourceFileLabel = snapshot.projectStructureData.pathToLabel(path)
+            if (sourceFileLabel != null) {
+              snapshot.graph.getProjectTargetsForSourceFile(sourceFileLabel)
+            } else {
+              TargetsToBuild.forUnknownSourceFile(path)
+            }
+          }
+        }
+      }
+      .toSet()
   }
 
   /** Returns the set of targets with direct dependencies on `targets`. */

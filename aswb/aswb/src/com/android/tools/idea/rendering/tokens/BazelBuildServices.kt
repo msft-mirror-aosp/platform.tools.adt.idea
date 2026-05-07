@@ -30,7 +30,6 @@ import com.google.idea.blaze.base.logging.EventLoggingService
 import com.google.idea.blaze.base.logging.utils.querysync.QuerySyncActionStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.qsync.DependencyTracker
-import com.google.idea.blaze.base.qsync.DependencyTracker.DependencyBuildRequest.RequestType
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.base.qsync.action.BuildDependenciesHelper
 import com.google.idea.blaze.base.qsync.action.BuildDependenciesHelperSelectTargetPopup
@@ -45,6 +44,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 import java.time.Duration
 import java.util.concurrent.CancellationException
@@ -139,7 +139,7 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
         val succeeded = qSyncManager.runOperationWithToolWindow(this, scope, QuerySyncManager.TaskOrigin.USER_ACTION, operation)
         buildResultSettableFuture.set(newBuildResult(succeeded, project))
 
-        log(label, project, stopwatch.elapsed())
+        log(label, project, stopwatch.elapsed(), targets)
 
         succeeded
       } catch (e: CancellationException) {
@@ -158,7 +158,11 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
   private fun executeBuild(project: Project, context: BlazeContext, label: Label): com.google.idea.blaze.qsync.deps.OutputInfo {
     val tracker: DependencyTracker = QuerySyncManager.getInstance(project).getDependencyTracker()!!
     val builder = tracker.getBuilder()
-    val groups = DependencyTracker.DependencyBuildRequest.getOutputGroups(listOf(QuerySyncLanguage.JVM), RequestType.FILE_PREVIEWS)
+    val groups =
+      DependencyTracker.DependencyBuildRequest.getOutputGroups(
+        listOf(QuerySyncLanguage.JVM),
+        DependencyTracker.DependencyBuildRequest.OutputGroupRequestType.COMPILE_AND_RUNTIME_OUTPUT_GROUPS,
+      )
 
     val toolingLabel = BazelComposeToolingProjectLabelProvider.getComposeToolingLabel(project)
     val targets = setOfNotNull(label, toolingLabel)
@@ -219,12 +223,20 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
     )
   }
 
-  private fun log(label: Label, project: Project, buildDuration: Duration) {
-    val outcome = checkNotNull(buildOutcomeCache.get(label)) { "The cache should have a mapping for $label" }
-    val finder = outcome.classFileFinder
+  private fun log(target: Label, project: Project, buildDuration: Duration, references: Iterable<BazelBuildTargetReference>) {
+    val outcome = checkNotNull(buildOutcomeCache.get(target)) { "The cache should have a mapping for $target" }
+    val finder = outcome.classFileFinder as? BazelClassFileFinder
 
     EventLoggingService.getInstance()
-      .log(ComposablePreviewsEvent(project, buildDuration, if (finder is BazelClassFileFinder) finder.jarCountForLoggingOnly else null))
+      .log(
+        ComposablePreviewsEvent(
+          project,
+          buildDuration,
+          finder?.jarCountForLoggingOnly,
+          target,
+          references.map(BazelBuildTargetReference::file).map(VirtualFile::toNioPath),
+        )
+      )
   }
 }
 
