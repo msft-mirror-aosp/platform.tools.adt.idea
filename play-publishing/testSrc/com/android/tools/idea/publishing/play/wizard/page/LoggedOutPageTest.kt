@@ -22,6 +22,7 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
+import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
 import com.google.gct.login2.LoginUsersRule
 import com.google.gct.login2.fstLoginFeature
@@ -76,7 +77,7 @@ class LoggedOutPageTest {
     composeTestRule.setContent { wizard.Content() }
 
     wizard.performAction(wizard.nextAction)
-    wizard.awaitClose(2.seconds)
+    assertThat(wizard.pageStackSize()).isEqualTo(2)
   }
 
   @Test
@@ -87,6 +88,6 @@ class LoggedOutPageTest {
 
     wizard.performAction(wizard.nextAction)
     waitForCondition(1.seconds) { fstLoginFeature.isLoggedIn() }
-    wizard.awaitClose(2.seconds)
+    assertThat(wizard.pageStackSize()).isEqualTo(2)
   }
 }
