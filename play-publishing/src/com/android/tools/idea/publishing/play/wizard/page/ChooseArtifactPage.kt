@@ -252,5 +252,7 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
 
   prevButtonEnabled = false
   nextActionName = "Next"
-  nextAction = if (state.packageName.isNullOrEmpty() || state.appName.isNullOrEmpty()) WizardAction.Disabled else WizardAction { close() }
+  nextAction =
+    if (state.packageName.isNullOrEmpty() || state.appName.isNullOrEmpty()) WizardAction.Disabled
+    else WizardAction { pushPage { CreateAppRecordPage() } }
 }
