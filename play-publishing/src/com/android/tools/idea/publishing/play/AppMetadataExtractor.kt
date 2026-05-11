@@ -36,7 +36,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
 
-data class AppMetadata(val appName: String?, val packageName: String?, val versionCode: String?, val versionName: String?)
+data class AppMetadata(
+  val appName: String?,
+  val packageName: String?,
+  val versionCode: String?,
+  val versionName: String?,
+  val isBundle: Boolean = false,
+)
 
 suspend fun extractAppMetadata(path: Path): AppMetadata =
   withContext(Dispatchers.IO) {
@@ -59,6 +65,7 @@ suspend fun extractAppMetadata(path: Path): AppMetadata =
         packageName = manifestData.getPackage(),
         versionCode = manifestData.versionCode?.toString(),
         versionName = manifestData.versionName,
+        isBundle = isAab,
       )
     }
   }

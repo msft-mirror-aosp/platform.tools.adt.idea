@@ -109,6 +109,7 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
     state.packageName = metadata?.packageName
     versionName = metadata?.versionName
     versionCode = metadata?.versionCode
+    state.isBundle = metadata?.isBundle ?: false
   }
 
   val fileChooserDescriptor = remember {
