@@ -52,15 +52,11 @@ internal class AndroidStudioDefaultToolWindowLayoutExtension : DefaultToolWindow
       addOrUpdate("Running Devices") { weight = 0.25f }
       addOrUpdate("StudioBot") {
         // b/428227953: Open the Gemini tool window by default in Android Studio Cloud.
-        // b/510057185: Open GiAS on first launch of Studio
-        if (System.getenv("GOOGLE_CLOUD_WORKSTATIONS") != null || OpenStudioBotOnFirstStart.shouldShow()) {
-          isVisible = true
-        }
-        weight = 0.25f
-      }
-      addOrUpdate("com.google.studiobot.container.toolwindow.TrajectoryHistory") {
-        // b/510057185: Open Agent Sessions on first launch of Studio
-        if (OpenStudioBotOnFirstStart.shouldShow()) {
+        // TODO(b/475565083): temporarily do the above for all of Studio
+        if (
+          System.getenv("GOOGLE_CLOUD_WORKSTATIONS") != null ||
+            OpenStudioBotOnFirstStart.shouldShow()
+        ) {
           isVisible = true
         }
         weight = 0.25f
