@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.rendering.classloading
+package com.android.tools.rendering.classloading
 
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -27,7 +27,7 @@ class TestClass
 
 class ToBeRepackaged {
   fun method() {
-    Class.forName("com.android.tools.idea.rendering.classloading.TestClass")
+    Class.forName("com.android.tools.rendering.classloading.TestClass")
   }
 }
 
@@ -39,23 +39,22 @@ class RepackageTransformTest {
     val classReader = ClassReader(testClassBytes)
     val outputTrace = StringWriter()
     val classOutputWriter = TraceClassVisitor(ClassWriter(ClassWriter.COMPUTE_MAXS), PrintWriter(outputTrace))
-    val repackageTransform =
-      RepackageTransform(classOutputWriter, listOf("com.android.tools.idea.rendering.classloading."), "internal.test.")
+    val repackageTransform = RepackageTransform(classOutputWriter, listOf("com.android.tools.rendering.classloading."), "internal.test.")
     classReader.accept(repackageTransform, ClassReader.EXPAND_FRAMES)
 
     // Find all references to the class name and make sure they've been transformed.
     val referenceRegex = Regex("([a-z./]+com/android/tools/[a-z./]+)")
 
     assertEquals(
-      "internal/test/com/android/tools/idea/rendering/classloading/",
+      "internal/test/com/android/tools/rendering/classloading/",
       referenceRegex.findAll(outputTrace.toString()).map { it.value }.distinct().joinToString("\n"),
     )
 
     assertEquals(
       """
-      LDC "com.android.tools.idea.rendering.classloading.TestClass"
-      LDC "internal.test.com.android.tools.idea.rendering.classloading.TestClass"
-      INVOKESTATIC internal/test/com/android/tools/idea/rendering/classloading/ClassForNameHandler.forName (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Class;
+      LDC "com.android.tools.rendering.classloading.TestClass"
+      LDC "internal.test.com.android.tools.rendering.classloading.TestClass"
+      INVOKESTATIC internal/test/com/android/tools/rendering/classloading/ClassForNameHandler.forName (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Class;
       """
         .trimIndent(),
       outputTrace
