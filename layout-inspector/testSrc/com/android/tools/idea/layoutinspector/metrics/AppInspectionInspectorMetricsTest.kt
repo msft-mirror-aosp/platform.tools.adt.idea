@@ -20,6 +20,7 @@ import com.android.tools.analytics.LoggedUsage
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.layoutinspector.DEVICE_1
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
+import com.android.tools.idea.layoutinspector.TestScopeRule
 import com.android.tools.idea.layoutinspector.createProcess
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorRule
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.Screenshot
@@ -45,7 +46,6 @@ import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent.Dynamic
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -60,7 +60,7 @@ class AppInspectionInspectorMetricsTest {
   private val inspectorRule =
     LayoutInspectorRule(listOf(inspectionRule.createInspectorClientProvider()), projectRule) { it.name == MODERN_PROCESS.name }
 
-  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(inspectionRule).around(inspectorRule)!!
+  @get:Rule val ruleChain = RuleChain.outerRule(TestScopeRule()).around(projectRule).around(inspectionRule).around(inspectorRule)!!
 
   @get:Rule val usageTrackerRule = MetricsTrackerRule()
 
@@ -155,7 +155,6 @@ class AppInspectionInspectorMetricsTest {
     }
   }
 
-  @Ignore("b/479908096")
   @Test
   fun testInitialRenderLogging() = runBlocking {
     inspectorRule.launchSynchronously = false

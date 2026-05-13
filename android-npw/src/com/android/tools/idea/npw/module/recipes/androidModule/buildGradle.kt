@@ -21,12 +21,14 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.npw.module.recipes.androidConfig
 import com.android.tools.idea.npw.module.recipes.emptyPluginsBlock
 import com.android.tools.idea.wizard.template.CppStandardType
+import com.android.tools.idea.wizard.template.DslLanguage
 import com.android.tools.idea.wizard.template.TemplateKotlinSupport
 import com.android.tools.idea.wizard.template.renderIf
+import com.android.tools.idea.wizard.template.withoutSkipLines
 
 fun buildGradle(
   agpVersion: AgpVersion,
-  isKts: Boolean,
+  dslLanguage: DslLanguage,
   isLibraryProject: Boolean,
   isDynamicFeature: Boolean,
   /** The application ID; also used for the namespace. */
@@ -41,10 +43,11 @@ fun buildGradle(
   addLintOptions: Boolean = false,
   enableCpp: Boolean = false,
   cppStandard: CppStandardType = CppStandardType.`Toolchain Default`,
-  useVersionCatalog: Boolean,
   hasCode: Boolean = true,
   kotlinSupport: TemplateKotlinSupport,
 ): String {
+  val isKts = dslLanguage.isKts
+
   val androidConfigBlock =
     androidConfig(
       agpVersion = agpVersion,
@@ -63,6 +66,7 @@ fun buildGradle(
       cppStandard = cppStandard,
       hasCode = hasCode,
       kotlinSupport = kotlinSupport,
+      isDcl = dslLanguage.isDcl,
     )
 
   if (isDynamicFeature) {
@@ -73,7 +77,7 @@ dependencies {
     implementation project("${baseFeatureName}")
 }
 """
-      .gradleToKtsIfKts(isKts)
+      .gradleToKtsOrDcl(isKts)
   }
 
   val composeDependenciesBlock = renderIf(isCompose) { "kotlinPlugin \"androidx.compose:compose-compiler:+\"" }
@@ -85,6 +89,10 @@ dependencies {
   }
   """
 
+  if (dslLanguage.isDcl) {
+    return androidConfigBlock.withoutSkipLines().gradleToKtsOrDcl(dslLanguage.isDcl)
+  }
+
   val allBlocks =
     """
     ${emptyPluginsBlock()}
@@ -92,7 +100,7 @@ dependencies {
     $dependenciesBlock
     """
 
-  return allBlocks.gradleToKtsIfKts(isKts)
+  return allBlocks.withoutSkipLines().gradleToKtsOrDcl(isKts)
 }
 
 private fun String.toKtsFunction(funcName: String): String =
@@ -104,8 +112,8 @@ private fun String.toKtsFunction(funcName: String): String =
 
 private fun String.toKtsProperty(funcName: String): String = this.replace(Regex("$funcName\\s(?![={])"), "$funcName = ")
 
-internal fun String.gradleToKtsIfKts(isKts: Boolean): String =
-  if (isKts) {
+internal fun String.gradleToKtsOrDcl(apply: Boolean): String =
+  if (apply) {
     split("\n").joinToString("\n") {
       it
         .replace("'", "\"")
@@ -125,6 +133,7 @@ internal fun String.gradleToKtsIfKts(isKts: Boolean): String =
         .toKtsProperty("versionName")
         .toKtsProperty("testInstrumentationRunner")
         .toKtsProperty("minifyEnabled")
+        .toKtsProperty("enable")
         .toKtsFunction("proguardFiles")
         .toKtsFunction("consumerProguardFiles")
         .toKtsFunction("implementation") // For dynamic app: implementation project(":app") -> implementation(project(":app"))

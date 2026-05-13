@@ -15,6 +15,9 @@
  */
 package com.android.tools.idea.layoutinspector.tree
 
+import com.android.tools.adtui.ZOOMABLE_KEY
+import com.android.tools.adtui.Zoomable
+import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.stdui.CommonHyperLinkLabel
 import com.android.tools.adtui.stdui.SmallTextLabel
 import com.android.tools.adtui.workbench.ToolContent
@@ -25,6 +28,7 @@ import com.android.tools.componenttree.api.ViewNodeType
 import com.android.tools.componenttree.api.createIntColumn
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspector
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.common.showViewContextMenu
 import com.android.tools.idea.layoutinspector.hasCapability
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
@@ -48,9 +52,11 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CustomShortcutSet
+import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.invokeLater
@@ -85,12 +91,13 @@ fun AnActionEvent.treePanel(): LayoutInspectorTreePanel? =
 
 fun AnActionEvent.tree(): Tree? = treePanel()?.tree
 
+private const val CLICK_FOR_STATE_READ = "layout.inspector.active.state.read"
 private const val ICON_VERTICAL_BORDER = 5
 private const val ICON_HORIZONTAL_BORDER = 10
 private const val TEXT_HORIZONTAL_BORDER = 5
 const val COMPONENT_TREE_NAME = "COMPONENT_TREE"
 
-class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<LayoutInspector> {
+class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<LayoutInspector>, UiDataProvider {
   @VisibleForTesting val nodeType = InspectorViewNodeType()
 
   @VisibleForTesting val componentTreeBuildResult = buildComponentTree(nodeType)
@@ -167,12 +174,31 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
         override fun isEnabled(tree: JTree) = componentTreePanel.isShowing && tree.rowCount > 0
       }
     val commonActionManager = CommonActionsManager.getInstance()
-    additionalActions =
-      listOf(
-        FilterGroupAction(),
-        commonActionManager.createExpandAllAction(treeExpander, tree),
-        commonActionManager.createCollapseAllAction(treeExpander, tree),
-      )
+    val expandAllAction = commonActionManager.createExpandAllAction(treeExpander, focusComponent)
+    val collapseAllAction = commonActionManager.createCollapseAllAction(treeExpander, focusComponent)
+    additionalActions = listOf(FilterGroupAction(), expandAllAction, collapseAllAction)
+  }
+
+  // Use this Zoomable to ignore zoom events while the component tree has focus.
+  // Do this such that the same keystrokes can be used to expand/collapse the tree.
+  private val ignoreZoomable =
+    object : Zoomable {
+      override val scale: Double = 1.0
+      override val screenScalingFactor: Double = 1.0
+
+      override fun zoom(type: ZoomType): Boolean = false
+
+      override fun canZoomIn(): Boolean = false
+
+      override fun canZoomOut(): Boolean = false
+
+      override fun canZoomToFit(): Boolean = false
+
+      override fun canZoomToActual(): Boolean = false
+    }
+
+  override fun uiDataSnapshot(sink: DataSink) {
+    sink[ZOOMABLE_KEY] = ignoreZoomable
   }
 
   private fun buildComponentTree(nodeType: InspectorViewNodeType): ComponentTreeBuildResult {
@@ -184,9 +210,11 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
         maxInt = { inspectorModel?.maxRecomposition?.count ?: 0 },
         minInt = { 0 },
         headerRenderer = createCountsHeader(),
-        actionEnabled = { item -> isStateReadsEnabledForNode(item.view) },
-        action = { item, _, _ -> showStateReadsForNode(item.view) },
+        hasCustomCursor = true,
+        actionEnabled = { item -> isRecompositionsObservedForNode(item.view) },
+        action = { item, _, _ -> showRecompositionDetailsForNode(item.view) },
         popup = ::showPopup,
+        tooltip = { item -> if (isRecompositionsObservedForNode(item.view)) LayoutInspectorBundle.message(CLICK_FOR_STATE_READ) else "" },
       )
 
     val recompositionChildCountColumn =
@@ -259,24 +287,15 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
   }
 
   private fun createCountsHeader(): TableCellRenderer {
-    return createIconHeader(
-      StudioIcons.LayoutInspector.Toolbar.RECOMPOSITION_COUNT,
-      toolTipText = "Number of times this composable has been recomposed",
-    )
+    return createIconHeader(StudioIcons.LayoutInspector.Toolbar.RECOMPOSITION_COUNT, toolTipText = "Recompositions")
   }
 
   private fun createChildCountsHeader(): TableCellRenderer {
-    return createIconHeader(
-      StudioIcons.LayoutInspector.Toolbar.RECOMPOSITION_CHILDREN_COUNT,
-      toolTipText = "Number of times children of this composable has been recomposed",
-    )
+    return createIconHeader(StudioIcons.LayoutInspector.Toolbar.RECOMPOSITION_CHILDREN_COUNT, toolTipText = "Child Recompositions")
   }
 
   private fun createSkipsHeader(): TableCellRenderer {
-    return createIconHeader(
-      StudioIcons.LayoutInspector.Toolbar.RECOMPOSITION_SKIPPED,
-      toolTipText = "Number of times recomposition for this component has been skipped",
-    )
+    return createIconHeader(StudioIcons.LayoutInspector.Toolbar.RECOMPOSITION_SKIPPED, toolTipText = "Skipped Recompositions")
   }
 
   private fun createIconHeader(icon: Icon, toolTipText: String? = null): TableCellRenderer {
@@ -324,14 +343,13 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
           layoutInspector?.currentClient?.isConnected ?: false &&
           layoutInspector?.currentClient !is FileEditorInspectorClient &&
           layoutInspector.hasCapability(Capability.HAS_LINE_NUMBER_INFORMATION)
-      val showChildCounts = show && StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_RECOMPOSITION_PARENT_COUNTS.get()
       interactions.setHeaderVisibility(show)
       interactions.setColumnVisibility(1, show)
-      interactions.setColumnVisibility(2, showChildCounts)
+      interactions.setColumnVisibility(2, show)
       interactions.setColumnVisibility(3, show)
       if (!show) {
         // When recompositions are hidden we want to stop showing recomposition details as well.
-        inspectorModel?.stateReadsModel?.stopShowingStateReads()
+        inspectorModel?.recompositionModel?.stopShowingRecompositionDetails()
       }
     }
   }
@@ -652,17 +670,17 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     updateRecompositionColumnVisibility()
   }
 
-  private fun isStateReadsEnabledForNode(view: ViewNode): Boolean {
+  private fun isRecompositionsObservedForNode(view: ViewNode): Boolean {
     return StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS.get() &&
       layoutInspector.hasCapability(Capability.CAN_OBSERVE_RECOMPOSE_STATE_READS) &&
       view.recompositions.count > 0 &&
       view is ComposeViewNode &&
-      inspectorModel?.stateReadsModel?.isNodeObserved(view) == true
+      inspectorModel?.recompositionModel?.isNodeObserved(view) == true
   }
 
-  private fun showStateReadsForNode(view: ViewNode) {
-    if (isStateReadsEnabledForNode(view)) {
-      inspectorModel?.stateReadsModel?.requestStateReadFor(view as ComposeViewNode)
+  private fun showRecompositionDetailsForNode(view: ViewNode) {
+    if (isRecompositionsObservedForNode(view)) {
+      inspectorModel?.recompositionModel?.requestRecompositionDataFor(view as ComposeViewNode)
     }
   }
 

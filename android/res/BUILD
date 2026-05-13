@@ -38,10 +38,14 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = ["@intellij//:com.intellij.java"],
+    deps = [
+        "@intellij//:com.intellij.java",
+        "@intellij//:intellij.java",
+    ],
 )

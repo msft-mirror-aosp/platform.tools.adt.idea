@@ -17,14 +17,16 @@ package com.android.tools.idea.avd
 
 import com.android.adblib.ConnectedDevice
 import com.android.adblib.tools.aiglasses.AiGlassesPairing
+import com.android.adblib.tools.aiglasses.ShellCommandException
 import com.android.sdklib.deviceprovisioner.ActivationAction
 import com.android.sdklib.deviceprovisioner.AvdDeviceError
+import com.android.sdklib.deviceprovisioner.AvdScanner
 import com.android.sdklib.deviceprovisioner.BootSnapshotAction
 import com.android.sdklib.deviceprovisioner.ColdBootAction
 import com.android.sdklib.deviceprovisioner.CreateDeviceAction
 import com.android.sdklib.deviceprovisioner.DeactivationAction
-import com.android.sdklib.deviceprovisioner.DeleteAction
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceError
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceProvisionerPlugin
@@ -32,9 +34,8 @@ import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceState.Connected
 import com.android.sdklib.deviceprovisioner.DeviceState.Disconnected
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.sdklib.deviceprovisioner.DuplicateAction
-import com.android.sdklib.deviceprovisioner.EditAction
 import com.android.sdklib.deviceprovisioner.Extension
+import com.android.sdklib.deviceprovisioner.GlassesPairableDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorContext
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
@@ -42,32 +43,41 @@ import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshot
 import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshotReader
 import com.android.sdklib.deviceprovisioner.PairGlassesAction
 import com.android.sdklib.deviceprovisioner.RepairDeviceAction
-import com.android.sdklib.deviceprovisioner.ShowAction
 import com.android.sdklib.deviceprovisioner.Snapshot
 import com.android.sdklib.deviceprovisioner.UnpairGlassesAction
 import com.android.sdklib.deviceprovisioner.WipeDataAction
+import com.android.sdklib.deviceprovisioner.awaitReady
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus
 import com.android.sdklib.internal.avd.BootMode
 import com.android.sdklib.internal.avd.BootSnapshot
 import com.android.sdklib.internal.avd.ColdBoot
 import com.android.tools.idea.avd.EditVirtualDeviceDialog.Mode
+import com.android.tools.idea.avd.glassespairing.GlassesPairingLockService
+import com.android.tools.idea.avd.glassespairing.GlassesPairingResult
+import com.android.tools.idea.avd.glassespairing.GlassesPairingUsageTracker
+import com.android.tools.idea.avd.glassespairing.GlassesPairingWizard
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.AccelerationErrorSolution
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.avdmanager.checkAcceleration
 import com.android.tools.idea.avdmanager.logHypervisorMigrationEvent
+import com.android.tools.idea.deviceprovisioner.DeletableDeviceHandle
+import com.android.tools.idea.deviceprovisioner.DuplicatableDeviceHandle
+import com.android.tools.idea.deviceprovisioner.EditableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.NotificationBannersExtension
+import com.android.tools.idea.deviceprovisioner.ShowableOnDiskDeviceHandle
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
-import com.android.tools.idea.glassespairing.GlassesPairingWizard
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.google.wireless.android.sdk.stats.EmulatorWindowsHypervisorMigrationEvent
+import com.google.wireless.android.sdk.stats.GlassesPairingEvent
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.RevealFileAction
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
@@ -79,25 +89,34 @@ import com.intellij.ui.EditorNotificationPanel
 import icons.StudioIcons
 import java.awt.Component
 import java.io.IOException
+import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class StudioLocalEmulatorProvisionerPlugin(
   val scope: CoroutineScope,
   val basePlugin: LocalEmulatorProvisionerPlugin,
   val context: LocalEmulatorContext,
   val project: Project?,
+  val avdScanner: AvdScanner,
+  val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : DeviceProvisionerPlugin by basePlugin {
   private val accelerationError = MutableStateFlow(AccelerationErrorCode.ALREADY_INSTALLED)
 
@@ -109,8 +128,8 @@ class StudioLocalEmulatorProvisionerPlugin(
     }
   }
 
-  fun refreshDevices() {
-    basePlugin.refreshDevices()
+  suspend fun refreshDevices() {
+    avdScanner.rescan()
   }
 
   override val devices: StateFlow<List<StudioLocalEmulatorDeviceHandle>> =
@@ -121,7 +140,7 @@ class StudioLocalEmulatorProvisionerPlugin(
           for (baseHandle in baseHandles) {
             wrappedHandles.add(
               handles.computeIfAbsent(baseHandle as LocalEmulatorDeviceHandle) {
-                StudioLocalEmulatorDeviceHandle(project, baseHandle, context, devices)
+                StudioLocalEmulatorDeviceHandle(project, baseHandle, context, devices, ioDispatcher)
               }
             )
           }
@@ -174,10 +193,20 @@ class StudioLocalEmulatorProvisionerPlugin(
 
 class StudioLocalEmulatorDeviceHandle(
   private val project: Project?,
-  internal val baseDeviceHandle: LocalEmulatorDeviceHandle,
+  private val baseDeviceHandle: LocalEmulatorDeviceHandle,
   private val context: LocalEmulatorContext,
-  private val deviceHandleFlow: Flow<List<StudioLocalEmulatorDeviceHandle>>,
-) : DeviceHandle by baseDeviceHandle {
+  private val deviceHandleFlow: StateFlow<List<StudioLocalEmulatorDeviceHandle>>,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val edtDispatcher: CoroutineContext = Dispatchers.EDT,
+) :
+  GlassesPairableDeviceHandle by baseDeviceHandle,
+  EditableDeviceHandle,
+  DuplicatableDeviceHandle,
+  ShowableOnDiskDeviceHandle,
+  DeletableDeviceHandle {
+
+  private var activationJob: Job? = null
+
   // Do not cache this; getDefaultAvdManagerConnection() changes when the local SDK path changes.
   private val avdManagerConnection
     get() = AvdManagerConnection.getDefaultAvdManagerConnection()
@@ -194,23 +223,63 @@ class StudioLocalEmulatorDeviceHandle(
   private val avdInfo by baseDeviceHandle::avdInfo
   private val onDiskAvdInfo by baseDeviceHandle::onDiskAvdInfo
 
-  private fun refreshDevices() {
-    baseDeviceHandle.refreshDevices()
+  private suspend fun refreshDevices() {
+    baseDeviceHandle.avdScanner.rescan()
+  }
+
+  // Returning GlassesPairingResult instead of just the device handle allows
+  // propagating the MAC address back to avoid race conditions.
+  internal var wizardProvider: suspend (Component?, Project?, Flow<List<DeviceHandle>>, DeviceHandle) -> GlassesPairingResult? =
+    { par, proj, flow, handle ->
+      GlassesPairingWizard.show(par, proj, flow, handle)
+    }
+
+  internal fun refreshDevicesAsync() {
+    baseDeviceHandle.avdScanner.rescanAsync()
   }
 
   private val defaultPresentation: DeviceAction.DefaultPresentation = StudioDefaultDeviceActionPresentation
 
   private suspend fun doActivate(action: suspend () -> Unit) {
-    baseDeviceHandle.activate(action)
-    if (isUnpairedAiGlasses()) {
-      launchAutomaticGlassesPairing()
+    // If we have a companion phone, launch it in parallel when we launch.
+    val companionHandle = state.properties.pairedPhoneId?.let { phoneId -> deviceHandleFlow.value.find { it.id == phoneId } }
+    if (companionHandle != null && companionHandle.activationAction.presentation.value.enabled) {
+      coroutineScope {
+        launch { baseDeviceHandle.activate(action) }
+        launch { companionHandle.activationAction.activate() }
+      }
+    } else {
+      baseDeviceHandle.activate(action)
     }
+
+    activationJob =
+      baseDeviceHandle.scope.launch {
+        val ready = withTimeoutOrNull(120_000L) { stateFlow.first { it.isReady } }
+        if (ready != null && isUnpairedAiGlasses()) {
+          launchAutomaticGlassesPairing()
+        }
+      }
   }
 
-  private suspend fun isUnpairedAiGlasses(): Boolean =
-    state.properties.deviceType == DeviceType.AI_GLASSES && state.connectedDevice?.isUnpaired() == true
+  private suspend fun isUnpairedAiGlasses(): Boolean {
+    if (state.properties.deviceType == DeviceType.AI_GLASSES) {
+      awaitReady()
+      return state.connectedDevice?.isUnpaired() ?: false
+    }
+    return false
+  }
 
-  private suspend fun ConnectedDevice.isUnpaired() = with(AiGlassesPairing(session)) { getPairedBluetoothDeviceCount() == 0 }
+  private suspend fun ConnectedDevice.isUnpaired(): Boolean =
+    with(AiGlassesPairing(session)) {
+      try {
+        getPairedBluetoothDeviceCount() == 0
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        logger.warn("Failed to get paired Bluetooth device count", e)
+        false
+      }
+    }
 
   private suspend fun startAvd(avdInfo: AvdInfo, bootMode: BootMode): Unit =
     // Note: the original DeviceManager does this in UI thread, but this may call
@@ -246,7 +315,7 @@ class StudioLocalEmulatorDeviceHandle(
     override val presentation = defaultPresentation.fromContext().enabledIfActivatable()
 
     override suspend fun snapshots(): List<LocalEmulatorSnapshot> =
-      withContext(Dispatchers.IO) { LocalEmulatorSnapshotReader(adbLogger).readSnapshots(avdInfo.dataFolderPath.resolve("snapshots")) }
+      withContext(ioDispatcher) { LocalEmulatorSnapshotReader(adbLogger).readSnapshots(avdInfo.dataFolderPath.resolve("snapshots")) }
 
     override suspend fun activate(snapshot: Snapshot) {
       doActivate {
@@ -271,8 +340,7 @@ class StudioLocalEmulatorDeviceHandle(
               runningAvdTracker.shuttingDown(avdInfo.dataFolderPath)
               return@deactivate
             } catch (e: IOException) {
-              // Connection to emulator console is closed, possibly due to a harmless race
-              // condition.
+              // Connection to emulator console is closed, possibly due to a harmless race condition.
               logger.debug("Failed to shutdown via emulator console; falling back to AvdManager", e)
             }
           }
@@ -281,16 +349,11 @@ class StudioLocalEmulatorDeviceHandle(
       }
     }
 
-  override val editAction =
-    object : EditAction {
-      override val presentation = MutableStateFlow(defaultPresentation.fromContext()).asStateFlow()
-
-      override suspend fun edit(parent: Component?) {
-        if (EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.EDIT)) {
-          refreshDevices()
-        }
-      }
+  override fun edit(project: Project?, parent: Component?) {
+    if (EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.EDIT)) {
+      refreshDevicesAsync()
     }
+  }
 
   override val repairDeviceAction =
     object : RepairDeviceAction {
@@ -301,38 +364,39 @@ class StudioLocalEmulatorDeviceHandle(
 
       override suspend fun repair() {
         val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo) ?: return
-        withContext(Dispatchers.EDT) { SdkQuickfixUtils.createDialogForPaths(project, listOf(path))?.showAndGet() }
+        withContext(edtDispatcher) { SdkQuickfixUtils.createDialogForPaths(project, listOf(path))?.showAndGet() }
         refreshDevices()
       }
     }
 
-  override val showAction: ShowAction =
-    object : ShowAction {
-      override val presentation = MutableStateFlow(defaultPresentation.fromContext().copy(label = "Show on Disk"))
+  override fun show() {
+    RevealFileAction.openDirectory(avdInfo.dataFolderPath)
+  }
 
-      override suspend fun show() {
-        RevealFileAction.openDirectory(avdInfo.dataFolderPath)
-      }
-    }
-
-  override val duplicateAction: DuplicateAction =
-    object : DuplicateAction {
-      override val presentation = MutableStateFlow(defaultPresentation.fromContext())
-
-      override suspend fun duplicate(parent: Component?) {
-        EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, mode = Mode.DUPLICATE)
-        refreshDevices()
-      }
-    }
+  override fun duplicate(project: Project?, parent: Component?) {
+    EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.DUPLICATE)
+    refreshDevicesAsync()
+  }
 
   override val wipeDataAction: WipeDataAction =
     object : WipeDataAction {
       override val presentation = defaultPresentation.fromContext().enabledIfStopped()
 
       override suspend fun wipeData() {
-        withContext(Dispatchers.IO) {
-          if (!avdManagerConnection.wipeUserData(avdInfo)) {
-            withContext(Dispatchers.EDT) {
+        withContext(ioDispatcher) {
+          val properties = state.properties
+          val hasCompanions = properties.pairedPhoneId != null || properties.pairedGlassesInfos.isNotEmpty()
+          if (avdManagerConnection.wipeUserData(avdInfo)) {
+            if (hasCompanions) {
+              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.CASCADING_WIPE_INITIATED)
+            }
+            // Clean up companions before clearing local state
+            unpairFromCompanions()
+
+            updatePairedPhone(null)
+            clearPairedGlasses()
+          } else {
+            withContext(edtDispatcher) {
               Messages.showErrorDialog(
                 project,
                 "Failed to wipe data. Please check that the emulator and its files are not in use and try again.",
@@ -344,54 +408,89 @@ class StudioLocalEmulatorDeviceHandle(
       }
     }
 
-  override val deleteAction: DeleteAction =
-    object : DeleteAction {
-      override val presentation = defaultPresentation.fromContext().enabledIfStopped()
+  override fun isDeleteEnabled() = state.isStopped()
 
-      override suspend fun delete() {
-        withContext(Dispatchers.IO) {
-          if (!avdManagerConnection.deleteAvd(avdInfo)) {
-            withContext(Dispatchers.EDT) {
-              if (
-                MessageDialogBuilder.okCancel(
-                    "Could Not Delete All AVD Files",
-                    "There may be additional files remaining in the AVD directory. To fully delete " +
-                      "the AVD, open the directory and manually delete the files.",
-                  )
-                  .yesText("Open Directory")
-                  .noText("OK")
-                  .icon(Messages.getInformationIcon())
-                  .ask(project)
-              ) {
-                showAction.show()
-              }
-            }
+  override suspend fun delete(project: Project?) {
+    withContext(ioDispatcher) {
+      val properties = state.properties
+      val hasCompanions = properties.pairedPhoneId != null || properties.pairedGlassesInfos.isNotEmpty()
+      if (avdManagerConnection.deleteAvd(avdInfo)) {
+        if (hasCompanions) {
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.CASCADING_WIPE_INITIATED)
+        }
+        unpairFromCompanions()
+      } else {
+        withContext(edtDispatcher) {
+          if (
+            MessageDialogBuilder.okCancel(
+                "Could Not Delete All AVD Files",
+                "There may be additional files remaining in the AVD directory. To fully delete " +
+                  "the AVD, open the directory and manually delete the files.",
+              )
+              .yesText("Open Directory")
+              .noText("OK")
+              .icon(Messages.getInformationIcon())
+              .ask(project)
+          ) {
+            show()
           }
-          refreshDevices()
         }
       }
+      refreshDevices()
     }
+  }
+
+  private suspend fun unpairFromCompanions(): Boolean {
+    val properties = state.properties
+    logger.info("Unpairing companions for device $id")
+    try {
+      val phoneId = properties.pairedPhoneId
+      if (phoneId != null) {
+        val phoneHandle = deviceHandleFlow.value.find { it.id == phoneId }
+        phoneHandle?.removePairedGlasses(id)
+      } else {
+        // Unpair from all paired glasses. For glasses devices, pairedGlassesInfos is empty,
+        // so this is a no-op.
+        properties.pairedGlassesInfos.forEach { glassesInfo ->
+          val glassesHandle = deviceHandleFlow.value.find { it.id == glassesInfo.id }
+          glassesHandle?.updatePairedPhone(null)
+        }
+      }
+      return true
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      logger.warn("Failed to unpair companions from $id", e)
+      return false
+    }
+  }
 
   private val aiGlassesAutoPairingDisabledPropertyKey
     get() = "ai.glasses.auto.pairing.disabled.$id"
 
   suspend fun launchAutomaticGlassesPairing() {
     if (PropertiesComponent.getInstance().isTrueValue(aiGlassesAutoPairingDisabledPropertyKey)) return
+    val lockService = service<GlassesPairingLockService>()
+    if (lockService.isWizardOpen.value) return
 
-    withContext(Dispatchers.EDT) {
+    withContext(edtDispatcher) {
+      if (lockService.isWizardOpen.value) return@withContext
       val parent = WindowManager.getInstance().suggestParentWindow(project)
-      while (!pairGlasses(parent) && !confirmPairingWizardCancellation()) {}
+      while (!pairGlasses(parent)) {
+        if (confirmPairingWizardCancellation()) break
+      }
     }
   }
 
   private fun confirmPairingWizardCancellation(): Boolean =
     MessageDialogBuilder.okCancel(
-        "Cancel Glasses emulator pairing",
-        "Stop pairing wizard?\n\nYou can launch the pairing wizard again from the glasses emulator's overflow menu in Device Manager.",
+        "Quit Glasses emulator pairing assistant",
+        "Stop pairing assistant?\n\nYou can launch the pairing assistant again from the glasses emulator's overflow menu in Device Manager.",
       )
+      .yesText("Quit Pairing Assistant")
       .doNotAsk(
         object : DoNotAskOption.Adapter() {
-          override fun getDoNotShowMessage() = "Do not auto-launch pairing wizard again for this device"
+          override fun getDoNotShowMessage() = "Do not auto-launch pairing assistant again for this device"
 
           override fun isSelectedByDefault() = false
 
@@ -409,33 +508,142 @@ class StudioLocalEmulatorDeviceHandle(
       }
 
       override val presentation: StateFlow<DeviceAction.Presentation> =
-        defaultPresentation.fromContext().enabledIf { it.properties.deviceType == DeviceType.AI_GLASSES }
+        stateFlow
+          .combine(service<GlassesPairingLockService>().isWizardOpen) { deviceState: DeviceState, isOpen: Boolean ->
+            val enabled = deviceState.properties.deviceType == DeviceType.AI_GLASSES
+            if (isOpen && enabled) {
+              defaultPresentation.fromContext().copy(enabled = false, detail = "Pairing already in progress")
+            } else {
+              defaultPresentation.fromContext().copy(enabled = enabled)
+            }
+          }
+          .stateIn(this@StudioLocalEmulatorDeviceHandle.scope, SharingStarted.Eagerly, defaultPresentation.fromContext())
     }
 
   private suspend fun pairGlasses(parent: Component?): Boolean {
     val glassesHandle = this@StudioLocalEmulatorDeviceHandle
-    val pairedPhone =
-      withContext(Dispatchers.EDT) {
-        GlassesPairingWizard.show(parent, project = project, devicesFlow = deviceHandleFlow, glassesHandle = glassesHandle)
-          as? StudioLocalEmulatorDeviceHandle
+    logger.info("User initiated Glasses Pairing Wizard for ${glassesHandle.id}")
+    val result = withContext(edtDispatcher) { wizardProvider(parent, project, deviceHandleFlow, glassesHandle) }
+
+    if (result != null) {
+      val pairedPhone = result.phone as? StudioLocalEmulatorDeviceHandle
+      val mac = result.glassesMacAddress
+      if (pairedPhone != null) {
+        try {
+          withContext(ioDispatcher) {
+            glassesHandle.updatePairedPhone(pairedPhone)
+            pairedPhone.addPairedGlasses(glassesHandle.id, mac)
+            logger.info("Successfully paired glasses ${glassesHandle.id} with phone ${pairedPhone.id}")
+          }
+        } catch (e: IOException) {
+          logger.warn("Failed to write pairing config", e)
+          withContext(edtDispatcher) {
+            Messages.showErrorDialog(
+              project,
+              "Failed to save pairing configuration. Please check disk space and permissions.",
+              "Pairing Error",
+            )
+          }
+          return true
+        }
       }
-    if (pairedPhone != null) {
-      withContext(Dispatchers.IO) {
-        glassesHandle.baseDeviceHandle.updatePairedPhone(pairedPhone.baseDeviceHandle)
-        pairedPhone.baseDeviceHandle.updatePairedGlasses(glassesHandle.baseDeviceHandle)
-      }
+      return true
     }
-    return pairedPhone != null
+    return false
   }
 
   override val unpairGlassesAction =
     object : UnpairGlassesAction {
       override suspend fun unpairGlasses() {
-        // TODO(b/458470193): Implement unpairing
+        GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_ACTION_CLICKED)
+        val properties = state.properties
+        val phoneId = properties.pairedPhoneId
+        val glassesHandle = this@StudioLocalEmulatorDeviceHandle
+
+        val phoneHandle = phoneId?.let { id -> deviceHandleFlow.value.find { it.id == id } }
+
+        // 1. If Phone is Online, send UNPAIR broadcast
+        if (phoneHandle != null) {
+          val phoneDevice = phoneHandle.state.connectedDevice
+          if (phoneDevice != null) {
+            try {
+              val adbSession = phoneDevice.session
+              val pairing = AiGlassesPairing(adbSession)
+              withContext(ioDispatcher) { with(pairing) { phoneDevice.sendUnpairCommand() } }
+            } catch (e: CancellationException) {
+              throw e
+            } catch (e: ShellCommandException) {
+              logger.warn("Failed to send unpair command to companion phone ${phoneHandle.state.properties.title}", e)
+            } catch (e: IOException) {
+              logger.warn("Network I/O failure sending unpair command to companion phone ${phoneHandle.state.properties.title}", e)
+            }
+          }
+        }
+
+        // 2. If Glasses (Self) is running or transitioning, deactivate it and wait for it to fully stop
+        if (!state.isStopped()) {
+          val stopped =
+            try {
+              deactivationAction.deactivate()
+              withTimeoutOrNull(30_000L) { stateFlow.first { it.isStopped() } } != null
+            } catch (e: CancellationException) {
+              throw e
+            } catch (e: DeviceActionException) {
+              logger.warn("Failed to deactivate glasses AVD ${properties.title}", e)
+              false
+            }
+          if (!stopped) {
+            GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_FAILED)
+            withContext(edtDispatcher) {
+              Messages.showErrorDialog(project, "Failed to stop ${properties.title} emulator process.", "Unpair Error")
+            }
+            return
+          }
+        }
+
+        // 3. Wipe Glasses (Self) userdata directly via avdManagerConnection
+        val wipeSuccess =
+          withContext(ioDispatcher) {
+            try {
+              avdManagerConnection.wipeUserData(avdInfo)
+            } catch (e: CancellationException) {
+              throw e
+            } catch (e: DeviceActionException) {
+              logger.warn("Action error wiping glasses AVD userdata ${properties.title}", e)
+              false
+            } catch (e: IOException) {
+              logger.warn("I/O failure wiping glasses AVD userdata ${properties.title}", e)
+              false
+            }
+          }
+        if (!wipeSuccess) {
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_FAILED)
+          withContext(edtDispatcher) { Messages.showErrorDialog(project, "Failed to wipe data on ${properties.title}.", "Unpair Error") }
+          return
+        }
+
+        // 4. Clear persistent settings on host symmetrically
+        val success =
+          withContext(ioDispatcher) {
+            val ok = unpairFromCompanions()
+            updatePairedPhone(null)
+            ok
+          }
+        if (success) {
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_SUCCESSFUL)
+        } else {
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_FAILED)
+          withContext(edtDispatcher) {
+            val phoneTitle = phoneHandle?.state?.properties?.title ?: "companion phone"
+            Messages.showErrorDialog(project, "Failed to clear pairing configuration on $phoneTitle.", "Unpair Error")
+          }
+        }
       }
 
       override val presentation: StateFlow<DeviceAction.Presentation> =
-        defaultPresentation.fromContext().enabledIf { it.properties.pairedPhoneId != null || it.properties.pairedGlassesId != null }
+        defaultPresentation.fromContext().enabledIf {
+          it.properties.deviceType == DeviceType.AI_GLASSES && it.properties.pairedPhoneId != null && !it.isTransitioning
+        }
     }
 
   private fun DeviceAction.Presentation.enabledIf(condition: (DeviceState) -> Boolean) =

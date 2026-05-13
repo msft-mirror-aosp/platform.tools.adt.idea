@@ -28,7 +28,7 @@ import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerApplicationTerminator
-import com.android.tools.deployer.DeployerException
+import com.android.tools.deployer.common.DeployerException
 import com.android.tools.idea.backup.BackupManager
 import com.android.tools.idea.backup.BackupManager.Source.RUN_CONFIG
 import com.android.tools.idea.backup.testing.FakeBackupManager
@@ -866,6 +866,8 @@ class AndroidRunConfigurationExecutorTest {
 
       val mockExecutionManager = mock<ExecutionManagerImpl>()
       whenever(mockExecutionManager.getRunningDescriptors(any())).thenReturn(listOf(runContentDescriptor!!))
+      whenever(mockExecutionManager.isStartingFlow(any<ExecutionEnvironment>())).thenReturn(kotlinx.coroutines.flow.emptyFlow())
+      whenever(mockExecutionManager.isStartingFlow(any(), any(), any())).thenReturn(kotlinx.coroutines.flow.emptyFlow())
       projectRule.project.registerOrReplaceServiceInstance(ExecutionManager::class.java, mockExecutionManager, disposableRule.disposable)
     }
     AndroidSessionInfo.create(processHandlerForSwap, listOf(device), APPLICATION_ID)

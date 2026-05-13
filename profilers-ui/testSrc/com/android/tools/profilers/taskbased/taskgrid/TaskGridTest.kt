@@ -36,9 +36,9 @@ import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.SessionArtifactUtils
 import com.android.tools.profilers.StudioProfilers
-import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.tabs.taskgridandbars.taskgrid.TaskGrid
+import com.android.tools.profilers.taskbased.tabs.taskgridandbars.taskgrid.TaskGridV2
 import com.android.tools.profilers.taskbased.task.TaskGridModel
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
@@ -56,7 +56,7 @@ class TaskGridTest {
 
   @get:Rule val ignoreTestRule = IgnoreTestRule()
 
-  @get:Rule var myGrpcChannel = FakeGrpcChannel("TaskGridTestChannel", myTransportService, FakeEventService())
+  @get:Rule var myGrpcChannel = FakeGrpcChannel("TaskGridTestChannel", myTransportService)
 
   private lateinit var myProfilers: StudioProfilers
   private lateinit var myManager: SessionsManager
@@ -177,5 +177,27 @@ class TaskGridTest {
     composeTestRule.onAllNodesWithTag("TaskGridItem").assertCountEquals(1)
     // If a task is displayed post-recording selection, then it must be enabled.
     composeTestRule.onAllNodesWithTag("TaskGridItem").assertAll(isEnabled())
+  }
+
+  @Test
+  fun `correct number of task grid items are displayed and clickable in V2`() {
+    composeTestRule.setContent { TaskGridV2(taskGridModel, myProfilers.taskHandlers.keys.toList()) }
+
+    composeTestRule.onAllNodesWithTag(testTag = "TaskGridItem").assertCountEquals(8)
+
+    composeTestRule.onNodeWithTag("System Trace", useUnmergedTree = true).assertIsDisplayed().assertIsEnabled()
+    composeTestRule.onNodeWithTag("Callstack Sample", useUnmergedTree = true).assertIsDisplayed().assertIsEnabled()
+  }
+
+  @Test
+  fun `clicking task registers task type selection in model in V2`() {
+    composeTestRule.setContent { TaskGridV2(taskGridModel, myProfilers.taskHandlers.keys.toList()) }
+
+    composeTestRule.onAllNodesWithTag(testTag = "TaskGridItem").assertCountEquals(8)
+
+    composeTestRule.onNodeWithText("System Trace").assertIsDisplayed().assertIsEnabled()
+    composeTestRule.onNodeWithText("System Trace").performClick()
+
+    assertThat(taskGridModel.selectedTaskType.value).isEqualTo(ProfilerTaskType.SYSTEM_TRACE)
   }
 }

@@ -1,8 +1,11 @@
+// This file should not be edited manually! See go/template-diff-tests
 package template.test.in;
 
 import androidx.fragment.app.FragmentActivity;
 
 import android.os.Bundle;
+
+import androidx.activity.EdgeToEdge;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -21,6 +24,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
 
         binding = ActivityMapBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());

@@ -6,27 +6,23 @@ load(
 load(
     "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
     "aswb_library",
-    "intellij_plugin",
     "intellij_plugin_library",
     "optional_plugin_xml",
-    "stamped_plugin_xml",
 )
 load(
     "//tools/adt/idea/aswb/testing:test_defs.bzl",
     "intellij_integration_test_suite",
     "intellij_unit_test_suite",
 )
-load("//tools/adt/idea/studio:studio.bzl", "intellij_plugin_import")
-load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 
 aswb_library(
     name = "cpp_lib",
     srcs = glob([
-        "src/com/google/idea/blaze/cpp/*.java",
-        "src/com/google/idea/blaze/cpp/includes/*.java",
-        "src/com/google/idea/blaze/cpp/qsync/*.java",
-        "src/com/google/idea/blaze/cpp/syncstatus/*.java",
-        "src/com/google/idea/blaze/cpp/navigation/*.java",
+        "src/com/google/idea/bazel/cpp/*.java",
+        "src/com/google/idea/bazel/cpp/includes/*.java",
+        "src/com/google/idea/bazel/cpp/qsync/*.java",
+        "src/com/google/idea/bazel/cpp/syncstatus/*.java",
+        "src/com/google/idea/bazel/cpp/navigation/*.java",
     ]),
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     deps = [
@@ -58,29 +54,10 @@ intellij_plugin_library(
 java_library(
     name = "clion_sysprop_rule",
     testonly = 1,
-    srcs = ["tests/utils/com/google/idea/blaze/cpp/ClionUnitTestSystemPropertiesRule.java"],
+    srcs = ["tests/utils/com/google/idea/bazel/cpp/ClionUnitTestSystemPropertiesRule.java"],
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     deps = [
         "//tools/adt/idea/aswb/third_party/java/junit",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",
-    ],
-)
-
-# exposed so plugins can optionally depend on it
-java_library(
-    name = "compiler_version_checker",
-    srcs = ["src/com/google/idea/blaze/cpp/CompilerVersionChecker.java"],
-    neverlink = 1,
-    deps = ["//tools/vendor/google/aswb/plugin_api"],
-)
-
-# exposed so plugins can optionally depend on it
-java_library(
-    name = "compiler_wrapper_provider",
-    srcs = ["src/com/google/idea/blaze/cpp/CompilerWrapperProvider.java"],
-    neverlink = 1,
-    deps = [
         "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",
     ],
@@ -91,7 +68,7 @@ intellij_unit_test_suite(
     srcs = glob(["tests/unittests/**/*.java"]),
     class_rules = [],
     tags = ["noci:studio-win"],
-    test_package_root = "com.google.idea.blaze.cpp",
+    test_package_root = "com.google.idea.bazel.cpp",
     visibility = DEFAULT_TEST_VISIBILITY,
     # Needed to work around one-version issue
     runtime_deps = ["//tools/vendor/google/aswb/plugin_api:test_libs"],
@@ -102,9 +79,9 @@ intellij_unit_test_suite(
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
         "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -112,7 +89,7 @@ java_library(
     name = "integration_test_utils",
     testonly = 1,
     srcs = [
-        "tests/integrationtests/com/google/idea/blaze/cpp/BlazeCppIntegrationTestCase.java",
+        "tests/integrationtests/com/google/idea/bazel/cpp/BlazeCppIntegrationTestCase.java",
     ],
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     deps = [
@@ -121,43 +98,10 @@ java_library(
         "//tools/adt/idea/aswb/base:unit_test_utils",
         "//tools/adt/idea/aswb/testing:lib",
         "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
-)
-
-stamped_plugin_xml(
-    name = "cpp_plugin_xml",
-    testonly = 1,
-    plugin_id = "com.google.idea.blaze.cpp",
-    plugin_name = "com.google.idea.blaze.cpp",
-)
-
-intellij_plugin(
-    name = "cpp_integration_test_plugin",
-    testonly = 1,
-    plugin_xml = ":cpp_plugin_xml",
-    deps = [
-        ":cpp",
-        "//tools/adt/idea/aswb/base",
-    ],
-)
-
-jvm_import(
-    name = "cpp_plugin_import",
-    testonly = 1,
-    jars = [
-        ":cpp_integration_test_plugin",
-    ],
-)
-
-intellij_plugin_import(
-    name = "com.google.idea.blaze.cpp",
-    testonly = 1,
-    overwrite_plugin_version = True,
-    target_dir = "cpp",
-    exports = [":cpp_plugin_import"],
 )
 
 intellij_integration_test_suite(
@@ -165,14 +109,12 @@ intellij_integration_test_suite(
     srcs = glob(
         ["tests/integrationtests/**/*.java"],
         exclude = [
-            "tests/integrationtests/com/google/idea/blaze/cpp/BlazeCppIntegrationTestCase.java",
-            "tests/integrationtests/com/google/idea/blaze/cpp/BlazeCppResolvingTestCase.java",
+            "tests/integrationtests/com/google/idea/bazel/cpp/BlazeCppIntegrationTestCase.java",
+            "tests/integrationtests/com/google/idea/bazel/cpp/BlazeCppResolvingTestCase.java",
         ],
     ),
-    plugins = [":com.google.idea.blaze.cpp"],
-    required_plugins = "com.google.idea.blaze.cpp",
     tags = ["noci:studio-win"],
-    test_package_root = "com.google.idea.blaze.cpp",
+    test_package_root = "com.google.idea.bazel.cpp",
     visibility = DEFAULT_TEST_VISIBILITY,
     deps = [
         ":cpp_lib",
@@ -181,9 +123,9 @@ intellij_integration_test_suite(
         "//tools/adt/idea/aswb/base:integration_test_utils",
         "//tools/adt/idea/aswb/base:unit_test_utils",
         "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

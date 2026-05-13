@@ -25,6 +25,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/intellij.android.compose-common",
         "//tools/adt/idea/android:intellij.android.core",
@@ -41,6 +42,9 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         "//tools/adt/idea/compose-designer:ui-animation-tooling-internal",
+        "@intellij//:intellij.platform.uast",
+        "@intellij//:intellij.java.execution.impl",
+        "@intellij//:intellij.java.execution",
     ],
 )
 
@@ -149,6 +153,7 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/backup:intellij.android.backup.api",
@@ -191,6 +196,8 @@ iml_module(
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/intellij.android.compose-common",
+        "@intellij//:intellij.platform.uast",
+        "@intellij//:intellij.java.execution.impl",
     ],
 )
 
@@ -305,5 +312,6 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:intellij.platform.uast",
     ],
 )

@@ -20,7 +20,6 @@ import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.AiInsightContributor
 import com.android.tools.idea.insights.ai.InsightSource
-import com.android.tools.idea.insights.ai.StubInsightsOnboardingProvider
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolver
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.model.connection.Connection
@@ -53,6 +52,10 @@ class VitalsAiInsightToolkitTest {
       object : AiInsightContributor {
         override fun canContribute(): Boolean = true
 
+        override fun isModelAvailable() = true
+
+        override fun showOnboarding(project: Project) = Unit
+
         override suspend fun fetchInsight(
           connection: Connection,
           event: Event,
@@ -64,13 +67,12 @@ class VitalsAiInsightToolkitTest {
       }
     ExtensionTestUtil.maskExtensions(AiInsightContributor.EP_NAME, listOf(client), projectRule.disposable)
 
-    aiInsightToolkit =
-      VitalsAiInsightToolkit(projectRule.project, StubInsightsOnboardingProvider(), CodeContextResolverImpl(projectRule.project))
+    aiInsightToolkit = VitalsAiInsightToolkit(projectRule.project, CodeContextResolverImpl(projectRule.project))
   }
 
   @Test
   fun `fetch insight populates proto fields correctly`() = runBlocking {
-    val insight = aiInsightToolkit.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, ISSUE1.issueDetails.fatality, ISSUE1.sampleEvent)
+    val insight = aiInsightToolkit.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, ISSUE1.issueDetails.fatality, ISSUE1.sampleEvent, true)
 
     val rawInsight = (insight as LoadingState.Ready).value.rawInsight
     Truth.assertThat(rawInsight).isEqualTo("insight for $TEST_CONNECTION_1 and ${ISSUE1.sampleEvent}")

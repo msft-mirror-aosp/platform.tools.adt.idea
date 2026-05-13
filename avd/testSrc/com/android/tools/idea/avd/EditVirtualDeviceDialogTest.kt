@@ -121,7 +121,7 @@ class EditVirtualDeviceDialogTest {
         composeTestRule.onNodeWithEditableText("Pixel 7").performTextReplacement("Large Pages")
         composeTestRule.onNodeWithText("16 KB Page Size", substring = true).performClick()
 
-        wizard.performAction(wizard.finishAction)
+        wizard.performAction(wizard.nextAction)
         wizard.awaitClose()
 
         assertThat(Files.list(avdRoot).map { it.fileName.toString() }.toList()).containsExactly("Pixel_7.avd", "Large_Pages.ini")
@@ -142,7 +142,7 @@ class EditVirtualDeviceDialogTest {
         composeTestRule.onNode(hasParent(hasTestTag("RamRow")) and hasSetTextAction()).performTextReplacement("5")
         composeTestRule.waitForIdle()
 
-        wizard.performAction(wizard.finishAction)
+        wizard.performAction(wizard.nextAction)
         wizard.awaitClose()
 
         val properties = parseIniFile()
@@ -228,12 +228,12 @@ class EditVirtualDeviceDialogTest {
       composeTestRule.waitForIdle()
       composeTestRule.onNodeWithEditableText("Pixel 7").assertIsDisplayed().lingerMouseHover(composeTestRule)
       composeTestRule.onNodeWithText("already exists", substring = true).assertIsDisplayed()
-      assertThat(wizard.finishAction.enabled).isFalse()
+      assertThat(wizard.nextAction.enabled).isFalse()
 
       // Change it back
       composeTestRule.onNodeWithEditableText("Pixel 7").performTextReplacement("Pixel 7 (2)")
       composeTestRule.waitForIdle()
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       assertThat(Files.list(avdRoot).map { it.fileName.toString() }.toList())

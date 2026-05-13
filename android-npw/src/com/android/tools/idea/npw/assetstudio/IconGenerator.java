@@ -55,6 +55,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -70,6 +71,7 @@ import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.kxml2.io.KXmlParser;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -283,7 +285,11 @@ public abstract class IconGenerator implements Disposable {
    */
   public void generateIconsToDisk(@NotNull AndroidModulePaths paths, @NotNull File resFolder) {
     Map<File, GeneratedIcon> pathIconMap = generateIntoIconMap(paths, resFolder);
+    writeIconsToDisk(pathIconMap);
+  }
 
+  @VisibleForTesting
+  void writeIconsToDisk(@NotNull Map<File, GeneratedIcon> pathIconMap) {
     ApplicationManager.getApplication().runWriteAction(() -> {
       for (Map.Entry<File, GeneratedIcon> fileImageEntry : pathIconMap.entrySet()) {
         File file = fileImageEntry.getKey();
@@ -302,7 +308,9 @@ public abstract class IconGenerator implements Disposable {
         }
         else if (icon instanceof GeneratedXmlResource) {
           if (FileUtilRt.extensionEquals(file.getName(), "xml")) {
-            writeTextToDisk(file, ((GeneratedXmlResource)icon).getXmlText());
+            String xmlText = ((GeneratedXmlResource)icon).getXmlText();
+            String xmlTextWithLicense = icon.isClipart() ? getLicenseHeader() + xmlText : xmlText;
+            writeTextToDisk(file, xmlTextWithLicense);
           }
           else {
             getLog().error("Please report this error. Unable to create icon for invalid file: " + file.getAbsolutePath());
@@ -362,6 +370,31 @@ public abstract class IconGenerator implements Disposable {
     catch (IOException e) {
       getLog().error(e);
     }
+  }
+
+  @NotNull
+  private String getLicenseHeader() {
+    int year = Calendar.getInstance().get(Calendar.YEAR);
+    return "<!--" + myLineSeparator +
+           "  ~ Copyright (C) " + year + " The Android Open Source Project" + myLineSeparator +
+           "  ~" + myLineSeparator +
+           "  ~ Licensed under the Apache License, Version 2.0 (the \"License\");" + myLineSeparator +
+           "  ~ you may not use this file except in compliance with the License." + myLineSeparator +
+           "  ~ You may obtain a copy of the License at" + myLineSeparator +
+           "  ~" + myLineSeparator +
+           "  ~      http://www.apache.org/licenses/LICENSE-2.0" + myLineSeparator +
+           "  ~" + myLineSeparator +
+           "  ~ Unless required by applicable law or agreed to in writing, software" + myLineSeparator +
+           "  ~ distributed under the License is distributed on an \"AS IS\" BASIS," + myLineSeparator +
+           "  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied." + myLineSeparator +
+           "  ~ See the License for the specific language governing permissions and" + myLineSeparator +
+           "  ~ limitations under the License." + myLineSeparator +
+           "  -->" + myLineSeparator;
+  }
+
+  protected boolean isClipart() {
+    BaseAsset asset = mySourceAsset.getValueOrNull();
+    return asset != null && asset.isClipart();
   }
 
   @NotNull
@@ -431,10 +464,12 @@ public abstract class IconGenerator implements Disposable {
             String xmlDrawableText = imageAsset.getTransformedDrawable();
             assert xmlDrawableText != null;
             iconOptions.apiVersion = calculateMinRequiredApiLevel(xmlDrawableText, myMinSdkVersion);
-            return new GeneratedXmlResource(name,
+            GeneratedXmlResource icon = new GeneratedXmlResource(name,
                                             new PathString(getIconPath(iconOptions, name)),
                                             IconCategory.REGULAR,
                                             xmlDrawableText);
+            icon.setClipart(imageAsset.isClipart());
+            return icon;
           });
         } else {
           // Generate a bitmap drawable.

@@ -38,6 +38,7 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.ACTION_BAR_RECORDING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_ANALYSIS
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_CAPTURING_DUMP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_FORCE_DUMP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_RETAINED_OBJECT
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_WAITING_HEAP_DUMP
@@ -62,17 +63,19 @@ fun LeakCanaryActionBar(leakCanaryModel: LeakCanaryModel) {
   val objectRetainedCount by leakCanaryModel.objectRetainedCount.collectAsState()
   val retainedObjectThreshold by leakCanaryModel.retainedObjectThreshold.collectAsState()
   val isStopping by leakCanaryModel.isStopping.collectAsState()
-  val isForceDumpEnabled = objectRetainedCount != 0 && objectRetainedCount < retainedObjectThreshold && !isStopping
+  val isForceDumpExecuting by leakCanaryModel.isForceDumpExecuting.collectAsState()
+  val isForceDumpEnabled = objectRetainedCount > 0 && objectRetainedCount < retainedObjectThreshold && !isStopping && !isForceDumpExecuting
+
   if (isRecording) {
     Row(modifier = Modifier.fillMaxWidth().padding(TASK_ACTION_BAR_CONTENT_PADDING_DP), verticalAlignment = Alignment.CenterVertically) {
       RecordingTimer(leakCanaryModel)
       Spacer(modifier = Modifier.weight(1f))
       HeapDumpAndAnalysisStatus(leakCanaryModel)
       Spacer(modifier = Modifier.width(8.dp))
-      if (leakCanaryModel.isLeakCanaryMilestone2Enabled) {
-        DefaultButton(onClick = { leakCanaryModel.forceHeapDump() }, enabled = isForceDumpEnabled) { Text(LEAKCANARY_FORCE_DUMP) }
-        Spacer(modifier = Modifier.width(8.dp))
+      DefaultButton(onClick = { leakCanaryModel.forceHeapDump(isUserInitiated = true) }, enabled = isForceDumpEnabled) {
+        Text(LEAKCANARY_FORCE_DUMP)
       }
+      Spacer(modifier = Modifier.width(8.dp))
       DefaultButton(onClick = { leakCanaryModel.requestStopRecording() }, enabled = !isStopping) { Text(ACTION_BAR_STOP_RECORDING) }
     }
   }
@@ -100,6 +103,7 @@ fun HeapDumpAndAnalysisStatus(leakCanaryModel: LeakCanaryModel) {
   val objectRetainedCount by leakCanaryModel.objectRetainedCount.collectAsState()
   val analysisProgress by leakCanaryModel.analysisProgress.collectAsState()
   val requiredRetainedObjectCount by leakCanaryModel.retainedObjectThreshold.collectAsState()
+  val isStopping by leakCanaryModel.isStopping.collectAsState()
 
   if (analysisProgress > 0 || objectRetainedCount >= requiredRetainedObjectCount) {
     Text(LEAKCANARY_ANALYSIS)
@@ -107,6 +111,9 @@ fun HeapDumpAndAnalysisStatus(leakCanaryModel: LeakCanaryModel) {
       analysisProgress / 100f,
       modifier = Modifier.width(140.dp).height(4.dp).padding(horizontal = 10.dp).testTag("AnalysisProgressBar"),
     )
+  } else if (isStopping && objectRetainedCount > 0) {
+    // Show intermediate status while capturing the heap dump before analysis starts.
+    Text(LEAKCANARY_CAPTURING_DUMP, modifier = Modifier.padding(end = 10.dp))
   } else {
     val text =
       AnnotatedString.Builder()

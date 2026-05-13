@@ -58,6 +58,7 @@ iml_module(
         "//tools/profiler/common:sherlock.common",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/deploy:intellij.android.deploy",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api",
         "//tools/adt/idea/android-transport:intellij.android.transport",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
         "//tools/adt/idea/.idea/libraries:studio-proto",
@@ -76,6 +77,8 @@ iml_module(
         "//tools/adt/idea/execution/common:intellij.android.execution.common",
         "//tools/adt/idea/analytics",
         "//tools/base/leakcanarylib:studio.android.sdktools.leakcanarylib",
+        "@intellij//:intellij.java.indexing",
+        "@intellij//:intellij.java.execution",
     ],
 )
 

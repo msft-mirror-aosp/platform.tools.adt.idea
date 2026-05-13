@@ -57,13 +57,13 @@ class EmulatorConfigurationTest {
     assertThat(config.skinFolder?.toString()?.replace('\\', '/'))
       .endsWith("tools/adt/idea/artwork/resources/device-art-resources/pixel_3_xl")
     assertThat(config.hasOrientationSensors).isTrue()
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasTransparentDisplay).isFalse()
     assertThat(config.hasTouchScreen).isTrue()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes).isEmpty()
     assertThat(config.postures).isEmpty()
     assertThat(config.touchpadSize).isNull()
+    assertThat(config.dimmingLevels).isEmpty()
   }
 
   @Test
@@ -81,16 +81,16 @@ class EmulatorConfigurationTest {
     assertThat(config.avdName).isEqualTo("Pixel Tablet API 34")
     assertThat(config.deviceType).isEqualTo(DeviceType.HANDHELD)
     assertThat(config.androidVersion).isEqualTo(androidVersion)
-    assertThat(config.displayWidth).isEqualTo(1600)
-    assertThat(config.displayHeight).isEqualTo(2560)
+    assertThat(config.displayWidth).isEqualTo(2560)
+    assertThat(config.displayHeight).isEqualTo(1600)
     assertThat(config.density).isEqualTo(320)
     assertThat(config.additionalDisplays).isEmpty()
     assertThat(config.skinFolder?.toString()?.replace('\\', '/')).isEqualTo("${baseDir}/Android/Sdk/skins/pixel_tablet")
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isTrue()
-    assertThat(config.initialOrientationQuadrants).isEqualTo(0)
+    assertThat(config.initialOrientationQuadrants).isEqualTo(1)
     assertThat(config.displayModes).isEmpty()
     assertThat(config.postures).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
   }
 
   @Test
@@ -113,11 +113,11 @@ class EmulatorConfigurationTest {
     assertThat(config.density).isEqualTo(160)
     assertThat(config.additionalDisplays).containsExactly(6, Dimension(400, 600), 7, Dimension(3000, 600))
     assertThat(config.skinFolder).isNull()
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isFalse()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes).isEmpty()
     assertThat(config.postures).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
   }
 
   @Test
@@ -140,11 +140,11 @@ class EmulatorConfigurationTest {
     assertThat(config.density).isEqualTo(240)
     assertThat(config.additionalDisplays).isEmpty()
     assertThat(config.skinFolder?.toString()).isEqualTo(FakeEmulator.getSkinFolder("wearos_small_round").toString())
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isTrue()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes).isEmpty()
     assertThat(config.postures).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
   }
 
   @Test
@@ -159,17 +159,45 @@ class EmulatorConfigurationTest {
     // Assert.
     assertThat(config).isNotNull()
     assertThat(config.avdFolder).isEqualTo(avdFolder)
-    assertThat(config.avdName).isEqualTo("XR Headset Device API 34")
+    assertThat(config.avdName).isEqualTo("XR Headset")
     assertThat(config.deviceType).isEqualTo(DeviceType.XR_HEADSET)
     assertThat(config.androidVersion).isEqualTo(androidVersion)
     assertThat(config.displayWidth).isEqualTo(2560)
-    assertThat(config.displayHeight).isEqualTo(2368)
+    assertThat(config.displayHeight).isEqualTo(2558)
     assertThat(config.density).isEqualTo(320)
     assertThat(config.additionalDisplays).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
     assertThat(config.skinFolder?.toString()).isNull()
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isTrue()
-    assertThat(config.initialOrientationQuadrants).isEqualTo(1)
+    assertThat(config.initialOrientationQuadrants).isEqualTo(0)
+    assertThat(config.displayModes).isEmpty()
+    assertThat(config.postures).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
+  }
+
+  @Test
+  fun testXrGlasses() {
+    // Prepare.
+    val androidVersion = AndroidVersion(34, 0)
+    val avdFolder = FakeEmulator.createXrGlassesAvd(avdParentFolder, sdkFolder, androidVersion = androidVersion)
+
+    // Act.
+    val config = EmulatorConfiguration.readAvdDefinition(avdFolder)
+
+    // Assert.
+    assertThat(config).isNotNull()
+    assertThat(config.avdFolder).isEqualTo(avdFolder)
+    assertThat(config.avdName).isEqualTo("XR Glasses")
+    assertThat(config.deviceType).isEqualTo(DeviceType.XR_HEADSET)
+    assertThat(config.androidVersion).isEqualTo(androidVersion)
+    assertThat(config.displayWidth).isEqualTo(1920)
+    assertThat(config.displayHeight).isEqualTo(1200)
+    assertThat(config.density).isEqualTo(320)
+    assertThat(config.additionalDisplays).isEmpty()
+    assertThat(config.dimmingLevels).isEqualTo(floatArrayOf(0.0f, 0.25f, 0.5f, 0.75f, 1.0f))
+    assertThat(config.skinFolder?.toString()).isNull()
+    assertThat(config.hasOrientationSensors).isTrue()
+    assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes).isEmpty()
     assertThat(config.postures).isEmpty()
   }
@@ -194,9 +222,40 @@ class EmulatorConfigurationTest {
     assertThat(config.density).isEqualTo(160)
     assertThat(config.environmentSize).isEqualTo(Dimension(1200, 900))
     assertThat(config.additionalDisplays).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
     assertThat(config.skinFolder).isNull()
     assertThat(config.hasOrientationSensors).isTrue()
-    assertThat(config.hasAudioOutput).isTrue()
+    assertThat(config.hasTransparentDisplay).isTrue()
+    assertThat(config.hasTouchScreen).isFalse()
+    assertThat(config.initialOrientationQuadrants).isEqualTo(0)
+    assertThat(config.displayModes).isEmpty()
+    assertThat(config.postures).isEmpty()
+    assertThat(config.touchpadSize).isEqualTo(Dimension(1543, 297))
+  }
+
+  @Test
+  fun testAiGlassesDisplayless() {
+    // Prepare.
+    val androidVersion = AndroidVersion(36, 0)
+    val avdFolder = FakeEmulator.createAiGlassesDisplaylessAvd(avdParentFolder, sdkFolder, androidVersion = androidVersion)
+
+    // Act.
+    val config = EmulatorConfiguration.readAvdDefinition(avdFolder)
+
+    // Assert.
+    assertThat(config).isNotNull()
+    assertThat(config.avdFolder).isEqualTo(avdFolder)
+    assertThat(config.avdName).isEqualTo("AI Glasses")
+    assertThat(config.deviceType).isEqualTo(DeviceType.AI_GLASSES)
+    assertThat(config.androidVersion).isEqualTo(androidVersion)
+    assertThat(config.displayWidth).isEqualTo(0)
+    assertThat(config.displayHeight).isEqualTo(0)
+    assertThat(config.density).isEqualTo(0)
+    assertThat(config.environmentSize).isEqualTo(Dimension(1200, 900))
+    assertThat(config.additionalDisplays).isEmpty()
+    assertThat(config.dimmingLevels).isEmpty()
+    assertThat(config.skinFolder).isNull()
+    assertThat(config.hasOrientationSensors).isTrue()
     assertThat(config.hasTransparentDisplay).isTrue()
     assertThat(config.hasTouchScreen).isFalse()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
@@ -224,7 +283,6 @@ class EmulatorConfigurationTest {
     assertThat(config.density).isEqualTo(420)
     assertThat(config.additionalDisplays).isEmpty()
     assertThat(config.skinFolder?.toString()).isEqualTo(FakeEmulator.getSkinFolder("pixel_fold").toString())
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isTrue()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes).isEmpty()
@@ -234,6 +292,7 @@ class EmulatorConfigurationTest {
         PostureDescriptor(PostureValue.POSTURE_HALF_OPENED, PostureDescriptor.ValueType.HINGE_ANGLE, 30.0, 150.0),
         PostureDescriptor(PostureValue.POSTURE_OPENED, PostureDescriptor.ValueType.HINGE_ANGLE, 150.0, 180.0),
       )
+    assertThat(config.dimmingLevels).isEmpty()
   }
 
   @Test
@@ -256,7 +315,6 @@ class EmulatorConfigurationTest {
     assertThat(config.density).isEqualTo(420)
     assertThat(config.additionalDisplays).isEmpty()
     assertThat(config.skinFolder).isNull()
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isTrue()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes).isEmpty()
@@ -266,6 +324,7 @@ class EmulatorConfigurationTest {
         PostureDescriptor(PostureValue.POSTURE_HALF_OPENED, PostureDescriptor.ValueType.ROLL_PERCENTAGE, 76.45, 94.35),
         PostureDescriptor(PostureValue.POSTURE_OPENED, PostureDescriptor.ValueType.ROLL_PERCENTAGE, 94.35, 100.0),
       )
+    assertThat(config.dimmingLevels).isEmpty()
   }
 
   @Test
@@ -288,7 +347,6 @@ class EmulatorConfigurationTest {
     assertThat(config.density).isEqualTo(420)
     assertThat(config.additionalDisplays).isEmpty()
     assertThat(config.skinFolder).isNull()
-    assertThat(config.hasAudioOutput).isTrue()
     assertThat(config.hasOrientationSensors).isTrue()
     assertThat(config.initialOrientationQuadrants).isEqualTo(0)
     assertThat(config.displayModes)
@@ -304,5 +362,6 @@ class EmulatorConfigurationTest {
         PostureDescriptor(PostureValue.POSTURE_HALF_OPENED, PostureDescriptor.ValueType.HINGE_ANGLE, 30.0, 150.0),
         PostureDescriptor(PostureValue.POSTURE_OPENED, PostureDescriptor.ValueType.HINGE_ANGLE, 150.0, 180.0),
       )
+    assertThat(config.dimmingLevels).isEmpty()
   }
 }

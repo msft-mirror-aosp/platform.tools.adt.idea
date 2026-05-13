@@ -50,9 +50,10 @@ internal class DeviceXrInputController(private val deviceClient: DeviceClient) :
 
   init {
     Disposer.register(deviceClient, this)
+    inputMode = XrInputMode.MOUSE // Hand tracking is not supported for physical devices yet.
   }
 
-  override suspend fun setPassthrough(passthroughCoefficient: Float) {
+  override suspend fun setPassthroughAndDimming(passthroughCoefficient: Float, dimmingCoefficient: Float) {
     deviceClient.deviceController?.sendControlMessage(XrSetPassthroughCoefficientMessage(passthroughCoefficient))
   }
 

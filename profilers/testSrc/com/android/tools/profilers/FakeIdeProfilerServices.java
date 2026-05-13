@@ -20,16 +20,19 @@ import com.android.tools.idea.codenavigation.CodeNavigator;
 import com.android.tools.idea.codenavigation.FakeNavSource;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.transport.EventStreamServer;
+import com.android.tools.leakcanarylib.data.Leak;
 import com.android.tools.profiler.proto.Memory;
 import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.FakeTracePreProcessor;
 import com.android.tools.profilers.cpu.TracePreProcessor;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
+import com.android.tools.profilers.cpu.config.ArtInstrumentedConfigurationLegacy;
 import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
+import com.android.tools.profilers.cpu.config.ArtSampledConfigurationLegacy;
+import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.AtraceConfiguration;
 import com.android.tools.profilers.cpu.config.PerfettoNativeAllocationsConfiguration;
 import com.android.tools.profilers.cpu.config.PerfettoSystemTraceConfiguration;
-import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.cpu.config.UnspecifiedConfiguration;
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorService;
@@ -71,8 +74,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public static final String FAKE_SYMBOL_DIR = "/fake/sym/dir/";
 
-  public static final ProfilingConfiguration ART_SAMPLED_CONFIG = new ArtSampledConfiguration(FAKE_ART_SAMPLED_NAME);
-  public static final ProfilingConfiguration ART_INSTRUMENTED_CONFIG = new ArtInstrumentedConfiguration(FAKE_ART_INSTRUMENTED_NAME);
+  public static final ProfilingConfiguration ART_SAMPLED_CONFIG = new ArtSampledConfigurationLegacy(FAKE_ART_SAMPLED_NAME);
+  public static final ProfilingConfiguration ART_INSTRUMENTED_CONFIG = new ArtInstrumentedConfigurationLegacy(FAKE_ART_INSTRUMENTED_NAME);
   public static final ProfilingConfiguration SIMPLEPERF_CONFIG = new SimpleperfConfiguration(FAKE_SIMPLEPERF_NAME);
   public static final ProfilingConfiguration
     PERFETTO_NATIVE_ALLOCATIONS_CONFIG = new PerfettoNativeAllocationsConfiguration(FAKE_NATIVE_ALLOCATIONS_NAME);
@@ -114,6 +117,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private boolean myTaskBasedUxEnabled = true;
 
+  private boolean myLeakCanaryStudioBotEnabled = true;
+
   /**
    * Whether we should be load tracebox.
    */
@@ -124,19 +129,14 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private boolean myLeakCanaryEnabled = true;
 
-  /**
-   * Whether the LeakCanary milestone 2 features should be visible.
-   */
-  private boolean myLeakCanaryMilestone2Enabled = false;
-
-  /**
-   * Whether the V2 of Task Title should be used.
-   */
-  private boolean myTaskTitleV2Enabled = false;
-
   private boolean mySystemTraceInEditorEnabled = false;
 
   private boolean myMethodTraceInEditorEnabled = false;
+
+  private boolean myProfilerHomeTabV2Enabled = true;
+
+  private String myLastLeakRawTrace;
+  private Leak myLastLeak;
 
   /**
    * Whether power and battery data tracks should be visible in system trace and if shown,
@@ -281,18 +281,18 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
-      public boolean isLeakCanaryMilestone2Enabled() {
-        return myLeakCanaryMilestone2Enabled;
-      }
-
-      @Override
-      public boolean isTaskTitleV2Enabled() {
-        return myTaskTitleV2Enabled;
+      public boolean isLeakCanaryStudioBotEnabled() {
+        return myLeakCanaryStudioBotEnabled;
       }
 
       @Override
       public boolean isSystemTraceInEditorEnabled() {
         return mySystemTraceInEditorEnabled;
+      }
+
+      @Override
+      public boolean isProfilerHomeTabV2Enabled() {
+        return myProfilerHomeTabV2Enabled;
       }
     };
   }
@@ -366,7 +366,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   public void addCustomProfilingConfiguration(String name, TraceType type) {
     ProfilingConfiguration config;
     if (type == TraceType.ART) {
-      config = new ArtSampledConfiguration(name);
+      config = ArtSampledConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
     }
     else if (type == TraceType.SIMPLEPERF) {
       config = new SimpleperfConfiguration(name);
@@ -402,11 +402,13 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public List<ProfilingConfiguration> getDefaultCpuProfilerConfigs(int apiLevel) {
+    ProfilingConfiguration sampled = ArtSampledConfiguration.create(FAKE_ART_SAMPLED_NAME, getFeatureConfig().isMethodTraceInEditorEnabled());
+    ProfilingConfiguration instrumented = ArtInstrumentedConfiguration.create(FAKE_ART_INSTRUMENTED_NAME, getFeatureConfig().isMethodTraceInEditorEnabled());
     if (apiLevel >= AndroidVersion.VersionCodes.P) {
-      return ImmutableList.of(ART_SAMPLED_CONFIG, ART_INSTRUMENTED_CONFIG, SIMPLEPERF_CONFIG, PERFETTO_SYSTEM_TRACE_CONFIG);
+      return ImmutableList.of(sampled, instrumented, SIMPLEPERF_CONFIG, PERFETTO_SYSTEM_TRACE_CONFIG);
     }
     else {
-      return ImmutableList.of(ART_SAMPLED_CONFIG, ART_INSTRUMENTED_CONFIG, SIMPLEPERF_CONFIG, ATRACE_CONFIG);
+      return ImmutableList.of(sampled, instrumented, SIMPLEPERF_CONFIG, ATRACE_CONFIG);
     }
   }
 
@@ -455,6 +457,17 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     return myTraceProcessorService;
   }
 
+  private boolean myDebuggerAttached = false;
+
+  public void setDebuggerAttached(boolean debuggerAttached) {
+    myDebuggerAttached = debuggerAttached;
+  }
+
+  @Override
+  public boolean isDebuggerAttached(@NotNull String deviceId, int pid) {
+    return myDebuggerAttached;
+  }
+
   @Override
   public void buildAndLaunchAction(boolean profileableMode, ProcessListModel.@NotNull ProfilerDeviceSelection device) { }
 
@@ -479,16 +492,20 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myLeakCanaryEnabled = enabled;
   }
 
-  public void enableLeakCanaryMilestone2(boolean enabled) {
-    myLeakCanaryMilestone2Enabled = enabled;
-  }
-
   public void enableSystemTraceInEditor(boolean enabled) {
     mySystemTraceInEditorEnabled = enabled;
   }
 
+  public void enableLeakCanaryStudioBot(boolean enabled) {
+    myLeakCanaryStudioBotEnabled = enabled;
+  }
+
   public void enableMethodTraceInEditor(boolean enabled) {
     myMethodTraceInEditorEnabled = enabled;
+  }
+
+  public void enableProfilerHomeTabV2(boolean enabled) {
+    myProfilerHomeTabV2Enabled = enabled;
   }
 
   @Override
@@ -499,5 +516,21 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public void closeTaskTab(@NotNull ProfilerTaskType taskType) {
+  }
+
+  @Override
+  public void analyzeLeakWithStudioBot(@NotNull String rawTrace, @Nullable Leak leak) {
+    myLastLeakRawTrace = rawTrace;
+    myLastLeak = leak;
+  }
+
+  @Nullable
+  public String getLastLeakRawTrace() {
+    return myLastLeakRawTrace;
+  }
+
+  @Nullable
+  public Leak getLastLeak() {
+    return myLastLeak;
   }
 }

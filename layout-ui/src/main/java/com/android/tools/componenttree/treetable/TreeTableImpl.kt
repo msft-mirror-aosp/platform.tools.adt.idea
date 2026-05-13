@@ -15,6 +15,7 @@
  */
 package com.android.tools.componenttree.treetable
 
+import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.adtui.stdui.registerActionKey
 import com.android.tools.componenttree.api.BadgeItem
@@ -23,14 +24,12 @@ import com.android.tools.componenttree.api.ContextPopupHandler
 import com.android.tools.componenttree.api.DnDMerger
 import com.android.tools.componenttree.api.DoubleClickHandler
 import com.android.tools.componenttree.api.TableVisibility
-import com.android.tools.idea.flags.StudioFlags
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.dnd.DnDSupport
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
-import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DisabledTraversalPolicy
 import com.intellij.ui.JBColor
@@ -43,6 +42,7 @@ import com.intellij.ui.treeStructure.treetable.TreeTableModelAdapter
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.tree.TreeUtil
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.Graphics
 import java.awt.Point
 import java.awt.datatransfer.DataFlavor
@@ -56,6 +56,7 @@ import javax.swing.JScrollPane
 import javax.swing.JTable
 import javax.swing.JTree
 import javax.swing.ListSelectionModel
+import javax.swing.SwingUtilities
 import javax.swing.TransferHandler
 import javax.swing.event.TreeExpansionEvent
 import javax.swing.event.TreeModelEvent
@@ -99,7 +100,6 @@ class TreeTableImpl(
   private val doubleClick: DoubleClickHandler,
   private val installKeyboardActions: (JComponent) -> Unit,
   treeSelectionMode: Int,
-  autoScroll: Boolean,
   installTreeSearch: Boolean,
   private val expandAllOnRootChange: Boolean,
   treeHeaderRenderer: TableCellRenderer?,
@@ -149,11 +149,6 @@ class TreeTableImpl(
       addMouseMotionListener(it)
     }
 
-    if (autoScroll && !StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_HORIZONTAL_SCROLLABLE_COMPONENT_TREE.get()) {
-      treeTableSelectionModel.addAutoScrollListener {
-        invokeLater { selectionModel.selectedIndices.singleOrNull()?.let { scrollRectToVisible(getCellRect(it, 0, true)) } }
-      }
-    }
     if (installTreeSearch) {
       TreeSpeedSearch.installOn(tree, false) { model.toSearchString(it.lastPathComponent) }
     }
@@ -470,6 +465,24 @@ class TreeTableImpl(
         repaintBadge(oldHoverCell)
         repaintBadge(cell)
       }
+      val columnInfo = if (cell != null && cell.column > 0) tableModel.columns[cell.column - 1] else null
+      val mayHaveCustomCursor = columnInfo?.hasCustomCursor ?: false
+      cursor =
+        if (cell == null || !mayHaveCustomCursor) Cursor.getDefaultCursor()
+        else {
+          val item = model.getValueAt(cell.row, cell.column)
+          val renderer = getCellRenderer(cell.row, cell.column)
+          val cellRenderer = renderer.getTableCellRendererComponent(this@TreeTableImpl, item, false, false, cell.row, cell.column)
+          val childCursor =
+            cellRenderer?.let { cellComponent ->
+              val rect = getCellRect(cell.row, cell.column, true)
+              cellComponent.bounds = rect
+              TreeWalker(cellComponent).descendantStream().forEach { it.doLayout() }
+              val component = SwingUtilities.getDeepestComponentAt(cellComponent, event.x - rect.x, event.y - rect.y)
+              component?.cursor
+            }
+          childCursor ?: Cursor.getDefaultCursor()
+        }
     }
 
     override fun mouseExited(event: MouseEvent) {

@@ -1,8 +1,13 @@
+load("//tools/adt/idea/aswb/build_defs:build_defs.bzl", "aswb_library")
+
 licenses(["notice"])
 
-java_library(
+aswb_library(
     name = "artifact",
-    srcs = glob(["*.java"]),
+    srcs = glob([
+        "*.java",
+        "*.kt",
+    ]),
     visibility = [
         "//tools/adt/idea/aswb:__subpackages__",
         "//tools/vendor/google3/aswb/javatests/com/google/devtools/intellij/blaze/plugin/aswb:__subpackages__",
@@ -11,6 +16,5 @@ java_library(
         "//prebuilts/tools/common/m2:jsr305-2.0.1",
         "//tools/adt/idea/aswb/shared",
         "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

@@ -86,6 +86,10 @@ public class SherlockInstallation extends IdeInstallation<Sherlock> {
       this.addVmOption("-Ddisable.android.first.run=true");
     }
 
+    // Some e2e tests run with Internet access to use GCP remote-devices APIs. However, this would cause e2e tests to publish analytics. In
+    // order to avoid counting e2e tests as if they were real users, we disable Analytics in all e2e tests.
+    this.addVmOption("-Ddisable.analytics=true");
+
     bundlePlugin(TestUtils.getBinPath("tools/adt/idea/as-driver/asdriver.plugin-sherlock-sdk.zip"));
     setConsentGranted(true);
   }
@@ -95,21 +99,21 @@ public class SherlockInstallation extends IdeInstallation<Sherlock> {
     String dir = getSherlockDirectory();
     String sherlockExecutable;
     if (SystemInfo.isMac) {
-      sherlockExecutable = dir + "/MacOS/sherlock";
+      sherlockExecutable = dir + "/MacOS/apa";
     }
     else if (SystemInfo.isWindows) {
-      sherlockExecutable = dir + "/bin/sherlock64.exe";
+      sherlockExecutable = dir + "/bin/apa64.exe";
     }
     else {
       assert SystemInfo.isLinux;
-      sherlockExecutable = dir + "/bin/sherlock.sh";
+      sherlockExecutable = dir + "/bin/apa.sh";
     }
     return workDir.resolve(sherlockExecutable).toString();
   }
 
   @Override
   protected String vmOptionEnvName() {
-    return "SHERLOCK_VM_OPTIONS";
+    return "APA_VM_OPTIONS";
   }
 
   @Override
@@ -142,12 +146,12 @@ public class SherlockInstallation extends IdeInstallation<Sherlock> {
    */
   private static String getSherlockDirectory() {
     if (SystemInfo.isMac) {
-      return "sherlock-darwin/Sherlock.app/Contents";
+      return "apa-darwin/Android Performance Analyzer.app/Contents";
     } else if (SystemInfo.isWindows) {
-      return "sherlock-windows";
+      return "apa-windows";
     } else {
       assert SystemInfo.isLinux;
-      return "sherlock-linux";
+      return "apa-linux";
     }
   }
 
@@ -198,9 +202,10 @@ public class SherlockInstallation extends IdeInstallation<Sherlock> {
     TestLogger.log("Emulator#runEmulator");
     String curEmulatorName = String.format("emu%d", emulators.size());
     Path systemImageDir = Workspace.getRoot(systemImage.path);
+    boolean useSnapshot = System.getProperty("emulator.test.snapshot.path") != null;
     Emulator.createEmulator(fileSystem, curEmulatorName, systemImageDir);
     // Increase grpc port by one after spawning an emulator to avoid conflict
-    Emulator emulator = Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort++, extraEmulatorFlags);
+    Emulator emulator = Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort++, extraEmulatorFlags, useSnapshot ? Emulator.BootMode.FROM_SNAPSHOT_NO_SNAPSHOT_SAVE : Emulator.BootMode.COLD_BOOT_NO_SNAPSHOT_SAVE);
     emulators.add(emulator);
     return emulator;
   }

@@ -438,13 +438,10 @@ internal class DeviceView(
 
   override fun canZoom(): Boolean = connectionState == ConnectionState.CONNECTED
 
-  override fun onScreenScaleChanged() {
-    if (isConnected && physicalWidth > 0 && physicalHeight > 0) {
-      updateVideoSize()
-    }
+  override fun computeActualSize(framing: Framing): Dimension {
+    require(framing == Framing.OUTER) { "Unexpected framing value $framing" }
+    return computeActualSize(displayOrientationQuadrants)
   }
-
-  override fun computeActualSize(): Dimension = computeActualSize(displayOrientationQuadrants)
 
   private fun computeActualSize(rotationQuadrants: Int): Dimension = deviceDisplaySize.rotatedByQuadrants(rotationQuadrants)
 
@@ -477,7 +474,7 @@ internal class DeviceView(
       val w = rotatedDisplaySize.width.scaled(scaleFactor).coerceAtMost(physicalWidth)
       val h = rotatedDisplaySize.height.scaled(scaleFactor).coerceAtMost(physicalHeight)
       val displayRect = Rectangle((physicalWidth - w) / 2, (physicalHeight - h) / 2, w, h)
-      displayRectangle = displayRect
+      projectionRectangle = displayRect
 
       val image = displayFrame.image
       val g = createAdjustedGraphicsContext(graphics)
@@ -582,7 +579,12 @@ internal class DeviceView(
     if (!isConnected) {
       return
     }
-    val isMouse = deviceConfig.deviceType == DeviceType.XR_HEADSET || isHardwareInputEnabled()
+    val isHover =
+      action == MotionEventMessage.ACTION_HOVER_MOVE ||
+        action == MotionEventMessage.ACTION_HOVER_ENTER ||
+        action == MotionEventMessage.ACTION_HOVER_EXIT
+    // Hand and eye tracking is not supported yet.
+    val isMouse = deviceConfig.deviceType == DeviceType.XR_HEADSET || isHover || isHardwareInputEnabled()
     val buttonState =
       (if (modifiers and BUTTON1_DOWN_MASK != 0 && isMouse) MotionEventMessage.BUTTON_PRIMARY else 0) or
         (if (modifiers and BUTTON2_DOWN_MASK != 0) MotionEventMessage.BUTTON_TERTIARY else 0) or
@@ -625,7 +627,7 @@ internal class DeviceView(
   }
 
   private fun isInsideDisplay(event: MouseEvent) =
-    displayRectangle?.contains(event.x * screenScalingFactor, event.y * screenScalingFactor) ?: false
+    projectionRectangle?.contains(event.x * screenScalingFactor, event.y * screenScalingFactor) ?: false
 
   /**
    * Adds a [listener] to receive callbacks when the state of the agent's connection changes. The added listener immediately receives a call

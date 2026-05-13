@@ -17,5 +17,9 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="android.sdktools.lint-checks" />
     <orderEntry type="module" module-name="intellij.android.gradle.declarative.lang" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-com.intellij.gradle" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.gradle.java.groovy" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis" level="project" />
   </component>
 </module>

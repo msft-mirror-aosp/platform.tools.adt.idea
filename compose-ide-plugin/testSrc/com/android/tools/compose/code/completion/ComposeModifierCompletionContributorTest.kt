@@ -35,6 +35,10 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import kotlin.test.assertNotNull
 import org.jetbrains.android.compose.stubComposableAnnotation
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisFromWriteAction
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisFromWriteAction
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFunction
 import org.junit.Before
@@ -187,7 +191,7 @@ class ComposeModifierCompletionContributorTest {
   fun modifierAsArgument() {
     fun checkArgumentCompletion() {
       myFixture.lookup.currentItem = myFixture.lookupElements!!.find { it.lookupString.contains("extensionFunction") }
-      myFixture.finishLookup('\n')
+      myFixture.finishLookupWithAnalysis('\n')
       myFixture.checkResult(
         """
         package com.example
@@ -275,7 +279,7 @@ class ComposeModifierCompletionContributorTest {
     // to check that we still suggest "Modifier.extensionFunction" when prefix doesn't much with
     // function name and only with "Modifier".
     // See [ComposeModifierCompletionContributor.ModifierLookupElement.getAllLookupStrings]
-    myFixture.type("M")
+    myFixture.typeWithAnalysis("M")
 
     checkArgumentCompletion()
 
@@ -431,7 +435,7 @@ class ComposeModifierCompletionContributorTest {
     // If user didn't type Modifier don't suggest extensions that doesn't return Modifier.
     assertThat(lookupStrings).doesNotContain("Modifier.extensionFunctionReturnsNonModifier")
 
-    myFixture.type("extensionFunction\t")
+    myFixture.typeWithAnalysis("extensionFunction\t")
 
     myFixture.checkResult(
       """
@@ -521,7 +525,7 @@ class ComposeModifierCompletionContributorTest {
     // If user didn't type Modifier don't suggest extensions that doesn't return Modifier.
     assertThat(lookupStrings).doesNotContain("Modifier.extensionFunctionReturnsNonModifier")
 
-    myFixture.type("extensionFunction\t")
+    myFixture.typeWithAnalysis("extensionFunction\t")
 
     // K1 imports `Modifier` for `Modifier.extensionFunction()` below, but we already have
     // `Modifier1`, so we don't actually need it. K2 fixes this issue.
@@ -688,5 +692,17 @@ class ComposeModifierCompletionContributorTest {
     whenever(lookupElement.psiElement).thenReturn(psiElement)
 
     return completionResult
+  }
+
+  // After the 2026.1 merge, the way the test fixture does typing ends up running completion (which can use analysis) on the EDT.
+  @OptIn(KaAllowAnalysisOnEdt::class, KaAllowAnalysisFromWriteAction::class)
+  private fun CodeInsightTestFixture.typeWithAnalysis(s: String) {
+    allowAnalysisOnEdt { allowAnalysisFromWriteAction { type(s) } }
+  }
+
+  // After the 2026.1 merge, the way the test fixture does typing ends up running completion (which can use analysis) on the EDT.
+  @OptIn(KaAllowAnalysisOnEdt::class, KaAllowAnalysisFromWriteAction::class)
+  private fun CodeInsightTestFixture.finishLookupWithAnalysis(c: Char) {
+    allowAnalysisOnEdt { allowAnalysisFromWriteAction { finishLookup(c) } }
   }
 }

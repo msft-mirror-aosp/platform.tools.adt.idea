@@ -66,6 +66,7 @@ import com.google.idea.blaze.qsync.java.JavaArtifactMetadata;
 import com.google.idea.blaze.qsync.java.PackageReader;
 import com.google.idea.blaze.qsync.java.PackageStatementParser;
 import com.google.idea.blaze.qsync.java.ParallelPackageReader;
+import com.google.idea.blaze.qsync.java.WorkspaceResolvingPackageReader;
 import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.google.idea.blaze.qsync.project.FileExtensions;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
@@ -132,6 +133,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
       ImmutableSet<String> handledRuleKinds,
       BuildGraphData.ProtoRules protoRules,
       ProjectStructureReader projectStructureReader,
+      PackageReader packageReader,
+      PackageReader.ParallelReader parallelPackageReader,
       boolean readProjectStructureFromDirectory) {}
 
   public ProjectLoaderImpl(Project project) {
@@ -186,6 +189,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
             result.handledRuleKinds(),
             result.protoRules(),
             result.projectStructureReader(),
+            result.packageReader(),
+            result.parallelPackageReader(),
             result.readProjectStructureFromDirectory());
 
     return querySyncProject;
@@ -241,7 +246,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
     WorkspaceLanguageSettings workspaceLanguageSettings = projectToLoad.workspaceLanguageSettings();
     QuerySyncLanguageSettings languageSettings = projectToLoad.languageSettings();
 
-    ImmutableSet<String> handledRules = getHandledRuleKinds();
+    ImmutableSet<String> handledRules = ProjectLoader.getHandledRuleKinds(project);
     Optional<BlazeVcsHandler> vcsHandler =
         Optional.ofNullable(BlazeVcsHandlerProvider.vcsHandlerForProject(project));
     AppInspectorBuilder appInspectorBuilder = createAppInspectorBuilder(buildSystem);
@@ -307,14 +312,12 @@ public class ProjectLoaderImpl implements ProjectLoader {
             workspaceRoot.path(),
             enableExperimentalQuery.getValue(),
             snapshotHolder::getCurrent);
-    ProjectStructureReader projectStructureReader = ProjectStructureReader.Companion.create(new FileExtensions());
-    boolean readProjectStructureFromDirectory = querySyncUserPreferences.getLoadProjectStructureFromDirectoryTraversal();
+    ProjectStructureReader projectStructureReader =
+        ProjectStructureReader.Companion.create(new FileExtensions(), createPackageReader());
+    boolean readProjectStructureFromDirectory =
+        querySyncUserPreferences.getLoadProjectStructureFromDirectoryTraversal();
 
-    ProjectBuilder snapshotBuilder =
-        new ProjectBuilder(
-            createPackageReader(),
-            createParallelPackageReader(),
-            workspaceRoot.path());
+    ProjectBuilder snapshotBuilder = new ProjectBuilder(workspaceRoot.path());
     QueryRunner queryRunner = createQueryRunner(buildSystem);
     ProjectQuerier projectQuerier =
         createProjectQuerier(
@@ -348,6 +351,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
         handledRules,
         buildSystem.getProtoRules(),
         projectStructureReader,
+        new WorkspaceResolvingPackageReader(workspaceRoot.path(), createPackageReader()),
+        createParallelPackageReader(),
         readProjectStructureFromDirectory);
   }
 
@@ -405,19 +410,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
 
   protected AppInspectorBuilder createAppInspectorBuilder(BuildSystem buildSystem) {
     return new BazelAppInspectorBuilder(project, buildSystem);
-  }
-
-  /**
-   * Returns an {@link ImmutableSet} of rule kinds that query sync or plugin know how to resolve
-   * symbols for without building. The rules query sync always builds even if they are part of the
-   * project are in {@link com.google.idea.blaze.qsync.BlazeQueryParser#ALWAYS_BUILD_RULE_KINDS}
-   */
-  private ImmutableSet<String> getHandledRuleKinds() {
-    ImmutableSet.Builder<String> defaultRules = ImmutableSet.builder();
-    for (HandledRulesProvider ep : HandledRulesProvider.EP_NAME.getExtensionList()) {
-      defaultRules.addAll(ep.handledRuleKinds(project));
-    }
-    return defaultRules.build();
   }
 
   private static ProjectDefinition createProjectDefinition(

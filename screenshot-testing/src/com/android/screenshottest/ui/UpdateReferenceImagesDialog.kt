@@ -81,7 +81,7 @@ import org.jetbrains.jewel.ui.component.Text
  * live-updating image viewer on the right.
  */
 class UpdateReferenceImagesDialog(
-  private val project: Project?,
+  val project: Project?,
   private val logger: Logger = Logger.getInstance(UpdateReferenceImagesDialog::class.java),
 ) : DialogWrapper(project) {
 
@@ -519,6 +519,8 @@ data class PreviewDetails(
   val srcImagePath: String? = null,
   val diffImagePath: String? = null,
   val diffPercent: String? = null,
+  val isSizeMismatch: Boolean = false,
+  val sizeMismatchMessage: String? = null,
 )
 
 data class MethodGroup(val className: String, val methodName: String, val labelText: String, val previews: List<PreviewDetails>)

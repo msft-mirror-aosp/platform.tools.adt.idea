@@ -30,6 +30,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.UnindexedFilesScannerExecutor
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.psi.PsiElement
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import com.intellij.util.application
@@ -684,6 +685,7 @@ class AndroidMavenImportIntentionActionTest {
         }
         val source = fixture.editor.document.text
 
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         // Fetch the registry early to pre-load it, so that `isAvailable` below doesn't return
         // early.
         val registry = runBlocking { MavenClassRegistryManager.getInstance().getMavenClassRegistry() }

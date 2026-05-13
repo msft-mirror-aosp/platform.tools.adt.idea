@@ -99,7 +99,6 @@ internal fun WizardPageScope.ConfigurationPage(
   if (!systemImageState.hasLocal || (!isTimedOut && !systemImageState.hasRemote && systemImageState.error == null)) {
     EmptyStatePanel("Loading system images...", Modifier.fillMaxSize())
     nextAction = WizardAction.Disabled
-    finishAction = WizardAction.Disabled
     return
   }
 
@@ -107,7 +106,6 @@ internal fun WizardPageScope.ConfigurationPage(
   if (filteredImageState.images.isEmpty()) {
     EmptyStatePanel("No system images available.", Modifier.fillMaxSize())
     nextAction = WizardAction.Disabled
-    finishAction = WizardAction.Disabled
     return
   }
 
@@ -121,12 +119,8 @@ internal fun WizardPageScope.ConfigurationPage(
       val state = ConfigureDevicePanelState(device, skins, deviceNameValidator)
       val defaultSkin = resolveDefaultSkin(device, sdkHandler, fileSystem)
       if (imageWasNotSet) {
-        // This is a newly-created device; set the initial skin or environment.
+        // This is a newly-created device; set the initial skin.
         state.initDeviceSkins(defaultSkin)
-
-        if (device.isEnvironmentAllowed()) {
-          device.environment = defaultEnvironments().first().toPath()
-        }
       } else {
         // This is an existing device that we are editing.
         state.initDefaultSkin(defaultSkin)
@@ -159,9 +153,8 @@ internal fun WizardPageScope.ConfigurationPage(
       },
     )
   }
-  nextAction = WizardAction.Disabled
-
-  finishAction =
+  nextActionName = "Finish"
+  nextAction =
     if (state.isValid) {
       WizardAction {
         runWithModalProgressBlocking(ModalTaskOwner.component(parent), "Creating AVD", TaskCancellation.nonCancellable()) {

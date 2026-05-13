@@ -58,7 +58,6 @@ import com.android.tools.idea.run.configuration.execution.findElementByText
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.ui.createFakeToolWindow
-import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.SourceCodeEditorProvider
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
@@ -178,6 +177,27 @@ class ComposePreviewRepresentationTest {
   fun tearDown() {
     StudioFlags.COMPOSE_PREVIEW_RESIZING.clearOverride()
     composePreviewEssentialsModeEnabled = false
+  }
+
+  @Test
+  fun testUpdateVisibilityAndNotificationsCalledOnBuildFailureWithoutRender() = runComposePreviewRepresentationTest {
+    val preview =
+      ComposePreviewRepresentation(previewPsiFile) { _, _, _, provider, _, _ ->
+        uiDataProvider = provider
+        composeView = TestComposePreviewView(mainSurface)
+        composeView
+      }
+    Disposer.register(fixture.testRootDisposable, preview)
+
+    withContext(Dispatchers.Default) {
+      preview.onActivate()
+      delayWhileRefreshingOrDumb(preview)
+
+      val countBefore = composeView.visibilityAndNotificationsCount
+      buildSystemServices.simulateArtifactBuild(ProjectSystemBuildManager.BuildStatus.FAILED)
+
+      waitForCondition(5.seconds) { composeView.visibilityAndNotificationsCount > countBefore }
+    }
   }
 
   @Test
@@ -506,7 +526,7 @@ class ComposePreviewRepresentationTest {
       }
       val mainSurface: NlDesignSurface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build()
       val composeView = TestComposePreviewView(mainSurface)
-      val previewRepresentation = ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> composeView }
+      val previewRepresentation = ComposePreviewRepresentation(composeTest) { _, _, _, _, _, _ -> composeView }
       Disposer.register(fixture.testRootDisposable, previewRepresentation)
       Disposer.register(fixture.testRootDisposable, mainSurface)
 
@@ -737,6 +757,67 @@ class ComposePreviewRepresentationTest {
     val preview = createPreviewAndCompile(expectedModelCount = 1)
 
     assertEquals(10, preview.interactiveManager.fpsLimit)
+  }
+
+  @Test
+  fun testInteractivePreviewNavigationPanelShow() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+    testCanExpandPredictiveBackNavigationPanel(testFile)
+  }
+
+  @Test
+  fun testInteractivePreviewNavigationPanelShowWithRenderError() {
+    val testFileWithRenderErrorPreview = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+          error("render error")
+        }
+        """
+          .trimIndent(),
+      )
+    }
+    testCanExpandPredictiveBackNavigationPanel(testFileWithRenderErrorPreview)
+  }
+
+  private fun testCanExpandPredictiveBackNavigationPanel(testFile: PsiFile) {
+    runComposePreviewRepresentationTest(testFile) {
+      val representation = createPreviewAndCompile(expectedModelCount = 1)
+      val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
+      assertThat(mainSurface.models.size).isEqualTo(1)
+      val singleElement = previewElements.single()
+
+      setModeAndWaitForRefresh(PreviewMode.Interactive(singleElement))
+
+      // By default the bottom panel is hidden
+      assertThat(representation.getBottomPanelForTestOnly()).isNull()
+      val controller = representation.getInteractiveNavigationControllerForTestOnly()
+      withContext(Dispatchers.EDT) { controller.showNavigationControls(singleElement) }
+      val bottomPanel = representation.getBottomPanelForTestOnly()
+      assertThat(bottomPanel).isNotNull()
+    }
   }
 
   @Test
@@ -1213,11 +1294,11 @@ class ComposePreviewRepresentationTest {
   /** Wrapper class to perform operations and expose properties that are common to most tests in this test class. */
   private class ComposePreviewRepresentationTestContext(
     val scope: CoroutineScope,
-    private val previewPsiFile: PsiFile,
+    val previewPsiFile: PsiFile,
     val mainSurface: NlDesignSurface,
     private val fixture: CodeInsightTestFixture,
     private val logger: Logger,
-    private val buildSystemServices: FakeBuildSystemFilePreviewServices,
+    val buildSystemServices: FakeBuildSystemFilePreviewServices,
   ) {
 
     private lateinit var preview: ComposePreviewRepresentation
@@ -1247,7 +1328,7 @@ class ComposePreviewRepresentationTest {
       composeView = TestComposePreviewView(mainSurface, onRefreshCompletedCallback)
       preview =
         previewOverride
-          ?: ComposePreviewRepresentation(previewPsiFile, PreferredVisibility.SPLIT) { _, _, _, provider, _, _ ->
+          ?: ComposePreviewRepresentation(previewPsiFile) { _, _, _, provider, _, _ ->
             uiDataProvider = provider
             composeView
           }
@@ -1279,7 +1360,7 @@ class ComposePreviewRepresentationTest {
       delayUntilCondition(250, timeout = 5.seconds) { refresh && additionalCondition() }
     }
 
-    private suspend fun delayWhileRefreshingOrDumb(preview: ComposePreviewRepresentation) {
+    suspend fun delayWhileRefreshingOrDumb(preview: ComposePreviewRepresentation) {
       delayUntilCondition(250) { !(preview.status().isRefreshing || DumbService.getInstance(fixture.project).isDumb) }
     }
 

@@ -4,7 +4,7 @@
     <facet type="kotlin-language" name="Kotlin">
       <configuration version="5" platform="JVM 21" allPlatforms="JVM [21]" useProjectSettings="false">
         <compilerSettings>
-          <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xsam-conversions=class -Xcontext-receivers" />
+          <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xsam-conversions=class -Xcontext-parameters" />
         </compilerSettings>
         <compilerArguments>
           <stringArguments>
@@ -14,7 +14,7 @@
           </stringArguments>
           <arrayArguments>
             <arrayArg name="pluginClasspaths">
-              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.3.10/kotlin-compose-compiler-plugin-2.3.10.jar</args>
+              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.3.20/kotlin-compose-compiler-plugin-2.3.20.jar</args>
             </arrayArg>
           </arrayArguments>
         </compilerArguments>
@@ -30,6 +30,14 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
-    <orderEntry type="module" module-name="jewel.sdkcompat" exported="" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.foundation" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.ideLafBridge" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.core" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.ideLafBridgeStyling" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.ui" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.skiko" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.compose.foundation.desktop" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.compose.runtime.desktop" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.extensions.gfmTables" level="project" />
   </component>
 </module>

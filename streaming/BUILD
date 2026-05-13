@@ -1,3 +1,4 @@
+load("//tools/adt/idea/emulator-snapshots:emulator_test_env.bzl", "emulator_snapshot_data", "emulator_snapshot_jvm_flags")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 
 # managed by go/iml_to_build
@@ -161,11 +162,12 @@ iml_test(
     data = [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
+        "//prebuilts/studio/sdk:system_image_android-30_default",
         "//tools/adt/idea/streaming/integration/event-logger",
         "//tools/adt/idea/streaming/screen-sharing-agent",
         "//tools/adt/idea/streaming/screen-sharing-agent:native/x86_64/libscreen-sharing-agent.so",
-        "@system_image_android-30_default_x86_64//:x86_64-android-30-images",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-30_default"),
+    jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-30_default"),
     module = ":intellij.android.streaming.integration",
     tags = [
         "ci:studio-linux_very_flaky",  # b/303195243
@@ -184,12 +186,13 @@ iml_test(
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
+        "//prebuilts/studio/sdk:system_image_android-35_default",
         "//tools/adt/idea/streaming/integration/languages",
         "//tools/adt/idea/streaming/integration/languages:resource-files",
         "//tools/adt/idea/streaming/screen-sharing-agent",
         "//tools/adt/idea/streaming/screen-sharing-agent:native/x86_64/libscreen-sharing-agent.so",
-        "@system_image_android-35_default_x86_64//:x86_64-android-35-images",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-35_default"),
+    jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-35_default"),
     module = ":intellij.android.streaming.integration",
     tags = [
         "noci:studio-win",
@@ -206,12 +209,13 @@ iml_test(
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
+        "//prebuilts/studio/sdk:system_image_android-35_default",
         "//tools/adt/idea/streaming/integration/languages",
         "//tools/adt/idea/streaming/integration/languages:resource-files",
         "//tools/adt/idea/streaming/screen-sharing-agent",
         "//tools/adt/idea/streaming/screen-sharing-agent:native/x86_64/libscreen-sharing-agent.so",
-        "@system_image_android-35_default_x86_64//:x86_64-android-35-images",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-35_default"),
+    jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-35_default"),
     module = ":intellij.android.streaming.integration",
     tags = [
         "ci:studio-linux_very_flaky",  # b/271008444

@@ -19,11 +19,16 @@ import com.google.common.truth.Truth.assertThat
 import com.google.idea.blaze.common.NoopContext
 import com.google.idea.blaze.common.Output
 import com.google.idea.blaze.common.PrintOutput
+import com.google.idea.blaze.qsync.project.BuildPackage
 import com.google.idea.blaze.qsync.project.FileExtensions
 import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectStructureData
+import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.google.idea.blaze.qsync.project.SourceSet
+import com.google.idea.blaze.qsync.project.testutil.compareFormattedStrings
+import com.google.idea.blaze.qsync.project.testutil.dump
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
@@ -40,7 +45,7 @@ class ProjectStructureReaderTest {
   @get:Rule val temporaryFolder = TemporaryFolder()
 
   private lateinit var workspaceRoot: Path
-  private val reader = ProjectStructureReader.create(FileExtensions())
+  private val reader = ProjectStructureReader.create(FileExtensions()) { _, _ -> "" }
   private val context = NoopContext()
 
   private class CapturingContext : NoopContext() {
@@ -88,27 +93,46 @@ class ProjectStructureReaderTest {
   }
 
   private fun expectedStructure(
-    packageSourceSets: Map<String, SourceSet> = emptyMap(),
+    roots: Map<String, Map<String, SourceSet>> = emptyMap(),
     languages: Set<QuerySyncLanguage> = emptySet(),
   ): ProjectStructureData {
-    return ProjectStructureData(
-      packageSourceSets = packageSourceSets.mapKeys { Path.of(it.key) },
+    return ProjectStructureData.create(
+      roots =
+        roots.map { (rootPath, packageMap) ->
+          ProjectStructureRoot(
+            projectStructureRootPath = Path.of(rootPath),
+            buildPackages =
+              packageMap
+                .mapValues { (pkgPath, sourceSet) -> BuildPackage(path = Path.of(pkgPath), sourceSets = listOf(sourceSet)) }
+                .mapKeys { Path.of(it.key) },
+          )
+        },
+      activeLanguages = languages,
+    )
+  }
+
+  private fun expectedStructureMulti(
+    roots: Map<String, Map<String, List<SourceSet>>> = emptyMap(),
+    languages: Set<QuerySyncLanguage> = emptySet(),
+  ): ProjectStructureData {
+    return ProjectStructureData.create(
+      roots =
+        roots.map { (rootPath, packageMap) ->
+          ProjectStructureRoot(
+            projectStructureRootPath = Path.of(rootPath),
+            buildPackages =
+              packageMap
+                .mapValues { (pkgPath, sourceSets) -> BuildPackage(path = Path.of(pkgPath), sourceSets = sourceSets) }
+                .mapKeys { Path.of(it.key) },
+          )
+        },
       activeLanguages = languages,
     )
   }
 
   // Helper to compare ProjectStructureData instances, ignoring list order.
   private fun assertStructureEquals(actual: ProjectStructureData, expected: ProjectStructureData) {
-    assertThat(actual.activeLanguages).containsExactlyElementsIn(expected.activeLanguages)
-    assertThat(actual.packageSourceSets.keys).containsExactlyElementsIn(expected.packageSourceSets.keys)
-    for (key in expected.packageSourceSets.keys) {
-      val actualSourceSet = actual.packageSourceSets[key]!!
-      val expectedSourceSet = expected.packageSourceSets[key]!!
-      assertThat(actualSourceSet.javaSourceFiles)
-        .containsExactlyElementsIn(expectedSourceSet.javaSourceFiles)
-      assertThat(actualSourceSet.nonJavaSourceFiles)
-        .containsExactlyElementsIn(expectedSourceSet.nonJavaSourceFiles)
-    }
+    compareFormattedStrings(actual = actual.dump(), expected = expected.dump())
   }
 
   @Test
@@ -123,13 +147,87 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles =
-                  listOf(Path.of("java/com/example/MyClass.java"), Path.of("java/com/example/MyClass.kt")),
-                nonJavaSourceFiles = emptyList(),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java"), Path.of("MyClass.kt")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              )
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun singlePackage_buildBazel() {
+    createFile("java/com/example/BUILD.bazel")
+    createFile("java/com/example/MyClass.java")
+    createFile("java/com/example/MyClass.kt")
+    createFile("java/com/example/data.txt")
+
+    val projectDefinition = createProjectDefinition(setOf("java"))
+    val structure = reader.read(context, workspaceRoot, projectDefinition)
+
+    val expected =
+      expectedStructure(
+        roots =
+          mapOf(
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java"), Path.of("MyClass.kt")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              )
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun multipleSourceSetsPerPackage() {
+    createFile("java/com/example/BUILD")
+    createFile("java/com/example/File1.java")
+    createFile("java/com/example/File2.java")
+
+    val customReader =
+      ProjectStructureReader.create(FileExtensions()) { _, path ->
+        if (path.fileName.toString() == "File1.java") "com.example.one"
+        else if (path.fileName.toString() == "File2.java") "com.example.two" else ""
+      }
+
+    val projectDefinition = createProjectDefinition(setOf("java"))
+    val structure = customReader.read(context, workspaceRoot, projectDefinition)
+
+    // We only read one file per directory (the lexicographically first one, File1.java),
+    // so both files end up sharing the package "com.example.one". The package "com.example.two"
+    // from File2.java is ignored to match the optimization used in query mode.
+    val expected =
+      expectedStructureMulti(
+        roots =
+          mapOf(
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  listOf(
+                    SourceSet(
+                      rootPath = Path.of("java/com/example"),
+                      javaSourceFiles = listOf(Path.of("File1.java"), Path.of("File2.java")),
+                      nonJavaSourceFiles = emptyList(),
+                      javaPackage = "com.example.one",
+                    )
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
@@ -149,18 +247,25 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example/one" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/one/One.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
-            "java/com/example/two" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/two/Two.kt")),
-                nonJavaSourceFiles = emptyList(),
-              ),
+            "java" to
+              mapOf(
+                "java/com/example/one" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/one"),
+                    javaSourceFiles = listOf(Path.of("One.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+                "java/com/example/two" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/two"),
+                    javaSourceFiles = listOf(Path.of("Two.kt")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -179,18 +284,25 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/Parent.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
-            "java/com/example/child" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/child/Child.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("Parent.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+                "java/com/example/child" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/child"),
+                    javaSourceFiles = listOf(Path.of("Child.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -204,7 +316,7 @@ class ProjectStructureReaderTest {
     val projectDefinition = createProjectDefinition(setOf("java"))
     val structure = reader.read(context, workspaceRoot, projectDefinition)
 
-    val expected = expectedStructure(packageSourceSets = emptyMap(), languages = setOf(QuerySyncLanguage.JVM))
+    val expected = expectedStructure(roots = mapOf("java" to emptyMap()), languages = setOf(QuerySyncLanguage.JVM))
     assertStructureEquals(structure, expected)
   }
 
@@ -221,14 +333,18 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/Inc.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
-            "javatests/com/example" to SourceSet(emptyList(), emptyList()),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("Inc.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -249,18 +365,25 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
             "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/Inc.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
-            "java/com/example/excluded" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/excluded/Exc.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("Inc.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+                "java/com/example/excluded" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/excluded"),
+                    javaSourceFiles = listOf(Path.of("Exc.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -278,12 +401,17 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
             "java/com/example/foo" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/foo/Foo.java")),
-                nonJavaSourceFiles = emptyList(),
+              mapOf(
+                "java/com/example/foo" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/foo"),
+                    javaSourceFiles = listOf(Path.of("Foo.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
@@ -313,12 +441,17 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/MyClass.java")),
-                nonJavaSourceFiles = emptyList(),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
@@ -340,12 +473,17 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/MyClass.java")),
-                nonJavaSourceFiles = emptyList(),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
@@ -366,22 +504,25 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles =
-                  listOf(
-                    Path.of("java/com/example/MyClass.java"),
-                    Path.of("java/com/example/subdir/AnotherClass.kt"),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java"), Path.of("subdir/AnotherClass.kt")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
                   ),
-                nonJavaSourceFiles = emptyList(),
-              ),
-            "java/com/example/another" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/another/Other.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
+                "java/com/example/another" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/another"),
+                    javaSourceFiles = listOf(Path.of("Other.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -403,13 +544,19 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/MyClass.java")),
-                nonJavaSourceFiles = emptyList(),
-              )
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              ),
+            "another" to emptyMap(),
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -433,12 +580,17 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/Inc.java")),
-                nonJavaSourceFiles = emptyList(),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("Inc.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
@@ -458,18 +610,28 @@ class ProjectStructureReaderTest {
     val success = unreadableDir.toFile().setReadable(false)
     assertThat(success).isTrue()
 
+    if (Files.isReadable(unreadableDir)) {
+      // Skip test if directory is still readable (e.g. running as root)
+      return
+    }
+
     val projectDefinition = createProjectDefinition(setOf("java"))
     val capturingContext = CapturingContext()
     val structure = reader.read(capturingContext, workspaceRoot, projectDefinition)
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/MyClass.java")),
-                nonJavaSourceFiles = emptyList(),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
@@ -495,18 +657,25 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
             "java" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/RootClass.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles = listOf(Path.of("java/com/example/MyClass.java")),
-                nonJavaSourceFiles = emptyList(),
-              ),
+              mapOf(
+                "java" to
+                  SourceSet(
+                    rootPath = Path.of("java"),
+                    javaSourceFiles = listOf(Path.of("RootClass.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
           ),
         languages = setOf(QuerySyncLanguage.JVM),
       )
@@ -532,25 +701,47 @@ class ProjectStructureReaderTest {
 
     val expected =
       expectedStructure(
-        packageSourceSets =
+        roots =
           mapOf(
-            "java/com/example" to
-              SourceSet(
-                javaSourceFiles =
-                  listOf(Path.of("java/com/example/MyClass.java"), Path.of("java/com/example/MyModule.kt")),
-                nonJavaSourceFiles =
-                  listOf(
-                    Path.of("java/com/example/native/stuff.c"),
-                    Path.of("java/com/example/native/stuff.h"),
-                    Path.of("java/com/example/native/other.cc"),
-                    Path.of("java/com/example/native/another.cpp"),
-                    Path.of("java/com/example/native/header.hpp"),
-                    Path.of("java/com/example/myproto.proto"),
-                  ),
+            "java" to
+              mapOf(
+                "java/com/example" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example"),
+                    javaSourceFiles = listOf(Path.of("MyClass.java"), Path.of("MyModule.kt")),
+                    nonJavaSourceFiles =
+                      listOf(
+                        Path.of("native/stuff.c"),
+                        Path.of("native/stuff.h"),
+                        Path.of("native/other.cc"),
+                        Path.of("native/another.cpp"),
+                        Path.of("native/header.hpp"),
+                        Path.of("myproto.proto"),
+                      ),
+                    javaPackage = "",
+                  )
               )
           ),
         languages = setOf(QuerySyncLanguage.JVM, QuerySyncLanguage.CC),
       )
     assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun buildFileAboveIncludeRoot() {
+    createFile("java/com/example/BUILD")
+    createFile("java/com/example/sub/Foo.java")
+
+    val projectDefinition = createProjectDefinition(setOf("java/com/example/sub"))
+    val capturingContext = CapturingContext()
+    val structure = reader.read(capturingContext, workspaceRoot, projectDefinition)
+
+    // Expected to be empty because the BUILD file is above the include root,
+    // and thus the source file belongs to a package outside the include root.
+    val expected = expectedStructure(roots = mapOf("java/com/example/sub" to emptyMap()), languages = setOf(QuerySyncLanguage.JVM))
+    assertStructureEquals(structure, expected)
+
+    val logs = capturingContext.outputs.joinToString("\n")
+    assertThat(logs).contains("WARNING: Package java/com/example is outside all project structure roots")
   }
 }

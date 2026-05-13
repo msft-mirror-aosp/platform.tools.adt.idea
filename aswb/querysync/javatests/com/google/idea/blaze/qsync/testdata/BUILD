@@ -200,6 +200,13 @@ genquery(
 )
 
 genquery(
+    name = "alias_query",
+    expression = "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/testdata/alias:*",
+    opts = ["--output=streamed_proto"],
+    scope = scopeForJavaPackage("//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/testdata/alias:lib"),
+)
+
+genquery(
     name = "symlinks_query",
     expression = "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/testdata/symlinks:*",
     opts = ["--output=streamed_proto"],
@@ -212,6 +219,7 @@ java_library_for_test_data(
     name = "testdata",
     srcs = ["TestData.java"],
     data = [
+        ":alias_query",
         ":android_aidl_source_query",
         ":android_lib_query",
         ":buildincludes_query",
@@ -237,8 +245,8 @@ java_library_for_test_data(
     ],
     deps = [
         "//tools/adt/idea/aswb/shared",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@bazel_tools//tools/java/runfiles",
+        "@intellij//:intellij-sdk",
     ],
 )
 
@@ -258,8 +266,8 @@ aswb_library(
         "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync:TestUtils",
         "//tools/adt/idea/aswb/shared:exception",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
+        "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -273,6 +281,6 @@ java_library_for_test_data(
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync:TestUtils",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
+        "@intellij//:intellij-sdk",
     ],
 )

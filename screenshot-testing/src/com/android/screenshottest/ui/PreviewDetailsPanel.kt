@@ -97,6 +97,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     }
 
   private val toolbarAnalytics = ScreenshotToolbarAnalytics(project)
+  private val loadingFutures = mutableMapOf<ImageWithToolbarPanel, java.util.concurrent.Future<*>>()
 
   // Panels for the "All" view (3-way split) in single preview mode.
   private val newImagePanel =
@@ -111,7 +112,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       onActionTriggered = toolbarAnalytics::logAction,
     )
 
-  private val multiViewPanels = listOf(newImagePanel, diffImagePanel, refImagePanel)
+  private val multiViewPanels = listOf(refImagePanel, diffImagePanel, newImagePanel)
 
   // Panels for the individual tabbed views in single preview mode.
   private val newImagePanelSingle =
@@ -129,7 +130,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
   // Common actions for the "All" view toolbar.
   private val commonZoomInAction =
     LoggedAction(
-      object : AnAction("Zoom In", null, AllIcons.General.ZoomIn) {
+      object : AnAction("Zoom In", "Zoom In", AllIcons.General.ZoomIn) {
         override fun actionPerformed(e: AnActionEvent) {
           multiViewPanels.forEach { it.zoomIn() }
         }
@@ -143,7 +144,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
 
   private val commonZoomOutAction =
     LoggedAction(
-      object : AnAction("Zoom Out", null, AllIcons.General.ZoomOut) {
+      object : AnAction("Zoom Out", "Zoom Out", AllIcons.General.ZoomOut) {
         override fun actionPerformed(e: AnActionEvent) {
           multiViewPanels.forEach { it.zoomOut() }
         }
@@ -226,6 +227,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         verticalScrollBarPolicy = JBScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
         horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
         border = null
+        accessibleContext.accessibleName = "Previews list"
       }
     multiplePreviewsPanel.add(scrollPane, BorderLayout.CENTER)
 
@@ -317,16 +319,16 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     singlePreviewPanel.repaint()
   }
 
-  /** Sets up the side-by-side view for New, Diff, and Reference images. This view has a common toolbar and synchronized scrolling. */
+  /** Sets up the side-by-side view for Reference, Diff, and New images. This view has a common toolbar and synchronized scrolling. */
   private fun setupAllImagesView(previewData: PreviewDetails): JComponent {
     val rightSplit =
       OnePixelSplitter(false, 0.5f).apply {
         firstComponent = diffImagePanel
-        secondComponent = refImagePanel
+        secondComponent = newImagePanel
       }
     val mainSplit =
       OnePixelSplitter(false, 0.33f).apply {
-        firstComponent = newImagePanel
+        firstComponent = refImagePanel
         secondComponent = rightSplit
       }
 
@@ -338,7 +340,16 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     horizontalModels.forEach { it.addChangeListener(horizontalSyncListener) }
     verticalModels.forEach { it.addChangeListener(verticalSyncListener) }
 
-    val diffPlaceholder = if (previewData.testResult == AndroidTestCaseResult.PASSED) NO_DIFFERENCE_TEXT else NO_DIFF_IMAGE_TEXT
+    val diffPlaceholder =
+      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+        NO_DIFFERENCE_TEXT
+      } else if (previewData.isSizeMismatch) {
+        previewData.sizeMismatchMessage?.let { msg ->
+          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
+        } ?: SIZE_MISMATCH_TEXT
+      } else {
+        NO_DIFF_IMAGE_TEXT
+      }
     loadImageAsync(previewData.srcImagePath, newImagePanel, NO_NEW_IMAGE_TEXT)
     loadImageAsync(previewData.diffImagePath, diffImagePanel, diffPlaceholder)
     loadImageAsync(previewData.destImagePath, refImagePanel, NO_REF_IMAGE_TEXT)
@@ -360,7 +371,16 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     imageContainer.add(refImagePanelSingle, ScreenshotViewType.REFERENCE.displayText)
 
     val cardLayout = imageContainer.layout as CardLayout
-    val diffPlaceholder = if (previewData.testResult == AndroidTestCaseResult.PASSED) NO_DIFFERENCE_TEXT else NO_DIFF_IMAGE_TEXT
+    val diffPlaceholder =
+      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+        NO_DIFFERENCE_TEXT
+      } else if (previewData.isSizeMismatch) {
+        previewData.sizeMismatchMessage?.let { msg ->
+          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
+        } ?: SIZE_MISMATCH_TEXT
+      } else {
+        NO_DIFF_IMAGE_TEXT
+      }
 
     when (viewType) {
       ScreenshotViewType.NEW -> loadImageAsync(previewData.srcImagePath, newImagePanelSingle, NO_NEW_IMAGE_TEXT)
@@ -391,33 +411,43 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
 
   private fun loadImageAsync(filePath: String?, targetPanel: ImageWithToolbarPanel, placeholder: String) {
     targetPanel.setPlaceholder(placeholder)
+    loadingFutures[targetPanel]?.cancel(true)
     if (filePath == null) {
       targetPanel.setImage(null)
       if (placeholder == NO_NEW_IMAGE_TEXT) {
         // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event if image doesn't exist
         logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
       }
+      loadingFutures.remove(targetPanel)
       return
     }
-    AppExecutorUtil.getAppExecutorService().submit {
-      val image =
-        try {
-          val file = File(filePath)
-          if (file.exists()) {
-            ImageIO.read(file)
-          } else {
-            // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event if file doesn't exist
+    var future: java.util.concurrent.Future<*>? = null
+    future =
+      AppExecutorUtil.getAppExecutorService().submit {
+        val image =
+          try {
+            val file = File(filePath)
+            if (file.exists()) {
+              ImageIO.read(file)
+            } else {
+              // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event if file doesn't exist
+              logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+              null
+            }
+          } catch (e: Exception) {
+            LOG.error("Error loading screenshot image from path: $filePath", e)
+            // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event on exception
             logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
-            null
+            null // Log the error, the placeholder text will be shown.
           }
-        } catch (e: Exception) {
-          LOG.error("Error loading screenshot image from path: $filePath", e)
-          // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event on exception
-          logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
-          null // Log the error, the placeholder text will be shown.
+        UIUtil.invokeLaterIfNeeded {
+          if (loadingFutures[targetPanel] === future) {
+            targetPanel.setImage(image)
+            loadingFutures.remove(targetPanel)
+          }
         }
-      UIUtil.invokeLaterIfNeeded { targetPanel.setImage(image) }
-    }
+      }
+    loadingFutures[targetPanel] = future!!
   }
 
   private fun updateScreenshotAttributesView(previewData: PreviewDetails) {

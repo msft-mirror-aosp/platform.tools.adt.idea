@@ -14,10 +14,68 @@ intellij_plugin = _intellij_plugin
 intellij_plugin_library = _intellij_plugin_library
 optional_plugin_xml = _optional_plugin_xml
 
+def _get_resource_strip_prefix_for_path(resource_path):
+    """Helper function that returns the resource_strip_prefix for given resource_path followed the heuristic of java_library
+
+      This function follows the rule of java_library to decide potential resource_strip_prefix.
+      First looks for Maven's standard directory layout, (a "src" directory followed by a "resources" directory grandchild). If that
+      is not found, Bazel then looks for the topmost directory named "java" or "javatests" (so, for example, if a resource is at
+      <workspace root>/x/java/y/java/z, the path of the resource will be y/java/z. Otherwise, returns empty string to indicate no
+      resource_strip_prefix meet heuristic.
+    Args:
+           resource_path: The full path to resources from package root.
+    """
+    segments = resource_path.split("/")
+
+    # 1. Maven Heuristic: Look for "src/*/resources"
+    # We look for 'src', then a middle folder (e.g. 'main'), then 'resources'
+    for i in range(len(segments) - 2):
+        if segments[i] == "src" and segments[i + 2] == "resources":
+            # Strip everything up to and including the 'resources' folder
+            return "/".join(segments[:i + 3])
+
+    # 2. Java/JavaTests Heuristic: Look for the topmost "java" or "javatests"
+    for i in range(len(segments)):
+        if segments[i] == "java" or segments[i] == "javatests":
+            # Strip everything up to and including 'java' or 'javatests'
+            return "/".join(segments[:i + 1])
+
+    return ""
+
+def _normalize_path(pkg, res):
+    if res.startswith("//"):
+        return res[2:].replace(":", "/")
+
+    if res.startswith(":"):
+        return pkg + "/" + res[1:]
+
+    return pkg + "/" + res
+
+def _get_resource_strip_prefix(resources):
+    resource_strip_prefix_for_all = ""
+
+    # If any of the resources are not under the directory, the function cannot help to define resource_strip_prefix, return ""
+    for _, res in enumerate(resources):
+        full_path = _normalize_path(native.package_name(), res)
+        resource_strip_prefix_for_current_resourcs = _get_resource_strip_prefix_for_path(full_path)
+
+        if not resource_strip_prefix_for_current_resourcs or (resource_strip_prefix_for_all and resource_strip_prefix_for_current_resourcs != resource_strip_prefix_for_all):
+            resource_strip_prefix_for_all = ""
+            break
+        resource_strip_prefix_for_all = resource_strip_prefix_for_current_resourcs
+
+    return resource_strip_prefix_for_all
+
 def aswb_library(name, testonly = False, **kwargs):
     """A regular ASwB target."""
+    if "resources" in kwargs and "resource_strip_prefix" not in kwargs:
+        kwargs["resource_strip_prefix"] = _get_resource_strip_prefix(kwargs["resources"])
+        if not kwargs["resource_strip_prefix"]:
+            fail("Missing 'resource_strip_prefix' attribute. Please set 'resource_strip_prefix' for your resources to prevent loading failures caused by unexpected paths in the output jar.")
+
     kotlin_library(
         name = name,
+        module_name = "{}_{}".format(native.package_name(), name).replace("/", "_"),
         testonly = testonly,
         jvm_target = "21",
         lint_is_test_sources = testonly,
@@ -182,165 +240,6 @@ def api_version_txt(name, check_eap, application_info_json = None, **kwargs):
         cmd = cmd,
         tools = [api_version_txt_tool],
         **kwargs
-    )
-
-def _transition_impl(_, attr):
-    return {"//command_line_option:javacopt": attr.java_copts}
-
-_java_copts_transition = transition(
-    implementation = _transition_impl,
-    inputs = [],
-    outputs = ["//command_line_option:javacopt"],
-)
-
-repackaged_files_data = provider()
-
-def _repackaged_files_impl(ctx):
-    prefix = ctx.attr.prefix
-    if prefix.startswith("/"):
-        fail("'prefix' must be a relative path")
-    input_files = depset()
-    for target in ctx.attr.srcs:
-        input_files = depset(transitive = [input_files, target.files])
-
-    return [
-        # TODO(brendandouglas): Only valid for Bazel 0.5 onwards. Uncomment when
-        # 0.5 used more widely.
-        # DefaultInfo(files = input_files),
-        repackaged_files_data(
-            files = input_files,
-            prefix = prefix,
-            strip_prefix = ctx.attr.strip_prefix,
-            executable = ctx.attr.executable,
-        ),
-    ]
-
-_repackaged_files = rule(
-    implementation = _repackaged_files_impl,
-    attrs = {
-        "srcs": attr.label_list(mandatory = True, allow_files = True, cfg = _java_copts_transition),
-        "prefix": attr.string(mandatory = True),
-        "strip_prefix": attr.string(mandatory = True),
-        "executable": attr.bool(mandatory = False),
-        "java_copts": attr.string_list(default = []),
-    },
-)
-
-def repackaged_files(name, srcs = [], prefix = None, strip_prefix = ".", executable = False, java_copts = [], **kwargs):
-    """Assembles files together so that they can be packaged as an IntelliJ plugin.
-
-    A cut-down version of the internal 'pkgfilegroup' rule.
-
-    Args:
-      name: The name of this target
-      srcs: A list of targets which are dependencies of this rule. All output files of each of these
-          targets will be repackaged.
-      prefix: Where the package should install these files, relative to the 'plugins' directory.
-      strip_prefix: Which part of the input file path should be stripped prior to applying 'prefix'.
-          If ".", all subdirectories are stripped. If the empty string, the full package-relative path
-          is used. Default is "."
-      java_copts: Java compilation options for building the targets to package.
-      **kwargs: Any further arguments to be passed to the target
-    """
-    _repackaged_files(name = name, srcs = srcs, prefix = prefix, strip_prefix = strip_prefix, executable = executable, java_copts = java_copts, **kwargs)
-
-def _strip_external_workspace_prefix(short_path):
-    """If this target is sitting in an external workspace, return the workspace-relative path."""
-    if short_path.startswith("../") or short_path.startswith("external/"):
-        return "/".join(short_path.split("/")[2:])
-    return short_path
-
-def output_path(f, repackaged_files_data):
-    """Returns the output path of a file, for a given set of repackaging parameters."""
-    prefix = repackaged_files_data.prefix
-    strip_prefix = repackaged_files_data.strip_prefix
-
-    short_path = _strip_external_workspace_prefix(f.short_path).strip("/")
-
-    if strip_prefix == ".":
-        return prefix + "/" + f.basename
-    if strip_prefix == "":
-        return prefix + "/" + short_path
-
-    strip_prefix = strip_prefix.strip("/")
-    old_path = short_path[:-len(f.basename)].strip("/")
-    if not old_path.startswith(strip_prefix):
-        fail("Invalid strip_prefix '%s': path actually starts with '%s'" % (strip_prefix, old_path))
-
-    stripped = old_path[len(strip_prefix):].strip("/")
-    if stripped == "":
-        return "%s/%s" % (prefix, f.basename)
-    return "%s/%s/%s" % (prefix, stripped, f.basename)
-
-def _plugin_deploy_zip_impl(ctx):
-    zip_name = ctx.attr.zip_filename
-    zip_file = ctx.actions.declare_file(zip_name)
-
-    input_files = depset()
-    exec_path_to_zip_path = {}
-    for target in ctx.attr.srcs:
-        data = target[repackaged_files_data]
-        input_files = depset(transitive = [input_files, data.files])
-        for f in data.files.to_list():
-            exec_path_to_zip_path[f.path] = (output_path(f, data), data.executable)
-
-    args = []
-    args.extend(["--output", zip_file.path])
-    for exec_path, (zip_path, exec) in exec_path_to_zip_path.items():
-        args.extend([exec_path, zip_path, "True" if exec else "False"])
-    ctx.actions.run(
-        executable = ctx.executable._zip_plugin_files,
-        arguments = args,
-        inputs = input_files.to_list(),
-        outputs = [zip_file],
-        mnemonic = "ZipPluginFiles",
-        progress_message = "Creating final plugin zip archive",
-    )
-    files = depset([zip_file])
-    return [DefaultInfo(files = files)]
-
-_plugin_deploy_zip = rule(
-    implementation = _plugin_deploy_zip_impl,
-    attrs = {
-        "srcs": attr.label_list(mandatory = True, providers = []),
-        "zip_filename": attr.string(mandatory = True),
-        "_zip_plugin_files": attr.label(
-            default = Label("//tools/adt/idea/aswb/build_defs:zip_plugin_files"),
-            executable = True,
-            cfg = "exec",
-        ),
-    },
-)
-
-def plugin_deploy_zip(name, srcs, zip_filename, **kwargs):
-    """Packages up plugin files into a zip archive.
-
-    Args:
-      name: The name of this target
-      srcs: A list of targets of type 'repackaged_files', specifying the input files and relative
-          paths to include in the output zip archive.
-      zip_filename: The output zip filename.
-      **kwargs: Any further arguments to be passed to the target
-    """
-    _plugin_deploy_zip(name = name, zip_filename = zip_filename, srcs = srcs, **kwargs)
-
-def unescape_filenames(name, srcs):
-    """Macro to generate files with spaces in their names instead of underscores.
-
-    For each file in the srcs, a file will be generated with the same name but with all underscores
-    replaced with spaces.
-
-    Args:
-      name: The name of the generator rule
-      srcs: A list of source files to process
-    """
-    outs = [s.replace("_", " ") for s in srcs]
-    cmd = "&&".join(["cp \"{}\" $(@D)/\"{}\"".format(s, d) for (s, d) in zip(srcs, outs)])
-    native.genrule(
-        name = name,
-        srcs = srcs,
-        outs = outs,
-        cmd = cmd,
     )
 
 def combine_visibilities(*args):

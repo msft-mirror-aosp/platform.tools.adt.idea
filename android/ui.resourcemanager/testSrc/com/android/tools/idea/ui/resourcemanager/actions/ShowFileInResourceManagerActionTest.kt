@@ -19,6 +19,8 @@ import com.android.SdkConstants.FN_ANDROID_MANIFEST_XML
 import com.android.tools.idea.res.addAndroidModule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.loadNewFile
+import com.android.tools.idea.testing.ui.createFakeToolWindow
+import com.android.tools.idea.ui.resourcemanager.RESOURCE_EXPLORER_TOOL_WINDOW_ID
 import com.android.tools.idea.ui.resourcemanager.ResourceExplorer
 import com.android.tools.idea.ui.resourcemanager.explorer.ResourceExplorerView
 import com.android.tools.idea.ui.resourcemanager.getTestDataDirectory
@@ -34,7 +36,9 @@ import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.PlatformTestUtil.waitWithEventsDispatching
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndGet
@@ -59,6 +63,7 @@ class ShowFileInResourceManagerActionTest {
   fun setUp() {
     rule.fixture.testDataPath = getTestDataDirectory()
     rule.fixture.copyFileToProject(FN_ANDROID_MANIFEST_XML, FN_ANDROID_MANIFEST_XML)
+    createFakeToolWindow(rule.project, rule.fixture.testRootDisposable, RESOURCE_EXPLORER_TOOL_WINDOW_ID).apply { isAvailable = true }
   }
 
   private fun findResourceManagerAction(): ShowFileInResourceManagerAction =
@@ -71,6 +76,18 @@ class ShowFileInResourceManagerActionTest {
     val testActionEvent = checkActionWithFile(resourceManagerAction, newFile.virtualFile)
     assertTrue { testActionEvent.presentation.isEnabledAndVisible }
     assertEquals("Show In Resource Manager", testActionEvent.presentation.text)
+  }
+
+  @Test
+  fun actionIsNotAvailableWhenToolWindowIsUnavailable() {
+    val newFile = rule.fixture.loadNewFile("res/drawable-hdpi/icon.xml", "<drawable></drawable>")
+    val resourceManagerAction = findResourceManagerAction()
+
+    // Make tool window unavailable
+    ToolWindowManager.getInstance(rule.project).getToolWindow(RESOURCE_EXPLORER_TOOL_WINDOW_ID)?.isAvailable = false
+
+    val testActionEvent = checkActionWithFile(resourceManagerAction, newFile.virtualFile)
+    assertFalse { testActionEvent.presentation.isEnabledAndVisible }
   }
 
   @Test
@@ -118,7 +135,14 @@ class ShowFileInResourceManagerActionTest {
       // Right after opening the ResourceManager, request to select the file from app module
       resourceExplorer.selectAsset(rule.module.androidFacet!!, appDrawable.virtualFile)
     }
-    waitAndAssert<SectionList>(resourceExplorer) { it?.selectedValue != null }
+    waitWithEventsDispatching(
+      "Asset was not selected in time",
+      {
+        val sectionList = UIUtil.findComponentOfType(resourceExplorer, SectionList::class.java)
+        sectionList?.selectedValue != null
+      },
+      30,
+    )
 
     val selected = UIUtil.findComponentsOfType(resourceExplorer, SectionList::class.java)[0].selectedValue as ResourceAssetSet
     assertEquals("icon", selected.name)

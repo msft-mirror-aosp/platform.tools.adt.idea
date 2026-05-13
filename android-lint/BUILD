@@ -39,6 +39,10 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/gmaven:intellij.android.gmaven",
         "//tools/adt/idea/.idea/libraries:agp-version",
+        "@intellij//:intellij.java.impl",
+        "@intellij//:intellij.platform.uast",
+        "@intellij//:intellij.java.analysis.impl",
+        "@intellij//:intellij.java.impl.refactorings",
     ],
 )
 
@@ -118,6 +122,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:com.intellij.gradle",
+        "@intellij//:org.jetbrains.idea.reposearch",
         "//tools/base/lint/libs/lint-tests:studio.android.sdktools.lint.testinfrastructure",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",

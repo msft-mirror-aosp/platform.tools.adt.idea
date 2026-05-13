@@ -27,6 +27,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextField
+import java.awt.event.FocusEvent
 import javax.swing.JLabel
 import javax.swing.JSlider
 import javax.swing.JSpinner
@@ -113,6 +114,55 @@ class OptionsPanelTest {
   }
 
   @Test
+  fun intBinderInvalidInputTest() {
+    val panel = OptionsPanel()
+    val provider = IntBindingProvider()
+    panel.setOption(provider, false, false)
+
+    val walker = TreeWalker(panel)
+    val spinner = walker.descendants().filterIsInstance(JSpinner::class.java).first()
+    val textField = (spinner.editor as JSpinner.DefaultEditor).textField
+
+    textField.text = "100"
+    spinner.commitEdit()
+    assertThat(provider.intTestOne).isEqualTo(100)
+
+    // Try to set invalid text
+    textField.text = "abc"
+    // The invalid text should be rejected and the text should remain 100
+    assertThat(textField.text).isEqualTo("100")
+  }
+
+  @Test
+  fun intBinderClearAndFocusLostTest() {
+    val panel = OptionsPanel()
+    val provider = IntBindingProvider()
+    panel.setOption(provider, false, false)
+
+    val walker = TreeWalker(panel)
+    val spinner = walker.descendants().filterIsInstance(JSpinner::class.java).first()
+    val textField = (spinner.editor as JSpinner.DefaultEditor).textField
+
+    // Initially set to 100
+    textField.text = "100"
+    spinner.commitEdit()
+    assertThat(provider.intTestOne).isEqualTo(100)
+
+    // Clear the field
+    textField.text = ""
+    assertThat(textField.text).isEmpty()
+
+    // Trigger focus lost
+    val focusEvent = FocusEvent(textField, FocusEvent.FOCUS_LOST)
+    textField.focusListeners.forEach { it.focusLost(focusEvent) }
+
+    // Should revert to the previous value (100)
+    assertThat(textField.text).isEqualTo("100")
+    assertThat(spinner.value).isEqualTo(100)
+    assertThat(provider.intTestOne).isEqualTo(100)
+  }
+
+  @Test
   fun stringBinding() {
     val panel = OptionsPanel()
     val provider = StringBindingProvider()
@@ -186,6 +236,21 @@ class OptionsPanelTest {
     val labels = walker.descendants().filterIsInstance(JLabel::class.java)
     assertThat(labels).hasSize(1) // Group, Name,  Description, Unit
     assertThat(labels[0].text).isEqualTo("Unknown return type (${BoolBindingProvider::class.java.name}) for property \"other\"")
+  }
+
+  @Test
+  fun booleanDescriptionPaddingTest() {
+    val panel = OptionsPanel()
+    val provider = BoolBindingProvider()
+    val walker = TreeWalker(panel)
+    panel.setOption(provider, false, false)
+
+    val descriptionLabels = walker.descendants().filterIsInstance(JLabel::class.java).filter { it.text == "Desc" }
+    assertThat(descriptionLabels).isNotEmpty()
+
+    val descriptionLabel = descriptionLabels[0]
+    val insets = descriptionLabel.border.getBorderInsets(descriptionLabel)
+    assertThat(insets.left).isEqualTo(24)
   }
 
   @Test

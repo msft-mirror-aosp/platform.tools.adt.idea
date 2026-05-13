@@ -58,7 +58,7 @@ class KmpAndroidDslElement(parent: GradleDslElement, name: GradleNameElement) : 
       }
   }
 
-  override fun getChildPropertiesElementsDescriptionMap(kind: GradleDslNameConverter.Kind): Map<String?, PropertiesElementDescription<*>> {
+  override fun getChildPropertiesElementsDescriptionMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> {
     return ImmutableMap.of("compileSdk", CompileSdkBlockDslElement.COMPILE_SDK)
   }
 

@@ -19,6 +19,9 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="library" name="layoutinspector-view-proto" level="project" />
     <orderEntry type="library" name="mockito-kotlin" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />

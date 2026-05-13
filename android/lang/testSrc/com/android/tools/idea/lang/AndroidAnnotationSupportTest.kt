@@ -78,7 +78,7 @@ class AndroidAnnotationSupportTest {
 
     myFixture
       .getAllQuickFixes()
-      .find { it.text == "Annotate overriding method parameters as '@NonNull'" }!!
+      .find { it.text == "Annotate overriding method parameters as non-null" }!!
       .invoke(projectRule.project, myFixture.editor, myFixture.file)
 
     myFixture.checkResult(

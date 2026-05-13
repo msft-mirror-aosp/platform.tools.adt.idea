@@ -51,12 +51,14 @@ class ArtifactTrackerStateSerializer {
   }
 
   private fun visitTargetBuildInfo(target: Label, targetBuildInfo: TargetBuildInfo) {
-    visitBuildContext(targetBuildInfo.buildContext())
+    visitBuildContext(targetBuildInfo.buildContext)
 
     val builder = ArtifactTrackerProto.TargetBuildInfo.newBuilder()
-    builder.setBuildId(targetBuildInfo.buildContext().buildIdForLogging())
-    targetBuildInfo.javaInfo().ifPresent { visitJavaInfo(it, builder) }
-    targetBuildInfo.ccInfo().ifPresent { visitCcInfo(it, builder) }
+    builder.setBuildId(targetBuildInfo.buildContext.buildIdForLogging())
+    when (targetBuildInfo) {
+      is TargetBuildInfo.Java -> visitJavaInfo(targetBuildInfo.javaInfo, builder)
+      is TargetBuildInfo.Cc -> visitCcInfo(targetBuildInfo.ccInfo, builder)
+    }
     proto.putBuiltDeps(target.toString(), builder.build())
   }
 
@@ -71,16 +73,16 @@ class ArtifactTrackerStateSerializer {
 
   private fun visitJavaInfo(javaInfo: JavaArtifactInfo, builder: ArtifactTrackerProto.TargetBuildInfo.Builder) {
     val artifactTrackerProtoBuilder = builder.getJavaArtifactsBuilder()
-    javaInfo.ideAar()?.let { artifactTrackerProtoBuilder.setIdeAar(toProto(it)) }
+    javaInfo.ideAar?.let { artifactTrackerProtoBuilder.setIdeAar(toProto(it)) }
     artifactTrackerProtoBuilder
-      .addAllGenSrcs(toProtos(javaInfo.genSrcs()))
-      .addAllGenAndroidRes(toProtos(javaInfo.genAndroidRes()))
-      .addAllProtoSrcjars(toProtos(javaInfo.protoSrcjars()))
-      .addAllJars(toProtos(javaInfo.jars()))
-      .addAllSources(javaInfo.sources().map { projectPathToProto(it) })
-      .addAllSrcJars(javaInfo.srcJars().map { projectPathToProto(it) })
-      .setAndroidResourcesPackage(javaInfo.androidResourcesPackage())
-      .addAllKotlinCompilerFlags(javaInfo.kotlinCompilerFlags())
+      .addAllGenSrcs(toProtos(javaInfo.genSrcs))
+      .addAllGenAndroidRes(toProtos(javaInfo.genAndroidRes))
+      .addAllProtoSrcjars(toProtos(javaInfo.protoSrcjars))
+      .addAllJars(toProtos(javaInfo.jars))
+      .addAllSources(javaInfo.sources.map { projectPathToProto(it) })
+      .addAllSrcJars(javaInfo.srcJars.map { projectPathToProto(it) })
+      .setAndroidResourcesPackage(javaInfo.androidResourcesPackage)
+      .addAllKotlinCompilerFlags(javaInfo.kotlinCompilerFlags)
       .setIsKotlinToolchain(javaInfo.isKotlinToolchain)
   }
 
@@ -90,23 +92,23 @@ class ArtifactTrackerStateSerializer {
 
   private fun toProto(artifact: BuildArtifact): ArtifactTrackerProto.Artifact {
     return ArtifactTrackerProto.Artifact.newBuilder()
-      .setDigest(artifact.digest())
-      .setArtifactPath(artifact.artifactPath().toString())
-      .addAllMetadata(artifact.metadata().values.map { it.toProto() })
+      .setDigest(artifact.digest)
+      .setArtifactPath(artifact.artifactPath.toString())
+      .addAllMetadata(artifact.metadata.values.map { it.toProto() })
       .build()
   }
 
   private fun visitCcInfo(ccInfo: CcCompilationInfo, builder: ArtifactTrackerProto.TargetBuildInfo.Builder) {
     builder
       .getCcInfoBuilder()
-      .addAllCopts(ccInfo.copts())
-      .addAllDefines(ccInfo.defines())
-      .addAllIncludeDirectories(ccInfo.includeDirectories().map { projectPathToProto(it) })
-      .addAllQuoteIncludeDirectories(ccInfo.quoteIncludeDirectories().map { projectPathToProto(it) })
-      .addAllSysytemIncludeDirectories(ccInfo.systemIncludeDirectories().map { projectPathToProto(it) })
-      .addAllFrameworkIncludeDirectories(ccInfo.frameworkIncludeDirectories().map { projectPathToProto(it) })
-      .addAllGenHeaders(toProtos(ccInfo.genHeaders()))
-      .setToolchainId(ccInfo.toolchainId())
+      .addAllCopts(ccInfo.copts)
+      .addAllDefines(ccInfo.defines)
+      .addAllIncludeDirectories(ccInfo.includeDirectories.map { projectPathToProto(it) })
+      .addAllQuoteIncludeDirectories(ccInfo.quoteIncludeDirectories.map { projectPathToProto(it) })
+      .addAllSysytemIncludeDirectories(ccInfo.systemIncludeDirectories.map { projectPathToProto(it) })
+      .addAllFrameworkIncludeDirectories(ccInfo.frameworkIncludeDirectories.map { projectPathToProto(it) })
+      .addAllGenHeaders(toProtos(ccInfo.genHeaders))
+      .setToolchainId(ccInfo.toolchainId)
   }
 
   private fun projectPathToProto(projectPath: ProjectPath): ArtifactTrackerProto.ProjectPath {

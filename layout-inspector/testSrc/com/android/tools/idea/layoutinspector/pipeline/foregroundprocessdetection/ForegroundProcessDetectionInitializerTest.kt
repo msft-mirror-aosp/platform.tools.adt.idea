@@ -15,13 +15,16 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection
 
+import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.internal.process.TransportProcessDescriptor
 import com.android.tools.idea.appinspection.internal.process.toDeviceDescriptor
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
+import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.layoutinspector.DeviceProvisionerServiceCleanUpRule
+import com.android.tools.idea.layoutinspector.TestScopeRule
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
 import com.android.tools.idea.layoutinspector.pipeline.fakeDevice
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -35,12 +38,13 @@ import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.replaceService
-import com.intellij.util.concurrency.SameThreadExecutor
+import java.util.Collections.synchronizedList
 import java.util.concurrent.CountDownLatch
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.asCoroutineDispatcher
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import layout_inspector.LayoutInspector
 import org.junit.Before
 import org.junit.Rule
@@ -75,8 +79,9 @@ class ForegroundProcessDetectionInitializerTest {
 
   private val projectRule = AndroidProjectRule.inMemory().initAndroid(false)
   private val provisionerServiceRule = DeviceProvisionerServiceCleanUpRule { projectRule.project }
+  private val disposableRule = DisposableRule()
 
-  @get:Rule val chain = RuleChain(projectRule, grpcServerRule, streamManagerRule, provisionerServiceRule)
+  @get:Rule val chain = RuleChain(TestScopeRule(), projectRule, grpcServerRule, streamManagerRule, provisionerServiceRule, disposableRule)
 
   @Before
   fun setup() {
@@ -109,7 +114,7 @@ class ForegroundProcessDetectionInitializerTest {
       project = projectRule.project,
       processModel = processModel,
       deviceModel = deviceModel,
-      coroutineScope = CoroutineScope(SameThreadExecutor.INSTANCE.asCoroutineDispatcher()),
+      coroutineScope = disposableRule.disposable.createCoroutineScope(),
       streamManager = streamManagerRule.streamManager,
       foregroundProcessListener = foregroundProcessListener,
       metrics = ForegroundProcessDetectionMetrics,
@@ -138,7 +143,7 @@ class ForegroundProcessDetectionInitializerTest {
       project = projectRule.project,
       processModel = processModel,
       deviceModel = deviceModel,
-      coroutineScope = CoroutineScope(SameThreadExecutor.INSTANCE.asCoroutineDispatcher()),
+      coroutineScope = disposableRule.disposable.createCoroutineScope(),
       streamManager = streamManagerRule.streamManager,
       foregroundProcessListener = foregroundProcessListener,
       metrics = ForegroundProcessDetectionMetrics,
@@ -156,7 +161,6 @@ class ForegroundProcessDetectionInitializerTest {
     assertThat(processModel.selectedProcess).isEqualTo(fakeProcess4)
   }
 
-  @org.junit.Ignore("b/250404336")
   @Test
   fun testStartPollingOnDeviceWhenProcessIsSelectedFromOutside() {
     val transportClient = TransportClient(grpcServerRule.name)
@@ -167,13 +171,14 @@ class ForegroundProcessDetectionInitializerTest {
     val deviceHandshakeLatch1 = CountDownLatch(1)
     val deviceHandshakeLatch2 = CountDownLatch(1)
 
-    val startTrackingStreamIds = mutableListOf<Long>()
-    val stopTrackingStreamIds = mutableListOf<Long>()
+    val startTrackingStreamIds = synchronizedList(mutableListOf<Long>())
+    val stopTrackingStreamIds = synchronizedList(mutableListOf<Long>())
 
     // fake device handler for handshake request
     transportService.setCommandHandler(Commands.Command.CommandType.IS_TRACKING_FOREGROUND_PROCESS_SUPPORTED) { command ->
       val event =
         Common.Event.newBuilder()
+          .setTimestamp(timer.currentTimeNs)
           .setKind(Common.Event.Kind.LAYOUT_INSPECTOR_TRACKING_FOREGROUND_PROCESS_SUPPORTED)
           .setLayoutInspectorTrackingForegroundProcessSupported(
             Common.Event.newBuilder()
@@ -208,37 +213,43 @@ class ForegroundProcessDetectionInitializerTest {
       stopTrackingStreamIds.add(command.streamId)
     }
 
-    ForegroundProcessDetectionInitializer.initialize(
-      parentDisposable = projectRule.testRootDisposable,
-      project = projectRule.project,
-      processModel = processModel,
-      deviceModel = deviceModel,
-      coroutineScope = CoroutineScope(SameThreadExecutor.INSTANCE.asCoroutineDispatcher()),
-      streamManager = streamManagerRule.streamManager,
-      transportClient = transportClient,
-      metrics = ForegroundProcessDetectionMetrics,
-    )
+    val foregroundProcessDetection =
+      ForegroundProcessDetectionInitializer.initialize(
+        parentDisposable = projectRule.testRootDisposable,
+        project = projectRule.project,
+        processModel = processModel,
+        deviceModel = deviceModel,
+        coroutineScope = disposableRule.disposable.createCoroutineScope(),
+        streamManager = streamManagerRule.streamManager,
+        transportClient = transportClient,
+        metrics = ForegroundProcessDetectionMetrics,
+      )
+    foregroundProcessDetection.start()
 
     connectStream(fakeStream1)
 
-    deviceHandshakeLatch1.await()
-    startTrackingReceivedOnDeviceLatch1.await()
+    assertThat(deviceHandshakeLatch1.await(10, TimeUnit.SECONDS)).isTrue()
+    assertThat(startTrackingReceivedOnDeviceLatch1.await(10, TimeUnit.SECONDS)).isTrue()
 
-    assertThat(startTrackingStreamIds).containsExactly(fakeStream1.streamId)
-    assertThat(stopTrackingStreamIds).isEmpty()
+    retryUntilPassing(10.seconds) {
+      assertThat(startTrackingStreamIds).containsExactly(fakeStream1.streamId)
+      assertThat(stopTrackingStreamIds).isEmpty()
+    }
 
     connectStream(fakeStream2)
 
-    deviceHandshakeLatch2.await()
+    deviceHandshakeLatch2.await(10, TimeUnit.SECONDS)
 
     // setting process from outside ForegroundProcessDetection should start polling on the process's
     // device (stream)
     processModel.selectedProcess = fakeProcess2
 
-    startTrackingReceivedOnDeviceLatch2.await()
+    assertThat(startTrackingReceivedOnDeviceLatch2.await(10, TimeUnit.SECONDS)).isTrue()
 
-    assertThat(startTrackingStreamIds).containsExactly(fakeStream1.streamId, fakeStream2.streamId)
-    assertThat(stopTrackingStreamIds).containsExactly(fakeStream1.streamId)
+    retryUntilPassing(10.seconds) {
+      assertThat(startTrackingStreamIds).containsExactly(fakeStream1.streamId, fakeStream2.streamId)
+      assertThat(stopTrackingStreamIds).containsExactly(fakeStream1.streamId)
+    }
   }
 
   private fun Common.Stream.createFakeProcess(name: String? = null, pid: Int = 0): ProcessDescriptor {

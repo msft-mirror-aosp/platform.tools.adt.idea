@@ -7,9 +7,9 @@ iml_module(
     test_class = "org.jetbrains.android.AndroidPluginTestSuite",
     # do not sort: must match IML order
     test_deps = [
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
     ],
     test_srcs = ["testSrc"],
     test_tags = [
@@ -60,7 +60,6 @@ iml_module(
         "//tools/adt/idea/android-lint:intellij.android.lint",
         "//tools/adt/idea/wear-dwf:intellij.android.wear-dwf",
         "//tools/adt/idea/wear-pairing:intellij.android.wear-pairing",
-        "//tools/adt/idea/glasses-pairing",
         "//tools/adt/idea/wear-whs:intellij.android.wear-whs",
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/adt/idea/app-quality-insights/ide:intellij.android.app-quality-insights.ide",
@@ -92,6 +91,10 @@ iml_module(
         "//tools/adt/idea/logcat/gradle:intellij.android.logcat.gradle",
         "//tools/vendor/google/firebase-provisioning",
         "//tools/adt/idea/tracer:intellij.android.tracer",
+        "//tools/adt/idea/app-publishing:intellij.android.app-publishing",
+        "//tools/adt/idea/play-publishing:intellij.android.play-publishing",
+        "//tools/adt/idea/cli-server/server:cli-server.server",
+        "//tools/adt/idea/cli-server/command-handler:cli-server.command-handler",
     ],
     # do not sort: must match IML order
     deps = [

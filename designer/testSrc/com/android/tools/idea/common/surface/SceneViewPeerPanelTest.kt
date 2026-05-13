@@ -15,14 +15,17 @@
  */
 package com.android.tools.idea.common.surface
 
+import com.android.tools.adtui.actions.createTestActionEvent
 import com.android.tools.idea.common.model.DisplaySettings
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.scene.SceneManager
+import com.android.tools.idea.common.surface.sceneview.SceneViewTopPanel
 import com.android.tools.idea.uibuilder.surface.TestSceneView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
@@ -81,6 +84,44 @@ class SceneViewPeerPanelTest {
     val toolbarActions = sceneViewPeerPanel.getTopToolbarActions()
     assertTrue(toolbarActions.contains(anAction))
   }
+
+  @Test
+  fun `panel is focusable`() {
+    val sceneViewPeerPanel = createSceneViewPeerPanel(disposableRule.disposable, "")
+    assertTrue(sceneViewPeerPanel.isFocusable)
+  }
+
+  @Test
+  fun `focus gained selects component`() {
+    val sceneViewPeerPanel = createSceneViewPeerPanel(disposableRule.disposable, "")
+    val sceneView = sceneViewPeerPanel.sceneView
+    val component = Mockito.mock(com.android.tools.idea.common.model.NlComponent::class.java)
+
+    val treeReader = Mockito.mock(com.android.tools.idea.common.model.NlTreeReader::class.java)
+    Mockito.`when`(treeReader.components).thenReturn(com.google.common.collect.ImmutableList.of(component))
+    Mockito.`when`(sceneView.sceneManager.model.treeReader).thenReturn(treeReader)
+
+    val selectionModel = Mockito.mock(com.android.tools.idea.common.model.SelectionModel::class.java)
+    Mockito.`when`(sceneView.selectionModel).thenReturn(selectionModel)
+
+    sceneViewPeerPanel.focusListeners.forEach {
+      it.focusGained(java.awt.event.FocusEvent(sceneViewPeerPanel, java.awt.event.FocusEvent.FOCUS_GAINED))
+    }
+
+    Mockito.verify(selectionModel).setSelection(listOf(component))
+  }
+
+  @Test
+  fun `overflow action is a toggle action`() {
+    val sceneViewPeerPanel = createSceneViewPeerPanel(disposableRule.disposable, "", toolbarOverflowActions = listOf(anAction()))
+    val overflowAction =
+      sceneViewPeerPanel.getTopToolbarActions().filterIsInstance<SceneViewTopPanel.ShowActionGroupInPopupAction>().single()
+
+    val event = createTestActionEvent(overflowAction)
+    assertFalse(overflowAction.isSelected(event))
+    Toggleable.setSelected(event.presentation, true)
+    assertTrue(overflowAction.isSelected(event))
+  }
 }
 
 private fun SceneViewPeerPanel.getTopToolbarActions(): List<AnAction> {
@@ -100,6 +141,9 @@ private fun createSceneView(parentDisposable: Disposable, modelName: String): Sc
     Mockito.mock(NlModel::class.java).apply {
       Mockito.`when`(this.organizationGroup).then { null }
       Mockito.`when`(this.displaySettings).then { DisplaySettings().apply { setDisplayName(modelName) } }
+      val treeReader = Mockito.mock(com.android.tools.idea.common.model.NlTreeReader::class.java)
+      Mockito.`when`(treeReader.components).thenReturn(com.google.common.collect.ImmutableList.of())
+      Mockito.`when`(this.treeReader).thenReturn(treeReader)
     }
   val sceneManager = Mockito.mock(SceneManager::class.java).apply { Mockito.`when`(this.model).then { model } }
   Disposer.register(parentDisposable, sceneManager)

@@ -232,7 +232,6 @@ class AppInspectionInspectorClient(
       is SetFlagResult.Failure -> {
         showUnableToSetDebugViewAttributesBanner(notificationModel, setFlagResult.reason)
       }
-      is SetFlagResult.Cancelled -> {}
     }
   }
 
@@ -383,7 +382,7 @@ class AppInspectionInspectorClient(
   fun updateRecompositionCountSettings() {
     coroutineScope.launch(loggingExceptionHandler) {
       composeInspector?.updateSettings()
-      composeInspector?.recompositionStateReadsCache?.clear()
+      composeInspector?.recompositionCache?.clear()
     }
   }
 

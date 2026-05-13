@@ -32,6 +32,7 @@ import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.text.nullize
 import java.util.concurrent.Callable
+import org.jetbrains.kotlin.K1Deprecation
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.idea.core.deleteElementAndCleanParent
 import org.jetbrains.kotlin.name.Name
@@ -92,7 +93,7 @@ internal open class PsiCallParameterPropertyItem(
     get() {
       if (!isCachedValueValid) {
         val expression = argumentExpression
-        val literalValue = expression?.tryEvaluateLiteralAsText()
+        val literalValue = ReadAction.compute<String?, Throwable> { expression?.tryEvaluateLiteralAsText() }
         if (literalValue != null || expression == null) {
           cachedValue = literalValue
           isCachedValueValid = true
@@ -101,7 +102,7 @@ internal open class PsiCallParameterPropertyItem(
             triggerAsyncValueUpdate()
           } else {
             // If called from a background thread, we can perform the analysis synchronously
-            cachedValue = analyze(expression) { expression.tryEvaluateConstantAsText(this) }
+            cachedValue = ReadAction.compute<String?, Throwable> { analyze(expression) { expression.tryEvaluateConstantAsText(this) } }
             isCachedValueValid = true
           }
         }
@@ -163,6 +164,7 @@ internal open class PsiCallParameterPropertyItem(
     }
   }
 
+  @OptIn(K1Deprecation::class)
   fun deleteParameter() {
     runModification {
       argumentExpression?.parent?.deleteElementAndCleanParent()

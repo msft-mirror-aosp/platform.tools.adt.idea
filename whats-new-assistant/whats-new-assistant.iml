@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="kotlin-language" name="Kotlin">
+      <configuration version="5" platform="JVM 21" allPlatforms="JVM [21]" useProjectSettings="false">
+        <compilerSettings>
+          <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xsam-conversions=class -Xcontext-parameters" />
+        </compilerSettings>
+        <compilerArguments>
+          <stringArguments>
+            <stringArg name="jvmTarget" arg="21" />
+            <stringArg name="apiVersion" arg="2.0" />
+            <stringArg name="languageVersion" arg="2.0" />
+          </stringArguments>
+          <arrayArguments>
+            <arrayArg name="pluginClasspaths">
+              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.3.20/kotlin-compose-compiler-plugin-2.3.20.jar</args>
+            </arrayArg>
+          </arrayArguments>
+        </compilerArguments>
+      </configuration>
+    </facet>
+  </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
@@ -19,5 +40,6 @@
     <orderEntry type="module" module-name="intellij.android.build-attribution" />
     <orderEntry type="module" module-name="app-inspection.ide" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
   </component>
 </module>

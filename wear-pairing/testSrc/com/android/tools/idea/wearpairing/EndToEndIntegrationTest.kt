@@ -45,6 +45,7 @@ import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 import javax.swing.JButton
 import org.junit.Test
+import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -108,34 +109,6 @@ class EndToEndIntegrationTest : LightPlatform4TestCase() {
     assertThat(phoneWearPair[0].getPeerDevice(avdWearInfo.id).displayName).isEqualTo(phoneIDevice.name)
   }
 
-  // Regression test for http://b/350735240
-  @Test
-  fun pairingWithPhoneWithoutPropertiesSet() {
-    val phoneIDevice = mockPhoneDevice().apply { whenever(arePropertiesSet()).thenReturn(false) }
-    val wearIDevice = mockWearDevice(avdWearInfo)
-
-    WearPairingManager.getInstance().setDataProviders({ listOf(avdWearInfo) }, { listOf(phoneIDevice, wearIDevice) })
-    assertThat(WearPairingManager.getInstance().getPairsForDevice(wearIDevice.name)).isEmpty()
-
-    createModalDialogAndInteractWithIt({ WearDevicePairingWizard().show(null, null) }) {
-      FakeUi(it.contentPane).apply {
-        waitLabelText(message("wear.assistant.device.list.title"))
-        clickButton("Next")
-        waitLabelText(message("wear.assistant.device.connection.pairing.success.title"))
-        clickButton("Finish")
-      }
-    }
-
-    waitForCondition(5, TimeUnit.SECONDS) { getWearPairingTrackingEvents().size >= 2 }
-    val usages = getWearPairingTrackingEvents()
-    assertThat(usages[0].studioEvent.wearPairingEvent.kind).isEqualTo(WearPairingEvent.EventKind.SHOW_ASSISTANT_FULL_SELECTION)
-    assertThat(usages[1].studioEvent.wearPairingEvent.kind).isEqualTo(WearPairingEvent.EventKind.SHOW_SUCCESSFUL_PAIRING)
-    val phoneWearPair = WearPairingManager.getInstance().getPairsForDevice(avdWearInfo.id)
-    assertThat(phoneWearPair).isNotEmpty()
-    assertThat(phoneWearPair[0].pairingStatus).isEqualTo(WearPairingManager.PairingState.CONNECTED)
-    assertThat(phoneWearPair[0].getPeerDevice(avdWearInfo.id).displayName).isEqualTo(phoneIDevice.name)
-  }
-
   private fun mockPhoneDevice() =
     mock<IDevice>().apply {
       whenever(isOnline).thenReturn(true)
@@ -157,7 +130,7 @@ class EndToEndIntegrationTest : LightPlatform4TestCase() {
     }
 
   private fun mockWearDevice(avdWearInfo: AvdInfo) =
-    mock<IDevice>().apply {
+    mock(Class.forName("com.android.adblib.ddmlibcompatibility.debugging.AdblibIDeviceWrapper") as Class<IDevice>).apply {
       whenever(isOnline).thenReturn(true)
       whenever(isEmulator).thenReturn(true)
       whenever(name).thenReturn(avdWearInfo.name)

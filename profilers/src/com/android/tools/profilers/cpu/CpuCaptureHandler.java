@@ -17,6 +17,7 @@ package com.android.tools.profilers.cpu;
 
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.updater.Updatable;
+import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
@@ -24,6 +25,7 @@ import com.android.tools.profilers.tasks.analytics.TaskTracker;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,7 +45,8 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
   @Nullable private final String myCaptureProcessNameHint;
 
   private boolean myIsParsing = false;
-
+  @NotNull private CpuCaptureMetadata.CaptureStatus myStatus =
+    CpuCaptureMetadata.CaptureStatus.PARSING_FAILED_CAUSE_UNKNOWN;
 
   @VisibleForTesting
   public CpuCaptureHandler(@NotNull StudioProfilers profilers,
@@ -73,6 +76,13 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
 
     CpuCaptureMetadata metadata = new CpuCaptureMetadata(configuration);
     metadata.setCpuProfilerEntryPoint(entryPoint);
+
+    Trace.TraceInfo traceInfo = CpuProfiler.getTraceInfoFromId(profilers, traceId);
+    if (traceInfo.getStopStatus().getStatus().equals(Trace.TraceStopStatus.Status.SUCCESS)) {
+      metadata.setCaptureDurationMs(TimeUnit.NANOSECONDS.toMillis(traceInfo.getToTimestamp() - traceInfo.getFromTimestamp()));
+      metadata.setStoppingTimeMs((int)TimeUnit.NANOSECONDS.toMillis(traceInfo.getStopStatus().getStoppingDurationNs()));
+    }
+
     myCaptureParser.trackCaptureMetadata(traceId, metadata);
   }
 
@@ -134,11 +144,26 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
     CompletableFuture<CpuCapture> capture = myCaptureParser.parse(
       myCaptureFile, myTraceId, myConfiguration.getTraceType(), myCaptureProcessIdHint, myCaptureProcessNameHint, myTaskTracker);
 
-    // Parsing is in progress. Handle it asynchronously and set the capture afterwards using the main executor.
+    // Parsing is in progress. Handle it asynchronously and set the capture afterward using the main executor.
     capture.handleAsync((parsedCapture, exception) -> {
       myIsParsing = false;
+      myStatus = CpuCaptureParser.getCaptureStatus(parsedCapture, exception);
       captureCompleted.accept(parsedCapture);
       return parsedCapture;
     }, myServices.getMainExecutor());
+  }
+
+  @NotNull
+  public CpuCaptureMetadata.CaptureStatus getStatus() {
+    return myStatus;
+  }
+
+  @NotNull
+  public String getErrorMessage() {
+    return switch (myStatus) {
+      case USER_ABORTED_PARSING -> "Parsing trace file aborted. Please record another trace.";
+      case PREPROCESS_FAILURE -> "The profiler was unable to pre-process the method trace data.";
+      default -> "The profiler was unable to parse the trace file. Please make sure the file selected is a valid trace.";
+    };
   }
 }

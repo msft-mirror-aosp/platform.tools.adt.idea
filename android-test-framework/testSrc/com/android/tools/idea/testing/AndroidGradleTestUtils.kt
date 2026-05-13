@@ -2568,7 +2568,7 @@ private fun <T> openPreparedProject(
         val defaultTestTimeoutMinutes = 15L
         val testTimeout =
           (System.getenv("TEST_TIMEOUT")?.toLongOrNull()?.let { TimeUnit.SECONDS.toMinutes(it) } ?: defaultTestTimeoutMinutes)
-        val timeoutMinutes = if (testTimeout > defaultTestTimeoutMinutes) 20L else 10L
+        val timeoutMinutes = if (testTimeout > defaultTestTimeoutMinutes) (0.66 * testTimeout).toLong() else defaultTestTimeoutMinutes
         waitForFuture(awaitGradleStartupActivity.asCompletableFuture(), TimeUnit.MINUTES.toMillis(timeoutMinutes))
         runInEdtAndWait {
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()

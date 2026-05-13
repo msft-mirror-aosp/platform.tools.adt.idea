@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.npw.benchmark
 
+import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.npw.benchmark.BenchmarkModuleType.MACROBENCHMARK
 import com.android.tools.idea.npw.benchmark.BenchmarkModuleType.MICROBENCHMARK
 import com.android.tools.idea.npw.model.ExistingProjectModelData
@@ -65,20 +66,10 @@ class NewBenchmarkModuleModel(project: Project, moduleParent: String, projectSyn
     object : ModuleTemplateRenderer() {
       override val recipe: Recipe
         get() = { td: TemplateData ->
+          val version = agpVersionSelector.get().resolveVersion(AgpVersions::getAvailableVersions)
           when (benchmarkModuleType.get()) {
-            MICROBENCHMARK ->
-              generateBenchmarkModule(
-                moduleData = td as ModuleTemplateData,
-                useGradleKts = useGradleKts.get(),
-                useVersionCatalog = useVersionCatalog.get(),
-              )
-            MACROBENCHMARK ->
-              generateMacrobenchmarkModule(
-                newModule = td as ModuleTemplateData,
-                useGradleKts = useGradleKts.get(),
-                targetModule = targetModule.value,
-                useVersionCatalog = useVersionCatalog.get(),
-              )
+            MICROBENCHMARK -> generateBenchmarkModule(moduleData = td as ModuleTemplateData, version = version)
+            MACROBENCHMARK -> generateMacrobenchmarkModule(newModule = td as ModuleTemplateData, targetModule = targetModule.value)
           }
         }
     }

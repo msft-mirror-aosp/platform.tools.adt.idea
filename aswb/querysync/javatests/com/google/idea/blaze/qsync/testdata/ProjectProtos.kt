@@ -17,14 +17,18 @@ package com.google.idea.blaze.qsync.testdata
 
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.GraphToProjectConverter
-import com.google.idea.blaze.qsync.GraphToProjectConverter.Companion.initializeProjectStructureData
 import com.google.idea.blaze.qsync.QuerySyncTestUtils
+import com.google.idea.blaze.qsync.fromGraph
+import com.google.idea.blaze.qsync.java.PackageReader.ParallelReader.SingleThreadedForTests
+import com.google.idea.blaze.qsync.java.PackageStatementParser
 import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
+import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import java.io.IOException
+import java.nio.file.Path
 
 /**
  * Test utility class to build simple project proto instances based on a [TestData] project.
@@ -37,7 +41,6 @@ object ProjectProtos {
     val workspaceImportDirectory = project.getQueryOutputPath()
     val converter =
       GraphToProjectConverter(
-        javaPackagePrefixReader = QuerySyncTestUtils.EMPTY_PREFIX_READER,
         context = QuerySyncTestUtils.NOOP_CONTEXT,
         projectDefinition =
           ProjectDefinition(
@@ -53,7 +56,18 @@ object ProjectProtos {
       )
     val update = ProjectProtoUpdate(ProjectProto.Project.getDefaultInstance())
     val graph = BuildGraphs.forTestProject(project)
-    converter.configureProject(initializeProjectStructureData(graph), ProjectPath.ExternalRepositoryFinder.createEmptyForTests(), update)
+    converter.configureProject(
+      ProjectStructureData.fromGraph(
+        QuerySyncTestUtils.NOOP_CONTEXT,
+        graph,
+        setOf(workspaceImportDirectory),
+        Path.of(""),
+        PackageStatementParser(),
+        SingleThreadedForTests(),
+      ),
+      ProjectPath.ExternalRepositoryFinder.createEmptyForTests(),
+      update,
+    )
     converter.configureProject(graph, ProjectPath.ExternalRepositoryFinder.createEmptyForTests(), update)
     return update.build()
   }

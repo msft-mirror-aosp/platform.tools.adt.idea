@@ -105,12 +105,12 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_TOTAL_LEAKED_HEADER_TEXT = "Total leaked"
   const val LEAKCANARY_LEAK_LIST_EMPTY_INITIAL_MESSAGE =
     "Try to reproduce leaks by triggering potentially " + "leaking actions within your app while the recording is ongoing."
-  const val LEAKCANARY_INSTALLATION_REQUIRED_MESSAGE =
-    "This task requires LeakCanary to be installed into your app for any leaks to be visible in Android Studio."
   const val LEAKCANARY_NO_LEAK_FOUND_MESSAGE = "No leaks found."
   const val LEAKCANARY_MISSING_MESSAGE =
     "LeakCanary is missing. Retry after adding the dependency: debugImplementation " + "'com.squareup.leakcanary:leakcanary-android:2.14'."
   const val LEAKCANARY_CHECKING_PRESENCE = "Checking LeakCanary presence..."
+  const val TASK_HAS_DEBUGGER_ATTACHED_MESSAGE = "Cannot start the selected task while a debugger is attached to the process."
+
   const val LEAKCANARY_CHECK_TIMEOUT_MESSAGE =
     "Connection timeout: The app may be running in the background. Bring the app to the foreground and reselect the process to retry."
 
@@ -134,25 +134,46 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_COLLAPSE_ALL = "Collapse all nodes"
   const val LEAKCANARY_EXPAND_ALL_SHORTCUT = "Ctrl+NumPad+"
   const val LEAKCANARY_COLLAPSE_ALL_SHORTCUT = "Ctrl+NumPad-"
+  const val LEAKCANARY_FIX_WITH_AGENT = "Fix with Agent"
   const val LEAKCANARY_COPY_TO_CLIPBOARD = "Copy trace to clipboard"
   const val LEAKCANARY_ANALYSIS = "Analyzing results:"
   const val LEAKCANARY_WAITING_HEAP_DUMP = "Waiting to dump heap until"
   const val LEAKCANARY_RETAINED_OBJECT = "retained object"
+  const val LEAKCANARY_CAPTURING_DUMP = "Retained objects detected. Capturing heap dump for leak analysis..."
   const val LEAKCANARY_FORCE_DUMP = "Force dump"
   const val LEAKCANARY_BANNER_MESSAGE = "On-device customizations are being bypassed. Switch to App Customization to enable them."
   const val LEAKCANARY_EDIT_CONFIGURATION = "Edit configuration"
 
-  fun getTaskTooltip(taskType: ProfilerTaskType) =
-    when (taskType) {
-      ProfilerTaskType.SYSTEM_TRACE -> "Captures a trace that can help you understand how your app interacts with system resources"
-      ProfilerTaskType.HEAP_DUMP -> "Dumps the heap showing which objects in your app are using memory at the time of capture"
-      ProfilerTaskType.CALLSTACK_SAMPLE -> "Uses sampling to capture the call stacks of an app's native and Java/Kotlin code"
-      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "Records Java and Kotlin memory allocations"
-      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Captures the call stacks during your app’s Java/Kotlin code execution"
-      ProfilerTaskType.NATIVE_ALLOCATIONS -> "Captures native memory allocations"
-      ProfilerTaskType.LIVE_VIEW -> "Displays and records a streaming timeline of CPU usage and memory footprint"
-      ProfilerTaskType.LEAKCANARY -> "Pulls memory leaks detected by LeakCanary from an Android device"
-      else -> ""
+  fun getTaskTooltip(taskType: ProfilerTaskType, isProfilerHomeTabV2Enabled: Boolean = false) =
+    if (isProfilerHomeTabV2Enabled) {
+      when (taskType) {
+        ProfilerTaskType.HEAP_DUMP ->
+          "Examine memory footprint to investigate issues such as leaks, duplicated bitmaps, and large object retention."
+        ProfilerTaskType.LIVE_VIEW ->
+          "Monitor live CPU and memory behavior to identify anomalies or determine if a deeper recording is needed."
+        ProfilerTaskType.SYSTEM_TRACE ->
+          "Identify performance bottlenecks with low overhead and precise timing. Supports default and custom instrumentation."
+        ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS ->
+          "Track allocation patterns and memory consumption to optimize footprint and surface potential leaks."
+        ProfilerTaskType.LEAKCANARY -> "Narrow down the root cause of memory leaks with a leak trace."
+        ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING ->
+          "Analyze exact execution paths and per-method timing for Java/Kotlin code. Adds significant overhead and may skew timing measurements."
+        ProfilerTaskType.CALLSTACK_SAMPLE -> "Find hotspots and see where threads spend their time across Java/Kotlin and C++ code."
+        ProfilerTaskType.NATIVE_ALLOCATIONS -> "Monitor native memory usage and identify consumption or leaks in C++ code."
+        else -> ""
+      }
+    } else {
+      when (taskType) {
+        ProfilerTaskType.HEAP_DUMP -> "Dumps the heap showing which objects in your app are using memory at the time of capture"
+        ProfilerTaskType.LIVE_VIEW -> "Displays and records a streaming timeline of CPU usage and memory footprint"
+        ProfilerTaskType.SYSTEM_TRACE -> "Captures a trace that can help you understand how your app interacts with system resources"
+        ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "Records Java and Kotlin memory allocations"
+        ProfilerTaskType.LEAKCANARY -> "Pulls memory leaks detected by LeakCanary from an Android device"
+        ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Captures the call stacks during your app’s Java/Kotlin code execution"
+        ProfilerTaskType.CALLSTACK_SAMPLE -> "Uses sampling to capture the call stacks of an app's native and Java/Kotlin code"
+        ProfilerTaskType.NATIVE_ALLOCATIONS -> "Captures native memory allocations"
+        else -> ""
+      }
     }
 
   // Profiler actions
@@ -177,46 +198,43 @@ object TaskBasedUxStrings {
       "'${PROFILE_WITH_COMPLETE_DATA_ACTION_NAME}' in the main toolbar's more " +
       "actions menu. This will trigger a rebuild."
 
-  fun getTaskTitle(taskType: ProfilerTaskType, isTaskTitleV2Enabled: Boolean) =
-    if (isTaskTitleV2Enabled) {
-      when (taskType) {
-        ProfilerTaskType.SYSTEM_TRACE -> "Record App and System Performance Data"
-        ProfilerTaskType.HEAP_DUMP -> "Analyze Memory Usage"
-        ProfilerTaskType.CALLSTACK_SAMPLE -> "Analyze Time Spent per Call Stack"
-        ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "Record Memory Allocations (Java/Kotlin)"
-        ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Record Method Calls"
-        ProfilerTaskType.NATIVE_ALLOCATIONS -> "Record Memory Allocations (Native)"
-        ProfilerTaskType.LIVE_VIEW -> "View Live Telemetry"
-        ProfilerTaskType.LEAKCANARY -> "Find Memory Leaks with LeakCanary"
-        ProfilerTaskType.UNSPECIFIED -> ""
-      }
-    } else {
-      when (taskType) {
-        ProfilerTaskType.SYSTEM_TRACE -> "Capture System Activities"
-        ProfilerTaskType.HEAP_DUMP -> "Analyze Memory Usage"
-        ProfilerTaskType.CALLSTACK_SAMPLE -> "Find CPU Hotspots"
-        ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "Track Memory Consumption"
-        ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Find CPU Hotspots"
-        ProfilerTaskType.NATIVE_ALLOCATIONS -> "Track Memory Consumption"
-        ProfilerTaskType.LIVE_VIEW -> "View Live Telemetry"
-        ProfilerTaskType.LEAKCANARY -> "Find Memory Leaks with LeakCanary"
-        ProfilerTaskType.UNSPECIFIED -> ""
-      }
+  fun getTaskTitle(taskType: ProfilerTaskType) =
+    when (taskType) {
+      ProfilerTaskType.HEAP_DUMP -> "Analyze Memory Usage"
+      ProfilerTaskType.LIVE_VIEW -> "View Live Telemetry"
+      ProfilerTaskType.SYSTEM_TRACE -> "Capture System Activities"
+      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "Track Memory Consumption"
+      ProfilerTaskType.LEAKCANARY -> "Find Memory Leaks with LeakCanary"
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Find CPU Hotspots"
+      ProfilerTaskType.CALLSTACK_SAMPLE -> "Find CPU Hotspots"
+      ProfilerTaskType.NATIVE_ALLOCATIONS -> "Track Memory Consumption"
+      ProfilerTaskType.UNSPECIFIED -> ""
     }
 
-  fun getTaskSubtitle(taskType: ProfilerTaskType, isTaskTitleV2Enabled: Boolean) =
+  fun getTaskShortName(taskType: ProfilerTaskType, isProfilerHomeTabV2Enabled: Boolean) =
     when (taskType) {
-      ProfilerTaskType.CALLSTACK_SAMPLE -> if (isTaskTitleV2Enabled) "Stack Sampling" else "Callstack Sample"
-
-      ProfilerTaskType.SYSTEM_TRACE,
       ProfilerTaskType.HEAP_DUMP,
+      ProfilerTaskType.SYSTEM_TRACE,
       ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
-      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING,
       ProfilerTaskType.NATIVE_ALLOCATIONS -> taskType.description
-
-      ProfilerTaskType.LIVE_VIEW,
-      ProfilerTaskType.LEAKCANARY,
+      ProfilerTaskType.LIVE_VIEW -> if (isProfilerHomeTabV2Enabled) "Live Telemetry" else ""
+      ProfilerTaskType.LEAKCANARY -> if (isProfilerHomeTabV2Enabled) "LeakCanary" else ""
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> if (isProfilerHomeTabV2Enabled) "Method Trace" else taskType.description
+      ProfilerTaskType.CALLSTACK_SAMPLE -> if (isProfilerHomeTabV2Enabled) "Stack Sampling" else "Callstack Sample"
       ProfilerTaskType.UNSPECIFIED -> ""
+    }
+
+  fun getTaskDescriptions(taskType: ProfilerTaskType) =
+    when (taskType) {
+      ProfilerTaskType.HEAP_DUMP -> "Captures all live objects on the Java/Kotlin heap at a single point in time."
+      ProfilerTaskType.LIVE_VIEW -> "Displays a real-time timeline of CPU and memory usage as you interact with the app."
+      ProfilerTaskType.SYSTEM_TRACE -> "Records a system-wide Perfetto trace of CPU, threads, frame timing, and other system events."
+      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "Records each Java/Kotlin object allocation along with its allocating stack."
+      ProfilerTaskType.LEAKCANARY -> "Detects and reports memory leaks using LeakCanary in debug builds."
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Records every Java/Kotlin method call with full entry and exit detail."
+      ProfilerTaskType.CALLSTACK_SAMPLE -> "Periodically samples call stacks across Java/Kotlin and C++ code using simpleperf."
+      ProfilerTaskType.NATIVE_ALLOCATIONS -> "Captures net native memory allocations over the recording period."
+      else -> ""
     }
 
   fun getStartTaskErrorMessage(taskStartError: StartTaskSelectionErrorCode) =
@@ -244,6 +262,7 @@ object TaskBasedUxStrings {
         "LeakCanary was not detected in the selected process. Please use the 'Start profiler task from process start' option."
       StartTaskSelectionErrorCode.LEAKCANARY_CHECK_IN_PROGRESS -> LEAKCANARY_CHECKING_PRESENCE
       StartTaskSelectionErrorCode.LEAKCANARY_CHECK_TIMEOUT -> LEAKCANARY_CHECK_TIMEOUT_MESSAGE
+      StartTaskSelectionErrorCode.TASK_HAS_DEBUGGER_ATTACHED -> TASK_HAS_DEBUGGER_ATTACHED_MESSAGE
       StartTaskSelectionErrorCode.GENERAL_ERROR -> "This task cannot be run in this configuration"
     }
 

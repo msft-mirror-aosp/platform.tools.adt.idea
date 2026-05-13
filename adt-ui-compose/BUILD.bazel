@@ -8,11 +8,29 @@ iml_module(
     kotlin_use_compose = True,
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    exports = ["//tools/adt/idea/adt-ui-compose/jewel.sdkcompat"],
+    exports = [
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
+    ],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
-        "//tools/adt/idea/adt-ui-compose/jewel.sdkcompat",
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
     ],
 )
 

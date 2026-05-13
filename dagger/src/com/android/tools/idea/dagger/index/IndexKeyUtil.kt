@@ -21,6 +21,7 @@ import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
+import com.intellij.psi.PsiTypes
 import com.intellij.psi.search.GlobalSearchScope
 import java.io.DataInput
 import java.io.DataOutput
@@ -113,8 +114,9 @@ private fun fqNameWithoutGenerics(psiType: PsiType) =
   // Using `rawType` ensures generics aren't included.
   ((psiType as? PsiClassType)?.rawType() ?: psiType).canonicalText
 
-private fun PsiPrimitiveType.getPrimitiveShortNames(): List<String> =
-  when (kind) {
+private fun PsiPrimitiveType.getPrimitiveShortNames(): List<String> {
+  if (this == PsiTypes.nullType()) return emptyList()
+  return when (kind) {
     JvmPrimitiveTypeKind.BOOLEAN -> listOf("Boolean")
     JvmPrimitiveTypeKind.BYTE -> listOf("Byte")
     JvmPrimitiveTypeKind.CHAR -> listOf("Char", "Character")
@@ -125,9 +127,11 @@ private fun PsiPrimitiveType.getPrimitiveShortNames(): List<String> =
     JvmPrimitiveTypeKind.SHORT -> listOf("Short")
     else -> emptyList()
   }
+}
 
-private fun PsiPrimitiveType.getKotlinPrimitiveArrayName(): String? =
-  when (kind) {
+private fun PsiPrimitiveType.getKotlinPrimitiveArrayName(): String? {
+  if (this == PsiTypes.nullType()) return null
+  return when (kind) {
     JvmPrimitiveTypeKind.BOOLEAN -> "BooleanArray"
     JvmPrimitiveTypeKind.BYTE -> "ByteArray"
     JvmPrimitiveTypeKind.CHAR -> "CharArray"
@@ -138,6 +142,7 @@ private fun PsiPrimitiveType.getKotlinPrimitiveArrayName(): String? =
     JvmPrimitiveTypeKind.SHORT -> "ShortArray"
     else -> null
   }
+}
 
 internal fun DataOutput.writeClassId(classId: ClassId) {
   writeString(classId.asString())

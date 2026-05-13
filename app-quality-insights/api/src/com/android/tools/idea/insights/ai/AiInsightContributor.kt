@@ -28,6 +28,10 @@ interface AiInsightContributor {
 
   fun canContribute(): Boolean
 
+  fun isModelAvailable(): Boolean
+
+  fun showOnboarding(project: Project)
+
   companion object {
     val EP_NAME = ExtensionPointName<AiInsightContributor>("com.android.tools.idea.insights.ai.aiInsightContributor")
 
@@ -39,6 +43,10 @@ interface AiInsightContributor {
 @TestOnly
 class StubAiInsightContributor : AiInsightContributor {
   override fun canContribute() = java.lang.Boolean.getBoolean("appinsights.generate.fake.insight")
+
+  override fun isModelAvailable() = false
+
+  override fun showOnboarding(project: Project) = Unit
 
   override suspend fun fetchInsight(
     connection: Connection,

@@ -19,8 +19,10 @@ import com.android.adblib.DevicePropertyNames
 import com.android.emulator.control.PaneEntry
 import com.android.emulator.control.PaneEntry.PaneIndex
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProperties
+import com.android.sdklib.deviceprovisioner.DeviceProvisioner
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceTemplate
 import com.android.sdklib.deviceprovisioner.EditTemplateAction
@@ -36,12 +38,13 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
-import com.android.tools.adtui.swing.popup.FakeListPopup
+import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.adblib.AdbLibApplicationService
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.run.DeviceHeadsUpListener
 import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
@@ -60,9 +63,9 @@ import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
 import com.android.tools.idea.streaming.emulator.sendKeyEvent
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.DisposerExplorer
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.override
 import com.android.tools.idea.testing.ui.FakeToolWindow
-import com.android.tools.idea.testing.ui.ToolWindowHeadlessManagerImpl
 import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
@@ -78,8 +81,10 @@ import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowType
+import com.intellij.openapi.wm.impl.InternalDecorator
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue
 import com.intellij.testFramework.RuleChain
@@ -137,7 +142,9 @@ class StreamingToolWindowManagerTest {
   private val toolWindow: FakeToolWindow by lazy {
     createFakeToolWindow(project, testRootDisposable, RUNNING_DEVICES_TOOL_WINDOW_ID, StudioIcons.Shell.ToolWindows.EMULATOR, windowFactory)
   }
-  private val contentManager: ContentManager by lazy { toolWindow.contentManager }
+
+  private val contentManager: ContentManager
+    get() = toolWindow.contentManager
 
   private val deviceMirroringSettings: DeviceMirroringSettings by lazy { DeviceMirroringSettings.getInstance() }
 
@@ -159,15 +166,16 @@ class StreamingToolWindowManagerTest {
     whenever(mockLafManager.currentUIThemeLookAndFeel).thenReturn(mockUIThemeLookAndFeelInfo)
     ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, testRootDisposable)
     deviceMirroringSettings.confirmationDialogShown = true
+    PairedDevicesLayoutStorage.getInstance().clear()
   }
 
   @After
   fun tearDown() {
     Disposer.dispose(toolWindow.disposable)
     dispatchAllEventsInIdeEventQueue() // Finish asynchronous processing triggered by hiding the tool window.
-    waitForCondition(2.seconds) { EmptyStatePanel.asyncActivityCount?.get() == 0 }
     deviceMirroringSettings.loadState(DeviceMirroringSettings()) // Reset device mirroring settings to defaults.
     service<DeviceClientRegistry>().clear()
+    PairedDevicesLayoutStorage.getInstance().clear()
   }
 
   @Test
@@ -406,7 +414,7 @@ class StreamingToolWindowManagerTest {
 
     val topContent = contentManager.contents[0]
     val bottomContent = contentManager.contents[1]
-    ToolWindowHeadlessManagerImpl.split(bottomContent, SwingConstants.BOTTOM)
+    FakeToolWindow.split(bottomContent, SwingConstants.BOTTOM)
     val topContentManager = topContent.manager!!
     assertThat(topContentManager.contents).hasLength(1)
     val bottomContentManager = bottomContent.manager!!
@@ -462,7 +470,7 @@ class StreamingToolWindowManagerTest {
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }
     val newTabAction = toolWindow.tabActions[0]
     executeAction(newTabAction, createTestEvent(toolWindow.component, project))
-    val popup: FakeListPopup<Any> = popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    val popup = popupRule.fakePopupFactory.getNextListPopup<Any>(2.seconds)
 
     assertThat(popup.actions.toString())
       .isEqualTo(
@@ -517,7 +525,7 @@ class StreamingToolWindowManagerTest {
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }
     val newTabAction = toolWindow.tabActions[0]
     executeAction(newTabAction, createTestEvent(toolWindow.component, project))
-    val popup: FakeListPopup<Any> = popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    val popup = popupRule.fakePopupFactory.getNextListPopup<Any>(2.seconds)
 
     assertThat(popup.actions.toString())
       .isEqualTo(
@@ -597,7 +605,7 @@ class StreamingToolWindowManagerTest {
     assertThat(newTabAction.templatePresentation.icon).isEqualTo(AllIcons.General.Add)
 
     executeAction(newTabAction, createTestEvent(toolWindow.component, project))
-    var popup: FakeListPopup<Any> = popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    var popup = popupRule.fakePopupFactory.getNextListPopup<Any>(2.seconds)
     assertThat(popup.actions.toString().htmlToPlainText())
       .isEqualTo("[Pair Devices Using Wi-Fi (Open the Device Pairing dialog which allows connecting devices over Wi-Fi)]")
 
@@ -605,7 +613,7 @@ class StreamingToolWindowManagerTest {
     contentManager.removeContent(contentManager.contents[0], true)
 
     executeAction(newTabAction, toolWindow.component, project)
-    popup = popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    popup = popupRule.fakePopupFactory.getNextListPopup(2.seconds)
     assertThat(popup.actions.toString().htmlToPlainText())
       .isEqualTo(
         "[Separator (Connected Devices), Pixel 4 API 30 (1) (null), Pixel 7 API 33 (2) (null), " +
@@ -621,7 +629,7 @@ class StreamingToolWindowManagerTest {
     assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 7 API 33")
 
     executeAction(newTabAction, toolWindow.component, project)
-    popup = popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    popup = popupRule.fakePopupFactory.getNextListPopup(2.seconds)
     assertThat(popup.actions.toString().htmlToPlainText())
       .isEqualTo(
         "[Separator (Connected Devices), Pixel 4 API 30 (1) (null), " +
@@ -635,7 +643,7 @@ class StreamingToolWindowManagerTest {
     assertThat(contentManager.selectedContent?.displayName).isEqualTo("Pixel 4 API 30")
 
     executeAction(newTabAction, toolWindow.component, project)
-    popup = popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    popup = popupRule.fakePopupFactory.getNextListPopup(2.seconds)
     assertThat(popup.actions.toString().htmlToPlainText())
       .isEqualTo("[Pair Devices Using Wi-Fi (Open the Device Pairing dialog which allows connecting devices over Wi-Fi)]")
   }
@@ -752,6 +760,27 @@ class StreamingToolWindowManagerTest {
     waitForCondition(2.seconds) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
     assertThat(contentManager.contents[0].displayName).isEqualTo(phone.avdName)
     assertThat(contentManager.selectedContent?.displayName).isEqualTo(phone.avdName)
+  }
+
+  @Test
+  fun testPairedAvdStarting() {
+    StudioFlags.EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD.overrideForTest(true, testRootDisposable)
+    toolWindow.show()
+
+    val avdRoot = emulatorRule.avdRoot
+    val glasses = emulatorRule.newEmulator(FakeEmulator.createAiGlassesAvd(avdRoot))
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(avdRoot))
+    glasses.pairedDevice = phone
+    createMockDeviceProvisioner(glasses.deviceHandle, phone.deviceHandle)
+
+    val startAction = getAddDeviceAction(glasses.avdName)
+    executeAction(startAction, toolWindow.component, project)
+
+    waitForCondition(5.seconds) { contentManager.contentsRecursively.size >= 2 }
+    val contents = contentManager.contentsRecursively
+    assertThat(contents).hasSize(2)
+    assertThat(contents.any { it.displayName.startsWith(phone.avdName) }).isTrue()
+    assertThat(contents.any { it.displayName.startsWith(glasses.avdName) }).isTrue()
   }
 
   @Test
@@ -908,11 +937,146 @@ class StreamingToolWindowManagerTest {
     assertThat(content1.isSelected).isTrue()
     assertThat(content2.isSelected).isTrue()
     assertThat(content1.manager == content2.manager).isFalse()
+
+    val contentForEmulator2 = contentManager.contentsRecursively.find { it.displayName == emulator2.avdName }!!
+    contentForEmulator2.manager?.removeContent(contentForEmulator2, true)
+    waitForCondition(5.seconds) { !emulator2.isRunning }
+  }
+
+  @Test
+  fun testSplitLayoutSaving() {
+    assertThat(contentManager.contents).isEmpty()
+
+    val tempFolder = emulatorRule.avdRoot
+    val glasses = emulatorRule.newEmulator(FakeEmulator.createAiGlassesAvd(tempFolder))
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
+    glasses.pairedDevice = phone
+    createMockDeviceProvisioner(glasses.deviceHandle, phone.deviceHandle)
+
+    toolWindow.show()
+    glasses.start()
+    phone.start()
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+    waitForCondition(5.seconds) { contentManager.contents.size == 2 }
+
+    val contentGlasses = contentManager.contents.find { it.displayName?.startsWith("AI Glasses") == true }!!
+    val contentPhone = contentManager.contents.find { it.displayName?.startsWith("Pixel") == true }!!
+    val layoutStorage = PairedDevicesLayoutStorage.getInstance()
+    waitForCondition(2.seconds) { layoutStorage.getLayout(glasses.deviceId) != null }
+    val initialSide = if (contentGlasses.isSelected) PairLayout.FIRST_ONLY else PairLayout.SECOND_ONLY
+    assertThat(layoutStorage.getLayout(glasses.deviceId)?.side).isEqualTo(initialSide)
+
+    // Split the window.
+    FakeToolWindow.split(contentPhone, SwingConstants.BOTTOM)
+    var layout: PairLayout? = null
+    waitForCondition(2.seconds) { layoutStorage.getLayout(glasses.deviceId)?.also { layout = it }?.side != initialSide }
+    assertThat(layout!!.side).isEqualTo(PairLayout.TOP)
+    assertThat(layout.splitRatio).isWithin(0.01f).of(0.5f)
+    val splitRatio = layout.splitRatio
+
+    // Set proportion.
+    (contentGlasses.component.findAncestor<InternalDecorator>()!!.parent as Splitter).proportion = 0.3f
+
+    waitForCondition(2.seconds) { layoutStorage.getLayout(glasses.deviceId)?.also { layout = it }?.splitRatio != splitRatio }
+    assertThat(layout.side).isEqualTo(PairLayout.TOP)
+    assertThat(layout.splitRatio).isWithin(0.01f).of(0.3f)
+  }
+
+  @Test fun testSplitLayoutRestorationLeft() = doTestSplitLayoutRestoration(PairLayout.LEFT, startGlassesFirst = true)
+
+  @Test fun testSplitLayoutRestorationLeftPhoneFirst() = doTestSplitLayoutRestoration(PairLayout.LEFT, startGlassesFirst = false)
+
+  @Test fun testSplitLayoutRestorationRight() = doTestSplitLayoutRestoration(PairLayout.RIGHT, startGlassesFirst = true)
+
+  @Test fun testSplitLayoutRestorationRightPhoneFirst() = doTestSplitLayoutRestoration(PairLayout.RIGHT, startGlassesFirst = false)
+
+  @Test fun testSplitLayoutRestorationTop() = doTestSplitLayoutRestoration(PairLayout.TOP, startGlassesFirst = true)
+
+  @Test fun testSplitLayoutRestorationTopPhoneFirst() = doTestSplitLayoutRestoration(PairLayout.TOP, startGlassesFirst = false)
+
+  @Test fun testSplitLayoutRestorationBottom() = doTestSplitLayoutRestoration(PairLayout.BOTTOM, startGlassesFirst = true)
+
+  @Test fun testSplitLayoutRestorationBottomPhoneFirst() = doTestSplitLayoutRestoration(PairLayout.BOTTOM, startGlassesFirst = false)
+
+  @Test fun testSplitLayoutRestorationFirstOnly() = doTestSplitLayoutRestoration(PairLayout.FIRST_ONLY, startGlassesFirst = true)
+
+  @Test fun testSplitLayoutRestorationFirstOnlyPhoneFirst() = doTestSplitLayoutRestoration(PairLayout.FIRST_ONLY, startGlassesFirst = false)
+
+  @Test fun testSplitLayoutRestorationSecondOnly() = doTestSplitLayoutRestoration(PairLayout.SECOND_ONLY, startGlassesFirst = true)
+
+  @Test
+  fun testSplitLayoutRestorationSecondOnlyPhoneFirst() = doTestSplitLayoutRestoration(PairLayout.SECOND_ONLY, startGlassesFirst = false)
+
+  private fun doTestSplitLayoutRestoration(side: Int, startGlassesFirst: Boolean) {
+    val isSplit = side != PairLayout.FIRST_ONLY && side != PairLayout.SECOND_ONLY
+    val isVertical = side == PairLayout.TOP || side == PairLayout.BOTTOM
+    val firstIsGlasses = side == PairLayout.LEFT || side == PairLayout.TOP
+
+    assertThat(contentManager.contentsRecursively).isEmpty()
+
+    val tempFolder = emulatorRule.avdRoot
+    val glasses = emulatorRule.newEmulator(FakeEmulator.createAiGlassesAvd(tempFolder))
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
+    glasses.pairedDevice = phone
+    createMockDeviceProvisioner(glasses.deviceHandle, phone.deviceHandle)
+
+    val layoutStorage = PairedDevicesLayoutStorage.getInstance()
+    layoutStorage.setLayout(glasses.deviceId, side, 0.35f)
+
+    toolWindow.show()
+    if (startGlassesFirst) {
+      glasses.start()
+      runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+      waitForCondition(5.seconds) { contentManager.contents.any { it.displayName?.startsWith("AI Glasses") == true } }
+      phone.start()
+    } else {
+      phone.start()
+      runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+      waitForCondition(5.seconds) { contentManager.contents.any { it.displayName?.startsWith("Pixel") == true } }
+      glasses.start()
+    }
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+    waitForCondition(10.seconds) { contentManager.contentsRecursively.size == 2 }
+
+    val contentGlasses = contentManager.contentsRecursively.find { it.displayName?.startsWith("AI Glasses") == true }!!
+    val contentPhone = contentManager.contentsRecursively.find { it.displayName?.startsWith("Pixel") == true }!!
+
+    if (isSplit) {
+      val splitter = contentGlasses.component.findAncestor<InternalDecorator>()?.parent as Splitter
+      assertThat(splitter.isVertical).isEqualTo(isVertical)
+
+      if (firstIsGlasses) {
+        assertThat(splitter.firstComponent.isAncestorOf(contentGlasses.component)).isTrue()
+        assertThat(splitter.secondComponent.isAncestorOf(contentPhone.component)).isTrue()
+      } else {
+        assertThat(splitter.firstComponent.isAncestorOf(contentPhone.component)).isTrue()
+        assertThat(splitter.secondComponent.isAncestorOf(contentGlasses.component)).isTrue()
+      }
+      assertThat(splitter.proportion).isWithin(0.01f).of(0.35f)
+    } else {
+      assertThat(contentGlasses.manager == contentPhone.manager).isTrue()
+      if (side == PairLayout.FIRST_ONLY) {
+        assertThat(contentGlasses.isSelected).isTrue()
+        assertThat(contentPhone.isSelected).isFalse()
+      } else {
+        assertThat(contentGlasses.isSelected).isFalse()
+        assertThat(contentPhone.isSelected).isTrue()
+      }
+    }
   }
 
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, displayView: AbstractDisplayView): UInt {
     fakeUi.render() // The frame number may get updated as a result of rendering.
     return displayView.frameNumber
+  }
+
+  private fun createMockDeviceProvisioner(vararg deviceHandles: DeviceHandle) {
+    val provisioner = mock<DeviceProvisioner>()
+    whenever(provisioner.devices).thenReturn(MutableStateFlow(deviceHandles.toList()))
+    whenever(provisioner.templates).thenReturn(MutableStateFlow(emptyList()))
+    val provisionerService = mock<DeviceProvisionerService>()
+    whenever(provisionerService.deviceProvisioner).thenReturn(provisioner)
+    project.replaceService(DeviceProvisionerService::class.java, provisionerService, testRootDisposable)
   }
 
   private fun getAddDeviceAction(deviceNameName: String): AnAction = waitForAddDeviceAction(2.seconds, deviceNameName)
@@ -926,12 +1090,12 @@ class StreamingToolWindowManagerTest {
     return action!!
   }
 
-  private fun triggerAddDevicePopup(): FakeListPopup<Any> {
+  private fun triggerAddDevicePopup(): FakeJBPopup<Any> {
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }
     val newTabAction = toolWindow.tabActions[0]
     val testEvent = createTestEvent(toolWindow.component, project)
     executeAction(newTabAction, testEvent)
-    return popupRule.fakePopupFactory.getNextPopup(2.seconds)
+    return popupRule.fakePopupFactory.getNextListPopup(2.seconds)
   }
 }
 

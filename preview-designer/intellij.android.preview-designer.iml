@@ -26,5 +26,8 @@
     <orderEntry type="module" module-name="intellij.android.preview-elements" />
     <orderEntry type="module" module-name="intellij.android.preview-fast-compile" />
     <orderEntry type="module" module-name="intellij.android.completion" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />
   </component>
 </module>

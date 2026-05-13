@@ -23,18 +23,18 @@ MAC_ARM = "darwin_aarch64"
 MAC_X64 = "darwin"
 
 # Artifact Filenames
-SOURCES_ZIP = "sherlock-platform-sources.zip"
-MAC_ARM_ZIP = "sherlock-platform.mac.aarch64.zip"
-MAC_X64_ZIP = "sherlock-platform.mac.x64.zip"
-LINUX_TAR = "sherlock-platform.tar.gz"
-WIN_ZIP = "sherlock-platform.win.zip"
+SOURCES_ZIP = "apa-platform-sources.zip"
+MAC_ARM_ZIP = "apa-platform.mac.aarch64.zip"
+MAC_X64_ZIP = "apa-platform.mac.x64.zip"
+LINUX_TAR = "apa-platform.tar.gz"
+WIN_ZIP = "apa-platform.win.zip"
 MANIFEST_TEMPLATE = "manifest_{}.xml"
 
 EXPECTED_ARTIFACTS: Set[str] = {SOURCES_ZIP, MAC_ARM_ZIP, MAC_X64_ZIP, LINUX_TAR, WIN_ZIP}
 SDK_TYPE = "IC"
 SHERLOCK_SUBDIR = "sherlock"
 GITHUB_REPO = "android-graphics/sherlock-platform"
-VERSION_XML_PATH = "idea/SherlockPlatformApplicationInfo.xml"
+VERSION_XML_PATH = "idea/AndroidPerformanceAnalyzerApplicationInfo.xml"
 NAMESPACE_URI = "http://jetbrains.org/intellij/schema/application-info"
 SHERLOCK_PLATFORM_SHA_METADATA_KEY = "tools/gpu-profiler/idea"
 
@@ -55,7 +55,7 @@ def check_gh_auth() -> None:
 # TODO: Eventually use bid for releases (v[bid]) and remove this method
 def get_version_from_local_xml(sdk_path: Path) -> str:
   """
-  Extracts the version from SherlockPlatformApplicationInfo.xml within the resources.jar.
+  Extracts the version from AndroidPerformanceAnalyzerApplicationInfo.xml within the resources.jar.
   """
   lib_dir = sdk_path / LINUX / SHERLOCK_SUBDIR / "lib"
   if not lib_dir.exists():
@@ -247,13 +247,14 @@ def _extract_artifact(artifact: Path, extract_subdir: Path, os_name: str) -> Non
       cmd_unzip = ["unzip", "-o", str(artifact), "-d", str(temp_extract_dir)]
       subprocess.run(cmd_unzip, check=True, capture_output=True, text=True)
 
-      mac_contents_path = temp_extract_dir / "Sherlock.app" / "Contents"
+      mac_contents_path = temp_extract_dir / "Android Performance Analyzer.app" / "Contents"
+
       if mac_contents_path.exists():
         print(f"Moving {mac_contents_path} to {extract_subdir}")
         # Move the entire Contents directory
         shutil.move(str(mac_contents_path), str(extract_subdir))
       else:
-        sys.exit(f"Error: Expected structure Sherlock.app/Contents not found in {artifact_name} at {temp_extract_dir}")
+        sys.exit(f"Error: Expected structure Android Performance Analyzer.app/Contents not found in {artifact_name} at {temp_extract_dir}")
     elif os_name == WIN:
       cmd = ["unzip", "-o", str(artifact), "-d", str(extract_subdir)]
       subprocess.run(cmd, check=True, capture_output=True, text=True)

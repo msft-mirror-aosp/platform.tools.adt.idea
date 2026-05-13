@@ -2038,7 +2038,7 @@ MODULE                        : project.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : app_debug
+                    moduleName                    : project:app_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2048,6 +2048,7 @@ MODULE                        : project.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -2057,7 +2058,7 @@ MODULE                        : project.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugAndroidTest
+                    moduleName                    : project:app_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2067,6 +2068,7 @@ MODULE                        : project.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -2076,7 +2078,7 @@ MODULE                        : project.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugUnitTest
+                    moduleName                    : project:app_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2085,6 +2087,7 @@ MODULE                        : project.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -3162,7 +3165,7 @@ MODULE                        : project.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : lib_debug
+                    moduleName                    : com.test.composite:lib_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -3171,6 +3174,7 @@ MODULE                        : project.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -3180,7 +3184,7 @@ MODULE                        : project.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : lib_debugAndroidTest
+                    moduleName                    : com.test.composite:lib_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -3190,6 +3194,7 @@ MODULE                        : project.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -3199,7 +3204,7 @@ MODULE                        : project.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : lib_debugUnitTest
+                    moduleName                    : com.test.composite:lib_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -3208,6 +3213,7 @@ MODULE                        : project.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -4285,7 +4291,7 @@ MODULE                        : includedLib1.app
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib1/app/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : app_debug
+                    moduleName                    : com.test.composite1:app_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -4295,6 +4301,7 @@ MODULE                        : includedLib1.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -4304,7 +4311,7 @@ MODULE                        : includedLib1.app
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib1/app/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugAndroidTest
+                    moduleName                    : com.test.composite1:app_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -4314,6 +4321,7 @@ MODULE                        : includedLib1.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -4323,7 +4331,7 @@ MODULE                        : includedLib1.app
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib1/app/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugUnitTest
+                    moduleName                    : com.test.composite1:app_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -4332,6 +4340,7 @@ MODULE                        : includedLib1.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -5442,7 +5451,7 @@ MODULE                        : includedLib1.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib1/lib/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : lib_debug
+                    moduleName                    : com.test.composite1:lib_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -5451,6 +5460,7 @@ MODULE                        : includedLib1.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -5460,7 +5470,7 @@ MODULE                        : includedLib1.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib1/lib/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : lib_debugAndroidTest
+                    moduleName                    : com.test.composite1:lib_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -5470,6 +5480,7 @@ MODULE                        : includedLib1.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -5479,7 +5490,7 @@ MODULE                        : includedLib1.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib1/lib/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : lib_debugUnitTest
+                    moduleName                    : com.test.composite1:lib_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -5488,6 +5499,7 @@ MODULE                        : includedLib1.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -6633,7 +6645,7 @@ MODULE                        : TestCompositeLib3.app
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib3/app/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : app_debug
+                    moduleName                    : TestCompositeLib3:app_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -6643,6 +6655,7 @@ MODULE                        : TestCompositeLib3.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -6652,7 +6665,7 @@ MODULE                        : TestCompositeLib3.app
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib3/app/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugAndroidTest
+                    moduleName                    : TestCompositeLib3:app_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -6662,6 +6675,7 @@ MODULE                        : TestCompositeLib3.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -6671,7 +6685,7 @@ MODULE                        : TestCompositeLib3.app
                     backendThreads                : 1
                     destination                   : <ROOT>/TestCompositeLib3/app/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugUnitTest
+                    moduleName                    : TestCompositeLib3:app_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -6680,6 +6694,7 @@ MODULE                        : TestCompositeLib3.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>

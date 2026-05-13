@@ -17,6 +17,7 @@ package com.google.idea.blaze.base.run.ui;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
+import static kotlin.streams.jdk8.StreamsKt.asStream;
 
 import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.base.model.BlazeProjectData;
@@ -29,7 +30,6 @@ import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.sync.projectview.ImportRoots;
-import com.google.idea.blaze.common.Label;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.TableUtil;
@@ -219,23 +219,25 @@ public class TargetExpressionListUi extends JPanel {
           BlazeImportSettingsManager.getInstance(project).getImportSettings();
       ProjectViewSet projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
       WorkspaceRoot workspaceRoot = WorkspaceRoot.fromProjectSafe(project);
-      if (projectData == null || importSettings == null || projectViewSet == null || workspaceRoot == null) {
+      if (projectData == null
+          || importSettings == null
+          || projectViewSet == null
+          || workspaceRoot == null) {
         return ImmutableList.of();
       }
       ImportRoots importRoots =
-          ImportRoots.builder(
-              workspaceRoot, importSettings.getBuildSystem())
+          ImportRoots.builder(workspaceRoot, importSettings.getBuildSystem())
               .add(projectViewSet)
               .build();
 
-      return QuerySyncManager.getInstance(project).getCurrentSnapshot()
-        .map(querySyncProjectSnapshot ->
-               querySyncProjectSnapshot.getAllLoadedTargets()
-                 .stream()
-                 .map(Label::toString)
-                 .collect(toImmutableList())
-        )
-        .orElse(ImmutableList.of());
+      return QuerySyncManager.getInstance(project)
+          .getCurrentSnapshot()
+          .map(
+              querySyncProjectSnapshot ->
+                  asStream(querySyncProjectSnapshot.getAllLoadedTargets())
+                      .map(target -> target.label().toString())
+                      .collect(toImmutableList()))
+          .orElse(ImmutableList.of());
     }
   }
 }

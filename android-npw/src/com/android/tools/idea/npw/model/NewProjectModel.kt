@@ -49,6 +49,7 @@ import com.android.tools.idea.templates.recipe.DefaultRecipeExecutor
 import com.android.tools.idea.templates.recipe.FindReferencesRecipeExecutor
 import com.android.tools.idea.templates.recipe.RenderingContext
 import com.android.tools.idea.wizard.model.WizardModel
+import com.android.tools.idea.wizard.template.DslLanguage
 import com.android.tools.idea.wizard.template.Language
 import com.android.tools.idea.wizard.template.Language.Java
 import com.android.tools.idea.wizard.template.Language.Kotlin
@@ -85,6 +86,7 @@ import com.intellij.pom.java.LanguageLevel
 import java.io.File
 import java.io.IOException
 import java.net.URL
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Locale
 import java.util.Optional
@@ -101,12 +103,26 @@ import org.jetbrains.android.util.AndroidUtils
 private val logger: Logger
   get() = logger<NewProjectModel>()
 
+private const val MIGRATION_IMPORT_DIR_NAME = ".migration/import"
+
+/**
+ * The source project type for migration/import.
+ *
+ * @param importProjectType The equivalent [GeminiPluginApi.ImportProjectType].
+ */
+enum class SourceProjectType(val importProjectType: GeminiPluginApi.ImportProjectType) {
+  IOS(GeminiPluginApi.ImportProjectType.IOS),
+  REACT_NATIVE(GeminiPluginApi.ImportProjectType.REACT_NATIVE),
+  FLUTTER(GeminiPluginApi.ImportProjectType.FLUTTER),
+  UNKNOWN(GeminiPluginApi.ImportProjectType.UNKNOWN),
+}
+
 interface ProjectModelData {
   val projectSyncInvoker: ProjectSyncInvoker
   val applicationName: StringProperty
   val packageName: StringProperty
   val projectLocation: StringProperty
-  val useGradleKts: BoolProperty
+  val dslLanguage: ObjectValueProperty<DslLanguage>
   val useVersionCatalog: BoolProperty
   val viewBindingSupport: OptionalValueProperty<ViewBindingSupport>
   var project: Project
@@ -117,7 +133,11 @@ interface ProjectModelData {
   val multiTemplateRenderer: MultiTemplateRenderer
   val projectTemplateDataBuilder: ProjectTemplateDataBuilder
   val prompt: StringProperty
+  val displayText: StringProperty
+  val sourceProjectType: ObjectValueProperty<SourceProjectType>
+  val importSourcePath: StringProperty
   val imageAttachments: ObjectValueProperty<List<VirtualFile>>
+  val userSkillDirectories: ObjectValueProperty<List<File>>
 }
 
 class NewProjectModel : WizardModel(), ProjectModelData {
@@ -125,7 +145,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
   override val applicationName = StringValueProperty("My Application")
   override val packageName = StringValueProperty()
   override val projectLocation = StringValueProperty()
-  override val useGradleKts = BoolValueProperty()
+  override val dslLanguage = ObjectValueProperty<DslLanguage>(DslLanguage.KTS)
   override val useVersionCatalog = BoolValueProperty(true)
   // We can assume this is true for a new project because View binding is supported from AGP 3.6+
   override val viewBindingSupport = OptionalValueProperty<ViewBindingSupport>(ViewBindingSupport.SUPPORTED_4_0_MORE)
@@ -137,8 +157,12 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     ObjectValueProperty(findAndroidStudioLocalMavenRepoPaths().map { it.toURI().toURL() })
   override val multiTemplateRenderer = MultiTemplateRenderer(::runRenderer)
   override val prompt = StringValueProperty("")
+  override val displayText = StringValueProperty("")
   override val imageAttachments: ObjectValueProperty<List<VirtualFile>> = ObjectValueProperty(listOf())
+  override val userSkillDirectories: ObjectValueProperty<List<File>> = ObjectValueProperty(listOf())
   val launchFirebaseWizard = BoolValueProperty(false)
+  override val sourceProjectType = ObjectValueProperty<SourceProjectType>(SourceProjectType.IOS)
+  override val importSourcePath = StringValueProperty("")
 
   private fun runRenderer(renderer: (Project) -> Unit) {
     object : Task.Backgroundable(null, message("android.compile.messages.generating.r.java.content.name"), false) {
@@ -147,6 +171,17 @@ class NewProjectModel : WizardModel(), ProjectModelData {
           val projectBaseDirectory = File(projectLocation.get())
           val newProject =
             GradleProjectImporter.getInstance().createProject(projectName, projectBaseDirectory, useDefaultProjectAsTemplate = true)
+
+          // Copy user skills
+          val skillDirs = userSkillDirectories.get()
+          if (skillDirs.isNotEmpty()) {
+            val agentsDir = File(projectBaseDirectory, ".agents")
+            agentsDir.mkdirs()
+            skillDirs.forEach { skillDir ->
+              val targetDir = File(agentsDir, skillDir.name)
+              skillDir.copyRecursively(targetDir, overwrite = true)
+            }
+          }
 
           // Arguably some of these things should be in the OpenProjectTask's beforeOpen
           newProject.service<ProjectSystemService>().setProviderId(GradleProjectSystemProvider.ID)
@@ -164,7 +199,19 @@ class NewProjectModel : WizardModel(), ProjectModelData {
               // ExternalToolWindowManager). We want the Gemini window to be shown instead, so
               // delay opening the Gemini window until after Gradle has finished.
               ToolWindowManager.getInstance(newProject).invokeLater {
-                GeminiPluginApi.getInstance().launchNewProjectAgent(newProject, prompt.get(), imageAttachments.get())
+                val sPath = importSourcePath.get()
+                if (sPath.isNotEmpty()) {
+                  GeminiPluginApi.getInstance()
+                    .launchImportProjectAgent(
+                      newProject,
+                      prompt.get(),
+                      imageAttachments.get(),
+                      displayText.get().takeIf { it.isNotBlank() },
+                      importProjectType = sourceProjectType.get().importProjectType,
+                    )
+                } else {
+                  GeminiPluginApi.getInstance().launchNewProjectAgent(newProject, prompt.get(), imageAttachments.get())
+                }
               }
             }
 
@@ -268,6 +315,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
             language = this@NewProjectModel.language.value
             agpVersion = resolvedAgpVersion
             additionalMavenRepos = this@NewProjectModel.additionalMavenRepos.get()
+            dslLanguage = this@NewProjectModel.dslLanguage.get()
           }
           .build()
     }
@@ -295,8 +343,20 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       try {
         val projectRoot = VfsUtilCore.virtualToIoFile(project.baseDir)
         setGradleWrapperExecutable(projectRoot)
-      } catch (e: IOException) {
-        logger.warn("Failed to update Gradle wrapper permissions", e)
+
+        val sPath = importSourcePath.get()
+        if (sPath.isNotEmpty()) {
+          val migrationImportDir = File(projectRoot, MIGRATION_IMPORT_DIR_NAME)
+          migrationImportDir.mkdirs()
+          val importSourceLink = File(migrationImportDir, "source")
+          if (!importSourceLink.exists()) {
+            Files.createSymbolicLink(importSourceLink.toPath(), Paths.get(sPath))
+            // This is required so the new link is visible to the VFS
+            VfsUtil.markDirtyAndRefresh(false, true, true, projectRoot)
+          }
+        }
+      } catch (e: Exception) {
+        logger.warn("Failed to update Gradle wrapper permissions or create symbolic link", e)
       }
     }
 
@@ -305,12 +365,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         RenderingContext(project, null, "New Project", projectTemplateData, showErrors = true, dryRun = dryRun, moduleRoot = null)
       val executor = if (dryRun) FindReferencesRecipeExecutor(context) else DefaultRecipeExecutor(context)
       val recipe: Recipe = { data: TemplateData ->
-        androidProjectRecipe(
-          data = data as ProjectTemplateData,
-          appTitle = applicationName.get(),
-          language = language.value,
-          useGradleKts = useGradleKts.get(),
-        )
+        androidProjectRecipe(data = data as ProjectTemplateData, appTitle = applicationName.get(), language = language.value)
       }
 
       recipe.render(context, executor, AndroidStudioEvent.TemplateRenderer.ANDROID_PROJECT)

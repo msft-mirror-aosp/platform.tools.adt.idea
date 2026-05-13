@@ -21,6 +21,8 @@ import com.android.tools.adtui.model.Range
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.commands.CommandHandler
+import com.android.tools.leakcanarylib.data.Analysis
+import com.android.tools.leakcanarylib.data.AnalysisSuccess
 import com.android.tools.leakcanarylib.data.GcRootType
 import com.android.tools.leakcanarylib.data.Leak
 import com.android.tools.leakcanarylib.data.LeakTrace
@@ -31,7 +33,6 @@ import com.android.tools.leakcanarylib.data.Node
 import com.android.tools.leakcanarylib.data.ReferencingField
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
-import com.android.tools.profiler.proto.Common.LeakCanaryPresenceCheck
 import com.android.tools.profiler.proto.LeakCanary
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisStatus
 import com.android.tools.profilers.FakeIdeProfilerServices
@@ -42,6 +43,7 @@ import com.android.tools.profilers.cpu.config.LeakCanaryConfiguration
 import com.android.tools.profilers.cpu.config.LeakCanaryMode
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration
 import com.intellij.testFramework.UsefulTestCase.assertEmpty
+import java.util.concurrent.Executors
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -50,10 +52,27 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 
 class LeakCanaryModelTest : WithFakeTimer {
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
+
+  /**
+   * Executes a blocking block of code (like stage.startListening()) on a background thread while continuously polling the FakeTimer and
+   * transportPoller on the main thread. This prevents deadlocks when the background task awaits a transport event.
+   */
+  private fun runWithPolling(block: () -> Unit) {
+    val executor = Executors.newSingleThreadExecutor()
+    val future = executor.submit { block() }
+    while (!future.isDone) {
+      timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+      profilers.transportPoller.poll()
+      Thread.sleep(10)
+    }
+    future.get()
+    executor.shutdown()
+  }
 
   @Rule @JvmField val grpcChannel = FakeGrpcChannel("LeakCanaryModelTestChannel", transportService)
   private lateinit var profilers: StudioProfilers
@@ -71,6 +90,28 @@ class LeakCanaryModelTest : WithFakeTimer {
         }
       }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
+
+    // Spy on profilers to mock the current process and session, which are required
+    // by the LeakCanary model to attach the JVMTI agent and fetch thresholds.
+    profilers = org.mockito.Mockito.spy(profilers)
+    org.mockito.Mockito.`when`(profilers.process).thenReturn(FakeTransportService.FAKE_PROCESS)
+    val mockSession =
+      Common.Session.newBuilder()
+        .setPid(FakeTransportService.FAKE_PROCESS.pid)
+        .setStreamId(FakeTransportService.FAKE_DEVICE_ID)
+        .setSessionId(1L)
+        .setStartTimestamp(timer.currentTimeNs)
+        .setEndTimestamp(Long.MAX_VALUE)
+        .build()
+    org.mockito.Mockito.`when`(profilers.session).thenReturn(mockSession)
+
+    // Register default command handlers for the JVMTI agent attachment sequence
+    // and device mode setup to prevent tests from failing during pre-flight checks.
+    val handler = FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0)
+    transportService.setCommandHandler(Commands.Command.CommandType.ATTACH_AGENT, handler)
+    transportService.setCommandHandler(Commands.Command.CommandType.SET_STUDIO_LEAKCANARY_MODE, handler)
+    transportService.setCommandHandler(Commands.Command.CommandType.FORCE_DUMP_LEAKCANARY_ON_DEVICE, handler)
+
     mockHeapDumper = mock(LeakCanaryHeapDumper::class.java)
     stage = LeakCanaryModel(profilers, mockHeapDumper)
   }
@@ -93,10 +134,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       ),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
@@ -119,10 +156,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       ),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
@@ -130,7 +163,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     // Wait for listener to receive events
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     // Verify leak events
@@ -163,10 +196,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       ),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
@@ -174,7 +203,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     // Wait for listener to receive events
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     stage.stopListening()
@@ -199,10 +228,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       FakeLeakCanaryCommandHandler(timer, profilers, listOf("SingleApplicationLeak.txt", "InValidLeak.txt"), startTime),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
@@ -210,7 +235,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     // Wait for listener to receive events
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     // Verify leakEvents
@@ -231,10 +256,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
@@ -242,7 +263,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     // Wait for the listener to receive events
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     // Verify leakEvents
@@ -265,10 +286,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       ),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
@@ -276,7 +293,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTime),
     )
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     // Wait for listener to receive events
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     // Verify leakEvents
@@ -297,54 +314,7 @@ class LeakCanaryModelTest : WithFakeTimer {
   }
 
   @Test
-  fun `checkLeakCanaryPresence updates state when present`() {
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.START_LEAKCANARY_TASK,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0, isLeakCanaryPresent = true),
-    )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    stage.startListening()
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertTrue(stage.isLeakCanaryPresent.value)
-  }
-
-  @Test
-  fun `checkLeakCanaryPresence updates state when absent`() {
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.START_LEAKCANARY_TASK,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0, isLeakCanaryPresent = false),
-    )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    stage.startListening()
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertFalse(stage.isLeakCanaryPresent.value)
-  }
-
-  @Test
   fun `checkLeakCanaryThreshold updates state`() {
-    ideProfilerServices.enableLeakCanaryMilestone2(true)
     ideProfilerServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", 10)
 
     transportService.setCommandHandler(
@@ -357,9 +327,35 @@ class LeakCanaryModelTest : WithFakeTimer {
     )
 
     stage.setLeakCanaryMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE)
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     assertEquals(10, stage.retainedObjectThreshold.value)
+    assertEquals(-1, ideProfilerServices.temporaryProfilerPreferences.getInt("LEAKCANARY_THRESHOLD", -1))
+  }
+
+  @Test
+  fun `checkLeakCanaryThreshold fetches from command when missing`() {
+    ideProfilerServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", -1)
+
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.START_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0, retainedObjectThreshold = 7),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+
+    stage.setLeakCanaryMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE)
+    runWithPolling { stage.startListening() }
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    assertEquals(7, stage.retainedObjectThreshold.value)
+    assertEquals(-1, ideProfilerServices.temporaryProfilerPreferences.getInt("LEAKCANARY_THRESHOLD", -1))
   }
 
   @Test
@@ -377,10 +373,6 @@ class LeakCanaryModelTest : WithFakeTimer {
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
     )
     transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
-    transportService.setCommandHandler(
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0, retainedObjectThreshold = 5),
     )
@@ -389,7 +381,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
     )
 
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
 
     // Threshold should still be 10 (from config), not 5 (from command which shouldn't run)
@@ -484,6 +476,82 @@ class LeakCanaryModelTest : WithFakeTimer {
   }
 
   @Test
+  fun `test getLeakingFullClassName finds node with YES status`() {
+    val node1 = createTestNode(className = "NotLeaking", leakingStatus = LeakingStatus.NO)
+    val node2 = createTestNode(className = "LeakingVictim", leakingStatus = LeakingStatus.YES)
+    val node3 = createTestNode(className = "AlsoLeaking", leakingStatus = LeakingStatus.YES)
+    val leakTrace = LeakTrace(GcRootType.NATIVE_STACK, nodes = listOf(node1, node2, node3))
+    val leak =
+      Leak(
+        type = LeakType.APPLICATION_LEAKS,
+        retainedByteSize = 100,
+        signature = "sig",
+        leakTraceCount = 1,
+        displayedLeakTrace = listOf(leakTrace),
+      )
+
+    assertEquals("LeakingVictim", LeakCanaryModel.getLeakingFullClassName(leak))
+  }
+
+  @Test
+  fun `test getAnchorFullClassName finds last node with NO status`() {
+    val node1 = createTestNode(className = "Root", leakingStatus = LeakingStatus.NO)
+    val node2 = createTestNode(className = "Anchor", leakingStatus = LeakingStatus.NO)
+    val node3 = createTestNode(className = "Unknown", leakingStatus = LeakingStatus.UNKNOWN)
+    val node4 = createTestNode(className = "Leaking", leakingStatus = LeakingStatus.YES)
+    val leakTrace = LeakTrace(GcRootType.NATIVE_STACK, nodes = listOf(node1, node2, node3, node4))
+    val leak =
+      Leak(
+        type = LeakType.APPLICATION_LEAKS,
+        retainedByteSize = 100,
+        signature = "sig",
+        leakTraceCount = 1,
+        displayedLeakTrace = listOf(leakTrace),
+      )
+
+    assertEquals("Anchor", LeakCanaryModel.getAnchorFullClassName(leak))
+  }
+
+  @Test
+  fun `test getAnchorFullClassName returns empty if no NO status nodes`() {
+    val node1 = createTestNode(className = "Unknown", leakingStatus = LeakingStatus.UNKNOWN)
+    val node2 = createTestNode(className = "Leaking", leakingStatus = LeakingStatus.YES)
+    val leakTrace = LeakTrace(GcRootType.NATIVE_STACK, nodes = listOf(node1, node2))
+    val leak =
+      Leak(
+        type = LeakType.APPLICATION_LEAKS,
+        retainedByteSize = 100,
+        signature = "sig",
+        leakTraceCount = 1,
+        displayedLeakTrace = listOf(leakTrace),
+      )
+
+    assertEquals("", LeakCanaryModel.getAnchorFullClassName(leak))
+  }
+
+  @Test
+  fun `analyzeLeakWithStudioBot delegates to ideServices`() {
+    val leak = mock(Leak::class.java)
+    `when`(leak.toString()).thenReturn("trace")
+    stage.analyzeLeakWithStudioBot(leak)
+    assertEquals("trace", ideProfilerServices.lastLeakRawTrace)
+    assertEquals<Leak?>(leak, ideProfilerServices.lastLeak)
+  }
+
+  @Test
+  fun `manual leak parsing and adding to leaks`() {
+    val file = TestUtils.resolveWorkspacePath("${FakeLeakCanaryCommandHandler.TEST_DATA_PATH}/SingleApplicationLeak.txt").toFile()
+    val rawTrace = file.readText()
+
+    val analysis = Analysis.fromString(rawTrace)
+    assertTrue(analysis is AnalysisSuccess)
+    stage.addLeaks(analysis.leaks)
+
+    assertEquals(1, stage.leaks.value.size)
+    assertEquals("androidx.constraintlayout.widget.ConstraintLayout", stage.leaks.value[0].displayedLeakTrace[0].nodes.last().className)
+  }
+
+  @Test
   fun `requestStopRecording with retained objects triggers dump and waits`() {
     // Setup command handlers to avoid errors
     transportService.setCommandHandler(
@@ -498,12 +566,8 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
     )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
 
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     stage.setObjectRetainedCount(1)
     stage.setAnalysisProgress(0)
 
@@ -546,12 +610,8 @@ class LeakCanaryModelTest : WithFakeTimer {
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
     )
-    transportService.setCommandHandler(
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
-    )
 
-    stage.startListening()
+    runWithPolling { stage.startListening() }
     stage.setObjectRetainedCount(0)
 
     stage.requestStopRecording()
@@ -643,18 +703,6 @@ class FakeLeakCanaryCommandHandler(
         )
       }
 
-      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT -> {
-        events.add(
-          Common.Event.newBuilder()
-            .setPid(profilers.session.pid)
-            .setCommandId(command.commandId)
-            .setTimestamp(System.currentTimeMillis())
-            .setKind(Common.Event.Kind.LEAKCANARY_PRESENCE_CHECK)
-            .setLeakcanaryPresenceCheck(LeakCanaryPresenceCheck.newBuilder().setIsPresent(isLeakCanaryPresent).build())
-            .build()
-        )
-      }
-
       Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD -> {
         events.add(
           Common.Event.newBuilder()
@@ -663,6 +711,18 @@ class FakeLeakCanaryCommandHandler(
             .setTimestamp(System.currentTimeMillis())
             .setKind(Common.Event.Kind.LEAKCANARY_THRESHOLD)
             .setLeakcanaryThreshold(Common.LeakCanaryThresholdData.newBuilder().setThreshold(retainedObjectThreshold).build())
+            .build()
+        )
+      }
+
+      Commands.Command.CommandType.ATTACH_AGENT -> {
+        events.add(
+          Common.Event.newBuilder()
+            .setGroupId(profilers.session.pid.toLong())
+            .setPid(profilers.session.pid)
+            .setKind(Common.Event.Kind.AGENT)
+            .setAgentData(Common.AgentData.newBuilder().setStatus(Common.AgentData.Status.ATTACHED).build())
+            .setTimestamp(System.currentTimeMillis())
             .build()
         )
       }

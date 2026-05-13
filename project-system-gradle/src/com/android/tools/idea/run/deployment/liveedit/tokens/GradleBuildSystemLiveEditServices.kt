@@ -23,9 +23,9 @@ import com.android.tools.idea.projectsystem.ApplicationProjectContext
 import com.android.tools.idea.projectsystem.ClassContent
 import com.android.tools.idea.projectsystem.DependencyScopeType
 import com.android.tools.idea.projectsystem.GradleToken
+import com.android.tools.idea.projectsystem.SourceSetModuleClassFileFinder
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
-import com.android.tools.idea.projectsystem.gradle.GradleClassFileFinder
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.run.deployment.liveedit.setOptions
@@ -36,6 +36,10 @@ import com.intellij.psi.PsiFile
 import java.nio.file.Path
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
+import org.jetbrains.kotlin.cli.create
+import org.jetbrains.kotlin.cli.extensionsStorage
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.projectStructure.languageVersionSettings
@@ -65,7 +69,7 @@ class GradleBuildSystemLiveEditServices :
 }
 
 internal class GradleApplicationLiveEditServices(private val module: Module) : ApplicationLiveEditServices {
-  val classFileFinder = GradleClassFileFinder.createWithoutTests(module)
+  val classFileFinder = SourceSetModuleClassFileFinder.createWithoutTests(module)
 
   data class GradleCompilationDependencies(val module: Module) : ApplicationLiveEditServices.CompilationDependencies {
     override fun getExternalLibraries(): List<Path> {
@@ -86,9 +90,11 @@ internal class GradleApplicationLiveEditServices(private val module: Module) : A
   }
 
   override fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration {
-    val module = ktFile.module ?: return CompilerConfiguration.EMPTY
+    val module = ktFile.module ?: return CompilerConfiguration.create()
     val compilerConfiguration =
-      CompilerConfiguration().apply<CompilerConfiguration> {
+      CompilerConfiguration.create().apply<CompilerConfiguration> {
+        @OptIn(ExperimentalCompilerApi::class)
+        extensionsStorage = CompilerPluginRegistrar.ExtensionStorage()
         put(CommonConfigurationKeys.MODULE_NAME, module.name)
         KotlinFacet.get(module)?.let { kotlinFacet ->
           val moduleName =

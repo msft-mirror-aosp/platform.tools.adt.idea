@@ -16,7 +16,11 @@
 package com.android.tools.idea.npw.builder
 
 import com.android.SdkConstants
+import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.npw.builders.GradleSettingsBuilder
+import com.android.tools.idea.wizard.template.DslLanguage.DCL
+import com.android.tools.idea.wizard.template.DslLanguage.GROOVY
+import com.android.tools.idea.wizard.template.DslLanguage.KTS
 import java.net.URI
 import java.net.URL
 import kotlin.test.assertEquals
@@ -27,34 +31,35 @@ import org.junit.Test
 class GradleSettingsBuilderTest {
 
   private val gradleVersion = GradleVersion.version(SdkConstants.GRADLE_LATEST_VERSION)
+  private val agpVersion = AgpVersions.latestKnown
 
   @Test(expected = IllegalArgumentException::class)
   fun testBuildGradleSettingsWithProjectNameUsingBackslashResultsOnException() {
-    GradleSettingsBuilder("\\", false) {}
+    GradleSettingsBuilder("\\", GROOVY) {}
   }
 
   @Test
   fun testBuildGradleSettingsWithJustProjectName() {
-    val gradleSettings = GradleSettingsBuilder("test", false) {}.build()
+    val gradleSettings = GradleSettingsBuilder("test", GROOVY) {}.build()
     assertEquals("rootProject.name = \"test\"", gradleSettings)
   }
 
   @Test
   fun testBuildGradleSettingsWithProjectNameUsingSpecialCharacters() {
-    val gradleSettings = GradleSettingsBuilder("My 'App' \$", false) {}.build()
+    val gradleSettings = GradleSettingsBuilder("My 'App' \$", GROOVY) {}.build()
     assertEquals("rootProject.name = \"My \\'App\\' \\$\"", gradleSettings)
   }
 
   @Test
   fun testBuildKotlinGradleSettingsWithProjectNameUsingSpecialCharacters() {
-    val gradleSettings = GradleSettingsBuilder("My 'App' \$", true) {}.build()
+    val gradleSettings = GradleSettingsBuilder("My 'App' \$", KTS) {}.build()
     assertEquals("rootProject.name = \"My \\'App\\' \\$\"", gradleSettings)
   }
 
   @Test
   fun testBuildGroovyGradleSettings() {
     val gradleSettings =
-      GradleSettingsBuilder("groovyProject", false) {
+      GradleSettingsBuilder("groovyProject", GROOVY) {
           withDependencyResolutionManagement(listOfUrls("https://www.example.com/1"))
           withFoojayPlugin(gradleVersion)
           withPluginManager(listOfUrls("https://www.example.com/2"))
@@ -97,7 +102,7 @@ rootProject.name = "groovyProject""""
   @Test
   fun testBuildKotlinGradleSettings() {
     val gradleSettings =
-      GradleSettingsBuilder("kotlinProject", true) {
+      GradleSettingsBuilder("kotlinProject", KTS) {
           withDependencyResolutionManagement(listOfUrls("https://www.example.com/1", "https://www.example.com/2"))
           withFoojayPlugin(gradleVersion)
           withPluginManager(listOfUrls("https://www.example.com/3", "https://www.example.com/4"))
@@ -135,6 +140,45 @@ pluginManagement {
 }
 
 rootProject.name = "kotlinProject""""
+        .trimIndent()
+    assertEquals(expectedGradleSettings, gradleSettings)
+  }
+
+  @Test
+  fun testBuildDeclarativeGradleSettings() {
+    val gradleSettings =
+      GradleSettingsBuilder("dclProject", DCL) {
+          withDependencyResolutionManagement(listOfUrls("https://www.example.com/1"))
+          withFoojayPlugin(gradleVersion)
+          withAndroidEcosystemPlugin(agpVersion)
+          withPluginManager(listOfUrls("https://www.example.com/2"))
+        }
+        .build()
+
+    val expectedGradleSettings =
+      """
+dependencyResolutionManagement {
+  repositoriesMode = FAIL_ON_PROJECT_REPOS
+  repositories {
+    maven { url = uri("https://www.example.com/1") }
+    google()
+    mavenCentral()
+  }
+}
+plugins {
+    id("com.android.ecosystem").version("${agpVersion}")
+    id("org.gradle.toolchains.foojay-resolver-convention").version("${getFoojayPluginVersion(gradleVersion)}")
+}
+pluginManagement {
+  repositories {
+    maven { url = uri("https://www.example.com/2") }
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+rootProject.name = "dclProject""""
         .trimIndent()
     assertEquals(expectedGradleSettings, gradleSettings)
   }

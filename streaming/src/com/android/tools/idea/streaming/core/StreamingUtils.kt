@@ -19,6 +19,7 @@ import com.android.adblib.deviceInfo
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
+import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.adtui.util.scaled
@@ -31,6 +32,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.AnActionHolder
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.ui.ComponentUtil
 import com.intellij.ui.dsl.builder.HyperlinkEventAction
 import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
 import com.intellij.ui.dsl.builder.components.DslLabel
@@ -231,6 +233,8 @@ internal fun Component.containsFocus(): Boolean {
   return false
 }
 
+internal inline fun <reified T : Any> Component.findAncestor(): T? = ComponentUtil.getStrictParentOfType(T::class.java, this)
+
 internal fun createCircle(center: Point, radius: Int): Ellipse2D {
   val diameter = radius * 2.0
   return Ellipse2D.Double((center.x - radius).toDouble(), (center.y - radius).toDouble(), diameter, diameter)
@@ -244,30 +248,16 @@ internal fun Graphics.fillCircle(center: Point, radius: Int) {
   fillOval(center.x - radius, center.y - radius, radius * 2, radius * 2)
 }
 
-/** Returns the folder of the phone AVD paired to the given AI glasses AVD, or null if the glasses are not paired with a phone. */
-internal fun getPairedPhoneAvdFolder(glasses: StreamingDeviceId, devices: Iterable<DeviceHandle>): Path? =
-  devices.findPairedPhone(glasses)?.avdFolder
-
-internal fun Iterable<DeviceHandle>.findPairedPhone(glasses: StreamingDeviceId): DeviceHandle? {
-  val glasses = findByDeviceId(glasses) ?: return null
-  return findPairedPhone(glasses)
-}
-
-internal fun Iterable<DeviceHandle>.findPairedPhone(glasses: DeviceHandle): DeviceHandle? {
-  val pairedPhoneId = glasses.pairedPhoneId ?: return null
-  return firstOrNull { it.id == pairedPhoneId }
-}
-
-internal fun Iterable<DeviceHandle>.findByDeviceId(deviceId: StreamingDeviceId): DeviceHandle? {
+internal fun Iterable<DeviceHandle>.findByStreamingDeviceId(deviceId: StreamingDeviceId): DeviceHandle? {
   return when (deviceId) {
     is StreamingDeviceId.EmulatorDeviceId -> findByAvdFolder(deviceId.emulatorId.avdFolder)
     is StreamingDeviceId.PhysicalDeviceId -> findBySerialNumber(deviceId.serialNumber)
   }
 }
 
-private fun Iterable<DeviceHandle>.findByAvdFolder(avdFolder: Path): DeviceHandle? = firstOrNull { it.avdFolder == avdFolder }
+internal fun Iterable<DeviceHandle>.findByAvdFolder(avdFolder: Path): DeviceHandle? = find { it.avdFolder == avdFolder }
 
-private fun Iterable<DeviceHandle>.findBySerialNumber(serialNumber: String): DeviceHandle? = firstOrNull { it.serialNumber == serialNumber }
+internal fun Iterable<DeviceHandle>.findBySerialNumber(serialNumber: String): DeviceHandle? = find { it.serialNumber == serialNumber }
 
 /** AVD folder corresponding to the device handle, or null if the device is not an AVD. */
 internal val DeviceHandle.avdFolder: Path?
@@ -277,5 +267,8 @@ internal val DeviceHandle.avdFolder: Path?
 internal val DeviceHandle.serialNumber: String?
   get() = state.connectedDevice?.deviceInfo?.serialNumber
 
-private val DeviceHandle.pairedPhoneId: DeviceId?
+internal val DeviceHandle.pairedPhoneId: DeviceId?
   get() = state.properties.pairedPhoneId
+
+internal val DeviceHandle.deviceType: DeviceType?
+  get() = state.properties.deviceType

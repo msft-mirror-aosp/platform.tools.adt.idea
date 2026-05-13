@@ -50,7 +50,7 @@ import org.jetbrains.kotlin.idea.base.analysis.api.utils.KtSymbolFromIndexProvid
 import org.jetbrains.kotlin.idea.base.analysis.api.utils.shortenReferencesInRange
 import org.jetbrains.kotlin.idea.base.psi.imports.addImport
 import org.jetbrains.kotlin.idea.completion.impl.k2.ImportStrategyDetector
-import org.jetbrains.kotlin.idea.completion.lookups.factories.KotlinFirLookupElementFactory
+import org.jetbrains.kotlin.idea.completion.impl.k2.lookups.factories.KotlinFirLookupElementFactory
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.FqName
@@ -234,7 +234,13 @@ class ComposeModifierCompletionContributor : CompletionContributor() {
     val visibilityChecker = createUseSiteVisibilityChecker(fileSymbol, receiverExpression, originalPosition)
 
     return KtSymbolFromIndexProvider(file)
-      .getExtensionCallableSymbolsByNameFilter({ name -> prefixMatcher.prefixMatches(name.asString()) }, listOf(receiverType))
+      .getExtensionCallableSymbolsByNameFilter(
+        { name ->
+          val nameAsString = name.asString()
+          prefixMatcher.prefixMatches(nameAsString) || prefixMatcher.prefixMatches("Modifier.$nameAsString")
+        },
+        listOf(receiverType),
+      )
       .filter(visibilityChecker::isVisible)
       .toList()
   }

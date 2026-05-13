@@ -33,6 +33,7 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.upgrade" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.gradle" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.idea.reposearch" level="project" />
     <orderEntry type="module" module-name="android.sdktools.lint.testinfrastructure" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.kotlin.idea" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.gradle.dsl" scope="TEST" />

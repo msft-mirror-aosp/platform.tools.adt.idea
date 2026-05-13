@@ -97,7 +97,7 @@ internal constructor(private val mySdkSync: SdkSync, private val myTopLevelModul
       if (ApplicationManager.getApplication().isUnitTestMode) {
         ExceptionUtil.rethrowUnchecked(e)
       }
-      Messages.showErrorDialog(e.message, "Project Import")
+      ApplicationManager.getApplication().invokeLater { Messages.showErrorDialog(e.message, "Project Import") }
       logger.error(e)
       return null
     }
@@ -112,7 +112,7 @@ internal constructor(private val mySdkSync: SdkSync, private val myTopLevelModul
       }
     } catch (e: Exception) {
       logger.info("Failed to sync SDKs", e)
-      Messages.showErrorDialog(e.message, "Project Import")
+      ApplicationManager.getApplication().invokeLater { Messages.showErrorDialog(e.message, "Project Import") }
       throw e
     }
   }

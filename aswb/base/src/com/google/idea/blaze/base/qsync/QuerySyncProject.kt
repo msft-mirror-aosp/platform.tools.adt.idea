@@ -36,10 +36,11 @@ import com.google.idea.blaze.common.artifact.BuildArtifactCache
 import com.google.idea.blaze.common.vcs.VcsState
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.BlazeQueryParser
-import com.google.idea.blaze.qsync.GraphToProjectConverter
 import com.google.idea.blaze.qsync.ProjectBuilder
 import com.google.idea.blaze.qsync.ProjectStructureReader
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
+import com.google.idea.blaze.qsync.fromGraph
+import com.google.idea.blaze.qsync.java.PackageReader
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -47,6 +48,7 @@ import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.TargetsToBuild
+import com.google.idea.blaze.qsync.project.pathToLabel
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.intellij.openapi.project.Project
 import java.io.IOException
@@ -58,8 +60,7 @@ import kotlin.jvm.optionals.getOrNull
 /**
  * Encapsulates a loaded query sync project and it's dependencies for readonly consumers.
  *
- * This class also maintains a [QuerySyncProjectData] instance whose job is to expose project state
- * to the rest of the plugin and IDE.
+ * This class also maintains a [QuerySyncProjectData] instance whose job is to expose project state to the rest of the plugin and IDE.
  */
 interface ReadonlyQuerySyncProject {
   val buildSystem: BuildSystem
@@ -83,8 +84,7 @@ interface ReadonlyQuerySyncProject {
 /**
  * Encapsulates a loaded querysync project and it's dependencies.
  *
- * This class also maintains a [QuerySyncProjectData] instance whose job is to expose project state
- * to the rest of the plugin and IDE.
+ * This class also maintains a [QuerySyncProjectData] instance whose job is to expose project state to the rest of the plugin and IDE.
  */
 class QuerySyncProject(
   val ideProject: Project,
@@ -110,6 +110,8 @@ class QuerySyncProject(
   val handledRuleKinds: Set<String>,
   val protoRules: BuildGraphData.ProtoRules,
   private val projectStructureReader: ProjectStructureReader,
+  val packageReader: PackageReader,
+  val parallelPackageReader: PackageReader.ParallelReader,
   private val readProjectStructureFromDirectory: Boolean,
 ) : ReadonlyQuerySyncProject {
   override val projectData: QuerySyncProjectData
@@ -122,56 +124,82 @@ class QuerySyncProject(
       return projectData
     }
 
-  @JvmRecord
-  data class QueryCoreSyncResult(
-    val postQuerySyncData: PostQuerySyncData,
-    val graph: BuildGraphData,
-    val projectStructureData: ProjectStructureData,
-  )
+  @JvmRecord data class QueryCoreSyncResult(val postQuerySyncData: PostQuerySyncData, val graph: BuildGraphData)
 
   @Throws(BuildException::class)
-  fun syncQueryCore(context: BlazeContext, lastQuery: PostQuerySyncData?): QueryCoreSyncResult {
-    SaveUtil.saveAllFiles()
-    val postQuerySyncData =
-      if (lastQuery == null) projectQuerier.fullQuery(projectDefinition, context)
-      else projectQuerier.update(projectDefinition, lastQuery, context)
+  fun syncQueryCore(context: BlazeContext, postQuerySyncData: PostQuerySyncData): QueryCoreSyncResult {
     return computeQueryCoreSyncResult(context, postQuerySyncData)
   }
 
-  fun computeQueryCoreSyncResult(
-    context: BlazeContext,
-    postQuerySyncData: PostQuerySyncData,
-  ): QueryCoreSyncResult {
-    val graph = buildGraphData(postQuerySyncData, context)
-    val projectStructureData =
-      (if (readProjectStructureFromDirectory) {
-        readProjectStructureFromDirectory(context, postQuerySyncData.projectDefinition())
-      } else null) ?: GraphToProjectConverter.initializeProjectStructureData(graph)
-    return QueryCoreSyncResult(postQuerySyncData, graph, projectStructureData)
+  fun runQueryAndComputePostQuerySyncData(context: BlazeContext, lastQuery: PostQuerySyncData?): PostQuerySyncData {
+    val postQuerySyncData =
+      if (lastQuery == null) projectQuerier.fullQuery(projectDefinition, context)
+      else projectQuerier.update(projectDefinition, lastQuery, context)
+    return postQuerySyncData
   }
 
-  private fun readProjectStructureFromDirectory(
-    context: Context<*>,
+  fun computeQueryCoreSyncResult(context: BlazeContext, postQuerySyncData: PostQuerySyncData): QueryCoreSyncResult {
+    val graph = buildGraphData(postQuerySyncData, context)
+    return QueryCoreSyncResult(postQuerySyncData, graph)
+  }
+
+  fun computeProjectStructureData(
+    context: BlazeContext,
     projectDefinition: ProjectDefinition,
-  ): ProjectStructureData? =
+    lastProjectStructureData: ProjectStructureData?,
+    graph: BuildGraphData, // This is a temporary parameter while we cannot switch over to the new nway completely.
+  ): ProjectStructureData {
+    return lastProjectStructureData
+      ?: (if (readProjectStructureFromDirectory) {
+        readProjectStructureFromDirectory(context, projectDefinition)
+      } else null)
+      ?: ProjectStructureData.fromGraph(
+        context,
+        graph,
+        projectDefinition.projectIncludes,
+        workspaceRoot.path(),
+        packageReader,
+        parallelPackageReader,
+      )
+  }
+
+  private fun readProjectStructureFromDirectory(context: Context<*>, projectDefinition: ProjectDefinition): ProjectStructureData? =
     projectStructureReader.read(context, workspaceRoot.path(), projectDefinition)
 
   /**
    * Returns the list of project targets related to the given workspace file.
    *
    * @param context Context
-   * @param workspaceRelativePaths Workspace relative file paths to find targets for. A path may be
-   *   a path to a source file, directory or BUILD file.
-   * @return Corresponding project targets. For a source file, this is the targets that build that
-   *   file. For a BUILD file, it's the set or targets defined in that file. For a directory, it's
-   *   the set of all targets defined in all build packages within the directory (recursively).
+   * @param workspaceRelativePaths Workspace relative file paths to find targets for. A path may be a path to a source file, directory or
+   *   BUILD file.
+   * @return Corresponding project targets. For a source file, this is the targets that build that file. For a BUILD file, it's the set or
+   *   targets defined in that file. For a directory, it's the set of all targets defined in all build packages within the directory
+   *   (recursively).
    */
   fun getProjectTargets(workspaceRelativePaths: Collection<Path>): Set<TargetsToBuild> {
-    return snapshotHolder()
-      ?.let { snapshot ->
-        workspaceRelativePaths.map { path -> snapshot.graph.getProjectTargets(path) }.toSet()
+    val snapshot = snapshotHolder.current.getOrNull() ?: return emptySet()
+    return workspaceRelativePaths
+      .map { path ->
+        if (path.endsWith("BUILD") || path.endsWith("BUILD.bazel")) {
+          val packagePath = path.parent ?: Path.of("")
+          val packageLabel = Label.fromWorkspacePackageAndName("", packagePath, Label.PACKAGE_TARGET_NAME)
+          snapshot.graph.getProjectTargetsForBuildPackage(packageLabel)
+        } else {
+          val packageLabel = Label.fromWorkspacePackageAndName("", path, Label.PACKAGE_TARGET_NAME)
+          val subpackagesTargets = snapshot.graph.getProjectTargetsForBuildPackageWithSubpackages(packageLabel)
+          if (!subpackagesTargets.isEmpty()) {
+            subpackagesTargets
+          } else {
+            val sourceFileLabel = snapshot.projectStructureData.pathToLabel(path)
+            if (sourceFileLabel != null) {
+              snapshot.graph.getProjectTargetsForSourceFile(sourceFileLabel)
+            } else {
+              TargetsToBuild.forUnknownSourceFile(path)
+            }
+          }
+        }
       }
-      .orEmpty()
+      .toSet()
   }
 
   /** Returns the set of targets with direct dependencies on `targets`. */
@@ -191,45 +219,26 @@ class QuerySyncProject(
     } else {
       context.output(PrintOutput("Failed to compute working set. Falling back on sync data"))
       val snapshot = snapshotHolder.current.orElseThrow()
-      vcsState =
-        snapshot.queryData
-          .vcsState()
-          .orElseThrow(
-            Supplier { BuildException("No VCS state, cannot calculate affected targets") }
-          )
+      vcsState = snapshot.queryData.vcsState().orElseThrow(Supplier { BuildException("No VCS state, cannot calculate affected targets") })
     }
     return vcsState.modifiedFiles()
   }
 
-  fun buildDependencies(
-    context: BlazeContext,
-    request: DependencyTracker.DependencyBuildRequest,
-  ): Boolean {
+  fun buildDependencies(context: BlazeContext, request: DependencyTracker.DependencyBuildRequest): Boolean {
     BlazeContext.create(context).use { context ->
       try {
         context.push(BuildDepsStatsScope())
-        if (
-          BuildSystemVersionChecker.verifyVersionSupported(
-            ideProject,
-            context,
-            projectData.getBlazeVersionData(),
-          )
-        ) {
+        if (BuildSystemVersionChecker.verifyVersionSupported(ideProject, context, projectData.getBlazeVersionData())) {
           return this.dependencyTracker.buildDependenciesForTargets(context, request)
         }
-        throw BuildException(
-          String.format("Failed to build dependencies - %s version not supported", buildSystem.name)
-        )
+        throw BuildException(String.format("Failed to build dependencies - %s version not supported", buildSystem.name))
       } catch (e: IOException) {
         throw BuildException("Failed to build dependencies", e)
       }
     }
   }
 
-  private fun buildGraphData(
-    postQuerySyncData: PostQuerySyncData,
-    context: Context<*>,
-  ): BuildGraphData {
+  private fun buildGraphData(postQuerySyncData: PostQuerySyncData, context: Context<*>): BuildGraphData {
     return BlazeQueryParser(
         postQuerySyncData.projectDefinition().effectiveTargetPatterns,
         postQuerySyncData.querySummary(),
@@ -260,15 +269,11 @@ class QuerySyncProject(
       return true
     }
 
-    val pendingTargets =
-      snapshotHolder()?.getPendingTargets(workspaceRoot.relativize(path)).orEmpty()
+    val pendingTargets = snapshotHolder()?.getPendingTargets(workspaceRoot.relativize(path)).orEmpty()
     return pendingTargets.isEmpty()
   }
 
-  class CreateProjectStructureResult(
-    val projectStructure: ProjectProto.Project,
-    val artifactState: ArtifactTracker.State,
-  )
+  class CreateProjectStructureResult(val projectStructure: ProjectProto.Project, val artifactState: ArtifactTracker.State)
 
   fun createProjectStructure(
     context: BlazeContext,
@@ -301,8 +306,7 @@ class QuerySyncProject(
   /**
    * Returns true if `absolutePath` is specified in a project exclude.
    *
-   * A path not added or excluded the project definition will return false for both `containsPath`
-   * and `explicitlyExcludesPath`
+   * A path not added or excluded the project definition will return false for both `containsPath` and `explicitlyExcludesPath`
    */
   override fun explicitlyExcludesPath(absolutePath: Path): Boolean {
     if (!workspaceRoot.isInWorkspace(absolutePath.toFile())) {
@@ -313,9 +317,8 @@ class QuerySyncProject(
   }
 
   /**
-   * Returns true if the file is in the project and has been added to the workspace since the last
-   * IDE sync operation (Sync Project with BUILD files), return false otherwise, or an empty [ ] if
-   * this information cannot be determined.
+   * Returns true if the file is in the project and has been added to the workspace since the last IDE sync operation (Sync Project with
+   * BUILD files), return false otherwise, or an empty [ ] if this information cannot be determined.
    *
    * Newly added files are determined by the following conditions:
    * * They are in a project source root
@@ -337,10 +340,7 @@ class QuerySyncProject(
       return Optional.of<Boolean>(false)
     }
 
-    val snapshotPath =
-      snapshotHolder.current
-        .flatMap { it.queryData.vcsState() }
-        .flatMap { it.workspaceSnapshotPath }
+    val snapshotPath = snapshotHolder.current.flatMap { it.queryData.vcsState() }.flatMap { it.workspaceSnapshotPath }
 
     return snapshotPath.map { !it.resolve(workspaceRelative).toFile().exists() }
   }
@@ -357,10 +357,7 @@ class QuerySyncProject(
 
   // TODO: b/397649793 - Remove this method when fixed.
   override fun dependsOnAnyOf_DO_NOT_USE_BROKEN(target: Label, deps: Set<Label>): Boolean {
-    return snapshotHolder.current
-      .map { it.graph }
-      .map { it.dependsOnAnyOf_DO_NOT_USE_BROKEN(target, deps) }
-      .orElse(false)
+    return snapshotHolder.current.map { it.graph }.map { it.dependsOnAnyOf_DO_NOT_USE_BROKEN(target, deps) }.orElse(false)
   }
 }
 

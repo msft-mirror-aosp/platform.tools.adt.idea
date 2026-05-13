@@ -80,7 +80,7 @@ class BuildAndRunTest {
           emulator?.let { adb.waitForDevice(it) }
           logCat = emulator?.logCat!!
         } else {
-          remoteDeviceManager = RemoteDeviceManager("akita", "34")
+          remoteDeviceManager = RemoteDeviceManager("MediumPhone.arm", "34")
           remoteDeviceManager.setupRemoteDevice()
           adb.waitForRemoteDevice()
         }

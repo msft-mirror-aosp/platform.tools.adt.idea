@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
+import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraNotification
 import com.android.emulator.control.ClipData
 import com.android.emulator.control.DisplayConfiguration
@@ -25,8 +26,11 @@ import com.android.emulator.control.DisplayConfigurationsChangedNotification
 import com.android.emulator.control.DisplayMode as DisplayModeMessage
 import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.emulator.control.EmulatorStatus
+import com.android.emulator.control.Environment
 import com.android.emulator.control.ExtendedControlsStatus
+import com.android.emulator.control.Fingerprint
 import com.android.emulator.control.FoldedDisplay
+import com.android.emulator.control.GpsState
 import com.android.emulator.control.Image
 import com.android.emulator.control.ImageFormat
 import com.android.emulator.control.ImageFormat.ImgFormat
@@ -36,6 +40,8 @@ import com.android.emulator.control.MicrophoneState
 import com.android.emulator.control.MouseEvent
 import com.android.emulator.control.Notification
 import com.android.emulator.control.PaneEntry
+import com.android.emulator.control.ParameterValue
+import com.android.emulator.control.PhoneResponse
 import com.android.emulator.control.PhysicalModelValue
 import com.android.emulator.control.PhysicalModelValue.PhysicalType
 import com.android.emulator.control.Posture
@@ -43,6 +49,7 @@ import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.Rotation
 import com.android.emulator.control.Rotation.SkinRotation
 import com.android.emulator.control.RotationRadian
+import com.android.emulator.control.SmsMessage
 import com.android.emulator.control.SnapshotDetails
 import com.android.emulator.control.SnapshotFilter
 import com.android.emulator.control.SnapshotList
@@ -56,15 +63,26 @@ import com.android.emulator.control.VmRunState
 import com.android.emulator.control.XrOptions
 import com.android.emulator.snapshot.SnapshotOuterClass.Image as SnapshotImage
 import com.android.emulator.snapshot.SnapshotOuterClass.Snapshot
+import com.android.io.readImage
 import com.android.io.writeImage
 import com.android.sdklib.AndroidVersion
+import com.android.sdklib.deviceprovisioner.DeviceHandle
+import com.android.sdklib.deviceprovisioner.DeviceId
+import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
+import com.android.sdklib.deviceprovisioner.PairedGlassesInfo
 import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
 import com.android.sdklib.deviceprovisioner.RunningAvd.RunType
 import com.android.sdklib.repository.targets.SystemImageManager
 import com.android.testutils.FakeProcessHandle
 import com.android.testutils.TestUtils
+import com.android.tools.adtui.ImageUtils.ALPHA_MASK
+import com.android.tools.adtui.ImageUtils.getCroppedImage
 import com.android.tools.adtui.ImageUtils.rotateByQuadrants
+import com.android.tools.adtui.ImageUtils.rotateByQuadrantsAndScale
+import com.android.tools.adtui.ImageUtils.scale
 import com.android.tools.adtui.util.normalizedRotation
 import com.android.tools.adtui.util.scaled
 import com.android.tools.idea.avdmanager.RunningAvdTracker
@@ -96,8 +114,10 @@ import com.intellij.openapi.util.text.StringUtil.parseInt
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.io.createDirectories
 import com.intellij.util.ui.UIUtil
+import icons.StudioIcons
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.Rectangle
 import java.awt.RenderingHints
 import java.awt.RenderingHints.KEY_ANTIALIASING
 import java.awt.RenderingHints.KEY_RENDERING
@@ -122,10 +142,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Predicate
 import javax.imageio.ImageIO
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.time.Duration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.invoke
 import org.junit.Assert.fail
 
@@ -156,6 +180,9 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
   private var displays = listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).build())
+  @Volatile
+  var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
+  @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -221,6 +248,16 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   val avdName: String
     get() = config.avdName
 
+  val deviceType: DeviceType
+    get() = config.deviceType
+
+  val deviceId: DeviceId = DeviceId(LocalEmulatorProvisionerPlugin.PLUGIN_ID, false, "path=$avdFolder")
+  val deviceHandle: FakeDeviceHandle = FakeDeviceHandle(this)
+
+  val environment = mutableMapOf<String, String>()
+
+  val environmentImage: BufferedImage? = config.environmentSize?.let { loadEnvironmentImage(it) }
+
   @Volatile var extendedControlsVisible = false
 
   @Volatile
@@ -238,6 +275,21 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
   val serialNumber: String
     get() = "emulator-$serialPort"
+
+  var pairedDevice: FakeEmulator? = null
+    set(value) {
+      if (field != value) {
+        require(
+          value == null ||
+            deviceType == DeviceType.AI_GLASSES && value.deviceType == DeviceType.HANDHELD ||
+            deviceType == DeviceType.HANDHELD && value.deviceType == DeviceType.AI_GLASSES
+        )
+        field?.pairedDevice = null
+        field = value
+        deviceHandle.setPair(value?.deviceId)
+        value?.pairedDevice = this
+      }
+    }
 
   val grpcCallLog = LinkedBlockingDeque<GrpcCallRecord>()
   private val grpcSemaphore = Semaphore(Int.MAX_VALUE)
@@ -397,6 +449,16 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       .start()
   }
 
+  private fun loadEnvironmentImage(size: Dimension): BufferedImage {
+    val environmentFile = getDeviceArtFolder().resolve("ai_glasses_device/indoor-study-dark.jpg")
+    val image = environmentFile.readImage()
+    val w = size.width
+    val h = size.height
+    val scale = max(w.toDouble() / image.width, h.toDouble() / image.height)
+    val scaledImage = scale(image, scale)
+    return getCroppedImage(scaledImage, Rectangle((scaledImage.width - w) / 2, (scaledImage.height - h) / 2, w, h), -1)
+  }
+
   private fun drawDisplayImage(size: Dimension, displayId: Int): BufferedImage {
     val image = BufferedImage(size.width, size.height, TYPE_INT_ARGB)
     val g = image.createGraphics()
@@ -494,8 +556,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
   private fun sendScreenshot(request: ImageFormat, responseObserver: StreamObserver<Image>) {
     val displayId = request.display
-    val size = getScaledAndRotatedDisplaySize(request.width, request.height, displayId)
-    val image = drawDisplayImage(size, displayId)
+    val image = environmentImage?.let { createScreenshotImage(request, displayId, it) } ?: createScreenshotImage(request, displayId)
     val rotatedImage = rotateByQuadrants(image, displayRotation.number)
     val imageBytes = ByteArray(rotatedImage.width * rotatedImage.height * 3)
     var i = 0
@@ -586,6 +647,23 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       }
     }
 
+    override fun getPhysicalModel(request: PhysicalModelValue, responseObserver: StreamObserver<PhysicalModelValue>) {
+      executor.execute {
+        val result =
+          when (request.target) {
+            PhysicalType.POSTURE -> {
+              val posture = devicePosture ?: PostureValue.POSTURE_OPENED
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.POSTURE)
+                .setValue(ParameterValue.newBuilder().addData(posture.number.toFloat()))
+                .build()
+            }
+            else -> PhysicalModelValue.getDefaultInstance()
+          }
+        sendResponse(responseObserver, result)
+      }
+    }
+
     override fun setXrOptions(request: XrOptions, responseObserver: StreamObserver<Empty>) {
       executor.execute {
         xrOptions = request
@@ -595,6 +673,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     override fun getXrOptions(request: Empty, responseObserver: StreamObserver<XrOptions>) {
       executor.execute { sendResponse(responseObserver, xrOptions) }
+    }
+
+    override fun setEnvironment(request: Environment, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        environment.clear()
+        environment.putAll(request.environmentMap)
+      }
     }
 
     override fun setMicrophoneState(request: MicrophoneState, responseObserver: StreamObserver<Empty>) {
@@ -616,6 +701,43 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         val response = EmulatorStatus.newBuilder().setUptime(System.currentTimeMillis() - startTime).setBooted(true).build()
         sendResponse(responseObserver, response)
       }
+    }
+
+    override fun getClipboard(request: Empty, responseObserver: StreamObserver<ClipData>) {
+      executor.execute {
+        val response = ClipData.newBuilder().setText(clipboardInternal.get()).build()
+        sendResponse(responseObserver, response)
+      }
+    }
+
+    override fun setBattery(request: BatteryState, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        batteryStatus = request
+        sendEmptyResponse(responseObserver)
+      }
+    }
+
+    override fun getBattery(request: Empty, responseObserver: StreamObserver<BatteryState>) {
+      executor.execute { sendResponse(responseObserver, batteryStatus) }
+    }
+
+    override fun setGps(request: GpsState, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        gpsLocation = request
+        sendEmptyResponse(responseObserver)
+      }
+    }
+
+    override fun getGps(request: Empty, responseObserver: StreamObserver<GpsState>) {
+      executor.execute { sendResponse(responseObserver, gpsLocation) }
+    }
+
+    override fun sendSms(request: SmsMessage, responseObserver: StreamObserver<PhoneResponse>) {
+      executor.execute { sendResponse(responseObserver, PhoneResponse.getDefaultInstance()) }
+    }
+
+    override fun sendFingerprint(request: Fingerprint, responseObserver: StreamObserver<Empty>) {
+      executor.execute { sendEmptyResponse(responseObserver) }
     }
 
     override fun setClipboard(request: ClipData, responseObserver: StreamObserver<Empty>) {
@@ -744,6 +866,60 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     val size = getScaledAndRotatedDisplaySize(request.width, request.height, displayId)
     return drawDisplayImage(size, displayId)
   }
+
+  /** Create a screenshot image overlayed on top of the environment background. */
+  private fun createScreenshotImage(request: ImageFormat, displayId: Int, environmentImage: BufferedImage): BufferedImage {
+    if (displayId != PRIMARY_DISPLAY_ID) {
+      return createScreenshotImage(request, displayId)
+    }
+    val size = computeConstrainedSize(environmentImage.width, environmentImage.height, 0, request.width, request.height)
+    val blendedImage = rotateByQuadrantsAndScale(environmentImage, 0, size.width, size.height)
+    val scale = max(blendedImage.width, blendedImage.height).toDouble() / max(environmentImage.width, environmentImage.height)
+    if (config.displayWidth > 0 && config.displayHeight > 0) {
+      val displayImageSize = config.displaySize.scaled(scale)
+      val displayImage = drawDisplayImage(displayImageSize, PRIMARY_DISPLAY_ID)
+      val x = (blendedImage.width - displayImageSize.width) / 2
+      val y = (blendedImage.height - displayImageSize.height) / 2
+      val croppedImage = getCroppedImage(blendedImage, Rectangle(x, y, displayImageSize.width, displayImageSize.height), TYPE_INT_ARGB)
+      val blendedDisplayImage = screenBlend(croppedImage, displayImage)
+      val g = blendedImage.createGraphics()
+      g.drawImage(blendedDisplayImage, x, y, null)
+      g.dispose()
+    }
+    return blendedImage
+  }
+
+  /** Blends two same-size opaque images using "screen" blending. See https://en.wikipedia.org/wiki/Blend_modes. */
+  private fun screenBlend(image1: BufferedImage, image2: BufferedImage): BufferedImage {
+    require(image1.width == image2.width && image1.height == image2.height)
+    // This simple algorithm is sufficient for tests but production code would need to use the JavaCV library.
+    val width = image1.width
+    val height = image1.height
+    val result = BufferedImage(width, height, TYPE_INT_ARGB)
+
+    for (y in 0 until height) {
+      for (x in 0 until width) {
+        val rgb1: Int = image1.getRGB(x, y)
+        val r1 = (rgb1 shr 16) and 0xFF
+        val g1 = (rgb1 shr 8) and 0xFF
+        val b1 = rgb1 and 0xFF
+
+        val rgb2: Int = image2.getRGB(x, y)
+        val r2 = (rgb2 shr 16) and 0xFF
+        val g2 = (rgb2 shr 8) and 0xFF
+        val b2 = rgb2 and 0xFF
+
+        val r = screenBlendColor(r1, r2)
+        val g = screenBlendColor(g1, g2)
+        val b = screenBlendColor(b1, b2)
+
+        result.setRGB(x, y, ALPHA_MASK or (r shl 16) or (g shl 8) or b)
+      }
+    }
+    return result
+  }
+
+  private fun screenBlendColor(v1: Int, v2: Int): Int = 255 - (255 - v1) * (255 - v2) / 255
 
   private inner class EmulatorSnapshotService(private val executor: ExecutorService) : SnapshotServiceGrpc.SnapshotServiceImplBase() {
 
@@ -928,6 +1104,47 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     fun or(vararg moreMethodNamesToIgnore: String): CallFilter {
       return CallFilter(*arrayOf(*methodNamesToIgnore) + arrayOf(*moreMethodNamesToIgnore))
+    }
+  }
+
+  class FakeDeviceHandle(private val emulator: FakeEmulator) : DeviceHandle {
+
+    override val id: DeviceId
+      get() = emulator.deviceId
+
+    override val stateFlow: MutableStateFlow<DeviceState>
+
+    override val scope = CoroutineScope(Dispatchers.Unconfined)
+
+    init {
+      val props =
+        LocalEmulatorProperties.Builder()
+          .apply {
+            avdName = emulator.avdName
+            avdPath = emulator.avdFolder
+            displayName = emulator.avdName
+            deviceType = emulator.deviceType
+            icon = StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_PHONE
+          }
+          .build()
+
+      val state = DeviceState.Disconnected(props)
+      stateFlow = MutableStateFlow(state)
+    }
+
+    fun setPair(pairedDeviceId: DeviceId?) {
+      val props =
+        state.properties
+          .toBuilder()
+          .apply {
+            when (deviceType) {
+              DeviceType.AI_GLASSES -> pairedPhoneId = pairedDeviceId
+              else -> pairedGlassesInfos = pairedDeviceId?.let { listOf(PairedGlassesInfo(pairedDeviceId, null)) } ?: emptyList()
+            }
+          }
+          .build()
+
+      stateFlow.value = DeviceState.Disconnected(props)
     }
   }
 
@@ -1195,7 +1412,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           skin.name=${skinName}
           skin.path=skins/${skinName}
           tag.display=Google Play
-          tag.id=google_apis_playstore
+          tag.id=google_apis_playstore,tablet
           """
           .trimIndent()
 
@@ -1739,7 +1956,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       androidVersion: AndroidVersion = AndroidVersion(34, 0),
     ): Path {
       val api = androidVersion.androidApiLevel.majorVersion
-      val avdId = "XR_Headset_Device_API_$api"
+      val avdId = "XR_Headset"
       val abi = "x86_64"
       val avdFolder = parentFolder.resolve("${avdId}.avd")
       val avdName = avdId.replace('_', ' ')
@@ -1771,10 +1988,11 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           hw.keyboard=yes
           hw.keyboard.lid=yes
           hw.lcd.density = 320
-          hw.lcd.width = 2368
-          hw.lcd.height = 2560
+          hw.lcd.height=2558
+          hw.lcd.width=2560
           hw.mainKeys = no
-          hw.ramSize = 2048
+          hw.ramSize = 4096
+          hw.screen=no-touch
           hw.sdCard=yes
           hw.sensors.orientation=yes
           hw.sensors.proximity=yes
@@ -1801,7 +2019,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           hw.lcd.width=2560
           hw.lcd.height=2368
           hw.initialOrientation = landscape
-          hw.ramSize = 3072
+          hw.ramSize = 4096
           hw.screen = multi-touch
           hw.dPad = false
           hw.rotaryInput = false
@@ -1831,6 +2049,113 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           .trimIndent()
 
       createSystemImage(systemImageFolder, androidVersion, sourceProperties)
+      return createAvd(avdId, avdFolder, configIni, hardwareIni)
+    }
+
+    /** Creates a fake XR Glasses AVD. */
+    @JvmStatic
+    fun createXrGlassesAvd(
+      parentFolder: Path,
+      sdkFolder: Path = getSdkFolder(parentFolder),
+      androidVersion: AndroidVersion = AndroidVersion(34, 0),
+    ): Path {
+      val api = androidVersion.androidApiLevel.majorVersion
+      val avdId = "XR_Glasses"
+      val abi = "x86_64"
+      val avdFolder = parentFolder.resolve("${avdId}.avd")
+      val avdName = avdId.replace('_', ' ')
+      val systemImage = "system-images/android-$api/android-xr/$abi/"
+      val systemImageFolder = sdkFolder.resolve(systemImage)
+
+      val configIni =
+        """
+          AvdId=${avdId}
+          PlayStore.enabled=true
+          abi.type=$abi
+          avd.ini.displayname=${avdName}
+          avd.ini.encoding=UTF-8
+          disk.dataPartition.size=6G
+          hw.accelerometer=yes
+          hw.arc=false
+          hw.audioInput=yes
+          hw.battery=yes
+          hw.camera.back=None
+          hw.camera.front=None
+          hw.cpu.arch=$abi
+          hw.cpu.ncore=4
+          hw.dPad=no
+          hw.device.name=xr_glasses_device
+          hw.dimmingLevels=0.0,0.25,0.5,0.75,1.0
+          hw.gps=yes
+          hw.gpu.enabled=yes
+          hw.gpu.mode=auto
+          hw.initialOrientation=landscape
+          hw.keyboard=yes
+          hw.keyboard.lid=yes
+          hw.lcd.density = 320
+          hw.lcd.width = 1920
+          hw.lcd.height = 1200
+          hw.mainKeys = no
+          hw.ramSize = 4096
+          hw.screen=no-touch
+          hw.sdCard=yes
+          hw.sensors.orientation=yes
+          hw.sensors.proximity=yes
+          hw.trackBall=yes
+          image.sysdir.1=$systemImage
+          runtime.network.latency=none
+          runtime.network.speed=full
+          sdcard.size=512M
+          showDeviceFrame=yes
+          skin.dynamic=yes
+          skin.name = 1920x1200
+          skin.path = _no_skin
+          tag.displaynames = Android XR System Image
+          tag.ids=android-xr
+          """
+          .trimIndent()
+
+      val hardwareIni =
+        """
+          hw.cpu.arch = $abi
+          hw.cpu.model = qemu32
+          hw.cpu.ncore = 4
+          hw.lcd.density=320
+          hw.lcd.width=1920
+          hw.lcd.height=1200
+          hw.initialOrientation = landscape
+          hw.ramSize = 4096
+          hw.screen = multi-touch
+          hw.dPad = false
+          hw.rotaryInput = false
+          hw.gsmModem = true
+          hw.gps = true
+          hw.battery = false
+          hw.accelerometer = false
+          hw.gyroscope = true
+          hw.audioInput = true
+          hw.audioOutput = true
+          hw.sdCard = true
+          hw.sdCard.path = $avdFolder/sdcard.img
+          android.sdk.root = $sdkFolder
+          """
+          .trimIndent()
+
+      val sourceProperties =
+        """
+          Pkg.Desc=Android XR SDK System Image $abi
+          Pkg.UserSrc=false
+          Pkg.Revision=2
+          SystemImage.Abi=$abi
+          SystemImage.GpuSupport=true
+          SystemImage.TagId=android-xr
+          SystemImage.TagDisplay=Android XR System Image
+          """
+          .trimIndent()
+
+      val advancedFeatures = "XrDimming = on\n"
+
+      createSystemImage(systemImageFolder, androidVersion, sourceProperties, advancedFeatures)
       return createAvd(avdId, avdFolder, configIni, hardwareIni)
     }
 
@@ -1876,6 +2201,113 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           hw.lcd.density=160
           hw.lcd.width=450
           hw.lcd.height=450
+          hw.lcd.transparent=yes
+          environment.width=1200
+          environment.height=900
+          hw.mainKeys=no
+          hw.ramSize=3096
+          hw.sdCard=yes
+          hw.sensors.orientation=yes
+          hw.sensors.proximity=yes
+          hw.trackBall=no
+          image.sysdir.1=$systemImage
+          runtime.network.latency=none
+          runtime.network.speed=full
+          sdcard.size=512M
+          showDeviceFrame=yes
+          tag.displaynames=AI Glasses
+          tag.ids=ai-glasses
+          hw.touchpad0=true
+          hw.touchpad0.width=1543
+          hw.touchpad0.height=297
+          hw.screen=no-touch
+          """
+          .trimIndent()
+
+      val hardwareIni =
+        """
+          hw.cpu.arch=$abi
+          hw.cpu.model=qemu32
+          hw.cpu.ncore=4
+          hw.lcd.density=160
+          hw.lcd.width=450
+          hw.lcd.height=450
+          hw.initialOrientation=portrait
+          hw.ramSize=3072
+          hw.screen=multi-touch
+          hw.dPad=false
+          hw.rotaryInput=false
+          hw.gsmModem=true
+          hw.gps=false
+          hw.battery=true
+          hw.accelerometer=false
+          hw.gyroscope=true
+          hw.audioInput=true
+          hw.audioOutput=true
+          hw.sdCard=true
+          hw.sdCard.path=$avdFolder/sdcard.img
+          hw.touchpad0=true
+          hw.touchpad0.width=1543
+          hw.touchpad0.height=297
+          android.sdk.root=$sdkFolder
+          """
+          .trimIndent()
+
+      val sourceProperties =
+        """
+          Pkg.Desc=Android XR Glasses SDK System Image
+          Pkg.UserSrc=false
+          Pkg.Revision=2
+          SystemImage.Abi=$abi
+          SystemImage.GpuSupport=true
+          SystemImage.TagId=android-xr-glasses
+          SystemImage.TagDisplay=Android XR Glasses
+          """
+          .trimIndent()
+
+      createSystemImage(systemImageFolder, androidVersion, sourceProperties)
+      return createAvd(avdId, avdFolder, configIni, hardwareIni)
+    }
+
+    /** Creates a fake displayless AI Glasses AVD. */
+    @JvmStatic
+    fun createAiGlassesDisplaylessAvd(
+      parentFolder: Path,
+      sdkFolder: Path = getSdkFolder(parentFolder),
+      androidVersion: AndroidVersion = AndroidVersion(34, 0),
+    ): Path {
+      val api = androidVersion.androidApiLevel.majorVersion
+      val avdId = "AI_Glasses"
+      val abi = "x86_64"
+      val avdFolder = parentFolder.resolve("${avdId}.avd")
+      val avdName = avdId.replace('_', ' ')
+      val systemImage = "system-images/android-$api/android-xr-glasses/$abi/"
+      val systemImageFolder = sdkFolder.resolve(systemImage)
+
+      val configIni =
+        """
+          AvdId=${avdId}
+          PlayStore.enabled=false
+          abi.type=$abi
+          avd.ini.displayname=${avdName}
+          avd.ini.encoding=UTF-8
+          disk.dataPartition.size=6G
+          hw.accelerometer=yes
+          hw.arc=false
+          hw.audioInput=yes
+          hw.battery=yes
+          hw.camera.back=None
+          hw.camera.front=emulated
+          hw.cpu.arch=$abi
+          hw.cpu.ncore=4
+          hw.dPad=no
+          hw.device.name=ai_glasses_device
+          hw.gps=no
+          hw.gpu.enabled=yes
+          hw.gpu.mode=auto
+          hw.initialOrientation=landscape
+          hw.keyboard=yes
+          hw.keyboard.lid=yes
           hw.lcd.transparent=yes
           environment.width=1200
           environment.height=900
@@ -2158,7 +2590,12 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       return createAvd(avdId, avdFolder, configIni, hardwareIni)
     }
 
-    private fun createSystemImage(systemImageFolder: Path, androidVersion: AndroidVersion, sourceProperties: String) {
+    private fun createSystemImage(
+      systemImageFolder: Path,
+      androidVersion: AndroidVersion,
+      sourceProperties: String,
+      advancedFeatures: String? = null,
+    ) {
       if (Files.exists(systemImageFolder.resolve(SystemImageManager.SYS_IMG_NAME))) {
         return
       }
@@ -2183,6 +2620,9 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           .trimIndent()
       Files.writeString(systemImageFolder.resolve("package.xml"), packageContents)
       Files.writeString(systemImageFolder.resolve("source.properties"), sourceProperties + '\n' + androidVersion.sourceProperties)
+      if (advancedFeatures != null) {
+        Files.writeString(systemImageFolder.resolve("advancedFeatures.ini"), advancedFeatures)
+      }
       Files.createFile(systemImageFolder.resolve(SystemImageManager.SYS_IMG_NAME))
     }
 

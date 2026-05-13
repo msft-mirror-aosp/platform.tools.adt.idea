@@ -1,0 +1,115 @@
+/*
+ * Copyright (C) 2026 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tools.idea.layoutinspector.recompositions
+
+import com.android.testutils.TestUtils
+import com.android.tools.idea.layoutinspector.TestScopeRule
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.intellij.execution.impl.EditorHyperlinkListener
+import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
+import kotlin.io.path.readText
+import kotlinx.coroutines.test.runTest
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+
+private const val TEST_DATA_PATH = "tools/adt/idea/layout-inspector/testData/stateinspection"
+
+@RunsInEdt
+class RecompositionHyperLinkDetectorTest {
+  private val projectRule = AndroidProjectRule.inMemory()
+
+  @get:Rule val rule = RuleChain(TestScopeRule(), projectRule, EdtRule())
+
+  @Before
+  fun before() {
+    projectRule.fixture.addFileToProject("src/com/example/recompositiontest/MainActivity.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/material3/Button.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/material3/Text.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/Composer.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/Composition.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/CompositionLocalMap.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/Recomposer.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/SnapshotState.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/ValueHolders.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/snapshots/Snapshot.kt", "")
+    projectRule.fixture.addFileToProject("src/androidx/compose/runtime/internal/ComposableLambda.kt", "")
+    installFakeExtensionPoints(projectRule.testRootDisposable)
+  }
+
+  @Test
+  fun testHyperLinks() = runTest {
+    val file = "${TEST_DATA_PATH}/state_reads_1_2.txt"
+    val text = TestUtils.resolveWorkspacePathUnchecked(file).readText()
+    val editor = projectRule.createEditorWithContent(text) as EditorEx
+    val detector = SynchronousHyperLinkDetector(editor, this, EditorHyperlinkListener {})
+    detector.filterJob.join()
+    detector.detectHyperlinks()
+    validateMarkupModel(editor.markupModel) {
+      region(15, "(Explain with AI)")
+      region(27, "Composition.kt:1015")
+      region(28, "Recomposer.kt:1519")
+      region(31, "Snapshot.kt:2081")
+      region(32, "SnapshotState.kt:142")
+      region(33, "ValueHolders.kt:71")
+      region(34, "CompositionLocalMap.kt:88")
+      region(35, "Composer.kt:2473")
+      region(36, "Text.kt:352")
+      region(37, "MainActivity.kt:79")
+      region(40, "ComposableLambda.kt:130")
+      region(41, "ComposableLambda.kt:51")
+      region(42, "Button.kt:1140")
+      region(43, "Button.kt:139")
+      region(44, "ComposableLambda.kt:121")
+      region(45, "ComposableLambda.kt:122")
+      region(46, "ComposableLambda.kt:122")
+      region(48, "Composer.kt:2926")
+      region(49, "Composer.kt:3320")
+      region(51, "Button.kt:136")
+      region(52, "Button.kt:135")
+      region(53, "ComposableLambda.kt:121")
+      region(54, "ComposableLambda.kt:51")
+      region(57, "ComposableLambda.kt:121")
+      region(58, "ComposableLambda.kt:51")
+      region(61, "Button.kt:125")
+      region(62, "MainActivity.kt:78")
+      region(67, "Composer.kt:2926")
+      region(68, "Composer.kt:3262")
+      region(69, "Composer.kt:3893")
+      region(70, "Composer.kt:3817")
+      region(71, "Composition.kt:1076")
+      region(72, "Recomposer.kt:1400")
+      region(73, "Recomposer.kt:156")
+      region(74, "Recomposer.kt:635")
+      region(95, "(Explain with AI)")
+      region(96, "Composition.kt:1015")
+      region(97, "Recomposer.kt:1519")
+      region(100, "Snapshot.kt:2081")
+      region(105, "MainActivity.kt:60")
+      region(110, "Composer.kt:2926")
+      region(111, "Composer.kt:3262")
+      region(112, "Composer.kt:3893")
+      region(113, "Composer.kt:3817")
+      region(114, "Composition.kt:1076")
+      region(115, "Recomposer.kt:1400")
+      region(116, "Recomposer.kt:156")
+      region(117, "Recomposer.kt:635")
+    }
+  }
+}

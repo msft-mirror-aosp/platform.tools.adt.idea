@@ -1,8 +1,8 @@
 load("@rules_java//java:defs.bzl", "java_library")
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE", "KOTLIN_ARTIFACTS_FOR_TESTS")
-load("//tools/adt/idea/emulator-snapshots:emulator_jvm_flags.bzl", "emulator_snapshot_jvm_flags", "emulator_test_jvm_flags")
+load("//tools/adt/idea/emulator-snapshots:emulator_test_env.bzl", "emulator_snapshot_data", "emulator_snapshot_jvm_flags", "emulator_test_jvm_flags")
 load("//tools/adt/idea/studio:studio.bzl", "studio_project_model")
-load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
+load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test", "studio_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
 # managed by go/iml_to_build
@@ -37,9 +37,15 @@ open_project_data = [
     INTEGRATION_TEST_GRADLE_VERSION,
 ]
 
-iml_test(
+studio_test(
     name = "OpenProjectTest",
     timeout = "long",
+    # To run test for a single config, like "canary", use target OpenProjectTest_canary
+    configs = [
+        "canary",
+        "nightly",
+        "stable",
+    ],
     data = open_project_data,
     module = ":intellij.android.core.integration",
     tags = [
@@ -250,9 +256,8 @@ iml_test(
     data = [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = "//tools/emulator/tests:android.tools.emulator.tests",
     tags = [
@@ -275,10 +280,9 @@ iml_test(
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -300,9 +304,8 @@ iml_test(
     data = [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -315,15 +318,64 @@ iml_test(
 )
 
 iml_test(
+    name = "AdbWifiPairTest",
+    timeout = "long",
+    data = [
+        "//prebuilts/studio/sdk:emulator",
+        "//prebuilts/studio/sdk:platform-tools",
+        "//prebuilts/studio/sdk:system_image_android-CANARY_r11_default",
+    ],
+    exec_properties = {
+        # needed to allow mDNS traffic.
+        "dockerNetwork": "standard",
+    },
+    jvm_flags = emulator_test_jvm_flags("//prebuilts/studio/sdk:system_image_android-CANARY_r11_default"),
+    module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
+    tags_linux = [],
+    tags_mac = [],
+    tags_windows = [
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.idea.AdbWifiPairTest",
+)
+
+iml_test(
+    name = "AdbWifiAutoEnableTest",
+    timeout = "long",
+    data = [
+        "//prebuilts/studio/sdk:emulator",
+        "//prebuilts/studio/sdk:platform-tools",
+        "//prebuilts/studio/sdk:system_image_android-CANARY_r11_default",
+    ],
+    exec_properties = {
+        # needed to allow mDNS traffic.
+        "dockerNetwork": "standard",
+    },
+    jvm_flags = emulator_test_jvm_flags("//prebuilts/studio/sdk:system_image_android-CANARY_r11_default"),
+    module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
+    tags_linux = [],
+    tags_mac = [],
+    tags_windows = [
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.idea.AdbWifiAutoEnableTest",
+)
+
+iml_test(
     name = "EmulatorBeforeStudioTest",
     timeout = "long",
     data = [
         ":minapp",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -344,10 +396,9 @@ iml_test(
         ":minapp",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         "//tools/base/build-system:gradle-distrib-7.2",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -397,8 +448,7 @@ iml_test(
     data = live_edit_test_data + [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -421,9 +471,8 @@ iml_test(
     data = live_edit_test_data + [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = [
         "-Dstudio.profiling.capture_jfr=true",
         "-Dstudio.profiling.gradle.capture_jfr=true",
@@ -458,7 +507,7 @@ apply_changes_data = [
 iml_test(
     name = "ApplyChangesTest",
     timeout = "long",
-    data = apply_changes_data + ["//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot"],
+    data = apply_changes_data + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -476,7 +525,7 @@ iml_test(
 iml_test(
     name = "ApplyCodeChangesTest",
     timeout = "long",
-    data = apply_changes_data + ["//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot"],
+    data = apply_changes_data + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -504,14 +553,14 @@ build_and_run_test_data = [
 iml_test(
     name = "BuildAndRunTest",
     timeout = "long",
-    data = build_and_run_test_data + ["//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot"],
+    data = build_and_run_test_data + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     exec_properties = {
         "dockerNetwork": "standard",
     },
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
-        "noci:studio-win",  # Disabling due to b/491123352#comment4 and other instances of quota getting exhausted
+        "noci:studio-linux",  # b/508360724
         "studio-e2e-test",
     ],
     tags_linux = ["block-network"],
@@ -715,8 +764,7 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-31",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -743,8 +791,7 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-31",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -792,10 +839,9 @@ iml_test(
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-33",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [

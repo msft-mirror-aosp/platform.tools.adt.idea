@@ -30,7 +30,6 @@ import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.preview.PreviewRefreshManager
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.NamedExternalResource
-import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.LogLevel
@@ -120,7 +119,6 @@ class ComposePreviewFakeUiGradleRule(
             size = Dimension(1000, 800)
             add(previewView, BorderLayout.CENTER)
           },
-          1.0,
           true,
         )
       fakeUi.root.validate()
@@ -212,7 +210,7 @@ class ComposePreviewFakeUiGradleRule(
   }
 
   internal fun createComposePreviewRepresentation(psiFile: PsiFile, view: TestComposePreviewView): ComposePreviewRepresentation {
-    val previewRepresentation = ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> view }
+    val previewRepresentation = ComposePreviewRepresentation(psiFile) { _, _, _, _, _, _ -> view }
     Disposer.register(fixture.testRootDisposable, previewRepresentation)
     return previewRepresentation
   }

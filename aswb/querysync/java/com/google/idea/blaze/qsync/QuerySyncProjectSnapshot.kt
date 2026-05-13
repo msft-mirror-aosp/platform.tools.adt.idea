@@ -23,6 +23,10 @@ import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectStructureData
+import com.google.idea.blaze.qsync.project.ProjectTarget
+import com.google.idea.blaze.qsync.project.RequestedTargets
+import com.google.idea.blaze.qsync.project.pathToLabel
+import com.google.idea.blaze.qsync.project.requiredTargets
 import java.nio.file.Path
 
 /**
@@ -60,11 +64,9 @@ data class QuerySyncProjectSnapshot(
 
   fun withGraph(value: BuildGraphData): QuerySyncProjectSnapshot = copy(graph = value)
 
-  fun withProjectStructureData(value: ProjectStructureData): QuerySyncProjectSnapshot =
-    copy(projectStructureData = value)
+  fun withProjectStructureData(value: ProjectStructureData): QuerySyncProjectSnapshot = copy(projectStructureData = value)
 
-  fun withArtifactState(value: ArtifactTracker.State): QuerySyncProjectSnapshot =
-    copy(artifactState = value)
+  fun withArtifactState(value: ArtifactTracker.State): QuerySyncProjectSnapshot = copy(artifactState = value)
 
   fun withProject(value: ProjectProto.Project): QuerySyncProjectSnapshot = copy(project = value)
 
@@ -73,23 +75,21 @@ data class QuerySyncProjectSnapshot(
    *
    * @param path a workspace relative path.
    */
-  fun getTargetOwners(path: Path): Set<Label> {
-    return graph.getSourceFileOwners(path)
+  fun getSourceFileOwners(path: Path): Set<Label> {
+    return graph.getSourceFileOwners(projectStructureData.pathToLabel(path) ?: return emptySet())
   }
 
-  val allLoadedTargets: Collection<Label>
+  val allLoadedTargets: Sequence<ProjectTarget>
     /** Returns mapping of targets to [BuildTarget] */
     get() = graph.allLoadedTargets()
 
-  val artifactIndex: ArtifactIndex by
-    lazy(LazyThreadSafetyMode.PUBLICATION) { ArtifactIndex.create(artifactState) }
+  val artifactIndex: ArtifactIndex by lazy(LazyThreadSafetyMode.PUBLICATION) { ArtifactIndex.create(artifactState) }
 
   /**
-   * For given project targets, returns all dependency targets that are
-   * [ ][BuildGraphDataImpl.projectDeps] external} to the project, from which build artifacts are
-   * needed for the targets sources to be edited fully. This method returns the dependencies for the
-   * target with fewest pending so that if dependencies have been built for one, the empty set will
-   * be returned even if others have pending dependencies.
+   * For given project targets, returns all dependency targets that are [ ][BuildGraphDataImpl.projectDeps] external} to the project, from
+   * which build artifacts are needed for the targets sources to be edited fully. This method returns the dependencies for the target with
+   * fewest pending so that if dependencies have been built for one, the empty set will be returned even if others have pending
+   * dependencies.
    *
    * @param projectTargets The set of project targets which include a given source file.
    */
@@ -98,12 +98,12 @@ data class QuerySyncProjectSnapshot(
     val incompleteTargets: Set<Label> = incompleteTargets
     return projectTargets
       .map { target ->
-        graph
-          .computeRequestedTargets(
-            listOf(target),
-            replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false,
+        val requestedTargets =
+          RequestedTargets(
+            graph.computeSufficientTargets(listOf(target), replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false)
           )
-          .requiredTargets
+        requestedTargets
+          .requiredTargets(getCodeAnalysisDependencyGraphProvider())
           .filter { !syncedTargets.contains(it) || incompleteTargets.contains(it) }
           .toSet()
       }
@@ -114,6 +114,6 @@ data class QuerySyncProjectSnapshot(
   /** Recursively get all the transitive deps outside the project */
   fun getPendingTargets(workspaceRelativePath: Path): Set<Label> {
     Preconditions.checkState(!workspaceRelativePath.isAbsolute, workspaceRelativePath)
-    return getPendingExternalDeps(getTargetOwners(workspaceRelativePath))
+    return getPendingExternalDeps(getSourceFileOwners(workspaceRelativePath))
   }
 }

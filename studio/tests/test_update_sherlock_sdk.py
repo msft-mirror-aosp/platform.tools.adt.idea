@@ -26,7 +26,7 @@ class UpdateSherlockSdkTest(unittest.TestCase):
 
   def test_with_path(self):
     product_info = {
-      "name": "Sherlock",
+      "name": "Android Performance Analyzer",
       "version": "2.0",
       "buildNumber": "251.26094",
       "productCode": "IC",
@@ -75,28 +75,28 @@ class UpdateSherlockSdkTest(unittest.TestCase):
     linux_artifacts = {"Sherlock-2.1/" + k: v for k, v in common_lib_files.items()}
     linux_artifacts.update({"Sherlock-2.1/" + k: v for k, v in common_plugin_files.items()})
     linux_artifacts["Sherlock-2.1/product-info.json"] = product_info
-    test_utils.create(str(self.download_dir / "sherlock-platform.tar.gz"), linux_artifacts)
+    test_utils.create(str(self.download_dir / "apa-platform.tar.gz"), linux_artifacts)
 
     # Mac ARM
-    mac_arm_artifacts = {"Sherlock.app/Contents/" + k: v for k, v in common_lib_files.items()}
-    mac_arm_artifacts.update({"Sherlock.app/Contents/" + k: v for k, v in common_plugin_files.items()})
-    mac_arm_artifacts["Sherlock.app/Contents/Resources/product-info.json"] = product_info
-    test_utils.create(str(self.download_dir / "sherlock-platform.mac.aarch64.zip"), mac_arm_artifacts)
+    mac_arm_artifacts = {"Android Performance Analyzer.app/Contents/" + k: v for k, v in common_lib_files.items()}
+    mac_arm_artifacts.update({"Android Performance Analyzer.app/Contents/" + k: v for k, v in common_plugin_files.items()})
+    mac_arm_artifacts["Android Performance Analyzer.app/Contents/Resources/product-info.json"] = product_info
+    test_utils.create(str(self.download_dir / "apa-platform.mac.aarch64.zip"), mac_arm_artifacts)
 
     # Mac x86_64
-    mac_x64_artifacts = {"Sherlock.app/Contents/" + k: v for k, v in common_lib_files.items()}
-    mac_x64_artifacts.update({"Sherlock.app/Contents/" + k: v for k, v in common_plugin_files.items()})
-    mac_x64_artifacts["Sherlock.app/Contents/Resources/product-info.json"] = product_info
-    test_utils.create(str(self.download_dir / "sherlock-platform.mac.x64.zip"), mac_x64_artifacts)
+    mac_x64_artifacts = {"Android Performance Analyzer.app/Contents/" + k: v for k, v in common_lib_files.items()}
+    mac_x64_artifacts.update({"Android Performance Analyzer.app/Contents/" + k: v for k, v in common_plugin_files.items()})
+    mac_x64_artifacts["Android Performance Analyzer.app/Contents/Resources/product-info.json"] = product_info
+    test_utils.create(str(self.download_dir / "apa-platform.mac.x64.zip"), mac_x64_artifacts)
 
     # Windows
     win_artifacts = common_lib_files.copy()
     win_artifacts.update(common_plugin_files)
     win_artifacts["product-info.json"] = product_info
-    test_utils.create(str(self.download_dir / "sherlock-platform.win.zip"), win_artifacts)
+    test_utils.create(str(self.download_dir / "apa-platform.win.zip"), win_artifacts)
 
     # Sources
-    test_utils.create(str(self.download_dir / "sherlock-platform-sources.zip"), {})
+    test_utils.create(str(self.download_dir / "apa-platform-sources.zip"), {})
 
     env = os.environ.copy()
     pythonpath = self.deploy_dir / "tools/adt/idea/studio"
@@ -108,7 +108,11 @@ class UpdateSherlockSdkTest(unittest.TestCase):
       "--path", str(self.download_dir),
       "--workspace", str(self.workspace_dir)
     ]
-    subprocess.run(cmd, capture_output=True, text=True, env=env)
+    res = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    if res.returncode != 0:
+      print("--- SUBPROCESS STDOUT ---", res.stdout, file=sys.stderr)
+      print("--- SUBPROCESS STDERR ---", res.stderr, file=sys.stderr)
+      res.check_returncode()
     expected_metadata = f"local_path: {self.download_dir}\n"
     expected_spec_bzl = """# Auto-generated file, do not edit manually.
 SPEC = struct(

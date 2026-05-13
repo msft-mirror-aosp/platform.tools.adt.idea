@@ -18,6 +18,7 @@
 
 #include <android/keycodes.h>
 #include <poll.h>
+#include <regex>
 #include <sys/socket.h>
 
 #include "accessors/device_state_manager.h"
@@ -31,7 +32,10 @@
 #include "flags.h"
 #include "jvm.h"
 #include "log.h"
+#include "settings.h"
+#include "shell_command_executor.h"
 #include "socket_reader.h"
+#include "string_util.h"
 
 namespace screensharing {
 
@@ -65,6 +69,25 @@ int Utf8CharacterCount(const string& str) {
     }
   }
   return count;
+}
+
+bool UnicodeCompositionSupported() {
+  static int state = -1;
+  if (state < 0) {
+    state = 0;
+    if (Settings::Get(Settings::Table::SECURE, "default_input_method").rfind("com.google.android.inputmethod.latin", 0) == 0) {
+      string output = RTrim(ExecuteShellCommand("dumpsys package com.google.android.inputmethod.latin"));
+      basic_regex version_regex(R"(versionCode=(\d+)\s)");
+      auto iter = sregex_iterator(output.begin(), output.end(), version_regex);
+      if (iter != sregex_iterator()) {
+        int version = ParseInt(iter->str(1), -1);
+        if (version >= 175733006) {
+          state = 1;
+        }
+      }
+    }
+  }
+  return state != 0;
 }
 
 Point AdjustedDisplayCoordinates(int32_t x, int32_t y, const DisplayInfo& display_info) {
@@ -118,6 +141,8 @@ bool SetDisplayPowerMode(Jni jni, JObject&& display_token, DisplayPowerMode powe
 bool IsMirrorableDisplay(const DisplayInfo& display_info) {
   return display_info.IsValid() && display_info.IsOn() && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0;
 }
+
+int32_t hover_move_count = 0;
 
 }  // namespace
 
@@ -389,8 +414,20 @@ void Controller::ProcessMessage(const ControlMessage& message) {
 void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
   nanoseconds event_time = UptimeNanos();
   int32_t action = message.action();
-  Log::V("Controller::ProcessMotionEvent action:%d", action);
   int32_t display_id = message.display_id();
+  if (action == AMOTION_EVENT_ACTION_HOVER_MOVE && ++hover_move_count > 3) {
+    Log::V("Controller::ProcessMotionEvent action:%d action_button:%d button_state:%d num_pointers:%zu is_mouse:%s display_id:%d",
+           action, message.action_button(), message.button_state(), message.pointers().size(), message.is_mouse() ? "true" : "false",
+           message.display_id());
+  } else {
+    Log::D("Controller::ProcessMotionEvent action:%d action_button:%d button_state:%d num_pointers:%zu is_mouse:%s display_id:%d",
+           action, message.action_button(), message.button_state(), message.pointers().size(), message.is_mouse() ? "true" : "false",
+           message.display_id());
+    if (action != AMOTION_EVENT_ACTION_HOVER_MOVE) {
+      hover_move_count = 0;
+    }
+  }
+
   DisplayInfo display_info = Agent::GetDisplayInfo(display_id);
   if (!display_info.IsValid()) {
     return;
@@ -556,7 +593,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
         event.action = AMOTION_EVENT_ACTION_UP;
         event.action_button = 0;
       } else {
-        for (int i = event.pointer_count; --i > 1;) {
+        for (int i = event.pointer_count; --i > 0;) {
           event.action = AMOTION_EVENT_ACTION_POINTER_UP | (i << AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
           pointer_helper_->SetPointerPressure(pointer_coordinates_.GetElement(jni_, i), 0);
           InjectMotionEvent(event);
@@ -576,49 +613,29 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
 
 void Controller::ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message) {
   nanoseconds event_time = UptimeNanos();
-  if ((Agent::flags() & USE_UINPUT || input_event_injection_disabled_) && Agent::feature_level() >= 29) {
-    InitializeVirtualKeyboard();
-    int32_t action = message.action();
-    virtual_keyboard_->WriteKeyEvent(
-        message.keycode(), action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action, event_time);
-    if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
-      virtual_keyboard_->WriteKeyEvent(message.keycode(), AKEY_EVENT_ACTION_UP, event_time);
-    }
-  } else {
-    KeyEvent event(jni);
-    event.event_time_millis = duration_cast<milliseconds>(event_time).count();
-    event.down_time_millis = event.event_time_millis;
-    int32_t action = message.action();
-    event.action = action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action;
-    event.code = message.keycode();
-    event.meta_state = message.meta_state();
-    event.source = KeyCharacterMap::VIRTUAL_KEYBOARD;
-    InjectKeyEvent(event);
-    if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
-      event.action = AKEY_EVENT_ACTION_UP;
-      InjectKeyEvent(event);
-    }
-  }
+  InjectKeyEvent(message.action(), message.keycode(), message.meta_state());
 }
 
 void Controller::ProcessTextInput(const TextInputMessage& message) {
-  nanoseconds event_time;
-  if ((Agent::flags() & USE_UINPUT || input_event_injection_disabled_) && Agent::feature_level() >= 29) {
-    event_time = UptimeNanos();
+  if (UseUInputForKeyEvents()) {
     InitializeVirtualKeyboard();
   }
   const u16string& text = message.text();
   for (uint16_t c: text) {
     JObjectArray event_array = key_character_map_->GetEvents(&c, 1);
     if (event_array.IsNull()) {
+      if (UnicodeCompositionSupported()) {
+        InjectUnicodeCharacter(c);
+        continue;
+      }
       Log::W(jni_.GetAndClearException(), "Unable to map character '\\u%04X' to key events", c);
       continue;
     }
     auto len = event_array.GetLength();
     for (int i = 0; i < len; i++) {
       JObject key_event = event_array.GetElement(i);
-      if ((Agent::flags() & USE_UINPUT || input_event_injection_disabled_) && Agent::feature_level() >= 29) {
-        virtual_keyboard_->WriteKeyEvent(KeyEvent::GetKeyCode(key_event), KeyEvent::GetAction(key_event), event_time);
+      if (UseUInputForKeyEvents()) {
+        virtual_keyboard_->WriteKeyEvent(KeyEvent::GetKeyCode(key_event), KeyEvent::GetAction(key_event), UptimeNanos());
       } else {
         if (Log::IsEnabled(Log::Level::DEBUG)) {
           Log::D("key_event: %s", key_event.ToString().c_str());
@@ -629,20 +646,50 @@ void Controller::ProcessTextInput(const TextInputMessage& message) {
   }
 }
 
-void Controller::InjectMotionEvent(const MotionEvent& event) {
-  JObject motion_event = event.ToJava();
-  if (motion_event.IsNull()) {
-    return;  // The error has already been logged.
+void Controller::InjectUnicodeCharacter(uint16_t c) {
+  Log::D("InjectUnicodeCharacter('\\u%04X')", c);
+  // Activate unicode composition.
+  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON);
+  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON);
+  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_CTRL_LEFT, 0);
+  // Enter hexadecimal code of the character.
+  bool significant = false;
+  for (int i = 12; i >= 0; i -= 4) {
+    int d = (c >> i) & 0xF;
+    if (d == 0 && !significant) {
+      continue;
+    }
+    significant = true;
+    int keycode = d < 10 ? AKEYCODE_0 + d : AKEYCODE_A + d - 10;
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, keycode, 0);
   }
-  if (event.action == AMOTION_EVENT_ACTION_HOVER_MOVE || Log::IsEnabled(Log::Level::VERBOSE)) {
-    Log::V("motion_event: %s", motion_event.ToString().c_str());
-  } else if (Log::IsEnabled(Log::Level::DEBUG)) {
-    Log::D("motion_event: %s", motion_event.ToString().c_str());
-  }
-  if (Agent::device_type() == DeviceType::XR) {
-    InjectXrMotionEvent(motion_event);
+  // Finish unicode composition.
+  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_ENTER, 0);
+}
+
+void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state) {
+  if (UseUInputForKeyEvents()) {
+    InitializeVirtualKeyboard();
+    nanoseconds event_time = UptimeNanos();
+    virtual_keyboard_->WriteKeyEvent(keycode, action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action, event_time);
+    if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
+      virtual_keyboard_->WriteKeyEvent(keycode, AKEY_EVENT_ACTION_UP, event_time);
+    }
   } else {
-    InjectInputEvent(motion_event);
+    KeyEvent event(jni_);
+    event.event_time_millis = duration_cast<milliseconds>(UptimeNanos()).count();
+    event.down_time_millis = event.event_time_millis;
+    event.action = action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action;
+    event.code = keycode;
+    event.meta_state = meta_state;
+    event.source = KeyCharacterMap::VIRTUAL_KEYBOARD;
+    InjectKeyEvent(event);
+    if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
+      event.action = AKEY_EVENT_ACTION_UP;
+      InjectKeyEvent(event);
+    }
   }
 }
 
@@ -654,11 +701,40 @@ void Controller::InjectKeyEvent(const KeyEvent& event) {
   InjectInputEvent(key_event);
 }
 
+bool Controller::UseUInputForKeyEvents() const {
+  return (Agent::flags() & USE_UINPUT || input_event_injection_disabled_) && Agent::feature_level() >= 29;
+}
+
+void Controller::InjectMotionEvent(const MotionEvent& event) {
+  JObject motion_event = event.ToJava();
+  if (motion_event.IsNull()) {
+    return;  // The error has already been logged.
+  }
+  if (event.action == AMOTION_EVENT_ACTION_HOVER_MOVE && hover_move_count > 3 && Log::IsEnabled(Log::Level::VERBOSE)) {
+    Log::V("motion_event: %s", motion_event.ToString().c_str());
+  } else if (Log::IsEnabled(Log::Level::DEBUG)) {
+    Log::D("motion_event: %s", motion_event.ToString().c_str());
+  }
+
+  if (Agent::device_type() == DeviceType::XR) {
+    InjectXrMotionEvent(motion_event);
+  } else {
+    InjectInputEvent(motion_event);
+  }
+}
+
+void Controller::InjectCancelMotionEvent() {
+  MotionEvent event(Jvm::GetJni());
+  event.action = AMOTION_EVENT_ACTION_CANCEL;
+  event.event_time_millis = duration_cast<milliseconds>(UptimeNanos()).count();
+  InjectInputEvent(event.ToJava());
+}
+
 void Controller::InjectInputEvent(const JObject& input_event) {
   if (input_event_injection_disabled_) {
     return;
   }
-  if (!InputManager::InjectInputEvent(jni_, input_event, InputEventInjectionSync::NONE)) {
+  if (!InputManager::InjectInputEvent(jni_, input_event, InputEventInjectionSync::WAIT_FOR_FINISHED)) {
     JThrowable exception = jni_.GetAndClearException();
     if (exception.IsNotNull()) {
       Log::E("Unable to inject an input event - %s", JString::ValueOf(exception).c_str());
@@ -668,6 +744,7 @@ void Controller::InjectInputEvent(const JObject& input_event) {
       }
     } else {
       Log::E("Unable to inject an input event %s", JString::ValueOf(input_event).c_str());
+      InjectCancelMotionEvent(); // Terminate the current gesture to prevent rejection of subsequent motion events.
     }
   }
 }

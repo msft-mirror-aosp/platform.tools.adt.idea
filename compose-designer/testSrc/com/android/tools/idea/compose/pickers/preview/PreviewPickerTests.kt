@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.pickers.preview
 
 import com.android.sdklib.devices.Device
+import com.android.tools.adtui.model.stdui.EditingErrorCategory
 import com.android.tools.idea.compose.ComposeProjectRule
 import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.pickers.base.model.PsiPropertiesModel
@@ -124,7 +125,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun `updating model updates the psi correctly`() = runBlocking {
     Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
@@ -160,7 +160,6 @@ class PreviewPickerTests {
     assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotation)
   }
 
-  @RunsInEdt
   @Test
   fun `supported parameters displayed correctly`() = runBlocking {
     @Language("kotlin")
@@ -188,7 +187,6 @@ class PreviewPickerTests {
     assertEquals("0x0000FF00", runReadAction { model.properties["", "backgroundColor"].value })
   }
 
-  @RunsInEdt
   @Test
   fun `preview default values`() = runBlocking {
     @Language("kotlin")
@@ -234,7 +232,6 @@ class PreviewPickerTests {
     assertEquals(null, model.properties["", "backgroundColor"].defaultValue)
   }
 
-  @RunsInEdt
   @Test
   fun fontScaleEditing() = runBlocking {
     @Language("kotlin")
@@ -271,7 +268,35 @@ class PreviewPickerTests {
     checkFontScaleChange("8.f", "8.0")
   }
 
-  @RunsInEdt
+  @Test
+  fun fontScaleValidation() = runBlocking {
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview
+      fun PreviewNoParameters() {
+      }
+      """
+        .trimIndent()
+
+    val model = getFirstModel(fileContent)
+    val fontScaleProperty = model.properties["", "fontScale"]
+
+    fun assertValidationError(value: String) {
+      val result = fontScaleProperty.editingSupport.validation(value)
+      assertEquals(EditingErrorCategory.ERROR, result.first)
+    }
+
+    assertValidationError("123456789012345678901234567890")
+    assertValidationError("11")
+    assertValidationError("Infinity")
+    assertValidationError("NaN")
+  }
+
   @Test
   fun testUiModeImports() {
     runBlocking<Unit> {
@@ -330,7 +355,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun testWallpaperImports() {
     runBlocking<Unit> {
@@ -368,7 +392,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun showBackgroundEditing() = runBlocking {
     @Language("kotlin")
@@ -386,6 +409,10 @@ class PreviewPickerTests {
 
     val model = getFirstModel(fileContent)
     val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
+
+    // When the parameter is not present, BooleanPsiCallParameter will assign "false" instead of "null"
+    assertEquals("false", model.properties["", "showBackground"].value)
+    assertEquals("false", model.properties["", "showSystemUi"].value)
 
     fun checkShowBackgroundChange(newValue: String?, expectedPropertyValue: String?) {
       model.properties["", "showBackground"].value = newValue
@@ -507,7 +534,6 @@ class PreviewPickerTests {
     assertEquals(PreviewPickerValue.UI_MODE_NOT_NIGHT, testTracker.valuesRegistered[1])
   }
 
-  @RunsInEdt
   @Test
   fun testDeviceTrackedPerModification() {
     // We need the sdk to be able to figure out devices set by ID, including the initial/default
