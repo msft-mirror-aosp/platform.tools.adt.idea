@@ -68,7 +68,7 @@ class ChooseArtifactPageTest {
     createWizard { AppMetadata("Fake App", "com.fake.app", "123", "1.2.3") }
 
     // Header
-    composeTestRule.onNodeWithText("Upload to Play").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Publish your Android app for testing").assertIsDisplayed()
     composeTestRule.onNodeWithText("Choose App Bundle or APK").assertIsDisplayed()
 
     // User info

@@ -18,7 +18,6 @@ package com.android.tools.idea.publishing.play.wizard.page
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -57,6 +56,7 @@ import com.android.tools.idea.publishing.play.AppMetadata
 import com.android.tools.idea.publishing.play.client.type.App
 import com.android.tools.idea.publishing.play.client.type.parseGoogleApiError
 import com.android.tools.idea.publishing.play.extractAppMetadata
+import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardHeader
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
 import com.google.api.client.http.HttpResponseException
 import com.google.gct.login2.GoogleLoginService
@@ -67,7 +67,6 @@ import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.util.ui.ImageUtil
 import icons.GoogleLoginIcons
-import icons.StudioIllustrationsCompose
 import java.awt.geom.Ellipse2D
 import java.awt.image.BufferedImage
 import java.nio.file.Path
@@ -201,19 +200,9 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
       icon.toPainter()
     }
 
-  Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp).focusTarget()) {
-      // Header
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(key = StudioIllustrationsCompose.Common.PlayConsoleIcon, contentDescription = null, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(text = "Upload to Play", style = JewelTheme.defaultTextStyle.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = "Choose App Bundle or APK", style = JewelTheme.defaultTextStyle.copy(fontSize = 18.sp, color = Color.Gray))
-      }
-
-      Spacer(modifier = Modifier.height(24.dp))
-
+  Column(modifier = Modifier.fillMaxSize()) {
+    PlayPublishingWizardHeader(subtitle = "Choose App Bundle or APK")
+    Column(modifier = Modifier.weight(1f).padding(24.dp).focusTarget()) {
       // User Info
       Row(verticalAlignment = Alignment.CenterVertically) {
         Image(painter = avatarPainter, contentDescription = null, modifier = Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)))
@@ -296,18 +285,21 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
           }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-        Column(modifier = Modifier.padding(start = 100.dp)) {
-          Text(
-            text = "This wizard will guide you through uploading a new release for this application.",
-            style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp, color = Color.Gray),
-          )
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            ExternalLink("Learn more", UPLOAD_BUNDLE_DAC_URL, modifier = Modifier.pointerHoverIcon(PointerIcon.Hand))
+        if (bannerData?.type != ElementType.ERROR) {
+          Spacer(modifier = Modifier.height(4.dp))
+          Column(modifier = Modifier.padding(start = 100.dp)) {
+            Text(
+              text = "This wizard will guide you through uploading a new release for this application.",
+              style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp, color = Color.Gray),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              ExternalLink("Learn more", UPLOAD_BUNDLE_DAC_URL, modifier = Modifier.pointerHoverIcon(PointerIcon.Hand))
+            }
           }
+          Spacer(modifier = Modifier.height(16.dp))
+        } else {
+          Spacer(modifier = Modifier.height(8.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Version Name
         Row(Modifier.testTag("VersionNameRow")) {
@@ -325,7 +317,7 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
       }
     }
 
-    errorMessage?.let { InlineErrorBanner(it, Modifier.align(Alignment.BottomEnd).padding(24.dp)) }
+    errorMessage?.let { InlineErrorBanner(it, Modifier.align(Alignment.End).padding(24.dp)) }
   }
 
   prevButtonEnabled = false

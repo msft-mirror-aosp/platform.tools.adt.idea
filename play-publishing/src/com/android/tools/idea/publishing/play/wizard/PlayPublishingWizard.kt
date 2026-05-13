@@ -25,7 +25,7 @@ import com.intellij.openapi.project.Project
 
 fun showPublishingWizard(project: Project, context: AppPublishingContext) {
   val wizard =
-    ComposeWizard(project, "Upload to Play Wizard") {
+    ComposeWizard(project, "Publish for Testing Wizard") {
       getOrCreateState { context.toPublishingWizardState() }
       if (!fstLoginFeature.isLoggedIn()) {
         LoggedOutPage()
