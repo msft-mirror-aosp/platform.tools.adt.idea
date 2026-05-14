@@ -76,7 +76,7 @@ class ChooseArtifactPageTest {
     composeTestRule.onNodeWithText("user@example.com").assertIsDisplayed()
 
     // Info banner should be displayed
-    composeTestRule.onNodeWithText("Path pre-filled from the 'Generate Signed App Bundle or APK' wizard.").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Field pre-filled from the 'Generate Signed App Bundle or APK' wizard.").assertIsDisplayed()
 
     // Text field label
     composeTestRule.onNodeWithText("App bundle or APK:").assertIsDisplayed()
