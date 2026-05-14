@@ -64,6 +64,11 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
 
   private val dimmingLevels = xrController.dimmingLevels
   private val coroutineScope = xrController.createCoroutineScope()
+  /**
+   * When the UI is being updated to match the device state, this is set to true; we should not propagate changes to the controller while
+   * this is set.
+   */
+  private var isUpdatingUi = false
 
   fun show(anchor: Component?) {
     var passthroughCheckBox: Cell<JBCheckBox>? = null
@@ -74,7 +79,10 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
           row("Passthrough:") {
             passthroughCheckBox =
               checkBox("").accessibleName("Passthrough").selected(xrController.passthroughEnabled).onChanged {
-                setPassthroughAndDimming(it, dimmingSlider!!.component)
+                dimmingSlider!!.component.isEnabled = it.isSelected
+                if (!isUpdatingUi) {
+                  setPassthroughAndDimming(it, dimmingSlider!!.component)
+                }
               }
           }
           row("Dimming:") {
@@ -83,6 +91,7 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
               slider(0, dimmingLevels.size - 1, 0, 1)
                 .accessibleName("Dimming")
                 .labelTable(dimmingLevels.indices.associateWith { JBLabel("${dimmingLevels[it].toPercent()}%").apply { font = smallFont } })
+                .enabled(xrController.passthroughEnabled)
                 .applyToComponent {
                   snapToTicks = true
                   value = xrController.dimmingLevelIndex
@@ -92,7 +101,7 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
                   border = JBUI.Borders.emptyLeft(16)
                 }
                 .onChanged {
-                  if (!it.valueIsAdjusting) {
+                  if (!isUpdatingUi && !it.valueIsAdjusting) {
                     setPassthroughAndDimming(passthroughCheckBox!!.component, it)
                   }
                 }
@@ -121,13 +130,24 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
     Disposer.register(xrController, popup)
 
     val propertyChangeListener = PropertyChangeListener {
-      when (it.propertyName) {
-        AbstractXrInputController.PASSTHROUGH_COEFFICIENT_PROPERTY -> {
-          passthroughCheckBox.applyToComponent { isSelected = xrController.passthroughEnabled }
+      isUpdatingUi = true
+      try {
+        when (it.propertyName) {
+          AbstractXrInputController.PASSTHROUGH_COEFFICIENT_PROPERTY -> {
+            passthroughCheckBox.applyToComponent { isSelected = xrController.passthroughEnabled }
+          }
+          AbstractXrInputController.DIMMING_COEFFICIENT_PROPERTY -> {
+            dimmingSlider.applyToComponent {
+              // Only update the slider if we're in passthrough mode; otherwise, it's meaningless.
+              // When we re-enter passthrough mode, we'll restore the dimming level that was previously used there.
+              if (isEnabled) {
+                value = xrController.dimmingLevelIndex
+              }
+            }
+          }
         }
-        AbstractXrInputController.DIMMING_COEFFICIENT_PROPERTY -> {
-          dimmingSlider.applyToComponent { value = xrController.dimmingLevelIndex }
-        }
+      } finally {
+        isUpdatingUi = false
       }
     }
 

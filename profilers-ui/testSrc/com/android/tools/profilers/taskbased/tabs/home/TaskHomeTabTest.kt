@@ -42,12 +42,15 @@ import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.sessions.SessionsManager
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
+import com.android.tools.profilers.taskbased.home.StartTaskSelectionError
 import com.android.tools.profilers.taskbased.home.TaskHomeTabModel
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
 import com.android.tools.profilers.tasks.taskhandlers.TaskModelTestUtils
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.ApplicationRule
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
@@ -57,6 +60,8 @@ import org.junit.Test
 class TaskHomeTabTest {
   private val myTimer = FakeTimer()
   private val myTransportService = FakeTransportService(myTimer, false)
+
+  @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val composeTestRule = createStudioComposeTestRule()
 
@@ -150,6 +155,10 @@ class TaskHomeTabTest {
 
     // Make sure at this point, the start profiler task button is now enabled as device, process, and task selections were all valid.
     composeTestRule.onNodeWithTag("EnterTaskButton").assertIsEnabled()
+
+    val invalidProcessError =
+      TaskBasedUxStrings.getStartTaskErrorMessage(StartTaskSelectionError.StartTaskSelectionErrorCode.INVALID_PROCESS)
+    composeTestRule.onNodeWithText(invalidProcessError).assertDoesNotExist()
   }
 
   @Test
@@ -474,9 +483,10 @@ class TaskHomeTabTest {
     composeTestRule.onNodeWithTag("EnterTaskButton").assertExists().assertIsEnabled()
   }
 
-  private fun verifyTaskExistsAndSelect(taskType: ProfilerTaskType) {
-    composeTestRule.onNodeWithText(taskType.description).assertIsDisplayed().assertIsEnabled().assertHasClickAction()
-    composeTestRule.onNodeWithText(taskType.description).performClick()
+  private fun verifyTaskExistsAndSelect(taskType: ProfilerTaskType, isV2Enabled: Boolean = true) {
+    val taskName = TaskBasedUxStrings.getTaskShortName(taskType, isV2Enabled)
+    composeTestRule.onNodeWithText(taskName).assertIsDisplayed().assertIsEnabled().assertHasClickAction()
+    composeTestRule.onNodeWithText(taskName).performClick()
   }
 
   private fun verifyAndSelectNow() = withVerifyingStartingPointDropdown {
@@ -508,13 +518,27 @@ class TaskHomeTabTest {
 
   @Test
   fun `test recording type dropdown appears for applicable tasks only`() {
+    ideProfilerServices.enableProfilerHomeTabV2(true)
     composeTestRule.setContent { TaskHomeTab(taskHomeTabModel, myComponents) }
     composeTestRule.onNodeWithTag("TaskRecordingTypeDropdown").assertDoesNotExist()
     // Selecting a task that has recording types should now show the recording type dropdown
-    verifyTaskExistsAndSelect(ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING)
+    verifyTaskExistsAndSelect(ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING, true)
     composeTestRule.onNodeWithTag("TaskRecordingTypeDropdown").assertExists().assertIsDisplayed()
     // Selecting a task that does NOT have recording types should NOT show the recording type dropdown
-    verifyTaskExistsAndSelect(ProfilerTaskType.SYSTEM_TRACE)
+    verifyTaskExistsAndSelect(ProfilerTaskType.SYSTEM_TRACE, true)
+    composeTestRule.onNodeWithTag("TaskRecordingTypeDropdown").assertDoesNotExist()
+  }
+
+  @Test
+  fun `test recording type dropdown appears for applicable tasks only (V2 disabled)`() {
+    ideProfilerServices.enableProfilerHomeTabV2(false)
+    composeTestRule.setContent { TaskHomeTab(taskHomeTabModel, myComponents) }
+    composeTestRule.onNodeWithTag("TaskRecordingTypeDropdown").assertDoesNotExist()
+    // Selecting a task that has recording types should now show the recording type dropdown
+    verifyTaskExistsAndSelect(ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING, false)
+    composeTestRule.onNodeWithTag("TaskRecordingTypeDropdown").assertExists().assertIsDisplayed()
+    // Selecting a task that does NOT have recording types should NOT show the recording type dropdown
+    verifyTaskExistsAndSelect(ProfilerTaskType.SYSTEM_TRACE, false)
     composeTestRule.onNodeWithTag("TaskRecordingTypeDropdown").assertDoesNotExist()
   }
 }

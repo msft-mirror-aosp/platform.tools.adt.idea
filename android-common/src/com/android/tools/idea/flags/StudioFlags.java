@@ -229,8 +229,8 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> NPW_ENABLE_GEMINI_FIREBASE_TEMPLATE = new BooleanFlag(
     NPW, "gemini.firebase.template",
-    "Enable 'Gemini API Starter' template",
-    "Allows the 'Gemini API Starter' template to be used.");
+    "Enable 'Gemini API' template",
+    "Allows the 'Gemini API' template to be used.");
 
   public static final Flag<Boolean> NPW_ENABLE_XR_TEMPLATE = new BooleanFlag(
     NPW, "xr.template",
@@ -428,6 +428,13 @@ public final class StudioFlags {
   public static final Flag<Boolean> MATERIAL_SYMBOLS_TOOL = new BooleanFlag(
     DESIGN_TOOLS, "material.symbols.tool", "Enable the Material Symbols Search agent tool",
     "If enabled, an agent tool to search and find Material Symbol AVD and Compose icons will be available to the agent.");
+
+
+  public static final Flag<Boolean> RENDER_TOOL_DIFF_VIEWER = new BooleanFlag(
+    DESIGN_TOOLS, "render.tool.diff.viewer", "Enable the render tool diff viewer",
+    "If enabled, the render tool shows previous render in a diff viewer");
+
+
   //endregion
 
   //region Layout Editor
@@ -1150,24 +1157,9 @@ public final class StudioFlags {
 
   //region Layout Inspector
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_DEVBUILD_SKIA_SERVER = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.devbuild.skia", "Use the locally-built skia rendering server",
-    "If enabled and this is a locally-built studio instance, use the locally-built skia server instead of one from the SDK.");
-
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IN_RUNNING_DEVICES_ENABLED = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.running.devices", "Enable Layout Inspector in Running Devices",
-    "When this flag is enabled, LayoutInspector be integrated in the Running Devices tool window, instead of in its own tool window."
-    );
-
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_THROW_UNEXPECTED_ERROR = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.throw.unexpected.error", "Throw exception when encountering an unexpected error",
     "When this flag is enabled, LayoutInspector will throw an exception when an unexpected error is being logged to the metrics.");
-
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IGNORE_RECOMPOSITIONS_IN_FRAMEWORK = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.ignore.framework.recompositions", "Ignore recompositions in compose framework",
-    "When this flag is enabled, LayoutInspector will disregard all recomposition counts for framework composables, " +
-    "such that the user can concentrate on their own code."
-    );
 
   public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER = new StringFlag(
     LAYOUT_INSPECTOR, "dev.jar.location", "Location of prebuilt compose app inspection jar for development",
@@ -1185,16 +1177,6 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.extra.logging", "Add extra logging for problem detection",
     "When this flag is enabled, LayoutInspector will add extra logging for detection of various problems.");
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_RECOMPOSITION_COUNTS_DEFAULT = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.recomposition.counts.default", "Enable or disable recomposition counts by default",
-    "When this flag is enabled, recomposition counts will be enabled by default."
-    );
-
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_RECOMPOSITION_PARENT_COUNTS = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.recomposition.parent.counts", "Enable or disable recomposition parent counts",
-    "When this flag is enabled, the max recomposition count among the children of a node is displayed in a separate column."
-  );
-
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_XR_INSPECTION = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.xr.inspection", "Enable or disable support for XR inspection",
     "When this flag is enabled, xr inspection is enabled."
@@ -1203,12 +1185,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ON_DEVICE_RENDERING = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.on.device.rendering", "Always use on-device rendering",
     "Force using on-device rendering, even when the device is not XR. Used for development only.");
-
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_HORIZONTAL_SCROLLABLE_COMPONENT_TREE = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.horizontal.scrollable.component.tree",
-    "Horizontal scroll for layout inspector component tree",
-    "When this flag is enabled, we enable horizontal scrolling for the Layout Inspector's component tree."
-    );
 
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.state.reads", "Enable Recomposition State Reads",
@@ -1507,6 +1483,13 @@ public final class StudioFlags {
     "Support paginating the previews",
     "If enabled, the previews shown in a file will be paginated"
   );
+
+  public static final Flag<Boolean> RENDER_SANDBOX =
+    new BooleanFlag(
+      PREVIEW_COMMON,
+      "render.sandbox.enabled",
+      "Enable Rendering Sandbox feature",
+      "Enable Rendering Sandbox feature");
   //endregion
 
   //region Compose
@@ -2815,6 +2798,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "agy.harness",
                     "Enable support for Antigravity Harness",
                     "Enables the integration to connect and use Antigravity Harness");
+
+  public static final Flag<Boolean> STUDIOBOT_SYMBOL_LINKIFICATION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "symbol.linkification",
+                    "Enable project-wide symbol linkification and navigation",
+                    "Enables one-click navigation to code symbols mentioned in Studio Bot responses");
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
@@ -3084,14 +3073,28 @@ public final class StudioFlags {
 
   // region Play Publishing
   private static final FlagGroup PLAY_PUBLISHING = new FlagGroup(FLAGS, "play.publishing", "Play Publishing");
-  public static final Flag<Boolean> SHOW_PUBLISH_IN_BUILD =
-    new BooleanFlag(
+  public static final Flag<String> PLAY_PUBLISHING_ENDPOINT =
+    new StringFlag(
       PLAY_PUBLISHING,
-      "show.publish.in.build",
-      "Show Publish Bundle action",
-      "Show Publish Bundle action in Build menu"
+      "play.publishing.endpoint",
+      "Set Play Publishing server address",
+      "Set Play Publishing server address",
+      "staging-androidpublisher.sandbox.googleapis.com"
     );
   // endregion Play Publishing
+
+  // region Android CLI
+
+  private static final FlagGroup ANDROID_CLI = new FlagGroup(FLAGS, "android.cli", "Android CLI");
+  public static final Flag<Boolean> ENABLE_CLI_INTEGRATION_SERVER =
+    new BooleanFlag(
+      ANDROID_CLI,
+      "enable.integration.server",
+      "Enable Android CLI integration server",
+      "Enable Android CLI integration server"
+    );
+
+  // endregion Android CLI
 
   private StudioFlags() { }
 

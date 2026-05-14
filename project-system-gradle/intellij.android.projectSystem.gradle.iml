@@ -66,6 +66,7 @@
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.flags" />
     <orderEntry type="module" module-name="intellij.android.testartifacts" />
     <orderEntry type="module" module-name="intellij.android.gradle.declarative.lang.flags" />
+    <orderEntry type="module" module-name="intellij.android.app-publishing" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.properties.backend.psi" level="project" />
     <orderEntry type="library" name="google-api-client" level="project" />

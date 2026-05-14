@@ -48,7 +48,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package1/BUILD"))))
@@ -56,40 +56,103 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package1"));
     expect.that(affected.getDeletedPackages()).isEmpty();
   }
 
   @Test
-  public void testAddBuildFile_siblingPackage() {
-    QuerySummary query = QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
+  public void testModifyBuildFile_bazel() {
+    QuerySummary query =
+        QuerySummaryImpl.create(
+            createProtoForPackages("//my/build/package1:rule", "//my/build/package2:rule"));
 
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .changedFiles(
+                ImmutableSet.of(
+                    new WorkspaceFileChange(
+                        Operation.MODIFY, Path.of("my/build/package1/BUILD.bazel"))))
+            .build()
+            .getAffectedPackages();
+
+    expect.that(affected.isEmpty()).isFalse();
+    expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package1"));
+    expect.that(affected.getDeletedPackages()).isEmpty();
+  }
+
+  @Test
+  public void testModifyBuildFile_root() {
+    QuerySummary query = QuerySummaryImpl.create(createProtoForPackages("//:rule"));
+
+    AffectedPackages affected =
+        AffectedPackagesCalculator.builder()
+            .context(NOOP_CONTEXT)
+            .lastQuery(query)
+            .projectScope(it -> true)
+            .changedFiles(
+                ImmutableSet.of(new WorkspaceFileChange(Operation.MODIFY, Path.of("BUILD"))))
+            .build()
+            .getAffectedPackages();
+
+    expect.that(affected.isEmpty()).isFalse();
+    expect.that(affected.getModifiedPackages()).containsExactly(Path.of(""));
+    expect.that(affected.getDeletedPackages()).isEmpty();
+  }
+
+  @Test
+  public void testAddBuildFile_siblingPackage() {
+    QuerySummary query =
+        QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
+
+    AffectedPackages affected =
+        AffectedPackagesCalculator.builder()
+            .context(NOOP_CONTEXT)
+            .lastQuery(query)
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/package2/BUILD"))))
             .build()
             .getAffectedPackages();
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
+    expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package2"));
+    expect.that(affected.getDeletedPackages()).isEmpty();
+  }
+
+  @Test
+  public void testAddBuildFile_siblingPackage_bazel() {
+    QuerySummary query =
+        QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
+
+    AffectedPackages affected =
+        AffectedPackagesCalculator.builder()
+            .context(NOOP_CONTEXT)
+            .lastQuery(query)
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .changedFiles(
+                ImmutableSet.of(
+                    new WorkspaceFileChange(
+                        Operation.ADD, Path.of("my/build/package2/BUILD.bazel"))))
+            .build()
+            .getAffectedPackages();
+    expect.that(affected.isEmpty()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package2"));
     expect.that(affected.getDeletedPackages()).isEmpty();
   }
 
   @Test
   public void testAddBuildFile_childPackage() {
-    QuerySummary query = QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
+    QuerySummary query =
+        QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
 
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -98,7 +161,6 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
     expect
         .that(affected.getModifiedPackages())
         .containsExactly(Path.of("my/build/package1"), Path.of("my/build/package1/subpackage"));
@@ -116,7 +178,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -127,7 +189,6 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
     expect
         .that(affected.getModifiedPackages())
         .containsExactly(
@@ -147,7 +208,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.DELETE, Path.of("my/build/package2/BUILD"))))
@@ -155,7 +216,29 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
+    expect.that(affected.getModifiedPackages()).isEmpty();
+    expect.that(affected.getDeletedPackages()).containsExactly(Path.of("my/build/package2"));
+  }
+
+  @Test
+  public void testDeleteBuildFile_siblingPackage_bazel() {
+    QuerySummary query =
+        QuerySummaryImpl.create(
+            createProtoForPackages("//my/build/package1:rule1", "//my/build/package2:rule2"));
+
+    AffectedPackages affected =
+        AffectedPackagesCalculator.builder()
+            .context(NOOP_CONTEXT)
+            .lastQuery(query)
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
+            .changedFiles(
+                ImmutableSet.of(
+                    new WorkspaceFileChange(
+                        Operation.DELETE, Path.of("my/build/package2/BUILD.bazel"))))
+            .build()
+            .getAffectedPackages();
+
+    expect.that(affected.isEmpty()).isFalse();
     expect.that(affected.getModifiedPackages()).isEmpty();
     expect.that(affected.getDeletedPackages()).containsExactly(Path.of("my/build/package2"));
   }
@@ -171,7 +254,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -180,7 +263,6 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package1"));
     expect
         .that(affected.getDeletedPackages())
@@ -200,7 +282,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -211,7 +293,6 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package1"));
     expect
         .that(affected.getDeletedPackages())
@@ -222,41 +303,43 @@ public class AffectedPackagesTest {
 
   @Test
   public void testModifyBuildFile_outsideProject() {
-    QuerySummary query = QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
+    QuerySummary query =
+        QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
 
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build/package1")))
+            .projectScope(path -> path.startsWith(Path.of("my/build/package1")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package2/BUILD"))))
             .build()
             .getAffectedPackages();
     expect.that(affected.isEmpty()).isTrue();
-    expect.that(affected.isIncomplete()).isTrue();
     expect.that(affected.getModifiedPackages()).isEmpty();
     expect.that(affected.getDeletedPackages()).isEmpty();
   }
 
   @Test
   public void testModifyBuildFile_excluded() {
-    QuerySummary query = QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
+    QuerySummary query =
+        QuerySummaryImpl.create(createProtoForPackages("//my/build/package1:rule"));
 
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
-            .projectExcludes(ImmutableSet.of(Path.of("my/build/package2")))
+            .projectScope(
+                path ->
+                    path.startsWith(Path.of("my/build"))
+                        && !path.startsWith(Path.of("my/build/package2")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package2/BUILD"))))
             .build()
             .getAffectedPackages();
     expect.that(affected.isEmpty()).isTrue();
-    expect.that(affected.isIncomplete()).isTrue();
     expect.that(affected.getModifiedPackages()).isEmpty();
     expect.that(affected.getDeletedPackages()).isEmpty();
   }
@@ -269,8 +352,12 @@ public class AffectedPackagesTest {
                 .addPackages("//my/build/package1:rule", "//my/build/package2:rule")
                 .addSubincludes(
                     ImmutableMultimap.<Label, Label>builder()
-                        .put(Label.of("//my/build/package1:BUILD"), Label.of("//my/build/package1:macro.bzl"))
-                        .put(Label.of("//my/build/package2:BUILD"), Label.of("//my/build/package1:macro.bzl"))
+                        .put(
+                            Label.of("//my/build/package1:BUILD"),
+                            Label.of("//my/build/package1:macro.bzl"))
+                        .put(
+                            Label.of("//my/build/package2:BUILD"),
+                            Label.of("//my/build/package1:macro.bzl"))
                         .build())
                 .build());
 
@@ -278,14 +365,13 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(summary)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
                         Operation.MODIFY, Path.of("my/build/package1/macro.bzl"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect
         .that(affected.getModifiedPackages())
         .containsExactly(Path.of("my/build/package1"), Path.of("my/build/package2"));
@@ -299,14 +385,15 @@ public class AffectedPackagesTest {
                 .addPackages("//my/build/package:rule")
                 .addSubincludes(
                     ImmutableMultimap.of(
-                        Label.of("//my/build/package:BUILD"), Label.of("//other/build/package1:macro.bzl")))
+                        Label.of("//my/build/package:BUILD"),
+                        Label.of("//other/build/package1:macro.bzl")))
                 .build());
 
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(summary)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -314,7 +401,6 @@ public class AffectedPackagesTest {
             .build()
             .getAffectedPackages();
     // we edited a bzl file outside of the project:
-    expect.that(affected.isIncomplete()).isTrue();
     // but we can know that it affected a BUILD file inside a project:
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package"));
   }
@@ -326,52 +412,51 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
                         Operation.MODIFY, Path.of("my/build/package/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).isEmpty();
   }
 
   @Test
   public void testAddSourceFile_included() {
     QuerySummary query =
-        QuerySummaryImpl.create(createProtoForPackages("//my/build/package:rule", "//my/build:rule"));
+        QuerySummaryImpl.create(
+            createProtoForPackages("//my/build/package:rule", "//my/build:rule"));
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
                         Operation.ADD, Path.of("my/build/package/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package"));
   }
 
   @Test
   public void testAddSourceFile_included_packageSubdirectory() {
     QuerySummary query =
-        QuerySummaryImpl.create(createProtoForPackages("//my/build/package:rule", "//my/build:rule"));
+        QuerySummaryImpl.create(
+            createProtoForPackages("//my/build/package:rule", "//my/build:rule"));
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
                         Operation.ADD, Path.of("my/build/package/lib/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package"));
   }
 
@@ -382,15 +467,13 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).isEmpty();
-    expect.that(affected.getUnownedSources()).containsExactly(Path.of("my/build/NewClass.java"));
   }
 
   @Test
@@ -400,7 +483,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/newpackage/BUILD")),
@@ -408,9 +491,7 @@ public class AffectedPackagesTest {
                         Operation.ADD, Path.of("my/build/newpackage/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/newpackage"));
-    expect.that(affected.getUnownedSources()).isEmpty();
   }
 
   @Test
@@ -420,7 +501,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.ADD, Path.of("my/build/package/lib/BUILD")),
@@ -428,29 +509,27 @@ public class AffectedPackagesTest {
                         Operation.ADD, Path.of("my/build/package/lib/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect
         .that(affected.getModifiedPackages())
         .containsExactly(Path.of("my/build/package"), Path.of("my/build/package/lib"));
-    expect.that(affected.getUnownedSources()).isEmpty();
   }
 
   @Test
   public void testDeleteSourceFile() {
     QuerySummary query =
-        QuerySummaryImpl.create(createProtoForPackages("//my/build/package:rule", "//my/build:rule"));
+        QuerySummaryImpl.create(
+            createProtoForPackages("//my/build/package:rule", "//my/build:rule"));
     AffectedPackages affected =
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
                         Operation.DELETE, Path.of("my/build/package/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package"));
   }
 
@@ -461,7 +540,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.DELETE, Path.of("my/build/package/BUILD")),
@@ -469,10 +548,8 @@ public class AffectedPackagesTest {
                         Operation.DELETE, Path.of("my/build/package/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).isEmpty();
     expect.that(affected.getDeletedPackages()).containsExactly(Path.of("my/build/package"));
-    expect.that(affected.getUnownedSources()).isEmpty();
   }
 
   @Test
@@ -484,7 +561,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
@@ -493,10 +570,8 @@ public class AffectedPackagesTest {
                         Operation.ADD, Path.of("my/build/package/lib/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package"));
     expect.that(affected.getDeletedPackages()).containsExactly(Path.of("my/build/package/lib"));
-    expect.that(affected.getUnownedSources()).isEmpty();
   }
 
   @Test
@@ -506,7 +581,7 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.DELETE, Path.of("my/build/package/BUILD")),
@@ -514,12 +589,8 @@ public class AffectedPackagesTest {
                         Operation.ADD, Path.of("my/build/package/NewClass.java"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).isEmpty();
     expect.that(affected.getDeletedPackages()).containsExactly(Path.of("my/build/package"));
-    expect
-        .that(affected.getUnownedSources())
-        .containsExactly(Path.of("my/build/package/NewClass.java"));
   }
 
   @Test
@@ -534,11 +605,10 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(ImmutableSet.of())
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package"));
   }
 
@@ -554,14 +624,13 @@ public class AffectedPackagesTest {
         AffectedPackagesCalculator.builder()
             .context(NOOP_CONTEXT)
             .lastQuery(query)
-            .projectIncludes(ImmutableSet.of(Path.of("my/build")))
+            .projectScope(path -> path.startsWith(Path.of("my/build")))
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(
                         Operation.DELETE, Path.of("my/build/package/lib1/BUILD"))))
             .build()
             .getAffectedPackages();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).isEmpty();
     expect.that(affected.getDeletedPackages()).containsExactly(Path.of("my/build/package/lib1"));
   }
@@ -580,7 +649,7 @@ public class AffectedPackagesTest {
             .context(NOOP_CONTEXT)
             .lastQuery(query)
             // this represents the case of directories: .
-            .projectIncludes(ImmutableSet.of(Path.of("")))
+            .projectScope(path -> true)
             .changedFiles(
                 ImmutableSet.of(
                     new WorkspaceFileChange(Operation.MODIFY, Path.of("my/build/package1/BUILD"))))
@@ -588,7 +657,6 @@ public class AffectedPackagesTest {
             .getAffectedPackages();
 
     expect.that(affected.isEmpty()).isFalse();
-    expect.that(affected.isIncomplete()).isFalse();
     expect.that(affected.getModifiedPackages()).containsExactly(Path.of("my/build/package1"));
     expect.that(affected.getDeletedPackages()).isEmpty();
   }

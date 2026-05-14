@@ -324,6 +324,7 @@ studio_plugin(
             "//tools/vendor/google/android-keys:android-keys",
             "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
             "//tools/vendor/google/marketing:marketing",
+            "//tools/adt/idea/app-publishing:intellij.android.app-publishing",
             "//tools/adt/idea/play-publishing:intellij.android.play-publishing",
             "//tools/adt/idea/cli-server/server:cli-server.server",
             "//tools/adt/idea/cli-server/command-handler:cli-server.command-handler",
@@ -939,6 +940,7 @@ studio_plugin(
         "resources": [
             "//tools/vendor/google/ml/aiplugin/android/journeys:journeys-art-resources-bundle",
             "//prebuilts/tools/common/kb:kb_zip",
+            "//prebuilts/tools/common/llamacpp:llamacpp_binaries",
         ],
     },
     visibility = ["//visibility:public"],
@@ -956,6 +958,7 @@ studio_plugin(
         "@intellij//:intellij.java.impl",
         "@intellij//:intellij.java.impl.refactorings",
         "@intellij//:intellij.java.indexing",
+        "@intellij//:intellij.libraries.coil",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
         "@intellij//:intellij.libraries.compose.runtime.desktop",
         "@intellij//:intellij.libraries.grpc",

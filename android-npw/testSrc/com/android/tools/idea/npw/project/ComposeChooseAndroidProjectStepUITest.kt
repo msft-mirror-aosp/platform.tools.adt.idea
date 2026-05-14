@@ -113,7 +113,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     assertEquals(
       mobileTemplates[mobileTemplates.size - 1].name,
-      (model.chooseAndroidProjectEntries[0] as FormFactorProjectEntry).selectedTemplate?.name,
+      (model.chooseAndroidProjectEntries[1] as FormFactorProjectEntry).selectedTemplate?.name,
     )
   }
 
