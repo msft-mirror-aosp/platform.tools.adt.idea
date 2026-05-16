@@ -428,6 +428,13 @@ public final class StudioFlags {
   public static final Flag<Boolean> MATERIAL_SYMBOLS_TOOL = new BooleanFlag(
     DESIGN_TOOLS, "material.symbols.tool", "Enable the Material Symbols Search agent tool",
     "If enabled, an agent tool to search and find Material Symbol AVD and Compose icons will be available to the agent.");
+
+
+  public static final Flag<Boolean> RENDER_TOOL_DIFF_VIEWER = new BooleanFlag(
+    DESIGN_TOOLS, "render.tool.diff.viewer", "Enable the render tool diff viewer",
+    "If enabled, the render tool shows previous render in a diff viewer");
+
+
   //endregion
 
   //region Layout Editor
@@ -2791,6 +2798,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "agy.harness",
                     "Enable support for Antigravity Harness",
                     "Enables the integration to connect and use Antigravity Harness");
+
+  public static final Flag<Boolean> STUDIOBOT_SYMBOL_LINKIFICATION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "symbol.linkification",
+                    "Enable project-wide symbol linkification and navigation",
+                    "Enables one-click navigation to code symbols mentioned in Studio Bot responses");
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
@@ -3060,22 +3073,28 @@ public final class StudioFlags {
 
   // region Play Publishing
   private static final FlagGroup PLAY_PUBLISHING = new FlagGroup(FLAGS, "play.publishing", "Play Publishing");
-  public static final Flag<Boolean> SHOW_PUBLISH_IN_BUILD =
-    new BooleanFlag(
-      PLAY_PUBLISHING,
-      "show.publish.in.build",
-      "Show Publish Bundle action",
-      "Show Publish Bundle action in Build menu"
-    );
   public static final Flag<String> PLAY_PUBLISHING_ENDPOINT =
     new StringFlag(
       PLAY_PUBLISHING,
       "play.publishing.endpoint",
       "Set Play Publishing server address",
       "Set Play Publishing server address",
-      "staging-androidpublisher.sandbox.googleapis.com"
+      "androidpublisher.googleapis.com"
     );
   // endregion Play Publishing
+
+  // region Android CLI
+
+  private static final FlagGroup ANDROID_CLI = new FlagGroup(FLAGS, "android.cli", "Android CLI");
+  public static final Flag<Boolean> ENABLE_CLI_INTEGRATION_SERVER =
+    new BooleanFlag(
+      ANDROID_CLI,
+      "enable.integration.server",
+      "Enable Android CLI integration server",
+      "Enable Android CLI integration server"
+    );
+
+  // endregion Android CLI
 
   private StudioFlags() { }
 

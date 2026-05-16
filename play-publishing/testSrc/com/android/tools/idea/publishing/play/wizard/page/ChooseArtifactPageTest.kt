@@ -68,7 +68,7 @@ class ChooseArtifactPageTest {
     createWizard { AppMetadata("Fake App", "com.fake.app", "123", "1.2.3") }
 
     // Header
-    composeTestRule.onNodeWithText("Upload to Play").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Publish your Android app for testing").assertIsDisplayed()
     composeTestRule.onNodeWithText("Choose App Bundle or APK").assertIsDisplayed()
 
     // User info
@@ -76,7 +76,7 @@ class ChooseArtifactPageTest {
     composeTestRule.onNodeWithText("user@example.com").assertIsDisplayed()
 
     // Info banner should be displayed
-    composeTestRule.onNodeWithText("Path pre-filled from the 'Generate Signed App Bundle or APK' wizard.").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Field pre-filled from the 'Generate Signed App Bundle or APK' wizard.").assertIsDisplayed()
 
     // Text field label
     composeTestRule.onNodeWithText("App bundle or APK:").assertIsDisplayed()

@@ -51,8 +51,8 @@ import com.android.tools.idea.wizard.template.ViewBindingSupport
 import com.android.tools.idea.wizard.template.WizardParameterData
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.TemplatesUsage.TemplateComponent.WizardUiContext
-import com.google.wireless.android.sdk.stats.kotlinSupport
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
@@ -200,7 +200,12 @@ private constructor(
     @UiThread
     override fun finish() {
       if (renderSuccess && shouldOpenFiles) {
-        DumbService.getInstance(project).smartInvokeLater { TemplateUtils.openEditors(project, createdFiles, true) }
+        val renderStrategy = TemplateRendererStrategy.getTemplateRendererStrategy(project)
+        if (renderStrategy?.isOpenImmediate() == true) {
+          ApplicationManager.getApplication().invokeLater { TemplateUtils.openEditors(project, createdFiles, true) }
+        } else {
+          DumbService.getInstance(project).smartInvokeLater { TemplateUtils.openEditors(project, createdFiles, true) }
+        }
       }
     }
 
@@ -233,7 +238,7 @@ private constructor(
         RenderingContext(
           project = project,
           module = module,
-          commandName = commandName,
+          commandName = newTemplate.name,
           templateData = moduleTemplateDataBuilder.build(), // FIXME
           moduleRoot = paths.moduleRoot!!,
           dryRun = dryRun,
@@ -252,7 +257,17 @@ private constructor(
           useAppCompat = false,
         )
 
-      val executor = if (dryRun) FindReferencesRecipeExecutor(context) else DefaultRecipeExecutor(context)
+      val renderStrategy =
+        TemplateRendererStrategy.EP_NAME.extensions.firstOrNull {
+          it.isProjectApplicable(context.project) && it.isTemplateApplicable(newTemplate)
+        }
+
+      val executor =
+        if (dryRun) {
+          FindReferencesRecipeExecutor(context)
+        } else {
+          renderStrategy?.createRecipeExecutor(context) ?: DefaultRecipeExecutor(context)
+        }
 
       return newTemplate.render(context, executor, metrics).also {
         if (!dryRun) {

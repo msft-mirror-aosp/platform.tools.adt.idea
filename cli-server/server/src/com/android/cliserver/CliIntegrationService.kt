@@ -16,6 +16,7 @@
 package com.android.cliserver
 
 import com.android.prefs.AndroidLocationsSingleton
+import com.android.tools.idea.flags.StudioFlags
 import com.google.protobuf.kotlin.toByteString
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationInfo
@@ -26,6 +27,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.startup.ProjectActivity
+import java.nio.file.Paths
 
 @Service
 class CliIntegrationService : Disposable, ServerInfoProvider {
@@ -39,6 +41,8 @@ class CliIntegrationService : Disposable, ServerInfoProvider {
   var server: CliServer? = null
 
   fun startIfNeeded() {
+    if (!StudioFlags.ENABLE_CLI_INTEGRATION_SERVER.get()) return
+
     synchronized(startedLock) {
       if (!started) {
         server = CliServer(CliServerRegistry(AndroidLocationsSingleton.prefsLocation), this)
@@ -88,8 +92,25 @@ internal fun CliActionHandler.invokeHandler(
   val project =
     if (projectName.isEmpty() && openProjects.size == 1) {
       openProjects[0]
+    } else if (projectName.isNotEmpty()) {
+      val targetPath =
+        try {
+          Paths.get(projectName).toAbsolutePath().normalize()
+        } catch (_: Exception) {
+          null
+        }
+      openProjects.singleOrNull { p ->
+        p.name == projectName ||
+          (targetPath != null &&
+            p.basePath != null &&
+            try {
+              Paths.get(p.basePath).toAbsolutePath().normalize().equals(targetPath)
+            } catch (_: Exception) {
+              false
+            })
+      }
     } else {
-      (openProjects.singleOrNull { it.name == projectName })
+      null
     }
   if (project == null) {
     return commandResponse {
@@ -98,7 +119,7 @@ internal fun CliActionHandler.invokeHandler(
           when {
             openProjects.isEmpty() -> "Studio has no open projects"
             request.project.isNullOrEmpty() && openProjects.size > 1 -> "There are multiple open projects, please specify one"
-            else -> "No project with name ${request.project}"
+            else -> "No project found matching \"${request.project}\""
           }
       }
     }

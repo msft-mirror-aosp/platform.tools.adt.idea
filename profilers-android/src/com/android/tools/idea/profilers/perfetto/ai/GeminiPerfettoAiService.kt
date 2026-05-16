@@ -16,46 +16,52 @@
 
 package com.android.tools.idea.profilers.perfetto.ai
 
-import com.android.tools.idea.gemini.GeminiPluginApi
-import com.android.tools.idea.gemini.buildLlmPrompt
+import com.android.tools.idea.gemini.GeminiPluginApiV2
+import com.android.tools.idea.gemini.LlmChatInToolWindowResult
 import com.android.tools.sherlock.common.perfetto.ai.PerfettoAiService
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
- * Gemini-backed implementation of [PerfettoAiService]. This service uses the [GeminiPluginApi] to send chat queries to the Gemini assistant
- * in Android Studio.
+ * Gemini-backed implementation of [PerfettoAiService]. This service uses [GeminiPluginApiV2] to send chat queries to the Gemini agent in
+ * Android Studio.
  */
-class GeminiPerfettoAiService(private val project: Project) : PerfettoAiService {
+class GeminiPerfettoAiService(private val project: Project, private val scope: CoroutineScope) : PerfettoAiService {
+
+  companion object {
+    private val LOG = Logger.getInstance(GeminiPerfettoAiService::class.java)
+  }
+
   override fun generateQuery(prompt: String, traceFilePath: String) {
-    sendPromptWithSkill(
-      "Generate Perfetto SQL Query: $prompt. The trace file is available at: $traceFilePath",
-      GeminiPerfettoAiConstants.PERFETTO_SQL_SYSTEM_INSTRUCTION,
-    )
+    sendPromptToAgent("Generate Perfetto SQL Query: $prompt. The trace file is available at: $traceFilePath")
   }
 
   override fun analyzeTrace(prompt: String, traceFilePath: String) {
-    sendPromptWithSkill(
-      "Analyze Perfetto Trace: $prompt. The trace file is available at: $traceFilePath",
-      GeminiPerfettoAiConstants.PERFETTO_TRACE_ANALYSIS_SYSTEM_INSTRUCTION,
-    )
+    sendPromptToAgent("Analyze Perfetto Trace: $prompt. The trace file is available at: $traceFilePath")
   }
 
   /**
-   * Helper method to construct an LLM prompt and send it to the Gemini chat window.
+   * Helper method to send a query to the Gemini agent in the tool window.
    *
-   * @param prompt The prompt text to display in the chat and send to the model.
-   * @param systemMessageText The system message to guide the AI (e.g., specifying the skill to use).
+   * @param prompt The prompt text to send to the model.
    */
-  private fun sendPromptWithSkill(prompt: String, systemMessageText: String) {
-    val api = GeminiPluginApi.getInstance()
-    if (!api.isAvailable()) return
-
-    val llmPrompt =
-      buildLlmPrompt(project) {
-        systemMessage { text(systemMessageText, filesUsed = emptyList()) }
-        userMessage { text(prompt, filesUsed = emptyList()) }
+  private fun sendPromptToAgent(prompt: String) {
+    scope.launch {
+      try {
+        val api = GeminiPluginApiV2.getInstance()
+        when (val result = api.submitQueryInToolWindow(project, prompt)) {
+          is LlmChatInToolWindowResult.Success -> {
+            LOG.info("Successfully submitted query to Gemini agent.")
+          }
+          is LlmChatInToolWindowResult.RequestNotSubmitted -> {
+            LOG.warn("Failed to submit query to Gemini tool window: ${result.reason}")
+          }
+        }
+      } catch (e: Exception) {
+        LOG.warn("Exception while submitting query to Gemini tool window", e)
       }
-
-    api.sendChatQuery(project, llmPrompt, displayText = prompt, requestSource = GeminiPluginApi.RequestSource.OTHER)
+    }
   }
 }
