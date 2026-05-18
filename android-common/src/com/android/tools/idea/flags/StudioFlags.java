@@ -1155,6 +1155,14 @@ public final class StudioFlags {
                     );
   //endregion
 
+  //region Lightbuild
+  private static final FlagGroup LIGHTBUILD = new FlagGroup(FLAGS, "lightbuild", "Lightbuild");
+
+  public static final Flag<Boolean> LIGHTBUILD_ENABLE =
+    new BooleanFlag(LIGHTBUILD, "enable", "Enable Lightbuild plugin",
+                    "Enables the Lightbuild plugin.");
+  //endregion
+
   //region Layout Inspector
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_THROW_UNEXPECTED_ERROR = new BooleanFlag(
@@ -2782,6 +2790,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "aicode",
                     "Enable AICode integration",
                     "Enable AICode backend integration to be used for agent, code transform and code completion");
+
+  public static final Flag<Boolean> STUDIOBOT_USER_QUOTA_UI_ENABLED =
+    new BooleanFlag(STUDIOBOT, "user.quota.ui.enabled",
+                    "Enable user quota UI",
+                    "When enabled, shows user's quota information in the chat UI.");
 
   public static final Flag<Boolean> STUDIOBOT_SHOW_ON_FIRST_OPEN =
     new BooleanFlag(STUDIOBOT,

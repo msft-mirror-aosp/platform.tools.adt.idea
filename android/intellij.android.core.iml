@@ -141,5 +141,6 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.compiler" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.compiler.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.diagnostic.freezes" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.diagnostic.freezeAnalyzer" level="project" />
   </component>
 </module>
