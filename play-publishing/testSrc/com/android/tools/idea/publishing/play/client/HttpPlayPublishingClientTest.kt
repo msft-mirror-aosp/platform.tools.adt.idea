@@ -165,7 +165,7 @@ class HttpPlayPublishingClientTest {
     val client = HttpPlayPublishingClient(httpTransport = transport)
 
     val developers = client.listDevelopers()
-    assertEquals(0, developers.size)
+    assertThat(developers).isEmpty()
   }
 
   @Test
