@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.core
 import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.ToolWindowWindowAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.remoting.ActionRemoteBehavior
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
@@ -35,6 +36,7 @@ class StreamingToolWindowFactory : ToolWindowFactory, DumbAware {
     toolWindow.setDefaultContentUiType(ToolWindowContentUiType.TABBED)
   }
 
+  @Suppress("UnstableApiUsage")
   override fun init(toolWindow: ToolWindow) {
     toolWindow.setTabsSplittingAllowed(true)
     toolWindow.component.putClientProperty(ToolWindowContentUi.DONT_HIDE_TOOLBAR_IN_HEADER, true)
@@ -52,5 +54,7 @@ class StreamingToolWindowFactory : ToolWindowFactory, DumbAware {
         }
       }
     }
+
+    @Suppress("UnstableApiUsage") override fun getBehavior(): ActionRemoteBehavior = ActionRemoteBehavior.FrontendThenBackend
   }
 }
