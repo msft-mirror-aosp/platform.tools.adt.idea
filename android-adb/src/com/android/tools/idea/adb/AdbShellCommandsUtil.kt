@@ -19,10 +19,8 @@ import com.android.adblib.ConnectedDevice
 import com.android.adblib.ShellCollector
 import com.android.adblib.TextShellCollector
 import com.android.adblib.selector
-import com.android.ddmlib.DdmPreferences
 import com.google.common.base.Stopwatch
 import com.intellij.openapi.diagnostic.thisLogger
-import java.time.Duration
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.single
 
@@ -67,12 +65,7 @@ class AdbShellCommandsUtil(private val device: ConnectedDevice) {
   }
 
   private fun <T> executeCommandImpl(command: String, receiver: ShellCollector<T>): Flow<T> {
-    return device.session.deviceServices.shell(
-      device.selector,
-      command,
-      receiver,
-      commandTimeout = Duration.ofMillis(DdmPreferences.getTimeOut().toLong()),
-    )
+    return device.session.deviceServices.shell(device.selector, command, receiver)
   }
 
   companion object {
