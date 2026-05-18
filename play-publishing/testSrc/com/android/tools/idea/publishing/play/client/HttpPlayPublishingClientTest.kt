@@ -159,6 +159,16 @@ class HttpPlayPublishingClientTest {
   }
 
   @Test
+  fun testListDevelopersNoContent() = runBlocking {
+    val transport = MockHttpTransport.Builder().setLowLevelHttpResponse(MockLowLevelHttpResponse().setStatusCode(204)).build()
+
+    val client = HttpPlayPublishingClient(httpTransport = transport)
+
+    val developers = client.listDevelopers()
+    assertEquals(0, developers.size)
+  }
+
+  @Test
   fun testCreateAppRecordSuccess() = runBlocking {
     val transport =
       MockHttpTransport.Builder()
