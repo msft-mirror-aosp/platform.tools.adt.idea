@@ -22,6 +22,7 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
 import com.google.gct.login2.LoginUsersRule
@@ -78,6 +79,24 @@ class LoggedOutPageTest {
     composeTestRule
       .onNodeWithText(
         "Using this wizard requires signing into Android Studio. You will be redirected to the web to sign in at the next step."
+      )
+      .assertIsDisplayed()
+  }
+
+  @Test
+  fun testLoggedOutPageContentRequiresAuthorization() {
+    StudioFlags.ENABLE_FSTS.overrideForTest(false, disposableRule.disposable)
+    loginUsersRule.setActiveUser("user@example.com", features = listOf(loginFeatureRule.ENFORCED))
+    StudioFlags.ENABLE_FSTS.overrideForTest(true, disposableRule.disposable)
+
+    val wizard = TestComposeWizard { LoggedOutPage() }
+
+    composeTestRule.setContent { wizard.Content() }
+
+    composeTestRule
+      .onNodeWithText(
+        "Using this wizard requires new authorization for Android Studio. You will be redirected to the web to sign in at the next step.",
+        substring = true,
       )
       .assertIsDisplayed()
   }
