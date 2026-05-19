@@ -208,11 +208,6 @@
 
     <welcomeFrameProvider implementation="com.android.tools.idea.welcome.wizard.FirstRunWizardFrameProvider" order="FIRST"/>
 
-    <localInspection groupPath="Java" language="JAVA" suppressId="deprecation" shortName="Deprecation" displayName="Deprecated API usage"
-                     groupKey="group.names.code.maturity.issues" groupBundle="messages.InspectionsBundle"
-                     enabledByDefault="true" level="WARNING"
-                     implementationClass="org.jetbrains.android.inspections.AndroidDeprecationInspection"/>
-
     <applicationConfigurable parentId="preferences.general"
                              displayName="Memory Settings"
                              provider="com.android.tools.idea.memorysettings.MemorySettingsConfigurableProvider"
