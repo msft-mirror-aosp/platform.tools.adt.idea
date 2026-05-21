@@ -25,7 +25,6 @@ import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.plugin.BuildSystemVersionChecker
 import com.google.idea.blaze.base.scope.BlazeContext
-import com.google.idea.blaze.base.settings.BlazeImportSettings
 import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver
 import com.google.idea.blaze.base.util.SaveUtil
@@ -89,7 +88,6 @@ interface ReadonlyQuerySyncProject {
 class QuerySyncProject(
   val ideProject: Project,
   private val snapshotHolder: SnapshotHolder,
-  val importSettings: BlazeImportSettings,
   override val workspaceRoot: WorkspaceRoot,
   val artifactTracker: ArtifactTracker<*>,
   val buildArtifactCache: BuildArtifactCache,
@@ -273,7 +271,7 @@ class QuerySyncProject(
 
   fun createProjectStructure(
     context: BlazeContext,
-    queryData: PostQuerySyncData,
+    projectDefinition: ProjectDefinition,
     graph: BuildGraphData,
     projectStructureData: ProjectStructureData,
   ): CreateProjectStructureResult {
@@ -281,7 +279,7 @@ class QuerySyncProject(
     val newProjectStructure =
       projectBuilder.createBlazeProjectStructure(
         context,
-        queryData,
+        projectDefinition,
         graph,
         projectStructureData,
         artifactTrackerState,

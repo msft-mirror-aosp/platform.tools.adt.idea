@@ -259,9 +259,11 @@ object TaskBasedUxStrings {
 
       StartTaskSelectionErrorCode.NO_STARTING_POINT_SELECTED -> "No task starting point selected"
       StartTaskSelectionErrorCode.LEAKCANARY_NOT_FOUND ->
-        "LeakCanary was not detected in the selected process. Please use the 'Start profiler task from process start' option."
+        "Studio's LeakCanary integration library not detected in the process. Please try 'Start profiler task from process start'."
       StartTaskSelectionErrorCode.LEAKCANARY_CHECK_IN_PROGRESS -> LEAKCANARY_CHECKING_PRESENCE
       StartTaskSelectionErrorCode.LEAKCANARY_CHECK_TIMEOUT -> LEAKCANARY_CHECK_TIMEOUT_MESSAGE
+      StartTaskSelectionErrorCode.LEAKCANARY_REFLECTION_FAILED ->
+        "Studio's LeakCanary integration library failed to attach. Required internal APIs are missing from the compiled app."
       StartTaskSelectionErrorCode.TASK_HAS_DEBUGGER_ATTACHED -> TASK_HAS_DEBUGGER_ATTACHED_MESSAGE
       StartTaskSelectionErrorCode.GENERAL_ERROR -> "This task cannot be run in this configuration"
     }
