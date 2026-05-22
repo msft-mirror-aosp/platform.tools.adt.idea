@@ -17,7 +17,7 @@ package com.android.tools.idea.publishing.play.wizard
 
 import com.android.tools.adtui.compose.ComposeWizard
 import com.android.tools.idea.publishing.AppPublishingContext
-import com.android.tools.idea.publishing.play.wizard.page.ChooseArtifactPage
+import com.android.tools.idea.publishing.play.wizard.page.ChooseBundlePage
 import com.android.tools.idea.publishing.play.wizard.page.LoggedOutPage
 import com.google.gct.login2.fstLoginFeature
 import com.intellij.openapi.application.invokeLater
@@ -30,7 +30,7 @@ fun showPublishingWizard(project: Project, context: AppPublishingContext) {
       if (!fstLoginFeature.isLoggedIn()) {
         LoggedOutPage()
       } else {
-        ChooseArtifactPage()
+        ChooseBundlePage()
       }
     }
   invokeLater { wizard.show() }
