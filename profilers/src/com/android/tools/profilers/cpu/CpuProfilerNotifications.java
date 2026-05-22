@@ -41,8 +41,8 @@ final class CpuProfilerNotifications {
   @NotNull
   static final Notification PARSING_FAILURE = createError(
     "Trace data was not recorded",
-    "The profiler was unable to parse the method trace data. " +
-    "Try recording another method trace, or "
+    "The profiler was unable to parse trace data. " +
+    "Try recording another trace, or "
   );
 
   @NotNull
