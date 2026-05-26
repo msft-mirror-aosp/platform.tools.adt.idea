@@ -146,9 +146,9 @@ class AddDeviceWizardTest {
   }
 
   @Test
-  fun addAiGlassesDevice() {
+  fun addAudioGlassesDevice() {
     // The AVD needs to be on a real filesystem for the copy of the default environment to work.
-    val fixture = SdkFixture(avdRoot = createTempDirectory("AddAiGlassesDeviceTest"))
+    val fixture = SdkFixture(avdRoot = createTempDirectory("AddAudioGlassesDeviceTest"))
     with(fixture) {
       // We need to inject the SDK for EnvironmentsUpdater.
       val androidSdks =
@@ -168,7 +168,7 @@ class AddDeviceWizardTest {
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
       composeTestRule.onNodeWithText("XR").performClick()
-      composeTestRule.onAllNodesWithText("AI Glasses", substring = true).onFirst().performClick()
+      composeTestRule.onNodeWithText("Audio Glasses").performClick()
       composeTestRule.waitForIdle()
 
       wizard.performAction(wizard.nextAction)
