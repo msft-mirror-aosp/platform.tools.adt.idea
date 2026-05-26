@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.insights
+package com.android.tools.idea.play.findings
 
+import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.InsightsProvider.Source
 
-class FakeInsightsProvider(
-  override val displayName: String = "Firebase Crashlytics",
-  override val supportsMultipleEvents: Boolean = true,
-  override val source: Source = Source.UNKNOWN,
-) : InsightsProvider
+object PlayFindingsInsightsProvider : InsightsProvider {
+  override val displayName: String = "Quality Findings"
+
+  override val source: Source = Source.PLAY
+
+  override val supportsMultipleEvents: Boolean = false
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.vitals.ui
+package com.android.tools.idea.insights.ui
 
-import com.android.tools.idea.insights.Selection
-import com.android.tools.idea.insights.ui.ResizedSimpleColoredComponent
-import com.android.tools.idea.insights.ui.formatListRenderer
-import com.android.tools.idea.vitals.datamodel.VitalsConnection
+import com.android.tools.idea.insights.InsightsProvider.Source
+import com.android.tools.idea.insights.inspection.ConnectionFilter
+import com.android.tools.idea.insights.inspection.ConnectionPreference
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.CollectionListModel
@@ -36,6 +35,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.JBUI.CurrentTheme.Banner
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
@@ -52,21 +52,25 @@ import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
 import kotlinx.coroutines.CoroutineScope
 
-private val VITALS_POPUP_ITEM_BORDER = JBUI.Borders.empty(1, 8)
+private val POPUP_ITEM_BORDER
+  get() = JBUI.Borders.empty(1, 8)
 
-class VitalsConnectionSelectorPopup(
-  selection: Selection<VitalsConnection>,
+class FilterSelectorPopup(
+  filters: List<ConnectionFilter>,
+  private val selectedFilter: ConnectionFilter?,
   private val scope: CoroutineScope,
-  private val onSelect: (VitalsConnection) -> Unit,
+  private val onSelect: (ConnectionFilter) -> Unit,
 ) : JPanel(BorderLayout()) {
 
   private val searchTextField = SearchTextField(false)
 
+  private val iconMap =
+    AppInsightsTabProvider.EP_NAME.extensionList.associate { tabProvider -> tabProvider.insightsProvider.source to tabProvider.icon }
+
   init {
-    val (mainConnections, secondaryConnections) = selection.items.partition { it.isPreferred }
     val contentPanel = JPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS) }
 
-    if (mainConnections.isEmpty() && secondaryConnections.isEmpty()) {
+    if (filters.isEmpty()) {
       val bannerPanel =
         JPanel(BorderLayout()).apply {
           border = JBUI.Borders.empty(8, 8, 0, 8)
@@ -75,11 +79,14 @@ class VitalsConnectionSelectorPopup(
       contentPanel.add(bannerPanel)
     }
 
+    val (mainConnections, secondaryConnections) =
+      filters.partition { it.preferences.values.any { pref -> pref == ConnectionPreference.PREFERRED } }
+
     val suggestedContainer = JPanel(BorderLayout()).apply { border = JBUI.Borders.empty(5, 5, 0, 5) }
     val suggestedLabel =
       SimpleColoredComponent().apply {
         append("Suggested apps for this project", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-        border = VITALS_POPUP_ITEM_BORDER
+        border = POPUP_ITEM_BORDER
       }
     val (suggestedApps, suggestedAppsModel) = setUpList()
 
@@ -108,7 +115,7 @@ class VitalsConnectionSelectorPopup(
     val allLabel =
       SimpleColoredComponent().apply {
         append("${if (mainConnections.isNotEmpty()) "Other" else "All"} apps", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-        border = VITALS_POPUP_ITEM_BORDER
+        border = POPUP_ITEM_BORDER
       }
     val (allApps, allAppsModel) = setUpList()
     allAppsModel.addAll(secondaryConnections)
@@ -128,11 +135,11 @@ class VitalsConnectionSelectorPopup(
     add(contentPanel, BorderLayout.CENTER)
   }
 
-  private fun setUpList(): Pair<JBList<VitalsConnection>, FilteringListModel<VitalsConnection>> {
-    val model = FilteringListModel(CollectionListModel(emptyList<VitalsConnection>()))
+  private fun setUpList(): Pair<JBList<ConnectionFilter>, FilteringListModel<ConnectionFilter>> {
+    val model = FilteringListModel(CollectionListModel(emptyList<ConnectionFilter>()))
     val connectionsList = JBList(model)
     model.setFilter { connection ->
-      connection.displayName.contains(searchTextField.text, ignoreCase = true) ||
+      connection.title.contains(searchTextField.text, ignoreCase = true) ||
         connection.appId.contains(searchTextField.text, ignoreCase = true)
     }
     connectionsList.selectionMode = ListSelectionModel.SINGLE_SELECTION
@@ -149,19 +156,33 @@ class VitalsConnectionSelectorPopup(
     val rendererColoredComponent = ResizedSimpleColoredComponent()
     renderer.add(rendererColoredComponent, BorderLayout.WEST)
 
+    val rendererIconComponent = JPanel(FlowLayout(FlowLayout.RIGHT)).apply { isOpaque = false }
+    val iconComponentsMap =
+      (Source.entries - Source.UNKNOWN).associateWith { source ->
+        ResizedSimpleColoredComponent().also {
+          it.icon = iconMap[source]
+          it.isOpaque = false
+          rendererIconComponent.add(it)
+        }
+      }
+    renderer.add(rendererIconComponent, BorderLayout.EAST)
+
     connectionsList.setCellRenderer { list, value, _, _, _ ->
-      val hasFocus = list.selectedValue == value
+      val hasFocus = list.selectedValue == value || selectedFilter == value
       renderer.isOpaque = false
-      renderer.border = VITALS_POPUP_ITEM_BORDER
+      renderer.border = POPUP_ITEM_BORDER
       rendererColoredComponent.apply {
         clear()
-        formatListRenderer(null, list, hasFocus)
+        // formatListRenderer(null, list, hasFocus) - Not available, just setting colors
         toolTipText = value.appId
-        append(value.displayName, SimpleTextAttributes.REGULAR_ATTRIBUTES)
+        append(value.title, SimpleTextAttributes.REGULAR_ATTRIBUTES)
         append("  ")
         append(value.appId, SimpleTextAttributes.GRAYED_ATTRIBUTES)
         background = if (hasFocus) list.selectionBackground else list.background
+        foreground = if (hasFocus) list.selectionForeground else list.foreground
       }
+
+      iconComponentsMap.forEach { (source, component) -> component.isVisible = value.preferences.containsKey(source) }
       renderer
     }
     connectionsList.addMouseListener(
@@ -211,7 +232,7 @@ class VitalsConnectionSelectorPopup(
   private fun emptyLabel(text: String) =
     SimpleColoredComponent().apply {
       append(text, SimpleTextAttributes.GRAYED_ATTRIBUTES)
-      border = VITALS_POPUP_ITEM_BORDER
+      border = POPUP_ITEM_BORDER
     }
 
   inner class NoAvailableAppsBanner : JPanel(BorderLayout()) {
@@ -228,7 +249,7 @@ class VitalsConnectionSelectorPopup(
 
       val descriptionTextPane =
         JTextArea().apply {
-          text = "Your Play Console account does not have access to Android Vitals for any app."
+          text = "No apps available."
           isEditable = false
           isFocusable = false
           wrapStyleWord = true
