@@ -102,6 +102,7 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.api" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="module" module-name="intellij.lint" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.compose-designer" />
 </module>
