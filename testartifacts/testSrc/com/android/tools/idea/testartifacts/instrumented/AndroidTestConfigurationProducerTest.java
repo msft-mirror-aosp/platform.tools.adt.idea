@@ -61,7 +61,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration;
 import org.junit.Assume;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -368,7 +367,6 @@ public class AndroidTestConfigurationProducerTest {
     assertThat(runConfig.METHOD_NAME).isEmpty();
   }
 
-  @Ignore("b/515173631")
   @Test
   public void testCreateAndroidInstrumentedTestAndroidKotlinMultiplatformFromClass() {
     projectRule.loadProject(ANDROID_KOTLIN_MULTIPLATFORM);
