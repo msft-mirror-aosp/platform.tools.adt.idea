@@ -100,6 +100,7 @@
   <xi:include href="/META-INF/pipeline.xml"/>
   <xi:include href="/META-INF/play-policy.xml"/>
   <xi:include href="/META-INF/play-vitals.xml"/>
+  <xi:include href="/META-INF/play-findings.xml"/>
   <xi:include href="/META-INF/profilers.xml"/>
   <xi:include href="/META-INF/profilers-gradle.xml"/>
   <xi:include href="/META-INF/project-system-plugin.xml"/>
