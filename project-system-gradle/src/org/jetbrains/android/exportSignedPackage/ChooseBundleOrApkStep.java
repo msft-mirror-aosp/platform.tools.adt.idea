@@ -31,6 +31,8 @@ import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
 import org.jetbrains.android.util.AndroidBundle;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.TestOnly;
 
 public class ChooseBundleOrApkStep extends ExportSignedPackageWizardStep {
   public static final String DOC_URL = "https://d.android.com/r/studio-ui/dynamic-delivery/overview.html";
@@ -155,5 +157,11 @@ public class ChooseBundleOrApkStep extends ExportSignedPackageWizardStep {
                             ? new Font(font.getFamily(), font.getStyle(), font.getSize())
                             : new StyleContext().getFont(font.getFamily(), font.getStyle(), font.getSize());
     return fontWithFallback instanceof FontUIResource ? fontWithFallback : new FontUIResource(fontWithFallback);
+  }
+
+  @TestOnly
+  public void setButtonForType(@NotNull ExportSignedPackageWizard.TargetType type) {
+    myApkButton.setSelected(type.equals(ExportSignedPackageWizard.TargetType.APK));
+    myBundleButton.setSelected(type.equals(ExportSignedPackageWizard.TargetType.BUNDLE));
   }
 }

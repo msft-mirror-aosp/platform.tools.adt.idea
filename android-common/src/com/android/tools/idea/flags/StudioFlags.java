@@ -2472,6 +2472,11 @@ public final class StudioFlags {
                     "Enable the AskUserTool",
                     "When enabled, adds the AskUserTool to a set of default tools");
 
+  public static final Flag<Boolean> STUDIOBOT_TOOL_TIMEOUT_MONITOR_ENABLED =
+    new BooleanFlag(STUDIOBOT, "tool.timeout.monitor.enabled",
+                    "Enable the inactivity monitor for tool calls",
+                    "When enabled, tool execution will be monitored for inactivity and cancelled after a timeout");
+
   // rate limits are controlled by server flags
   public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =
     new IntFlag(STUDIOBOT, "completions.per.hour",
@@ -2559,6 +2564,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "auto.refresh.models",
                     "Automatically refresh models in background.",
                     "When enabled, a background job will run every 24 hours to fetch available models for active providers.");
+
+  public static Flag<Boolean> MODEL_MANAGER_ENABLED =
+    new BooleanFlag(STUDIOBOT, "model.manager.enabled",
+                    "Enable the model manager..",
+                    "Allows individual features to use different models configured in model sets.");
 
   public static final Flag<Boolean> STUDIOBOT_INCLUDE_GRADLE_PROJECT_STRUCTURE_TOOLS_BY_DEFAULT =
     new BooleanFlag(STUDIOBOT, "include.gradle.project.structure.tools.by.default",
@@ -2679,6 +2689,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "ui.v2.enabled",
                     "Enable v2 agent UI (sessions in editor tabs)",
                     "Disables the toolwindow-based v1 agent UI and replaces it with the v2 editor tabs-based agent UI. Requires restart.");
+
+  public static final Flag<Boolean> STUDIOBOT_AGENT_V2_TELEMETRY_ENABLED =
+    new BooleanFlag(STUDIOBOT, "agent.v2.telemetry.enabled",
+                    "Enable agent V2 telemetry",
+                    "When enabled, telemetry for agent V2 events will be reported.");
 
   public static final Flag<Boolean> STUDIOBOT_PERSONALIZED_GREETING_DISABLED =
     new BooleanFlag(STUDIOBOT, "personalized.greeting.disabled",
@@ -2950,6 +2965,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_RUN_WITH_AGENT = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.agent.support", "Enable the Journeys agent",
     "Enable running Journey tests using an AI agent"
+  );
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_ANDROID_CLI_TOOLS = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "enable.android.cli.tools", "Enable Android CLI tools based Journeys agent",
+    "Enable the use of the Android CLI skill and tool when running Journey tests with an agent"
   );
   // endregion JOURNEYS_WITH_GEMINI
 

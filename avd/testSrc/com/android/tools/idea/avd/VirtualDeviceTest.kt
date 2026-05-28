@@ -20,7 +20,6 @@ import com.android.resources.ScreenOrientation
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.devices.Storage
-import com.android.sdklib.devices.VendorDevices
 import com.android.sdklib.internal.avd.AvdBuilder
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
@@ -32,7 +31,6 @@ import com.android.sdklib.internal.avd.InternalSdCard
 import com.android.sdklib.internal.avd.OnDiskSkin
 import com.android.sdklib.internal.avd.UserSettingsKey
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
-import com.android.utils.NullLogger
 import com.google.common.truth.Truth.assertThat
 import java.nio.file.Paths
 import org.junit.Test
@@ -42,8 +40,7 @@ import org.mockito.kotlin.whenever
 class VirtualDeviceTest {
   @Test
   fun initializeFromProfile() {
-    val devices = VendorDevices(NullLogger()).apply { init { true } }
-    val pixel8 = devices.getDevice("pixel_8", "Google")!!
+    val pixel8 = vendorDevicesTable.getDevice("pixel_8", "Google")!!
 
     with(VirtualDevice(pixel8)) {
       initializeFromProfile()
@@ -56,8 +53,7 @@ class VirtualDeviceTest {
 
   @Test
   fun avdBuilderToVirtualDevice() {
-    val devices = VendorDevices(NullLogger()).apply { init { true } }
-    val pixel8 = devices.getDevice("pixel_8", "Google")!!
+    val pixel8 = vendorDevicesTable.getDevice("pixel_8", "Google")!!
 
     val avdBuilder = AvdBuilder(Paths.get("/tmp/avd/pixel_8.ini"), Paths.get("/tmp/avd/pixel_8.avd"), pixel8)
     avdBuilder.systemImage = mockSystemImage()
@@ -100,8 +96,7 @@ class VirtualDeviceTest {
 
   @Test
   fun virtualDeviceToAvdBuilder() {
-    val devices = VendorDevices(NullLogger()).apply { init { true } }
-    val pixel8 = devices.getDevice("pixel_8", "Google")!!
+    val pixel8 = vendorDevicesTable.getDevice("pixel_8", "Google")!!
     val avdBuilder = AvdBuilder(Paths.get("/tmp/avd/pixel_8.ini"), Paths.get("/tmp/avd/pixel_8.avd"), pixel8)
 
     val device =
@@ -143,13 +138,6 @@ class VirtualDeviceTest {
       assertThat(bootMode).isEqualTo(ColdBoot)
       assertThat(userSettings[UserSettingsKey.PREFERRED_ABI]).isEqualTo(SdkConstants.ABI_RISCV64)
     }
-  }
-
-  @Test
-  fun deviceFilter() {
-    val devices = VendorDevices(NullLogger()).apply { init { device -> device.id != "pixel_8" } }
-    assertThat(devices.getDevice("pixel_8", "Google")).isNull()
-    assertThat(devices.getDevice("pixel_9", "Google")).isNotNull()
   }
 
   private fun mockSystemImage(): ISystemImage = mock<ISystemImage>().apply { whenever(androidVersion).thenReturn(AndroidVersion(34)) }

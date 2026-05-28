@@ -86,14 +86,14 @@ private const val UPLOAD_BUNDLE_DAC_URL = "https://developer.android.com/r/studi
 @Suppress("UnstableApiUsage")
 @OptIn(ExperimentalFoundationApi::class, ExperimentalJewelApi::class)
 @Composable
-fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMetadata = ::extractAppMetadata) {
+fun WizardPageScope.ChooseBundlePage(extractMetadata: suspend (Path) -> AppMetadata = ::extractAppMetadata) {
   val user by GoogleLoginService.instance.activeUserFlow.collectAsState()
   val project = LocalProject.current
   val component = LocalComponent.current
   val state = getOrCreateState<PlayPublishingWizardState> { error("State not initialized") }
-  val isPathLocked = !state.artifactPath.isNullOrEmpty()
-  val initialArtifactPath = remember { state.artifactPath ?: project?.guessProjectDir()?.path ?: "" }
-  val artifactPathState = rememberTextFieldState(initialArtifactPath)
+  val isPathLocked = !state.bundlePath.isNullOrEmpty()
+  val initialBundlePath = remember { state.bundlePath ?: project?.guessProjectDir()?.path ?: "" }
+  val bundlePathState = rememberTextFieldState(initialBundlePath)
   var errorMessage: String? by remember { mutableStateOf(null) }
   var isAppsLoading by remember { mutableStateOf(true) }
   val apps: List<App>? by
@@ -151,25 +151,28 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
       }
   }
 
-  LaunchedEffect(artifactPathState.text) {
-    val path = artifactPathState.text.toString()
-    state.artifactPath = path
+  LaunchedEffect(bundlePathState.text) {
+    val path = bundlePathState.text.toString()
+    state.bundlePath = path
+    if (errorMessage == "Failed to parse metadata. Please verify that the selected App Bundle (.aab) is valid and not corrupted.") {
+      errorMessage = null
+    }
     val metadata =
       try {
         extractMetadata(Path(path))
       } catch (e: Exception) {
-        Logger.getInstance("ChooseArtifactPage").warn("Failed to read metadata from artifact", e)
+        Logger.getInstance("ChooseBundlePage").warn("Failed to read metadata from bundle", e)
+        errorMessage = "Failed to parse metadata. Please verify that the selected App Bundle (.aab) is valid and not corrupted."
         null
       }
     state.appName = metadata?.appName
     state.packageName = metadata?.packageName
     versionName = metadata?.versionName
     versionCode = metadata?.versionCode
-    state.isBundle = metadata?.isBundle ?: false
   }
 
   val fileChooserDescriptor = remember {
-    FileChooserDescriptor(true, false, false, false, false, false).withFileFilter { it.extension?.lowercase() in listOf("aab", "apk") }
+    FileChooserDescriptor(true, false, false, false, false, false).withFileFilter { it.extension?.lowercase() == "aab" }
   }
 
   val avatarPainter =
@@ -199,7 +202,7 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
     }
 
   Column(modifier = Modifier.fillMaxSize()) {
-    PlayPublishingWizardHeader(subtitle = "Choose App Bundle or APK")
+    PlayPublishingWizardHeader(subtitle = "Choose App Bundle")
     Column(modifier = Modifier.weight(1f).padding(24.dp).focusTarget()) {
       // User Info
       Row(verticalAlignment = Alignment.CenterVertically) {
@@ -215,17 +218,17 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
       Spacer(modifier = Modifier.height(24.dp))
 
       Text(
-        text = "Select the App Bundle (.aab) or APK you want to upload to Google Play.",
+        text = "Select the App Bundle (.aab) you want to upload to Google Play.",
         style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp),
       )
 
       Spacer(modifier = Modifier.height(16.dp))
 
-      // Artifact path field
+      // Bundle path field
       Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text = "App bundle or APK:", modifier = Modifier.width(150.dp), style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp))
+        Text(text = "App bundle:", modifier = Modifier.width(100.dp), style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp))
         TextField(
-          state = artifactPathState,
+          state = bundlePathState,
           modifier = Modifier.weight(1f),
           enabled = !isPathLocked,
           trailingIcon =
@@ -237,13 +240,13 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
                   contentDescription = "Browse",
                   modifier =
                     Modifier.padding(end = 4.dp).pointerHoverIcon(PointerIcon.Hand).clickable {
-                      val currentPath = artifactPathState.text.toString()
+                      val currentPath = bundlePathState.text.toString()
                       val toSelect =
                         (if (currentPath.isNotBlank()) LocalFileSystem.getInstance().findFileByPath(currentPath) else null)
                           ?: project?.guessProjectDir()
                       val virtualFile = FileChooser.chooseFile(fileChooserDescriptor, component, project, toSelect)
                       if (virtualFile != null) {
-                        artifactPathState.setTextAndPlaceCursorAtEnd(virtualFile.toNioPath().toString())
+                        bundlePathState.setTextAndPlaceCursorAtEnd(virtualFile.toNioPath().toString())
                       }
                     },
                 )
@@ -256,7 +259,7 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
           // Match the width of the spacer with the label above to align the banner with the path field
-          Spacer(Modifier.width(150.dp))
+          Spacer(Modifier.width(100.dp))
           when (it.type) {
             ElementType.SUCCESS -> InlineSuccessBanner(it.message)
             ElementType.ERROR -> InlineErrorBanner(it.message)
@@ -266,8 +269,8 @@ fun WizardPageScope.ChooseArtifactPage(extractMetadata: suspend (Path) -> AppMet
 
       Spacer(modifier = Modifier.height(8.dp))
 
-      // Artifact Details
-      Column(modifier = Modifier.padding(start = 150.dp)) {
+      // Bundle Details
+      Column(modifier = Modifier.padding(start = 100.dp)) {
         // Package Name
         Row(modifier = Modifier.testTag("PackageNameRow"), verticalAlignment = Alignment.CenterVertically) {
           Text(text = "Package name", modifier = Modifier.width(100.dp), style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp))

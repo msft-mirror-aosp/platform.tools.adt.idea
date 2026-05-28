@@ -25,6 +25,7 @@
     <orderEntry type="module" module-name="aiplugin.experimental" />
     <orderEntry type="module" module-name="studio-sdk-all-plugins" />
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.plugin" />
+    <orderEntry type="module" module-name="ios-lang" />
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="module" module-name="optional-plugins" />

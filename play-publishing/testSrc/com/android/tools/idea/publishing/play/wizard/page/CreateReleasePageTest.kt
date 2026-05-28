@@ -169,7 +169,7 @@ class CreateReleasePageTest {
       FakePlayPublishingClient.Config(
         insertEditCall = { AppEdit("editId123", "expiry") },
         listEditTracksCall = { _, _ -> listOf(Track("internal")) },
-        uploadArtifactCall = { _, _, _, _ ->
+        uploadArtifactCall = { _, _, _ ->
           uploadArtifactCalled = true
           Bundle(1234, "", "")
         },
@@ -185,7 +185,7 @@ class CreateReleasePageTest {
         commitEditCall = { _, _ -> commitEditCalled = true },
       )
 
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, artifactPath = "/some/path/app.aab")
+    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, bundlePath = "/some/path/app.aab")
     state.releaseName = "My Release"
     state.releaseNotes = "<en-US>These are some notes</en-US>"
     createWizard(state)
@@ -210,18 +210,13 @@ class CreateReleasePageTest {
       FakePlayPublishingClient.Config(
         insertEditCall = { AppEdit("editId123", "expiry") },
         listEditTracksCall = { _, _ -> listOf(Track("internal")) },
-        uploadArtifactCall = { _, _, _, _ -> Bundle(1234, "", "") },
+        uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
         createReleaseCall = { _, _, _, _, _, _ -> },
         commitEditCall = { _, _ -> },
       )
 
     val state =
-      PlayPublishingWizardState(
-        packageName = "com.example.app",
-        appName = "My App",
-        client = fakeClient,
-        artifactPath = "/some/path/app.aab",
-      )
+      PlayPublishingWizardState(packageName = "com.example.app", appName = "My App", client = fakeClient, bundlePath = "/some/path/app.aab")
     state.releaseName = "My Release"
     state.releaseNotes = "<en-US>These are some notes</en-US>"
     createWizard(state)
@@ -259,10 +254,10 @@ class CreateReleasePageTest {
       FakePlayPublishingClient.Config(
         insertEditCall = { AppEdit("editId123", "expiry") },
         listEditTracksCall = { _, _ -> listOf(Track("internal")) },
-        uploadArtifactCall = { _, _, _, _ -> throw PlayPublishingException("Socket Closed") },
+        uploadArtifactCall = { _, _, _ -> throw PlayPublishingException("Socket Closed") },
       )
 
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, artifactPath = "/some/path/app.aab")
+    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, bundlePath = "/some/path/app.aab")
     state.releaseName = "My Release"
     state.releaseNotes = "<en-US>These are some notes</en-US>"
     createWizard(state)

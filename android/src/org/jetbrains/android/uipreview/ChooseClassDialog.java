@@ -46,7 +46,6 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.function.Predicate;
 import javax.swing.DefaultListModel;
-import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.ListModel;
@@ -119,8 +118,10 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
       @Override
       protected boolean isMatchingElement(Object element, String pattern) {
         PsiClass psiClass = (PsiClass)element;
-        assert psiClass.getName() != null && psiClass.getQualifiedName() != null;
-        return compare(psiClass.getName(), pattern) || compare(psiClass.getQualifiedName(), pattern);
+        return ReadAction.computeBlocking(() -> {
+          assert psiClass.getName() != null && psiClass.getQualifiedName() != null;
+          return compare(psiClass.getName(), pattern) || compare(psiClass.getQualifiedName(), pattern);
+        });
       }
     };
     search.setupListeners();
@@ -133,11 +134,16 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
 
   private void setSelectedClass(@NotNull String className) {
     ListModel<PsiClass> model = myList.getModel();
-    for (int index = 0; index < myList.getModel().getSize(); index++) {
-      if (className.equals(model.getElementAt(index).getQualifiedName())) {
-        myList.setSelectedIndex(index);
-        break;
+    int targetIndex = ReadAction.computeBlocking(() -> {
+      for (int index = 0; index < model.getSize(); index++) {
+        if (className.equals(model.getElementAt(index).getQualifiedName())) {
+          return index;
+        }
       }
+      return -1;
+    });
+    if (targetIndex != -1) {
+      myList.setSelectedIndex(targetIndex);
     }
   }
 
@@ -300,6 +306,6 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
   public void valueChanged(ListSelectionEvent e) {
     PsiClass psiClass = myList.getSelectedValue();
     setOKActionEnabled(psiClass != null);
-    myResultClassName = psiClass == null ? null : psiClass.getQualifiedName();
+    myResultClassName = psiClass == null ? null : ReadAction.computeBlocking(() -> psiClass.getQualifiedName());
   }
 }

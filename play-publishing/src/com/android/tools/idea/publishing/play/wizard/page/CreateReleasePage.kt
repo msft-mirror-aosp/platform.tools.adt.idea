@@ -229,7 +229,7 @@ fun WizardPageScope.CreateReleasePage() {
       WizardAction {
         val packageName = state.packageName ?: return@WizardAction
         val editId = appEdit?.id ?: return@WizardAction
-        val artifactPath = state.artifactPath ?: return@WizardAction
+        val artifactPath = state.bundlePath ?: return@WizardAction
         val selectedTrackId = selectedTrack ?: return@WizardAction
 
         ProgressManager.getInstance()
@@ -239,7 +239,7 @@ fun WizardPageScope.CreateReleasePage() {
                 indicator.isIndeterminate = true
                 runBlocking {
                   try {
-                    val responseArtifact = state.client.uploadArtifact(packageName, editId, artifactPath, state.isBundle)
+                    val responseArtifact = state.client.uploadBundle(packageName, editId, artifactPath)
                     state.client.createRelease(
                       packageName,
                       editId,

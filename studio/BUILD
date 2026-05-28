@@ -893,6 +893,7 @@ studio_plugin(
     ],
     modules = {
         "aiplugin.jar": [
+            "//tools/vendor/google/alt-lang/ios-lang:ios-lang",
             "//tools/vendor/google/ml/aiplugin/model/api:aiplugin.model.api",
             "//tools/vendor/google/ml/aiplugin/core/primitives:aiplugin.core.primitives",
             "//tools/vendor/google/ml/aiplugin/core/terminal:aiplugin.core.terminal",
@@ -949,6 +950,7 @@ studio_plugin(
         ":com.android.tools.design",
         ":com.android.tools.gradle.dsl",
         ":org.jetbrains.android",
+        "@intellij//:Coverage",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.java",
         "@intellij//:intellij.java.analysis.impl",
@@ -965,6 +967,8 @@ studio_plugin(
         "@intellij//:intellij.libraries.grpc",
         "@intellij//:intellij.libraries.grpc.netty.shaded",
         "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.platform.coverage",
+        "@intellij//:intellij.platform.coverage.agent",
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
@@ -1389,6 +1393,7 @@ iml_module(
         "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         "//tools/adt/idea/studio:studio-sdk-all-plugins",
         "//tools/adt/idea/gradle-dsl-plugin:intellij.android.gradle.dsl.plugin",
+        "//tools/vendor/google/alt-lang/ios-lang",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/vendor/google/optional-plugins",

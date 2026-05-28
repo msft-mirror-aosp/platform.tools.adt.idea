@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.device.explorer.files.adbimpl
+package com.android.tools.instrumentation.threading.agent.callback
 
-/** Enum for picking which device library to test with (so parameterized tests have readable names). */
-enum class DeviceInterfaceLibrary {
-  DDMLIB,
-  ADBLIB,
+fun setBaseline(baselineText: String, block: () -> Unit) {
+  val old = ThreadingCheckerTrampoline.BaselineViolationsHolder.baselineViolations
+  try {
+    ThreadingCheckerTrampoline.BaselineViolationsHolder.baselineViolations = BaselineViolations.fromStream(baselineText.byteInputStream())
+    block()
+  } finally {
+    ThreadingCheckerTrampoline.BaselineViolationsHolder.baselineViolations = old
+  }
 }
