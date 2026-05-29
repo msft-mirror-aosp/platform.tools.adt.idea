@@ -186,6 +186,7 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="com.google.idea.blaze.base.sync.BlazeSyncStartupActivity"/>
+    <postStartupActivity implementation="com.google.idea.blaze.base.workspace.ui.WorkspaceSwitcherWidgetRefresher"/>
     <postStartupActivity implementation="com.google.idea.blaze.base.project.DisableAndroidFrameworkActivity"/>
     <postStartupActivity implementation="com.google.idea.blaze.base.formatter.ExternalFormatterCodeStyleManager$Installer"/>
 
@@ -329,6 +330,8 @@
     <notificationGroup displayType="STICKY_BALLOON" id="ASwB Legacy Sync Mode" />
     <notificationGroup displayType="BALLOON" id="QuerySyncBuild" />
     <cachesInvalidator implementation="com.google.idea.blaze.base.qsync.action.ResetQuerySyncAction$CachesInvalidator"/>
+    <statusBarWidgetFactory id="WorkspaceSwitcherWidget"
+                            implementation="com.google.idea.blaze.base.workspace.ui.WorkspaceSwitcherWidgetFactory"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
