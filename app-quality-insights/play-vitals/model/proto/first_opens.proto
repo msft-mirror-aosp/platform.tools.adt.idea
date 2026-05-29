@@ -5,21 +5,10 @@ package google.play.developer.reporting.v1beta1;
 import "metrics.proto";
 
 option java_multiple_files = true;
-option java_outer_classname = "FirstOpensServiceProto";
+option java_outer_classname = "FirstOpensMetricsProto";
 option java_package = "com.google.play.developer.reporting";
 
-// Describes and queries First Opens metrics.
-service FirstOpensService {
-  // Describes the properties of the metric set.
-  rpc GetFirstOpensMetricSet(GetFirstOpensMetricSetRequest)
-      returns (FirstOpensMetricSet) {}
-
-  // Queries the metrics in the metric set.
-  rpc QueryFirstOpensMetricSet(QueryFirstOpensMetricSetRequest)
-      returns (QueryFirstOpensMetricSetResponse) {}
-}
-
-// Singleton resource representing the set of First Opens metrics.
+// Contains first opens data.
 //
 // **Supported aggregation periods:**
 //
@@ -49,7 +38,7 @@ service FirstOpensService {
 //  * `deviceType`
 //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
 //     The form factor of the user's device (e.g., PHONE, TABLET, CHROMEBOOK).
-//  * `language`
+//  * `languageCode`
 //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
 //     The user's device language, represented as a BCP-47 language tag (e.g.
 //     en-US for English as used in the United States).
@@ -57,15 +46,14 @@ service FirstOpensService {
 //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
 //     The country or region of the user's device, represented as a 2-letter
 //     Unicode CLDR region code (e.g. US for the United States).
-//  * `trafficSource`
-//     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
-//     How the user got to your store listing (e.g., 'Google Play Search',
-//     'Google Play Explore', 'Ads and referrals').
 //  * `versionCode`
 //     ([int64][google.play.developer.reporting.v1beta1.DimensionValue.int64_value]):
 //     The version of the app that was running on the user's device.
 //
-// (== resource_for v1beta1.platform.firstopens ==)
+// **Required permissions**: to access this resource, the calling user needs the
+// _View app information (read-only)_ permission for the app.
+//
+// (== resource_for v1beta1.activations.firstOpens ==)
 message FirstOpensMetricSet {
   // The resource name.
   string name = 1;
@@ -74,16 +62,17 @@ message FirstOpensMetricSet {
   FreshnessInfo freshness_info = 2;
 }
 
-// Request message for [GetFirstOpensMetricSet].
+// Request message for retrieving the first opens metric set.
 message GetFirstOpensMetricSetRequest {
   // The resource name.
   // Format: apps/{app}/firstOpensMetricSet
   string name = 1;
 }
 
-// Request message for [QueryFirstOpensMetricSet].
+// Request message for querying the first opens metric set.
 message QueryFirstOpensMetricSetRequest {
   // The resource name.
+  // Format: apps/{app}/firstOpensMetricSet
   string name = 1;
 
   // Specification of the timeline aggregation parameters.
@@ -114,7 +103,7 @@ message QueryFirstOpensMetricSetRequest {
   //  * `deviceType`
   //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
   //     The form factor of the user's device (e.g., PHONE, TABLET, CHROMEBOOK).
-  //  * `language`
+  //  * `languageCode`
   //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
   //     The user's device language, represented as a BCP-47 language tag (e.g.
   //     en-US for English as used in the United States).
@@ -122,10 +111,6 @@ message QueryFirstOpensMetricSetRequest {
   //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
   //     The country or region of the user's device, represented as a 2-letter
   //     Unicode CLDR region code (e.g. US for the United States).
-  //  * `trafficSource`
-  //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
-  //     How the user got to your store listing (e.g., 'Google Play Search',
-  //     'Google Play Explore', 'Ads and referrals').
   //  * `versionCode`
   //     ([int64][google.play.developer.reporting.v1beta1.DimensionValue.int64_value]):
   //     The version of the app that was running on the user's device.
@@ -159,7 +144,7 @@ message QueryFirstOpensMetricSetRequest {
   string page_token = 6;
 }
 
-// Response message for [QueryFirstOpensMetricSet].
+// Response message for querying the first opens metric set.
 message QueryFirstOpensMetricSetResponse {
   // The returned rows of metrics.
   repeated MetricsRow rows = 1;

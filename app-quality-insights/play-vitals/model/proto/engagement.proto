@@ -5,10 +5,10 @@ package google.play.developer.reporting.v1beta1;
 import "metrics.proto";
 
 option java_multiple_files = true;
-option java_outer_classname = "ActivationsMetricsProto";
+option java_outer_classname = "EngagementProto";
 option java_package = "com.google.play.developer.reporting";
 
-// Singleton resource representing the set of Activations metrics.
+// Singleton resource representing the set of Engagement metrics.
 //
 // **Supported aggregation periods:**
 //
@@ -18,8 +18,16 @@ option java_package = "com.google.play.developer.reporting";
 //
 // **Supported metrics:**
 //
-//  * `deviceFirstOpens` (`google.type.Decimal`): The number of unique
-//     devices that opened the app for the first time.
+//  * `dailyActiveUsers` (`google.type.Decimal`): The number of users who opened
+//  your app on a given day.
+//  * `monthlyActiveUsers` (`google.type.Decimal`): The number of users who
+//  opened your app in a 28-day period
+//  * `dailyActiveDevices` (`google.type.Decimal`): The average number of active
+//  devices that open your app each day. An active device is one that has opened
+//  your app at least once on any given day. Data is updated daily and averaged
+//  over a selected time period (28 days by default).
+//  * `monthlyActiveDevices` (`google.type.Decimal`)
+//  * `timeInApp` (`google.type.Decimal`)
 //
 // **Supported dimensions:**
 //
@@ -38,23 +46,24 @@ option java_package = "com.google.play.developer.reporting";
 //  * `deviceType`
 //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
 //     The form factor of the user's device (e.g., PHONE, TABLET, CHROMEBOOK).
-//  * `language`
+//  * `languageCode`
 //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
 //     The user's device language, represented as a BCP-47 language tag (e.g.
 //     en-US for English as used in the United States).
-//  * `osVersion`
-//     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
-//     The Android OS version of the user's device, e.g., 12.
 //  * `regionCode`
 //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
 //     The country or region of the user's device, represented as a 2-letter
 //     Unicode CLDR region code (e.g. US for the United States).
+//  * `trafficSource`
+//     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
+//     How the user got to your store listing (e.g., 'Google Play Search',
+//     'Google Play Explore', 'Ads and referrals').
 //  * `versionCode`
 //     ([int64][google.play.developer.reporting.v1beta1.DimensionValue.int64_value]):
 //     The version of the app that was running on the user's device.
 //
-// (== resource_for v1beta1.activations ==)
-message ActivationsMetricSet {
+// (== resource_for v1beta1.engagement ==)
+message EngagementMetricSet {
   // The resource name.
   string name = 1;
 
@@ -62,17 +71,17 @@ message ActivationsMetricSet {
   FreshnessInfo freshness_info = 2;
 }
 
-// Request message for retrieving the activations metric set.
-message GetActivationsMetricSetRequest {
+// Request message for [GetEngagementMetricSet].
+message GetEngagementMetricSetRequest {
   // The resource name.
-  // Format: apps/{app}/activationsMetricSet
+  // Format: apps/{app}/engagementMetricSet
   string name = 1;
 }
 
-// Request message for querying the activations metric set.
-message QueryActivationsMetricSetRequest {
+// Request message for [QueryEngagementMetricSet].
+message QueryEngagementMetricSetRequest {
   // The resource name.
-  // Format: apps/{app}/activationsMetricSet
+  // Format: apps/{app}/engagementMetricSet
   string name = 1;
 
   // Specification of the timeline aggregation parameters.
@@ -103,7 +112,7 @@ message QueryActivationsMetricSetRequest {
   //  * `deviceType`
   //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
   //     The form factor of the user's device (e.g., PHONE, TABLET, CHROMEBOOK).
-  //  * `language`
+  //  * `languageCode`
   //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
   //     The user's device language, represented as a BCP-47 language tag (e.g.
   //     en-US for English as used in the United States).
@@ -111,6 +120,10 @@ message QueryActivationsMetricSetRequest {
   //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
   //     The country or region of the user's device, represented as a 2-letter
   //     Unicode CLDR region code (e.g. US for the United States).
+  //  * `trafficSource`
+  //     ([string][google.play.developer.reporting.v1beta1.DimensionValue.string_value]):
+  //     How the user got to your store listing (e.g., 'Google Play Search',
+  //     'Google Play Explore', 'Ads and referrals').
   //  * `versionCode`
   //     ([int64][google.play.developer.reporting.v1beta1.DimensionValue.int64_value]):
   //     The version of the app that was running on the user's device.
@@ -120,8 +133,17 @@ message QueryActivationsMetricSetRequest {
   //
   // **Supported metrics:**
   //
-  //  * `deviceFirstOpens` (`google.type.Decimal`): The number of unique
-  //     devices that opened the app for the first time.
+  //  * `dailyActiveUsers` (`google.type.Decimal`): The number of users who
+  //  opened
+  //  your app on a given day.
+  //  * `monthlyActiveUsers` (`google.type.Decimal`): The number of users who
+  //  opened your app in a 28-day period
+  //  * `dailyActiveDevices` (`google.type.Decimal`): The average number of
+  //  active devices that open your app each day. An active device is one that
+  //  has opened your app at least once on any given day. Data is updated daily
+  //  and averaged over a selected time period (28 days by default).
+  //  * `monthlyActiveDevices` (`google.type.Decimal`)
+  //  * `timeInApp` (`google.type.Decimal`)
   repeated string metrics = 4;
 
   // Filters to apply to data. The filtering expression follows
@@ -144,8 +166,8 @@ message QueryActivationsMetricSetRequest {
   string page_token = 6;
 }
 
-// Response message for querying the activations metric set.
-message QueryActivationsMetricSetResponse {
+// Response message for querying the engagement metric set.
+message QueryEngagementMetricSetResponse {
   // The returned rows of metrics.
   repeated MetricsRow rows = 1;
 

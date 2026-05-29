@@ -434,6 +434,10 @@ public final class StudioFlags {
     DESIGN_TOOLS, "render.tool.diff.viewer", "Enable the render tool diff viewer",
     "If enabled, the render tool shows previous render in a diff viewer");
 
+  public static final Flag<Boolean> COMPOSE_MESH_GRADIENT_EDITOR = new BooleanFlag(
+    DESIGN_TOOLS, "compose.mesh.gradient.editor", "Enable the Mesh Gradient Editor",
+    "If enabled, the Mesh Gradient Editor gutter icon and Tools menu action will be available.");
+
 
   //endregion
 
@@ -2988,6 +2992,12 @@ public final class StudioFlags {
       "enable",
       "Enable Settings Sync feature",
       "Enable Settings Sync feature");
+  public static final Flag<Boolean> ENABLE_SETTINGS_SYNC_ONBOARDING_WIZARD =
+    new BooleanFlag(
+      SETTINGS_SYNC,
+      "onboarding.wizard.enable",
+      "Enable Backup & Sync onboarding wizard",
+      "Enable the new Android Studio-specific setup wizard for Backup and Sync, bypassing the default IntelliJ Settings Sync dialog.");
   // endregion Settings sync
 
   // region PROJECT_TOOL_WINDOW

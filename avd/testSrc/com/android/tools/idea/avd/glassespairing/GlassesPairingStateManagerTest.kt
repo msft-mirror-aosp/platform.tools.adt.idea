@@ -277,7 +277,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
       }
@@ -445,7 +445,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
       }
@@ -496,7 +496,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
       }
@@ -544,7 +544,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
         pairedPhoneId = phoneId
@@ -620,7 +620,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
       }
@@ -762,7 +762,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
         pairedPhoneId = DeviceId("Fake", false, "phone1")
@@ -888,7 +888,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
       }
@@ -968,7 +968,7 @@ class GlassesPairingStateManagerTest {
       DeviceProperties.buildForTest {
         icon = EmptyIcon.DEFAULT
         manufacturer = "Google"
-        model = "AI Glasses"
+        model = "Audio glasses"
         deviceType = DeviceType.AI_GLASSES
         androidVersion = AndroidVersion(36, 1)
       }
