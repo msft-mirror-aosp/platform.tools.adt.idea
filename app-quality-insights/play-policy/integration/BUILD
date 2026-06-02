@@ -10,15 +10,11 @@ iml_module(
     iml_files = ["intellij.android.app-quality-insights.play-policy.integration.iml"],
     # do not sort: must match IML order
     test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/as-driver:as-driver.utils",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
         "@intellij//:intellij-sdk",
-        "//tools/adt/idea/.idea/libraries:truth",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
-    deps = ["@intellij//:com.intellij.java"],
 )
 
 iml_test(
@@ -68,8 +64,8 @@ studio_project_model(
     srcs = [
         ":minapp",
         ":minapp_deps",
-        "//tools/base/build-system:gradle-distrib-8.6",
         "//prebuilts/studio/jdk:jdk21",
+        "//tools/base/build-system:gradle-distrib-8.6",
     ],
     manifest_path = "tools/adt/idea/app-quality-insights/play-policy/integration/minapp_deps.manifest",
     out_dir_name = "minapp_project_model",
