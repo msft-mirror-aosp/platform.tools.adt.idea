@@ -153,7 +153,7 @@ class StudioLocalEmulatorProvisionerPlugin(
   private val notificationBanners: StateFlow<List<EditorNotificationPanel>> =
     combine(devices, accelerationError) { deviceList, accelError ->
         if (deviceList.isEmpty() || accelError == AccelerationErrorCode.ALREADY_INSTALLED) emptyList()
-        else listOf(EmulatorCheckErrorBanner(accelError))
+        else listOf(EmulatorCheckResultBanner(accelError))
       }
       .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
@@ -177,10 +177,11 @@ class StudioLocalEmulatorProvisionerPlugin(
     scope.launch(Dispatchers.Default) { accelerationError.value = checkAcceleration(AndroidSdks.getInstance().tryToChooseSdkHandler()) }
   }
 
-  private inner class EmulatorCheckErrorBanner(accelError: AccelerationErrorCode) : EditorNotificationPanel() {
+  private inner class EmulatorCheckResultBanner(accelError: AccelerationErrorCode) :
+    EditorNotificationPanel(if (accelError.isInfo()) Status.Info else Status.Error) {
     init {
       text = "<html>" + accelError.problem + "</html>"
-      icon(StudioIcons.Common.ERROR)
+      icon(if (accelError.isInfo()) StudioIcons.Common.INFO else StudioIcons.Common.ERROR)
       createActionLabel(accelError.solution.description) {
         AccelerationErrorSolution.getActionForFix(accelError, project, { refreshAccelerationCheck() }, null).run()
       }
