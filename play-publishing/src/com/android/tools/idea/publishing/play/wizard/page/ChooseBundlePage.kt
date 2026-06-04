@@ -323,7 +323,6 @@ fun WizardPageScope.ChooseBundlePage(extractMetadata: suspend (Path) -> AppMetad
     errorMessage?.let { InlineErrorBanner(it, Modifier.align(Alignment.End).padding(24.dp)) }
   }
 
-  prevButtonEnabled = false
   nextActionName = "Next"
   nextAction =
     if (state.packageName.isNullOrEmpty() || (state.isRegistered == true && !isAppInConsole)) WizardAction.Disabled
