@@ -28,6 +28,7 @@ import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.publishing.play.client.FakePlayPublishingClient
+import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.PlayPublishingException
 import com.android.tools.idea.publishing.play.client.type.AppEdit
 import com.android.tools.idea.publishing.play.client.type.Bundle
@@ -40,11 +41,13 @@ import com.google.gct.login2.LoginUsersRule
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
+import com.intellij.testFramework.replaceService
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Before
 import org.junit.Rule
@@ -79,12 +82,13 @@ class CreateReleasePageTest {
   fun setUp() {
     loginUsersRule.setActiveUser("user@example.com")
     fakeClient = FakePlayPublishingClient()
+    ApplicationManager.getApplication().replaceService(PlayPublishingClient::class.java, fakeClient, disposableRule.disposable)
   }
 
   @Test
   fun testInitialStateLoading() {
     fakeClient.config = FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> CompletableDeferred<List<Track>>().await() })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
     createWizard(state)
 
     composeTestRule.onNodeWithText("Create release").assertIsDisplayed()
@@ -95,7 +99,7 @@ class CreateReleasePageTest {
   @Test
   fun testNoTracksFound() {
     fakeClient.config = FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> emptyList() })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
     createWizard(state)
 
     composeTestRule.onNodeWithText("No tracks found.").assertIsDisplayed()
@@ -106,7 +110,7 @@ class CreateReleasePageTest {
   fun testTracksLoaded() {
     fakeClient.config =
       FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> listOf(Track("internal"), Track("alpha"), Track("production")) })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
     createWizard(state)
 
     // Verify it automatically selects "internal"
@@ -128,7 +132,7 @@ class CreateReleasePageTest {
   fun testNewAppTrackFiltering() {
     fakeClient.config =
       FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> listOf(Track("internal"), Track("alpha"), Track("production")) })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, isAppCreated = true)
+    val state = PlayPublishingWizardState(packageName = "com.example.app", isAppCreated = true)
     createWizard(state)
 
     // Verify it automatically selects "internal"
@@ -142,7 +146,7 @@ class CreateReleasePageTest {
   @Test
   fun testInvalidReleaseNotesDisablesNext() {
     fakeClient.config = FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> listOf(Track("internal")) })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
     state.releaseNotes = "<en-US> valid </en-US>"
     createWizard(state)
 
@@ -185,7 +189,7 @@ class CreateReleasePageTest {
         commitEditCall = { _, _ -> commitEditCalled = true },
       )
 
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, bundlePath = "/some/path/app.aab")
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
     state.releaseName = "My Release"
     state.releaseNotes = "<en-US>These are some notes</en-US>"
     createWizard(state)
@@ -215,8 +219,7 @@ class CreateReleasePageTest {
         commitEditCall = { _, _ -> },
       )
 
-    val state =
-      PlayPublishingWizardState(packageName = "com.example.app", appName = "My App", client = fakeClient, bundlePath = "/some/path/app.aab")
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "My App", bundlePath = "/some/path/app.aab")
     state.releaseName = "My Release"
     state.releaseNotes = "<en-US>These are some notes</en-US>"
     createWizard(state)
@@ -257,7 +260,7 @@ class CreateReleasePageTest {
         uploadArtifactCall = { _, _, _ -> throw PlayPublishingException("Socket Closed") },
       )
 
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient, bundlePath = "/some/path/app.aab")
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
     state.releaseName = "My Release"
     state.releaseNotes = "<en-US>These are some notes</en-US>"
     createWizard(state)
@@ -276,14 +279,14 @@ class CreateReleasePageTest {
   @Test
   fun testFailedToLoadTracksError() {
     fakeClient.config = FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> throw Exception("Network failure") })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
     createWizard(state)
 
     composeTestRule.onNodeWithText("Failed to load tracks: Network failure").assertIsDisplayed()
     composeTestRule.onNodeWithText("Publish app").assertIsNotEnabled()
   }
 
-  private fun createWizard(state: PlayPublishingWizardState = PlayPublishingWizardState(client = fakeClient)): TestComposeWizard {
+  private fun createWizard(state: PlayPublishingWizardState = PlayPublishingWizardState()): TestComposeWizard {
     val wizard = TestComposeWizard {
       getOrCreateState { state }
       CreateReleasePage()
