@@ -94,12 +94,12 @@ public class DependencyTrackerImpl implements DependencyTracker {
           case SPECIAL_TARGETS -> request.targets;
           case MULTIPLE_TARGETS ->
               snapshot
-                  .getGraph()
+                  .getStaleGraph()
                   .computeSufficientTargets(
                       request.targets,
                       querySyncUserPreferences
                           .getExperimentalBuildNativeTargetsFromAndroidTransitionPoint());
-          case WHOLE_PROJECT -> snapshot.getGraph().computeWholeProjectTargets();
+          case WHOLE_PROJECT -> snapshot.getStaleGraph().computeWholeProjectTargets();
         });
   }
 
@@ -136,7 +136,7 @@ public class DependencyTrackerImpl implements DependencyTracker {
     }
 
     if (!outputInfo.getTargetsWithErrors().isEmpty()) {
-      ProjectDefinition projectDefinition = snapshot.getQueryData().projectDefinition();
+      ProjectDefinition projectDefinition = snapshot.getProjectDefinition();
       context.setHasWarnings();
       ImmutableListMultimap<Boolean, Label> targetsByInclusion =
           Multimaps.index(outputInfo.getTargetsWithErrors(), projectDefinition::isIncluded);

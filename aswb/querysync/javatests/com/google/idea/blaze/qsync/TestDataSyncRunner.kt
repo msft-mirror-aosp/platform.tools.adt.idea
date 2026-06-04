@@ -52,12 +52,7 @@ class TestDataSyncRunner(private val context: Context<*>) {
       )
     val querySummary = QuerySyncTestUtils.getQuerySummary(testProject)
     val pqsd =
-      PostQuerySyncData.builder()
-        .setProjectDefinition(projectDefinition)
-        .setQuerySummary(querySummary)
-        .setVcsState(Optional.empty())
-        .setBazelVersion(Optional.empty())
-        .build()
+      PostQuerySyncData.builder().setQuerySummary(querySummary).setVcsState(Optional.empty()).setBazelVersion(Optional.empty()).build()
     val buildGraphData =
       BlazeQueryParser(
           projectDefinition.effectiveTargetPatterns,
@@ -86,7 +81,7 @@ class TestDataSyncRunner(private val context: Context<*>) {
     val project = update.build()
     return QuerySyncProjectSnapshot(
       queryData = pqsd,
-      graph =
+      staleGraph =
         BlazeQueryParser(
             projectDefinition.effectiveTargetPatterns,
             querySummary,
@@ -108,6 +103,7 @@ class TestDataSyncRunner(private val context: Context<*>) {
       artifactState = ArtifactTracker.State.EMPTY,
       project = project,
       incompleteTargets = emptySet(),
+      projectDefinition = projectDefinition,
     )
   }
 }

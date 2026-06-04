@@ -1270,9 +1270,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_CONTEXT_MENU = new BooleanFlag(
     EMBEDDED_EMULATOR, "context.menu", "Enable Context Menu",
     "Enables context menu in the Running Devices tool window");
-  public static final Flag<Boolean> RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS = new BooleanFlag(
-    EMBEDDED_EMULATOR, "collapsible.floating.toolbars", "Make zoom and XR toolbars collapsible",
-    "Make zoom and XR toolbars in the Running Devices window collapsible");
   //endregion
 
   //region Device Mirroring
@@ -1828,6 +1825,13 @@ public final class StudioFlags {
     "emulator.aehd.to.whpx.conversion",
     "Emulator AEHD to WHPX Conversion",
     "Migreate emulator AEHD users to use WHPX instead."
+  );
+
+  public static final Flag<Boolean> AI_GLASSES_NESTED_DEVICE_VIEW_ENABLED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "ai.glasses.nested.device.view.enabled",
+    "Enable AI Glasses nested device view",
+    "If enabled, nests paired AI Glasses under their host phone rows in the Device Manager table."
   );
 
   public static final Flag<Boolean> AI_GLASSES_PAIRING_RECONCILIATION_ENABLED = new BooleanFlag(
@@ -2429,6 +2433,12 @@ public final class StudioFlags {
                     "Allow users to override prompt for suggesting commit messages",
                     "Enables the \"Commit Message Generation\" in Prompt Library setting");
 
+
+  public static final Flag<Boolean> VCS_MERGE_CONFLICTS_ACTION =
+    new BooleanFlag(STUDIOBOT, "vcs.merge.conflicts.agent",
+    "Enable the Merge Conflicts action.",
+    "If enabled, the merge conflicts action is available.");
+
   public static final Flag<Boolean> README_GENERATION =
     new BooleanFlag(STUDIOBOT, "readme.generation",
                     "Use ML model to create a README",
@@ -2438,13 +2448,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "analyze.thread.safety",
                     "Use ML model analyze thread safety of selected files",
                     "Enables the \"Analyze Thread Safety\" button in the Project tool window");
-
-
-  public static final Flag<Boolean> AI_RETHINK_ACTION =
-    new BooleanFlag(STUDIOBOT, "ai.rethink.action",
-                    "Use AI to suggest better variable names",
-                    "Enables AI to provide better variable renaming functionalities");
-
 
   public static final Flag<Boolean> AI_RENAME_ACTION =
     new BooleanFlag(STUDIOBOT, "ai.rename.action",
@@ -2819,6 +2822,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "user.quota.ui.enabled",
                     "Enable user quota UI",
                     "When enabled, shows user's quota information in the chat UI.");
+
+  public static final Flag<Boolean> STUDIOBOT_CCPA_LIST_MODELS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "ccpa.list.models.enabled",
+                    "Enable integration with CCPA ListModels API",
+                    "When enabled, enterprise users can expect to see list of models instead of Default model in model picker");
 
   public static final Flag<Boolean> STUDIOBOT_SHOW_ON_FIRST_OPEN =
     new BooleanFlag(STUDIOBOT,

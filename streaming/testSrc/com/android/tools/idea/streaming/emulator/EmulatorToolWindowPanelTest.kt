@@ -194,17 +194,6 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testAppearanceAndToolbarActions() {
-    StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.overrideForTest(false, testRootDisposable)
-    doTestAppearanceAndToolbarActions()
-  }
-
-  @Test
-  fun testAppearanceAndToolbarActionsCollapsibleToolbar() {
-    StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.overrideForTest(true, testRootDisposable)
-    doTestAppearanceAndToolbarActions()
-  }
-
-  private fun doTestAppearanceAndToolbarActions() {
     panel = createWindowPanelForPhone()
 
     assertThat(panel.primaryDisplayView).isNull()
@@ -220,12 +209,7 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 363 height: 515")
-    val goldenImageName =
-      when {
-        StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.get() -> "AppearanceAndToolbarActionsCollapsibleToolbar1"
-        else -> "AppearanceAndToolbarActions1"
-      }
-    assertAppearance(goldenImageName, maxPercentDifferentMac = 0.03, maxPercentDifferentWindows = 0.3)
+    assertAppearance("AppearanceAndToolbarActions1", maxPercentDifferentMac = 0.03, maxPercentDifferentWindows = 0.3)
 
     // Check push button actions.
     val pushButtonCases =
@@ -407,17 +391,7 @@ class EmulatorToolWindowPanelTest {
   }
 
   @Test
-  fun testXrHeadsetToolbarActionsLegacyToolbar() {
-    StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.overrideForTest(false, testRootDisposable)
-    doTestXrHeadsetToolbarActions()
-  }
-
-  @Test
   fun testXrHeadsetToolbarActions() {
-    doTestXrHeadsetToolbarActions()
-  }
-
-  private fun doTestXrHeadsetToolbarActions() {
     // Move XR buttons to the Running Devices toolbar to check its appearance.
     service<FloatingXrToolbarState>()::floatingXrToolbarEnabled.override(false, testRootDisposable)
     panel = createWindowPanelForXrHeadset()
@@ -467,12 +441,43 @@ class EmulatorToolWindowPanelTest {
       assertThat(xrInputController.inputMode).isEqualTo(mode)
     }
 
-    val actionIdsAndModes =
-      mapOf("android.streaming.xr.interaction.hand" to XrInputMode.HAND, "android.streaming.xr.interaction.eye" to XrInputMode.EYE)
-    for ((actionId, mode) in actionIdsAndModes) {
-      executeAction(actionId, emulatorView, project)
+    val interactButton = fakeUi.getComponent<ActionButton> { it.action.templateText == "Interact with Apps" }
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(interactButton.isSelected).isFalse()
+    assertThat(interactButton.presentation.icon).isEqualTo(StudioIcons.Emulator.XR.HAND_TRACKING)
+
+    val actionTextsModesAndIcons =
+      listOf(
+        Triple("Hand Tracking", XrInputMode.HAND, StudioIcons.Emulator.XR.HAND_TRACKING),
+        Triple("Eye Tracking", XrInputMode.EYE, StudioIcons.Emulator.XR.EYE_GAZE),
+        Triple("Connected Mouse and Keyboard", XrInputMode.MOUSE, StudioIcons.Emulator.Toolbar.HARDWARE_INPUT),
+      )
+    var previousAppInteractionMode = XrInputMode.HAND
+    for ((actionText, mode, expectedIcon) in actionTextsModesAndIcons) {
+      fakeUi.mouseClickOn(interactButton)
+      assertThat(xrInputController.inputMode).isEqualTo(previousAppInteractionMode)
+      val popup = popupFactory.getNextListPopup<Any>(2.seconds)
+      val index = popup.actions.indexOfFirst { it.templateText == actionText }
+      assertThat(index).isAtLeast(0)
+      executeAction(popup.actions[index], emulatorView, project)
+      popup.cancel()
       assertThat(xrInputController.inputMode).isEqualTo(mode)
+      ActivityTracker.getInstance().inc()
+      fakeUi.updateToolbarsIfNecessary()
+      assertThat(interactButton.isSelected).isTrue()
+      assertThat(interactButton.presentation.icon).isEqualTo(expectedIcon)
+      previousAppInteractionMode = mode
+      fakeUi.mouseClickOn(fakeUi.getComponent<ActionButton> { it.action.templateText == "View Direction" })
     }
+
+    xrInputController.inputMode = XrInputMode.MOUSE
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
+
+    // Clear focus and hover states from toolbar buttons to match golden image.
+    fakeUi.mouse.moveTo(0, 0)
+    fakeUi.keyboard.setFocus(emulatorView)
 
     val button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Home" }
     fakeUi.mousePressOn(button)
@@ -500,12 +505,7 @@ class EmulatorToolWindowPanelTest {
 
     val toggleAction = ToggleFloatingXrToolbarAction()
     toggleAction.actionPerformed(createTestEvent(emulatorView, project, ActionPlaces.TOOLWINDOW_POPUP))
-    val goldenImageName =
-      when {
-        StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.get() -> "XrHeadsetToolbarActions2"
-        else -> "XrHeadsetToolbarActionsLegacyToolbar2"
-      }
-    assertAppearance(goldenImageName, maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+    assertAppearance("XrHeadsetToolbarActions2", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
 
     panel.destroyContent()
     assertThat(panel.primaryDisplayView).isNull()

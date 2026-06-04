@@ -2462,7 +2462,6 @@
 +++Android Studio Nightly.app/Contents/plugins/android/lib/perfetto-protos.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/perfetto_android_protos.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/pixelprobe.jar
-+++Android Studio Nightly.app/Contents/plugins/android/lib/play_publishing_kt_proto.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/play_vitals_kt_proto.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/proto.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/protobuf-kotlin-3.24.4.jar
@@ -3414,6 +3413,7 @@
 +++Android Studio Nightly.app/Contents/plugins/keymap-eclipse/lib/keymap-eclipse.jar
 +++Android Studio Nightly.app/Contents/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 +++Android Studio Nightly.app/Contents/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
++++Android Studio Nightly.app/Contents/plugins/lume-aiplugin/lib/aiplugin-lume.jar
 +++Android Studio Nightly.app/Contents/plugins/lume/lib/json-schema-validator-1.4.3.jar
 +++Android Studio Nightly.app/Contents/plugins/lume/lib/kaml-jvm-0.61.0.jar
 +++Android Studio Nightly.app/Contents/plugins/lume/lib/liblume-android-plugin.jar
@@ -6363,7 +6363,6 @@
 ---Android Studio Preview.app/Contents/plugins/android/lib/perfetto-protos.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/perfetto_android_protos.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/pixelprobe.jar
----Android Studio Preview.app/Contents/plugins/android/lib/play_publishing_kt_proto.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/play_vitals_kt_proto.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/proto.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/protobuf-kotlin-3.24.4.jar
@@ -7315,6 +7314,7 @@
 ---Android Studio Preview.app/Contents/plugins/keymap-eclipse/lib/keymap-eclipse.jar
 ---Android Studio Preview.app/Contents/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 ---Android Studio Preview.app/Contents/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
+---Android Studio Preview.app/Contents/plugins/lume-aiplugin/lib/aiplugin-lume.jar
 ---Android Studio Preview.app/Contents/plugins/lume/lib/json-schema-validator-1.4.3.jar
 ---Android Studio Preview.app/Contents/plugins/lume/lib/kaml-jvm-0.61.0.jar
 ---Android Studio Preview.app/Contents/plugins/lume/lib/liblume-android-plugin.jar

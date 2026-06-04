@@ -1737,7 +1737,6 @@ android-studio/plugins/android/lib/org.eclipse.emf.ecore-2.12.0.jar
 android-studio/plugins/android/lib/perfetto-protos.jar
 android-studio/plugins/android/lib/perfetto_android_protos.jar
 android-studio/plugins/android/lib/pixelprobe.jar
-android-studio/plugins/android/lib/play_publishing_kt_proto.jar
 android-studio/plugins/android/lib/play_vitals_kt_proto.jar
 android-studio/plugins/android/lib/proto.jar
 android-studio/plugins/android/lib/protobuf-kotlin-3.24.4.jar
@@ -2685,6 +2684,7 @@ android-studio/plugins/junit/lib/junit6-rt.jar
 android-studio/plugins/keymap-eclipse/lib/keymap-eclipse.jar
 android-studio/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 android-studio/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
+android-studio/plugins/lume-aiplugin/lib/aiplugin-lume.jar
 android-studio/plugins/lume/lib/json-schema-validator-1.4.3.jar
 android-studio/plugins/lume/lib/kaml-jvm-0.61.0.jar
 android-studio/plugins/lume/lib/liblume-android-plugin.jar

@@ -36,18 +36,6 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
     <orderEntry type="module" module-name="intellij.android.artwork-compose" />
     <orderEntry type="module" module-name="google-login" />
-    <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
-    <orderEntry type="library" name="protobuf-kotlin" level="project" />
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../bazel-bin/tools/adt/idea/play-publishing/proto/play_publishing_kt_proto.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
     <orderEntry type="module" module-name="intellij.android.app-publishing" />
     <orderEntry type="library" name="aapt-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.analyzer" />

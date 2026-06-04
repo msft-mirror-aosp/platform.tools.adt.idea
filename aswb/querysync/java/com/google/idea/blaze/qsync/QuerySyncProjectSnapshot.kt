@@ -21,6 +21,7 @@ import com.google.idea.blaze.qsync.deps.ArtifactIndex
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
+import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.ProjectTarget
@@ -32,37 +33,40 @@ import java.nio.file.Path
 /**
  * A fully sync'd project at a point in time. This consists of:
  * * The output from the query part of sync, [.queryData].
- * * Build graph information derived form the sync data, [.graph].
+ * * Build graph information derived form the sync data, [.staleGraph].
  * * The IDE project structure metadata, [.projectStructureData].
  * * The output from all dependency builds to date, [.artifactState].
  * * The IntelliJ project structure derived from the above, presented as a proto, [ ][.project].
+ * * The definition that this project is based on, [.projectDefinition].
  *
  * This class is immutable, any modifications to the project will yield a new instance.
  */
 data class QuerySyncProjectSnapshot(
   val queryData: PostQuerySyncData,
-  val graph: BuildGraphData,
+  val staleGraph: BuildGraphData,
   val projectStructureData: ProjectStructureData,
   val artifactState: ArtifactTracker.State,
   val project: ProjectProto.Project,
   val incompleteTargets: Set<Label>,
+  val projectDefinition: ProjectDefinition,
 ) {
   companion object {
     @JvmField
     val EMPTY =
       QuerySyncProjectSnapshot(
         queryData = PostQuerySyncData.EMPTY,
-        graph = BuildGraphData.EMPTY,
+        staleGraph = BuildGraphData.EMPTY,
         projectStructureData = ProjectStructureData.EMPTY,
         artifactState = ArtifactTracker.State.EMPTY,
         project = ProjectProto.Project.getDefaultInstance(),
         incompleteTargets = emptySet(),
+        projectDefinition = ProjectDefinition.EMPTY,
       )
   }
 
   fun withQueryData(value: PostQuerySyncData): QuerySyncProjectSnapshot = copy(queryData = value)
 
-  fun withGraph(value: BuildGraphData): QuerySyncProjectSnapshot = copy(graph = value)
+  fun withGraph(value: BuildGraphData): QuerySyncProjectSnapshot = copy(staleGraph = value)
 
   fun withProjectStructureData(value: ProjectStructureData): QuerySyncProjectSnapshot = copy(projectStructureData = value)
 
@@ -70,18 +74,20 @@ data class QuerySyncProjectSnapshot(
 
   fun withProject(value: ProjectProto.Project): QuerySyncProjectSnapshot = copy(project = value)
 
+  fun withProjectDefinition(value: ProjectDefinition): QuerySyncProjectSnapshot = copy(projectDefinition = value)
+
   /**
    * Given a path to a file it returns the targets that own the file.
    *
    * @param path a workspace relative path.
    */
   fun getSourceFileOwners(path: Path): Set<Label> {
-    return graph.getSourceFileOwners(projectStructureData.pathToLabel(path) ?: return emptySet())
+    return staleGraph.getSourceFileOwners(projectStructureData.pathToLabel(path) ?: return emptySet())
   }
 
   val allLoadedTargets: Sequence<ProjectTarget>
     /** Returns mapping of targets to [BuildTarget] */
-    get() = graph.allLoadedTargets()
+    get() = staleGraph.allLoadedTargets()
 
   val artifactIndex: ArtifactIndex by lazy(LazyThreadSafetyMode.PUBLICATION) { ArtifactIndex.create(artifactState) }
 
@@ -100,7 +106,7 @@ data class QuerySyncProjectSnapshot(
       .map { target ->
         val requestedTargets =
           RequestedTargets(
-            graph.computeSufficientTargets(listOf(target), replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false)
+            staleGraph.computeSufficientTargets(listOf(target), replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false)
           )
         requestedTargets
           .requiredTargets(getCodeAnalysisDependencyGraphProvider())

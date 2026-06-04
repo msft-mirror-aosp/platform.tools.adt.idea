@@ -161,7 +161,6 @@ studio_plugin(
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
         "//tools/adt/idea/testartifacts:libjourneys-java-proto",
         "//tools/vendor/google/marketing:chime_kt_proto",
-        "//tools/adt/idea/play-publishing:play_publishing_kt_proto",
     ],
     license_files = [
         "//prebuilts/r8:license",
@@ -951,6 +950,7 @@ studio_plugin(
         ":com.android.tools.gradle.dsl",
         ":org.jetbrains.android",
         "@intellij//:Coverage",
+        "@intellij//:Git4Idea",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.java",
         "@intellij//:intellij.java.analysis.impl",
@@ -979,7 +979,10 @@ studio_plugin(
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.lvcs.impl",
         "@intellij//:intellij.platform.uast",
+        "@intellij//:intellij.platform.vcs.dvcs",
+        "@intellij//:intellij.platform.vcs.dvcs.impl",
         "@intellij//:intellij.platform.vcs.impl",
+        "@intellij//:intellij.platform.vcs.impl.shared",
         "@intellij//:intellij.platform.vcs.log",
         "@intellij//:intellij.platform.vcs.log.graph",
         "@intellij//:intellij.platform.vcs.log.impl",
@@ -1057,6 +1060,7 @@ STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:com.android.tools.gradle.dcl",
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
     "//tools/vendor/google/optional-plugins/project-system-lume:com.google.lightbuild",
+    "//tools/vendor/google/optional-plugins/project-system-lume/aiplugin-lume:com.google.lightbuild.aiplugin",
 ]
 
 STUDIO_BASE_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_LSP_PLUGINS
@@ -1398,6 +1402,7 @@ iml_module(
         "@intellij//:com.intellij.java",
         "//tools/vendor/google/optional-plugins",
         "//tools/vendor/google/optional-plugins/project-system-lume:intellij.android.projectSystem.lume",
+        "//tools/vendor/google/optional-plugins/project-system-lume/aiplugin-lume:intellij.android.lume.aiplugin",
         "//tools/adt/idea/smali:intellij.android.smali",
     ],
 )
