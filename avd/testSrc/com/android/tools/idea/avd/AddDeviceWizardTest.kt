@@ -38,7 +38,6 @@ import com.android.sdklib.AndroidVersion
 import com.android.sdklib.PathFileWrapper
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
-import com.android.sdklib.devices.DeviceManager
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.ConfigKey
 import com.android.sdklib.repository.AndroidSdkHandler
@@ -276,7 +275,7 @@ class AddDeviceWizardTest {
           )
       }
 
-      val deviceCount = deviceManager.getDevices(DeviceManager.ALL_DEVICES).size
+      val deviceCount = deviceManager.getDevices().size
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 

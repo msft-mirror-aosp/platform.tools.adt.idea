@@ -77,11 +77,11 @@ public class DeviceManagerConnection {
 
   @NotNull
   public Collection<Device> getDevices() {
-    return getDevices(DeviceManager.ALL_DEVICES);
+    return deviceManager.getDevices();
   }
 
   @NotNull
-  public Collection<Device> getDevices(@NotNull Collection<DeviceCategory> filters) {
+  public Collection<Device> getDevices(@NotNull DeviceCategory... filters) {
     return deviceManager.getDevices(filters);
   }
 

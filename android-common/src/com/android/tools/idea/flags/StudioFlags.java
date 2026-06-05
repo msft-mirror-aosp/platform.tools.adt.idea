@@ -1840,6 +1840,13 @@ public final class StudioFlags {
     "Enable background reconciliation for AI Glasses pairing",
     "If enabled, runs a background loop to reconcile AI Glasses pairing states."
   );
+
+  public static final Flag<Boolean> EMULATOR_PREVIEW_ENABLED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "emulator.preview.enabled",
+    "Enable Emulator Preview",
+    "Enables launching AVDs with the preview version of the emulator, if installed."
+  );
   // endregion
 
   // region Play Policy Insights
@@ -2403,10 +2410,17 @@ public final class StudioFlags {
                     "Enable tl;dr mode for the agent",
                     "When enabled, the agent timeline UI will show a summary of each plan step execution.");
 
-  public static final Flag<Boolean> STUDIOBOT_PLANNING_MODE_ENABLED =
-    new BooleanFlag(STUDIOBOT, "planning.mode.enabled",
-                    "Enable planning mode",
-                    "When enabled, planning mode will be enabled.");
+  public enum StudioBotPlanMode {
+    NONE,
+    V2,
+    GUIDED_MODE
+  }
+
+  public static final Flag<StudioBotPlanMode> STUDIOBOT_PLAN_MODE =
+    new EnumFlag<>(STUDIOBOT, "plan.mode",
+                   "Select Studio Bot planning mode",
+                   "Controls whether planning mode is disabled, uses v2 planning, or uses guided mode.",
+                   StudioBotPlanMode.V2);
 
   public static final Flag<Boolean> STUDIOBOT_ASK_FOR_MORE_DETAIL_ENABLED =
     new BooleanFlag(STUDIOBOT, "ask.for.more.detail.enabled",
@@ -2724,6 +2738,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "import.project.enabled",
                     "Enable Import Project migration",
                     "Enables the Import Project migration feature in the UI.");
+
+  public static final Flag<Boolean> IMPORT_PROJECT_KMP_SUPPORT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "import.project.kmp.enabled",
+                    "Enable KMP support in Import Project migration",
+                    "Enables KMP target support in the Import Project migration wizard and agent.");
+
 
   public enum DasherSupportMode {
     /**
@@ -3147,6 +3167,14 @@ public final class StudioFlags {
       "enable.integration.server",
       "Enable Android CLI integration server",
       "Enable Android CLI integration server"
+    );
+
+  public static final Flag<Boolean> ENABLE_BUNDLED_ANDROID_CLI_IN_AGENT =
+    new BooleanFlag(
+      ANDROID_CLI,
+      "enable.bundled.cli.in.agent",
+      "Enable the bundled Android CLI binary in the agent",
+      "Enable the bundled Android CLI binary in the agent"
     );
 
   // endregion Android CLI

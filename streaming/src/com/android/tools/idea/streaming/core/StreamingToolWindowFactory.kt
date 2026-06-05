@@ -36,7 +36,7 @@ class StreamingToolWindowFactory : ToolWindowFactory, DumbAware {
   }
 
   override fun init(toolWindow: ToolWindow) {
-    ToolWindowContentUi.setAllowTabsReordering(toolWindow, true)
+    toolWindow.setTabsSplittingAllowed(true)
     toolWindow.component.putClientProperty(ToolWindowContentUi.DONT_HIDE_TOOLBAR_IN_HEADER, true)
     StreamingToolWindowManager(toolWindow as ToolWindowEx)
   }
