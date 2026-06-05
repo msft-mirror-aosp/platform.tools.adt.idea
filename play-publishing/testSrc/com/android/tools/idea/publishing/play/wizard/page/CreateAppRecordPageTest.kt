@@ -36,12 +36,12 @@ import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
 import com.google.gct.login2.LoginUsersRule
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
+import com.intellij.util.application
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Before
 import org.junit.Rule
@@ -51,7 +51,7 @@ import org.junit.rules.RuleChain
 @RunsInEdt
 class CreateAppRecordPageTest {
   private val edtRule = EdtRule()
-  private val applicationRule = ApplicationRule()
+  private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
   private val composeTestRule = StudioComposeTestRule.createStudioComposeTestRule()
   private val loginFeatureRule = LoginFeatureRule()
@@ -60,7 +60,7 @@ class CreateAppRecordPageTest {
   @get:Rule
   val ruleChain: RuleChain =
     RuleChain.outerRule(edtRule)
-      .around(applicationRule)
+      .around(projectRule)
       .around(disposableRule)
       .around(loginFeatureRule)
       .around(loginUsersRule)
@@ -72,7 +72,7 @@ class CreateAppRecordPageTest {
   fun setUp() {
     loginUsersRule.setActiveUser("user@example.com")
     fakeClient = FakePlayPublishingClient()
-    ApplicationManager.getApplication().replaceService(PlayPublishingClient::class.java, fakeClient, disposableRule.disposable)
+    application.replaceService(PlayPublishingClient::class.java, fakeClient, disposableRule.disposable)
   }
 
   @Test
@@ -250,7 +250,7 @@ class CreateAppRecordPageTest {
       getOrCreateState { state }
       CreateAppRecordPage()
     }
-    composeTestRule.setContent { CompositionLocalProvider(LocalProject provides null) { wizard.Content() } }
+    composeTestRule.setContent { CompositionLocalProvider(LocalProject provides projectRule.project) { wizard.Content() } }
     return wizard
   }
 }
