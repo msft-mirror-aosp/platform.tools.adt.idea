@@ -74,19 +74,22 @@ internal class ScreenRecorderOptionsDialog(
           .align(AlignX.LEFT)
           .bindItem({ (settings.scale * 100).roundToInt() }, { settings.scale = (it ?: 100) / 100.0 })
       }
-      row { checkBox(message("screenrecord.options.show.taps")).bindSelected(settings::showTaps) }
-        .contextHelp(message("screenrecord.options.show.taps.tooltip"))
+      row {
+        checkBox(message("screenrecord.options.show.taps"))
+          .bindSelected(settings::showTaps)
+          .contextHelp(message("screenrecord.options.show.taps.tooltip"))
+      }
 
       if (emulatorRecordingAvailable) {
         row {
-            checkBox(message("screenrecord.options.use.emulator.recording"))
-              .bindSelected(settings::useEmulatorRecordingWhenAvailable)
-              .onChanged {
-                fileExtension = if (it.isSelected) "webm" else "mp4"
-                recordingLengthField.text = getMaxRecordingLengthText(it.isSelected)
-              }
-          }
-          .contextHelp(message("screenrecord.options.use.emulator.recording.tooltip"))
+          checkBox(message("screenrecord.options.use.emulator.recording"))
+            .bindSelected(settings::useEmulatorRecordingWhenAvailable)
+            .contextHelp(message("screenrecord.options.use.emulator.recording.tooltip"))
+            .onChanged {
+              fileExtension = if (it.isSelected) "webm" else "mp4"
+              recordingLengthField.text = getMaxRecordingLengthText(it.isSelected)
+            }
+        }
       }
       row {
         text(message("screenrecord.options.save.directory"))
