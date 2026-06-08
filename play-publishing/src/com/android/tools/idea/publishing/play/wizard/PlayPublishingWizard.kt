@@ -17,6 +17,7 @@ package com.android.tools.idea.publishing.play.wizard
 
 import com.android.tools.adtui.compose.ComposeWizard
 import com.android.tools.idea.publishing.AppPublishingContext
+import com.android.tools.idea.publishing.play.PlayPublishingUsageTracker
 import com.android.tools.idea.publishing.play.wizard.page.ChooseBundlePage
 import com.android.tools.idea.publishing.play.wizard.page.LoggedOutPage
 import com.google.gct.login2.fstLoginFeature
@@ -33,7 +34,10 @@ fun showPublishingWizard(project: Project, context: AppPublishingContext) {
         ChooseBundlePage()
       }
     }
-  invokeLater { wizard.show() }
+  invokeLater {
+    wizard.show()
+    PlayPublishingUsageTracker.trackWizardShown(context.publishingSource)
+  }
 }
 
 private fun AppPublishingContext.toPublishingWizardState() = PlayPublishingWizardState(artifactPath, isRegistered)
