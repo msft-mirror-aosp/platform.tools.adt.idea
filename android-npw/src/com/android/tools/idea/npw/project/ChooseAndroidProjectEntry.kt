@@ -51,8 +51,12 @@ interface AndroidProjectEntryProvider {
   }
 }
 
-class FormFactorProjectEntry(val formFactorTitle: String, val templates: List<Template>, selectedTemplate: Template?) :
-  ChooseAndroidProjectEntry {
+class FormFactorProjectEntry(
+  val formFactorTitle: String,
+  val templates: List<Template>,
+  selectedTemplate: Template?,
+  val onTemplateDoubleClick: () -> Unit = {},
+) : ChooseAndroidProjectEntry {
   var selectedTemplate by mutableStateOf(selectedTemplate)
 
   @Composable
@@ -62,7 +66,15 @@ class FormFactorProjectEntry(val formFactorTitle: String, val templates: List<Te
 
   @Composable
   override fun AndroidProjectEntryDetails() {
-    TemplateGrid(templates = templates, selectedTemplate = selectedTemplate, onTemplateClick = { template -> selectedTemplate = template })
+    TemplateGrid(
+      templates = templates,
+      selectedTemplate = selectedTemplate,
+      onTemplateClick = { template -> selectedTemplate = template },
+      onTemplateDoubleClick = { template ->
+        selectedTemplate = template
+        onTemplateDoubleClick()
+      },
+    )
   }
 
   override val canGoForward = derivedStateOf { selectedTemplate != null }
