@@ -35,7 +35,9 @@ import javax.swing.JPanel
 
 /** Editor for a property link consisting of a text field and a link */
 class PropertyLink(private val model: LinkPropertyEditorModel) : JPanel(BorderLayout()) {
-  private val label = JBLabel(model.value)
+  // SECURITY: model.value may originate from an inspected device process. Route through
+  // expandableText() so that any HTML-like value is safely escaped before rendering.
+  private val label = JBLabel(expandableText(model.value, model.tableExpansionState) ?: "")
   private val link = CommonHyperLinkLabel(showAsLink = true, strikeout = false)
 
   init {
