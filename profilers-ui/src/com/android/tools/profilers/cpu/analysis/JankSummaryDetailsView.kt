@@ -146,7 +146,7 @@ private object EventTable {
               when (it) {
                 Col.START -> TimestampRenderer()
                 Col.NAME,
-                Col.THREAD -> DefaultTableCellRenderer()
+                Col.THREAD -> DefaultTableCellRenderer().apply { putClientProperty("html.disable", true) }
               }
             }
           }
@@ -174,6 +174,7 @@ private fun CaptureNode?.range() = this?.let { Range(it.startGlobal.toDouble(), 
 
 private fun abbreviatedLabel(text: String) =
   JBLabel().apply {
+    putClientProperty("html.disable", true)
     val fontMetrics = getFontMetrics(font)
     val ellipsisWidth = fontMetrics.stringWidth(SwingHelper.ELLIPSIS)
     addComponentListener(
