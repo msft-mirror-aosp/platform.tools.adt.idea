@@ -161,6 +161,7 @@
     <postStartupActivity implementation="com.android.tools.idea.gradle.project.AndroidIdeSdksInitializationStartupActivity"/>
     <postStartupActivity implementation="com.android.tools.idea.gradle.project.AndroidNewProjectInitializationStartupActivity"/>
     <postStartupActivity implementation="com.android.tools.idea.gradle.project.AndroidGradleProjectStartupActivity"/>
+    <postStartupActivity implementation="com.android.tools.idea.gradle.project.sync.ParallelSyncMigrationActivity"/>
     <intentionAction>
       <language>UAST</language>
       <className>org.jetbrains.android.intentions.AndroidAddLibraryDependencyAction</className>
