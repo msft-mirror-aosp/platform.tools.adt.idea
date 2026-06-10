@@ -256,7 +256,7 @@ constructor(
       }
     }
 
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable {
+  override fun debug(indicator: ProgressIndicator): RunContentDescriptor? = runBlockingCancellable {
     val devices = getDevices(deviceFutures, indicator, RunStats.from(env))
 
     env.runnerAndConfigurationSettings?.getProcessHandlersForDevices(project, devices)?.forEach { it.destroyProcess() }
@@ -274,7 +274,7 @@ constructor(
 
     val device = devices.single()
     indicator.text = "Connecting debugger"
-    val session =
+    val sessionStarted =
       startDebuggerSession(indicator, device, FacetBasedApplicationProjectContext(packageName, facet), console).apply {
         processHandler.addProcessListener(
           object : ProcessAdapter() {
@@ -284,7 +284,7 @@ constructor(
           }
         )
       }
-    session.runContentDescriptor
+    @Suppress("UnstableApiUsage") sessionStarted.runContentDescriptor
   }
 
   private suspend fun createAndroidTestSuiteView() =

@@ -164,7 +164,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     assertThat(receivedAmCommands[3]).isEqualTo(showWatchFace)
 
     // Verify that a warning was raised.
-    val consoleViewImpl = runContentDescriptor.executionConsole as ConsoleViewImpl
+    val consoleViewImpl = runContentDescriptor?.executionConsole as ConsoleViewImpl
     // Print deferred text
     val consoleOutputPromise = CompletableFuture<String>()
     invokeLater {
@@ -271,7 +271,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     val runContentDescriptor = getRunContentDescriptorForTests { executor.debug(EmptyProgressIndicator()) }
 
     // Stop configuration.
-    runContentDescriptor.processHandler!!.destroyProcess()
+    runContentDescriptor?.processHandler!!.destroyProcess()
     processTerminatedLatch.await(1, TimeUnit.SECONDS)
 
     // Verify receivedAmCommands sent to device.
@@ -372,7 +372,7 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
     val runContentDescriptor = getRunContentDescriptorForTests { executor.run(EmptyProgressIndicator()) }
 
     // Verify that a warning was raised in console.
-    val consoleViewImpl = runContentDescriptor.executionConsole as ConsoleViewImpl
+    val consoleViewImpl = runContentDescriptor?.executionConsole as ConsoleViewImpl
     // Print differed test
     val consoleOutputPromise = CompletableFuture<String>()
     runInEdt {
