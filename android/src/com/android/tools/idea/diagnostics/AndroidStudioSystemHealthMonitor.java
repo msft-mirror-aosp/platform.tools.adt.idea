@@ -98,6 +98,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.AnActionWrapper;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.ToggleAction;
+import com.intellij.openapi.actionSystem.ex.AnActionListener;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
@@ -107,6 +108,7 @@ import com.intellij.openapi.diagnostic.ErrorReportSubmitter;
 import com.intellij.openapi.diagnostic.IdeaLoggingEvent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.actionSystem.EditorAction;
+import com.intellij.openapi.editor.actions.BackspaceAction;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
@@ -640,13 +642,17 @@ public final class AndroidStudioSystemHealthMonitor {
 
   public static class MyEventsListener implements AndroidStudioSystemHealthMonitorAdapter.EventsListener {
     @Override
-    public void countActionInvocation(AnAction anAction, Presentation presentation, AnActionEvent event) {
-      AndroidStudioSystemHealthMonitor.countActionInvocation(anAction, presentation, event);
-    }
-
-    @Override
     public boolean handleExceptionEvent(IdeaLoggingEvent event, VMOptions.MemoryKind memoryKind) {
       return AndroidStudioSystemHealthMonitor.getInstance().handleExceptionEvent(event, memoryKind);
+    }
+  }
+
+  public static class MyAnActionListener implements AnActionListener {
+    @Override
+    public void beforeActionPerformed(@NotNull AnAction action, @NotNull AnActionEvent event) {
+      if (action.getClass() != BackspaceAction.class) {
+        AndroidStudioSystemHealthMonitor.countActionInvocation(action, action.getTemplatePresentation(), event);
+      }
     }
   }
 
