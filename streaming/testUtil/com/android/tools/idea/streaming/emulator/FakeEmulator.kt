@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.emulator
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
 import com.android.emulator.control.BatteryState
+import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
 import com.android.emulator.control.ClipData
 import com.android.emulator.control.DisplayConfiguration
@@ -36,6 +37,7 @@ import com.android.emulator.control.ImageFormat
 import com.android.emulator.control.ImageFormat.ImgFormat
 import com.android.emulator.control.InputEvent
 import com.android.emulator.control.KeyboardEvent
+import com.android.emulator.control.LedIndicator
 import com.android.emulator.control.MicrophoneState
 import com.android.emulator.control.MouseEvent
 import com.android.emulator.control.Notification
@@ -212,6 +214,21 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       }
     }
 
+  @Volatile
+  var ledStates: Map<Int, LedIndicator> = emptyMap()
+    private set
+
+  fun setLedState(id: Int, color: Color?) {
+    val state = if (color != null) LedIndicator.State.ON else LedIndicator.State.OFF
+    val ledBuilder = LedIndicator.newBuilder().setId(id).setState(state)
+    if (color != null) {
+      ledBuilder.color = color.rgb
+    }
+    val led = ledBuilder.build()
+    ledStates = ledStates + (id to led)
+    notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build())
+  }
+
   private var foldedDisplay: FoldedDisplay? = null
     set(value) {
       if (field != value) {
@@ -245,6 +262,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     }
 
   var displayMode = config.displayModes.firstOrNull { it.width == config.displayWidth && it.height == config.displayHeight }
+  var hostCameras: CameraList = CameraList.getDefaultInstance()
   val avdName: String
     get() = config.avdName
 
@@ -766,6 +784,9 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           responseObserver.sendStreamingResponse(Notification.newBuilder().setXrOptions(xrOptions).build())
         }
         responseObserver.sendStreamingResponse(Notification.newBuilder().setMicrophoneState(microphoneState).build())
+        for (led in ledStates.values) {
+          responseObserver.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build())
+        }
       }
     }
 
@@ -814,6 +835,10 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         val response = VmRunState.newBuilder().setState(VmRunState.RunState.RUNNING).build()
         sendResponse(responseObserver, response)
       }
+    }
+
+    override fun getHostCameras(request: Empty, responseObserver: StreamObserver<CameraList>) {
+      executor.execute { sendResponse(responseObserver, hostCameras) }
     }
 
     override fun setVmState(request: VmRunState, responseObserver: StreamObserver<Empty>) {

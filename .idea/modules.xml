@@ -271,6 +271,8 @@
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/client/intellij.android.app-quality-insights.client.iml" filepath="$PROJECT_DIR$/app-quality-insights/client/intellij.android.app-quality-insights.client.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.iml" filepath="$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.tests.iml" filepath="$PROJECT_DIR$/app-quality-insights/ide/intellij.android.app-quality-insights.ide.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-findings/ide/intellij.android.app-quality-insights.play-findings.ide.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-findings/ide/intellij.android.app-quality-insights.play-findings.ide.iml" />
+
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-policy/ide/intellij.android.app-quality-insights.play-policy.ide.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-policy/ide/intellij.android.app-quality-insights.play-policy.ide.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-policy/integration/intellij.android.app-quality-insights.play-policy.integration.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-policy/integration/intellij.android.app-quality-insights.play-policy.integration.iml" />
       <module fileurl="file://$PROJECT_DIR$/app-quality-insights/play-vitals/ide/intellij.android.app-quality-insights.play-vitals.ide.iml" filepath="$PROJECT_DIR$/app-quality-insights/play-vitals/ide/intellij.android.app-quality-insights.play-vitals.ide.iml" />

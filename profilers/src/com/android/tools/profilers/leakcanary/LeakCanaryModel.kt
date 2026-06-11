@@ -57,6 +57,7 @@ import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnActionEvent.createEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -148,16 +149,14 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
     val configs = profilers.ideServices.getTaskCpuProfilerConfigs(featureLevel)
     val config = configs.filterIsInstance<LeakCanaryConfiguration>().firstOrNull()
     if (config != null) {
-      setLeakCanaryMode(config.mode)
-      if (config.source == LeakCanaryMode.STUDIO) {
-        _retainedObjectThreshold.value = config.threshold
-        logger.info("Setting retained object threshold to ${config.threshold}")
+      if (!isRecording.value) {
+        setLeakCanaryMode(config.mode)
+        if (config.source == LeakCanaryMode.STUDIO) {
+          _retainedObjectThreshold.value = config.threshold
+          logger.info("Setting retained object threshold to ${config.threshold}")
+        }
       }
-
-      // If the user has explicitly changed the settings from the default, suppress the banner permanently.
-      if (config.source != LeakCanaryMode.STUDIO || config.threshold != 5) {
-        setBannerDoNotShowAgain()
-      }
+      updateBannerVisibility()
     }
   }
 
@@ -165,12 +164,16 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
    * Evaluates all conditions to determine if the educational feature banner should be displayed.
    *
    * The banner is only shown if ALL the following conditions are met:
-   * 1. The user has not permanently suppressed the banner (by dismissing it or changing settings).
+   * 1. The user has not permanently suppressed the banner (by explicitly selecting "Don't show again").
    * 2. The current mode is Studio mode (ON_HOST).
    */
   private fun shouldShowEducationalBanner(): Boolean {
     val doNotShowAgain = profilers.ideServices.persistentProfilerPreferences.getBoolean(KEY_LEAKCANARY_BANNER_DO_NOT_SHOW, false)
-    val isStudioMode = leakcanaryMode == StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST
+
+    val featureLevel = profilers.device?.featureLevel ?: 0
+    val configs = profilers.ideServices.getTaskCpuProfilerConfigs(featureLevel)
+    val config = configs.filterIsInstance<LeakCanaryConfiguration>().firstOrNull()
+    val isStudioMode = config?.source == LeakCanaryMode.STUDIO
 
     if (!isStudioMode || doNotShowAgain) {
       return false
@@ -204,6 +207,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
     if (!profilers.sessionsManager.isSessionAlive) {
       profilers.sessionsManager.setTaskDb(sessionData)
     }
+    updateBannerVisibility()
   }
 
   override fun onExit() {
@@ -810,7 +814,9 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
     myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(leakCanaryProcessingStatus = error))
 
     // Show IDE balloon notification
-    profilers.ideServices.showNotification(Notification(Notification.Severity.ERROR, "LeakCanary Task Failed", message, null))
+    profilers.ideServices.showNotification(
+      Notification(Notification.Severity.ERROR, "LeakCanary Task Failed", escapeXmlEntities(message), null)
+    )
 
     // Safely tear down the task
     stopListening(isUserInitiated = false)

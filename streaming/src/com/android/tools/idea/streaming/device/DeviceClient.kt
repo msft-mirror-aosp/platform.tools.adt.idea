@@ -35,6 +35,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
+import com.android.tools.idea.streaming.core.htmlEscaped
 import com.android.tools.idea.util.StudioPathManager
 import com.android.utils.TraceUtils.simpleId
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
@@ -54,6 +55,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import java.awt.Dimension
 import java.io.EOFException
 import java.io.IOException
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
@@ -206,7 +208,8 @@ class DeviceClient(val deviceSerialNumber: String, val deviceConfig: DeviceConfi
       }
     }
 
-    @Suppress("BlockingMethodInNonBlockingContext") val asyncChannel = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("BlockingMethodInNonBlockingContext")
+    val asyncChannel = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(InetAddress.getLoopbackAddress(), 0))
     val port = (asyncChannel.localAddress as InetSocketAddress).port
     logger.debug("Using port $port")
     var channels: Channels? = null
@@ -632,7 +635,8 @@ class DeviceClient(val deviceSerialNumber: String, val deviceConfig: DeviceConfi
           }
         }
         if (notification) {
-          RUNNING_DEVICES_NOTIFICATION_GROUP.createNotification(deviceName, message, notificationType).notify(null)
+          RUNNING_DEVICES_NOTIFICATION_GROUP.createNotification(deviceName.htmlEscaped(), message.htmlEscaped(), notificationType)
+            .notify(null)
         }
       }
     }

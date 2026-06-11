@@ -45,26 +45,31 @@ import androidx.compose.ui.unit.sp
 import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.WizardAction
 import com.android.tools.adtui.compose.WizardPageScope
+import com.android.tools.idea.publishing.AppPublishingService
+import com.android.tools.idea.publishing.play.PlayPublishingUsageTracker
+import com.android.tools.idea.publishing.play.client.NO_APP_LISTING_CORRECTION_MESSAGE
+import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.PlayPublishingException
 import com.android.tools.idea.publishing.play.client.type.AppEdit
+import com.android.tools.idea.publishing.play.client.type.Bundle
 import com.android.tools.idea.publishing.play.client.type.Track
 import com.android.tools.idea.publishing.play.wizard.FormField
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardHeader
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
 import com.google.gct.login2.GoogleLoginService
+import com.google.wireless.android.sdk.stats.PlayPublishingEvent.CreateReleaseDetails.CreateReleaseResult
+import com.google.wireless.android.sdk.stats.PlayPublishingEvent.CreateReleaseDetails.TrackType
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import icons.StudioIcons
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -88,13 +93,16 @@ private val trackNameMap =
     PRODUCTION_TRACK_NAME to "Production Track",
   )
 
+private val VERSION_CODE_USED_REGEX = Regex("version code \\d+ has already been used", RegexOption.IGNORE_CASE)
+private val WRONG_KEY_REGEX = Regex("The Android App Bundle was signed with the wrong key", RegexOption.IGNORE_CASE)
+
 private fun String.displayTrackName() = trackNameMap[this] ?: (replaceFirstChar { it.uppercase() } + " Track")
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalJewelApi::class)
 @Composable
 fun WizardPageScope.CreateReleasePage() {
   val state = getOrCreateState<PlayPublishingWizardState> { error("State not initialized") }
-  val project = LocalProject.current
+  val project = LocalProject.current ?: error("Project cannot be null")
 
   val releaseNameState = rememberTextFieldState(state.releaseName ?: "")
   val releaseNotesState = rememberTextFieldState(state.releaseNotes ?: "")
@@ -116,10 +124,10 @@ fun WizardPageScope.CreateReleasePage() {
   LaunchedEffect(Unit) {
     try {
       state.packageName?.let { packageName ->
-        val edit = state.client.insertEdit(packageName)
+        val edit = PlayPublishingClient.getInstance().insertEdit(packageName)
         appEdit = edit
         // We don't support releasing to production from Android Studio.
-        tracks = state.client.listEditTracks(packageName, edit.id).filter(::shouldFilterTrack)
+        tracks = PlayPublishingClient.getInstance().listEditTracks(packageName, edit.id).filter(::shouldFilterTrack)
         selectedTrack =
           if (tracks.isNotEmpty()) {
             if (tracks.any { it.track == INTERNAL_TEST_TRACK_NAME }) {
@@ -131,10 +139,11 @@ fun WizardPageScope.CreateReleasePage() {
             null
           }
       }
-    } catch (e: PlayPublishingException) {
-      errorMessage = "Failed to load tracks: ${e.message}"
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       errorMessage = "Failed to load tracks: ${e.message}"
+      PlayPublishingUsageTracker.trackCreateRelease(CreateReleaseResult.FAILED_TO_LIST_TRACKS)
     } finally {
       isLoadingTracks = false
     }
@@ -231,49 +240,49 @@ fun WizardPageScope.CreateReleasePage() {
         val editId = appEdit?.id ?: return@WizardAction
         val artifactPath = state.bundlePath ?: return@WizardAction
         val selectedTrackId = selectedTrack ?: return@WizardAction
+        val tags = extractedTags ?: emptyMap()
+        val releaseName = releaseNameState.text.toString()
+        val appName = state.appName
 
-        ProgressManager.getInstance()
-          .run(
-            object : Task.Backgroundable(project, "Uploading Build to Google Play...", true) {
-              override fun run(indicator: ProgressIndicator) {
-                indicator.isIndeterminate = true
-                runBlocking {
-                  try {
-                    val responseArtifact = state.client.uploadBundle(packageName, editId, artifactPath)
-                    state.client.createRelease(
-                      packageName,
-                      editId,
-                      releaseNameState.text.toString(),
-                      extractedTags ?: emptyMap(),
-                      responseArtifact.versionCode,
-                      selectedTrackId,
-                    )
-                    state.client.commitEdit(packageName, editId)
-                    showUploadSuccessfulNotification(
-                      project,
-                      releaseNameState.text.toString(),
-                      selectedTrack,
-                      state.appName,
-                      state.packageName,
-                    )
-                  } catch (e: PlayPublishingException) {
-                    val message = e.message ?: "Unknown error"
-                    showUploadFailedNotification(project, message)
-                  } catch (e: CancellationException) {
-                    throw e
-                  } catch (e: Exception) {
-                    showUploadFailedNotification(project, "Unknown error")
-                  }
-                }
-              }
+        AppPublishingService.getInstance(project).coroutineScope.launch {
+          withBackgroundProgress(project, "Uploading Build to Google Play...", true) {
+            val startTimeMs = System.currentTimeMillis()
+            val trackType = selectedTrackId.toTrackType()
+            try {
+              val responseArtifact = uploadBundleStep(packageName, editId, artifactPath, trackType)
+              val uploadTimeMs = (System.currentTimeMillis() - startTimeMs).toInt()
+
+              createReleaseStep(
+                packageName,
+                editId,
+                releaseName,
+                tags,
+                responseArtifact.versionCode,
+                selectedTrackId,
+                trackType,
+                uploadTimeMs,
+              )
+
+              commitEditStep(packageName, editId, trackType, uploadTimeMs)
+
+              PlayPublishingUsageTracker.trackCreateRelease(CreateReleaseResult.SUCCESS, trackType, uploadTimeMs)
+              showUploadSuccessfulNotification(project, releaseName, selectedTrackId, appName, packageName)
+            } catch (e: PlayPublishingException) {
+              val message = e.message ?: "Unknown error"
+              showUploadFailedNotification(project, message)
+            } catch (e: CancellationException) {
+              throw e
+            } catch (e: Exception) {
+              showUploadFailedNotification(project, "Unknown error")
             }
-          )
+          }
+        }
         close()
       }
 }
 
 private fun showUploadSuccessfulNotification(
-  project: Project?,
+  project: Project,
   releaseName: String?,
   selectedTrack: String?,
   appName: String?,
@@ -301,7 +310,7 @@ private fun showUploadSuccessfulNotification(
   notification.notify(project)
 }
 
-private fun showUploadFailedNotification(project: Project?, errorMessage: String) {
+private fun showUploadFailedNotification(project: Project, errorMessage: String) {
   NotificationGroupManager.getInstance()
     .getNotificationGroup("Play Publishing")
     .createNotification("Publishing failed", errorMessage, NotificationType.ERROR)
@@ -343,4 +352,79 @@ private fun extractAndValidateTags(xmlString: String): Map<String, String>? {
     return null
   }
   return result
+}
+
+private fun String.toTrackType(): TrackType =
+  when (this) {
+    INTERNAL_TEST_TRACK_NAME -> TrackType.INTERNAL_TESTING
+    ALPHA_TRACK_NAME -> TrackType.ALPHA
+    BETA_TRACK_NAME -> TrackType.BETA
+    PRODUCTION_TRACK_NAME -> TrackType.PRODUCTION
+    else -> TrackType.CUSTOM
+  }
+
+private suspend fun <T> runPublishingStep(
+  trackType: TrackType,
+  uploadTimeMs: Int? = null,
+  mapException: (Exception) -> CreateReleaseResult,
+  block: suspend () -> T,
+): T {
+  try {
+    return block()
+  } catch (e: CancellationException) {
+    PlayPublishingUsageTracker.trackCreateRelease(CreateReleaseResult.FAILED_USER_CANCELLED, trackType, uploadTimeMs)
+    throw e
+  } catch (e: Exception) {
+    PlayPublishingUsageTracker.trackCreateRelease(mapException(e), trackType, uploadTimeMs)
+    throw e
+  }
+}
+
+private suspend fun uploadBundleStep(packageName: String, editId: String, artifactPath: String, trackType: TrackType): Bundle {
+  return runPublishingStep(
+    trackType,
+    mapException = { e ->
+      val msg = e.message ?: ""
+      when {
+        e !is PlayPublishingException -> CreateReleaseResult.FAILED_TO_UPLOAD_BUNDLE
+        msg.contains(VERSION_CODE_USED_REGEX) -> CreateReleaseResult.FAILED_VERSION_CODE_ALREADY_EXISTS
+        msg.contains(WRONG_KEY_REGEX) -> CreateReleaseResult.FAILED_BUNDLE_SIGNED_WITH_WRONG_KEY
+        else -> CreateReleaseResult.FAILED_TO_UPLOAD_BUNDLE
+      }
+    },
+  ) {
+    PlayPublishingClient.getInstance().uploadBundle(packageName, editId, artifactPath)
+  }
+}
+
+private suspend fun createReleaseStep(
+  packageName: String,
+  editId: String,
+  releaseName: String,
+  tags: Map<String, String>,
+  versionCode: Int,
+  selectedTrackId: String,
+  trackType: TrackType,
+  uploadTimeMs: Int,
+) {
+  runPublishingStep(trackType, uploadTimeMs, mapException = { _ -> CreateReleaseResult.FAILED_TO_CREATE_RELEASE }) {
+    PlayPublishingClient.getInstance().createRelease(packageName, editId, releaseName, tags, versionCode, selectedTrackId)
+  }
+}
+
+private suspend fun commitEditStep(packageName: String, editId: String, trackType: TrackType, uploadTimeMs: Int) {
+  runPublishingStep(
+    trackType,
+    uploadTimeMs,
+    mapException = { e ->
+      val msg = e.message ?: ""
+      if (e is PlayPublishingException && msg.contains(NO_APP_LISTING_CORRECTION_MESSAGE)) {
+        CreateReleaseResult.FAILED_RELEASE_NOT_ALLOWED_ON_TRACK
+      } else {
+        CreateReleaseResult.FAILED_TO_COMMIT_RELEASE
+      }
+    },
+  ) {
+    PlayPublishingClient.getInstance().commitEdit(packageName, editId)
+  }
 }

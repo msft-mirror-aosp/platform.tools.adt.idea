@@ -28,6 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<List<FormFactor>>) {
+  var onTemplateDoubleClick: () -> Unit = {}
+
   var chooseAndroidProjectEntries by mutableStateOf<List<ChooseAndroidProjectEntry>>(emptyList())
     private set
 
@@ -73,6 +75,11 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
 
   private fun createFormFactorEntry(formFactor: FormFactor): FormFactorProjectEntry {
     val templates = formFactor.getProjectTemplates()
-    return FormFactorProjectEntry(formFactor.toString(), templates, getDefaultSelectedTemplateIndex(templates))
+    return FormFactorProjectEntry(
+      formFactor.toString(),
+      templates,
+      getDefaultSelectedTemplateIndex(templates),
+      onTemplateDoubleClick = { onTemplateDoubleClick() },
+    )
   }
 }

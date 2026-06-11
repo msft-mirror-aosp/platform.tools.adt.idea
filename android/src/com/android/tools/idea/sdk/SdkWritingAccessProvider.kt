@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.sdk
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -35,15 +36,18 @@ class SdkWritingAccessProvider(private val project: Project) : WritingAccessProv
   }
 
   private fun isInAndroidSdk(file: VirtualFile): Boolean {
+    val computation = {
+      // Optimization: avoid querying isInAndroidSdk() in the common case where the file is within project sources.
+      !ProjectFileIndex.getInstance(project).isInContent(file) && AndroidSdks.getInstance().isInAndroidSdk(project, file)
+    }
     return SlowOperations.knownIssue("b/322462245").use {
-      ReadAction.nonBlocking(
-          Callable {
-            // Optimization: avoid querying isInAndroidSdk() in the common case where the file is within project sources.
-            !ProjectFileIndex.getInstance(project).isInContent(file) && AndroidSdks.getInstance().isInAndroidSdk(project, file)
-          }
-        )
-        .expireWhen { project.isDisposed }
-        .executeSynchronously()
+      if (ApplicationManager.getApplication().isDispatchThread) {
+        // ReadAction.nonBlocking on the UI thread will throw since it is not meant to be used in that way so, in this case, we just
+        // run a regular blocking read action.
+        ReadAction.computeBlocking<Boolean, Exception> { computation() }
+      } else {
+        ReadAction.nonBlocking(Callable { computation() }).expireWhen { project.isDisposed }.executeSynchronously()
+      }
     }
   }
 }

@@ -141,6 +141,11 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_RETAINED_OBJECT = "retained object"
   const val LEAKCANARY_CAPTURING_DUMP = "Retained objects detected. Capturing heap dump for leak analysis..."
   const val LEAKCANARY_FORCE_DUMP = "Force dump"
+  const val LEAKCANARY_TOOLTIP_FORCE_DUMP_WAITING = "Wait for at least 1 retained object to be detected before forcing a heap dump."
+  const val LEAKCANARY_TOOLTIP_FORCE_DUMP_THRESHOLD_REACHED = "An automatic heap dump is already being captured."
+  const val LEAKCANARY_TOOLTIP_FORCE_DUMP_EXECUTING = "A forced heap dump is already in progress..."
+  const val LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING = "A final heap dump is being captured before stopping."
+  const val LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING_NO_DUMP = "The recording is currently stopping."
   const val LEAKCANARY_BANNER_MESSAGE = "On-device customizations are being bypassed. Switch to App Customization to enable them."
   const val LEAKCANARY_EDIT_CONFIGURATION = "Edit configuration"
 
@@ -260,6 +265,8 @@ object TaskBasedUxStrings {
       StartTaskSelectionErrorCode.NO_STARTING_POINT_SELECTED -> "No task starting point selected"
       StartTaskSelectionErrorCode.LEAKCANARY_NOT_FOUND ->
         "Studio's LeakCanary integration library not detected in the process. Please try 'Start profiler task from process start'."
+      StartTaskSelectionErrorCode.LEAKCANARY_NOT_FOUND_EXTERNAL_PROCESS ->
+        "Studio's LeakCanary integration library not detected in the process. Please add the 'studio-leakcanary' dependency to the app's build."
       StartTaskSelectionErrorCode.LEAKCANARY_CHECK_IN_PROGRESS -> LEAKCANARY_CHECKING_PRESENCE
       StartTaskSelectionErrorCode.LEAKCANARY_CHECK_TIMEOUT -> LEAKCANARY_CHECK_TIMEOUT_MESSAGE
       StartTaskSelectionErrorCode.LEAKCANARY_REFLECTION_FAILED ->

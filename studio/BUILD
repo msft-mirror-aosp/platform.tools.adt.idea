@@ -231,6 +231,7 @@ studio_plugin(
             "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
             "//tools/adt/idea/app-quality-insights/ide:intellij.android.app-quality-insights.ide",
             "//tools/adt/idea/app-quality-insights/ui:intellij.android.app-quality-insights.ui",
+            "//tools/adt/idea/app-quality-insights/play-findings/ide:intellij.android.app-quality-insights.play-findings.ide",
             "//tools/adt/idea/app-quality-insights/play-policy/ide:intellij.android.app-quality-insights.play-policy.ide",
             "//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model",
             "//tools/adt/idea/app-quality-insights/play-vitals/ide:intellij.android.app-quality-insights.play-vitals.ide",
@@ -674,6 +675,7 @@ studio_plugin(
         "//tools/vendor/google/firebase/crashlytics-client:firebase_kt_proto",
         "//tools/vendor/google/firebase-provisioning:firebase_provisioning_proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
+        "//tools/adt/idea/.idea/libraries:grpc-google-common-protos",
         "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
     ],
     license_files = [

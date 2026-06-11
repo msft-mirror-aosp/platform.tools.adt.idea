@@ -28,6 +28,7 @@ import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.publishing.play.client.FakePlayPublishingClient
+import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.type.AppConfig
 import com.android.tools.idea.publishing.play.client.type.AppType
 import com.android.tools.idea.publishing.play.client.type.Developer
@@ -35,10 +36,12 @@ import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
 import com.google.gct.login2.LoginUsersRule
-import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.replaceService
+import com.intellij.util.application
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Before
 import org.junit.Rule
@@ -48,7 +51,7 @@ import org.junit.rules.RuleChain
 @RunsInEdt
 class CreateAppRecordPageTest {
   private val edtRule = EdtRule()
-  private val applicationRule = ApplicationRule()
+  private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
   private val composeTestRule = StudioComposeTestRule.createStudioComposeTestRule()
   private val loginFeatureRule = LoginFeatureRule()
@@ -57,7 +60,7 @@ class CreateAppRecordPageTest {
   @get:Rule
   val ruleChain: RuleChain =
     RuleChain.outerRule(edtRule)
-      .around(applicationRule)
+      .around(projectRule)
       .around(disposableRule)
       .around(loginFeatureRule)
       .around(loginUsersRule)
@@ -69,6 +72,7 @@ class CreateAppRecordPageTest {
   fun setUp() {
     loginUsersRule.setActiveUser("user@example.com")
     fakeClient = FakePlayPublishingClient()
+    application.replaceService(PlayPublishingClient::class.java, fakeClient, disposableRule.disposable)
   }
 
   @Test
@@ -147,11 +151,29 @@ class CreateAppRecordPageTest {
   @Test
   fun testNextButtonEnabled() {
     fakeClient.config = FakePlayPublishingClient.Config(listDeveloperCall = { listOf(Developer(1, "Account 1")) })
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "My App")
     createWizard(state)
 
-    // Next should be enabled as we have an account selected by default (first one)
+    // Next should be enabled as we have an account selected by default (first one) and a non-empty app name
     composeTestRule.onNodeWithText("Next").assertIsEnabled()
+  }
+
+  @Test
+  fun testNextButtonDisabledWhenAppNameIsEmpty() {
+    fakeClient.config = FakePlayPublishingClient.Config(listDeveloperCall = { listOf(Developer(1, "Account 1")) })
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "")
+    createWizard(state)
+
+    composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
+  }
+
+  @Test
+  fun testNextButtonDisabledWhenAppNameIsBlank() {
+    fakeClient.config = FakePlayPublishingClient.Config(listDeveloperCall = { listOf(Developer(1, "Account 1")) })
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "   ")
+    createWizard(state)
+
+    composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
   }
 
   @Test
@@ -172,7 +194,7 @@ class CreateAppRecordPageTest {
           )
         },
       )
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "My App")
     createWizard(state)
 
     composeTestRule.onNodeWithText("Next").performClick()
@@ -207,7 +229,7 @@ class CreateAppRecordPageTest {
         createAppRecordCall = { _, _ -> throw Exception("Creation failed") },
       )
 
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "My App")
     createWizard(state)
 
     composeTestRule.onNodeWithText("Next").performClick()
@@ -225,7 +247,7 @@ class CreateAppRecordPageTest {
         createAppRecordCall = { _, _ -> throw Exception("The package name com.example.app is not available on Play") },
       )
 
-    val state = PlayPublishingWizardState(packageName = "com.example.app", client = fakeClient)
+    val state = PlayPublishingWizardState(packageName = "com.example.app", appName = "My App")
     createWizard(state)
 
     composeTestRule.onNodeWithText("Next").performClick()
@@ -241,12 +263,12 @@ class CreateAppRecordPageTest {
     composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
   }
 
-  private fun createWizard(state: PlayPublishingWizardState = PlayPublishingWizardState(client = fakeClient)): TestComposeWizard {
+  private fun createWizard(state: PlayPublishingWizardState = PlayPublishingWizardState()): TestComposeWizard {
     val wizard = TestComposeWizard {
       getOrCreateState { state }
       CreateAppRecordPage()
     }
-    composeTestRule.setContent { CompositionLocalProvider(LocalProject provides null) { wizard.Content() } }
+    composeTestRule.setContent { CompositionLocalProvider(LocalProject provides projectRule.project) { wizard.Content() } }
     return wizard
   }
 }

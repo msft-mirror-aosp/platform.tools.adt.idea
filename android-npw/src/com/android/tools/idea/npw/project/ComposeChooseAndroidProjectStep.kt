@@ -15,11 +15,12 @@
  */
 package com.android.tools.idea.npw.project
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -54,7 +55,10 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.tools.idea.npw.ui.getTemplateTitle
@@ -163,7 +167,12 @@ private fun RightSidePanel(selectedEntry: ChooseAndroidProjectEntry?) {
 }
 
 @Composable
-internal fun TemplateGrid(templates: List<Template>, selectedTemplate: Template?, onTemplateClick: (Template?) -> Unit) {
+internal fun TemplateGrid(
+  templates: List<Template>,
+  selectedTemplate: Template?,
+  onTemplateClick: (Template?) -> Unit,
+  onTemplateDoubleClick: (Template) -> Unit = {},
+) {
   val scrollState = rememberLazyGridState()
   var hasFocus by remember { mutableStateOf(false) }
   val gridFocusRequester = remember { FocusRequester() }
@@ -229,6 +238,7 @@ internal fun TemplateGrid(templates: List<Template>, selectedTemplate: Template?
               onTemplateClick(template)
               if (!hasFocus) gridFocusRequester.requestFocus()
             },
+            onTemplateDoubleClick = { onTemplateDoubleClick(template) },
           )
         }
       }
@@ -236,14 +246,27 @@ internal fun TemplateGrid(templates: List<Template>, selectedTemplate: Template?
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Template(template: Template, isSelected: Boolean, isFocused: Boolean, onTemplateClick: () -> Unit) {
+private fun Template(
+  template: Template,
+  isSelected: Boolean,
+  isFocused: Boolean,
+  onTemplateClick: () -> Unit,
+  onTemplateDoubleClick: () -> Unit,
+) {
   Column(
     modifier =
       Modifier.fillMaxSize()
         .focusProperties { canFocus = false }
         .border(1.dp, UIUtil.getListBackground(isSelected, isFocused).toComposeColor())
-        .clickable(interactionSource = null, indication = null, onClick = onTemplateClick),
+        .semantics {
+          onClick {
+            onTemplateClick()
+            true
+          }
+        }
+        .pointerInput(Unit) { detectTapGestures(onPress = { onTemplateClick() }, onDoubleTap = { onTemplateDoubleClick() }) },
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {

@@ -20,11 +20,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +46,7 @@ import com.android.tools.idea.compose.preview.BackNavigationEdge
 import com.android.tools.idea.compose.preview.InteractivePreviewNavigationController
 import com.android.tools.idea.compose.preview.message
 import icons.StudioIconsCompose
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -52,14 +56,15 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Slider
 import org.jetbrains.jewel.ui.component.Text
 
+private val DEFAULT_SPACING = 8.dp
+
 /** @see also [NavigationControlsPanel] */
 @Composable
 fun NavigationControlsContent(
-  modifier: Modifier = Modifier,
   interactivePreviewNavigationController: InteractivePreviewNavigationController,
   fpsUpdater: SharedFlow<Unit>,
 ) {
-  Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+  Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
     NavigationControlsPanel(
       canBackPress = { interactivePreviewNavigationController.canBackPress() },
       onBackPress = {
@@ -71,6 +76,7 @@ fun NavigationControlsContent(
       onBackPressTrackProgress = { interactivePreviewNavigationController.trackNavigationProgressPress() },
       onEdgeDropdownPress = { interactivePreviewNavigationController.trackEdgeDropdownPress() },
       fpsUpdater = fpsUpdater,
+      backPressCompletedFlow = interactivePreviewNavigationController.backPressCompletedFlow,
     )
   }
 }
@@ -91,6 +97,7 @@ fun NavigationControlsContent(
  * @param onBackPressTrackProgress A callback invoked when the predictive back gesture tracking finishes.
  * @param onEdgeDropdownPress A callback invoked when the navigation edge dropdown is interacted with.
  * @param fpsUpdater A [SharedFlow] used to refresh the state of the panel (e.g., re-evaluating [canBackPress]).
+ * @param backPressCompletedFlow A [SharedFlow] to listen for back navigation completion events.
  */
 @Composable
 fun NavigationControlsPanel(
@@ -102,26 +109,30 @@ fun NavigationControlsPanel(
   onBackPressTrackProgress: () -> Unit,
   onEdgeDropdownPress: () -> Unit,
   fpsUpdater: SharedFlow<Unit>,
+  backPressCompletedFlow: SharedFlow<Unit> = remember { MutableSharedFlow() },
 ) {
   var sliderPosition by remember { mutableFloatStateOf(0f) }
   var backStarted by remember { mutableStateOf(false) }
   val selectedEdge = remember { mutableStateOf(BackNavigationEdge.LEFT_EDGE) }
   val backNavigationAvailable by produceState(canBackPress(), fpsUpdater) { fpsUpdater.collect { value = canBackPress() } }
 
+  LaunchedEffect(backPressCompletedFlow) {
+    backPressCompletedFlow.collect {
+      sliderPosition = 0f
+      backStarted = false
+    }
+  }
+
   Column(modifier.padding(16.dp).fillMaxWidth().testTag(NavigationControlsPanelTestTags.panel)) {
-    Row(
-      modifier = modifier.padding(vertical = 8.dp).fillMaxWidth(),
+    FlowRow(
+      modifier = Modifier.padding(vertical = DEFAULT_SPACING).fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
+      verticalArrangement = Arrangement.spacedBy(DEFAULT_SPACING, Alignment.CenterVertically),
     ) {
       OutlinedButton(
-        modifier = modifier.testTag(NavigationControlsPanelTestTags.backButton),
+        modifier = Modifier.testTag(NavigationControlsPanelTestTags.backButton).widthIn(min = 135.dp),
         enabled = backNavigationAvailable,
-        onClick = {
-          onBackPress()
-          backStarted = false
-          sliderPosition = 0f
-        },
+        onClick = onBackPress,
       ) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
           Icon(
@@ -130,24 +141,23 @@ fun NavigationControlsPanel(
             contentDescription = null,
             tint = Color(IntUiPaletteDefaults.Dark.Green7),
           )
-          Text(text = message("action.navigate.back.button.text"))
+          Text(text = message("action.navigate.back.button.text"), maxLines = 1, softWrap = false)
         }
       }
-      DropDownAction(modifier, message("action.navigate.back.navigation.edge.label"), selectedEdge, onEdgeDropdownPress)
+      DropDownAction(message("action.navigate.back.navigation.edge.label"), selectedEdge, onEdgeDropdownPress)
     }
     Row(
       modifier =
-        modifier
-          .padding(vertical = 8.dp)
+        Modifier.padding(vertical = DEFAULT_SPACING)
           .fillMaxWidth()
           .border(width = 1.dp, color = JewelTheme.globalColors.borders.normal, shape = RoundedCornerShape(4.dp)),
       horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Column {
-        Text(modifier = modifier.padding(8.dp), text = message("action.navigate.back.predictive.back.progress", sliderPosition))
+        Text(modifier = Modifier.padding(DEFAULT_SPACING), text = message("action.navigate.back.predictive.back.progress", sliderPosition))
         Slider(
-          modifier = modifier.padding(8.dp).testTag(NavigationControlsPanelTestTags.progressSlider),
+          modifier = Modifier.padding(DEFAULT_SPACING).testTag(NavigationControlsPanelTestTags.progressSlider),
           value = sliderPosition,
           valueRange = 0f..1f,
           enabled = backNavigationAvailable,
@@ -173,22 +183,20 @@ fun NavigationControlsPanel(
 /**
  * A dropdown component which allows the selection of [BackNavigationEdge]
  *
- * @param modifier The modifier to be applied to this Composable.
  * @param label The text to show in the Label located on the right of the Dropdown.
  * @param selectedEdge The edge to be selected among the [BackNavigationEdge] enum.
  */
 @OptIn(ExperimentalJewelApi::class)
 @Composable
-private fun DropDownAction(
-  modifier: Modifier = Modifier,
-  label: String,
-  selectedEdge: MutableState<BackNavigationEdge>,
-  onEdgeDropdownPress: () -> Unit,
-) =
-  Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-    Text(text = label, modifier = Modifier.padding(8.dp))
+private fun DropDownAction(label: String, selectedEdge: MutableState<BackNavigationEdge>, onEdgeDropdownPress: () -> Unit) =
+  FlowRow(
+    modifier = Modifier.widthIn(min = 220.dp),
+    verticalArrangement = Arrangement.spacedBy(DEFAULT_SPACING, Alignment.CenterVertically),
+    horizontalArrangement = Arrangement.spacedBy(DEFAULT_SPACING),
+  ) {
+    Text(text = label, modifier = Modifier.padding(vertical = DEFAULT_SPACING), maxLines = 1, softWrap = false)
     Dropdown(
-      modifier = Modifier.testTag(NavigationControlsPanelTestTags.edgeDropdown),
+      modifier = Modifier.testTag(NavigationControlsPanelTestTags.edgeDropdown).widthIn(min = 100.dp),
       menuContent = {
         for (edge in BackNavigationEdge.entries) {
           selectableItem(
@@ -198,12 +206,12 @@ private fun DropDownAction(
               onEdgeDropdownPress()
             },
           ) {
-            Text(text = edge.visibleName)
+            Text(text = edge.visibleName, maxLines = 1, softWrap = false)
           }
         }
       },
     ) {
-      Text(selectedEdge.value.visibleName)
+      Text(selectedEdge.value.visibleName, maxLines = 1, softWrap = false)
     }
   }
 

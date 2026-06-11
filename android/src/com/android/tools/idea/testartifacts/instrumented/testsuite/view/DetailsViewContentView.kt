@@ -48,7 +48,6 @@ import com.intellij.openapi.util.ActionCallback
 import com.intellij.openapi.util.ActiveRunnable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfoRt
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
@@ -64,7 +63,6 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
-import java.util.Arrays
 import java.util.Locale
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
@@ -122,28 +120,34 @@ open class DetailsViewContentView(
     // Journey results tab
     myJourneysResultsPanel = JourneysResultsPanel(project)
     Disposer.register(this, myJourneysResultsPanel)
-    myJourneyScreenshotsTab = TabInfo(myJourneysResultsPanel)
-    myJourneyScreenshotsTab.setText("Results")
-    myJourneyScreenshotsTab.setTooltipText("Show the actions taken by Gemini")
-    myJourneyScreenshotsTab.isHidden = true
+    myJourneyScreenshotsTab =
+      TabInfo(myJourneysResultsPanel).apply {
+        setText("Results")
+        setTooltipText("Show the actions taken by Gemini")
+        isHidden = true
+      }
     tabs.addTab(myJourneyScreenshotsTab)
 
     // Screenshot tab
     myScreenshotResultView = ScreenshotResultView(project)
     Disposer.register(this, myScreenshotResultView)
-    myScreenshotTab = TabInfo(myScreenshotResultView.getComponent())
-    myScreenshotTab.setText("Screenshot")
-    myScreenshotTab.setTooltipText("Show screenshot information")
-    myScreenshotTab.isHidden = true
+    myScreenshotTab =
+      TabInfo(myScreenshotResultView.getComponent()).apply {
+        setText("Screenshot")
+        setTooltipText("Show screenshot information")
+        isHidden = true
+      }
     tabs.addTab(myScreenshotTab)
 
     // Screenshot attributes tab
     myScreenshotAttributesView = ScreenshotAttributesView()
     Disposer.register(this, myScreenshotAttributesView)
-    myScreenshotAttributesTab = TabInfo(myScreenshotAttributesView.getComponent())
-    myScreenshotAttributesTab.setText("Attributes")
-    myScreenshotAttributesTab.setTooltipText("Show preview attributes")
-    myScreenshotAttributesTab.isHidden = true
+    myScreenshotAttributesTab =
+      TabInfo(myScreenshotAttributesView.getComponent()).apply {
+        setText("Attributes")
+        setTooltipText("Show preview attributes")
+        isHidden = true
+      }
     tabs.addTab(myScreenshotAttributesTab)
 
     // Create logcat tab.
@@ -152,7 +156,7 @@ open class DetailsViewContentView(
     logger.addImpressionWhenDisplayed(myLogsView.component, ParallelAndroidTestReportUiEvent.UiElement.TEST_SUITE_LOG_VIEW)
 
     val logsViewWithVerticalToolbar =
-      createAccessiblePanel(BorderLayout(), accessibleName = "Logs View", roleOnMac = javax.accessibility.AccessibleRole.PANEL).apply {
+      createAccessiblePanel(BorderLayout(), accessibleName = "Logs View", roleOnMac = AccessibleRole.PANEL).apply {
         isOpaque = false
         isFocusable = true
       }
@@ -167,16 +171,18 @@ open class DetailsViewContentView(
     logViewToolbar.targetComponent = myLogsView.component
     logsViewWithVerticalToolbar.add(logViewToolbar.component, BorderLayout.EAST)
 
-    logsTab = TabInfo(logsViewWithVerticalToolbar)
-    logsTab.setText("Logs")
-    logsTab.setTooltipText("Show logcat output")
+    logsTab =
+      TabInfo(logsViewWithVerticalToolbar).apply {
+        setText("Logs")
+        setTooltipText("Show logcat output")
+      }
     tabs.addTab(logsTab)
 
     // Create benchmark tab.
     myBenchmarkView = ConsoleViewImpl(project, /* viewer= */ true)
     Disposer.register(this, myBenchmarkView)
     val benchmarkViewWithVerticalToolbar =
-      createAccessiblePanel(BorderLayout(), accessibleName = "Benchmark View", roleOnMac = javax.accessibility.AccessibleRole.PANEL).apply {
+      createAccessiblePanel(BorderLayout(), accessibleName = "Benchmark View", roleOnMac = AccessibleRole.PANEL).apply {
         isOpaque = false
         isFocusable = true
       }
@@ -189,10 +195,12 @@ open class DetailsViewContentView(
           false,
         )
     benchmarkViewWithVerticalToolbar.add(benchmarkViewToolbar.component, BorderLayout.EAST)
-    myBenchmarkTab = TabInfo(benchmarkViewWithVerticalToolbar)
-    myBenchmarkTab.setText("Benchmark")
-    myBenchmarkTab.setTooltipText("Show benchmark results")
-    myBenchmarkTab.isHidden = true
+    myBenchmarkTab =
+      TabInfo(benchmarkViewWithVerticalToolbar).apply {
+        setText("Benchmark")
+        setTooltipText("Show benchmark results")
+        isHidden = true
+      }
     tabs.addTab(myBenchmarkTab)
 
     // Device info tab.
@@ -201,9 +209,11 @@ open class DetailsViewContentView(
       myDeviceInfoTableView.getComponent(),
       ParallelAndroidTestReportUiEvent.UiElement.TEST_SUITE_DEVICE_INFO_VIEW,
     )
-    myDeviceInfoTab = TabInfo(myDeviceInfoTableView.getComponent())
-    myDeviceInfoTab.setText("Device Info")
-    myDeviceInfoTab.setTooltipText("Show device information")
+    myDeviceInfoTab =
+      TabInfo(myDeviceInfoTableView.getComponent()).apply {
+        setText("Device Info")
+        setTooltipText("Show device information")
+      }
     tabs.addTab(myDeviceInfoTab)
 
     rootPanel = createAccessiblePanel(BorderLayout(), accessibleName = "Test Results Panel Structure")
@@ -284,20 +294,18 @@ open class DetailsViewContentView(
     refreshTestResultLabel()
   }
 
-  private fun setLogcat(logcat: String) {
-    // force refresh myLogsView on first call to setLogcat
-    needsRefreshLogsView = needsRefreshLogsView || (myLogcat != logcat)
-    if (needsRefreshLogsView) {
-      myLogcat = logcat
-      refreshLogsView()
-    }
-  }
-
-  private fun setErrorStackTrace(errorStackTrace: String) {
-    needsRefreshLogsView = myErrorStackTrace != errorStackTrace
-    if (needsRefreshLogsView) {
-      myErrorStackTrace = errorStackTrace
-      refreshTestResultLabel()
+  private fun setLogs(logcat: String?, errorStackTrace: String?) {
+    val nonNullLogcat = logcat.orEmpty()
+    val nonNullError = errorStackTrace.orEmpty()
+    val logcatChanged = myLogcat != nonNullLogcat
+    val errorChanged = myErrorStackTrace != nonNullError
+    if (needsRefreshLogsView || logcatChanged || errorChanged) {
+      needsRefreshLogsView = false
+      myLogcat = nonNullLogcat
+      myErrorStackTrace = nonNullError
+      if (errorChanged) {
+        refreshTestResultLabel()
+      }
       refreshLogsView()
     }
   }
@@ -394,60 +402,53 @@ open class DetailsViewContentView(
   fun setResults(androidDevice: AndroidDevice, testResults: AndroidTestResults) {
     setAndroidDevice(androidDevice)
     setAndroidTestCaseResult(testResults.getTestCaseResult(androidDevice))
-    setLogcat(testResults.getLogcat(androidDevice))
-    setErrorStackTrace(testResults.getErrorStackTrace(androidDevice))
+    setLogs(testResults.getLogcat(androidDevice), testResults.getErrorStackTrace(androidDevice))
     setBenchmarkText(testResults.getBenchmark(androidDevice))
     setAdditionalTestArtifacts(testResults.getAdditionalTestArtifacts(androidDevice), testResults)
   }
 
   @VisibleForTesting
   fun refreshTestResultLabel() {
-    val device = myAndroidDevice
-    if (device == null) {
-      myTestResultLabel.text = "No test status available"
-      return
-    }
-    val testCaseResult = myAndroidTestCaseResult
+    val device =
+      myAndroidDevice
+        ?: run {
+          myTestResultLabel.text = "No test status available"
+          myDeviceTestResultLabel.text = ""
+          return
+        }
     myDeviceTestResultLabel.text = String.format(Locale.US, "<html>%s</html>", device.getName().htmlEscape())
-    if (testCaseResult == null) {
-      myTestResultLabel.text = "No test status available"
-      return
-    }
-    if (testCaseResult.isTerminalState) {
-      val statusColor = getColorFor(testCaseResult) ?: UIUtil.getActiveTextColor()
-      when (testCaseResult) {
-        AndroidTestCaseResult.PASSED ->
-          myTestResultLabel.text =
-            String.format(Locale.US, "<html><font color='%s'>Passed</font></html>", ColorUtil.toHtmlColor(statusColor))
-        AndroidTestCaseResult.FAILED -> {
-          val errorMessage = Arrays.stream(StringUtil.splitByLines(myErrorStackTrace)).findFirst().orElse("")
-          if (StringUtil.isEmptyOrSpaces(errorMessage)) {
-            myTestResultLabel.text =
-              String.format(Locale.US, "<html><font color='%s'>Failed</font></html>", ColorUtil.toHtmlColor(statusColor))
-          } else {
-            myTestResultLabel.text =
-              String.format(
-                Locale.US,
-                "<html><font color='%s'>Failed</font> %s</html>",
-                ColorUtil.toHtmlColor(statusColor),
-                errorMessage.htmlEscape(),
-              )
+
+    val testCaseResult =
+      myAndroidTestCaseResult
+        ?: run {
+          myTestResultLabel.text = "No test status available"
+          return
+        }
+
+    myTestResultLabel.text =
+      if (testCaseResult.isTerminalState) {
+        val statusColor = getColorFor(testCaseResult) ?: UIUtil.getActiveTextColor()
+        val hexColor = ColorUtil.toHtmlColor(statusColor)
+        when (testCaseResult) {
+          AndroidTestCaseResult.PASSED -> String.format(Locale.US, "<html><font color='%s'>Passed</font></html>", hexColor)
+          AndroidTestCaseResult.FAILED -> {
+            val errorMessage = myErrorStackTrace.lineSequence().firstOrNull { it.isNotBlank() } ?: ""
+            if (errorMessage.isBlank()) {
+              String.format(Locale.US, "<html><font color='%s'>Failed</font></html>", hexColor)
+            } else {
+              String.format(Locale.US, "<html><font color='%s'>Failed</font> %s</html>", hexColor, errorMessage.htmlEscape())
+            }
+          }
+          AndroidTestCaseResult.SKIPPED -> String.format(Locale.US, "<html><font color='%s'>Skipped</font></html>", hexColor)
+          AndroidTestCaseResult.CANCELLED -> String.format(Locale.US, "<html><font color='%s'>Cancelled</font></html>", hexColor)
+          else -> {
+            Logger.getInstance(javaClass).warn(String.format(Locale.US, "Unexpected result type: %s", testCaseResult))
+            ""
           }
         }
-        AndroidTestCaseResult.SKIPPED ->
-          myTestResultLabel.text =
-            String.format(Locale.US, "<html><font color='%s'>Skipped</font></html>", ColorUtil.toHtmlColor(statusColor))
-        AndroidTestCaseResult.CANCELLED ->
-          myTestResultLabel.text =
-            String.format(Locale.US, "<html><font color='%s'>Cancelled</font></html>", ColorUtil.toHtmlColor(statusColor))
-        else -> {
-          myTestResultLabel.text = ""
-          Logger.getInstance(javaClass).warn(String.format(Locale.US, "Unexpected result type: %s", testCaseResult))
-        }
+      } else {
+        String.format(Locale.US, "Running on %s", device.getName())
       }
-    } else {
-      myTestResultLabel.text = String.format(Locale.US, "Running on %s", device.getName())
-    }
   }
 
   @VisibleForTesting
@@ -455,41 +456,40 @@ open class DetailsViewContentView(
     needsRefreshLogsView = false
     myLogsView.clear()
 
-    if (StringUtil.isEmptyOrSpaces(myLogcat) && StringUtil.isEmptyOrSpaces(myErrorStackTrace)) {
+    if (myLogcat.isBlank() && myErrorStackTrace.isBlank()) {
       myLogsView.print("No logs available", ConsoleViewContentType.NORMAL_OUTPUT)
       return
     }
     logsTab.isHidden = false
-    if (!StringUtil.isEmptyOrSpaces(myLogcat)) {
+    if (myLogcat.isNotBlank()) {
       myLogsView.print(myLogcat, ConsoleViewContentType.NORMAL_OUTPUT)
       myLogsView.print("\n", ConsoleViewContentType.NORMAL_OUTPUT)
     }
-    myLogsView.print(myErrorStackTrace, ConsoleViewContentType.ERROR_OUTPUT)
+    if (myErrorStackTrace.isNotBlank()) {
+      myLogsView.print(myErrorStackTrace, ConsoleViewContentType.ERROR_OUTPUT)
+    }
 
     myLogsView.scrollToEnd()
   }
 
   private fun updateSelectedTab() {
-    ApplicationManager.getApplication().invokeLater {
-      val lastSelectedTab = this.lastTabSelectedByUser
+    invokeLater {
+      val lastSelectedTab = lastTabSelectedByUser
 
       // Let's always default to the tab last selected by the user (if it's visible)
-      if (lastSelectedTab != null && !lastSelectedTab.isHidden) {
+      if (lastSelectedTab?.isHidden == false) {
         tabs.select(lastSelectedTab, false)
         return@invokeLater
       }
 
       // Otherwise select the first visible tab in the ordered set defined below
-      for (tab in setOf(myJourneyScreenshotsTab, myScreenshotTab, myBenchmarkTab, logsTab, myDeviceInfoTab)) {
-        if (!tab.isHidden) {
+      listOf(myJourneyScreenshotsTab, myScreenshotTab, myBenchmarkTab, logsTab, myDeviceInfoTab)
+        .firstOrNull { !it.isHidden }
+        ?.let { tab ->
           tabs.select(tab, false)
-
           // We only want to track tabs selected by the user - so reset it to the previous value
-          this.lastTabSelectedByUser = lastSelectedTab
-
-          return@invokeLater
+          lastTabSelectedByUser = lastSelectedTab
         }
-      }
     }
   }
 

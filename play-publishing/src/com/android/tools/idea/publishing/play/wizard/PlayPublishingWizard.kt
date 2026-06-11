@@ -17,9 +17,8 @@ package com.android.tools.idea.publishing.play.wizard
 
 import com.android.tools.adtui.compose.ComposeWizard
 import com.android.tools.idea.publishing.AppPublishingContext
-import com.android.tools.idea.publishing.play.wizard.page.ChooseBundlePage
-import com.android.tools.idea.publishing.play.wizard.page.LoggedOutPage
-import com.google.gct.login2.fstLoginFeature
+import com.android.tools.idea.publishing.play.PlayPublishingUsageTracker
+import com.android.tools.idea.publishing.play.wizard.page.AccountChooserPage
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.project.Project
 
@@ -27,13 +26,12 @@ fun showPublishingWizard(project: Project, context: AppPublishingContext) {
   val wizard =
     ComposeWizard(project, "Publish for Testing Wizard") {
       getOrCreateState { context.toPublishingWizardState() }
-      if (!fstLoginFeature.isLoggedIn()) {
-        LoggedOutPage()
-      } else {
-        ChooseBundlePage()
-      }
+      AccountChooserPage()
     }
-  invokeLater { wizard.show() }
+  invokeLater {
+    wizard.show()
+    PlayPublishingUsageTracker.trackWizardShown(context.publishingSource)
+  }
 }
 
 private fun AppPublishingContext.toPublishingWizardState() = PlayPublishingWizardState(artifactPath, isRegistered)

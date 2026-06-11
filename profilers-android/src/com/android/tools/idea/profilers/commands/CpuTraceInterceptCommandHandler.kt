@@ -94,13 +94,23 @@ class CpuTraceInterceptCommandHandler(val device: IDevice, private val transport
     return transportStub.execute(Transport.ExecuteRequest.newBuilder().setCommand(command).build())
   }
 
+  companion object {
+    private val SAFE_PACKAGE = Regex("[a-zA-Z0-9._]+")
+    private val SAFE_VERSION = Regex("[A-Za-z0-9._+\\-]{1,64}")
+  }
+
   private fun setUpComposeTracing(command: Commands.Command) {
     var handshakeResult = HandshakeResult.UNKNOWN_RESULT
+    val appName = command.startTrace.configuration.appName
+    if (!SAFE_PACKAGE.matches(appName)) {
+      log.warn("Skipping Perfetto-SDK handshake: appName is not a valid package name")
+      return
+    }
 
     try {
       val handshake =
         PerfettoSdkHandshake(
-          targetPackage = command.startTrace.configuration.appName,
+          targetPackage = appName,
           // Kotlin doesn't have a native json parser. As such a handler needs to be created to
           // map the broadcast output to a key/value pair for the library.
           parseJsonMap = { jsonString: String ->
@@ -209,10 +219,15 @@ class CpuTraceInterceptCommandHandler(val device: IDevice, private val transport
     }
 
   private fun resolveArtifact(artifactVersion: String): Path? {
+    if (!SAFE_VERSION.matches(artifactVersion)) {
+      log.warn("Rejecting Perfetto-SDK requiredVersion from device: '$artifactVersion'")
+      return null
+    }
     val artifact = Artifact("androidx.tracing", "tracing-perfetto-binary", artifactVersion)
     return try {
-      val tmpDir = IdeFileService("profiler-artifacts").getOrCreateTempDir("http-tmp")
-      val tmpFile = tmpDir.resolve(artifact.fileName)
+      val tmpDir = IdeFileService("profiler-artifacts").getOrCreateTempDir("http-tmp").normalize()
+      val tmpFile = tmpDir.resolve(artifact.fileName).normalize()
+      require(tmpFile.startsWith(tmpDir)) { "perfetto-binary download path escaped $tmpDir: ${artifact.fileName}" }
       log.debug("StudioDownloader downloading: ${artifact.fileName}")
       StudioDownloader()
         .downloadFullyWithCaching(
@@ -223,6 +238,10 @@ class CpuTraceInterceptCommandHandler(val device: IDevice, private val transport
         )
       tmpFile
     } catch (e: IOException) {
+      log.warn("Error downloading Perfetto-SDK binary:", e)
+      null
+    } catch (e: IllegalArgumentException) {
+      log.warn("Error resolving Perfetto-SDK binary path:", e)
       null
     }
   }

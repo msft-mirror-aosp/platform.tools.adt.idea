@@ -1875,7 +1875,7 @@ public final class StudioFlags {
       "play.policy.insights.holdout.ratio",
       "Play Policy Insights Holdout Ratio",
       "Holdout some Play Policy lint checks for a subset of applications.",
-      "0.0");
+      "1.0");
   // endregion Play Policy Insights
 
   // region Firebase Test Lab
@@ -1959,6 +1959,14 @@ public final class StudioFlags {
       "status.firebase.google.com"
     );
 
+  public static final Flag<Boolean> DIRECT_ACCESS_CREATE_PROJECT_IN_SETUP_DIALOG =
+    new BooleanFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.create.project.setup.dialog",
+      "Device Streaming create project in setup dialog",
+      "Enable project creation in the device streaming setup dialog instead of during login."
+    );
+
   // endregion Firebase Test Lab
 
   // region App Insights
@@ -2005,6 +2013,14 @@ public final class StudioFlags {
   public static final Flag<Boolean> AQI_FIX_WITH_AGENT =
     new BooleanFlag(APP_INSIGHTS, "fix.with.agent", "Use Agent for suggested fixes.",
                     "Use the AI Agent to propose and implement suggested fixes.");
+
+  public static final Flag<Boolean> PLAY_FINDINGS_ENABLED =
+    new BooleanFlag(
+      APP_INSIGHTS,
+      "play.findings.enabled",
+      "Enable Play Findings",
+      "Enable Play Findings integration."
+    );
 
   // endregion App Insights
 
@@ -2088,6 +2104,11 @@ public final class StudioFlags {
 
   // region STUDIO_BOT
   private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Gemini");
+
+  public static final Flag<Boolean> STUDIOBOT_AGENT_EDITOR_TAB_ENABLED =
+    new BooleanFlag(STUDIOBOT, "agent.editor.tab.enabled",
+                    "Enable Agent Tabs",
+                    "Enables opening the Agent UI as Editor Tabs.");
 
   // a debug flag for the timeline to show *all* steps. This is NOT to be enabled in feature_flags.txt
   // This is to be manually enabled only.
@@ -2788,6 +2809,12 @@ public final class StudioFlags {
                     "Enable next edit/action prediction debug settings",
                     "Enable next edit/action prediction debug settings");
 
+  public static final Flag<Boolean> GEMINI_NEXT_PREDICTION_ENABLE_FOR_GOOGLE_ONE = new BooleanFlag(
+    STUDIOBOT, "gemini.next.prediction.enable.for.google.one",
+    "Enable Next Edit Prediction for Google One subscribers",
+    "If enabled, Next Edit Prediction is enabled for Google One subscribers (users on the default model)."
+  );
+
   public static final Flag<Boolean> STUDIOBOT_AGENT_EXPERIMENTAL_BUILD_PROMPT =
     new BooleanFlag(STUDIOBOT, "agent.experimental.build.prompt",
                     "Enable build-related instructions in the prompt",
@@ -2868,6 +2895,16 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "symbol.linkification",
                     "Enable project-wide symbol linkification and navigation",
                     "Enables one-click navigation to code symbols mentioned in Studio Bot responses");
+
+  public static final Flag<Boolean> STUDIOBOT_TASK_ROADMAP_ENABLED =
+    new BooleanFlag(STUDIOBOT, "task.roadmap.enabled",
+                    "Enable Task Roadmap progress panels",
+                    "When enabled, long-running agent tasks will display a multi-step roadmap status-bar and sidebar.");
+
+  public static final Flag<Boolean> STUDIOBOT_CHANGE_REVIEW_NATIVE_DIFF_DISABLED =
+    new BooleanFlag(STUDIOBOT, "change.review.native.diff.disabled",
+                    "Disable native diff engine in Change Review details pane",
+                    "When true, the Change Review details pane falls back to rendering file changes using markdown diff blocks instead of the native diff component.");
 
   // endregion STUDIO_BOT
 
@@ -2960,7 +2997,7 @@ public final class StudioFlags {
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.deprecation.issues", "Show library deprecation issues",
     "Show issues related to deprecated libraries from SDK Index in Lint and PSD"
   );
-  // endregion GOOGLE_PLAY_SDK_INDEXx
+  // endregion GOOGLE_PLAY_SDK_INDEX
 
   // region JOURNEYS_WITH_GEMINI
   private static final FlagGroup JOURNEYS_WITH_GEMINI = new FlagGroup(FLAGS, "journeys.with.gemini", "Journeys with Gemini");

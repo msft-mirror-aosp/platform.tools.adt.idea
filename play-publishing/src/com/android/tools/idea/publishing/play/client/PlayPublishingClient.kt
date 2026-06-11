@@ -21,6 +21,7 @@ import com.android.tools.idea.publishing.play.client.type.AppEdit
 import com.android.tools.idea.publishing.play.client.type.Bundle
 import com.android.tools.idea.publishing.play.client.type.Developer
 import com.android.tools.idea.publishing.play.client.type.Track
+import com.intellij.openapi.components.service
 
 interface PlayPublishingClient {
 
@@ -46,6 +47,13 @@ interface PlayPublishingClient {
   )
 
   suspend fun commitEdit(packageName: String, editId: String)
+
+  companion object {
+    @JvmStatic fun getInstance(): PlayPublishingClient = service()
+  }
 }
+
+internal const val NO_APP_LISTING_CORRECTION_MESSAGE =
+  "No app listing is available for this app. Create one before publishing releases to non-Internal Test Tracks."
 
 class PlayPublishingException(message: String, cause: Throwable? = null) : Exception(message, cause)

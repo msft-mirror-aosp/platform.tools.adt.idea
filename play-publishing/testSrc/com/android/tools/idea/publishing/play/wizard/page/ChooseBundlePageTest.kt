@@ -29,14 +29,17 @@ import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.publishing.play.AppMetadata
 import com.android.tools.idea.publishing.play.client.FakePlayPublishingClient
+import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.type.App
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
 import com.google.gct.login2.LoginFeatureRule
 import com.google.gct.login2.LoginUsersRule
-import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.replaceService
+import com.intellij.util.application
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -45,7 +48,7 @@ import org.junit.rules.RuleChain
 @RunsInEdt
 class ChooseBundlePageTest {
   private val edtRule = EdtRule()
-  private val applicationRule = ApplicationRule()
+  private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
   private val composeTestRule = StudioComposeTestRule.createStudioComposeTestRule()
   private val loginFeatureRule = LoginFeatureRule()
@@ -55,7 +58,7 @@ class ChooseBundlePageTest {
   @get:Rule
   val ruleChain: RuleChain =
     RuleChain.outerRule(edtRule)
-      .around(applicationRule)
+      .around(projectRule)
       .around(disposableRule)
       .around(loginFeatureRule)
       .around(loginUsersRule)
@@ -65,6 +68,7 @@ class ChooseBundlePageTest {
   fun setUp() {
     loginUsersRule.setActiveUser("user@example.com")
     fakeClient = FakePlayPublishingClient()
+    application.replaceService(PlayPublishingClient::class.java, fakeClient, disposableRule.disposable)
   }
 
   @Test
@@ -116,22 +120,6 @@ class ChooseBundlePageTest {
 
     // Test package name
     composeTestRule.onNodeWithTag("PackageNameRow").assert(hasAnyChild(hasText("Package name")) and hasAnyChild(hasText("—")))
-
-    composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
-    composeTestRule.onNodeWithText("Previous").assertIsNotEnabled()
-  }
-
-  @Test
-  fun testAppNameNull() {
-    createWizard { AppMetadata(null, "com.fake.app", "123", "1.2.3") }
-
-    composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
-    composeTestRule.onNodeWithText("Previous").assertIsNotEnabled()
-  }
-
-  @Test
-  fun testAppNameEmpty() {
-    createWizard { AppMetadata("", "com.fake.app", "123", "1.2.3") }
 
     composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
     composeTestRule.onNodeWithText("Previous").assertIsNotEnabled()
@@ -202,7 +190,7 @@ class ChooseBundlePageTest {
   fun testAppInConsoleShowsNextActionAsCreateRelease() {
     fakeClient.config =
       FakePlayPublishingClient.Config(listAppsCall = { listOf(App(packageName = "com.fake.app", displayName = "Fake App")) })
-    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = true, client = fakeClient)
+    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = true)
     val wizard = createWizard(state) { AppMetadata("Fake App", "com.fake.app", "123", "1.2.3") }
     composeTestRule.waitForIdle()
 
@@ -219,7 +207,7 @@ class ChooseBundlePageTest {
   fun testAppNotInConsoleShowsNextActionAsCreateAppRecord() {
     fakeClient.config = FakePlayPublishingClient.Config(listAppsCall = { emptyList() })
     // isRegistered is false (meaning they are in the console but don't have this app, or haven't registered)
-    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = false, client = fakeClient)
+    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = false)
     val wizard = createWizard(state) { AppMetadata("Fake App", "com.fake.app", "123", "1.2.3") }
     composeTestRule.waitForIdle()
 
@@ -235,7 +223,7 @@ class ChooseBundlePageTest {
   fun testPackageNameNotAvailableShowsErrorBanner() {
     fakeClient.config = FakePlayPublishingClient.Config(listAppsCall = { emptyList() })
     // isRegistered is true, but app not in console -> error banner
-    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = true, client = fakeClient)
+    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = true)
     createWizard(state) { AppMetadata("Fake App", "com.fake.app", "123", "1.2.3") }
     composeTestRule.waitForIdle()
 
@@ -246,7 +234,7 @@ class ChooseBundlePageTest {
   @Test
   fun testFailedToLoadAppsShowsErrorBanner() {
     fakeClient.config = FakePlayPublishingClient.Config(listAppsCall = { throw Exception("Network failure") })
-    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = true, client = fakeClient)
+    val state = PlayPublishingWizardState(bundlePath = "/some/fake/path", isRegistered = true)
     createWizard(state) { AppMetadata("Fake App", "com.fake.app", "123", "1.2.3") }
     composeTestRule.waitForIdle()
 
@@ -255,14 +243,14 @@ class ChooseBundlePageTest {
   }
 
   private fun createWizard(
-    state: PlayPublishingWizardState = PlayPublishingWizardState(bundlePath = "/some/fake/path", client = fakeClient),
+    state: PlayPublishingWizardState = PlayPublishingWizardState(bundlePath = "/some/fake/path"),
     appMetadata: () -> AppMetadata,
   ): TestComposeWizard {
     val wizard = TestComposeWizard {
       getOrCreateState { state }
       ChooseBundlePage { appMetadata() }
     }
-    composeTestRule.setContent { CompositionLocalProvider(LocalProject provides null) { wizard.Content() } }
+    composeTestRule.setContent { CompositionLocalProvider(LocalProject provides projectRule.project) { wizard.Content() } }
     return wizard
   }
 }

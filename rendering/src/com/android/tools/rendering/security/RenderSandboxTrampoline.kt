@@ -23,6 +23,9 @@ import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.RandomAccessFile
 import java.lang.invoke.MethodHandles
+import java.lang.reflect.AccessibleObject
+import java.lang.reflect.Field
+import java.lang.reflect.Member
 import java.lang.reflect.Method
 import java.net.DatagramSocket
 import java.net.HttpURLConnection
@@ -35,6 +38,11 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.zip.ZipFile
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLServerSocket
@@ -79,6 +87,10 @@ private fun checkProcessExec() {
   RenderSandbox.getRenderSandbox().checkProcessExec()
 }
 
+private fun checkConcurrency() {
+  RenderSandbox.getRenderSandbox().checkConcurrency()
+}
+
 private fun checkLoadLibrary(library: String) {
   RenderSandbox.getRenderSandbox().checkLoadLibrary(library)
 }
@@ -117,6 +129,30 @@ private fun checkMethodInvoke(method: Method, args: Array<Any>?) {
   val owner = method.declaringClass.name.replace(".", "/")
   val name = method.name
   RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+}
+
+private fun checkFieldAccess(field: Field, args: Array<Any>?) {
+  val owner = field.declaringClass.name.replace(".", "/")
+  val name = field.name
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+}
+
+private fun checkAccessibleObjectAccess(accessibleObject: AccessibleObject, args: Array<Any>?) {
+  if (accessibleObject is Member) {
+    val owner = accessibleObject.declaringClass.name.replace(".", "/")
+    val name = accessibleObject.name
+    RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+  }
+}
+
+private fun checkStaticAccessibleObjectAccess(accessibleObjects: Array<AccessibleObject>, args: Array<Any>?) {
+  for (accessibleObject in accessibleObjects) {
+    if (accessibleObject is Member) {
+      val owner = accessibleObject.declaringClass.name.replace(".", "/")
+      val name = accessibleObject.name
+      RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+    }
+  }
 }
 
 private fun checkUnsafeAccess() {
@@ -335,21 +371,25 @@ internal sealed class Intercept {
  * This class is designed to be mutable so it can be reused via a [ThreadLocal] to avoid allocating a new key object on every lookup. This
  * reduces garbage collection pressure and improves performance for high-frequency intercepted calls.
  */
-private class CallKey(var owner: String = "", var method: String = "") {
-  fun set(o: String, m: String): CallKey {
+private class CallKey(var owner: String = "", var method: String = "", var isStatic: Boolean = false) {
+  fun set(o: String, m: String, s: Boolean): CallKey {
     owner = o
     method = m
+    isStatic = s
     return this
   }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is CallKey) return false
-    return owner == other.owner && method == other.method
+    return owner == other.owner && method == other.method && isStatic == other.isStatic
   }
 
   override fun hashCode(): Int {
-    return owner.hashCode() * 31 + method.hashCode()
+    var result = owner.hashCode()
+    result = result * 31 + method.hashCode()
+    result = result * 31 + isStatic.hashCode()
+    return result
   }
 }
 
@@ -360,8 +400,13 @@ private class CallKey(var owner: String = "", var method: String = "") {
 object RenderSandboxTransformTrampoline {
   /** Validates the input interceptors list to ensure that there are no duplicate entries that were added by accident. */
   private fun assertValidInterceptorListOf(vararg interceptors: Intercept): List<Intercept> {
-    assert(interceptors.groupingBy { "${it.classInternalName}#${it.methodName}" }.eachCount().all { it.value == 1 }) {
-      "Interceptors should only be defined once per class and method"
+    assert(
+      interceptors
+        .groupingBy { "${it.classInternalName}#${it.methodName}#${it is Intercept.StaticIntercept}" }
+        .eachCount()
+        .all { it.value == 1 }
+    ) {
+      "Interceptors should only be defined once per class, method and type"
     }
 
     return interceptors.toList()
@@ -570,8 +615,31 @@ object RenderSandboxTransformTrampoline {
       // URL.openStream
       Intercept.instance<URL>("openStream", checkInstanceCallIgnoreArgs(::checkConnection)),
 
+      // Concurrency/Async operations
+      Intercept.static<CompletableFuture<*>>("supplyAsync", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<CompletableFuture<*>>("runAsync", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<ForkJoinPool>("commonPool", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.instance<ForkJoinPool>("submit", checkInstanceCallIgnoreArgs(::checkConcurrency)),
+      Intercept.instance<ForkJoinPool>("execute", checkInstanceCallIgnoreArgs(::checkConcurrency)),
+      Intercept.static<Executors>("newSingleThreadExecutor", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<Executors>("newCachedThreadPool", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<Executors>("newFixedThreadPool", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<Executors>("newScheduledThreadPool", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<ThreadPoolExecutor>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<ScheduledThreadPoolExecutor>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.static<ForkJoinPool>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
+
       // Reflection
       Intercept.instance<Method>("invoke", ::checkMethodInvoke),
+      Intercept.instance<Field>("set", ::checkFieldAccess),
+      Intercept.instance<Field>("get", ::checkFieldAccess),
+      Intercept.instance<AccessibleObject>("setAccessible", ::checkAccessibleObjectAccess),
+      Intercept.static<AccessibleObject>("setAccessible") { _: String, args: Array<Any>? ->
+        val firstArg = args?.firstOrNull() as? Array<AccessibleObject>
+        if (firstArg != null) {
+          checkStaticAccessibleObjectAccess(firstArg, args)
+        }
+      },
 
       // Unsafe
       Intercept.static<Unsafe>("getUnsafe", checkStaticNoArgsCall(::checkUnsafeAccess)),
@@ -583,12 +651,17 @@ object RenderSandboxTransformTrampoline {
 
       // ObjectInputStream
       Intercept.instance<ObjectInputStream>("readObject", ::checkReadObject),
+
+      // System.load and System.loadLibrary (checkLink bypass)
+      Intercept.static<System>("load", checkFirstStringArgument(::checkLoadLibrary)),
+      Intercept.static<System>("loadLibrary", checkFirstStringArgument(::checkLoadLibrary)),
     )
 
   private val localKey = ThreadLocal.withInitial { CallKey() }
 
   /** Index by class name and method name to allow for quick lookup of interceptors. */
-  private val interceptorIndex: Map<CallKey, Intercept> = defaultInterceptors.associateBy { CallKey(it.classInternalName, it.methodName) }
+  private val interceptorIndex: Map<CallKey, Intercept> =
+    defaultInterceptors.associateBy { CallKey(it.classInternalName, it.methodName, it is Intercept.StaticIntercept) }
 
   private val ownerStrings: Set<String> = defaultInterceptors.map { it.classInternalName }.toSet()
 
@@ -598,7 +671,9 @@ object RenderSandboxTransformTrampoline {
   val classesToIntercept: Set<String>
     get() = ownerStrings
 
-  fun shouldIntercept(owner: String, method: String): Boolean = interceptorIndex.containsKey(localKey.get().set(owner, method))
+  fun shouldIntercept(owner: String, method: String): Boolean =
+    interceptorIndex.containsKey(localKey.get().set(owner, method, true)) ||
+      interceptorIndex.containsKey(localKey.get().set(owner, method, false))
 
   /**
    * Returns whether any of the methods called by the class defined in [classData] could be intercepted.
@@ -645,19 +720,19 @@ object RenderSandboxTransformTrampoline {
 
   @TestOnly
   fun hasStaticIntercept(owner: String, method: String): Boolean =
-    interceptorIndex[localKey.get().set(owner, method)] is Intercept.StaticIntercept
+    interceptorIndex[localKey.get().set(owner, method, true)] is Intercept.StaticIntercept
 
   @TestOnly
   fun hasInstanceIntercept(owner: String, method: String): Boolean =
-    interceptorIndex[localKey.get().set(owner, method)] is Intercept.VirtualIntercept
+    interceptorIndex[localKey.get().set(owner, method, false)] is Intercept.VirtualIntercept
 
   @JvmStatic
   fun invoke(owner: Any, ownerClass: String, method: String, params: Array<Any>?): Unit {
-    (interceptorIndex[localKey.get().set(ownerClass, method)] as? Intercept.VirtualIntercept)?.intercept?.invoke(owner, params)
+    (interceptorIndex[localKey.get().set(ownerClass, method, false)] as? Intercept.VirtualIntercept)?.intercept?.invoke(owner, params)
   }
 
   @JvmStatic
   fun invokeStatic(ownerClass: String, method: String, params: Array<Any>?): Unit {
-    (interceptorIndex[localKey.get().set(ownerClass, method)] as? Intercept.StaticIntercept)?.intercept?.invoke(ownerClass, params)
+    (interceptorIndex[localKey.get().set(ownerClass, method, true)] as? Intercept.StaticIntercept)?.intercept?.invoke(ownerClass, params)
   }
 }

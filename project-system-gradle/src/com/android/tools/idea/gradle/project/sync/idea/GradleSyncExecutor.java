@@ -133,6 +133,7 @@ public class GradleSyncExecutor {
       ImportSpecBuilder builder = new ImportSpecBuilder(myProject, GRADLE_SYSTEM_ID).callback(setUpTask).use(executionMode);
       if (request.getDontFocusSyncFailureOutput()) builder.dontReportRefreshErrors();
       setProjectSyncRequest(myProject, rootPath, request);
+      builder.withUserData(request.getAdditionalUserData());
       refreshProject(rootPath, builder.build());
     }
   }

@@ -24,6 +24,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.registerExtension
 import java.io.File
 import org.junit.Assert.fail
+import org.junit.Ignore
 import org.junit.Test
 
 class StudioRenderSandboxTest {
@@ -93,5 +94,17 @@ class StudioRenderSandboxTest {
       sandbox.checkFileWrite(File("/path/to/project/file.txt").absolutePath)
       fail("Expected SecurityException")
     } catch (_: SecurityException) {}
+  }
+
+  @Ignore("b/513189628")
+  @Test
+  fun `check concurrency denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkConcurrency()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      org.junit.Assert.assertEquals("Concurrency is not allowed during rendering", e.message)
+    }
   }
 }
