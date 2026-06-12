@@ -18,6 +18,7 @@ package com.android.tools.idea;
 
 import com.android.tools.asdriver.tests.AndroidSystem;
 import com.android.tools.asdriver.tests.MavenRepo;
+import com.android.testutils.TestUtils;
 import com.android.utils.FileUtils;
 import java.io.File;
 import java.io.IOException;
@@ -222,7 +223,7 @@ public class ProjectBuildGenerator {
     pb.environment().put("ANDROID_USER_HOME", androidUserHome.toAbsolutePath().toString());
 
     // Set JAVA_HOME so gradlew can find java
-    String javaHome = System.getProperty("java.home");
+    String javaHome = TestUtils.getJava21Jdk().toAbsolutePath().toString();
     pb.environment().put("JAVA_HOME", javaHome);
 
     pb.directory(projectDir.toFile());
@@ -278,7 +279,7 @@ public class ProjectBuildGenerator {
             "--stop"
         );
         pb.environment().put("GRADLE_USER_HOME", gradleUserHome.toAbsolutePath().toString());
-        pb.environment().put("JAVA_HOME", System.getProperty("java.home"));
+        pb.environment().put("JAVA_HOME", TestUtils.getJava21Jdk().toAbsolutePath().toString());
         pb.directory(projectDir.toFile());
         pb.inheritIO();
         Process process = pb.start();

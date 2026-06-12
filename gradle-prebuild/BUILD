@@ -8,5 +8,6 @@ java_library(
     deps = [
         "//tools/adt/idea/as-driver:as-driver.utils_testlib",
         "//tools/base/common:studio.android.sdktools.common",
+        "//tools/base/testutils:tools.testutils",
     ],
 )

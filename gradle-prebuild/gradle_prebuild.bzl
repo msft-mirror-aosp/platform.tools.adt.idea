@@ -62,7 +62,7 @@ def gradle_build_project(name, out_dir_name, project_name, manifest_path, gradle
         name = generator_name,
         testonly = True,
         main_class = "com.android.tools.idea.ProjectBuildGenerator",
-        data = srcs,
+        data = srcs + ["//prebuilts/studio/jdk:jdk21"],
         runtime_deps = ["//tools/adt/idea/gradle-prebuild:gradle_project_build_generator_lib"],
     )
     gradle_build_project_generator(
