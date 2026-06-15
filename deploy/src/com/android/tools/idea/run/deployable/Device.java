@@ -56,6 +56,9 @@ import org.jetbrains.annotations.NotNull;
 public class Device {
   private static final Pattern PACKAGE_NAME_PATTERN = Pattern.compile("^package:(\\S+)\\s+.*");
 
+  // Aligns with Android Application ID rules: https://developer.android.com/studio/build/application-id
+  private static final Pattern VALID_APPLICATION_ID = Pattern.compile("[a-zA-Z0-9._]+");
+
   @NotNull private final ExecutorService myResolverExecutor;
 
   @NotNull private final IDevice myIDevice;
@@ -217,6 +220,10 @@ public class Device {
 
   @NotNull
   private Future<Void> resolveLegacyPid(@NotNull String applicationId) {
+    if (!VALID_APPLICATION_ID.matcher(applicationId).matches()) {
+      Logger.getInstance(Device.class).warn("Invalid applicationId rejected: " + applicationId);
+      return myResolverExecutor.submit(() -> null);
+    }
     return myResolverExecutor.submit(
       () -> {
         // This shell command tries to retrieve the PID associated with a given application ID.
