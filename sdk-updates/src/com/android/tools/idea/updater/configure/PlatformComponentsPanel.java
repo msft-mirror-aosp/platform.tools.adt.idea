@@ -39,6 +39,7 @@ import com.intellij.util.ui.tree.TreeUtil;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.FlowLayout;
+import java.awt.Insets;
 import java.util.Enumeration;
 import java.util.Set;
 import javax.swing.JCheckBox;
@@ -242,6 +243,7 @@ public class PlatformComponentsPanel {
 
   public void setConfigurable(@NotNull SdkUpdaterConfigurable configurable) {
     myConfigurable = configurable;
+    PackageDetailsPopup.addPackageDetailsPopup(myPlatformDetailTable);
   }
 
   public JComponent getRootComponent() { return myRootPanel; }
