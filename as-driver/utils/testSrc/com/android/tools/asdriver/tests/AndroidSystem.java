@@ -102,9 +102,9 @@ public class AndroidSystem implements AutoCloseable, TestRule {
     return sdk;
   }
 
-
+  // TODO b/525444688 standard should use the bundled JRE
   public static AndroidSystem standard() {
-    return withCustomJdkForGradle(AndroidStudioFlavor.FOR_EXTERNAL_USERS, null);
+    return withCustomJdkForGradle(AndroidStudioFlavor.FOR_EXTERNAL_USERS, JdkVersion.JDK_21);
   }
 
   /**
@@ -112,9 +112,10 @@ public class AndroidSystem implements AutoCloseable, TestRule {
    * that contains a preinstalled version of android studio
    * from the distribution zips. The SDK is set up pointing
    * to the standard prebuilts one.
+   * TODO b/525444688 standard should use the bundled JRE
    */
   public static AndroidSystem standard(AndroidStudioFlavor androidStudioFlavor) {
-    return withCustomJdkForGradle(androidStudioFlavor, null);
+    return withCustomJdkForGradle(androidStudioFlavor, JdkVersion.JDK_21);
   }
 
   /**
@@ -153,8 +154,9 @@ public class AndroidSystem implements AutoCloseable, TestRule {
   }
 
 
+  // TODO b/525444688 standard should use the bundled JRE
   public static AndroidSystem standardWithTmpDir() {
-    return standardWithTmpDir(null);
+    return standardWithTmpDir(JdkVersion.JDK_21);
   }
 
   /**
