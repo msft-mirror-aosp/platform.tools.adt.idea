@@ -294,9 +294,10 @@ public abstract class IdeInstallation<T extends Ide> implements AutoCloseable{
     Path projectPath = setupProjectAtTmpDir(project);
     Path jdkDir = getJdkDir();
     String javaHome = jdkDir.toAbsolutePath().toString();
-    env.put("GRADLE_LOCAL_JAVA_HOME", javaHome);
-    env.put("JAVA_HOME", javaHome);
-    env.put("STUDIO_GRADLE_JDK", javaHome);
+    String gradleJdk = env.getOrDefault("STUDIO_GRADLE_JDK", javaHome);
+    env.put("GRADLE_LOCAL_JAVA_HOME", gradleJdk);
+    env.put("JAVA_HOME", gradleJdk);
+    env.put("STUDIO_GRADLE_JDK", gradleJdk);
     env.put("STUDIO_JDK", javaHome);
     Path gradleUserHome = tmpDir.resolve(".gradle");
     env.put("GRADLE_USER_HOME", gradleUserHome.toAbsolutePath().toString());

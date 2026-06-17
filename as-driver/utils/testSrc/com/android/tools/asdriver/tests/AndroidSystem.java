@@ -152,13 +152,18 @@ public class AndroidSystem implements AutoCloseable, TestRule {
     }
   }
 
+
+  public static AndroidSystem standardWithTmpDir() {
+    return standardWithTmpDir(null);
+  }
+
   /**
    * Creates a standard system and sets up a tmp dir outside bazel sandbox.
    * It moves the sdk to the tmp dir and tells the ide to use that sdk.
    */
-  public static AndroidSystem standardWithTmpDir() {
+  public static AndroidSystem standardWithTmpDir(JdkVersion gradleJdk) {
     try {
-      AndroidSystem system = standard();
+      AndroidSystem system = withCustomJdkForGradle(AndroidStudioFlavor.FOR_EXTERNAL_USERS, gradleJdk);
       Path sdkDir = IdeInstallation.getTmpDir().resolve("sdk");
       AndroidSdk sdk = new AndroidSdk(sdkDir);
       sdk.install(system.env);
