@@ -16,6 +16,7 @@
     <orderEntry type="module" module-name="app-inspection.inspectors.network.view" />
     <orderEntry type="module" module-name="app-inspection.inspectors.network.model" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
+    <orderEntry type="module" module-name="android.sdktools.sdk-common" />
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" />
