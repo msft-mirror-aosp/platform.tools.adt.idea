@@ -15,6 +15,7 @@ message Snapshot {
   Summary query_summary = 3;
   int32 version = 4;
   string bazel_version = 5;
+  ProjectStructureData project_structure_data = 6;
 }
 
 message ProjectDefinition {
@@ -50,4 +51,26 @@ message WorkspaceFileChange {
 
 message WorkspaceSnapshot {
   string path = 1;
+}
+
+message ProjectStructureData {
+  repeated ProjectStructureRoot roots = 3;
+  repeated LanguageClass active_languages = 2;
+}
+
+message ProjectStructureRoot {
+  string project_structure_root_path = 1;
+  repeated BuildPackage build_packages = 3;
+}
+
+message BuildPackage {
+  string build_package_path = 1;
+  repeated SourceSet source_sets = 2;
+}
+
+message SourceSet {
+  repeated string java_source_files = 2;
+  repeated string non_java_source_files = 3;
+  string root_path = 4;
+  string java_package = 5;
 }

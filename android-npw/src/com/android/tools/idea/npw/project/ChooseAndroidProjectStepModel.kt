@@ -28,6 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<List<FormFactor>>) {
+  var onTemplateDoubleClick: () -> Unit = {}
+
   var chooseAndroidProjectEntries by mutableStateOf<List<ChooseAndroidProjectEntry>>(emptyList())
     private set
 
@@ -48,12 +50,17 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
     isLoading = true
     val entries = mutableListOf<ChooseAndroidProjectEntry>()
     withContext(Dispatchers.IO) {
+      entries.addAll(AndroidProjectEntryProvider.getAllProjectEntries())
       formFactorSupplier.get().forEach {
         if (it != FormFactor.AiGlasses) {
-          entries.add(createFormFactorEntry(it))
+          val entry = createFormFactorEntry(it)
+          if (it == FormFactor.Mobile) {
+            // Default to Phone & Tablet
+            selectedAndroidProjectEntry = entry
+          }
+          entries.add(entry)
         }
       }
-      entries.addAll(AndroidProjectEntryProvider.getAllProjectEntries())
     }
     chooseAndroidProjectEntries = entries
     isLoading = false
@@ -68,6 +75,11 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
 
   private fun createFormFactorEntry(formFactor: FormFactor): FormFactorProjectEntry {
     val templates = formFactor.getProjectTemplates()
-    return FormFactorProjectEntry(formFactor.toString(), templates, getDefaultSelectedTemplateIndex(templates))
+    return FormFactorProjectEntry(
+      formFactor.toString(),
+      templates,
+      getDefaultSelectedTemplateIndex(templates),
+      onTemplateDoubleClick = { onTemplateDoubleClick() },
+    )
   }
 }

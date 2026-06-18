@@ -23,7 +23,10 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresen
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationProvider
 import com.intellij.configurationStore.serialize
 import com.intellij.ide.lightEdit.LightEdit
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -44,6 +47,7 @@ import com.intellij.openapi.fileEditor.impl.text.TextEditorState
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.util.SlowOperations
@@ -105,6 +109,21 @@ class SourceCodeEditorProvider private constructor(private val providers: Collec
     document: Document?,
     editorCoroutineScope: CoroutineScope,
   ): FileEditor {
+    val psiDocumentManager = PsiDocumentManager.getInstance(project)
+    if (document != null && !psiDocumentManager.isCommitted(document)) {
+      val deferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+      ApplicationManager.getApplication()
+        .invokeLater(
+          {
+            WriteAction.run<Throwable> {
+              psiDocumentManager.commitDocument(document)
+              deferred.complete(Unit)
+            }
+          },
+          ModalityState.nonModal(),
+        )
+      deferred.await()
+    }
     val textEditor = PsiAwareTextEditorProvider().createFileEditor(project, file, document, editorCoroutineScope)
     val psiFile = readAction { PsiManager.getInstance(project).findFile(file) }
 

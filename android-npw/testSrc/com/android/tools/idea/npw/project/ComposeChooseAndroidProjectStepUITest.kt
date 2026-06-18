@@ -24,6 +24,8 @@ import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.doubleClick
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
@@ -31,6 +33,7 @@ import com.android.tools.idea.wizard.template.FormFactor
 import com.intellij.testFramework.ProjectRule
 import java.util.function.Supplier
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -113,7 +116,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     assertEquals(
       mobileTemplates[mobileTemplates.size - 1].name,
-      (model.chooseAndroidProjectEntries[0] as FormFactorProjectEntry).selectedTemplate?.name,
+      (model.chooseAndroidProjectEntries[1] as FormFactorProjectEntry).selectedTemplate?.name,
     )
   }
 
@@ -147,5 +150,23 @@ class ComposeChooseAndroidProjectStepUITest {
       .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
       .onChildren()
       .assertCountEquals(FormFactor.Wear.getProjectTemplates().size)
+  }
+
+  @Test
+  fun doubleClickTriggersNavigationCallback() = runTest {
+    var callbackTriggered = false
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    model.onTemplateDoubleClick = { callbackTriggered = true }
+    model.getAndroidProjectEntries()
+
+    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
+
+    composeTestRule
+      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
+      .onChildren()[0]
+      .performTouchInput { doubleClick() }
+
+    assertTrue(callbackTriggered)
   }
 }

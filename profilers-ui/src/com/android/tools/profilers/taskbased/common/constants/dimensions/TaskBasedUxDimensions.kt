@@ -19,12 +19,22 @@ import androidx.compose.ui.unit.dp
 
 object TaskBasedUxDimensions {
   // Size of each Task grid item in the Task selection grid. This includes both the task icon and title.
+  // Task grid dimensions (V1)
   val TASK_WIDTH_DP = 150.dp
   val TASK_GRID_HORIZONTAL_SPACE_DP = 25.dp
   val TASK_GRID_VERTICAL_SPACE_DP = 10.dp
   val TASK_GRID_HORIZONTAL_PADDING_DP = 50.dp
   val TASK_GRID_VERTICAL_PADDING_DP = 10.dp
   const val MAX_NUM_TASKS_IN_ROW = 5
+
+  // Task grid dimensions (V2)
+  val TASK_WIDTH_V2_DP = 230.dp
+  val TASK_HEIGHT_V2_DP = 120.dp
+  val TASK_GRID_HORIZONTAL_SPACE_V2_DP = 24.dp
+  val TASK_GRID_VERTICAL_SPACE_V2_DP = 14.dp
+  val TASK_GRID_HORIZONTAL_PADDING_V2_DP = 24.dp
+  val TASK_GRID_VERTICAL_PADDING_V2_DP = 24.dp
+  val TASK_TOOLTIP_WIDTH_V2_DP = 210.dp
 
   // Task tooltip width
   val TASK_TOOLTIP_WIDTH_DP = 200.dp
@@ -78,6 +88,8 @@ object TaskBasedUxDimensions {
   val LEAKCANARY_TOTAL_LEAKED_COL_WIDTH_DP = 100.dp
 
   // LeakCanary LeakDetail dimensions
+  val LEAKCANARY_ACTION_BAR_HEIGHT_DP = 34.dp
+  val LEAKCANARY_ACTION_BAR_VERTICAL_PADDING_DP = 4.dp
   val LEAKCANARY_MORE_INFO_TITLE_PADDING = 16.dp
   val LEAKCANARY_MORE_INFO_TEXT_PADDING = 8.dp
   val LEAKCANARY_MORE_INFO_TITLE_HORIZONTAL_SPACING_DP = 10.dp

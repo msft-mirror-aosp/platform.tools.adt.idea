@@ -9,14 +9,11 @@ aswb_library(
         "*.kt",
     ]),
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/shared",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf",
-        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf-lite",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

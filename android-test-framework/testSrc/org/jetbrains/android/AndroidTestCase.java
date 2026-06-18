@@ -61,7 +61,6 @@ import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.fixtures.impl.JavaModuleFixtureBuilderImpl;
 import com.intellij.testFramework.fixtures.impl.ModuleFixtureImpl;
 import com.intellij.util.ArrayUtil;
-import com.intellij.util.ui.UIUtil;
 import com.intellij.workspaceModel.ide.impl.WorkspaceModelCacheImpl;
 import java.io.File;
 import java.io.IOException;
@@ -229,7 +228,7 @@ public abstract class AndroidTestCase extends AndroidTestBase {
   protected void tearDown() throws Exception {
     try {
       // Finish dispatching any remaining events before shutting down everything
-      UIUtil.dispatchAllInvocationEvents();
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue();
       tearDownThreadingChecks();
 
       if (myApplicationComponentStack != null) {

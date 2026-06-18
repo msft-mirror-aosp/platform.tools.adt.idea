@@ -27,6 +27,7 @@ import com.intellij.debugger.NoDataException
 import com.intellij.debugger.SourcePosition
 import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.PositionManagerImpl
+import com.intellij.debugger.engine.jdi.VirtualMachineProxy
 import com.intellij.debugger.impl.DebuggerUtilsEx
 import com.intellij.debugger.impl.PrioritizedTask
 import com.intellij.debugger.requests.ClassPrepareRequestor
@@ -116,7 +117,7 @@ class AndroidPositionManager(private val myDebugProcess: DebugProcessImpl) : Pos
 
   // When setting breakpoints or debugging into SDK source, the Location's sourceName() method
   // returns a string of the form "FileName.java"; this resolves into a JavaFileType.
-  override fun getAcceptedFileTypes(): Set<FileType> = setOf(JavaFileType.INSTANCE)
+  override fun isAcceptedFileType(fileType: FileType): Boolean = fileType == JavaFileType.INSTANCE
 
   @Throws(NoDataException::class)
   override fun getSourcePosition(location: Location?): SourcePosition {
@@ -229,14 +230,15 @@ class AndroidPositionManager(private val myDebugProcess: DebugProcessImpl) : Pos
   }
 
   private fun getCompanionsOfTypes(position: SourcePosition, types: List<ReferenceType>): List<ReferenceType> {
-    val allLoadedTypes = runCatching { debugProcess.virtualMachineProxy.allClasses() }.getOrDefault(emptyList())
+    @Suppress("UnstableApiUsage")
+    val allLoadedTypes = runCatching { VirtualMachineProxy.getCurrent().allClasses() }.getOrDefault(emptyList())
     return allLoadedTypes.filter { loadedType -> types.any { candidate -> loadedType.isCompanion(candidate.name(), position) } }
   }
 
   private fun getCompanionsForPositionByName(position: SourcePosition): List<ReferenceType> =
     ReadAction.compute<List<ReferenceType>, RuntimeException> {
       getLineClasses(position.file, position.line).flatMap {
-        debugProcess.virtualMachineProxy.classesByName("${it.getJvmName()}$COMPANION_CLASS_SUFFIX")
+        @Suppress("UnstableApiUsage") VirtualMachineProxy.getCurrent().classesByName("${it.getJvmName()}$COMPANION_CLASS_SUFFIX")
       }
     }
 

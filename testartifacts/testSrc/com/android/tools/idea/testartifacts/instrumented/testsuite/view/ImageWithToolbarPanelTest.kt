@@ -20,6 +20,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBFont
 import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 import java.awt.event.ComponentEvent
@@ -304,5 +305,82 @@ class ImageWithToolbarPanelTest {
 
     panel.zoomInAction.actionPerformed(event)
     assertEquals("Callback should be triggered by zoomInAction", 1, callCount)
+  }
+
+  @Test
+  fun testImageCaching() {
+    if (GraphicsEnvironment.isHeadless()) {
+      println("Skipping testImageCaching due to Headless environment")
+      return
+    }
+
+    val panel = ImageWithToolbarPanel(ScreenshotViewType.NEW, showToolbar = true, showTitle = true)
+    val frame = JFrame()
+    val image = BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB)
+
+    try {
+      frame.add(panel)
+      frame.addNotify()
+
+      panel.setImage(image)
+
+      val scrollPane = panel.scrollPane
+      val viewport = scrollPane.viewport
+      val imageContainer = viewport.view as javax.swing.JPanel
+      val imageLabel = imageContainer.components.find { it is JBLabel } as JBLabel
+
+      assertEquals(null, panel.cachedScaledImage)
+
+      val tempImage = BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB)
+      val g = tempImage.createGraphics()
+      try {
+        imageLabel.paint(g)
+
+        assertNotNull(panel.cachedScaledImage)
+        val firstCachedImage = panel.cachedScaledImage
+
+        imageLabel.paint(g)
+        assertEquals(firstCachedImage, panel.cachedScaledImage)
+
+        panel.zoomIn()
+        assertEquals(firstCachedImage, panel.cachedScaledImage)
+
+        imageLabel.paint(g)
+        assertNotEquals(firstCachedImage, panel.cachedScaledImage)
+        assertNotNull(panel.cachedScaledImage)
+      } finally {
+        g.dispose()
+      }
+    } catch (e: java.awt.HeadlessException) {
+      println("Skipping testImageCaching due to HeadlessException")
+    } finally {
+      frame.dispose()
+    }
+  }
+
+  @Test
+  fun testTitleLabelFontUpdatesOnUIChange() {
+    val panel = ImageWithToolbarPanel(ScreenshotViewType.NEW, showToolbar = true, showTitle = true)
+    val titleLabel = findTitleLabel(panel)
+    assertNotNull("titleLabel should exist when showTitle is true", titleLabel)
+
+    // Trigger updateUI to simulate a look-and-feel / global font change
+    titleLabel!!.updateUI()
+
+    val expectedFont = JBFont.label().biggerOn(2f).asBold()
+    assertEquals(expectedFont, titleLabel.font)
+  }
+
+  private fun findTitleLabel(container: java.awt.Container): JBLabel? {
+    for (component in container.components) {
+      if (component is JBLabel && component.text == ScreenshotViewType.NEW.displayText) {
+        return component
+      }
+      if (component is java.awt.Container) {
+        val found = findTitleLabel(component)
+        if (found != null) return found
+      }
+    }
+    return null
   }
 }

@@ -22,6 +22,7 @@ import com.intellij.debugger.engine.DebugProcess
 import com.intellij.debugger.engine.PositionManagerAsync
 import com.intellij.debugger.engine.PositionManagerWithMultipleStackFrames
 import com.intellij.debugger.engine.evaluation.EvaluationContext
+import com.intellij.debugger.engine.jdi.VirtualMachineProxy
 import com.intellij.debugger.jdi.StackFrameProxyImpl
 import com.intellij.debugger.requests.ClassPrepareRequestor
 import com.intellij.debugger.ui.impl.watch.StackFrameDescriptorImpl
@@ -31,7 +32,7 @@ import com.intellij.xdebugger.frame.XStackFrame
 import com.sun.jdi.Location
 import com.sun.jdi.ReferenceType
 import com.sun.jdi.request.ClassPrepareRequest
-import org.jetbrains.kotlin.idea.base.util.KOTLIN_FILE_TYPES
+import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.debugger.KotlinPositionManager
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -46,7 +47,7 @@ import org.jetbrains.kotlin.psi.KtFile
  */
 class ComposePositionManager(private val debugProcess: DebugProcess, private val kotlinPositionManager: KotlinPositionManager) :
   MultiRequestPositionManager by kotlinPositionManager, PositionManagerWithMultipleStackFrames, PositionManagerAsync {
-  override fun getAcceptedFileTypes(): Set<FileType> = KOTLIN_FILE_TYPES
+  override fun isAcceptedFileType(fileType: FileType): Boolean = fileType == KotlinFileType.INSTANCE
 
   override suspend fun createStackFramesAsync(descriptor: StackFrameDescriptorImpl): List<XStackFrame>? {
     return kotlinPositionManager.createStackFramesAsync(descriptor)
@@ -74,7 +75,7 @@ class ComposePositionManager(private val debugProcess: DebugProcess, private val
       throw NoDataException.INSTANCE
     }
 
-    val vm = debugProcess.virtualMachineProxy
+    @Suppress("UnstableApiUsage") val vm = VirtualMachineProxy.getCurrent()
     val singletonClasses =
       vm.classesByName(computeComposableSingletonsClassName(file)).flatMap { referenceType ->
         if (referenceType.isPrepared) allRecursivelyNestedTypesOf(referenceType) else listOf()
@@ -92,7 +93,7 @@ class ComposePositionManager(private val debugProcess: DebugProcess, private val
   }
 
   private fun allRecursivelyNestedTypesOf(classType: ReferenceType): List<ReferenceType> {
-    val vm = debugProcess.virtualMachineProxy
+    @Suppress("UnstableApiUsage") val vm = VirtualMachineProxy.getCurrent()
     val result = mutableListOf<ReferenceType>()
     val worklist = mutableListOf(classType)
     while (worklist.isNotEmpty()) {

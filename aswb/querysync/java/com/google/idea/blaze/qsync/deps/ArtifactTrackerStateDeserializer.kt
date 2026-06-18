@@ -16,7 +16,6 @@
 package com.google.idea.blaze.qsync.deps
 
 import com.google.common.collect.ImmutableList
-import com.google.common.collect.ImmutableMap
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.qsync.artifacts.ArtifactMetadata
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact
@@ -58,15 +57,14 @@ class ArtifactTrackerStateDeserializer(private val metadataFactory: ArtifactMeta
 
   private fun visitTargetBuildInfo(entry: Map.Entry<String, ArtifactTrackerProto.TargetBuildInfo>) {
     val proto = entry.value
-    val builder = TargetBuildInfo.builder().buildContext(buildContexts[proto.getBuildId()])
+    val buildContext = buildContexts[proto.getBuildId()] ?: DependencyBuildContext.NONE
     val owner = Label.of(entry.key)
-    if (proto.hasJavaArtifacts()) {
-      builder.javaInfo(convertJavaArtifactInfo(owner, proto.javaArtifacts))
-    }
-    if (proto.hasCcInfo()) {
-      builder.ccInfo(convertCcCompilationInfo(owner, proto.ccInfo))
-    }
-    _depsMap[owner] = builder.build()
+    _depsMap[owner] =
+      when {
+        proto.hasJavaArtifacts() -> TargetBuildInfo.forJavaTarget(convertJavaArtifactInfo(owner, proto.javaArtifacts), buildContext)
+        proto.hasCcInfo() -> TargetBuildInfo.forCcTarget(convertCcCompilationInfo(owner, proto.ccInfo), buildContext)
+        else -> error("TargetBuildInfo must have either javaInfo or ccInfo")
+      }
   }
 
   private fun visitCcToolchain(id: String, proto: ArtifactTrackerProto.CcToolchain) {
@@ -98,39 +96,39 @@ class ArtifactTrackerStateDeserializer(private val metadataFactory: ArtifactMeta
   }
 
   private fun convertJavaArtifactInfo(owner: Label, proto: ArtifactTrackerProto.JavaArtifacts): JavaArtifactInfo {
-    return JavaArtifactInfo.builder()
-      .setLabel(owner)
-      .setIsExternalDependency(proto.isExternalDependency)
-      .setJars(toArtifactList(proto.jarsList, owner))
-      .setOutputJars(toArtifactList(proto.outputJarsList, owner))
-      .setIdeAar(if (proto.hasIdeAar()) toArtifact(proto.ideAar, owner) else null)
-      .setGenSrcs(toArtifactList(proto.genSrcsList, owner))
-      .setGenAndroidRes(toArtifactList(proto.genAndroidResList, owner))
-      .setProtoSrcjars(toArtifactList(proto.protoSrcjarsList, owner))
-      .setSources(proto.sourcesList.map { projectPathFrom(it) }.toSet())
-      .setSrcJars(proto.srcJarsList.map { projectPathFrom(it) }.toSet())
-      .setAndroidResourcesPackage(proto.getAndroidResourcesPackage())
-      .setKotlinCompilerFlags(ImmutableList.copyOf(proto.kotlinCompilerFlagsList))
-      .setIsKotlinToolchain(proto.isKotlinToolchain)
-      .build()
+    return JavaArtifactInfo(
+      label = owner,
+      isExternalDependency = proto.isExternalDependency,
+      isKotlinToolchain = proto.isKotlinToolchain,
+      jars = toArtifactList(proto.jarsList, owner).toSet(),
+      outputJars = toArtifactList(proto.outputJarsList, owner).toSet(),
+      ideAar = if (proto.hasIdeAar()) toArtifact(proto.ideAar, owner) else null,
+      genSrcs = toArtifactList(proto.genSrcsList, owner).toSet(),
+      genAndroidRes = toArtifactList(proto.genAndroidResList, owner).toSet(),
+      protoSrcjars = toArtifactList(proto.protoSrcjarsList, owner).toSet(),
+      sources = proto.sourcesList.map { projectPathFrom(it) }.toSet(),
+      srcJars = proto.srcJarsList.map { projectPathFrom(it) }.toSet(),
+      androidResourcesPackage = proto.androidResourcesPackage,
+      kotlinCompilerFlags = proto.kotlinCompilerFlagsList,
+    )
   }
 
   private fun convertCcCompilationInfo(owner: Label, proto: ArtifactTrackerProto.CcCompilationInfo): CcCompilationInfo {
-    return CcCompilationInfo.builder()
-      .target(owner)
-      .copts(proto.coptsList)
-      .defines(proto.definesList)
-      .includeDirectories(proto.includeDirectoriesList.map { projectPathFrom(it) })
-      .quoteIncludeDirectories(proto.quoteIncludeDirectoriesList.map { projectPathFrom(it) })
-      .systemIncludeDirectories(proto.sysytemIncludeDirectoriesList.map { projectPathFrom(it) })
-      .frameworkIncludeDirectories(proto.frameworkIncludeDirectoriesList.map { projectPathFrom(it) })
-      .genHeaders(toArtifactList(proto.genHeadersList, owner))
-      .toolchainId(proto.getToolchainId())
-      .build()
+    return CcCompilationInfo(
+      target = owner,
+      copts = proto.coptsList,
+      defines = proto.definesList,
+      includeDirectories = proto.includeDirectoriesList.map { projectPathFrom(it) },
+      quoteIncludeDirectories = proto.quoteIncludeDirectoriesList.map { projectPathFrom(it) },
+      systemIncludeDirectories = proto.sysytemIncludeDirectoriesList.map { projectPathFrom(it) },
+      frameworkIncludeDirectories = proto.frameworkIncludeDirectoriesList.map { projectPathFrom(it) },
+      genHeaders = toArtifactList(proto.genHeadersList, owner).toSet(),
+      toolchainId = proto.getToolchainId(),
+    )
   }
 
   private fun toArtifact(a: ArtifactTrackerProto.Artifact, owner: Label): BuildArtifact {
-    return BuildArtifact.create(a.getDigest(), Path.of(a.getArtifactPath()), owner, ImmutableMap.copyOf(toArtifactMap(a.metadataList)))
+    return BuildArtifact(a.getDigest(), Path.of(a.getArtifactPath()), owner, toArtifactMap(a.metadataList))
   }
 
   private fun toArtifactList(protos: List<ArtifactTrackerProto.Artifact>, owner: Label): List<BuildArtifact> {

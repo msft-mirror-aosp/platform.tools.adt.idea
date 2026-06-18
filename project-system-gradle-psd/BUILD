@@ -39,6 +39,9 @@ iml_module(
         "//tools/base/lint:studio.android.sdktools.lint-api",
         "//tools/base/lint:studio.android.sdktools.lint-checks",
         "//tools/adt/idea/analytics",
+        "@intellij//:intellij.java.ui",
+        "@intellij//:intellij.java.compiler.impl",
+        "@intellij//:intellij.java.compiler",
     ],
 )
 
@@ -192,11 +195,13 @@ maven_repository(
         "@maven//:org.codehaus.mojo.animal-sniffer-annotations_1.17",
         "@maven//:org.jacoco.org.jacoco.ant_0.8.13",
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
+        "@maven//:org.jetbrains.kotlin.compose-compiler-gradle-plugin_2.2.10",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.0",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.22",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.5.2",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core-jvm_1.4.1",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.5.2",
         "@maven//:org.mockito.mockito-core_5.12.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",

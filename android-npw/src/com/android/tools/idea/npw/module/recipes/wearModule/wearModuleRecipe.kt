@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.npw.module.recipes.wearModule
 
-import com.android.tools.idea.npw.module.recipes.IconsGenerationStyle
 import com.android.tools.idea.npw.module.recipes.generateCommonModule
 import com.android.tools.idea.npw.module.recipes.generateManifest
+import com.android.tools.idea.templates.recipe.IconsGenerationStyle
 import com.android.tools.idea.wizard.template.ModuleTemplateData
 import com.android.tools.idea.wizard.template.RecipeExecutor
 
@@ -27,15 +27,19 @@ private const val WATCH_FEATURE_BLOCK =
     <uses-feature android:name="android.hardware.type.watch" />
   """
 
-fun RecipeExecutor.generateWearModule(data: ModuleTemplateData, appTitle: String?, useKts: Boolean, useVersionCatalog: Boolean = true) {
+fun RecipeExecutor.generateWearModule(
+  data: ModuleTemplateData,
+  appTitle: String?,
+  hasCustomRenderer: Boolean = false,
+  generateStandardFiles: Boolean = true,
+) {
   if (data.isWatchFace) {
-    generateWearWatchFaceModule(data, appTitle, useKts, useVersionCatalog)
+    generateWearWatchFaceModule(data, appTitle, hasCustomRenderer, generateStandardFiles)
     return
   }
   generateCommonModule(
     data,
     appTitle,
-    useKts,
     generateManifest(
       hasApplicationBlock = !data.isLibrary,
       theme = "@android:style/Theme.DeviceDefault",
@@ -46,7 +50,8 @@ fun RecipeExecutor.generateWearModule(data: ModuleTemplateData, appTitle: String
     themesXml = null,
     colorsXml = null,
     noKtx = true,
-    useVersionCatalog = useVersionCatalog,
+    hasCustomRenderer = hasCustomRenderer,
+    generateStandardFiles = generateStandardFiles,
   )
 
   addDependency("com.google.android.gms:play-services-wearable:+")
@@ -55,20 +60,20 @@ fun RecipeExecutor.generateWearModule(data: ModuleTemplateData, appTitle: String
 private fun RecipeExecutor.generateWearWatchFaceModule(
   data: ModuleTemplateData,
   appTitle: String?,
-  useKts: Boolean,
-  useVersionCatalog: Boolean = true,
+  hasCustomRenderer: Boolean = false,
+  generateStandardFiles: Boolean = true,
 ) {
   generateCommonModule(
     data = data,
     appTitle = appTitle,
     appTitleResName = "watch_face_name",
-    useKts = useKts,
     manifestXml = generateManifest(hasApplicationBlock = false, usesFeatureBlock = WATCH_FEATURE_BLOCK),
     iconsGenerationStyle = IconsGenerationStyle.NONE,
     themesXml = null,
     colorsXml = null,
     noKtx = true,
-    useVersionCatalog = useVersionCatalog,
     hasCode = false,
+    hasCustomRenderer = hasCustomRenderer,
+    generateStandardFiles = generateStandardFiles,
   )
 }

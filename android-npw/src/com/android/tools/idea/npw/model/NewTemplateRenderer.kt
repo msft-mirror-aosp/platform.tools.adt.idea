@@ -94,9 +94,7 @@ private fun Recipe.doRender(c: RenderingContext, e: RecipeExecutor): Boolean {
       .withUndoConfirmationPolicy(UndoConfirmationPolicy.REQUEST_CONFIRMATION)
       .run<IOException> {
         this(e, c.templateData)
-        if (e is DefaultRecipeExecutor) {
-          e.applyChanges()
-        }
+        e.applyChanges()
       }
   } catch (e: IOException) {
     if (c.showErrors) {
@@ -224,7 +222,7 @@ fun titleToTemplateRenderer(title: String, formFactor: FormFactor): TemplateRend
     "App Widget" -> TemplateRenderer.APP_WIDGET
     "Layout XML File" -> TemplateRenderer.LAYOUT_XML_FILE
     "Values XML File" -> TemplateRenderer.VALUES_XML_FILE
-    "Gemini API Starter" -> TemplateRenderer.EXPERIMENTAL_ACTIVITY
+    "Gemini API" -> TemplateRenderer.EXPERIMENTAL_ACTIVITY
     "Basic Headset Activity" -> TemplateRenderer.EXPERIMENTAL_ACTIVITY_2
     "Navigation UI Activity" -> TemplateRenderer.COMPOSE_NAVIGATION_UI_ACTIVITY
     else -> TemplateRenderer.CUSTOM_TEMPLATE_RENDERER
@@ -405,7 +403,7 @@ fun logRendering(projectData: ProjectTemplateData, project: Project, metrics: Te
   val templateProjectBuilder =
     TemplatesUsage.TemplateProject.newBuilder().apply {
       usesLegacySupport = metrics.useAppCompat
-      usesBuildGradleKts = metrics.useGradleKts
+      usesBuildGradleKts = metrics.dslLanguage.isKts
     }
 
   val kotlinSupport =

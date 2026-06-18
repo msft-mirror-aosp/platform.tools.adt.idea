@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.insights.persistence
 
-import com.android.tools.idea.insights.AppInsightsState
+import com.android.tools.idea.insights.AppInsightsCrashState
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
@@ -28,6 +28,8 @@ class AppInsightsSettings : PersistentStateComponent<AppInsightsSettings> {
   var selectedTabId: String? = null
   var tabSettings: MutableMap<String, InsightsFilterSettings> = mutableMapOf()
   var isOfflineNotificationDismissed: Boolean = false
+  // Users who enabled auto generate
+  var insightAutoGenerateEnabledUsers = mutableSetOf<String>()
 
   override fun getState() = this
 
@@ -35,7 +37,17 @@ class AppInsightsSettings : PersistentStateComponent<AppInsightsSettings> {
     XmlSerializerUtil.copyBean(state, this)
   }
 
-  fun setTabSetting(tabId: String, state: AppInsightsState) {
+  fun setTabSetting(tabId: String, state: AppInsightsCrashState) {
     tabSettings[tabId] = state.toFilterSettings()
   }
+
+  fun enableAutoGenerate(user: String) {
+    insightAutoGenerateEnabledUsers.add(user)
+  }
+
+  fun disableAutoGenerate(user: String) {
+    insightAutoGenerateEnabledUsers.remove(user)
+  }
+
+  fun isInsightAutoGenerateEnabled(user: String) = (user in insightAutoGenerateEnabledUsers)
 }

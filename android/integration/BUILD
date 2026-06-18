@@ -1,8 +1,9 @@
 load("@rules_java//java:defs.bzl", "java_library")
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE", "KOTLIN_ARTIFACTS_FOR_TESTS")
-load("//tools/adt/idea/emulator-snapshots:emulator_jvm_flags.bzl", "emulator_snapshot_jvm_flags", "emulator_test_jvm_flags")
+load("//tools/adt/idea/emulator-snapshots:emulator_test_env.bzl", "emulator_snapshot_data", "emulator_snapshot_jvm_flags", "emulator_test_jvm_flags")
+load("//tools/adt/idea/gradle-prebuild:gradle_prebuild.bzl", "gradle_build_project")
 load("//tools/adt/idea/studio:studio.bzl", "studio_project_model")
-load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
+load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test", "studio_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
 # managed by go/iml_to_build
@@ -31,15 +32,30 @@ iml_module(
     deps = ["@intellij//:com.intellij.java"],
 )
 
+filegroup(
+    name = "gradle-distrib-8.6-with-jre21",
+    srcs = [
+        "//prebuilts/studio/jdk:jdk21",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 open_project_data = [
     ":minapp",
     ":openproject_deps",
     INTEGRATION_TEST_GRADLE_VERSION,
 ]
 
-iml_test(
+studio_test(
     name = "OpenProjectTest",
     timeout = "long",
+    # To run test for a single config, like "canary", use target OpenProjectTest_canary
+    configs = [
+        "canary",
+        "nightly",
+        "stable",
+    ],
     data = open_project_data,
     module = ":intellij.android.core.integration",
     tags = [
@@ -250,9 +266,8 @@ iml_test(
     data = [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = "//tools/emulator/tests:android.tools.emulator.tests",
     tags = [
@@ -266,19 +281,24 @@ iml_test(
     test_class = "com.android.tools.idea.EmulatorTest",
 )
 
-iml_test(
+studio_test(
     name = "DebuggerTest",
     timeout = "long",
+    # To run test for a single config, like "canary", use target <test target name>_canary
+    configs = [
+        "canary",
+        "nightly",
+        "stable",
+    ],
     data = [
         ":buildproject_deps",
         ":mindebugapp_project_model",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -300,9 +320,8 @@ iml_test(
     data = [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -319,11 +338,11 @@ iml_test(
     timeout = "long",
     data = [
         ":minapp",
+        "//prebuilts/studio/jdk:jdk21",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -344,10 +363,9 @@ iml_test(
         ":minapp",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
-        "//tools/base/build-system:gradle-distrib-7.2",
+        INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -389,6 +407,7 @@ live_edit_test_data = [
     "//prebuilts/studio/sdk:platforms/android-35",
     "//prebuilts/studio/sdk:build-tools/35.0.0",
     "//prebuilts/studio/sdk:platform-tools",
+    "//prebuilts/studio/jdk:jdk21",
 ]
 
 iml_test(
@@ -397,8 +416,7 @@ iml_test(
     data = live_edit_test_data + [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -421,9 +439,8 @@ iml_test(
     data = live_edit_test_data + [
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = [
         "-Dstudio.profiling.capture_jfr=true",
         "-Dstudio.profiling.gradle.capture_jfr=true",
@@ -455,10 +472,16 @@ apply_changes_data = [
     INTEGRATION_TEST_GRADLE_VERSION,
 ]
 
-iml_test(
+studio_test(
     name = "ApplyChangesTest",
     timeout = "long",
-    data = apply_changes_data + ["//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot"],
+    # To run test for a single config, like "canary", use target <test target name>_canary
+    configs = [
+        "canary",
+        "nightly",
+        "stable",
+    ],
+    data = apply_changes_data + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -476,7 +499,7 @@ iml_test(
 iml_test(
     name = "ApplyCodeChangesTest",
     timeout = "long",
-    data = apply_changes_data + ["//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot"],
+    data = apply_changes_data + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -504,14 +527,13 @@ build_and_run_test_data = [
 iml_test(
     name = "BuildAndRunTest",
     timeout = "long",
-    data = build_and_run_test_data + ["//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot"],
+    data = build_and_run_test_data + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     exec_properties = {
         "dockerNetwork": "standard",
     },
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
-        "noci:studio-win",  # Disabling due to b/491123352#comment4 and other instances of quota getting exhausted
         "studio-e2e-test",
     ],
     tags_linux = ["block-network"],
@@ -523,14 +545,20 @@ iml_test(
 create_project_test_data = [
     ":createproject_deps",
     "//prebuilts/studio/sdk:build-tools/36.0.0",
-    "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+    "//prebuilts/studio/jdk:jdk21",
     "//prebuilts/studio/sdk:platforms/android-36",
     "//tools/base/build-system:gradle-distrib-9.1.0",  # The test itself sets a flag for which AGP version to use, so we can't rely on the framework choosing INTEGRATION_TEST_GRADLE_VERSION for us
 ]
 
-iml_test(
+studio_test(
     name = "CreateProjectTest",
     timeout = "long",
+    # To run test for a single config, like "canary", use target <test target name>_canary
+    configs = [
+        "canary",
+        "nightly",
+        "stable",
+    ],
     data = create_project_test_data,
     module = ":intellij.android.core.integration",
     tags = [
@@ -663,9 +691,15 @@ maven_repository(
     ] + KOTLIN_ARTIFACTS_FOR_TESTS,
 )
 
-iml_test(
+studio_test(
     name = "BuildProjectTest",
     timeout = "long",
+    # To run test for a single config, like "canary", use target <test target name>_canary
+    configs = [
+        "canary",
+        "nightly",
+        "stable",
+    ],
     data = [
         ":buildproject_deps",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
@@ -710,13 +744,13 @@ iml_test(
     timeout = "long",
     data = [
         ":helloworldapk",
+        "//prebuilts/studio/jdk:jdk21",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-31",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -743,8 +777,7 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-31",
         "//prebuilts/studio/sdk:system_image_android-33_default",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_33_snapshot",
-    ],
+    ] + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -792,10 +825,9 @@ iml_test(
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-33",
-        "//tools/adt/idea/emulator-snapshots:emulator_quickboot_api_31_snapshot",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
-    ],
+    ] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE),
     jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.core.integration",
     tags = [
@@ -1175,7 +1207,9 @@ filegroup(
 java_library(
     name = "project_model_generator_lib",
     testonly = True,
-    srcs = ["testSrc/com/android/tools/idea/ProjectIndexAndGradleSyncGenerator.java"],
+    srcs = [
+        "testSrc/com/android/tools/idea/ProjectIndexAndGradleSyncGenerator.java",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "//tools/adt/idea/as-driver:as-driver.utils_testlib",
@@ -1187,12 +1221,12 @@ studio_project_model(
     name = "minapp_project_model",
     srcs = [
         ":buildproject_deps",
-        ":minapp",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        ":minapp_built_project",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
     out_dir_name = "minapp_project_model",
-    project_path = "tools/adt/idea/android/integration/testData/minapp",
+    project_path = "tools/adt/idea/android/integration/minapp_built_project/minapp",
     visibility = ["//visibility:public"],
 )
 
@@ -1201,7 +1235,7 @@ studio_project_model(
     srcs = [
         ":debug_junit_test_deps",
         ":debugjunittest",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/debug_junit_test_deps.manifest",
     out_dir_name = "debugjunittest_project_model",
@@ -1213,7 +1247,7 @@ studio_project_model(
     srcs = [
         ":architectureSamples",
         ":editor_performance_test_deps",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/editor_performance_test_deps.manifest",
     out_dir_name = "architectureSamples_project_model",
@@ -1225,7 +1259,7 @@ studio_project_model(
     srcs = [
         ":languagehighlighting",
         ":languagehighlighting_deps",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/languagehighlighting_deps.manifest",
     out_dir_name = "languagehighlighting_project_model",
@@ -1237,7 +1271,7 @@ studio_project_model(
     srcs = [
         ":applychangesproject",
         ":buildproject_deps",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
     out_dir_name = "applychanges_project_model",
@@ -1249,7 +1283,7 @@ studio_project_model(
     srcs = [
         ":instrumenttestapp",
         ":run_instrumented_test_project_deps",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/run_instrumented_test_project_deps.manifest",
     out_dir_name = "instrumenttestapp_project_model",
@@ -1262,7 +1296,7 @@ studio_project_model(
     srcs = [
         ":buildproject_deps",
         ":mindebugapp",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
     out_dir_name = "mindebugapp_project_model",
@@ -1273,10 +1307,43 @@ studio_project_model(
     name = "kmpapp_project_model",
     srcs = [
         ":buildkmpproject_deps",
-        ":kmpapp",
-        "//tools/base/build-system:gradle-distrib-8.6",
+        ":kmpapp_built_project",
+        INTEGRATION_TEST_GRADLE_VERSION,
     ],
     manifest_path = "tools/adt/idea/android/integration/buildkmpproject_deps.manifest",
     out_dir_name = "kmpapp_project_model",
+    project_path = "tools/adt/idea/android/integration/kmpapp_built_project/kmpapp",
+    visibility = ["//visibility:public"],
+)
+
+gradle_build_project(
+    name = "minapp_built_project",
+    srcs = [
+        ":buildproject_deps",
+        ":minapp",
+        "//prebuilts/studio/sdk:build-tools/33.0.1",
+        "//prebuilts/studio/sdk:platforms/android-33",
+    ],
+    gradle_dist = INTEGRATION_TEST_GRADLE_VERSION,
+    manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
+    out_dir_name = "minapp_built_project",
+    project_name = "minapp",
+    project_path = "tools/adt/idea/android/integration/testData/minapp",
+    visibility = ["//visibility:public"],
+)
+
+gradle_build_project(
+    name = "kmpapp_built_project",
+    srcs = [
+        ":buildkmpproject_deps",
+        ":kmpapp",
+        "//prebuilts/studio/sdk:build-tools/33.0.1",
+        "//prebuilts/studio/sdk:platforms/android-33",
+    ],
+    gradle_dist = INTEGRATION_TEST_GRADLE_VERSION,
+    manifest_path = "tools/adt/idea/android/integration/buildkmpproject_deps.manifest",
+    out_dir_name = "kmpapp_built_project",
+    project_name = "kmpapp",
     project_path = "tools/adt/idea/android/integration/testData/kmpapp",
+    visibility = ["//visibility:public"],
 )

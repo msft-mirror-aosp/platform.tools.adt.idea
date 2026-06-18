@@ -16,6 +16,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/base/repository:studio.android.sdktools.repository",
+        "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:truth",
         "@intellij//:org.toml.lang",
@@ -38,6 +39,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.java.debugger",
+        "@intellij//:intellij.java.debugger.impl",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.kotlin",

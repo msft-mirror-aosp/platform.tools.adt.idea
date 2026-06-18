@@ -1658,6 +1658,7 @@ MODULE                        : My_First_App.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -1676,6 +1677,7 @@ MODULE                        : My_First_App.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -1694,12 +1696,13 @@ MODULE                        : My_First_App.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -2787,6 +2790,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -2805,6 +2809,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -2823,12 +2828,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

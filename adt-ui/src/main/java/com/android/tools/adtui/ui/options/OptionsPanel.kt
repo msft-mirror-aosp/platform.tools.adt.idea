@@ -25,28 +25,36 @@ import com.android.tools.adtui.model.options.OptionsProvider
 import com.android.tools.adtui.model.options.PropertyInfo
 import com.android.tools.adtui.model.options.Slider
 import com.intellij.openapi.ui.VerticalFlowLayout
-import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import java.awt.Component
+import java.awt.Container
 import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.KeyboardFocusManager
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.util.Locale
-import javax.swing.DefaultListCellRenderer
+import javax.swing.AbstractButton
 import javax.swing.JComponent
 import javax.swing.JLabel
-import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.JRadioButton
 import javax.swing.JSeparator
 import javax.swing.JSlider
 import javax.swing.JSpinner
 import javax.swing.SpinnerNumberModel
+import javax.swing.SwingUtilities
+import javax.swing.text.AttributeSet
+import javax.swing.text.DefaultFormatterFactory
+import javax.swing.text.DocumentFilter
+import javax.swing.text.NumberFormatter
 
 /**
  * The OptionsPanel control is dynamically populated based on the currently set {@link OptionsProvider}. This control will enumerate all
@@ -90,6 +98,18 @@ class OptionsPanel : JComponent() {
   }
 
   private fun updateOptionProvider() {
+    // Cache the currently focused button text so we can restore focus after the UI rebuild.
+    val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
+
+    // ONLY save the focus state if the currently focused component is actually INSIDE this OptionsPanel,
+    // to prevent stealing focus from other parts of Android Studio during the initial load.
+    val focusedText =
+      if (focusOwner != null && SwingUtilities.isDescendingFrom(focusOwner, this)) {
+        (focusOwner as? AbstractButton)?.text
+      } else {
+        null
+      }
+
     removeAll()
     groups.clear()
     if (option == null) {
@@ -167,6 +187,25 @@ class OptionsPanel : JComponent() {
     buildPropertyUI(properties.values.toList().sortedBy { it.name })
     revalidate()
     repaint()
+
+    // Restore focus to the new instance of the previously focused component
+    if (focusedText != null) {
+      val componentToFocus = findComponentWithText(this, focusedText)
+      SwingUtilities.invokeLater { componentToFocus?.requestFocusInWindow() }
+    }
+  }
+
+  private fun findComponentWithText(container: Container, text: String): Component? {
+    for (component in container.components) {
+      if (component is AbstractButton && component.text == text) {
+        return component
+      }
+      if (component is Container) {
+        val found = findComponentWithText(component, text)
+        if (found != null) return found
+      }
+    }
+    return null
   }
 
   private fun buildHeader(propertyInfo: PropertyInfo?) {
@@ -179,6 +218,7 @@ class OptionsPanel : JComponent() {
     val name = propertyInfo.value.toString()
     val headerPanel = JPanel(VerticalFlowLayout())
     val headerLabel = JLabel(name)
+    headerLabel.putClientProperty("html.disable", true)
     headerLabel.font = headerLabel.font.deriveFont(Font.BOLD)
     headerLabel.setSize(100, 100)
     headerPanel.add(headerLabel)
@@ -218,8 +258,14 @@ class OptionsPanel : JComponent() {
       if (property.description.isNotEmpty()) {
         groupPanel.add(
           JLabel(property.description).apply {
-            // Match the horizontal position of the control (120px label + component indent)
-            val leftPadding = if (property.indent) 140 else 120
+            // Match the horizontal position of the control
+            // For boolean binders, the control is a Checkbox which doesn't have a 120px preceding label
+            val leftPadding =
+              if (property.binder is BooleanBinder) {
+                if (property.indent) 44 else 24
+              } else {
+                if (property.indent) 140 else 120
+              }
             border = JBUI.Borders.emptyLeft(leftPadding)
             foreground = JBColor(0x4E4E4E, 0xB5B5B5)
           }
@@ -310,6 +356,7 @@ private class IntBinder : OptionsBinder {
       add(JLabel(data.name), TabularLayout.Constraint(0, 0))
       add(
         JSpinner(SpinnerNumberModel(data.value as Int, 0, 100000, 100)).apply {
+          enforceNonNegativeIntegerInputOnly()
           addChangeListener { data.value = this.value }
           isEnabled = !readonly
         },
@@ -318,6 +365,58 @@ private class IntBinder : OptionsBinder {
       add(JLabel(data.unit), TabularLayout.Constraint(0, 2))
     }
   }
+}
+
+/**
+ * Configures a JSpinner to silently reject non-digit characters (except grouping separators), allow clearing the field, and fallback to the
+ * previous value if left blank.
+ */
+private fun JSpinner.enforceNonNegativeIntegerInputOnly() {
+  val numberEditor = editor as? JSpinner.NumberEditor ?: return
+  val textField = numberEditor.textField
+  val groupingSeparator = numberEditor.format?.decimalFormatSymbols?.groupingSeparator ?: ','
+
+  val customFormatter =
+    object : NumberFormatter(numberEditor.format) {
+      init {
+        valueClass = model?.value?.javaClass ?: Int::class.javaObjectType
+        minimum = (model as? SpinnerNumberModel)?.minimum
+        maximum = (model as? SpinnerNumberModel)?.maximum
+        allowsInvalid = true // Required to permit temporary empty strings while clearing the field.
+      }
+
+      override fun getDocumentFilter(): DocumentFilter {
+        val baseFilter = super.getDocumentFilter()
+        return object : DocumentFilter() {
+          private fun isValid(s: String?) = s == null || s.all { it.isDigit() || it == groupingSeparator }
+
+          override fun insertString(fb: FilterBypass, offset: Int, string: String?, attr: AttributeSet?) {
+            if (isValid(string)) baseFilter.insertString(fb, offset, string, attr)
+          }
+
+          override fun replace(fb: FilterBypass, offset: Int, length: Int, text: String?, attrs: AttributeSet?) {
+            if (isValid(text)) baseFilter.replace(fb, offset, length, text, attrs)
+          }
+
+          override fun remove(fb: FilterBypass, offset: Int, length: Int) {
+            baseFilter.remove(fb, offset, length)
+          }
+        }
+      }
+    }
+
+  textField.formatterFactory = DefaultFormatterFactory(customFormatter)
+
+  // FocusListener: If the user leaves the field empty, fallback to the previously saved value
+  textField.addFocusListener(
+    object : FocusAdapter() {
+      override fun focusLost(e: FocusEvent?) {
+        if (textField.text.isNullOrBlank()) {
+          textField.value = value
+        }
+      }
+    }
+  )
 }
 
 private class StringBinder : OptionsBinder {
@@ -359,7 +458,7 @@ private class EnumBinder(private val onUpdate: () -> Unit) : OptionsBinder {
           addActionListener {
             data.value = constant
             // Trigger a refresh of the panel to update visibility of other components
-            onUpdate()
+            SwingUtilities.invokeLater { onUpdate() }
           }
         }
       buttonGroup.add(radioButton)
@@ -384,7 +483,14 @@ private class EnumBinder(private val onUpdate: () -> Unit) : OptionsBinder {
         val childComponent =
           child.binder?.bind(child, readonly)
             ?: JLabel("Unknown return type (${child.accessor?.returnType?.name}) for property \"${child.name}\"")
-        childComponent.isEnabled = !readonly
+
+        // Calculate if the parent radio button for this child is currently selected
+        val isParentSelected = (constant == data.value)
+        val isChildEnabled = !readonly && isParentSelected
+
+        // Recursively disable the nested component (disables the JPanel, ComboBox, and Labels inside)
+        com.intellij.util.ui.UIUtil.setEnabled(childComponent, isChildEnabled, true)
+
         childComponent.border = JBUI.Borders.merge(childComponent.border, JBUI.Borders.emptyLeft(28), true)
         radioPanel.add(childComponent)
 
@@ -393,6 +499,7 @@ private class EnumBinder(private val onUpdate: () -> Unit) : OptionsBinder {
             JLabel(child.description).apply {
               border = JBUI.Borders.empty(0, 28, 10, 0)
               foreground = JBColor(0x4E4E4E, 0xB5B5B5)
+              isEnabled = isChildEnabled
             }
           radioPanel.add(descLabel)
         } else {
@@ -441,29 +548,6 @@ private class DropdownBinder(private val values: List<Int>) : OptionsBinder {
         com.intellij.openapi.ui.ComboBox(displayValues).apply {
           selectedItem = displayValues.find { it.value == data.value }
           isEnabled = !readonly
-          setRenderer(
-            object : DefaultListCellRenderer() {
-              override fun getListCellRendererComponent(
-                list: JList<*>?,
-                value: Any?,
-                index: Int,
-                isSelected: Boolean,
-                cellHasFocus: Boolean,
-              ): Component {
-                val component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus) as JLabel
-                if (value is DisplayInt) {
-                  // index -1 indicates the selected item displayed in the combo box button
-                  if (index == -1) {
-                    val colorHex = ColorUtil.toHex(JBColor(0x4E4E4E, 0xB5B5B5))
-                    component.text = "<html>${value.value} <span style='color:#$colorHex'>${value.unit}</span></html>"
-                  } else {
-                    component.text = value.toString()
-                  }
-                }
-                return component
-              }
-            }
-          )
           addActionListener { data.value = (selectedItem as DisplayInt).value }
         }
 
@@ -471,13 +555,17 @@ private class DropdownBinder(private val values: List<Int>) : OptionsBinder {
       val wrapper =
         JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
           add(comboBox)
+          if (unit.isNotEmpty()) {
+            add(javax.swing.Box.createHorizontalStrut(5))
+            add(JLabel(unit))
+          }
           isOpaque = false
         }
       add(wrapper, TabularLayout.Constraint(0, 2))
 
       if (description.isNotEmpty()) {
         val descLabel =
-          JLabel("<html>$description</html>").apply {
+          JLabel(description).apply {
             foreground = JBColor(0x4E4E4E, 0xB5B5B5)
             font = font.deriveFont(font.size2D - 1f)
           }

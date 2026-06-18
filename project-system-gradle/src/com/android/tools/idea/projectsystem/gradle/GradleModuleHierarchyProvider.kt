@@ -29,6 +29,7 @@ import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ModuleRootManager
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.kotlin.konan.file.File
 
 @Service
 class GradleModuleHierarchyProvider @VisibleForTesting constructor(private val project: Project) {
@@ -82,10 +83,14 @@ class GradleModuleHierarchyProvider @VisibleForTesting constructor(private val p
     val moduleManager = ModuleManager.getInstance(project)
     fun moduleHierarchyId(module: Module): List<String>? {
       if (!isExternalSystemAwareModule(GRADLE_SYSTEM_ID, module)) return null
-      val gradleIdentityPath = module.getGradleIdentityPath() ?: return null
+      val gradleProjectPath = module.getGradleProjectPath() ?: return null
       val sourceSetName = (module.getGradleProjectPath() as? GradleSourceSetProjectPath)?.sourceSet?.sourceSetName
       val externalRootPath = ExternalSystemApiUtil.getExternalRootProjectPath(module) ?: return null
-      return listOf(externalRootPath, ":") + gradleIdentityPath.split(":").filter { it.isNotEmpty() } + listOfNotNull(sourceSetName)
+      val nested = gradleProjectPath.buildRoot.removePrefix(externalRootPath).split(File.separator).filter { it.isNotEmpty() }
+      return listOf(externalRootPath, ":") +
+        listOfNotNull(nested.lastOrNull()) +
+        gradleProjectPath.path.split(":").filter { it.isNotEmpty() } +
+        listOfNotNull(sourceSetName)
     }
 
     // We exclude any source set modules as these are not to be displayed to the user and are not in the Gradle structure

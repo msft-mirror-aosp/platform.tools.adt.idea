@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.platform.modification.KotlinGlobalSourceModuleStateModificationEvent
 import org.jetbrains.kotlin.analysis.api.platform.modification.KotlinGlobalSourceOutOfBlockModificationEvent
 import org.jetbrains.kotlin.analysis.api.platform.modification.KotlinModificationEvent
@@ -129,6 +130,7 @@ fun createModuleRootListenerFlow(project: Project): Flow<Unit> = callbackFlow {
  * It specifically listens for "out-of-block" modifications, which include changes to top-level declarations, class signatures, and
  * annotations.
  */
+@OptIn(KaPlatformInterface::class)
 fun createKotlinModificationFlow(project: Project): Flow<Unit> = callbackFlow {
   val connection = project.messageBus.connect(this)
   connection.subscribe(

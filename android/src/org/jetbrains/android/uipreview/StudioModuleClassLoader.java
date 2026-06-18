@@ -5,11 +5,14 @@ import static com.android.tools.idea.rendering.classloading.ReflectionUtilKt.fin
 import static org.jetbrains.android.uipreview.ModuleClassLoaderUtil.INTERNAL_PACKAGE;
 
 import com.android.layoutlib.reflection.TrackingThreadLocal;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.module.ModuleDisposableService;
 import com.android.tools.idea.rendering.BuildTargetReference;
 import com.android.tools.idea.rendering.StudioModuleRenderContext;
 import com.android.tools.idea.rendering.classloading.LocalNavigationEventTransform;
-import com.android.tools.idea.rendering.classloading.StringReplaceTransform;
+import com.android.tools.idea.rendering.classloading.NavigationEventHandlerTransform;
+import com.android.tools.idea.rendering.classloading.PublicSerializableTransform;
+import com.android.tools.rendering.classloading.StringReplaceTransform;
 import com.android.tools.rendering.RenderAsyncActionExecutor;
 import com.android.tools.rendering.RenderService;
 import com.android.tools.rendering.classloading.ClassBinaryCache;
@@ -18,13 +21,12 @@ import com.android.tools.rendering.classloading.ModuleClassLoader;
 import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsRead;
 import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsWrite;
 import com.android.tools.rendering.classloading.ViewMethodWrapperTransform;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.rendering.classloading.CooperativeInterruptTransform;
-import com.android.tools.idea.rendering.classloading.FilteringClassLoader;
-import com.android.tools.idea.rendering.classloading.FirewalledResourcesClassLoader;
+import com.android.tools.rendering.classloading.FilteringClassLoader;
+import com.android.tools.rendering.classloading.FirewalledResourcesClassLoader;
 import com.android.tools.rendering.classloading.PreviewAnimationClockMethodTransform;
 import com.android.tools.rendering.classloading.RenderActionAllocationLimiterTransform;
-import com.android.tools.idea.rendering.classloading.RepackageTransform;
+import com.android.tools.rendering.classloading.RepackageTransform;
 import com.android.tools.rendering.classloading.RequestExecutorTransform;
 import com.android.tools.rendering.classloading.ResourcesCompatTransform;
 import com.android.tools.rendering.classloading.SdkIntReplacer;
@@ -34,6 +36,7 @@ import com.android.tools.rendering.classloading.VersionClassTransform;
 import com.android.tools.idea.rendering.classloading.ViewTreeLifecycleTransform;
 import com.android.tools.rendering.classloading.ClassTransform;
 import com.android.tools.rendering.classloading.UtilKt;
+import com.android.tools.rendering.security.RenderSandbox;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.intellij.openapi.diagnostic.Logger;
@@ -129,6 +132,8 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
    *   <li>Repackages certain classes to avoid loading the Studio versions from the Studio class loader
    *   <li>Wraps ViewTreeLifecycleOwner.get to intercept its returning value and make sure it never returns null
    *   <li>Wraps LocalNavigationEventDispatcherOwner.current to intercept its returning value to use our local FakeNavigationEventDispatcherOwner
+   *   <li>Wraps NavigationEventHandler to intercept the returning value of the isInspectionMode function
+   *   <li>Transforms classes annotated with @Serializable to make them and their fields public
    * </ul>
    * Note that it does not attempt to handle cases where class file constructs cannot
    * be represented in the target version. This is intended for uses such as for example
@@ -146,13 +151,17 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     ThreadLocalTrackingTransform::new,
     ThreadControllingTransform::new,
     CooperativeInterruptTransform::new,
-    visitor ->
-      StudioFlags.COMPOSE_ALLOCATION_LIMITER.get() ?
-        new RenderActionAllocationLimiterTransform(visitor) :
-        visitor, // Do not apply if the allocation limiter is disabled
+    RenderActionAllocationLimiterTransform::new,
     SdkIntReplacer::new,
     // Leave this transformation as last so the rest of the transformations operate on the regular names.
     visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE)
+  ).plus(
+    UtilKt.toClassTransform(
+      ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
+      classData -> StudioFlags.RENDER_SANDBOX.get() && RenderSandbox.getClassTransform().shouldRewrite(classData)
+    )
+  ).plus(
+    (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
   );
 
   static final ClassTransform NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS = UtilKt.toClassTransform(
@@ -165,12 +174,20 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     RequestExecutorTransform::new,
     ViewTreeLifecycleTransform::new,
     LocalNavigationEventTransform::new,
+    NavigationEventHandlerTransform::new,
     SdkIntReplacer::new,
     // Because of the use of RepackageTransform, we also need to ensure that certain internal constants are correctly renamed
     // so they point to the new repackaged classes.
     visitor -> new StringReplaceTransform(visitor, STRING_REPLACEMENTS),
     // Leave this transformation as last so the rest of the transformations operate on the regular names.
     visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE)
+  ).plus(
+    UtilKt.toClassTransform(
+      ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
+      classData -> StudioFlags.RENDER_SANDBOX.get() && RenderSandbox.getClassTransform().shouldRewrite(classData)
+    )
+  ).plus(
+    (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
   );
 
   private static final ExecutorService ourDisposeService =

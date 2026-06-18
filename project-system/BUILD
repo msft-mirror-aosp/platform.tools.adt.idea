@@ -13,6 +13,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "@intellij//:intellij.java.ui",
         "//tools/base/common:studio.android.sdktools.common",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/base/build-system/manifest-merger:studio.android.sdktools.manifest-merger",
@@ -22,6 +23,7 @@ iml_module(
         "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/base/flags:studio.android.sdktools.flags",
     ],
 )
 

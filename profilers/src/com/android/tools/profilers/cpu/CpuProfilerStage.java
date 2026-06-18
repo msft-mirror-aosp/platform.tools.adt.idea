@@ -16,6 +16,7 @@
 package com.android.tools.profilers.cpu;
 
 import static com.android.tools.profilers.StudioProfilers.DAEMON_DEVICE_DIR_PATH;
+import static com.android.tools.profilers.cpu.config.ArtMethodTraceOutputFormatKt.getArtMethodTraceOutputVersion;
 
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.adtui.model.DurationDataModel;
@@ -52,6 +53,7 @@ import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.android.tools.profilers.tasks.analytics.TaskStartFailedMetadata;
 import com.android.tools.profilers.tasks.analytics.TaskStopFailedMetadata;
+import com.android.tools.profilers.transporteventutils.TransportListenerTracker;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
 import com.intellij.openapi.diagnostic.Logger;
@@ -61,11 +63,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class CpuProfilerStage extends StreamingStage implements InterimStage {
+public class
+CpuProfilerStage extends StreamingStage implements InterimStage {
   private static final String HAS_USED_CPU_CAPTURE = "cpu.used.capture";
 
   private static final SingleUnitAxisFormatter CPU_USAGE_FORMATTER = new SingleUnitAxisFormatter(1, 5, 10, "%");
@@ -73,15 +75,15 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
   // Clamp the property value between 5 Seconds and 5 Minutes, otherwise the user could specify arbitrarily small or large value.
   // Default timeout value is 10 seconds.
-  public static final int CPU_ART_STOP_TIMEOUT_SEC = Math.max(5, Math.min(Integer.getInteger("profiler.cpu.art.stop.timeout.sec", 10),
-                                                                          5 * 60));
+  public static final int CPU_ART_STOP_TIMEOUT_SEC = Math.clamp(Integer.getInteger("profiler.cpu.art.stop.timeout.sec", 10), 5,
+                                                                5 * 60);
 
   /**
    * A fake configuration shown when an API-initiated tracing is in progress. It exists for UX purpose only and isn't something
    * we want to preserve across stages. Therefore, it exists inside {@link CpuProfilerStage}.
    */
-  @VisibleForTesting static final ProfilingConfiguration API_INITIATED_TRACING_PROFILING_CONFIG =
-    new ArtInstrumentedConfiguration("API tracing");
+  @VisibleForTesting final ProfilingConfiguration myApiInitiatedTracingConfig;
+
 
   public enum CaptureState {
     // Waiting for a capture to start (displaying the current capture or not)
@@ -111,19 +113,8 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
    */
   private long myCaptureStartTimeNs;
 
-  /**
-   * If there is a catpure being stopped, stores the time when the stop is initiated.
-   */
-  private long myCaptureStopTimeNs;
-
   private final InProgressTraceHandler myInProgressTraceHandler;
   @NotNull private Trace.TraceInfo myInProgressTraceInfo = Trace.TraceInfo.getDefaultInstance();
-
-  /**
-   * Responsible for parsing trace files into {@link CpuCapture}.
-   * Parsed captures should be obtained from this object.
-   */
-  private final CpuCaptureParser myCaptureParser;
 
   /**
    * Keep track of the {@link Common.Session} that contains this stage, otherwise tasks that happen in background (e.g. parsing a trace) can
@@ -153,13 +144,10 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
   @Nullable
   private EventMonitor myEventMonitor;
 
-  public CpuProfilerStage(@NotNull StudioProfilers profilers) {
-    this(profilers, new CpuCaptureParser(profilers), CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, () -> {});
-  }
+  private final TransportListenerTracker myListenerTracker;
 
-  @VisibleForTesting
-  public CpuProfilerStage(@NotNull StudioProfilers profilers, @NotNull CpuCaptureParser captureParser) {
-    this(profilers, captureParser, CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, () -> {});
+  public CpuProfilerStage(@NotNull StudioProfilers profilers) {
+    this(profilers, CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, () -> {});
   }
 
   /**
@@ -168,7 +156,7 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
    * if this stage is facilitating a recording, this can serve as the handler for the "Stop Recording" button).
    */
   public CpuProfilerStage(@NotNull StudioProfilers profilers, @NotNull Runnable stopAction) {
-    this(profilers, new CpuCaptureParser(profilers), CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, stopAction);
+    this(profilers, CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, stopAction);
   }
 
   /**
@@ -176,21 +164,21 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
    * Hence, the entry point is taken as a parameter to be tracked for when the user takes said capture.
    */
   public CpuProfilerStage(@NotNull StudioProfilers profilers, CpuCaptureMetadata.CpuProfilerEntryPoint entryPoint) {
-    this(profilers, new CpuCaptureParser(profilers), entryPoint, () -> {});
+    this(profilers, entryPoint, () -> {});
   }
 
   private CpuProfilerStage(@NotNull StudioProfilers profilers,
-                           @NotNull CpuCaptureParser captureParser,
                            CpuCaptureMetadata.CpuProfilerEntryPoint entryPoint,
                            @NotNull Runnable stopAction) {
     super(profilers);
+    myListenerTracker = new TransportListenerTracker(profilers);
     mySession = profilers.getSession();
     myCpuDataProvider = new CpuDataProvider(profilers, getTimeline());
     myProfilerConfigModel = new CpuProfilerConfigModel(profilers, this);
+    myApiInitiatedTracingConfig = ArtInstrumentedConfiguration.create("API tracing", profilers.getIdeServices().getFeatureConfig().isMethodTraceInEditorEnabled());
     myRecordingOptionsModel = new RecordingOptionsModel();
 
     myCaptureState = CaptureState.IDLE;
-    myCaptureParser = captureParser;
 
     // Store and track how the user entered the CpuProfilerStage to take a cpu trace.
     myEntryPoint = entryPoint;
@@ -205,7 +193,7 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
     List<Trace.TraceInfo> existingCompletedTraceInfoList =
       CpuProfiler.getTraceInfoFromSession(getStudioProfilers().getClient(), mySession).stream()
-        .filter(info -> info.getToTimestamp() != -1).collect(Collectors.toList());
+        .filter(info -> info.getToTimestamp() != -1).toList();
     existingCompletedTraceInfoList.forEach(info -> myCompletedTraceIdToInfoMap.put(info.getTraceId(), new CpuTraceInfo(info)));
     myInProgressTraceHandler = new InProgressTraceHandler();
 
@@ -325,10 +313,9 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       getStudioProfilers().getUpdater().unregister(myRecordingScreenModel);
     }
 
-    // Asks the parser to interrupt any parsing in progress.
-    myCaptureParser.abortParsing();
     getRangeSelectionModel().clearListeners();
     getUpdatableManager().releaseAll();
+    myListenerTracker.onExit();
   }
 
   @Nullable
@@ -368,6 +355,7 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     String traceFilePath = String.format(Locale.US, "%s/%s-%d.trace", DAEMON_DEVICE_DIR_PATH, process.getName(), System.nanoTime());
 
     setCaptureState(CaptureState.STARTING);
+    assert getStudioProfilers().getDevice() != null;
     Trace.TraceConfiguration.Builder configurationBuilder = Trace.TraceConfiguration.newBuilder()
       .setAppName(process.getName())
       .setAbiCpuArch(TransportFileManager.getShortAbiName(getStudioProfilers().getDevice().getCpuAbi()))
@@ -376,11 +364,17 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
     config.addOptions(configurationBuilder, Map.of(AdditionalOptions.APP_PKG_NAME, process.getName(), AdditionalOptions.SYMBOL_DIRS,
                                                    getStudioProfilers().getIdeServices().getNativeSymbolsDirectories()));
+
+    boolean isMethodTraceInEditorEnabled = getStudioProfilers().getIdeServices().getFeatureConfig().isMethodTraceInEditorEnabled();
+    if (configurationBuilder.hasArtOptions()) {
+      configurationBuilder.getArtOptionsBuilder().setProfilerOutputVersion(getArtMethodTraceOutputVersion(getStudioProfilers().getDevice(), isMethodTraceInEditorEnabled));
+    }
+
     Trace.TraceConfiguration configuration = configurationBuilder.build();
 
     // Execute a start trace command for cpu-based tracing and registers a listener for event reception and handling.
     // The startCapturingCallback with be called on event reception.
-    CpuProfiler.startTracing(getStudioProfilers(), mySession, configuration, this::startCapturingCallback, null);
+    CpuProfiler.startTracing(getStudioProfilers(), mySession, configuration, this::startCapturingCallback, null, listener -> myListenerTracker.trackListener(listener, false));
 
     getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_CPU_CAPTURE, true);
     getInstructionsEaseOutModel().setCurrentRatio(1);
@@ -415,41 +409,32 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       return;
     }
 
-    // Set myCaptureStopTimeNs before updating the state because the timestamp may be used to construct stopping panel.
-    myCaptureStopTimeNs = currentTimeNs();
     setCaptureState(CaptureState.STOPPING);
-    CpuProfiler.stopTracing(getStudioProfilers(), mySession, myInProgressTraceInfo.getConfiguration(), this::stopCapturingCallback, null);
-  }
-
-  public long getCaptureStartTimeNs() {
-    return myCaptureStartTimeNs;
-  }
-
-  public long getCaptureStopTimeNs() {
-    return myCaptureStopTimeNs;
+    CpuProfiler.stopTracing(getStudioProfilers(), mySession, myInProgressTraceInfo.getConfiguration(), this::stopCapturingCallback, null, listener -> myListenerTracker.trackListener(listener, true));
   }
 
   private void stopCapturingCallback(@NotNull Trace.TraceStopStatus status) {
     // Whether the stop was successful or resulted in failure, call setFinished() to indicate
     // that the recording has stopped so that the user is able to start a new capture.
     myRecordingOptionsModel.setFinished();
-    if (status.getStatus().equals(Trace.TraceStopStatus.Status.UNSPECIFIED)) {
-      // Daemon reports a matching ongoing recording has been found. Stopping is in progress. Do nothing.
-      // When the stopping is done, a CPU_TRACE event will be generated, and it will be tracked via the InProgressTraceHandler.
+
+    // If UNSPECIFIED, daemon reports a matching ongoing recording has been found. Stopping is in progress. Do nothing.
+    // When the stopping is done, a CPU_TRACE event will be generated, and it will be tracked via the InProgressTraceHandler.
+    if (status.getStatus() == Trace.TraceStopStatus.Status.UNSPECIFIED ||
+        status.getStatus() == Trace.TraceStopStatus.Status.SUCCESS) {
+      return;
     }
-    else if (!status.getStatus().equals(Trace.TraceStopStatus.Status.SUCCESS)) {
-      cleanupFailedCapture();
-      CpuCaptureMetadata captureMetadata = trackAndLogTraceStopFailures(status);
-      // Return to IDLE state and set the current capture to null
-      setCaptureState(CaptureState.IDLE);
-    }
+
+    cleanupFailedCapture();
+    trackAndLogTraceStopFailures(status);
+    setCaptureState(CaptureState.IDLE);
   }
 
   /**
    * Populate CpuCaptureMetadata attributes. Also, track the session-based era metrics.
    * @return: CpuCaptureMetadata
    */
-  private CpuCaptureMetadata trackAndLogTraceStopFailures(@NotNull Trace.TraceStopStatus status) {
+  private void trackAndLogTraceStopFailures(@NotNull Trace.TraceStopStatus status) {
     CpuCaptureMetadata captureMetadata = new CpuCaptureMetadata(myProfilerConfigModel.getProfilingConfiguration());
     long estimateDurationMs = TimeUnit.NANOSECONDS.toMillis(currentTimeNs() - myCaptureStartTimeNs);
     // Set the estimate duration of the capture, i.e. the time difference between device time when user clicked start and stop.
@@ -469,8 +454,6 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
       myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, null, captureMetadata));
     }
-
-    return captureMetadata;
   }
 
   private void goToCaptureStage(long traceId) {
@@ -483,13 +466,14 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       getStudioProfilers().getIdeServices().runAsync(
         () -> {
           myRecordingOptionsModel.setLoading(true);
-          return CpuCaptureStage.create(getStudioProfilers(), ProfilingConfiguration.fromProto(
-            myCompletedTraceIdToInfoMap.get(traceId).getTraceInfo().getConfiguration(), isTraceboxEnabled), myEntryPoint, traceId);
+          Trace.TraceInfo traceInfo = myCompletedTraceIdToInfoMap.get(traceId).getTraceInfo();
+          ProfilingConfiguration config = ProfilingConfiguration.fromProto(traceInfo.getConfiguration(), isTraceboxEnabled);
+          return CpuCaptureStage.create(getStudioProfilers(), config, getCpuCaptureMetadata(config, traceInfo), traceId);
         },
         stage -> {
           myRecordingOptionsModel.setLoading(false);
-          CpuTraceInfo traceInfo = myCompletedTraceIdToInfoMap.get(traceId);
-          ProfilingConfiguration config = ProfilingConfiguration.fromProto(traceInfo.getTraceInfo().getConfiguration(), isTraceboxEnabled);
+          Trace.TraceInfo traceInfo = myCompletedTraceIdToInfoMap.get(traceId).getTraceInfo();
+          ProfilingConfiguration config = ProfilingConfiguration.fromProto(traceInfo.getConfiguration(), isTraceboxEnabled);
           ProfilerTaskType taskType = config.getTraceType().toTaskType();
 
           boolean openInEditor = ProfilerInEditorUtils.isEditorEnabled(getStudioProfilers().getIdeServices().getFeatureConfig(), taskType);
@@ -511,11 +495,6 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
           }
         }, 300000); //Set a 5 minutes timeout to retrieve and parse a potentially large trace file.
     }
-  }
-
-  @NotNull
-  public CpuCaptureParser getCaptureParser() {
-    return myCaptureParser;
   }
 
   /**
@@ -570,11 +549,11 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       getAspect().changed(CpuProfilerAspect.CAPTURE_STATE);
 
       if (captureState == CaptureState.CAPTURING) {
-        // When going to CAPTURING state need to keep the recording options model in sync.
+        // When going to `CAPTURING` state need to keep the recording options model in sync.
         // This is needed when a startup recording or API recording has started.
         if (!myRecordingOptionsModel.isRecording()) {
           if (isApiInitiatedTracingInProgress()) {
-            RecordingOption option = addConfiguration(API_INITIATED_TRACING_PROFILING_CONFIG);
+            RecordingOption option = addConfiguration(myApiInitiatedTracingConfig);
             myRecordingOptionsModel.getCustomConfigurationModel().setSelectedItem(option);
             myRecordingOptionsModel.selectCurrentCustomConfiguration();
           }
@@ -609,6 +588,17 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     myRecordingOptionsModel.clearConfigurations();
     // Add custom configs.
     myProfilerConfigModel.getCustomProfilingConfigurationsDeviceFiltered().forEach(this::addConfiguration);
+  }
+
+  private CpuCaptureMetadata getCpuCaptureMetadata(ProfilingConfiguration config, Trace.TraceInfo traceInfo) {
+    CpuCaptureMetadata metadata = new CpuCaptureMetadata(config);
+    metadata.setCpuProfilerEntryPoint(myEntryPoint);
+    if (traceInfo.getStopStatus().getStatus().equals(Trace.TraceStopStatus.Status.SUCCESS)) {
+      metadata.setCaptureDurationMs(TimeUnit.NANOSECONDS.toMillis(traceInfo.getToTimestamp() - traceInfo.getFromTimestamp()));
+      metadata.setStoppingTimeMs((int)TimeUnit.NANOSECONDS.toMillis(traceInfo.getStopStatus().getStoppingDurationNs()));
+    }
+
+    return metadata;
   }
 
   private RecordingOption addConfiguration(ProfilingConfiguration config) {
@@ -662,12 +652,10 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
   /**
    * Performs cleanup after a trace fails to start.
-   *
-   *  A failed start can create a "zombie" session: {@link com.android.tools.profilers.sessions.SessionsManager} incorrectly assumes
+   * A failed start can create a "zombie" session: {@link com.android.tools.profilers.sessions.SessionsManager} incorrectly assumes
    * a session is live, but since trace failed to capture no session end event is received from perfd.
    * This causes a problem if the user tries to record again, as the UI will try to stop the
    * non-existent recording and wait for a confirmation that never arrives.
-   *
    * Calling {@link com.android.tools.profilers.sessions.SessionsManager#endCurrentSession()} terminates the zombie session
    * allowing a new, clean session to be started.
    */
@@ -694,11 +682,6 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
   private class InProgressTraceHandler implements Updatable {
     @Override
     public void update(long elapsedNs) {
-      // If we are parsing a trace we also trigger the aspect to update the UI.
-      if (getCaptureParser().isParsing()) {
-        getAspect().changed(CpuProfilerAspect.CAPTURE_ELAPSED_TIME);
-        return;
-      }
       Trace.TraceInfo finishedTraceToSelect = null;
       // Request for the entire data range as we don't expect too many (100s) traces withing a single session.
       Range dataRange = getTimeline().getDataRange();
@@ -721,10 +704,6 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
           finishedTraceToSelect = trace;
 
           if (trace.getConfiguration().getInitiationType().equals(TraceInitiationType.INITIATED_BY_API)) {
-            // Handcraft the metadata, since that is not generated by the profilers UI.
-            CpuCaptureMetadata metadata = new CpuCaptureMetadata(API_INITIATED_TRACING_PROFILING_CONFIG);
-            myCaptureParser.trackCaptureMetadata(trace.getTraceId(), metadata);
-
             // Track usage for API-initiated tracing.
             getStudioProfilers().getIdeServices().getFeatureTracker().trackCpuApiTracing(false, true, -1, -1, -1);
           }
@@ -732,13 +711,6 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
           // Inform CpuCaptureParser to track metrics when the successful trace is parsed.
           if (trace.getStopStatus().getStatus().equals(Trace.TraceStopStatus.Status.SUCCESS)) {
             LogUtils.log(getClass(), "CPU capture stop succeeded");
-            CpuCaptureMetadata captureMetadata =
-              new CpuCaptureMetadata(ProfilingConfiguration.fromProto(finishedTraceToSelect.getConfiguration(), isTraceboxEnabled));
-            // If the capture is successful, we can track a more accurate time, calculated from the capture itself.
-            captureMetadata.setCaptureDurationMs(TimeUnit.NANOSECONDS.toMillis(trace.getToTimestamp() - trace.getFromTimestamp()));
-            captureMetadata.setStoppingTimeMs((int)TimeUnit.NANOSECONDS.toMillis(trace.getStopStatus().getStoppingDurationNs()));
-            captureMetadata.setCpuProfilerEntryPoint(myEntryPoint);
-            myCaptureParser.trackCaptureMetadata(trace.getTraceId(), captureMetadata);
           }
           else {
             cleanupFailedCapture();
@@ -785,7 +757,7 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       }
 
       myInProgressTraceInfo = traceInfo;
-      // Set myCaptureStartTimeNs/myCaptureStopTimeNs before updating the state because the timestamp may be used to construct
+      // Set myCaptureStartTimeNs before updating the state because the timestamp may be used to construct
       // recording panel.
       CaptureState state = CaptureState.CAPTURING;
       myCaptureStartTimeNs = myInProgressTraceInfo.getFromTimestamp();
@@ -793,11 +765,10 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
       if (statusEvent.getKind() == Common.Event.Kind.TRACE_STATUS && statusEvent.getTraceStatus().hasTraceStopStatus()) {
         // A STOP_TRACE command has been issued.
         state = CaptureState.STOPPING;
-        myCaptureStopTimeNs = statusEvent.getTimestamp();
       }
 
       if (myInProgressTraceInfo.getConfiguration().getInitiationType() == TraceInitiationType.INITIATED_BY_API) {
-        // For API-initiated tracing, we want to update the config combo box to show API_INITIATED_TRACING_PROFILING_CONFIG.
+        // For API-initiated tracing, we want to update the config combo box to show myApiInitiatedTracingConfig.
         // Don't update the myProfilerConfigModel. First, this config is by definition transitory. Passing the reference outside
         // CpuProfilerStage may indicate a longer life span. Second, it is not a real configuration. For example, each
         // configuration's name should be unique, but all API-initiated captures should show the same text even if they

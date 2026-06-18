@@ -17,7 +17,7 @@ package com.android.tools.idea.rendering.tokens
 
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.base.qsync.rendering.BazelComposeToolingProjectLabelProvider
-import com.google.idea.blaze.base.settings.BlazeImportSettingsManager
+import com.google.idea.blaze.base.settings.BazelImportSettingsManager
 import com.google.idea.blaze.base.settings.BuildSystemName
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.qsync.project.BuildGraphData
@@ -27,14 +27,14 @@ import kotlin.jvm.optionals.getOrNull
 /** Default implementation for logic that provides the Compose Tooling Target label. */
 class DefaultBazelComposeToolingProjectLabelProvider : BazelComposeToolingProjectLabelProvider {
   override fun isApplicable(project: Project): Boolean {
-    return BlazeImportSettingsManager.getInstance(project).importSettings?.buildSystem == BuildSystemName.Bazel
+    return BazelImportSettingsManager.getInstance(project).buildSystem == BuildSystemName.Bazel
   }
 
   override fun getComposeToolingLabel(project: Project): Label? {
-    if (BlazeImportSettingsManager.getInstance(project).importSettings?.buildSystem != BuildSystemName.Bazel) {
+    if (BazelImportSettingsManager.getInstance(project).buildSystem != BuildSystemName.Bazel) {
       return null
     }
-    val graph = QuerySyncManager.getInstance(project).currentSnapshot.getOrNull()?.graph ?: return null
+    val graph = QuerySyncManager.getInstance(project).currentSnapshot.getOrNull()?.staleGraph ?: return null
     return composeDeps(graph).firstOrNull()?.siblingWithName("androidx_compose_ui_ui_tooling")
   }
 
@@ -47,11 +47,6 @@ class DefaultBazelComposeToolingProjectLabelProvider : BazelComposeToolingProjec
   }
 
   private fun composeDeps(graph: BuildGraphData): Sequence<Label> {
-    return graph
-      .allLoadedTargets()
-      .asSequence()
-      .mapNotNull { graph.getProjectTarget(it) }
-      .flatMap { it.deps() }
-      .filter { isComposeUiLabel(it) }
+    return graph.allLoadedTargets().flatMap { it.deps() }.filter { isComposeUiLabel(it) }
   }
 }

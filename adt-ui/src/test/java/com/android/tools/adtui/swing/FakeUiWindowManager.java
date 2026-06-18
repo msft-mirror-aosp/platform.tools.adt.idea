@@ -17,6 +17,7 @@ package com.android.tools.adtui.swing;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressModel;
 import com.intellij.openapi.progress.TaskInfo;
 import com.intellij.openapi.project.Project;
@@ -27,6 +28,7 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.StatusBar;
+import com.intellij.openapi.wm.StatusBarListener;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.openapi.wm.ex.IdeFrameEx;
 import com.intellij.openapi.wm.ex.ProgressIndicatorEx;
@@ -42,6 +44,7 @@ import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.Window;
 import java.awt.event.ComponentEvent;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -50,10 +53,13 @@ import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.event.HyperlinkListener;
-import kotlin.jvm.functions.Function0;
 import kotlinx.coroutines.CoroutineScope;
+import kotlinx.coroutines.flow.StateFlow;
+import kotlinx.coroutines.flow.StateFlowKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Slightly modified copy of {@link com.intellij.openapi.wm.impl.TestWindowManager} that
@@ -201,17 +207,16 @@ public final class FakeUiWindowManager extends WindowManagerEx {
       return new Dimension(0, 0);
     }
 
-    @Nullable
     @Override
-    public StatusBar createChild(@NotNull CoroutineScope scope,
-                                 @NotNull IdeFrame frame,
-                                 @NotNull Function0<? extends FileEditor> function0) {
+    public @Nullable StatusBar createChild(@NonNull CoroutineScope scope,
+                                           @NonNull IdeFrame frame,
+                                           @NonNull StateFlow<? extends FileEditor> flow) {
       return null;
     }
 
     @Override
-    public @NotNull Function0<FileEditor> getCurrentEditor() {
-      return () -> null;
+    public @NotNull StateFlow<FileEditor> getCurrentEditor() {
+      return StateFlowKt.MutableStateFlow(null);
     }
 
     @Override
@@ -231,7 +236,12 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     public void addProgress(@NotNull ProgressIndicatorEx indicator, @NotNull TaskInfo info) {}
 
     @Override
-    public List<Pair<TaskInfo, ProgressModel>> getBackgroundProcessModels() {
+    public @Unmodifiable List<Pair<TaskInfo, ProgressIndicator>> getBackgroundProcesses() {
+      return StatusBarEx.super.getBackgroundProcesses();
+    }
+
+    @Override
+    public List<kotlin.Pair<TaskInfo, ProgressModel>> getBackgroundProcessModels() {
       return Collections.emptyList();
     }
 
@@ -309,6 +319,22 @@ public final class FakeUiWindowManager extends WindowManagerEx {
                                                   @Nullable Icon icon,
                                                   @Nullable HyperlinkListener listener) {
       return () -> {};
+    }
+
+    @Override
+    public @Nullable Collection<StatusBarWidget> getAllWidgets() {
+      return StatusBarEx.super.getAllWidgets();
+    }
+
+
+    @Override
+    public void addListener(@NonNull StatusBarListener listener, @NonNull Disposable parentDisposable) {
+      StatusBarEx.super.addListener(listener, parentDisposable);
+    }
+
+    @Override
+    public @Nullable String getWidgetAnchor(@NonNull String id) {
+      return StatusBarEx.super.getWidgetAnchor(id);
     }
   }
 

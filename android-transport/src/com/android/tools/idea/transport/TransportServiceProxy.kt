@@ -376,7 +376,7 @@ class TransportServiceProxy(
   }
 
   private fun addProcess(client: ClientSummary, timestampNs: Long, level: ExposureLevel) =
-    client.name.let { description ->
+    (client.name.takeIf { SAFE_PROCESS_NAME.matches(it) } ?: "pid-${client.pid}").let { description ->
       // Process is started up and is ready
       // Parse cpu arch from client abi info, for example, "arm64" from "64-bit (arm64)". Abi string indicates whether application is
       // 64-bit or 32-bit and its cpu arch. Old devices of 32-bit do not have the application data, fall back to device's abi cpu arch.
@@ -392,7 +392,7 @@ class TransportServiceProxy(
       // TODO: Set this to the applications actual start time.
       val newProcess =
         Common.Process.newBuilder()
-          .setName(description)
+          .setName(StringUtil.escapeXmlEntities(description))
           .setPid(client.pid)
           .setDeviceId(transportDevice.deviceId)
           .setState(Common.Process.State.ALIVE)
@@ -438,6 +438,8 @@ class TransportServiceProxy(
 
     private const val EMULATOR = "Emulator"
     const val PRE_LOLLIPOP_FAILURE_REASON = "Pre-Lollipop devices are not supported."
+    private val ART_VERSION_CODE_REGEX = Regex("package:com\\.google\\.android\\.art versionCode:(\\d+)")
+    private val SAFE_PROCESS_NAME = Regex("[a-zA-Z0-9._:]+")
 
     /**
      * Converts an [IDevice] object into a [Common.Device].
@@ -465,7 +467,40 @@ class TransportServiceProxy(
         .setCpuAbi(device.getProperty(IDevice.PROP_DEVICE_CPU_ABI))
         .setState(convertState(device.state))
         .setUnsupportedReason(getDeviceUnsupportedReason(device))
+        .setArtVersionCode(getArtVersionCode(device))
         .build()
+    }
+
+    /**
+     * Retrieves the version code of the com.google.android.art mainline module.
+     *
+     * The ART mainline module was introduced in Android 12 (API 31 - S). For devices running older Android versions, this method will
+     * immediately return 0.
+     *
+     * @param device the IDevice to query.
+     * @return the ART module version code, or 0L if not supported or an error occurs.
+     */
+    private fun getArtVersionCode(device: IDevice): Long {
+      if (device.version.featureLevel < AndroidVersion.VersionCodes.S) {
+        return 0L
+      }
+
+      val receiver = com.android.ddmlib.CollectingOutputReceiver()
+      try {
+        device.executeShellCommand(
+          "pm list packages --apex-only --show-versioncode com.google.android.art",
+          receiver,
+          2,
+          java.util.concurrent.TimeUnit.SECONDS,
+        )
+        val matchResult = ART_VERSION_CODE_REGEX.find(receiver.output)
+        if (matchResult != null) {
+          return matchResult.groupValues[1].toLong()
+        }
+      } catch (e: Exception) {
+        log.debug("Failed to check ART package version from device $device", e)
+      }
+      return 0L
     }
 
     private fun IDevice.getId(bootId: String) =

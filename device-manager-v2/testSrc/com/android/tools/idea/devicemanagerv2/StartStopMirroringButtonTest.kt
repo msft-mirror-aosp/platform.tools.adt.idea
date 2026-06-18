@@ -17,16 +17,15 @@ package com.android.tools.idea.devicemanagerv2
 
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.testutils.waitForCondition
-import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.MirroringHandle
 import com.android.tools.idea.streaming.MirroringManager
 import com.android.tools.idea.streaming.MirroringState
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.components.service
-import com.intellij.testFramework.ProjectRule
 import icons.StudioIcons
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -35,7 +34,7 @@ import org.mockito.kotlin.whenever
 /** Tests for StartStopMirroringButton. */
 class StartStopMirroringButtonTest {
 
-  @get:Rule val projectRule = ProjectRule()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   private val project
     get() = projectRule.project
@@ -44,9 +43,9 @@ class StartStopMirroringButtonTest {
     get() = project.service<MirroringManager>()
 
   @Test
-  fun testBasicFunctionality() = runBlocking {
+  fun testBasicFunctionality() {
     val deviceHandle = mock<DeviceHandle>()
-    whenever(deviceHandle.scope).thenReturn(AndroidCoroutineScope(project))
+    whenever(deviceHandle.scope).thenReturn(projectRule.testRootDisposable.createCoroutineScope())
     val button = StartStopMirroringButton(deviceHandle, project)
     assertThat(button.isVisible).isFalse()
 

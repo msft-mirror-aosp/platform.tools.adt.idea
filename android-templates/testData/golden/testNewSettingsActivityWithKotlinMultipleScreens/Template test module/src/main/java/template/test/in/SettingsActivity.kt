@@ -1,3 +1,4 @@
+// This file should not be edited manually! See go/template-diff-tests
 package template.test.`in`
 
 import android.os.Bundle
@@ -54,7 +55,6 @@ class SettingsActivity : AppCompatActivity(),
             fragmentClassName
         ).apply {
             arguments = args
-            setTargetFragment(caller, 0)
         }
         // Replace the existing Fragment with the new Fragment
         supportFragmentManager.beginTransaction()

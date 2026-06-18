@@ -43,6 +43,7 @@ import com.android.tools.idea.logcat.util.AndroidProjectDetectorImpl
 import com.android.tools.idea.projectsystem.ProjectApplicationIdsProvider
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFilterEvent
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.LogcatFilterEvent.TermVariants
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -121,7 +122,7 @@ internal class LogcatFilterParser(
    */
   fun removeFilterNames(filterString: String): String {
     return try {
-      val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
+      val psi = runReadActionBlocking { psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString) }
       val offsets =
         PsiTreeUtil.findChildrenOfType(psi, LogcatFilterLiteralExpression::class.java)
           .filter { it.firstChild.text == "name:" }
@@ -144,7 +145,7 @@ internal class LogcatFilterParser(
       filterString.isEmpty() -> null
       filterString.isBlank() -> StringFilter(filterString, IMPLICIT_LINE, matchCase, TextRange(0, filterString.length))
       else -> {
-        val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
+        val psi = runReadActionBlocking { psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString) }
         if (PsiTreeUtil.hasErrorElements(psi)) {
           val errorElement = PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java) as PsiErrorElement
           throw LogcatFilterParseException(errorElement)
@@ -164,7 +165,7 @@ internal class LogcatFilterParser(
   fun getUsageTrackingEvent(filterString: String, matchCase: Boolean): LogcatFilterEvent.Builder? {
     val builder = LogcatFilterEvent.newBuilder()
     try {
-      val psi = psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString)
+      val psi = runReadActionBlocking { psiFileFactory.createFileFromText("temp.lcf", LogcatFilterFileType, filterString) }
       if (PsiTreeUtil.hasErrorElements(psi)) {
         builder.containsErrors = true
       } else {

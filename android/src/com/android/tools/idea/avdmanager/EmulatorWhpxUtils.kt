@@ -20,6 +20,7 @@ package com.android.tools.idea.avdmanager
 import com.android.sdklib.internal.avd.getEmulatorPackage
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.analytics.UsageTracker
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.EmulatorWindowsHypervisorMigrationEvent
@@ -36,7 +37,7 @@ import com.intellij.openapi.util.io.FileUtilRt
 
 const val WHPX_ENABLE_PENDING_RESTART = "whpx_enable_pending_restart"
 
-/** Represents the result of a WHPX configuration operation. */
+/** Represents the result of a Windows Hypervisor Platform (WHPX) configuration operation. */
 sealed class WhpxResult(val description: String) {
   object Success : WhpxResult("Operation successful")
 
@@ -62,23 +63,13 @@ sealed class WhpxResult(val description: String) {
   }
 }
 
-fun enableWhpx(sdk: AndroidSdkHandler): WhpxResult {
-  return switchWhpx(sdk, true)
-}
-
-fun disableWHPX(sdk: AndroidSdkHandler): WhpxResult {
-  return switchWhpx(sdk, false)
-}
-
 fun switchWhpx(sdk: AndroidSdkHandler, enable: Boolean): WhpxResult {
-  val emulator = sdk.getEmulatorPackage(progressIndicator)
-  val emulatorBinary = emulator?.emulatorBinary ?: return WhpxResult.EmulatorNotFound
-
+  val emulator = sdk.getEmulatorPackage(progressIndicator, StudioFlags.EMULATOR_PREVIEW_ENABLED.get()) ?: return WhpxResult.EmulatorNotFound
   val commandLine = ElevatedCommandLine()
   commandLine.setWorkDirectory(emulator.location.toString())
-  val checkBinary = emulator.emulatorCheckBinary?: return WhpxResult.EmulatorNotFound
+  val checkBinary = emulator.emulatorCheckBinary ?: return WhpxResult.EmulatorNotFound
   commandLine.exePath = checkBinary.toString()
-  commandLine.addParameter(if(enable) "enable-whpx" else "disable-whpx")
+  commandLine.addParameter(if (enable) "enable-whpx" else "disable-whpx")
 
   return try {
     WhpxResult.fromExitCode(CapturingAnsiEscapesAwareProcessHandler(commandLine).runProcess().exitCode)

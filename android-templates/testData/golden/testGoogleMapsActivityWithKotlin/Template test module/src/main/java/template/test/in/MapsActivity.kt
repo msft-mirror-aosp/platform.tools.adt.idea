@@ -1,7 +1,9 @@
+// This file should not be edited manually! See go/template-diff-tests
 package template.test.`in`
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -18,6 +20,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         binding = ActivityMapBinding.inflate(layoutInflater)
         setContentView(binding.root)

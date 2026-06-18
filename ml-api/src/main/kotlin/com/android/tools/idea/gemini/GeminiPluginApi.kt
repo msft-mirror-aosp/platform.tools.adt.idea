@@ -35,6 +35,14 @@ import kotlinx.coroutines.flow.emptyFlow
  * and [generate] which can be used to retrieve the LLM response for a prompt.
  */
 interface GeminiPluginApi {
+  /** Project type for the source project to import in [GeminiPluginApi.launchImportProjectAgent]. */
+  enum class ImportProjectType {
+    IOS,
+    REACT_NATIVE,
+    FLUTTER,
+    UNKNOWN,
+  }
+
   /**
    * The maximum number of characters a query can contain before it starts getting cut off starting from the end. This is an approximate
    * value derived from the number of tokens supported by the current model.
@@ -76,6 +84,15 @@ interface GeminiPluginApi {
 
   /** Launches the New Project agent with the given prompt in the given project, which should already contain at least a skeleton. */
   fun launchNewProjectAgent(project: Project, prompt: String, imageAttachments: Collection<VirtualFile>) {}
+
+  /** Launches the Import Project agent with the given prompt in the given project, which should already contain at least a skeleton. */
+  fun launchImportProjectAgent(
+    project: Project,
+    prompt: String,
+    imageAttachments: Collection<VirtualFile>,
+    displayText: String? = null,
+    importProjectType: ImportProjectType,
+  ) {}
 
   companion object {
     val EP_NAME = ExtensionPointName.create<GeminiPluginApi>("com.android.tools.idea.gemini.geminiPluginApi")

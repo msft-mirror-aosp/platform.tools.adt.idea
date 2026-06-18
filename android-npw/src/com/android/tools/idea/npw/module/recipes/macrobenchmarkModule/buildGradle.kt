@@ -16,7 +16,7 @@
 
 package com.android.tools.idea.npw.module.recipes.macrobenchmarkModule
 
-import com.android.tools.idea.npw.module.recipes.androidModule.gradleToKtsIfKts
+import com.android.tools.idea.npw.module.recipes.androidModule.gradleToKtsOrDcl
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.flavorsConfigurationsBuildGradle
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.ProductFlavorsWithDimensions
 import com.android.tools.idea.npw.module.recipes.emptyPluginsBlock
@@ -29,25 +29,23 @@ import com.intellij.openapi.module.Module
 fun macrobenchmarksBuildGradle(
   newModule: ModuleTemplateData,
   flavors: ProductFlavorsWithDimensions,
-  useGradleKts: Boolean,
   targetModule: Module,
   benchmarkBuildTypeName: String,
-  useVersionCatalog: Boolean,
 ): String {
+  val dslLanguage = newModule.projectTemplateData.dslLanguage
   val packageName = newModule.packageName
   val apis = newModule.apis
-  val language = newModule.projectTemplateData.language
   val agpVersion = newModule.projectTemplateData.agpVersion
   // TODO(b/149203281): Fix support for composite builds.
   val targetModuleGradlePath = targetModule.getGradleProjectPath()?.path
-  val flavorsConfiguration = flavorsConfigurationsBuildGradle(flavors, useGradleKts)
+  val flavorsConfiguration = flavorsConfigurationsBuildGradle(flavors, dslLanguage)
 
   val benchmarkBuildType: String
   val debugSigningConfig: String
   val matchingFallbacks: String
   val addReceiverIfKts: String.() -> String
 
-  if (useGradleKts) {
+  if (dslLanguage.isKts) {
     benchmarkBuildType = """create("$benchmarkBuildTypeName")"""
     debugSigningConfig = """getByName("debug").signingConfig"""
     matchingFallbacks = "matchingFallbacks += listOf(\"release\")"
@@ -99,5 +97,5 @@ androidComponents {
 }
 
 """
-    .gradleToKtsIfKts(useGradleKts)
+    .gradleToKtsOrDcl(dslLanguage.isKts)
 }

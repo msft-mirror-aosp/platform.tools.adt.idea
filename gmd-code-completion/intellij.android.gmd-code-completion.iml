@@ -27,11 +27,11 @@
     <orderEntry type="module" module-name="android.sdktools.sdklib" />
     <orderEntry type="module" module-name="intellij.android.core" />
     <orderEntry type="module" module-name="intellij.android.gradle.dsl" />
-    <orderEntry type="module" module-name="google-login" />
-    <orderEntry type="library" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />
+    <orderEntry type="library" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" />
-    <orderEntry type="library" name="google-api-client" level="project" />
+    <orderEntry type="module" module-name="google-login" />
+    <orderEntry type="module" module-name="login.onboarding" />
     <orderEntry type="module" module-name="intellij.android.render-resources" />
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="module" module-name="intellij.android.artwork" />
@@ -39,6 +39,7 @@
     <orderEntry type="library" name="cloudresourcemanager" level="project" />
     <orderEntry type="module" module-name="firebase" />
     <orderEntry type="module" module-name="analytics" />
+    <orderEntry type="library" name="google-api-client" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />

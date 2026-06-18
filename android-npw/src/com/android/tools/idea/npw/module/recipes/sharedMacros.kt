@@ -72,32 +72,25 @@ fun generateManifest(
   """
 }
 
-fun proguardConfig(
-  // Incubating, see
-  // https://google.github.io/android-gradle-dsl/current/com.android.build.gradle.internal.dsl.BuildType.html
-  postprocessing: Boolean = false
-) =
-  if (postprocessing) {
+fun proguardConfig(useLegacyMinifyEnabled: Boolean, isDeclarative: Boolean) =
+  if (useLegacyMinifyEnabled) {
     """
     buildTypes {
         release {
-            postprocessing {
-                removeUnusedCode false
-                removeUnusedResources false
-                obfuscate false
-                optimizeCode false
-                proguardFile 'proguard-rules.pro'
-            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     """
   } else {
+    val blockName = if (isDeclarative) """buildType("release")""" else "release"
     """
     buildTypes {
-       release {
-           minifyEnabled false
-           proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-       }
+        $blockName {
+            optimization {
+                enable false
+            }
+        }
     }
     """
   }
@@ -137,6 +130,7 @@ fun androidConfig(
   cppStandard: CppStandardType,
   hasCode: Boolean,
   kotlinSupport: TemplateKotlinSupport,
+  isDcl: Boolean,
 ): String {
   val propertiesBlock =
     if (isDynamicFeature) {
@@ -153,8 +147,11 @@ fun androidConfig(
     renderIf(hasTests) {
       "testInstrumentationRunner \"${getMaterialComponentName("android.support.test.runner.AndroidJUnitRunner", useAndroidX)}\""
     }
-  val proguardConsumerBlock = renderIf(canUseProguard && isLibraryProject) { "consumerProguardFiles \"consumer-rules.pro\"" }
-  val proguardConfigBlock = renderIf(canUseProguard) { proguardConfig() }
+
+  val useLegacyProguardApi = agpVersion < AgpVersion.parse("9.0.0")
+  val proguardConsumerBlock =
+    renderIf(canUseProguard && isLibraryProject && useLegacyProguardApi) { "consumerProguardFiles \"consumer-rules.pro\"" }
+  val proguardConfigBlock = renderIf(canUseProguard && !isLibraryProject) { proguardConfig(useLegacyProguardApi, isDcl) }
   val lintOptionsBlock =
     renderIf(addLintOptions) {
       """
@@ -186,12 +183,30 @@ fun androidConfig(
     }
     """
     }
+
+  val dependencies =
+    renderIf(isDcl) {
+      """
+
+      dependencies {
+      }
+      """
+    }
+
   // This is to prevent having a "kotlin" artifact in APKs that are not supposed to have code such
   // as declarative watch faces
   val disableKotlinBlock = renderIf(!hasCode && kotlinSupport == TemplateKotlinSupport.IMPLICIT_BUILT_IN_KOTLIN) { "enableKotlin false" }
 
+  // b/490330486: Add support for library modules in declarative.
+  val androidBlockName =
+    when {
+      isDcl && isLibraryProject -> "androidLibrary"
+      isDcl -> "androidApp"
+      else -> "android"
+    }
+
   return """
-    android {
+    $androidBlockName {
     namespace '$applicationId'
 
     defaultConfig {
@@ -205,6 +220,7 @@ fun androidConfig(
     $lintOptionsBlock
     $cppReferenceBlock
     $disableKotlinBlock
+    $dependencies
     }
     """
 }

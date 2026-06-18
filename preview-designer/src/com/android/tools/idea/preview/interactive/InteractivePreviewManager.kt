@@ -25,6 +25,9 @@ import com.android.tools.rendering.RenderService
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import java.time.Duration
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class InteractivePreviewManager(
   private val surface: DesignSurface<*>,
@@ -32,12 +35,18 @@ class InteractivePreviewManager(
   private val interactiveScenesProvider: () -> Collection<InteractiveSceneManager>,
   private val usageTrackerProvider: () -> InteractivePreviewUsageTracker,
   private val delegateInteractionHandler: DelegateInteractionHandler,
+  isBackGestureInProgress: () -> Boolean = { false },
+  onInteractionStart: () -> Unit = {},
 ) : Disposable {
 
-  private val fpsCounter = FpsCalculator { System.nanoTime() }
+  val fpsCounter = FpsCalculator { System.nanoTime() }
+  private val _fpsUpdater: MutableSharedFlow<Unit> =
+    MutableSharedFlow(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+  public val fpsUpdater = _fpsUpdater.asSharedFlow()
 
   private val originalInteractionHandler = delegateInteractionHandler.delegate
-  private val interactiveInteractionHandler = LayoutlibInteractionHandler(surface, surface.pannable)
+  private val interactiveInteractionHandler =
+    LayoutlibInteractionHandler(surface, surface.pannable, isBackGestureInProgress, onInteractionStart)
 
   var fpsLimit = initialFpsLimit
     set(value) {
@@ -50,6 +59,7 @@ class InteractivePreviewManager(
         {
           if (!RenderService.isBusy() && fpsCounter.getFps() <= fpsLimit) {
             fpsCounter.incrementFrameCounter()
+            _fpsUpdater.tryEmit(Unit)
             interactiveScenesProvider().forEach { it.requestInteractiveRender() }
           }
         },

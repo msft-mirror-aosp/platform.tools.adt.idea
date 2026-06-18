@@ -18,7 +18,7 @@ package com.android.tools.idea.run.configuration.execution
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.Activator
-import com.android.tools.deployer.DeployerException
+import com.android.tools.deployer.common.DeployerException
 import com.android.tools.deployer.model.App
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
@@ -43,7 +43,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.util.Disposer
-import com.intellij.xdebugger.impl.XDebugSessionImpl
+import com.intellij.xdebugger.XSessionStartedResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.joinAll
@@ -102,7 +102,7 @@ abstract class AndroidConfigurationExecutorBase(
   }
 
   @WorkerThread
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable {
+  override fun debug(indicator: ProgressIndicator): RunContentDescriptor? = runBlockingCancellable {
     val applicationId = applicationContext.applicationId
     val devices = getDevices(environment, deviceFutures, indicator)
     RunStats.from(environment).setPackage(applicationId)
@@ -122,6 +122,7 @@ abstract class AndroidConfigurationExecutorBase(
       indicator.text = "Installing app..."
       val deployResult =
         applicationDeployer.fullDeploy(device, app, appRunSettings.deployOptions, containsMakeBeforeRun, indicator, terminator)
+      @Suppress("UnstableApiUsage")
       val runContentDescriptorDeferred =
         async(Dispatchers.Default) { startDebugSession(device, applicationContext, console, indicator).runContentDescriptor }
       indicator.text = "Launching..."
@@ -153,12 +154,13 @@ abstract class AndroidConfigurationExecutorBase(
   @Throws(ExecutionException::class)
   abstract fun launch(device: IDevice, app: App, console: ConsoleView, isDebug: Boolean, indicator: ProgressIndicator)
 
+  @Suppress("UnstableApiUsage")
   protected abstract suspend fun startDebugSession(
     device: IDevice,
     applicationContext: ApplicationProjectContext,
     console: ConsoleView,
     indicator: ProgressIndicator,
-  ): XDebugSessionImpl
+  ): XSessionStartedResult
 
   private fun createConsole(): ConsoleView {
     val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console

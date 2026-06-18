@@ -19,6 +19,9 @@ import com.android.ddmlib.Client
 import com.android.ddmlib.ClientData
 import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
+import com.android.testutils.VirtualTimeScheduler
+import com.android.tools.analytics.TestUsageTracker
+import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.editors.liveedit.LiveEditServiceImpl
@@ -51,7 +54,7 @@ class BasicAndroidMonitorTest {
 
   private lateinit var project: Project
   private lateinit var monitor: LiveEditProjectMonitor
-  private lateinit var service: LiveEditService
+  private lateinit var service: LiveEditServiceImpl
   private var client = mock<Client>()
   private lateinit var connection: FakeLiveEditAdbListener
 
@@ -67,8 +70,11 @@ class BasicAndroidMonitorTest {
 
   @get:Rule var projectRule = AndroidProjectRule.onDisk()
 
+  private val usageTracker = TestUsageTracker(VirtualTimeScheduler())
+
   @Before
   fun setUp() {
+    UsageTracker.setWriterForTest(usageTracker)
     // GradleSyncState initialization needs happen after AndroidProjectRule had a chance
     // to initialize Application.
     mySyncState = mock()
@@ -85,7 +91,12 @@ class BasicAndroidMonitorTest {
 
     connection = FakeLiveEditAdbListener()
     clients = clients.plus(client)
+    val oldService = project.getServiceIfCreated(LiveEditServiceImpl::class.java)
+    if (oldService != null) {
+      Disposer.dispose(oldService)
+    }
     service = LiveEditServiceImpl(project, MoreExecutors.directExecutor(), connection)
+    project.replaceService(LiveEditServiceImpl::class.java, service, projectRule.testRootDisposable)
     monitor = service.getDeployMonitor()
 
     whenever(device.serialNumber).thenReturn("1")
@@ -100,6 +111,11 @@ class BasicAndroidMonitorTest {
     monitor.notifyAppDeploy(TestApplicationProjectContext(appId), device, LiveEditApp(emptySet(), 24), emptyList()) { true }
   }
 
+  @After
+  fun tearDown() {
+    UsageTracker.cleanAfterTesting()
+  }
+
   @Test
   fun upToDateTest() {
     connection.clientChanged(client, Client.CHANGE_NAME)
@@ -111,9 +127,9 @@ class BasicAndroidMonitorTest {
   @Test
   fun syncNeededTest() {
     connection.clientChanged(client, Client.CHANGE_NAME)
+    whenever(mySyncState.isSyncNeeded()).thenReturn(ThreeState.YES)
 
     val file = projectRule.createKtFile("Test.kt", "")
-    whenever(mySyncState.isSyncNeeded()).thenReturn(ThreeState.YES)
 
     monitor.fileChanged(file.virtualFile)
     monitor.waitForThreadInTest(5000)
@@ -142,10 +158,5 @@ class BasicAndroidMonitorTest {
     val unknownDevice: IDevice = mock()
     val status = monitor.status(unknownDevice)
     assertThat(status).isEqualTo(LiveEditStatus.Disabled)
-  }
-
-  @After
-  fun dispose() {
-    Disposer.dispose(service)
   }
 }

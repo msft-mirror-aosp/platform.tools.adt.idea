@@ -20,33 +20,61 @@ import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.utils.createChildScope
 import com.android.sdklib.SystemImageTags
+import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceHandle
+import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProvisioner
+import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.FakeAvdManager
+import com.android.sdklib.deviceprovisioner.FakeAvdScanner
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.makeAvdInfo
 import com.android.sdklib.deviceprovisioner.testContext
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus
+import com.android.sdklib.internal.avd.UserSettingsKey
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
+import com.android.tools.idea.avd.glassespairing.GlassesPairingLockService
+import com.android.tools.idea.avd.glassespairing.GlassesPairingResult
+import com.android.tools.idea.avd.glassespairing.GlassesPairingWizard
+import com.android.tools.idea.avd.glassespairing.WizardController
+import com.android.tools.idea.avdmanager.AvdManagerConnection
+import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
+import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.testing.TemporaryDirectoryRule
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.replaceService
 import icons.StudioIcons
+import java.nio.file.Files
 import javax.swing.Icon
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class StudioLocalEmulatorProvisionerPluginTest {
   @get:Rule val projectRule = ProjectRule()
@@ -61,15 +89,33 @@ class StudioLocalEmulatorProvisionerPluginTest {
   fun setUp() {
     avdManager = FakeAvdManager(session, temporaryDirectoryRule.newPath())
     plugin =
-      LocalEmulatorProvisionerFactory().create(session.scope, session, projectRule.project, avdManager::rescanAvds)
+      LocalEmulatorProvisionerFactory()
+        .create(session.scope, session, projectRule.project, avdScanner = FakeAvdScanner(avdManager, session.scope))
         as StudioLocalEmulatorProvisionerPlugin
     provisioner = DeviceProvisioner.create(session.scope, session, listOf(plugin))
+
+    val mockService: DeviceProvisionerService = mock()
+    whenever(mockService.deviceProvisioner).thenReturn(provisioner)
+    projectRule.project.replaceService(DeviceProvisionerService::class.java, mockService, projectRule.project)
+    setupMockAndroidSdks()
+  }
+
+  // Setup to facilitate AvdManagerConnection.setConnectionFactory during testing.
+  private fun setupMockAndroidSdks() {
+    val mockAndroidSdks = mock<AndroidSdks>()
+    val mockSdkHandler = mock<AndroidSdkHandler>()
+    val sdkLocation = temporaryDirectoryRule.newPath()
+    whenever(mockSdkHandler.location).thenReturn(sdkLocation)
+    whenever(mockAndroidSdks.tryToChooseSdkHandler()).thenReturn(mockSdkHandler)
+    ApplicationManager.getApplication().replaceService(AndroidSdks::class.java, mockAndroidSdks, projectRule.project)
   }
 
   @After
   fun tearDown() {
     avdManager.close()
     session.close()
+    AvdManagerConnection.resetConnectionFactory()
+    GlassesPairingWizard.resetForTesting()
   }
 
   @Test
@@ -96,19 +142,21 @@ class StudioLocalEmulatorProvisionerPluginTest {
   /** Verify that DeviceActions are implemented as fields rather than via getters. */
   @Test
   fun actionPresentationIdentity() = runTest {
+    val handleScope = this.createChildScope()
     val handle =
       StudioLocalEmulatorDeviceHandle(
         null,
         baseDeviceHandle =
           LocalEmulatorDeviceHandle(
             context = testContext(this),
-            refreshDevices = {},
-            scope = this.createChildScope(),
+            avdScanner = NullAvdScanner(handleScope),
+            scope = handleScope,
             extensions = emptyList(),
             initialAvdInfo = makeAvdInfo(createInMemoryFileSystemAndFolder("avds"), 1),
           ),
         context = testContext(this),
         deviceHandleFlow = MutableStateFlow(emptyList()),
+        edtDispatcher = UnconfinedTestDispatcher(testScheduler),
       )
 
     for (property in StudioLocalEmulatorDeviceHandle::class.memberProperties) {
@@ -123,6 +171,49 @@ class StudioLocalEmulatorProvisionerPluginTest {
     }
 
     handle.scope.cancel()
+  }
+
+  @Test
+  fun testPairGlassesDisabledWhenWizardOpen() = runTest {
+    val handleScope = this.createChildScope()
+    val handle =
+      StudioLocalEmulatorDeviceHandle(
+        null,
+        baseDeviceHandle =
+          LocalEmulatorDeviceHandle(
+            context = testContext(this),
+            avdScanner = NullAvdScanner(handleScope),
+            scope = handleScope,
+            extensions = emptyList(),
+            initialAvdInfo = makeAvdInfo(createInMemoryFileSystemAndFolder("avds"), 1, tag = SystemImageTags.AI_GLASSES_TAG),
+          ),
+        context = testContext(this),
+        deviceHandleFlow = MutableStateFlow(emptyList()),
+        edtDispatcher = UnconfinedTestDispatcher(testScheduler),
+      )
+
+    // Wait for it to become enabled
+    yieldUntil { handle.isPairGlassesEnabled() }
+
+    val completion = CompletableDeferred<Boolean>()
+    val job = launch {
+      GlassesPairingWizard.showCore(null, null, MutableStateFlow(emptyList<DeviceHandle>()), handle) { _, _, _, _, _, _ ->
+        object : WizardController {
+          override suspend fun show(): Boolean = completion.await()
+        }
+      }
+    }
+
+    val lockService = ApplicationManager.getApplication().getService(GlassesPairingLockService::class.java)
+    yieldUntil { lockService.isWizardOpen.value }
+    yieldUntil { !handle.isPairGlassesEnabled() }
+
+    completion.complete(false)
+    job.join()
+
+    yieldUntil { handle.isPairGlassesEnabled() }
+
+    handleScope.cancel()
   }
 
   @Test
@@ -160,7 +251,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
     val handle = provisioner.devices.value[0]
     val activationAction = handle.activationAction!!
 
-    activationAction.presentation.takeWhile { !it.enabled }.collect()
+    activationAction.presentation.first { it.enabled }
 
     avdManager.avds[0] = avdManager.makeAvdInfo(1, avdStatus = AvdStatus.ERROR_IMAGE_MISSING)
     plugin.refreshDevices()
@@ -168,4 +259,361 @@ class StudioLocalEmulatorProvisionerPluginTest {
     // The action should become disabled.
     yieldUntil { activationAction.presentation.value.enabled == false }
   }
+
+  @Test
+  fun testWipeDataUnpairsCompanions() = runBlockingWithTimeout {
+    val avdRoot = temporaryDirectoryRule.newPath()
+    val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
+    val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()
+
+    val phoneInfo = makeAvdInfo(avdRoot, 1, userSettings = mapOf("paired.glasses.avd.id.1" to deviceId(glassesPath).toString()))
+    val glassesInfo =
+      makeAvdInfo(
+        avdRoot,
+        2,
+        tag = SystemImageTags.AI_GLASSES_TAG,
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
+      )
+
+    avdManager.createAvd(phoneInfo)
+    avdManager.createAvd(glassesInfo)
+
+    val mockConnection = mock<AvdManagerConnection>().apply { whenever(wipeUserData(any())).thenReturn(true) }
+    AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 2 }
+
+    val phoneHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+    val glassesHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+    Files.createDirectories((phoneHandle.state.properties as LocalEmulatorProperties).avdPath)
+    Files.createDirectories((glassesHandle.state.properties as LocalEmulatorProperties).avdPath)
+
+    val phoneAvdPath = (phoneHandle.state.properties as LocalEmulatorProperties).avdPath
+    val glassesAvdPath = (glassesHandle.state.properties as LocalEmulatorProperties).avdPath
+
+    // Ensure memory property is resolved
+    yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
+
+    phoneHandle.wipeDataAction.wipeData()
+
+    // The mock avdManager ignores refreshDevices disk updates, so we check disk files directly
+    yieldUntil {
+      val settings = Files.readAllLines(phoneAvdPath.resolve("user-settings.ini"))
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX) }
+    }
+    yieldUntil {
+      val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }
+    }
+  }
+
+  @Test
+  fun testDeleteActionUnpairsCompanions() = runBlockingWithTimeout {
+    val avdRoot = temporaryDirectoryRule.newPath()
+    val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
+    val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()
+
+    val phoneInfo = makeAvdInfo(avdRoot, 1, userSettings = mapOf("paired.glasses.avd.id.1" to deviceId(glassesPath).toString()))
+    val glassesInfo =
+      makeAvdInfo(
+        avdRoot,
+        2,
+        tag = SystemImageTags.AI_GLASSES_TAG,
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
+      )
+
+    avdManager.createAvd(phoneInfo)
+    avdManager.createAvd(glassesInfo)
+
+    val mockDeleteConnection = mock<AvdManagerConnection>().apply { whenever(deleteAvd(any())).thenReturn(true) }
+    AvdManagerConnection.setConnectionFactory { _, _ -> mockDeleteConnection }
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 2 }
+
+    val phoneHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+    val glassesHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+    Files.createDirectories((phoneHandle.state.properties as LocalEmulatorProperties).avdPath)
+    Files.createDirectories((glassesHandle.state.properties as LocalEmulatorProperties).avdPath)
+
+    val glassesAvdPath = (glassesHandle.state.properties as LocalEmulatorProperties).avdPath
+
+    yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
+
+    phoneHandle.delete()
+
+    // Check disk file to verify glasses was unpaired
+    yieldUntil {
+      val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }
+    }
+  }
+
+  @Test
+  fun testDeleteActionContinuesOnUnpairFailure() =
+    runBlockingWithTimeout<Unit> {
+      val avdRoot = temporaryDirectoryRule.newPath()
+      val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
+      val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()
+
+      val phoneInfo = makeAvdInfo(avdRoot, 1, userSettings = mapOf("paired.glasses.avd.id.1" to deviceId(glassesPath).toString()))
+      val glassesInfo =
+        makeAvdInfo(
+          avdRoot,
+          2,
+          tag = SystemImageTags.AI_GLASSES_TAG,
+          userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
+        )
+
+      avdManager.createAvd(phoneInfo)
+      avdManager.createAvd(glassesInfo)
+
+      val mockDeleteConnection = mock<AvdManagerConnection>()
+      whenever(mockDeleteConnection.deleteAvd(any())).thenReturn(true)
+      AvdManagerConnection.setConnectionFactory { _, _ -> mockDeleteConnection }
+      plugin.refreshDevices()
+      yieldUntil { provisioner.devices.value.size == 2 }
+
+      val phoneHandle =
+        provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+      val glassesHandle =
+        provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+      Files.createDirectories((phoneHandle.state.properties as LocalEmulatorProperties).avdPath)
+      Files.createDirectories((glassesHandle.state.properties as LocalEmulatorProperties).avdPath)
+
+      val glassesAvdPath = (glassesHandle.state.properties as LocalEmulatorProperties).avdPath
+      Files.write(glassesAvdPath.resolve("user-settings.ini"), listOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1=${phoneHandle.id}"))
+
+      // Ensure memory property is resolved
+      yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
+
+      // Make companion file non-writable to simulate IOException on update
+      glassesAvdPath.resolve("user-settings.ini").toFile().setWritable(false)
+
+      try {
+        phoneHandle.delete()
+
+        // The mock avdManager ignores refreshDevices disk updates, so we check disk files directly
+        // Glasses should STILL HAVE the phone reference because the write failed
+        val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
+        assertThat(settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }).isTrue()
+      } finally {
+        // Clean up: make it writable again so tearDown can delete the folder
+        glassesAvdPath.resolve("user-settings.ini").toFile().setWritable(true)
+      }
+    }
+
+  @Test
+  fun testActionFailureIgnoresCompanions() = runBlockingWithTimeout {
+    val avdRoot = temporaryDirectoryRule.newPath()
+    val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
+    val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()
+
+    val phoneInfo = makeAvdInfo(avdRoot, 1, userSettings = mapOf("paired.glasses.avd.id.1" to deviceId(glassesPath).toString()))
+    val glassesInfo =
+      makeAvdInfo(
+        avdRoot,
+        2,
+        tag = SystemImageTags.AI_GLASSES_TAG,
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
+      )
+
+    avdManager.createAvd(phoneInfo)
+    avdManager.createAvd(glassesInfo)
+
+    val mockConnection = mock<AvdManagerConnection>().apply { whenever(wipeUserData(any())).thenReturn(false) }
+    AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
+
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 2 }
+
+    val phoneHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+    val glassesHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+    Files.createDirectories((phoneHandle.state.properties as LocalEmulatorProperties).avdPath)
+    Files.createDirectories((glassesHandle.state.properties as LocalEmulatorProperties).avdPath)
+
+    val phoneAvdPath = (phoneHandle.state.properties as LocalEmulatorProperties).avdPath
+    Files.write(phoneAvdPath.resolve("user-settings.ini"), listOf("paired.glasses.avd.id.1=${glassesHandle.id}"))
+
+    yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
+
+    val previousDialog = TestDialogManager.setTestDialog(TestDialog.OK)
+    try {
+      phoneHandle.wipeDataAction.wipeData()
+    } finally {
+      TestDialogManager.setTestDialog(previousDialog)
+    }
+
+    // Assert still paired
+    val phoneSettings = Files.readAllLines(phoneAvdPath.resolve("user-settings.ini"))
+    assertThat(phoneSettings.any { it.startsWith(UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX) }).isTrue()
+    assertThat(glassesHandle.state.properties.pairedPhoneId).isEqualTo(phoneHandle.id)
+  }
+
+  private fun deviceId(avdPath: String) = DeviceId(LocalEmulatorProvisionerPlugin.PLUGIN_ID, false, "path=$avdPath")
+
+  @Test
+  fun testPairedDevicesLaunchedAutomatically(): Unit = runBlockingWithTimeout {
+    val avdRoot = temporaryDirectoryRule.newPath()
+    val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
+    val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()
+    val phoneInfo = makeAvdInfo(avdRoot, 1, userSettings = mapOf("paired.glasses.avd.id.1" to deviceId(glassesPath).toString()))
+    val glassesInfo =
+      makeAvdInfo(
+        avdRoot,
+        2,
+        tag = SystemImageTags.AI_GLASSES_TAG,
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
+      )
+    avdManager.createAvd(phoneInfo)
+    avdManager.createAvd(glassesInfo)
+
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 2 }
+
+    val phoneHandle =
+      provisioner.devices.value.find { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+    val glassesHandle =
+      provisioner.devices.value.find { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+    glassesHandle.activationAction.presentation.first { it.enabled }
+    phoneHandle.activationAction.presentation.first { it.enabled }
+
+    // Verify that the glasses device is correctly paired to the phone device
+    yieldUntil { (glassesHandle.state.properties as LocalEmulatorProperties).pairedPhoneId != null }
+    assertThat((glassesHandle.state.properties as LocalEmulatorProperties).pairedPhoneId).isEqualTo(phoneHandle.id)
+
+    // Actually invoke the activation action and verify that the paired connection triggers
+    val mockConnection = mock<AvdManagerConnection>()
+    AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
+
+    // Note that activation will not actually complete because we don't implement the fake ADB connection, so just verify that startAvd was
+    // called.
+    val activationJob = launch { glassesHandle.activationAction.activate() }
+    yieldUntil {
+      kotlin
+        .runCatching {
+          verify(mockConnection).startAvd(projectRule.project, glassesInfo)
+          verify(mockConnection).startAvd(projectRule.project, phoneInfo)
+        }
+        .isSuccess
+    }
+
+    activationJob.cancel()
+  }
+
+  @Test
+  fun testPairGlassesFetchesMacAddress() = runBlockingWithTimeout {
+    val phoneAvdPath = temporaryDirectoryRule.newPath()
+    Files.createDirectories(phoneAvdPath.resolve("fake_avd_1.avd"))
+    avdManager.createAvd(makeAvdInfo(phoneAvdPath, 1))
+
+    val glassesAvdPath = temporaryDirectoryRule.newPath()
+    Files.createDirectories(glassesAvdPath.resolve("fake_avd_2.avd"))
+    avdManager.createAvd(makeAvdInfo(glassesAvdPath, 2, tag = SystemImageTags.AI_GLASSES_TAG))
+
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 2 }
+
+    val phoneHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+    val glassesHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+    // Mock wizard to return the phone
+    glassesHandle.wizardProvider = { _, _, _, _ -> GlassesPairingResult(phoneHandle, "00:11:22:33:44:55") }
+    val expectedMac = "00:11:22:33:44:55"
+
+    glassesHandle.pairGlasses(null, projectRule.project)
+
+    // Verify MAC was saved
+    yieldUntil {
+      val phoneAvdPath = (phoneHandle.state.properties as LocalEmulatorProperties).avdPath
+      val settings = Files.readAllLines(phoneAvdPath.resolve("user-settings.ini"))
+      settings.any { it.contains("paired.glasses.avd.mac.1=$expectedMac") }
+    }
+  }
+
+  @Test
+  fun testUnpairGlassesActionStopsAndWipesGlassesAndClearsSettings() = runTest {
+    val avdRoot = temporaryDirectoryRule.newPath()
+    val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
+    val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()
+
+    val phoneInfo =
+      makeAvdInfo(avdRoot, 1, userSettings = mapOf("${UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX}1" to deviceId(glassesPath).toString()))
+    val glassesInfo =
+      makeAvdInfo(
+        avdRoot,
+        2,
+        tag = SystemImageTags.AI_GLASSES_TAG,
+        userSettings = mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to deviceId(phonePath).toString()),
+      )
+
+    avdManager.createAvd(phoneInfo)
+    avdManager.createAvd(glassesInfo)
+
+    // Mock the connections, deactivation, and wipe actions
+    val mockConnection = mock<AvdManagerConnection>().apply { whenever(wipeUserData(any())).thenReturn(true) }
+    AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
+
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 2 }
+
+    val phoneHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.HANDHELD } as StudioLocalEmulatorDeviceHandle
+    val glassesHandle =
+      provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
+
+    // Setup the directory and write initial settings to disk
+    val phoneAvdPath = (phoneHandle.state.properties as LocalEmulatorProperties).avdPath
+    val glassesAvdPath = (glassesHandle.state.properties as LocalEmulatorProperties).avdPath
+    Files.createDirectories(phoneAvdPath)
+    Files.createDirectories(glassesAvdPath)
+
+    Files.write(phoneAvdPath.resolve("user-settings.ini"), listOf("${UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX}1=${glassesHandle.id}"))
+    Files.write(glassesAvdPath.resolve("user-settings.ini"), listOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1=${phoneHandle.id}"))
+
+    // Verify the initial state is paired in memory
+    yieldUntil { getPairedGlassesInfos(phoneHandle).isNotEmpty() }
+    assertThat((glassesHandle.state.properties as LocalEmulatorProperties).pairedPhoneId).isEqualTo(phoneHandle.id)
+
+    // Verify the unpair action is strictly enabled on glasses and disabled/absent on phone handles
+    assertThat(glassesHandle.isUnpairGlassesEnabled()).isTrue()
+    assertThat(phoneHandle.isUnpairGlassesEnabled()).isFalse()
+
+    // Invoke unpair
+    glassesHandle.unpairGlasses(null)
+
+    // Verify the persistent files are updated to clear the pairing records on disk
+    yieldUntil {
+      val settings = Files.readAllLines(phoneAvdPath.resolve("user-settings.ini"))
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_GLASSES_AVD_ID_PREFIX) }
+    }
+    yieldUntil {
+      val settings = Files.readAllLines(glassesAvdPath.resolve("user-settings.ini"))
+      !settings.any { it.startsWith(UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX) }
+    }
+
+    // Verify wipe AVD connections were called on the glasses AVD
+    verify(mockConnection).wipeUserData(glassesInfo)
+  }
+
+  private fun getPairedGlassesInfos(handle: StudioLocalEmulatorDeviceHandle) =
+    (handle.state.properties as LocalEmulatorProperties).pairedGlassesInfos
+}
+
+private class NullAvdScanner(coroutineScope: CoroutineScope) : AbstractAvdScanner(coroutineScope) {
+  override fun scanAvds(): List<AvdInfo> = emptyList()
+
+  override fun logError(message: String, exception: Throwable) = throw exception
 }

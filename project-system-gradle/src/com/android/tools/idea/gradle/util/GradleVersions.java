@@ -28,12 +28,11 @@ import org.jetbrains.plugins.gradle.settings.DistributionType;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.notNullize;
-import static com.intellij.openapi.util.text.StringUtil.isNotEmpty;
 import static org.jetbrains.plugins.gradle.settings.DistributionType.DEFAULT_WRAPPED;
 import static org.jetbrains.plugins.gradle.settings.DistributionType.LOCAL;
 
@@ -80,9 +79,9 @@ public class GradleVersions {
         }
       }
       else if (distributionType == LOCAL) {
-        String gradleHome = gradleSettings.getGradleHome();
-        if (isNotEmpty(gradleHome)) {
-          File gradleHomePath = new File(gradleHome);
+        Path gradleHome = gradleSettings.getGradleHomePath();
+        if (gradleHome != null) {
+          File gradleHomePath = gradleHome.toFile();
           return getGradleVersion(gradleHomePath);
         }
       }

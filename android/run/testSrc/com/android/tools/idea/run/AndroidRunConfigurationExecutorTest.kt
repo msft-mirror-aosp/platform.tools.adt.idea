@@ -28,7 +28,7 @@ import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerApplicationTerminator
-import com.android.tools.deployer.DeployerException
+import com.android.tools.deployer.common.DeployerException
 import com.android.tools.idea.backup.BackupManager
 import com.android.tools.idea.backup.BackupManager.Source.RUN_CONFIG
 import com.android.tools.idea.backup.testing.FakeBackupManager
@@ -57,7 +57,6 @@ import com.android.tools.idea.run.editor.DeployTarget
 import com.android.tools.idea.run.editor.DeployTargetState
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.executeMakeBeforeRunStepInTest
-import com.android.tools.idea.testing.findModule
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
@@ -88,12 +87,14 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.ThreadLeakTracker
 import com.intellij.testFramework.registerOrReplaceServiceInstance
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.xdebugger.XDebuggerManager
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.android.facet.AndroidFacet
+import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Ignore
@@ -149,6 +150,13 @@ class AndroidRunConfigurationExecutorTest {
     projectRule.project.registerOrReplaceServiceInstance(BackupManager::class.java, fakeBackupManager, disposableRule.disposable)
 
     IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project)
+  }
+
+  @After
+  fun tearDown() {
+    // If we call stop before the virtual machine initialize, the JDI Internal Event Handler thread may leak.
+    Thread.sleep(250)
+    XDebuggerManager.getInstance(projectRule.project).debugSessions.forEach { it.stop() }
   }
 
   @Test
@@ -264,7 +272,7 @@ class AndroidRunConfigurationExecutorTest {
     val processHandler =
       (ProgressManager.getInstance()
           .runProcess(Computable { runner.debug(ProgressManager.getInstance().progressIndicator) }, EmptyProgressIndicator()))
-        .processHandler as AndroidRemoteDebugProcessHandler
+        ?.processHandler as AndroidRemoteDebugProcessHandler
 
     stats.success()
     assertTaskPresentedInStats(usageTrackerRule.usages, "waitForProcessTermination")
@@ -337,8 +345,7 @@ class AndroidRunConfigurationExecutorTest {
     assertThat(processHandler).isEqualTo(runningProcessHandler)
     assertThat(runContentDescriptor.executionConsole).isEqualTo(runningDescriptor.executionConsole)
     val printedMessage = (runContentDescriptor.executionConsole as EmptyTestConsoleView).printedMessages.map { it.first }.first()
-    val moduleName = if (StudioFlags.PHASED_SYNC_ENABLED.get()) projectRule.project.findModule("app").name else "app"
-    assertThat(printedMessage).endsWith("Applying changes to $moduleName on 'TestTarget'.\n")
+    assertThat(printedMessage).endsWith("Applying changes to app on 'TestTarget'.\n")
     assertThat((processHandler as AndroidProcessHandler).targetApplicationId).isEqualTo(APPLICATION_ID)
     assertThat(processHandler.autoTerminate).isEqualTo(true)
     assertThat(processHandler.isAssociated(device)).isEqualTo(true)
@@ -389,16 +396,15 @@ class AndroidRunConfigurationExecutorTest {
       ProgressManager.getInstance()
         .runProcess(Computable { runner.applyCodeChanges(ProgressManager.getInstance().progressIndicator) }, EmptyProgressIndicator())
 
-    assertThat(runContentDescriptor.isHiddenContent).isEqualTo(true)
+    assertThat(runContentDescriptor?.isHiddenContent).isEqualTo(true)
     assertThat(liveEditServiceNotified).isEqualTo(false) // Live Edit doesn't need to know if AC was performed.
 
-    val processHandler = runContentDescriptor.processHandler
+    val processHandler = runContentDescriptor?.processHandler
 
     assertThat(processHandler).isEqualTo(runningProcessHandler)
-    assertThat(runContentDescriptor.executionConsole).isEqualTo(runningDescriptor.executionConsole)
-    val printedMessage = (runContentDescriptor.executionConsole as EmptyTestConsoleView).printedMessages.map { it.first }.first()
-    val moduleName = if (StudioFlags.PHASED_SYNC_ENABLED.get()) projectRule.project.findModule("app").name else "app"
-    assertThat(printedMessage).endsWith("Applying code changes to $moduleName on 'TestTarget'.\n")
+    assertThat(runContentDescriptor?.executionConsole).isEqualTo(runningDescriptor.executionConsole)
+    val printedMessage = (runContentDescriptor?.executionConsole as EmptyTestConsoleView).printedMessages.map { it.first }.first()
+    assertThat(printedMessage).endsWith("Applying code changes to app on 'TestTarget'.\n")
     assertThat((processHandler as AndroidProcessHandler).targetApplicationId).isEqualTo(APPLICATION_ID)
     assertThat(processHandler.autoTerminate).isEqualTo(true)
     assertThat(processHandler.isAssociated(device)).isEqualTo(true)
@@ -729,7 +735,7 @@ class AndroidRunConfigurationExecutorTest {
     val newProcessHandler =
       ProgressManager.getInstance()
         .runProcess(Computable { runner.applyCodeChanges(ProgressManager.getInstance().progressIndicator) }, EmptyProgressIndicator())
-        .processHandler
+        ?.processHandler
 
     if (!restartHappened.await(10, TimeUnit.SECONDS)) {
       fail("Activity is not restarted")
@@ -866,6 +872,8 @@ class AndroidRunConfigurationExecutorTest {
 
       val mockExecutionManager = mock<ExecutionManagerImpl>()
       whenever(mockExecutionManager.getRunningDescriptors(any())).thenReturn(listOf(runContentDescriptor!!))
+      whenever(mockExecutionManager.isStartingFlow(any<ExecutionEnvironment>())).thenReturn(kotlinx.coroutines.flow.emptyFlow())
+      whenever(mockExecutionManager.isStartingFlow(any(), any(), any())).thenReturn(kotlinx.coroutines.flow.emptyFlow())
       projectRule.project.registerOrReplaceServiceInstance(ExecutionManager::class.java, mockExecutionManager, disposableRule.disposable)
     }
     AndroidSessionInfo.create(processHandlerForSwap, listOf(device), APPLICATION_ID)

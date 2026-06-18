@@ -1,5 +1,6 @@
+# This file should not be edited manually! See go/template-diff-tests
 [versions]
-agp = "9.2.0-alpha03"
+agp = "{LATEST_AGP_VERSION}"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"

@@ -40,16 +40,20 @@ import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.ConfigKey
-import com.android.sdklib.internal.avd.EnvironmentKey
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.sdk.AndroidSdks
+import com.android.tools.idea.sdk.AndroidSdksImpl
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
-import java.io.File
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.listDirectoryEntries
@@ -60,6 +64,7 @@ import org.junit.Test
 class AddDeviceWizardTest {
   @get:Rule val edtRule = EdtRule()
   @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val disposableRule = DisposableRule()
   @get:Rule val composeTestRule = createStudioComposeTestRule()
   @get:Rule val aiGlassesFlagRule = FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true)
   @get:Rule val xrGlassesFlagRule = FlagRule(StudioFlags.XR_GLASSES_DEVICE_SUPPORT_ENABLED, true)
@@ -74,7 +79,7 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
 
       fun addPixel8() {
         val wizard = createTestAddDeviceWizard(source)
@@ -89,7 +94,7 @@ class AddDeviceWizardTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.waitUntilDoesNotExist(hasText("Loading system images", substring = true))
-        wizard.performAction(wizard.finishAction)
+        wizard.performAction(wizard.nextAction)
         composeTestRule.waitForIdle()
         wizard.awaitClose()
       }
@@ -112,7 +117,7 @@ class AddDeviceWizardTest {
         createLocalSystemImage("android-automotive", listOf(SystemImageTags.AUTOMOTIVE_TAG), AndroidVersion(34, null, 9, false))
       repoPackages.setLocalPkgInfos(listOf(api34Ext9Auto))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
@@ -128,7 +133,7 @@ class AddDeviceWizardTest {
       composeTestRule.onNodeWithText("Camera").assertDoesNotExist()
       composeTestRule.waitForIdle()
 
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       assertThat(Files.list(avdRoot).map { it.fileName.toString() }.toList())
@@ -140,44 +145,49 @@ class AddDeviceWizardTest {
   }
 
   @Test
-  fun addAiGlassesDevice() {
+  fun addAudioGlassesDevice() {
     // The AVD needs to be on a real filesystem for the copy of the default environment to work.
-    val fixture = SdkFixture(avdRoot = createTempDirectory("AddAiGlassesDeviceTest"))
+    val fixture = SdkFixture(avdRoot = createTempDirectory("AddAudioGlassesDeviceTest"))
     with(fixture) {
+      // We need to inject the SDK for EnvironmentsUpdater.
+      val androidSdks =
+        object : AndroidSdksImpl() {
+          override fun tryToChooseSdkHandler(): AndroidSdkHandler {
+            return sdkHandler
+          }
+        }
+      ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, androidSdks, disposableRule.disposable)
+
       val api36Glasses = createLocalSystemImage("ai-glasses", listOf(SystemImageTags.AI_GLASSES_TAG), AndroidVersion(36, null, 9, false))
       repoPackages.setLocalPkgInfos(listOf(api36Glasses))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
       composeTestRule.onNodeWithText("XR").performClick()
-      composeTestRule.onAllNodesWithText("AI Glasses", substring = true).onFirst().performClick()
+      composeTestRule.onNodeWithText("Audio Glasses").performClick()
       composeTestRule.waitForIdle()
 
       wizard.performAction(wizard.nextAction)
 
       composeTestRule.onNodeWithText(api36Glasses.displayName).assertIsSelected()
       composeTestRule.onNodeWithText("Additional settings").performClick()
-      // Glasses have background, not skin.
+      // Glasses have an environment, not skin, which is configured at runtime.
       composeTestRule.onNodeWithText("skin", substring = true, ignoreCase = true).assertDoesNotExist()
-      composeTestRule.onNodeWithText("Background").assertIsDisplayed()
       // We need to disable the external storage, since we can't run mksdcard.
       composeTestRule.onNode(hasText("None") and hasParent(hasTestTag("StorageGroup"))).performClick()
 
       composeTestRule.waitForIdle()
 
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       val avdFolder = avdRoot.listDirectoryEntries("*.avd").single()
       val properties = checkNotNull(AvdManager.parseIniFile(PathFileWrapper(avdFolder.resolve("config.ini")), null))
       assertThat(properties[ConfigKey.LCD_TRANSPARENT]).isEqualTo("yes")
       assertThat(properties[ConfigKey.FORCE_COLD_BOOT_MODE]).isEqualTo("yes")
-
-      val environment = AvdManager.parseEnvironmentFile(avdFolder, null)
-      assertThat(environment[EnvironmentKey.IMAGE]).isEqualTo("environment" + File.separator + defaultEnvironments().first().fileName)
     }
   }
 
@@ -194,7 +204,7 @@ class AddDeviceWizardTest {
         )
       repoPackages.setLocalPkgInfos(listOf(api34XrOst))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
@@ -215,15 +225,12 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
 
-      wizard.performAction(wizard.finishAction)
+      wizard.performAction(wizard.nextAction)
       wizard.awaitClose()
 
       val avdFolder = avdRoot.listDirectoryEntries("*.avd").single()
       val properties = checkNotNull(AvdManager.parseIniFile(PathFileWrapper(avdFolder.resolve("config.ini")), null))
       assertThat(properties[ConfigKey.LCD_TRANSPARENT]).isNotEqualTo("yes")
-
-      val environment = AvdManager.parseEnvironmentFile(avdFolder, null)
-      assertThat(environment).isEmpty()
     }
   }
 
@@ -234,10 +241,8 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
-
       val wizard = TestComposeWizard {
-        with(AddDeviceWizard(source, null, { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
+        with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
       }
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
@@ -256,32 +261,29 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val pixel3 = deviceManager.getDevice("pixel_3", "Google")!!
-      deviceManager.addUserDevice(
-        Device.Builder(pixel3)
-          .apply {
-            setName("APhone")
-            setId("aphone")
-          }
-          .build()
-      )
-      deviceManager.addUserDevice(
-        Device.Builder(pixel3)
-          .apply {
-            setName("ZPhone")
-            setId("zphone")
-          }
-          .build()
-      )
+      val phone = deviceManager.getDevice("medium_phone", "Generic")!!
+      for (letter in 'A'..'Z') {
+        deviceManager
+          .getUserDevices()
+          ?.addUserDevice(
+            Device.Builder(phone)
+              .apply {
+                setName("${letter}Phone")
+                setId("${letter}phone")
+              }
+              .build()
+          )
+      }
 
-      val source = createLocalVirtualDeviceSource()
+      val deviceCount = deviceManager.getDevices().size
+      val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
 
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
       // Sort by name then arrow down to bring ZPhone into view
       composeTestRule.onNodeWithText("Name").performClick()
-      repeat(50) { composeTestRule.onRoot().performKeyInput { pressKey(Key.DirectionDown) } }
+      repeat(deviceCount) { composeTestRule.onRoot().performKeyInput { pressKey(Key.DirectionDown) } }
       composeTestRule.onNodeWithText("ZPhone").performClick()
 
       // Show the details, now we see ZPhone twice
@@ -291,7 +293,7 @@ class AddDeviceWizardTest {
       // Go forward and back
       wizard.performAction(wizard.nextAction)
       composeTestRule.waitForIdle()
-      wizard.performAction(wizard.prevAction)
+      composeTestRule.onNodeWithText("Previous").performClick()
 
       // Sort order is preserved; ZPhone is still selected; details still visible
       composeTestRule.onNodeWithText("APhone").assertDoesNotExist()
@@ -307,10 +309,8 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
-
       val wizard = TestComposeWizard {
-        with(AddDeviceWizard(source, null, { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
+        with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
       }
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
@@ -324,7 +324,6 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
       assertThat(wizard.nextAction.enabled).isFalse()
-      assertThat(wizard.finishAction.enabled).isFalse()
 
       composeTestRule.onNodeWithText("No system images available.").assertIsDisplayed()
     }
@@ -336,10 +335,10 @@ class AddDeviceWizardTest {
       val api34 = createLocalSystemImage("google_atd", listOf(SystemImageTags.GOOGLE_ATD_TAG), AndroidVersion(34))
       repoPackages.setLocalPkgInfos(listOf(api34))
 
-      val source = createLocalVirtualDeviceSource()
+      val source = createAddDeviceWizard()
 
       val wizard = TestComposeWizard {
-        with(AddDeviceWizard(source, null, { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
+        with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
       }
       composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
@@ -349,13 +348,21 @@ class AddDeviceWizardTest {
 
       composeTestRule.waitForIdle()
       assertThat(wizard.nextAction.enabled).isFalse()
-      assertThat(wizard.finishAction.enabled).isFalse()
 
       composeTestRule.onNodeWithText("No system images available matching the current set of filters.").assertIsDisplayed()
     }
   }
+
+  @Test
+  fun virtualDeviceFilter() {
+    with(SdkFixture()) {
+      val wizard = TestComposeWizard { with(createAddDeviceWizard(virtualDeviceFilter = { it.name == "Pixel 8" })) { DeviceGridPage() } }
+      composeTestRule.setContentWithSdkLocals { wizard.Content() }
+
+      composeTestRule.onNodeWithText("Pixel 8").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Pixel 7").assertDoesNotExist()
+    }
+  }
 }
 
-private fun createTestAddDeviceWizard(source: LocalVirtualDeviceSource) = TestComposeWizard {
-  with(AddDeviceWizard(source, null, accelerationCheck = { AccelerationErrorCode.ALREADY_INSTALLED })) { DeviceGridPage() }
-}
+private fun createTestAddDeviceWizard(wizard: AddDeviceWizard) = TestComposeWizard { with(wizard) { DeviceGridPage() } }

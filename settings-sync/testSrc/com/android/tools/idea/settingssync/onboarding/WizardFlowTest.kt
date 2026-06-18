@@ -36,8 +36,8 @@ import com.android.tools.idea.settingssync.PushResult
 import com.android.tools.idea.settingssync.SAMPLE_SNAPSHOT
 import com.android.tools.idea.settingssync.SyncEventsMetrics
 import com.google.common.truth.Truth.assertThat
-import com.google.gct.login2.LoginFeature
 import com.google.gct.login2.PreferredUser
+import com.google.gct.login2.maskLoginFeatures
 import com.google.gct.login2.ui.onboarding.compose.GoogleSignInWizard
 import com.google.gct.wizard.FakeController
 import com.google.gct.wizard.NavigationState
@@ -55,7 +55,6 @@ import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.extensions.impl.ExtensionPointImpl
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.IntellijInternalApi
-import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.settingsSync.core.ServerState
 import com.intellij.settingsSync.core.SettingsSyncLocalSettings
@@ -68,9 +67,9 @@ import com.intellij.settingsSync.core.communicator.SettingsSyncCommunicatorBean
 import com.intellij.settingsSync.core.communicator.SettingsSyncCommunicatorProvider
 import com.intellij.settingsSync.core.communicator.getSyncProviderPoint
 import com.intellij.testFramework.DisposableRule
-import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.replaceService
+import com.intellij.util.text.DateFormatUtil
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
@@ -136,7 +135,7 @@ class WizardFlowTest {
 
     (getSyncProviderPoint() as ExtensionPointImpl).maskAll(listOf(communicatorProviderBean), disposableRule.disposable, false)
 
-    ExtensionTestUtil.maskExtensions(LoginFeature.Companion.EP_NAME, listOf(feature), disposableRule.disposable, false)
+    maskLoginFeatures(listOf(feature), disposableRule.disposable)
 
     initCommunicatorFromClean()
 
@@ -414,12 +413,8 @@ class WizardFlowTest {
       this[1].assertIsDisplayed()
     }
 
-    // explicit remote copy date check which behaves differently based on OS in DateFormatUtil
-    if (SystemInfo.isWindows) {
-      composeTestRule.onNodeWithText("Last updated: 5/8/2024", substring = true).assertIsDisplayed()
-    } else {
-      composeTestRule.onNodeWithText("Last updated: 5/8/24", substring = true).assertIsDisplayed()
-    }
+    val date = DateFormatUtil.formatPrettyDate(SAMPLE_SNAPSHOT.metaInfo.dateCreated.toEpochMilli())
+    composeTestRule.onNodeWithText("Last updated: $date", substring = true).assertIsDisplayed()
     // remote/local build info
     with(composeTestRule.onAllNodesWithText("Android Studio version: Android Studio dev build", substring = true)) {
       assertCountEquals(2)

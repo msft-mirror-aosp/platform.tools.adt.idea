@@ -37,6 +37,9 @@ object TaskSelectionVerificationUtils {
   private fun isDeviceSelectionOnline(device: ProcessListModel.ProfilerDeviceSelection) =
     device.device != Common.Device.getDefaultInstance()
 
+  private fun isPreferredProcessNameAvailable(selectedProcess: Common.Process, preferredProcessName: String?) =
+    selectedProcess == Common.Process.getDefaultInstance() && !preferredProcessName.isNullOrEmpty()
+
   private fun isTaskSupportedByProcess(
     selectedTaskType: ProfilerTaskType,
     taskHandlers: Map<ProfilerTaskType, ProfilerTaskHandler>,
@@ -71,10 +74,12 @@ object TaskSelectionVerificationUtils {
     selectedProcess: Common.Process,
     profilers: StudioProfilers,
   ): Boolean {
-    val isProcessPreferred = isSelectedProcessPreferred(selectedProcess, profilers)
+    val isProcessPreferred =
+      isSelectedProcessPreferred(selectedProcess, profilers) ||
+        isPreferredProcessNameAvailable(selectedProcess, profilers.preferredProcessName)
     val isTaskSupported =
       if (selectedTaskType == ProfilerTaskType.LEAKCANARY) {
-        profilers.ideServices.featureConfig.isLeakCanaryMilestone2Enabled
+        true
       } else {
         profilers.ideServices.isTaskSupportedOnStartup(selectedTaskType)
       }
@@ -167,7 +172,7 @@ object TaskSelectionVerificationUtils {
 
     val isTaskSupported =
       if (selectedTaskType == ProfilerTaskType.LEAKCANARY) {
-        profilers.ideServices.featureConfig.isLeakCanaryMilestone2Enabled
+        true
       } else {
         profilers.ideServices.isTaskSupportedOnStartup(selectedTaskType)
       }
@@ -291,8 +296,11 @@ data class StartTaskSelectionError(val startTaskSelectionErrorCode: StartTaskSel
     TASK_REQUIRES_DEBUGGABLE_PROCESS,
     NO_STARTING_POINT_SELECTED,
     LEAKCANARY_NOT_FOUND,
+    LEAKCANARY_NOT_FOUND_EXTERNAL_PROCESS,
     LEAKCANARY_CHECK_IN_PROGRESS,
     LEAKCANARY_CHECK_TIMEOUT,
+    LEAKCANARY_REFLECTION_FAILED,
+    TASK_HAS_DEBUGGER_ATTACHED,
     // Generalized error to cover the rest of task start errors.
     GENERAL_ERROR,
   }

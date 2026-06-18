@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.surface
 
+import com.android.flags.junit.FlagRule
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.TestUtils
 import com.android.testutils.delayUntilCondition
@@ -28,6 +29,7 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.common.surface.ZoomControlsPolicy
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.rendering.AndroidBuildTargetReference
 import com.android.tools.idea.rendering.RenderTestUtil
 import com.android.tools.idea.rendering.StudioRenderService
@@ -77,6 +79,8 @@ class NlDesignSurfaceZoomControlsTest {
   private val androidProjectRule = AndroidProjectRule.withSdk()
   private val asyncDisplayRule = AsyncDisplayRule()
 
+  @get:Rule val flagRule = FlagRule(StudioFlags.NELE_BACKGROUND_DISPLAY_LIST, false)
+
   @get:Rule
   val ruleChain =
     RuleChain.outerRule(IconLoaderRule()) // Must be before AndroidProjectRule
@@ -120,6 +124,7 @@ class NlDesignSurfaceZoomControlsTest {
     surface = invokeAndWaitIfNeeded {
       NlSurfaceBuilder.builder(androidProjectRule.project, androidProjectRule.fixture.testRootDisposable)
         .setZoomControlsPolicy(ZoomControlsPolicy.VISIBLE)
+        .setScreenViewProvider(NlScreenViewProvider.RENDER_AND_BLUEPRINT, false)
         .build()
     }
 
@@ -156,13 +161,13 @@ class NlDesignSurfaceZoomControlsTest {
           setBounds(0, 0, 1000, 1000)
         }
 
-      FakeUi(outerPanel, 1.0, true).apply {
+      FakeUi(outerPanel, true).apply {
         updateToolbars()
         layoutAndDispatchEvents()
       }
     }
 
-    delayUntilCondition(100, 2.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().count() == 2 }
+    delayUntilCondition(100, 5.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().count() == 2 }
 
     // Try to restore the zoom
     surface.restoreZoomOrZoomToFit()
@@ -181,7 +186,7 @@ class NlDesignSurfaceZoomControlsTest {
   private fun getGoldenImagePath(testName: String) = Paths.get("${androidProjectRule.fixture.testDataPath}/zoomGoldenImages/$testName.png")
 
   private fun FakeUi.updateToolbardsAndFullRefresh() = invokeAndWaitIfNeeded {
-    updateToolbars()
+    updateToolbarsIfNecessary()
     layoutAndDispatchEvents()
     root.repaint()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()

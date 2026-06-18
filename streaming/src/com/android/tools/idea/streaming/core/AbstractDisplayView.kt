@@ -49,6 +49,7 @@ import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.IllegalComponentStateException
 import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
@@ -66,6 +67,8 @@ import java.awt.event.InputEvent.BUTTON3_DOWN_MASK
 import java.awt.event.InputEvent.CTRL_DOWN_MASK
 import java.awt.event.InputEvent.META_DOWN_MASK
 import java.awt.event.InputEvent.SHIFT_DOWN_MASK
+import java.awt.event.InputMethodEvent
+import java.awt.event.InputMethodListener
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.KEY_PRESSED
 import java.awt.event.KeyEvent.KEY_RELEASED
@@ -77,8 +80,13 @@ import java.awt.event.KeyEvent.VK_SHIFT
 import java.awt.event.KeyEvent.VK_TAB
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
+import java.awt.font.TextHitInfo
 import java.awt.geom.Area
+import java.awt.im.InputMethodRequests
 import java.awt.image.BufferedImage
+import java.text.AttributedCharacterIterator
+import java.text.AttributedString
+import java.text.CharacterIterator
 import javax.swing.AbstractAction
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -107,7 +115,7 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   /** ID of the device shown in the view. */
   abstract val deviceId: StreamingDeviceId
-  override var displayRectangle: Rectangle? = null
+  override var projectionRectangle: Rectangle? = null
     protected set
 
   /** The difference between [displayOrientationQuadrants] and the orientation according to the internal Android data structures. */
@@ -128,6 +136,10 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   internal abstract val xrInputController: AbstractXrInputController?
 
+  abstract val isConnected: Boolean
+
+  private val inputMethodRequests = MyInputMethodRequests()
+
   override var rightClicksAreSentToDevice: Boolean = false
 
   protected val contextMenuHandler: PopupHandler? = createContextMenuHandler(contextMenuActionGroupId)
@@ -141,7 +153,16 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
     background = primaryPanelBackground
     addToCenter(disconnectedStatePanel)
     initializeFocusHandling()
+    if (StudioFlags.DEVICE_MIRRORING_UNICODE_TYPING.get()) {
+      enableInputMethods(true)
+      addInputMethodListener(MyInputMethodListener())
+    }
   }
+
+  /** Sends the given text to the device as if it was typed. */
+  protected abstract fun sendTypedText(text: String)
+
+  override fun getInputMethodRequests(): InputMethodRequests? = inputMethodRequests
 
   private fun initializeFocusHandling() {
     isFocusable = true // Must be focusable to receive keyboard events.
@@ -280,7 +301,7 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
   }
 
   internal fun toDeviceDisplayCoordinates(p: Point): Point? {
-    val displayRectangle = displayRectangle ?: return null
+    val displayRectangle = projectionRectangle ?: return null
     val imageSize = displayRectangle.size.rotatedByQuadrants(displayOrientationQuadrants)
     // Mouse pointer coordinates compensated for the device display rotation.
     val normalized = Point()
@@ -368,17 +389,17 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
     }
   }
 
-  override fun canZoom(type: ZoomType): Boolean {
-    return when (type) {
+  override fun canZoom(zoomType: ZoomType): Boolean {
+    return when (zoomType) {
       ZoomType.IN,
-      ZoomType.OUT -> deviceType == DeviceType.XR_HEADSET || super.canZoom(type)
-      else -> deviceType != DeviceType.XR_HEADSET && super.canZoom(type)
+      ZoomType.OUT -> deviceType == DeviceType.XR_HEADSET || super.canZoom(zoomType)
+      else -> deviceType != DeviceType.XR_HEADSET && super.canZoom(zoomType)
     }
   }
 
-  override fun zoom(type: ZoomType): Boolean {
+  override fun zoom(zoomType: ZoomType): Boolean {
     if (deviceType == DeviceType.XR_HEADSET) {
-      when (type) {
+      when (zoomType) {
         ZoomType.IN -> xrInputController?.sendTranslation(0F, 0F, -TRANSLATION_STEP_SIZE) // Move forward.
         ZoomType.OUT -> xrInputController?.sendTranslation(0F, 0F, TRANSLATION_STEP_SIZE) // Move backward.
         else -> {}
@@ -386,7 +407,7 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
       return false
     }
 
-    return super.zoom(type)
+    return super.zoom(zoomType)
   }
 
   internal fun interface FrameListener {
@@ -522,6 +543,73 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
         .withMinimumHeight(0)
         .withPreferredSize(0, 0)
         .andTransparent()
+    }
+  }
+
+  private inner class MyInputMethodRequests : InputMethodRequests {
+
+    override fun getTextLocation(offset: TextHitInfo?): Rectangle {
+      val x = 0
+      val y = height
+      val rect = Rectangle(x, y, 1, 10)
+      try {
+        val componentLocation = locationOnScreen
+        rect.translate(componentLocation.x, componentLocation.y)
+      } catch (_: IllegalComponentStateException) {
+        // Component not showing
+      }
+      return rect
+    }
+
+    override fun getLocationOffset(x: Int, y: Int): TextHitInfo? = null
+
+    override fun getInsertPositionOffset(): Int = 0
+
+    override fun getCommittedText(
+      beginIndex: Int,
+      endIndex: Int,
+      attributes: Array<out AttributedCharacterIterator.Attribute>?,
+    ): AttributedCharacterIterator {
+      return AttributedString("").iterator
+    }
+
+    override fun getCommittedTextLength(): Int = 0
+
+    override fun cancelLatestCommittedText(attributes: Array<out AttributedCharacterIterator.Attribute>?): AttributedCharacterIterator? =
+      null
+
+    override fun getSelectedText(attributes: Array<out AttributedCharacterIterator.Attribute>?): AttributedCharacterIterator {
+      return AttributedString("").iterator
+    }
+  }
+
+  protected inner class MyInputMethodListener : InputMethodListener {
+
+    override fun inputMethodTextChanged(event: InputMethodEvent) {
+      if (!isConnected) {
+        return
+      }
+      val text = event.text
+      val committedCharacterCount = event.committedCharacterCount
+      if (text != null && committedCharacterCount > 0) {
+        val buf = StringBuilder()
+        var c = text.first()
+        var count = 0
+        while (c != CharacterIterator.DONE && count < committedCharacterCount) {
+          buf.append(c)
+          c = text.next()
+          count++
+        }
+        if (count > 0) {
+          val commitedText = buf.toString()
+          sendTypedText(commitedText)
+        }
+      }
+      event.consume()
+    }
+
+    override fun caretPositionChanged(event: InputMethodEvent) {
+      event.consume()
     }
   }
 }

@@ -13,6 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/**
+ * This file is used to be packed in the `localnavigationevent.jar` by using the
+ * `generate_localnavigationevent_jar.sh` script located in `tools/adt/idea/designer/testData/classloader/`.
+ */
 package androidx.navigationevent.compose
 
 import androidx.navigationevent.NavigationEventDispatcher

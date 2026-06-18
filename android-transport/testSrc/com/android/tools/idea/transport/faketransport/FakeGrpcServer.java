@@ -17,17 +17,7 @@ package com.android.tools.idea.transport.faketransport;
 
 import com.android.tools.idea.transport.TransportService;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.CpuProfiler.CpuDataRequest;
-import com.android.tools.profiler.proto.CpuProfiler.CpuDataResponse;
-import com.android.tools.profiler.proto.CpuProfiler.CpuStartRequest;
-import com.android.tools.profiler.proto.CpuProfiler.CpuStartResponse;
-import com.android.tools.profiler.proto.CpuProfiler.CpuStopRequest;
-import com.android.tools.profiler.proto.CpuProfiler.CpuStopResponse;
-import com.android.tools.profiler.proto.CpuProfiler.GetThreadsRequest;
-import com.android.tools.profiler.proto.CpuProfiler.GetThreadsResponse;
-import com.android.tools.profiler.proto.CpuProfiler.GetTraceInfoRequest;
-import com.android.tools.profiler.proto.CpuProfiler.GetTraceInfoResponse;
-import com.android.tools.profiler.proto.CpuServiceGrpc;
+
 import com.android.tools.profiler.proto.EventProfiler.ActivityDataResponse;
 import com.android.tools.profiler.proto.EventProfiler.EventDataRequest;
 import com.android.tools.profiler.proto.EventProfiler.EventStartRequest;
@@ -44,7 +34,6 @@ import com.android.tools.profiler.proto.MemoryProfiler.MemoryStartRequest;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryStartResponse;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryStopRequest;
 import com.android.tools.profiler.proto.MemoryProfiler.MemoryStopResponse;
-import com.android.tools.profiler.proto.MemoryServiceGrpc;
 import com.android.tools.idea.io.grpc.BindableService;
 import com.android.tools.idea.io.grpc.stub.StreamObserver;
 import com.android.tools.profiler.proto.Trace;
@@ -73,15 +62,9 @@ public class FakeGrpcServer extends FakeGrpcChannel {
    */
   @NotNull
   public static FakeGrpcServer createFakeGrpcServer(String name, BindableService transportService, BindableService profilerService) {
-    EventService eventService = new EventService();
-    MemoryService memoryService = new MemoryService();
-    CpuService cpuService = new CpuService();
     FakeGrpcServer server =
-      new FakeGrpcServer(name, transportService, profilerService, eventService, memoryService, cpuService);
+      new FakeGrpcServer(name, transportService, profilerService);
     // Set the links between the services and the server.
-    eventService.myServer = server;
-    memoryService.myServer = server;
-    cpuService.myServer = server;
     TransportService.setTestChannelName(server.getName());
     return server;
   }
@@ -124,107 +107,4 @@ public class FakeGrpcServer extends FakeGrpcChannel {
     }
   }
 
-  private static class EventService extends EventServiceGrpc.EventServiceImplBase {
-    private FakeGrpcServer myServer;
-
-    @Override
-    public void startMonitoringApp(EventStartRequest request, StreamObserver<EventStartResponse> response) {
-      myServer.addProfiledProcess(request.getSession());
-      response.onNext(EventStartResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void stopMonitoringApp(EventStopRequest request, StreamObserver<EventStopResponse> response) {
-      myServer.removeProfiledProcess(request.getSession());
-      response.onNext(EventStopResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getActivityData(EventDataRequest request, StreamObserver<ActivityDataResponse> response) {
-      response.onNext(ActivityDataResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getSystemData(EventDataRequest request, StreamObserver<SystemDataResponse> response) {
-      response.onNext(SystemDataResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-  }
-
-  private static class MemoryService extends MemoryServiceGrpc.MemoryServiceImplBase {
-    private FakeGrpcServer myServer;
-
-    @Override
-    public void startMonitoringApp(MemoryStartRequest request, StreamObserver<MemoryStartResponse> response) {
-      myServer.addProfiledProcess(request.getSession());
-      response.onNext(MemoryStartResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void stopMonitoringApp(MemoryStopRequest request, StreamObserver<MemoryStopResponse> response) {
-      myServer.removeProfiledProcess(request.getSession());
-      response.onNext(MemoryStopResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getData(MemoryRequest request, StreamObserver<MemoryData> response) {
-      response.onNext(MemoryData.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getJvmtiData(MemoryRequest request, StreamObserver<MemoryData> response) {
-      response.onNext(MemoryData.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void listHeapDumpInfos(ListDumpInfosRequest request,
-                                  StreamObserver<ListHeapDumpInfosResponse> response) {
-      response.onNext(ListHeapDumpInfosResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-  }
-
-  public static class CpuService extends CpuServiceGrpc.CpuServiceImplBase {
-    private final List<Trace.TraceInfo> myTraceInfos = new ArrayList<>();
-    private FakeGrpcServer myServer;
-
-    @Override
-    public void startMonitoringApp(CpuStartRequest request, StreamObserver<CpuStartResponse> response) {
-      myServer.addProfiledProcess(request.getSession());
-      response.onNext(CpuStartResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void stopMonitoringApp(CpuStopRequest request, StreamObserver<CpuStopResponse> response) {
-      myServer.removeProfiledProcess(request.getSession());
-      response.onNext(CpuStopResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getData(CpuDataRequest request, StreamObserver<CpuDataResponse> response) {
-      response.onNext(CpuDataResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getThreads(GetThreadsRequest request, StreamObserver<GetThreadsResponse> response) {
-      response.onNext(GetThreadsResponse.getDefaultInstance());
-      response.onCompleted();
-    }
-
-    @Override
-    public void getTraceInfo(GetTraceInfoRequest request, StreamObserver<GetTraceInfoResponse> response) {
-      response.onNext(GetTraceInfoResponse.newBuilder().addAllTraceInfo(myTraceInfos).build());
-      response.onCompleted();
-    }
-  }
 }

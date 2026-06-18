@@ -19,6 +19,7 @@ import com.android.sdklib.TempSdkManager
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.DeviceManager
 import com.android.sdklib.devices.DeviceManager.DeviceCategory
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.NoErrorsOrWarningsLogger
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -34,14 +35,31 @@ class DeviceManagerConnectionTest {
     val device = Device.Builder(deviceManagerConnection.devices.first()).apply { setName("TestDevice") }.build()
 
     deviceManagerConnection.createDevices(listOf(device))
-    assertThat(deviceManagerConnection.getDevices(listOf(DeviceCategory.USER)).map { it.displayName }).containsExactly("TestDevice")
+    assertThat(deviceManagerConnection.getDevices(DeviceCategory.USER).map { it.displayName }).containsExactly("TestDevice")
 
     deviceManagerConnection.createDevices(listOf(device))
-    assertThat(deviceManagerConnection.getDevices(listOf(DeviceCategory.USER)).map { it.displayName })
-      .containsExactly("TestDevice", "TestDevice_2")
+    assertThat(deviceManagerConnection.getDevices(DeviceCategory.USER).map { it.displayName }).containsExactly("TestDevice", "TestDevice_2")
 
     deviceManagerConnection.createDevices(listOf(device))
-    assertThat(deviceManagerConnection.getDevices(listOf(DeviceCategory.USER)).map { it.displayName })
+    assertThat(deviceManagerConnection.getDevices(DeviceCategory.USER).map { it.displayName })
       .containsExactly("TestDevice", "TestDevice_2", "TestDevice_3")
+  }
+
+  @Test
+  fun nullUserDevicesDoesNotCrash() {
+    val sdkHandler = AndroidSdkHandler(sdkManager.sdkHandler.location, null)
+    val deviceManager = DeviceManager.createInstance(sdkHandler, NoErrorsOrWarningsLogger())
+    assertThat(deviceManager.getUserDevices()).isNull()
+
+    val connection = DeviceManagerConnection(deviceManager)
+    val device = connection.devices.first()
+
+    // These mutative operations should not throw NullPointerException
+    connection.deleteDevice(device)
+    connection.createOrEditDevice(device)
+    connection.createDevices(listOf(device))
+
+    // isUserDevice should safely return false
+    assertThat(connection.isUserDevice(device)).isFalse()
   }
 }

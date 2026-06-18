@@ -16,13 +16,14 @@
 package com.android.tools.idea.insights.ui
 
 import com.android.tools.idea.insights.AppInsightsConfigurationManager
+import com.android.tools.idea.insights.InsightsProvider
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
 import javax.swing.Icon
 import kotlinx.coroutines.flow.Flow
 
 interface AppInsightsTabProvider {
-  val displayName: String
+  val insightsProvider: InsightsProvider
   val icon: Icon
 
   /** Populates the provided [tabPanel] with content. */
@@ -31,7 +32,14 @@ interface AppInsightsTabProvider {
   /** Returns the active configuration manager for this insights tab for [project]. */
   fun getConfigurationManager(project: Project): AppInsightsConfigurationManager
 
+  /** Returns whether this tab is applicable/enabled. */
+  fun isApplicable(): Boolean = true
+
   companion object {
     @JvmField val EP_NAME = ExtensionPointName<AppInsightsTabProvider>("com.android.tools.idea.insights.ui.appInsightsTabProvider")
+
+    fun getApplicableExtensions(): List<AppInsightsTabProvider> {
+      return EP_NAME.extensionList.filter { it.isApplicable() }
+    }
   }
 }

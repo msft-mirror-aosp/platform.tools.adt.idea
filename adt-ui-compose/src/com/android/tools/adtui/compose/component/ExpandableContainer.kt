@@ -15,26 +15,26 @@
  */
 package com.android.tools.adtui.compose.component
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
-import kotlin.math.min
 import org.jetbrains.jewel.foundation.modifier.thenIf
 
 /**
@@ -67,41 +67,30 @@ fun ExpandableContainer(
   modifier: Modifier = Modifier,
   maxCollapsedHeight: Dp = 150.dp,
   animateHeightChange: Boolean = true,
-  heightAnimationSpec: AnimationSpec<Int> = spring(),
+  heightAnimationSpec: FiniteAnimationSpec<IntSize> = spring(),
   content: @Composable () -> Unit,
 ) {
-  var actualHeightPx by remember { mutableIntStateOf(0) }
-  var isOverflowing by remember { mutableStateOf(false) }
-
-  val density = LocalDensity.current
-  val actualHeightDp = with(density) { actualHeightPx.toDp() }
-  val newIsOverflowing = actualHeightDp >= maxCollapsedHeight
-  if (isOverflowing != newIsOverflowing) {
-    onExpandableChange(newIsOverflowing)
-    isOverflowing = newIsOverflowing
-  }
-
-  val maxCollapsedHeightPx = with(density) { maxCollapsedHeight.roundToPx() }
-  var targetHeightPx by remember { mutableIntStateOf(0) }
-  val animatedHeight by
-    animateIntAsState(targetValue = targetHeightPx, animationSpec = heightAnimationSpec, label = "ExpandableContainer_height")
-
+  val maxHeight = if (expanded) Dp.Unspecified else maxCollapsedHeight
   Layout(
     modifier =
       modifier
         .clipToBounds()
         .focusGroup()
-        .thenIf(isOverflowing && !expanded) { focusProperties { canFocus = false } }
-        .onSizeChanged { size -> actualHeightPx = size.height },
+        .thenIf(animateHeightChange) { animateContentSize(animationSpec = heightAnimationSpec) }
+        .heightIn(max = maxHeight),
     content = content,
-  ) { measurables, constraints ->
-    val placeable =
-      measurables.singleOrNull()?.measure(constraints)
-        ?: error("ExpandableContainer must have a single child, but it had ${measurables.size}")
+    measurePolicy =
+      MeasurePolicy { measurables, constraints ->
+        val placeable =
+          measurables.singleOrNull()?.measure(constraints.copy(maxHeight = Constraints.Infinity))
+            ?: error("ExpandableContainer must have a single child, but it had ${measurables.size}")
 
-    val height = placeable.height.fastCoerceIn(constraints.minHeight, constraints.maxHeight)
-    targetHeightPx = if (expanded) height else min(height, maxCollapsedHeightPx)
+        val placeableHeight = placeable.height
+        val height = placeableHeight.fastCoerceIn(constraints.minHeight, constraints.maxHeight)
 
-    layout(placeable.width, if (animateHeightChange) animatedHeight else targetHeightPx) { placeable.place(0, 0) }
-  }
+        onExpandableChange(placeableHeight >= maxCollapsedHeight.toPx())
+
+        layout(placeable.width, height) { placeable.place(0, 0) }
+      },
+  )
 }

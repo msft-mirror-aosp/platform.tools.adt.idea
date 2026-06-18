@@ -19,6 +19,7 @@ import com.android.adblib.connectedDevicesTracker
 import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.ShellProtocolType.SHELL
+import com.android.fakeadbserver.ShellProtocolType.SHELL_V2
 import com.android.sdklib.AndroidApiLevel
 import com.android.tools.idea.adb.AdbShellCommandException
 import com.android.tools.idea.testing.DebugLoggerRule
@@ -45,7 +46,12 @@ class AdbFileOperationsTest(private val testDevice: TestDevices) {
 
   val shellCommands = TestShellCommands()
 
-  @JvmField @Rule val fakeAdbRule = FakeAdbServerProviderRule { installDeviceHandler(TestShellCommandHandler(SHELL, shellCommands)) }
+  @JvmField
+  @Rule
+  val fakeAdbRule = FakeAdbServerProviderRule {
+    installDeviceHandler(TestShellCommandHandler(SHELL, shellCommands))
+    installDeviceHandler(TestShellCommandHandler(SHELL_V2, shellCommands))
+  }
 
   val dispatcher = PooledThreadExecutor.INSTANCE.asCoroutineDispatcher()
   val scope = CoroutineScope(dispatcher)
@@ -64,7 +70,7 @@ class AdbFileOperationsTest(private val testDevice: TestDevices) {
       manufacturer = "Google",
       deviceModel = "Pixel 10",
       release = "8.0",
-      sdk = AndroidApiLevel(31),
+      sdk = AndroidApiLevel(testDevice.apiLevel),
       hostConnectionType = DeviceState.HostConnectionType.USB,
     )
 

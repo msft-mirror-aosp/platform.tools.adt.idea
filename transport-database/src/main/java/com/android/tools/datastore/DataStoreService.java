@@ -20,15 +20,9 @@ import static com.android.tools.datastore.DataStoreDatabase.Characteristic.DURAB
 import com.android.tools.analytics.UsageTracker;
 import com.android.tools.datastore.database.DataStoreTable;
 import com.android.tools.datastore.database.UnifiedEventsTable;
-import com.android.tools.datastore.service.CpuService;
-import com.android.tools.datastore.service.EventService;
-import com.android.tools.datastore.service.MemoryService;
 import com.android.tools.datastore.service.ProfilerService;
 import com.android.tools.datastore.service.TransportService;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.CpuServiceGrpc;
-import com.android.tools.profiler.proto.EventServiceGrpc;
-import com.android.tools.profiler.proto.MemoryServiceGrpc;
 import com.android.tools.profiler.proto.ProfilerServiceGrpc;
 import com.android.tools.profiler.proto.Transport;
 import com.android.tools.profiler.proto.TransportServiceGrpc;
@@ -195,9 +189,6 @@ public class DataStoreService implements DataStoreTable.DataStoreTableErrorCallb
     myTransportService = new TransportService(this, unifiedTable, myFetchExecutor);
     registerService(myTransportService);
     registerService(new ProfilerService(this, myLogService));
-    registerService(new EventService(this, myFetchExecutor));
-    registerService(new CpuService(this, myFetchExecutor, myLogService));
-    registerService(new MemoryService(this, unifiedTable, myFetchExecutor, myLogService));
   }
 
   @VisibleForTesting
@@ -289,21 +280,13 @@ public class DataStoreService implements DataStoreTable.DataStoreTableErrorCallb
     myTaskDatabaseManager.unsetTaskDb(sessionId);
   }
 
+  public void addTaskDbMetadata(long sessionId, @NotNull java.util.Map<String, String> metadata) {
+    myTaskDatabaseManager.addMetadata(sessionId, metadata);
+  }
+
   @VisibleForTesting
   List<ServicePassThrough> getRegisteredServices() {
     return myServices;
-  }
-
-  public CpuServiceGrpc.CpuServiceBlockingStub getCpuClient(long streamId) {
-    return myConnectedClients.containsKey(streamId) ? myConnectedClients.get(streamId).getCpuClient() : null;
-  }
-
-  public EventServiceGrpc.EventServiceBlockingStub getEventClient(long streamId) {
-    return myConnectedClients.containsKey(streamId) ? myConnectedClients.get(streamId).getEventClient() : null;
-  }
-
-  public MemoryServiceGrpc.MemoryServiceBlockingStub getMemoryClient(long streamId) {
-    return myConnectedClients.containsKey(streamId) ? myConnectedClients.get(streamId).getMemoryClient() : null;
   }
 
   public ProfilerServiceGrpc.ProfilerServiceBlockingStub getProfilerClient(long streamId) {
@@ -351,20 +334,6 @@ public class DataStoreService implements DataStoreTable.DataStoreTableErrorCallb
       return null;
     }
 
-    @Nullable
-    public CpuServiceGrpc.CpuServiceBlockingStub getCpuClient() {
-      return null;
-    }
-
-    @Nullable
-    public EventServiceGrpc.EventServiceBlockingStub getEventClient() {
-      return null;
-    }
-
-    @Nullable
-    public MemoryServiceGrpc.MemoryServiceBlockingStub getMemoryClient() {
-      return null;
-    }
   }
 
   private final class ReportTimerTask extends TimerTask {

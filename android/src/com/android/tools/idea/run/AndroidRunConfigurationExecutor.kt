@@ -17,7 +17,7 @@ package com.android.tools.idea.run
 
 import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
-import com.android.tools.deployer.DeployerException
+import com.android.tools.deployer.common.DeployerException
 import com.android.tools.deployer.model.App
 import com.android.tools.idea.backup.BackupManager
 import com.android.tools.idea.deploy.DeploymentConfiguration
@@ -29,8 +29,6 @@ import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.ApplicationTerminator
 import com.android.tools.idea.execution.common.DeployOptions
 import com.android.tools.idea.execution.common.RunConfigurationNotifier
-import com.android.tools.idea.execution.common.adb.shell.tasks.launchSandboxSdk
-import com.android.tools.idea.execution.common.attachDebuggerToSandboxSdk
 import com.android.tools.idea.execution.common.clearAppStorage
 import com.android.tools.idea.execution.common.debug.AndroidDebuggerState
 import com.android.tools.idea.execution.common.debug.DebugSessionStarter
@@ -38,7 +36,6 @@ import com.android.tools.idea.execution.common.deploy.deployAndHandleError
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.execution.common.restoreAppFromFile
-import com.android.tools.idea.execution.common.shouldDebugSandboxSdk
 import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.execution.common.stats.track
 import com.android.tools.idea.flags.StudioFlags
@@ -64,7 +61,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.util.Disposer
-import com.intellij.xdebugger.impl.XDebugSessionImpl
+import com.intellij.xdebugger.XSessionStartedResult
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -213,7 +210,7 @@ class AndroidRunConfigurationExecutor(
       }
     }
 
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable {
+  override fun debug(indicator: ProgressIndicator): RunContentDescriptor? = runBlockingCancellable {
     val applicationId = applicationContext.applicationId
     val devices = getDevices(env, deviceFutures, indicator)
 
@@ -245,12 +242,6 @@ class AndroidRunConfigurationExecutor(
 
     // Deploy
     if (configuration.DEPLOY) {
-      if (shouldDebugSandboxSdk(apkProvider, device, configuration.androidDebuggerContext.getAndroidDebuggerState()!!)) {
-        launchSandboxSdk(device, applicationId, LOG)
-        // TODO: b/305650392 When available, update to use application id given on launch.
-        attachDebuggerToSandboxSdk(device, applicationId, env, indicator, console)
-      }
-
       val restoreEnabled = configuration.isRestoreEnabled()
       val freshInstall = restoreEnabled && !BackupManager.getInstance(project).isInstalled(device.serialNumber, applicationId)
       val apks = apkInfosSafe(device)
@@ -285,15 +276,16 @@ class AndroidRunConfigurationExecutor(
     if (configuration.SHOW_LOGCAT_AUTOMATICALLY) {
       project.messageBus.syncPublisher(ShowLogcatListener.TOPIC).showLogcat(device, applicationId)
     }
-    session.runContentDescriptor
+    @Suppress("UnstableApiUsage") session.runContentDescriptor
   }
 
+  @Suppress("UnstableApiUsage")
   private suspend fun startDebugSession(
     device: IDevice,
     applicationId: String,
     indicator: ProgressIndicator,
     console: ConsoleView,
-  ): XDebugSessionImpl {
+  ): XSessionStartedResult {
     val debugger =
       configuration.androidDebuggerContext.androidDebugger
         ?: throw ExecutionException("Unable to determine debugger to use for this launch")
@@ -467,7 +459,7 @@ class AndroidRunConfigurationExecutor(
     ) {
       existingRunContentDescriptor?.processHandler?.detachProcess()
       if (env.executor.isDebug) {
-        startDebugSession(devices.single(), applicationId, indicator, createConsole()).runContentDescriptor
+        @Suppress("UnstableApiUsage") startDebugSession(devices.single(), applicationId, indicator, createConsole()).runContentDescriptor
       } else {
         val processHandler = AndroidProcessHandler(applicationId).apply { devices.forEach { addTargetDevice(it) } }
         AndroidSessionInfo.create(processHandler, devices, applicationId)

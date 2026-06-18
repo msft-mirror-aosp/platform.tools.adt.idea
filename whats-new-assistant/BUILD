@@ -5,6 +5,7 @@ iml_module(
     name = "whats-new-assistant",
     srcs = ["src"],
     iml_files = ["whats-new-assistant.iml"],
+    kotlin_use_compose = True,
     resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -20,6 +21,7 @@ iml_module(
         "//tools/adt/idea/build-attribution:intellij.android.build-attribution",
         "//tools/adt/idea/app-inspection/ide:app-inspection.ide",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
     ],
 )
 
@@ -27,6 +29,7 @@ iml_module(
 iml_module(
     name = "whats-new-assistant-test",
     iml_files = ["whats-new-assistant-test.iml"],
+    kotlin_use_compose = True,
     tags = ["noci:studio-win"],
     test_class = "com.android.tools.idea.whatsnew.assistant.WhatsNewTestSuite",
     test_data = [
@@ -45,7 +48,10 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/whats-new-assistant",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
     ],
+    test_friends = ["//tools/adt/idea/whats-new-assistant"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

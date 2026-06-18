@@ -24,6 +24,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.application.options.CodeStyle
 import com.intellij.testFramework.RunsInEdt
 import kotlin.test.fail
+import org.jetbrains.kotlin.K1Deprecation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibility
@@ -49,6 +50,7 @@ class NestedResourceClassImportFilterTest {
   /** Tests the actual behavior in the editor as specified by b/254492800. */
   @Test
   @RunsInEdt
+  @Ignore("b/388149042: no counterpart of ClassImportFilter")
   fun innerResourceClassNotImported_otherImport() {
     CodeStyle.getSettings(project).kotlinCustomSettings.IMPORT_NESTED_CLASSES = true
     configureStringResources()
@@ -133,6 +135,7 @@ class NestedResourceClassImportFilterTest {
   }
 
   /** More of a unit test for the very specific behavior of the filter. */
+  @OptIn(K1Deprecation::class)
   @Test
   fun allowImport() {
     val ktFile: KtFile = mock()

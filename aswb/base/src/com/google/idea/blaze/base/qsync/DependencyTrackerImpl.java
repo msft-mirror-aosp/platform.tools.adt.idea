@@ -19,7 +19,6 @@ import static java.util.stream.Collectors.joining;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimaps;
 import com.google.idea.blaze.base.bazel.BazelExitCode;
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope;
@@ -28,8 +27,10 @@ import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.common.PrintOutput;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.qsync.QuerySyncProjectSnapshot;
+import com.google.idea.blaze.qsync.SnapshotDependencyGraphProviderKt;
 import com.google.idea.blaze.qsync.deps.ArtifactTracker;
 import com.google.idea.blaze.qsync.deps.OutputInfo;
+import com.google.idea.blaze.qsync.project.DependencyGraphProviderKt;
 import com.google.idea.blaze.qsync.project.DependencyTrackingBehavior;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage;
@@ -54,10 +55,10 @@ public class DependencyTrackerImpl implements DependencyTracker {
   private final QuerySyncUserPreferences querySyncUserPreferences;
 
   public DependencyTrackerImpl(
-    SnapshotHolder snapshotHolder,
-    DependencyBuilder builder,
-    ArtifactTracker<BlazeContext> artifactTracker,
-    QuerySyncUserPreferences querySyncUserPreferences) {
+      SnapshotHolder snapshotHolder,
+      DependencyBuilder builder,
+      ArtifactTracker<BlazeContext> artifactTracker,
+      QuerySyncUserPreferences querySyncUserPreferences) {
     this.snapshotHolder = snapshotHolder;
     this.builder = builder;
     this.artifactTracker = artifactTracker;
@@ -88,20 +89,26 @@ public class DependencyTrackerImpl implements DependencyTracker {
 
   private RequestedTargets getRequestedTargets(
       QuerySyncProjectSnapshot snapshot, DependencyBuildRequest request) {
-    return switch (request.requestType) {
-      case SPECIAL_TARGETS -> new RequestedTargets(request.targets, ImmutableSet.of());
-      case MULTIPLE_TARGETS -> snapshot.getGraph()
-        .computeRequestedTargets(request.targets, querySyncUserPreferences.getExperimentalBuildNativeTargetsFromAndroidTransitionPoint());
-      case WHOLE_PROJECT -> snapshot.getGraph().computeWholeProjectTargets();
-      case FILE_PREVIEWS -> new RequestedTargets(request.targets, ImmutableSet.of());
-      case LIVE_EDIT_BUILD_APK -> new RequestedTargets(request.targets, ImmutableSet.of());
-    };
+    return new RequestedTargets(
+        switch (request.requestType) {
+          case SPECIAL_TARGETS -> request.targets;
+          case MULTIPLE_TARGETS ->
+              snapshot
+                  .getStaleGraph()
+                  .computeSufficientTargets(
+                      request.targets,
+                      querySyncUserPreferences
+                          .getExperimentalBuildNativeTargetsFromAndroidTransitionPoint());
+          case WHOLE_PROJECT -> snapshot.getStaleGraph().computeWholeProjectTargets();
+        });
   }
 
-  private void buildDependencies(BlazeContext context,
-                                 QuerySyncProjectSnapshot snapshot,
-                                 RequestedTargets requestedTargets,
-                                 DependencyBuildRequest request) throws IOException, BuildException {
+  private void buildDependencies(
+      BlazeContext context,
+      QuerySyncProjectSnapshot snapshot,
+      RequestedTargets requestedTargets,
+      DependencyBuildRequest request)
+      throws IOException, BuildException {
     BuildDepsStatsScope.fromContext(context)
         .ifPresent(stats -> stats.setBuildTargets(requestedTargets.targetsToBuild()));
     OutputInfo outputInfo =
@@ -111,7 +118,11 @@ public class DependencyTrackerImpl implements DependencyTracker {
             request.getOutputGroups(Arrays.stream(QuerySyncLanguage.values()).toList()));
     reportErrorsAndWarnings(context, snapshot, outputInfo);
 
-    artifactTracker.update(requestedTargets.requiredTargets(), outputInfo, context);
+    Set<Label> requiredTargets =
+        DependencyGraphProviderKt.requiredTargets(
+            requestedTargets,
+            SnapshotDependencyGraphProviderKt.getCodeAnalysisDependencyGraphProvider(snapshot));
+    artifactTracker.update(requiredTargets, outputInfo, context);
   }
 
   private void reportErrorsAndWarnings(
@@ -125,7 +136,7 @@ public class DependencyTrackerImpl implements DependencyTracker {
     }
 
     if (!outputInfo.getTargetsWithErrors().isEmpty()) {
-      ProjectDefinition projectDefinition = snapshot.getQueryData().projectDefinition();
+      ProjectDefinition projectDefinition = snapshot.getProjectDefinition();
       context.setHasWarnings();
       ImmutableListMultimap<Boolean, Label> targetsByInclusion =
           Multimaps.index(outputInfo.getTargetsWithErrors(), projectDefinition::isIncluded);
@@ -175,8 +186,7 @@ public class DependencyTrackerImpl implements DependencyTracker {
 
   @Override
   public void updateDependenciesFromOutputInfo(
-      BlazeContext context, OutputInfo outputInfo, Set<Label> targets)
-      throws BuildException {
+      BlazeContext context, OutputInfo outputInfo, Set<Label> targets) throws BuildException {
     artifactTracker.update(targets, outputInfo, context);
   }
 }

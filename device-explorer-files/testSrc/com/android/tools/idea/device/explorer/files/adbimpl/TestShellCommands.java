@@ -31,11 +31,7 @@ public class TestShellCommands {
     myCommands.put(command, new TestShellCommandResult(lines));
   }
 
-  public void addError(@NotNull String command, @NotNull Exception error) {
-    myCommands.put(command, new TestShellCommandResult(error));
-  }
-
-  public TestShellCommandResult get(@NotNull String command) {
+  TestShellCommandResult get(@NotNull String command) {
     return myCommands.get(command);
   }
 }

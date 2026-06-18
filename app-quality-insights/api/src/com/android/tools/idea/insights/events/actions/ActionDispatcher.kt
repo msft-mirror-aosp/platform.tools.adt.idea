@@ -15,14 +15,17 @@
  */
 package com.android.tools.idea.insights.events.actions
 
-import com.android.tools.idea.gemini.GeminiPluginApi
-import com.android.tools.idea.insights.AppInsightsState
+import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.insights.AppInsightsCrashState
 import com.android.tools.idea.insights.CancellableTimeoutException
 import com.android.tools.idea.insights.Filters
+import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.RevertibleException
 import com.android.tools.idea.insights.Selection
 import com.android.tools.idea.insights.ai.AiInsightToolkit
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsClient
 import com.android.tools.idea.insights.client.FetchSource
 import com.android.tools.idea.insights.events.AiInsightFetched
@@ -40,6 +43,7 @@ import com.android.tools.idea.insights.events.NoteDeleted
 import com.android.tools.idea.insights.events.NotesFetched
 import com.android.tools.idea.insights.events.RollbackAddNoteRequest
 import com.android.tools.idea.insights.events.RollbackDeleteNoteRequest
+import com.android.tools.idea.insights.events.StateTransition
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.model.event.EventPage
@@ -59,12 +63,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 
-data class ActionContext(val action: Action, val currentState: AppInsightsState, val lastGoodState: AppInsightsState?) {
+data class ActionContext(val action: Action, val currentState: AppInsightsCrashState, val lastGoodState: AppInsightsCrashState?) {
   companion object {
     fun getDefaultState(defaultFilters: Filters) =
       ActionContext(
         Action.NONE,
-        AppInsightsState(
+        AppInsightsCrashState(
           Selection.emptySelection(),
           defaultFilters,
           LoadingState.Loading,
@@ -165,7 +169,7 @@ class ActionDispatcher(
       .toToken(action)
   }
 
-  private fun fetchNotes(connection: Connection, state: AppInsightsState, action: Action.FetchNotes): CancellationToken {
+  private fun fetchNotes(connection: Connection, state: AppInsightsCrashState, action: Action.FetchNotes): CancellationToken {
     return scope
       .launch {
         val fetchedNotes = appInsightsClient.listNotes(connection, action.id, state.mode)
@@ -218,7 +222,7 @@ class ActionDispatcher(
       .toToken(action)
   }
 
-  private fun fetchDetails(state: AppInsightsState, action: Action.FetchDetails): CancellationToken {
+  private fun fetchDetails(state: AppInsightsCrashState, action: Action.FetchDetails): CancellationToken {
     val issueRequest = state.toIssueRequest(clock) ?: return CancellationToken.noop(Action.NONE)
     return scope
       .launch {
@@ -233,8 +237,8 @@ class ActionDispatcher(
   }
 
   private fun fetchIssues(
-    state: AppInsightsState,
-    lastGoodState: AppInsightsState?,
+    state: AppInsightsCrashState,
+    lastGoodState: AppInsightsCrashState?,
     reason: FetchSource,
     action: Action.Single,
   ): CancellationToken {
@@ -263,7 +267,7 @@ class ActionDispatcher(
       .toToken(action)
   }
 
-  private fun fetchIssueVariants(state: AppInsightsState, action: Action.FetchIssueVariants): CancellationToken {
+  private fun fetchIssueVariants(state: AppInsightsCrashState, action: Action.FetchIssueVariants): CancellationToken {
     val issueRequest = state.toIssueRequest(clock) ?: return CancellationToken.noop(Action.NONE)
     return scope
       .launch {
@@ -281,7 +285,7 @@ class ActionDispatcher(
       .toToken(action)
   }
 
-  private fun listEvents(state: AppInsightsState, action: Action.ListEvents): CancellationToken {
+  private fun listEvents(state: AppInsightsCrashState, action: Action.ListEvents): CancellationToken {
     val issueRequest = state.toIssueRequest(clock) ?: return CancellationToken.noop(Action.NONE)
     if (state.selectedIssue?.id != action.id || state.selectedVariant?.id != action.variantId) return CancellationToken.noop(Action.NONE)
     return scope
@@ -305,13 +309,18 @@ class ActionDispatcher(
       .toToken(action)
   }
 
-  private fun fetchInsight(connection: Connection, state: AppInsightsState, action: Action.FetchInsight): CancellationToken {
+  private fun fetchInsight(connection: Connection, state: AppInsightsCrashState, action: Action.FetchInsight): CancellationToken {
     return scope
       .launch {
         val insight =
           when {
             aiInsightToolkit.insightDeprecationData.isUnsupported() -> LoadingState.ServiceUnsupported
-            !GeminiPluginApi.getInstance().isAvailable() -> LoadingState.Unauthorized("Gemini is not enabled")
+            !aiInsightToolkit.isModelAvailable() ->
+              if (StudioFlags.AQI_FIX_WITH_AGENT.get()) {
+                LoadingState.NoModelAvailable
+              } else {
+                LoadingState.Unauthorized("Gemini is not enabled")
+              }
             state.mode == ConnectionMode.OFFLINE -> LoadingState.NetworkFailure(null)
             action.event.isStackTraceEmpty() -> {
               if (state.selectedEvent == null) {
@@ -328,7 +337,19 @@ class ActionDispatcher(
                 action.issueFatality,
                 action.event,
                 action.forceGenerateNewInsight,
-              )
+              ) {
+                // Emit a loading state to show that the insight is actually generating now.
+                eventEmitter(
+                  object : ChangeEvent {
+                    override fun transition(
+                      state: AppInsightsCrashState,
+                      tracker: AppInsightsTracker,
+                      provider: InsightsProvider,
+                      cache: AppInsightsCache,
+                    ) = StateTransition(state.copy(currentInsight = LoadingState.Loading("Generating insight...")), Action.NONE)
+                  }
+                )
+              }
             }
           }
         eventEmitter(AiInsightFetched(insight))

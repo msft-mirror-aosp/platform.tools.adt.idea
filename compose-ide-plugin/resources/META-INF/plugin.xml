@@ -26,11 +26,20 @@
   <depends>com.intellij.java</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>com.intellij.modules.json</depends>
+  <dependencies>
+    <module name="intellij.java.impl" />
+    <module name="intellij.compose.ide.plugin.gradleTooling.rt" />
+    <module name="intellij.java.debugger.impl" />
+    <module name="intellij.java" />
+    <module name="intellij.platform.uast" />
+    <module name="intellij.compose.ide.plugin.shared" />
+    <module name="intellij.java.impl.refactorings" />
+    <module name="intellij.java.debugger" />
+    <plugin id="com.intellij.compose" />
+  </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">
     <dependencySupport coordinate="androidx.compose.runtime:runtime" kind="java" displayName="Jetpack Compose"/>
-
-    <annotator language="kotlin" implementationClass="com.android.tools.compose.code.state.ComposeStateReadAnnotator"/>
 
     <additionalTextAttributes scheme="Default" file="colorschemes/ComposeColorSchemeDefault.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposeColorSchemeDarcula.xml"/>
@@ -156,25 +165,14 @@
                                     implementationClass="com.android.tools.compose.ComposeColorLineMarkerProviderDescriptor" />
 
     <usageGroupingRuleProvider implementation="com.android.tools.compose.ComposeUsageGroupingRuleProvider" />
-
-    <codeInsight.declarativeInlayProvider language="kotlin"
-                                          implementationClass="com.android.tools.compose.code.state.ComposeStateReadInlayHintsProvider"
-                                          isEnabledByDefault="false"
-                                          group="OTHER_GROUP"
-                                          providerId="compose.state.read"
-                                          bundle="messages.ComposeBundle"
-                                          nameKey="state.read.inlay.provider.name"
-                                          descriptionKey="state.read.inlay.provider.description"/>
-    <codeInsight.inlayActionHandler implementationClass="com.android.tools.compose.code.state.ComposeStateReadInlayActionHandler"
-                                    handlerId="compose.state.read" />
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin.extensions.internal">
     <typeResolutionInterceptorExtension implementation="androidx.compose.compiler.plugins.kotlin.k1.ComposeTypeResolutionInterceptorExtension"/>
   </extensions>
 
-  <extensions defaultExtensionNs="org.jetbrains.kotlin.idea.debugger.base.util">
-    <classNameCalculator implementation="com.android.tools.compose.debug.ComposeClassNameCalculator"/>
+  <extensions defaultExtensionNs="org.jetbrains.kotlin.idea.debugger.core">
+    <classNameContributor implementation="com.android.tools.compose.debug.ComposeClassNameContributor"/>
   </extensions>
 
   <actions>

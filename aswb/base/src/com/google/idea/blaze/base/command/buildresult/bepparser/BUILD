@@ -13,11 +13,10 @@ aswb_library(
     visibility = G3PLUGINS_VISIBILITY,
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
+        "//tools/adt/idea/aswb/plugin_api",
+        "//tools/adt/idea/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
         "//tools/adt/idea/aswb/proto:proto_deps",
         "//tools/adt/idea/aswb/shared:artifact",
         "//tools/adt/idea/aswb/shared:exception",
-        "//tools/vendor/google/aswb/plugin_api",
-        "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

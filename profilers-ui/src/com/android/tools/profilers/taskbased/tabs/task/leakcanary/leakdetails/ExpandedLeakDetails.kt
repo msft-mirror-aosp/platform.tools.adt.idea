@@ -31,9 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
@@ -50,11 +48,17 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_RETAINED_BYTES
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_WHY
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.getLeakStatusText
-import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+
+/**
+ * Strips LeakCanary's structural ASCII characters from the raw string. This ensures that when the text is rendered in the UI using a
+ * proportional font, it doesn't contain misaligned structural artifacts (like │ or ↓) that were meant for monospace terminals.
+ */
+private fun String.stripLeakCanaryAscii(): String {
+  return this.replace("│", "").replace("├─", "").replace("╰→", "").replace("↓", "").replace("~", "").trim()
+}
 
 @Composable
 fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
@@ -66,19 +70,23 @@ fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
         interactionSource = remember { MutableInteractionSource() },
       )
       .pointerHoverIcon(PointerIcon.Hand)
-  Row(modifier = modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+  Row(modifier = modifier.padding(start = 15.dp), horizontalArrangement = Arrangement.spacedBy(25.dp)) {
     Column(modifier = Modifier.widthIn(min = 80.dp)) {
       DetailedHeaderText(LEAKCANARY_LEAKING)
       Spacer(modifier = Modifier.height(5.dp))
       DetailRow(icon = { LeakIcon(node.leakingStatus) }, text = getLeakStatusText(node.leakingStatus))
     }
-    Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
       DetailedHeaderText(LEAKCANARY_WHY)
       Spacer(modifier = Modifier.height(5.dp))
       if (node.leakingStatusReason.isNotBlank()) {
-        Text(text = node.leakingStatusReason, fontWeight = FontWeight.Thin, modifier = Modifier.padding(bottom = 8.dp))
+        Text(
+          text = node.leakingStatusReason.stripLeakCanaryAscii(),
+          fontWeight = FontWeight.Thin,
+          modifier = Modifier.padding(bottom = 8.dp),
+        )
       }
-      node.referencingField?.let { DetailText("$LEAKCANARY_REFERENCING_FIELD$it") }
+      node.referencingField?.let { DetailText("$LEAKCANARY_REFERENCING_FIELD${it.toString().stripLeakCanaryAscii()}") }
       node.retainedHeapSize?.let { DetailText("$LEAKCANARY_RETAINED_BYTES$it") }
       node.retainedObjectCount?.let { DetailText("$LEAKCANARY_REFERENCING_OBJECTS$it") }
       if (node.notes.isNotEmpty()) {
@@ -94,16 +102,10 @@ fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
             Row(modifier = rowClickableModifier.fillMaxWidth()) {
               Spacer(modifier = Modifier.width(TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_TITLE_HORIZONTAL_SPACING_DP))
               Text(LEAKCANARY_MORE_INFO)
-              Spacer(modifier = Modifier.width(TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_TITLE_HORIZONTAL_SPACING_DP))
-              Divider(
-                orientation = Orientation.Horizontal,
-                modifier = Modifier.fillMaxWidth().align(CenterVertically),
-                color = Color.LightGray,
-                thickness = TaskBasedUxDimensions.LEAKCANARY_MORE_INFO_LINE_THICKNESS_DP,
-              )
             }
             if (showMoreInfo) {
-              BulletList(items = node.notes)
+              val cleanNotes = node.notes.map { it.stripLeakCanaryAscii() }
+              BulletList(items = cleanNotes)
             }
           }
         }

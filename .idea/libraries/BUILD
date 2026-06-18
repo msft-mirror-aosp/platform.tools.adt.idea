@@ -326,13 +326,6 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "kotlinx-serialization",
-    jars = ["//prebuilts/tools/common/m2:kotlinx-serialization_files"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
     name = "protobuf-kotlin",
     jars = ["//prebuilts/tools/common/m2:protobuf-kotlin_files"],
     visibility = ["//visibility:public"],
@@ -349,5 +342,26 @@ jvm_import(
 jvm_import(
     name = "libbinary-resources",
     jars = ["//tools/base/apkparser:libbinary-resources.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "studio-grpc-testing",
+    jars = ["//tools/base/bazel:studio-grpc-testing.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "okhttp.mockwebserver",
+    jars = ["//prebuilts/tools/common/m2:okhttp.mockwebserver_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "grpc-google-common-protos",
+    jars = ["//prebuilts/tools/common/m2:grpc-google-common-protos_files"],
     visibility = ["//visibility:public"],
 )

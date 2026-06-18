@@ -72,6 +72,8 @@ public final class VectorAsset extends BaseAsset {
 
   @NotNull private final ObjectProperty<VectorDrawableInfo> myVectorDrawableInfo = new ObjectValueProperty<>(SELECT_A_FILE);
 
+  private boolean myIsClipart;
+
   public VectorAsset() {
     InvalidationListener listener = () -> {
       File file = myPath.getValueOrNull();
@@ -95,6 +97,18 @@ public final class VectorAsset extends BaseAsset {
 
   public boolean isCurrentFile(@Nullable Object file) {
     return Objects.equals(file, myPath.getValueOrNull());
+  }
+
+  /**
+   * Sets the clipart designation of the vector asset.
+   */
+  public void setClipart(boolean clipart) {
+    myIsClipart = clipart;
+  }
+
+  @Override
+  public boolean isClipart() {
+    return myIsClipart;
   }
 
   @NotNull
@@ -287,6 +301,9 @@ public final class VectorAsset extends BaseAsset {
   public static Document parseXml(@NotNull String xmlFileContent, @com.android.annotations.Nullable StringBuilder errorLog) {
     try {
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+      factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+      factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+      factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
       factory.setIgnoringComments(true);
       DocumentBuilder builder = factory.newDocumentBuilder();
       return builder.parse(new InputSource(new StringReader(xmlFileContent)));

@@ -106,6 +106,11 @@
         text="Add to project"
         icon="AllIcons.General.Add" />
     <action id="Blaze.ResetQuerySync" class="com.google.idea.blaze.base.qsync.action.ResetQuerySyncAction" text="Reset Sync and Code Analysis State" />
+    <action id="Blaze.SwitchActiveWorkspace"
+            class="com.google.idea.blaze.base.workspace.actions.SwitchActiveWorkspaceAction"
+            text="Switch Active Workspace..."
+            icon="AllIcons.Actions.Move">
+    </action>
 
 
     <group id="Blaze.MainMenuActionGroup" class="com.google.idea.blaze.base.actions.BlazeMenuGroup" popup="true">
@@ -135,6 +140,7 @@
       <separator/>
       <reference ref="Blaze.ExportRunConfigurations"/>
       <reference ref="Blaze.ResetQuerySync" />
+      <reference ref="Blaze.SwitchActiveWorkspace" />
       <!--Add single menu items anchored after this bookmark-->
       <group id="Blaze.MenuFooter"/>
     </group>
@@ -180,6 +186,7 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="com.google.idea.blaze.base.sync.BlazeSyncStartupActivity"/>
+    <postStartupActivity implementation="com.google.idea.blaze.base.workspace.ui.WorkspaceSwitcherWidgetRefresher"/>
     <postStartupActivity implementation="com.google.idea.blaze.base.project.DisableAndroidFrameworkActivity"/>
     <postStartupActivity implementation="com.google.idea.blaze.base.formatter.ExternalFormatterCodeStyleManager$Installer"/>
 
@@ -216,7 +223,7 @@
     <trafficLightRendererContributor implementation="com.google.idea.blaze.base.qsync.QuerySyncTrafficLightRendererContributor"/>
     <editorNotificationProvider implementation="com.google.idea.blaze.base.qsync.UnsyncedFileEditorNotificationProvider" />
 
-    <projectService serviceImplementation="com.google.idea.blaze.base.sync.SyncPhaseCoordinator"/>
+
     <projectService serviceInterface="com.google.idea.blaze.base.run.RuntimeArtifactCache"
                     serviceImplementation="com.google.idea.blaze.base.run.RuntimeArtifactCacheImpl" />
     <projectService serviceInterface="com.google.idea.blaze.base.sync.status.BlazeSyncStatus"
@@ -248,9 +255,9 @@
         serviceImplementation="com.google.idea.blaze.base.sync.aspects.BlazeIdeInterfaceAspectsImpl"/>
     <projectService serviceInterface="com.google.idea.blaze.base.toolwindow.TasksToolWindowService"
                     serviceImplementation="com.google.idea.blaze.base.toolwindow.TasksToolWindowServiceImpl"/>
-    <projectService serviceInterface="com.google.idea.blaze.base.targetmaps.TransitiveDependencyMap"
-                    serviceImplementation="com.google.idea.blaze.base.targetmaps.TransitiveDependencyMap"/>
-    <projectService serviceImplementation="com.google.idea.blaze.base.settings.BlazeImportSettingsManager"/>
+
+    <projectService serviceInterface="com.google.idea.blaze.base.settings.BazelImportSettingsManager"
+                    serviceImplementation="com.google.idea.blaze.base.settings.BlazeImportSettingsManager"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.status.BlazeSyncStatusStateManager"/>
     <projectService
         serviceInterface="com.google.idea.blaze.common.artifact.BuildArtifactCache"
@@ -323,6 +330,8 @@
     <notificationGroup displayType="STICKY_BALLOON" id="ASwB Legacy Sync Mode" />
     <notificationGroup displayType="BALLOON" id="QuerySyncBuild" />
     <cachesInvalidator implementation="com.google.idea.blaze.base.qsync.action.ResetQuerySyncAction$CachesInvalidator"/>
+    <statusBarWidgetFactory id="WorkspaceSwitcherWidget"
+                            implementation="com.google.idea.blaze.base.workspace.ui.WorkspaceSwitcherWidgetFactory"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
@@ -413,6 +422,8 @@
                     interface="com.google.idea.blaze.base.qsync.AnnotationProcessorOverride"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.base.qsync.rendering.bazelComposeToolingProjectLabelProvider"
                     interface="com.google.idea.blaze.base.qsync.rendering.BazelComposeToolingProjectLabelProvider" />
+    <extensionPoint qualifiedName="com.google.idea.blaze.BundledAspectsProvider"
+                    interface="com.google.idea.blaze.base.qsync.BundledAspectsProvider" />
   </extensionPoints>
 
   <extensionPoints>
@@ -461,6 +472,7 @@
     <extensionPoint qualifiedName="com.google.idea.blaze.BinaryPathRemapper" interface="com.google.idea.blaze.base.async.process.BinaryPathRemapper"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.CustomFormatter" interface="com.google.idea.blaze.base.formatter.CustomFormatter"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.ExperimentLoader" interface="com.google.idea.common.experiments.ExperimentLoader"/>
+    <extensionPoint qualifiedName="com.google.idea.blaze.WorkspaceDiscoverer" interface="com.google.idea.blaze.base.workspace.WorkspaceDiscoverer"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="com.google.idea.blaze">
@@ -525,6 +537,8 @@
     <ExperimentLoader implementation="com.google.idea.common.experiments.SystemPropertyExperimentLoader" order="first" id="SystemPropertyExperimentLoader"/>
     <ExperimentLoader implementation="com.google.idea.common.experiments.UserOverridesExperimentLoader" order="after SystemPropertyExperimentLoader" id="UserOverridesExperimentLoader"/>
     <BlazeGuard implementation="com.google.idea.blaze.base.execution.TrustedProjectGuard"/>
+    <BundledAspectsProvider implementation="com.google.idea.blaze.base.qsync.BazelBundledAspectsProvider" />
+    <WorkspaceDiscoverer implementation="com.google.idea.blaze.base.workspace.DefaultWorkspaceDiscoverer"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.google.idea.blaze.qsync">
@@ -532,14 +546,8 @@
     <QuerySyncListenerProvider implementation="com.google.idea.blaze.base.qsync.ProjectUpdater$Provider" />
   </extensions>
 
-  <projectListeners>
-    <listener
-        class="com.google.idea.blaze.base.actions.ProjectFrameUpdater"
-        activeInHeadlessMode="false" activeInTestMode="false"
-        topic="com.intellij.openapi.project.ProjectManagerListener"/>
-  </projectListeners>
-
   <extensions defaultExtensionNs="com.intellij">
+    <postStartupActivity implementation="com.google.idea.blaze.base.actions.ProjectFrameUpdater"/>
     <lang.jvm.bytecodeAnalysisSuppressor implementation="com.google.idea.blaze.base.project.analysis.ijar.IjarAnalysisSuppressor" />
   </extensions>
 

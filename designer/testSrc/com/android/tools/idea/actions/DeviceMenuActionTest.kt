@@ -78,7 +78,11 @@ class DeviceMenuActionTest {
   @JvmField @Rule val projectRule = AndroidProjectRule.withAndroidModel().onEdt()
   @get:Rule
   val flagRules =
-    RuleChain(FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true), FlagRule(StudioFlags.XR_GLASSES_DEVICE_SUPPORT_ENABLED, true))
+    RuleChain(
+      FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true),
+      FlagRule(StudioFlags.AI_GLASSES_DISPLAYLESS_DEVICE_SUPPORT_ENABLED, true),
+      FlagRule(StudioFlags.XR_GLASSES_DEVICE_SUPPORT_ENABLED, true),
+    )
 
   private fun getReferenceDevicesExpected(): String {
     return """
@@ -111,6 +115,7 @@ class DeviceMenuActionTest {
                   Pixel 10 Pro XL (448 × 997 dp, xxhdpi)
                   Pixel 10 Pro Fold (852 × 883 dp, 390dpi)
                   Pixel 10 Pro (427 × 952 dp, xxhdpi)
+                  Pixel 10a (411 × 923 dp, 420dpi)
                   Pixel 9 (411 × 923 dp, 420dpi)
                   Pixel 9 Pro XL (448 × 997 dp, xxhdpi)
                   Pixel 9 Pro Fold (852 × 883 dp, 390dpi)
@@ -152,6 +157,7 @@ class DeviceMenuActionTest {
                   Small Desktop (1366 × 768 dp, mdpi)
                   Medium Desktop (1920 × 1080 dp, xhdpi)
                   Large Desktop (1920 × 1080 dp, mdpi)
+                  Desktop (Preview) (1920 × 1200 dp, hdpi)
               ------------------------------------------------------
               Wear
               Wear OS Square (180 × 180 dp, xhdpi)
@@ -178,9 +184,10 @@ class DeviceMenuActionTest {
               XR
               XR Headset (1280 × 1279 dp, xhdpi)
               XR Glasses (960 × 600 dp, xhdpi)
-              AI Glasses (450 × 450 dp, mdpi)
+              Display Glasses (450 × 450 dp, mdpi)
               ------------------------------------------------------
               Generic Devices
+                  Small Tablet (960 × 600 dp, xhdpi)
                   Small Phone (360 × 640 dp, xhdpi)
                   Resizable (Experimental) (411 × 914 dp, 420dpi)
                   Medium Tablet (1280 × 800 dp, xhdpi)

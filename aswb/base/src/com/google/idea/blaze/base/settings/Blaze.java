@@ -16,14 +16,9 @@
 package com.google.idea.blaze.base.settings;
 
 import com.google.idea.blaze.base.bazel.BuildSystemProvider;
-import com.google.idea.blaze.base.qsync.QuerySync;
 import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
-import com.intellij.ide.DataManager;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectManager;
 import javax.annotation.Nullable;
-import javax.swing.SwingUtilities;
 
 /** Blaze project utilities. */
 public class Blaze {
@@ -31,14 +26,11 @@ public class Blaze {
   private Blaze() {}
 
   /**
-   * Returns whether this project was imported from blaze.
-   *
-   * @deprecated use {@link #getProjectType(Project)}.
+   * Returns whether the project is a Bazel or Blaze project currently assigned to
+   * BazelProjectSystem.
    */
-  @Deprecated
   public static boolean isBlazeProject(@Nullable Project project) {
-    return project != null
-        && BlazeImportSettingsManager.getInstance(project).getImportSettings() != null;
+    return project != null && BazelImportSettingsManager.getInstance(project).hasImportSettings();
   }
 
   /**
@@ -51,9 +43,7 @@ public class Blaze {
       return ProjectType.UNKNOWN;
     }
 
-    BlazeImportSettings blazeImportSettings =
-        BlazeImportSettingsManager.getInstance(project).getImportSettings();
-    if (blazeImportSettings == null) {
+    if (!BazelImportSettingsManager.getInstance(project).hasImportSettings()) {
       return ProjectType.UNKNOWN;
     }
     return ProjectType.QUERY_SYNC;
@@ -64,14 +54,12 @@ public class Blaze {
    * system if the project is null or not a blaze project.
    */
   public static BuildSystemName getBuildSystemName(@Nullable Project project) {
-    BlazeImportSettings importSettings =
-        project == null
-            ? null
-            : BlazeImportSettingsManager.getInstance(project).getImportSettings();
-    if (importSettings == null) {
+    BuildSystemName buildSystemName =
+        project == null ? null : BazelImportSettingsManager.getInstance(project).getBuildSystem();
+    if (buildSystemName == null) {
       return BuildSystemProvider.defaultBuildSystem().buildSystem();
     }
-    return importSettings.getBuildSystem();
+    return buildSystemName;
   }
 
   /**

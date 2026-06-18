@@ -452,7 +452,7 @@ class DeviceAdapterTest {
     AbstractDisplayView(project, 0, "StreamingContextMenuVirtualDevice") {
 
     init {
-      displayRectangle = Rectangle(deviceDisplaySize)
+      projectionRectangle = Rectangle(deviceDisplaySize)
       val mouseListener =
         object : MouseAdapter() {
           override fun mouseClicked(e: MouseEvent) {}
@@ -500,11 +500,15 @@ class DeviceAdapterTest {
     override val hardwareInput = HardwareInput()
     override val xrInputController: AbstractXrInputController? = null
 
+    override val isConnected = true
+
+    override fun sendTypedText(text: String) {}
+
     override fun hardwareInputStateChanged(event: AnActionEvent, enabled: Boolean) {}
 
     override fun canZoom() = false
 
-    override fun computeActualSize() = deviceDisplaySize
+    override fun computeActualSize(framing: Framing) = deviceDisplaySize
 
     override fun dispose() {}
 

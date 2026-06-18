@@ -82,22 +82,7 @@ class GoldenFileValidator(template: Template, goldenDirName: String, private val
           "platform-tools package is not installed.", // In every TemplateDiffTest
           "Unable to initialize metrics", // In remote config
         ),
-      // TODO: b/390508868
-      "testAutomotiveMessagingServiceWithKotlin" to
-        setOf(
-          "'class UnreadConversation : Any' is deprecated. Deprecated in Java.",
-          "'fun setUnreadConversation(p0: NotificationCompat.CarExtender.UnreadConversation?): NotificationCompat.CarExtender' is deprecated. Deprecated in Java.",
-        ),
-      // TODO: b/390509438
-      "testNewSettingsActivityWithKotlinMultipleScreens" to
-        setOf("'fun setTargetFragment(p0: Fragment?, p1: Int): Unit' is deprecated. Deprecated in Java."),
-      // TODO: b/390509533
-      "testNewTabbedActivityWithKotlin" to
-        setOf(
-          "'class FragmentPagerAdapter : PagerAdapter' is deprecated. Deprecated in Java.",
-          "'constructor(p0: FragmentManager): FragmentPagerAdapter' is deprecated. Deprecated in Java.",
-          "'class FragmentPagerAdapter : PagerAdapter' is deprecated. Deprecated in Java.",
-        ),
+
       // TODO: b/390508796
       "testGameActivityWithKotlin" to
         setOf(
@@ -116,12 +101,7 @@ class GoldenFileValidator(template: Template, goldenDirName: String, private val
           "'constructor(p0: String!): IntentService' is deprecated. Deprecated in Java.",
           "This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.",
         ),
-      // TODO: b/390510059
-      "testNewGoogleAdMobFragmentWithKotlin" to
-        setOf(
-          "This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.",
-          "'fun onActivityCreated(p0: Bundle?): Unit' is deprecated. Deprecated in Java.",
-        ),
+
       // TODO: b/390509936
       "testNewFullscreenFragmentWithKotlin" to
         setOf(
@@ -137,43 +117,12 @@ class GoldenFileValidator(template: Template, goldenDirName: String, private val
       // TODO: b/390510577
       "testNewPrimaryDetailFlowWithKotlin" to
         setOf("'fun startDrag(p0: ClipData!, p1: View.DragShadowBuilder!, p2: Any!, p3: Int): Boolean' is deprecated. Deprecated in Java."),
-      // TODO: b/390509164
-      "testNewFullscreenActivityWithKotlin" to
-        setOf(
-          "'var systemUiVisibility: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LOW_PROFILE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_IMMERSIVE_STICKY: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-        ),
-      // TODO: b/390509164
-      "testNewFullscreenActivityWithKotlin_activityNotInRootPackage" to
-        setOf(
-          "'var systemUiVisibility: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LOW_PROFILE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_IMMERSIVE_STICKY: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-        ),
+
       // TODO: b/390510579
       "testAutomotiveMediaServiceWithKotlin" to
         setOf(
           "'static field FLAG_HANDLES_MEDIA_BUTTONS: Int' is deprecated. Deprecated in Java.",
           "'static field FLAG_HANDLES_TRANSPORT_CONTROLS: Int' is deprecated. Deprecated in Java.",
-        ),
-      // TODO: b/390510067
-      "testNewTvActivityWithKotlin" to
-        setOf(
-          "'class SimpleTarget<Z : Any!> : BaseTarget<Z!>' is deprecated. Deprecated in Java.",
-          "'val defaultDisplay: Display!' is deprecated. Deprecated in Java.",
-          "'fun getMetrics(p0: DisplayMetrics!): Unit' is deprecated. Deprecated in Java.",
-          "'fun getSerializableExtra(p0: String!): Serializable?' is deprecated. Deprecated in Java.",
         ),
       // TODO: b/446181730
       "testJourneysWithTestSuite" to setOf("The option setting 'android.experimental.testSuiteSupport=true' is experimental."),

@@ -17,6 +17,9 @@ package com.android.tools.idea.codenavigation
 
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.OSAgnosticPathUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.pom.Navigatable
 
@@ -27,10 +30,22 @@ internal class FileLineNavigable(private val project: Project) : NavSource {
       return null
     }
 
+    // CodeLocation.fileName may originate from an untrusted imported capture (.hprof STACK_FRAME,
+    // simpleperf File table, on-device inspector payload). Reject network paths outright and only
+    // navigate to files that are part of this project's content or libraries; everything else falls through to
+    // the PSI-index-based NavSources, which is the correct behavior for imported captures anyway.
+    if (OSAgnosticPathUtil.isUncPath(FileUtil.toSystemDependentName(location.fileName!!))) {
+      return null
+    }
+
     // There is no need to check `sourceFile.exists()` since `findFileByPath()` will return null if
     // the file is not found. `exists()` could be false if the file was deleted, but that is not
     // likely since we are using the file immediately after looking it up.
     val sourceFile = LocalFileSystem.getInstance().findFileByPath(location.fileName!!) ?: return null
+
+    if (!ProjectFileIndex.getInstance(project).isInProject(sourceFile)) {
+      return null
+    }
 
     return OpenFileDescriptor(project, sourceFile, location.lineNumber, 0)
   }

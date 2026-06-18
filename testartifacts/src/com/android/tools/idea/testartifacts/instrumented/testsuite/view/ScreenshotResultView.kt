@@ -35,6 +35,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScree
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
@@ -49,6 +50,8 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.io.File
+import java.util.Collections
+import java.util.concurrent.Future
 import javax.imageio.ImageIO
 import javax.swing.BoundedRangeModel
 import javax.swing.JComponent
@@ -61,7 +64,7 @@ import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
 
 /** This is a placeholder for showing Screenshot Test Results. */
-class ScreenshotResultView(private val project: Project? = null) {
+class ScreenshotResultView(private val project: Project? = null) : Disposable {
 
   val myView: JPanel = JPanel(BorderLayout())
 
@@ -83,7 +86,7 @@ class ScreenshotResultView(private val project: Project? = null) {
       onActionTriggered = toolbarAnalytics::logAction,
     )
 
-  private val multiViewPanels = listOf(newImagePanel, diffImagePanel, refImagePanel)
+  private val multiViewPanels = listOf(refImagePanel, diffImagePanel, newImagePanel)
 
   // Panels for the single-view tabs (with individual toolbars and titles)
   @VisibleForTesting
@@ -132,6 +135,8 @@ class ScreenshotResultView(private val project: Project? = null) {
   var refImagePath: String = ""
   var diffImagePath: String = ""
   var testFailed: Boolean = false
+  var isSizeMismatch: Boolean = false
+  var sizeMismatchMessage: String? = null
 
   // Expose common actions for testing
   @VisibleForTesting
@@ -248,12 +253,12 @@ class ScreenshotResultView(private val project: Project? = null) {
     val rightSplit =
       OnePixelSplitter(false, 0.5f).apply {
         firstComponent = diffImagePanel
-        secondComponent = refImagePanel
+        secondComponent = newImagePanel
       }
 
     val mainSplit =
       OnePixelSplitter(false, 0.33f).apply {
-        firstComponent = newImagePanel
+        firstComponent = refImagePanel
         secondComponent = rightSplit
       }
 
@@ -347,7 +352,11 @@ class ScreenshotResultView(private val project: Project? = null) {
 
   @UiThread
   fun updateView() {
-    val diffPlaceholder = if (testFailed) "No Diff Image" else "No Difference"
+    imageLoadFutures.forEach { it.cancel(true) }
+    imageLoadFutures.clear()
+    val diffPlaceholder =
+      sizeMismatchMessage?.let { msg -> "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>" }
+        ?: if (isSizeMismatch) "Size Mismatch" else if (testFailed) "No Diff Image" else "No Difference"
 
     // Load images for the "All" tab
     loadImageAsync(newImagePath, newImagePanel, "No Preview Image")
@@ -363,19 +372,28 @@ class ScreenshotResultView(private val project: Project? = null) {
     myView.repaint()
   }
 
+  @VisibleForTesting val imageLoadFutures = Collections.synchronizedList(mutableListOf<Future<*>>())
+
   /** Loads an image from a file path on a background thread and sets it on the target panel. */
   private fun loadImageAsync(filePath: String, targetPanel: ImageWithToolbarPanel, placeholder: String) {
     targetPanel.setPlaceholder(placeholder)
-    AppExecutorUtil.getAppExecutorService().submit {
-      val image =
-        try {
-          val file = File(filePath)
-          if (file.exists()) ImageIO.read(file) else null
-        } catch (e: Exception) {
-          null
-        }
+    val future =
+      AppExecutorUtil.getAppExecutorService().submit {
+        val image =
+          try {
+            val file = File(filePath)
+            if (file.exists()) ImageIO.read(file) else null
+          } catch (e: Exception) {
+            null
+          }
 
-      UIUtil.invokeLaterIfNeeded { targetPanel.setImage(image) }
-    }
+        UIUtil.invokeLaterIfNeeded { targetPanel.setImage(image) }
+      }
+    imageLoadFutures.add(future)
+  }
+
+  override fun dispose() {
+    imageLoadFutures.forEach { it.cancel(true) }
+    imageLoadFutures.clear()
   }
 }

@@ -36,7 +36,6 @@ import com.android.tools.profiler.proto.Transport;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.util.messages.MessageBus;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -49,7 +48,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -121,6 +120,7 @@ public final class TransportFileManager implements TransportFileCopier {
   static final String DEVICE_DIR = "/data/local/tmp/perfd/";
   private static final String CODE_CACHE_DIR = "code_cache";
   private static final String DAEMON_CONFIG_FILE = "daemon.config";
+  private static final Pattern PACKAGE_NAME_PATTERN = Pattern.compile("[a-zA-Z0-9._]+");
   private static final String AGENT_CONFIG_FILE = "agent.config";
   private static final int DEVICE_PORT = 12389;
   @NotNull private final IDevice myDevice;
@@ -254,6 +254,7 @@ public final class TransportFileManager implements TransportFileCopier {
    * <p>
    * Returns a list of the on-device paths of copied files.
    */
+  @NotNull
   @Override
   public List<String> copyFileToDevice(@NotNull DeployableFile hostFile)
     throws AdbCommandRejectedException, IOException {
@@ -262,7 +263,7 @@ public final class TransportFileManager implements TransportFileCopier {
 
     if (!hostFile.isExecutable()) {
       Path path = dirPath.resolve(hostFile.getFileName());
-      paths.add(pushFileToDevice(path, hostFile.getFileName(), hostFile.isExecutable()));
+      paths.add(pushFileToDevice(path, hostFile.getFileName(), false));
       return paths;
     }
 
@@ -384,7 +385,7 @@ public final class TransportFileManager implements TransportFileCopier {
     final boolean[] fileFound = {false};
     myDevice.executeShellCommand("ls " + filePath, new MultiLineReceiver() {
       @Override
-      public void processNewLines(@NotNull String[] lines) {
+      public void processNewLines(@NonNull String[] lines) {
         for (String line : lines) {
           if (line.equals(filePath)) {
             fileFound[0] = true;
@@ -414,7 +415,7 @@ public final class TransportFileManager implements TransportFileCopier {
     StringBuilder fileContent = new StringBuilder();
     myDevice.executeShellCommand("cat " + filePath, new MultiLineReceiver() {
       @Override
-      public void processNewLines(@NotNull String[] lines) {
+      public void processNewLines(@NonNull String[] lines) {
         for (String line : lines) {
           fileContent.append(line);
         }
@@ -452,6 +453,11 @@ public final class TransportFileManager implements TransportFileCopier {
    * accessible, empty string otherwise.
    */
   public String configureStartupAgent(@NotNull String packageName, @NotNull String configName, @NotNull String executorId) {
+    if (!PACKAGE_NAME_PATTERN.matcher(packageName).matches()) {
+      getLogger().warn("Invalid package name rejected: " + packageName);
+      return "";
+    }
+
     // Startup agent feature was introduced from android API level 27.
     if (myDevice.getVersion().getFeatureLevel() < AndroidVersion.VersionCodes.O_MR1) {
       return "";
@@ -469,6 +475,7 @@ public final class TransportFileManager implements TransportFileCopier {
       return "";
     }
 
+    assert HostFiles.JVMTI_AGENT.getOnDeviceAbiFileNameFormat() != null;
     String agentName = String.format(HostFiles.JVMTI_AGENT.getOnDeviceAbiFileNameFormat(), getBestAbi(HostFiles.JVMTI_AGENT).getCpuArch());
     String[] requiredAgentFiles = {agentName, HostFiles.PERFA.getFileName()};
     try {
@@ -533,7 +540,7 @@ public final class TransportFileManager implements TransportFileCopier {
     if (abis.isEmpty()){
       throw new RuntimeException("Could not find ABI file for: " + hostFile.getFileName());
     } else {
-      return abis.get(0);
+      return abis.getFirst();
     }
   }
 
@@ -542,9 +549,9 @@ public final class TransportFileManager implements TransportFileCopier {
     final File dir = hostFile.getDir();
     List<Abi> supportedAbis = myDevice.getAbis()
       .stream()
-      .map(abi -> Abi.getEnum(abi))
+      .map(Abi::getEnum)
       .filter(abi -> new File(dir, abi + "/" + hostFile.getFileName()).exists())
-      .collect(Collectors.toList());
+      .toList();
 
     List<Abi> bestAbis = new ArrayList<>();
     Set<String> seenCpuArch = new HashSet<>();

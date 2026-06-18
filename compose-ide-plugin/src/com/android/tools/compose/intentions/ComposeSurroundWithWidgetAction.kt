@@ -36,6 +36,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.prevLeaf
 import com.intellij.psi.util.startOffset
+import org.jetbrains.kotlin.asJava.classes.runReadAction
 import org.jetbrains.kotlin.idea.util.ElementKind
 import org.jetbrains.kotlin.idea.util.findElements
 import org.jetbrains.kotlin.idea.util.isLineBreak
@@ -152,12 +153,13 @@ abstract class ComposeSurroundWithWidgetAction : IntentionAction, HighPriorityAc
 
   override fun startInWriteAction(): Boolean = true
 
-  private fun findSurroundableRange(file: PsiFile, editor: Editor): TextRange? =
+  private fun findSurroundableRange(file: PsiFile, editor: Editor): TextRange? = runReadAction {
     if (editor.selectionModel.hasSelection()) {
       findSurroundingSelectionRange(file, editor)
     } else {
       findNearestSurroundableElement(file, editor.caretModel.offset)?.textRange
     }
+  }
 
   override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?): Boolean =
     when {

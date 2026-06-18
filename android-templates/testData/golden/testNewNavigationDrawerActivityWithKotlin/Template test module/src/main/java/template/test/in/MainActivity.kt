@@ -1,7 +1,9 @@
+// This file should not be edited manually! See go/template-diff-tests
 package template.test.`in`
 
 import android.os.Bundle
 import android.view.Menu
+import androidx.activity.enableEdgeToEdge
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.navigation.NavigationView
 import androidx.navigation.findNavController
@@ -20,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

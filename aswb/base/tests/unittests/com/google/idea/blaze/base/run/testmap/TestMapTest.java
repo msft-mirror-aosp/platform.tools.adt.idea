@@ -27,6 +27,7 @@ import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.RuleType;
 import com.google.idea.blaze.base.qsync.settings.QuerySyncSettings;
 import com.google.idea.blaze.base.run.SourceToTargetFinder;
+import com.google.idea.blaze.base.settings.BazelImportSettingsManager;
 import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.settings.BuildSystemName;
@@ -64,10 +65,9 @@ public class TestMapTest extends BlazeTestCase {
     projectServices.register(BlazeProjectDataManager.class, mockBlazeProjectDataManager);
     projectServices.register(SyncCache.class, new SyncCache(project));
     BlazeImportSettingsManager importSettingsManager = new BlazeImportSettingsManager(project);
-    BlazeImportSettings settings =
-        new BlazeImportSettings("", "", "", "", "", BuildSystemName.Blaze);
-    importSettingsManager.setImportSettings(settings);
-    projectServices.register(BlazeImportSettingsManager.class, importSettingsManager);
+    importSettingsManager.setImportSettingsForTests(
+        java.nio.file.Path.of(""), BuildSystemName.Blaze);
+    projectServices.register(BazelImportSettingsManager.class, importSettingsManager);
 
     ExtensionPointImpl<SourceToTargetFinder> ep =
         registerExtensionPoint(SourceToTargetFinder.EP_NAME, SourceToTargetFinder.class);
@@ -81,7 +81,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testTrivialTestMap() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -101,7 +101,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testOneStepRemovedTestMap() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -127,7 +127,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testTwoCandidatesTestMap() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -159,7 +159,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testBfsPreferred() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -198,7 +198,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testSourceIncludedMultipleTimesFindsAll() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -236,7 +236,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testSourceIncludedMultipleTimesShouldOnlyGiveOneInstanceOfTest() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -269,7 +269,7 @@ public class TestMapTest extends BlazeTestCase {
 
   @Test
   public void testTargetWithNoKindDoesNotCauseNpe() throws Exception {
-    //mockBlazeProjectDataManager.targetMap =
+    // mockBlazeProjectDataManager.targetMap =
     //    TargetMapBuilder.builder()
     //        .addTarget(
     //            TargetIdeInfo.builder()
@@ -283,7 +283,8 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    // Unknown rule type does not match the test rule type but the intention of this test is to make sure unknown rule types
+    // Unknown rule type does not match the test rule type but the intention of this test is to make
+    // sure unknown rule types
     // do not cause NPE crashes.
     assertThat(targets).isEmpty();
   }

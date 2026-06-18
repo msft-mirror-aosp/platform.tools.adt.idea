@@ -23,20 +23,22 @@ import com.android.ddmlib.IDevice;
 import com.android.ide.common.build.BaselineProfileDetails;
 import com.android.tools.analytics.UsageTracker;
 import com.android.tools.deploy.proto.Deploy;
-import com.android.tools.deployer.AdbClient;
 import com.android.tools.deployer.AdbInstaller;
-import com.android.tools.deployer.ChangeType;
-import com.android.tools.deployer.DeployMetric;
 import com.android.tools.deployer.Deployer;
 import com.android.tools.deployer.DeployerApplicationTerminator;
-import com.android.tools.deployer.DeployerException;
-import com.android.tools.deployer.DeployerOption;
-import com.android.tools.deployer.Installer;
 import com.android.tools.deployer.MetricsRecorder;
+import com.android.tools.deployer.common.AdbClient;
+import com.android.tools.deployer.common.Canceller;
+import com.android.tools.deployer.common.ChangeType;
+import com.android.tools.deployer.common.DeployMetric;
+import com.android.tools.deployer.common.DeployerException;
+import com.android.tools.deployer.common.DeployerOption;
+import com.android.tools.deployer.common.DeploymentCacheDatabase;
+import com.android.tools.deployer.common.Installer;
 import com.android.tools.deployer.model.App;
 import com.android.tools.deployer.model.BaselineProfile;
 import com.android.tools.deployer.model.component.ApkParserException;
-import com.android.tools.deployer.tasks.Canceller;
+import com.android.tools.deployer.tasks.TaskRunner;
 import com.android.tools.idea.adblib.AdbLibService;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.flags.StudioFlags.OptimisticInstallSupportLevel;
@@ -136,9 +138,6 @@ public abstract class AbstractDeployTask {
     AdbHelper.setAbbExecAllowed(StudioFlags.DDMLIB_ABB_EXEC_INSTALL_ENABLE.get());
 
     AdbInstaller.Mode adbInstallerMode = AdbInstaller.Mode.DAEMON;
-    if (!StudioFlags.APPLY_CHANGES_KEEP_CONNECTION_ALIVE.get()) {
-      adbInstallerMode = AdbInstaller.Mode.ONE_SHOT;
-    }
     Installer installer = new AdbInstaller(
       LocalInstallerPathManager.getLocalInstaller(), adb, metrics.getDeployMetrics(), logger, adbInstallerMode
     );
@@ -151,12 +150,12 @@ public abstract class AbstractDeployTask {
       optimisticInstallSupport =
         OPTIMISTIC_INSTALL_SUPPORT.getOrDefault(StudioFlags.OPTIMISTIC_INSTALL_SUPPORT_LEVEL.get(), EnumSet.noneOf(ChangeType.class));
     }
-    DeployerOption option = new DeployerOption.Builder().setUseOptimisticSwap(StudioFlags.APPLY_CHANGES_OPTIMISTIC_SWAP.get())
-      .setUseOptimisticResourceSwap(StudioFlags.APPLY_CHANGES_OPTIMISTIC_RESOURCE_SWAP.get())
+    DeployerOption option = new DeployerOption.Builder().setUseOptimisticSwap(true)
+      .setUseOptimisticResourceSwap(true)
       .setOptimisticInstallSupport(optimisticInstallSupport)
       .setAllowAssumeVerified(myAllowAssumeVerified)
-      .setUseStructuralRedefinition(StudioFlags.APPLY_CHANGES_STRUCTURAL_DEFINITION.get())
-      .setUseVariableReinitialization(StudioFlags.APPLY_CHANGES_VARIABLE_REINITIALIZATION.get())
+      .setUseStructuralRedefinition(true)
+      .setUseVariableReinitialization(true)
       .setFastRestartOnSwapFail(getFastRerunOnSwapFailure()).enableCoroutineDebugger(StudioFlags.COROUTINE_DEBUGGER_ENABLE.get())
       .setMaxDeltaInstallPatchSize(StudioFlags.DELTA_INSTALL_CUSTOM_MAX_PATCH_SIZE.get())
       .build();

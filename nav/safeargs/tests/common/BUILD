@@ -53,6 +53,8 @@ iml_module(
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
     ],
     test_resources = ["testResources"],
     test_srcs = ["src"],
@@ -64,5 +66,7 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:intellij.java.indexing",
+        "@intellij//:intellij.platform.uast",
     ],
 )

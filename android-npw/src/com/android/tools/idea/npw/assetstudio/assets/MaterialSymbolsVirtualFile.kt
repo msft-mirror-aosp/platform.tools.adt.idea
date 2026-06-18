@@ -32,15 +32,15 @@ private const val BASE_XML =
   <?xml version="1.0" encoding="utf-8"?>
   <TextView
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="100px"
-    android:layout_height="100px"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
     android:fontFamily="%s"
     android:fontVariationSettings="
         'FILL' %s,
         'wght' %s,
         'GRAD' %s,
         'opsz' %s"
-    android:text="\u%s"
+    android:text="&#x%s;"
     android:textSize="100px"
     android:background="@android:color/transparent"
     android:textColor="%s"
@@ -57,7 +57,7 @@ private const val BASE_XML =
  * @return String in the expected RGB format
  */
 private fun Color.toHex(): String {
-  return "#%06X".format(this.rgb and 0xFFFFFF)
+  return "#%06X".format(this.rgb and 0xFFFFFF).uppercase()
 }
 
 private fun getXMLString(symbolConfiguration: SymbolConfiguration, unicode: Int, fontPath: String): String {

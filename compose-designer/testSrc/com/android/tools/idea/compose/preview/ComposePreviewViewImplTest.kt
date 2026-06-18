@@ -301,7 +301,6 @@ class ComposePreviewViewImplTest {
             size = Dimension(1000, 800)
             add(previewView.component, BorderLayout.CENTER)
           },
-          1.0,
           true,
         )
       previewView.component.findDescendant<SceneViewPanel>()!!.setNoComposeHeadersForTests()
@@ -461,6 +460,21 @@ class ComposePreviewViewImplTest {
     checkEmptyPreviewState(emptyList())
   }
 
+  @Test
+  fun `empty preview state respects action order`() {
+    // Configure actions
+    fakeStudioBotActionFactory.previewGeneratorAction.apply {
+      templatePresentation.text = "Generate Preview for Composable"
+      isVisible = true
+    }
+    fakeStudioBotActionFactory.screenshotToCodeAction.apply {
+      templatePresentation.text = "Generate Code From Screenshot"
+      isVisible = true
+    }
+
+    checkEmptyPreviewState(listOf("Generate Code From Screenshot", "Generate Preview for Composable"))
+  }
+
   private fun configureComposePreviewView(psiFile: PsiFile) {
     mainFileSmartPointer = runReadAction { SmartPointerManager.createPointer(psiFile) }
     previewView =
@@ -480,7 +494,6 @@ class ComposePreviewViewImplTest {
             size = Dimension(1000, 800)
             add(previewView.component, BorderLayout.CENTER)
           },
-          1.0,
           true,
         )
       previewView.component.findDescendant<SceneViewPanel>()?.setNoComposeHeadersForTests()

@@ -7,11 +7,9 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
-    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
-    <orderEntry type="library" scope="TEST" name="intellij-test-framework" level="project" />
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.testutils" scope="TEST" />
@@ -22,7 +20,6 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.play-vitals.model" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.ui" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.ui.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.client" scope="TEST" />

@@ -43,6 +43,7 @@ import com.android.tools.idea.projectsystem.NamedModuleTemplate
 import com.android.tools.idea.templates.determineVersionCatalogUseForNewModule
 import com.android.tools.idea.wizard.template.BytecodeLevel
 import com.android.tools.idea.wizard.template.Category
+import com.android.tools.idea.wizard.template.DslLanguage
 import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.Language
 import com.android.tools.idea.wizard.template.ModuleTemplateData
@@ -69,9 +70,11 @@ class ExistingProjectModelData(
   override val applicationName: StringValueProperty = StringValueProperty()
   override val packageName: StringValueProperty = StringValueProperty()
   override val projectLocation: StringValueProperty = StringValueProperty(project.basePath!!)
-  override val useGradleKts = BoolValueProperty(project.hasKtsUsage())
+  override val dslLanguage: ObjectValueProperty<DslLanguage> = ObjectValueProperty(project.dslLanguageUsage())
   override val useVersionCatalog = BoolValueProperty(determineVersionCatalogUseForNewModule(project, isNewProject = false))
   override val viewBindingSupport = OptionalValueProperty<ViewBindingSupport>(project.isViewBindingSupported())
+  override val templateRendererStrategy: OptionalValueProperty<TemplateRendererStrategy> =
+    OptionalValueProperty.fromNullable(TemplateRendererStrategy.EP_NAME.extensions.firstOrNull { it.isProjectApplicable(project) })
   override val isNewProject = false
   override val language: OptionalValueProperty<Language> = OptionalValueProperty(getInitialSourceLanguage(project))
   override val agpVersionSelector =
@@ -86,7 +89,11 @@ class ExistingProjectModelData(
   override val additionalMavenRepos: ObjectValueProperty<List<URL>> = ObjectValueProperty(listOf())
   override val multiTemplateRenderer = MultiTemplateRenderer(::runRenderer)
   override val prompt = StringValueProperty()
+  override val displayText = StringValueProperty("")
   override val imageAttachments: ObjectValueProperty<List<VirtualFile>> = ObjectValueProperty(listOf())
+  override val sourceProjectType = ObjectValueProperty(SourceProjectType.UNKNOWN)
+  override val importSourcePath = StringValueProperty("")
+  override val userSkillDirectories: ObjectValueProperty<List<java.io.File>> = ObjectValueProperty(listOf())
 
   private fun runRenderer(renderer: (Project) -> Unit) {
     object : Task.Modal(project, message("android.compile.messages.generating.r.java.content.name"), false) {
@@ -168,38 +175,41 @@ class NewAndroidModuleModel(
 
   inner class ModuleTemplateRenderer : ModuleModel.ModuleTemplateRenderer() {
     override val recipe: Recipe
-      get() =
-        when (formFactor.get()) {
+      get() {
+        val customStrategy = projectModelData.templateRendererStrategy.valueOrNull
+        val hasCustomRenderer = customStrategy != null
+        val generateStandardFiles = customStrategy?.generateStandardAndroidModuleFiles ?: true
+        return when (formFactor.get()) {
           FormFactor.Mobile -> { data: TemplateData ->
               generateAndroidModule(
                 data = data as ModuleTemplateData,
                 appTitle = applicationName.get(),
-                useKts = useGradleKts.get(),
-                useVersionCatalog = useVersionCatalog.get(),
+                hasCustomRenderer = hasCustomRenderer,
+                generateStandardFiles = generateStandardFiles,
               )
             }
           FormFactor.Wear -> { data: TemplateData ->
               generateWearModule(
                 data = data as ModuleTemplateData,
                 appTitle = applicationName.get(),
-                useKts = useGradleKts.get(),
-                useVersionCatalog = useVersionCatalog.get(),
+                hasCustomRenderer = hasCustomRenderer,
+                generateStandardFiles = generateStandardFiles,
               )
             }
           FormFactor.Car -> { data: TemplateData ->
               generateAutomotiveModule(
                 data = data as ModuleTemplateData,
                 appTitle = applicationName.get(),
-                useKts = useGradleKts.get(),
-                useVersionCatalog = useVersionCatalog.get(),
+                hasCustomRenderer = hasCustomRenderer,
+                generateStandardFiles = generateStandardFiles,
               )
             }
           FormFactor.Tv -> { data: TemplateData ->
               generateTvModule(
                 data = data as ModuleTemplateData,
                 appTitle = applicationName.get(),
-                useKts = useGradleKts.get(),
-                useVersionCatalog = useVersionCatalog.get(),
+                hasCustomRenderer = hasCustomRenderer,
+                generateStandardFiles = generateStandardFiles,
               )
             }
           FormFactor.XR,
@@ -207,12 +217,13 @@ class NewAndroidModuleModel(
               generateXRModule(
                 data = data as ModuleTemplateData,
                 appTitle = applicationName.get(),
-                useKts = useGradleKts.get(),
-                useVersionCatalog = useVersionCatalog.get(),
+                hasCustomRenderer = hasCustomRenderer,
+                generateStandardFiles = generateStandardFiles,
               )
             }
           FormFactor.Generic -> { data: TemplateData -> generateGenericModule(data as ModuleTemplateData) }
         }
+      }
 
     @WorkerThread
     override fun init() {
@@ -236,6 +247,8 @@ class NewAndroidModuleModel(
   }
 
   private fun saveWizardState() {
+    val dsl = projectModelData.templateRendererStrategy.valueOrNull?.id ?: projectModelData.dslLanguage.get().toString()
+    properties.setValue(NewProjectModel.PROPERTIES_NPW_DSL_LANGUAGE_KEY, dsl)
     if (isLibrary) {
       properties.setValue(PROPERTIES_BYTECODE_LEVEL_KEY, bytecodeLevel.value.toString())
     }
@@ -282,6 +295,18 @@ private fun FormFactor.toModuleRenderingLoggingEvent() =
 
 internal fun Project.hasKtsUsage(): Boolean {
   return GradleProjectSystemUtil.projectBuildFilesTypes(this).contains(GradleProjectSystemUtil.BuildFileType.KOTLIN_SCRIPT)
+}
+
+internal fun Project.hasDclUsage(): Boolean {
+  return GradleProjectSystemUtil.projectBuildFilesTypes(this).contains(GradleProjectSystemUtil.BuildFileType.DECLARATIVE)
+}
+
+internal fun Project.dslLanguageUsage(): DslLanguage {
+  return when {
+    this.hasKtsUsage() -> DslLanguage.KTS
+    this.hasDclUsage() -> DslLanguage.DCL
+    else -> DslLanguage.GROOVY
+  }
 }
 
 internal fun Project.isViewBindingSupported(): ViewBindingSupport {

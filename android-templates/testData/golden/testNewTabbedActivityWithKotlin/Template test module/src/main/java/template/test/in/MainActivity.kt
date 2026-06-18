@@ -1,13 +1,16 @@
+// This file should not be edited manually! See go/template-diff-tests
 package template.test.`in`
 
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.tabs.TabLayoutMediator
 import androidx.appcompat.app.AppCompatActivity
-import android.view.Menu
-import android.view.MenuItem
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import template.test.`in`.ui.main.SectionsPagerAdapter
 import template.test.`in`.databinding.ActivityMainBinding
 
@@ -17,15 +20,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val sectionsPagerAdapter = SectionsPagerAdapter(this, supportFragmentManager)
-        val viewPager: ViewPager = binding.viewPager
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+        val sectionsPagerAdapter = SectionsPagerAdapter(this, this)
+        val viewPager: ViewPager2 = binding.viewPager
         viewPager.adapter = sectionsPagerAdapter
         val tabs: TabLayout = binding.tabs
-        tabs.setupWithViewPager(viewPager)
+        TabLayoutMediator(tabs, viewPager) { tab, position ->
+            tab.text = sectionsPagerAdapter.getPageTitle(position)
+        }.attach()
         val fab: FloatingActionButton = binding.fab
 
         fab.setOnClickListener { view ->

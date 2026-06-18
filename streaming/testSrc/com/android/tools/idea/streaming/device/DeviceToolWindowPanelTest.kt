@@ -318,10 +318,10 @@ class DeviceToolWindowPanelTest {
     val xrInputController = DeviceXrInputController.getInstance(project, panel.deviceClient)
     assertAppearance("XrToolbarActions1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
 
-    assertThat(xrInputController.inputMode).isEqualTo(XrInputMode.INTERACTION)
+    assertThat(xrInputController.inputMode).isEqualTo(XrInputMode.MOUSE)
     val modes =
       mapOf(
-        "Interact with Apps" to XrInputMode.INTERACTION,
+        "Interact with Apps" to XrInputMode.MOUSE,
         "View Direction" to XrInputMode.VIEW_DIRECTION,
         "Move Right/Left and Up/Down" to XrInputMode.LOCATION_IN_SPACE_XY,
         "Move Forward/Backward" to XrInputMode.LOCATION_IN_SPACE_Z,

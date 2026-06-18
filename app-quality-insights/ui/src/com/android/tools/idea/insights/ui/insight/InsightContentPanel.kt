@@ -16,15 +16,16 @@
 package com.android.tools.idea.insights.ui.insight
 
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gemini.GeminiPluginApi
-import com.android.tools.idea.insights.AppInsightsProjectLevelController
+import com.android.tools.idea.insights.AppInsightsCrashController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
-import com.android.tools.idea.insights.mapReady
+import com.android.tools.idea.insights.ui.AI_INSIGHT_TOOLKIT_KEY
+import com.android.tools.idea.insights.ui.APP_INSIGHTS_TRACKER_KEY
 import com.android.tools.idea.insights.ui.AppInsightsStatusText
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TEXT_FORMAT
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TITLE_FORMAT
+import com.android.tools.idea.insights.ui.SELECTED_APP_ID_KEY
 import com.android.tools.idea.insights.ui.insight.onboarding.EnableInsightPanel
 import com.google.gct.login2.LoginFeature
 import com.intellij.openapi.Disposable
@@ -39,6 +40,7 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
+import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.panels.VerticalLayout
@@ -50,7 +52,6 @@ import javax.swing.JPanel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -67,14 +68,14 @@ private const val TEMPORARY_KILL_SWITCH_MESSAGE = "Cannot process request for di
 
 @VisibleForTesting const val GEMINI_NOT_AVAILABLE = "Gemini is not available"
 
-private const val GENERATING_INSIGHT = "Generating insight..."
+private const val DEFAULT_LOADING_TEXT = "Fetching issue data..."
 
 /** [JPanel] that is shown in the [InsightToolWindow] when an insight is available. */
 class InsightContentPanel(
-  controller: AppInsightsProjectLevelController,
+  private val controller: AppInsightsCrashController,
   scope: CoroutineScope,
   currentInsightFlow: StateFlow<LoadingState<AiInsight?>>,
-  tracker: AppInsightsTracker,
+  private val tracker: AppInsightsTracker,
   parentDisposable: Disposable,
 ) : JPanel(), UiDataProvider, Disposable {
 
@@ -86,10 +87,18 @@ class InsightContentPanel(
 
   private val insightLinksPanel = InsightLinksPanel(controller, currentInsightFlow, tracker, this)
 
+  private val autoGenerateInsightPanel = AutoGenerateInsightPanel(controller, tracker, this)
+
+  private val modelHeader = TitledSeparator()
+
   private val insightPanel =
     JPanel(VerticalLayout(JBUI.scale(8))).apply {
       add(InsightDisclaimerPanel(controller, scope, currentInsightFlow))
+      if (StudioFlags.AQI_FIX_WITH_AGENT.get()) {
+        add(modelHeader)
+      }
       add(insightTextPane)
+      add(autoGenerateInsightPanel)
       if (StudioFlags.AQI_FIX_WITH_AGENT.get()) {
         add(insightLinksPanel)
       }
@@ -112,12 +121,11 @@ class InsightContentPanel(
   private val selectedConnectionFlow =
     controller.state.map { state -> state.connections.selected }.stateIn(scope, SharingStarted.Eagerly, null)
 
-  private val enableInsightPanel =
-    EnableInsightPanel(scope, selectedConnectionFlow, controller.aiInsightToolkit.aiInsightOnboardingProvider)
+  private val enableInsightPanel = EnableInsightPanel(controller.aiInsightToolkit)
 
   private val loadingPanel =
     JBLoadingPanel(BorderLayout(), this).apply {
-      setLoadingText(GENERATING_INSIGHT)
+      setLoadingText(DEFAULT_LOADING_TEXT)
       border = JBUI.Borders.empty()
       add(insightScrollPanel, BorderLayout.CENTER)
       if (!StudioFlags.AQI_FIX_WITH_AGENT.get()) {
@@ -132,7 +140,7 @@ class InsightContentPanel(
       override fun update(e: AnActionEvent) {
         // This action is never visible
         e.presentation.isEnabledAndVisible = false
-        if (enableInsightPanel.isVisible && GeminiPluginApi.getInstance().isAvailable()) {
+        if (enableInsightPanel.isVisible && controller.aiInsightToolkit.isModelAvailable()) {
           controller.refreshInsight(false)
         }
       }
@@ -166,14 +174,12 @@ class InsightContentPanel(
 
     scope.launch {
       currentInsightFlow
-        .mapReady { insight -> insight?.rawInsight }
-        .distinctUntilChanged()
         .onEach { reset() }
         .collect { aiInsight ->
           // TODO(b/431055979): Handle StatusRuntimeException from Gemini correctly
           when (aiInsight) {
             is LoadingState.Ready -> {
-              when (aiInsight.value) {
+              when (val insight = aiInsight.value) {
                 null -> {
                   emptyStateText.apply {
                     clear()
@@ -182,7 +188,7 @@ class InsightContentPanel(
                   showEmptyCard()
                 }
                 else -> {
-                  val insightText = aiInsight.value!!
+                  val insightText = insight.rawInsight
                   if (insightText.isEmpty()) {
                     emptyStateText.apply {
                       clear()
@@ -191,8 +197,9 @@ class InsightContentPanel(
                     }
                     showEmptyCard()
                   } else {
+                    modelHeader.text = insight.modelInfo.readableName
                     updateInsightText(insightText)
-                    showContentCard()
+                    showContentCard(ShowCard.TEXT)
                   }
                 }
               }
@@ -202,9 +209,9 @@ class InsightContentPanel(
               if (aiInsight.message.isNotEmpty()) {
                 loadingPanel.setLoadingText(aiInsight.message)
               } else {
-                loadingPanel.setLoadingText(GENERATING_INSIGHT)
+                loadingPanel.setLoadingText(DEFAULT_LOADING_TEXT)
               }
-              showContentCard(true)
+              showContentCard(ShowCard.LOADING)
             }
             // Gemini plugin disabled or scope is not authorized
             is LoadingState.Unauthorized -> {
@@ -227,6 +234,11 @@ class InsightContentPanel(
                 appendLine(cause, EMPTY_STATE_TEXT_FORMAT, null)
               }
               showEmptyCard()
+            }
+            is LoadingState.InsightAutogenerateDisabled,
+            is LoadingState.NoModelAvailable -> {
+              modelHeader.text = "From AI Model"
+              showContentCard(ShowCard.AUTO_GENERATE)
             }
             is LoadingState.NetworkFailure -> {
               val message = aiInsight.message
@@ -280,13 +292,27 @@ class InsightContentPanel(
     enableInsightPanel.isVisible = false
   }
 
-  private fun showEmptyCard() = showCard(EMPTY_CARD, false).also { isEmptyStateTextVisible = true }
+  private fun toggleInsightTextPane(visibility: Boolean) {
+    insightTextPane.isVisible = visibility
+    if (StudioFlags.AQI_FIX_WITH_AGENT.get()) {
+      insightLinksPanel.isVisible = visibility
+    } else if (StudioFlags.SUGGEST_A_FIX.get()) {
+      insightBottomPanel.isVisible = visibility
+    }
+  }
 
-  private fun showContentCard(startLoading: Boolean = false) = showCard(CONTENT_CARD, startLoading).also { isEmptyStateTextVisible = false }
+  private fun showEmptyCard() = showCard(EMPTY_CARD, startLoading = false, emptyStateTextVisible = true)
 
-  private fun showOnboardingCard() = showCard(ONBOARDING_REQUIRED, false).also { isEmptyStateTextVisible = false }
+  private fun showContentCard(card: ShowCard) {
+    modelHeader.isVisible = modelHeader.text.isNotEmpty()
+    toggleInsightTextPane(card == ShowCard.TEXT)
+    autoGenerateInsightPanel.isVisible = card == ShowCard.AUTO_GENERATE
+    showCard(CONTENT_CARD, card == ShowCard.LOADING)
+  }
 
-  private fun showCard(card: String, startLoading: Boolean) {
+  private fun showOnboardingCard() = showCard(ONBOARDING_REQUIRED, false)
+
+  private fun showCard(card: String, startLoading: Boolean, emptyStateTextVisible: Boolean = false) {
     if (startLoading) {
       loadingPanel.startLoading()
     } else {
@@ -294,6 +320,7 @@ class InsightContentPanel(
     }
     togglePanelVisibilities(!startLoading)
     cardLayout.show(this, card)
+    isEmptyStateTextVisible = emptyStateTextVisible
   }
 
   private fun togglePanelVisibilities(visibility: Boolean) {
@@ -305,5 +332,14 @@ class InsightContentPanel(
 
   override fun uiDataSnapshot(sink: DataSink) {
     sink[PlatformDataKeys.COPY_PROVIDER] = insightTextPane
+    sink[AI_INSIGHT_TOOLKIT_KEY] = controller.aiInsightToolkit
+    sink[APP_INSIGHTS_TRACKER_KEY] = tracker
+    sink[SELECTED_APP_ID_KEY] = selectedConnectionFlow.value?.appId
+  }
+
+  private enum class ShowCard {
+    LOADING,
+    TEXT,
+    AUTO_GENERATE,
   }
 }

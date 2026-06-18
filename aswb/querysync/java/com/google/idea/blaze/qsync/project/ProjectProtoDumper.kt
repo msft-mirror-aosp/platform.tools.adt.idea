@@ -282,7 +282,13 @@ private class PrinterImpl(private val to: PrintStream) : ValuePrinter, NestedVal
   override fun <T> list(value: Collection<T>, valueFormatter: ValueFormatter<T>) {
     outln("")
     nest {
-      for (entry in value) {
+      val sorted =
+        if (value is Set<*>) {
+          value.sortedBy { it?.toString().orEmpty() }
+        } else {
+          value
+        }
+      for (entry in sorted) {
         out("-")
         valueFormatter.formatTo(entry, this)
       }
@@ -292,7 +298,8 @@ private class PrinterImpl(private val to: PrintStream) : ValuePrinter, NestedVal
   override fun <T> map(value: Map<Any, T>, valueFormatter: ValueFormatter<T>) {
     outln("")
     nest {
-      for (entry in value.entries) {
+      val sortedEntries = value.entries.sortedBy { it.key.toString() }
+      for (entry in sortedEntries) {
         out("\"${entry.key}\":")
         inValue = true
         valueFormatter.formatTo(entry.value, this)

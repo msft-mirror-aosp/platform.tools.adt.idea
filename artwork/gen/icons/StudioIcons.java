@@ -115,6 +115,8 @@ public final class StudioIcons {
     /** 16x16 */ public static final @NotNull Icon INFO_INLINE = load("studio/icons/common/info-inline.svg", 1695835300, 2);
     /** 16x16 */ public static final @NotNull Icon INFO = load("studio/icons/common/info.svg", -1846060654, 2);
     /** 16x16 */ public static final @NotNull Icon LAYOUT = load("studio/icons/common/layout.svg", -1646443317, 2);
+    /** 16x16 */ public static final @NotNull Icon LEFT_PANEL_CLOSE = load("studio/icons/common/left-panel-close.svg", 1001522474, 2);
+    /** 16x16 */ public static final @NotNull Icon LEFT_PANEL_OPEN = load("studio/icons/common/left-panel-open.svg", -1442885412, 2);
     /** 16x16 */ public static final @NotNull Icon LIKE = load("studio/icons/common/like.svg", 636431268, 2);
     /** 16x16 */ public static final @NotNull Icon LINK = load("studio/icons/common/link.svg", -187835040, 2);
     /** 16x16 */ public static final @NotNull Icon LIST_VIEW = load("studio/icons/common/list-view.svg", -835465736, 2);
@@ -938,9 +940,11 @@ public final class StudioIcons {
 
   public static final class StudioBot {
     /** 16x16 */ public static final @NotNull Icon ASK = load("studio/icons/studio-bot/ask.svg", -323558851, 2);
+    /** 16x16 */ public static final @NotNull Icon CHANGE_REVIEW = load("studio/icons/studio-bot/change-review.svg", 1665363647, 2);
     /** 16x16 */ public static final @NotNull Icon GEMINI_LOGO_MONOCHROME = load("studio/icons/studio-bot/gemini-logo-monochrome.svg", 1337628391, 2);
     /** 16x16 */ public static final @NotNull Icon GEMINI_LOGO = load("studio/icons/studio-bot/gemini-logo.svg", 2058042118, 2);
-    /** 16x16 */ public static final @NotNull Icon GENERIC_AI_ACTION = load("studio/icons/studio-bot/generic-ai-action.svg", -1227858604, 2);
+    /** 16x16 */ public static final @NotNull Icon GEMMA = load("studio/icons/studio-bot/gemma.svg", -164322164, 2);
+    /** 16x16 */ public static final @NotNull Icon GENERIC_AI_ACTION = load("studio/icons/studio-bot/generic-ai-action.svg", -1978498243, 2);
   }
 
   public static final class Test {

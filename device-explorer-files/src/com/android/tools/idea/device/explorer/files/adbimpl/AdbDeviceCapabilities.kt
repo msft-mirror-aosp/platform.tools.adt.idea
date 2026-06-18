@@ -17,6 +17,7 @@ package com.android.tools.idea.device.explorer.files.adbimpl
 
 import com.android.adblib.ConnectedDevice
 import com.android.adblib.RemoteFileMode
+import com.android.adblib.shell
 import com.android.adblib.syncSend
 import com.android.tools.idea.adb.AdbShellCommandException
 import com.android.tools.idea.adb.AdbShellCommandResult
@@ -40,31 +41,6 @@ class AdbDeviceCapabilities(coroutineScope: CoroutineScope, private val deviceNa
 
   private val shellCommandsUtil = AdbShellCommandsUtil.create(device)
 
-  suspend fun supportsTestCommand() = supportsTestCommand.await()
-
-  private val supportsTestCommand =
-    coroutineScope.async(start = CoroutineStart.LAZY) {
-      assertNotDispatchThread()
-      ScopedRemoteFile(AdbPathUtil.resolve(PROBE_FILES_TEMP_PATH, ".__temp_test_test__file__.tmp")).use { tempFile ->
-        // Create the remote file used for testing capability
-        tempFile.create()
-
-        // Try the "test" command on it (it should succeed if the command is supported)
-        val command = AdbShellCommandBuilder().withText("test -e ").withEscapedPath(tempFile.remotePath).build()
-        val commandResult = shellCommandsUtil.executeCommand(command)
-        try {
-          commandResult.throwIfError()
-          true
-        } catch (e: AdbShellCommandException) {
-          logger.debug(
-            """Device "$deviceName" does not seem to support the "test" command: ${
-            commandResult.outputSummary()}"""
-          )
-          false
-        }
-      }
-    }
-
   suspend fun supportsRmForceFlag() = supportsRmForceFlag.await()
 
   private val supportsRmForceFlag =
@@ -74,7 +50,7 @@ class AdbDeviceCapabilities(coroutineScope: CoroutineScope, private val deviceNa
         // Create the remote file used for testing capability
         tempFile.create()
 
-        // Try to delete it with "rm -f" (it should work if th command is supported)
+        // Try to delete it with "rm -f" (it should work if the command is supported)
         val command = AdbShellCommandBuilder().withText("rm -f ").withEscapedPath(tempFile.remotePath).build()
         val commandResult = shellCommandsUtil.executeCommand(command)
         try {
@@ -145,8 +121,8 @@ class AdbDeviceCapabilities(coroutineScope: CoroutineScope, private val deviceNa
     coroutineScope.async(start = CoroutineStart.LAZY) {
       assertNotDispatchThread()
 
-      val result = shellCommandsUtil.executeCommandNoErrorCheck("echo \$USER_ID")
-      result.output.joinToString().trim() == "0"
+      val result = device.shell.executeAsText("echo \$USER_ID")
+      result.stdout.trim() == "0"
     }
 
   suspend fun supportsCpCommand() = supportsCpCommand.await()

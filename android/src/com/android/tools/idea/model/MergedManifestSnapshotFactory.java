@@ -27,7 +27,6 @@ import static com.android.SdkConstants.VALUE_TRUE;
 import static com.android.tools.lint.checks.PermissionRequirement.ATTR_PROTECTION_LEVEL;
 import static com.android.tools.lint.checks.PermissionRequirement.VALUE_DANGEROUS;
 import static com.android.xml.AndroidManifest.ATTRIBUTE_DEBUGGABLE;
-import static com.android.xml.AndroidManifest.ATTRIBUTE_HASCODE;
 import static com.android.xml.AndroidManifest.ATTRIBUTE_ICON;
 import static com.android.xml.AndroidManifest.ATTRIBUTE_LABEL;
 import static com.android.xml.AndroidManifest.ATTRIBUTE_MIN_SDK_VERSION;
@@ -40,7 +39,6 @@ import static com.android.xml.AndroidManifest.ATTRIBUTE_THEME;
 import static com.android.xml.AndroidManifest.ATTRIBUTE_UI_OPTIONS;
 import static com.android.xml.AndroidManifest.ATTRIBUTE_VALUE;
 import static com.android.xml.AndroidManifest.NODE_ACTIVITY;
-import static com.android.xml.AndroidManifest.NODE_ACTIVITY_ALIAS;
 import static com.android.xml.AndroidManifest.NODE_APPLICATION;
 import static com.android.xml.AndroidManifest.NODE_METADATA;
 import static com.android.xml.AndroidManifest.NODE_SERVICE;
@@ -52,11 +50,10 @@ import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.ResourceValueImpl;
 import com.android.manifmerger.Actions;
-import com.android.manifmerger.MergingReport;
 import com.android.resources.ResourceType;
 import com.android.resources.ResourceUrl;
 import com.android.sdklib.AndroidVersion;
-import com.android.sdklib.SdkVersionInfo;
+import com.android.sdklib.SdkVersionUtil;
 import com.android.tools.dom.ActivityAttributesSnapshot;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.res.StudioResourceRepositoryManager;
@@ -140,7 +137,7 @@ public class MergedManifestSnapshotFactory {
     String valueString = getAttributeValue(usesSdk, ANDROID_URI, attribute);
     if (valueString != null) {
       // TODO: Pass in platforms if we have them
-      AndroidVersion version = SdkVersionInfo.getVersion(valueString, null);
+      AndroidVersion version = SdkVersionUtil.getVersion(valueString, null);
       if (version != null) {
         return version;
       }

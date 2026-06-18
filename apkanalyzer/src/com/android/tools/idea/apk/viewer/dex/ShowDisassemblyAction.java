@@ -15,12 +15,16 @@
  */
 package com.android.tools.idea.apk.viewer.dex;
 
+import static com.intellij.openapi.util.text.StringUtil.escapeXmlEntities;
+
 import com.android.tools.apk.analyzer.dex.DexDisassembler;
 import com.android.tools.apk.analyzer.dex.DexFiles;
 import com.android.tools.apk.analyzer.dex.tree.DexClassNode;
 import com.android.tools.apk.analyzer.dex.tree.DexElementNode;
 import com.android.tools.apk.analyzer.dex.tree.DexMethodNode;
 import com.android.tools.proguard.ProguardMap;
+import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile;
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.FutureCallback;
@@ -41,13 +45,10 @@ import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.concurrency.EdtExecutorService;
 import java.io.IOException;
 import java.nio.file.Path;
-
 import javax.swing.tree.TreePath;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.ide.PooledThreadExecutor;
-import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile;
-import com.android.tools.smali.dexlib2.iface.reference.MethodReference;
 
 public class ShowDisassemblyAction extends AnAction implements DumbAware {
   @NotNull private final Tree myTree;
@@ -131,7 +132,7 @@ public class ShowDisassemblyAction extends AnAction implements DumbAware {
         try {
           byteCode = getByteCode(dexBackedDexFile, node, myProguardMapSupplier.get());
         } catch (Exception ex) {
-          Messages.showErrorDialog(project, "Unable to get byte code: " + ex.getMessage(), "View Dex Bytecode");
+          Messages.showErrorDialog(project, "Unable to get byte code: " + escapeXmlEntities(ex.getMessage()), "View Dex Bytecode");
           return;
         }
 
@@ -140,7 +141,7 @@ public class ShowDisassemblyAction extends AnAction implements DumbAware {
 
       @Override
       public void onFailure(@NotNull Throwable t) {
-        Messages.showErrorDialog("Error constructing dex file: " + t, "View Dex Bytecode");
+        Messages.showErrorDialog("Error constructing dex file: " + escapeXmlEntities(String.valueOf(t)), "View Dex Bytecode");
       }
     }, EdtExecutorService.getInstance());
 

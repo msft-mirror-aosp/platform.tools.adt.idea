@@ -13,5 +13,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.lang" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
   </component>
 </module>

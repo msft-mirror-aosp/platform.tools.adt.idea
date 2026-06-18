@@ -37,8 +37,7 @@ import com.google.idea.blaze.base.projectview.section.sections.TargetSection;
 import com.google.idea.blaze.base.projectview.section.sections.TestSourceSection;
 import com.google.idea.blaze.base.projectview.section.sections.WorkspaceTypeSection;
 import com.google.idea.blaze.base.scope.BlazeContext;
-import com.google.idea.blaze.base.settings.BlazeImportSettings;
-import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
+import com.google.idea.blaze.base.settings.BazelImportSettingsManager;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.blaze.base.sync.projectview.ImportRoots;
 import com.google.idea.blaze.base.sync.projectview.LanguageSupport;
@@ -66,6 +65,7 @@ import com.google.idea.blaze.qsync.java.JavaArtifactMetadata;
 import com.google.idea.blaze.qsync.java.PackageReader;
 import com.google.idea.blaze.qsync.java.PackageStatementParser;
 import com.google.idea.blaze.qsync.java.ParallelPackageReader;
+import com.google.idea.blaze.qsync.java.WorkspaceResolvingPackageReader;
 import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.google.idea.blaze.qsync.project.FileExtensions;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
@@ -109,7 +109,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
 
   /** Services {@link QuerySyncProject} depends on. */
   public record QuerySyncProjectDeps(
-      BlazeImportSettings importSettings,
       WorkspaceRoot workspaceRoot,
       WorkspacePathResolver workspacePathResolver,
       QuerySyncLanguageSettings languageSettings,
@@ -132,6 +131,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
       ImmutableSet<String> handledRuleKinds,
       BuildGraphData.ProtoRules protoRules,
       ProjectStructureReader projectStructureReader,
+      PackageReader packageReader,
+      PackageReader.ParallelReader parallelPackageReader,
       boolean readProjectStructureFromDirectory) {}
 
   public ProjectLoaderImpl(Project project) {
@@ -163,7 +164,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
         new QuerySyncProject(
             project,
             result.snapshotHolder(),
-            result.importSettings(),
             result.workspaceRoot(),
             result.artifactTracker(),
             result.artifactCache(),
@@ -186,6 +186,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
             result.handledRuleKinds(),
             result.protoRules(),
             result.projectStructureReader(),
+            result.packageReader(),
+            result.parallelPackageReader(),
             result.readProjectStructureFromDirectory());
 
     return querySyncProject;
@@ -193,9 +195,9 @@ public class ProjectLoaderImpl implements ProjectLoader {
 
   @Override
   public ProjectToLoadDefinition loadProjectDefinition(ProjectViewSet projectViewSet) {
-    BlazeImportSettings importSettings =
+    BuildSystemName buildSystemName =
         Preconditions.checkNotNull(
-            BlazeImportSettingsManager.getInstance(project).getImportSettings());
+            BazelImportSettingsManager.getInstance(project).getBuildSystem());
     WorkspaceRoot workspaceRoot =
         WorkspaceRoot.fromProject(project); // TODO: solodkyy - read from the project view.
     // TODO we may need to get the WorkspacePathResolver from the VcsHandler, as the old sync
@@ -204,14 +206,14 @@ public class ProjectLoaderImpl implements ProjectLoader {
     // implementations of WorkspacePathResolver exists. Perhaps they are performance
     // optimizations?
     ProjectDefinition projectDefinition =
-        createProjectDefinition(workspaceRoot, importSettings.getBuildSystem(), projectViewSet);
+        createProjectDefinition(workspaceRoot, buildSystemName, projectViewSet);
     WorkspaceLanguageSettings workspaceLanguageSettings =
         LanguageSupport.createWorkspaceLanguageSettings(projectViewSet);
     QuerySyncLanguageSettings languageSettings =
         QuerySyncLanguageSettings.from(projectViewSet, workspaceLanguageSettings);
     // TODO: solodkyy - read from the project view.
     BuildSystemProvider buildSystemProvider =
-        BuildSystemProvider.getBuildSystemProvider(importSettings.getBuildSystem());
+        BuildSystemProvider.getBuildSystemProvider(buildSystemName);
     BuildSystem buildSystem = buildSystemProvider.getBuildSystem();
     ProjectDirectoryConfigurator projectDirectoryConfigurator =
         buildSystemProvider.getProjectDirectoryConfigurator(project);
@@ -226,13 +228,11 @@ public class ProjectLoaderImpl implements ProjectLoader {
   }
 
   private QuerySyncProjectDeps instantiateDeps() {
-    BlazeImportSettings importSettings =
-        Preconditions.checkNotNull(
-            BlazeImportSettingsManager.getInstance(project).getImportSettings());
+    Preconditions.checkState(BazelImportSettingsManager.getInstance(project).hasImportSettings());
     final var querySyncUserPreferences =
         QuerySyncUserPreferencesProvider.getInstance(project).getUserPreferences();
     final var projectToLoad =
-        loadProjectDefinition(BlazeImportSettingsManager.getInstance(project).getProjectViewSet());
+        loadProjectDefinition(BazelImportSettingsManager.getInstance(project).getProjectViewSet());
     final var workspaceRoot = projectToLoad.workspaceRoot();
     final var latestProjectDef = projectToLoad.definition();
     final var buildSystem = projectToLoad.buildSystem();
@@ -241,7 +241,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
     WorkspaceLanguageSettings workspaceLanguageSettings = projectToLoad.workspaceLanguageSettings();
     QuerySyncLanguageSettings languageSettings = projectToLoad.languageSettings();
 
-    ImmutableSet<String> handledRules = getHandledRuleKinds();
+    ImmutableSet<String> handledRules = ProjectLoader.getHandledRuleKinds(project);
     Optional<BlazeVcsHandler> vcsHandler =
         Optional.ofNullable(BlazeVcsHandlerProvider.vcsHandlerForProject(project));
     AppInspectorBuilder appInspectorBuilder = createAppInspectorBuilder(buildSystem);
@@ -307,14 +307,12 @@ public class ProjectLoaderImpl implements ProjectLoader {
             workspaceRoot.path(),
             enableExperimentalQuery.getValue(),
             snapshotHolder::getCurrent);
-    ProjectStructureReader projectStructureReader = ProjectStructureReader.Companion.create(new FileExtensions());
-    boolean readProjectStructureFromDirectory = querySyncUserPreferences.getLoadProjectStructureFromDirectoryTraversal();
+    ProjectStructureReader projectStructureReader =
+        ProjectStructureReader.Companion.create(new FileExtensions(), createPackageReader());
+    boolean readProjectStructureFromDirectory =
+        querySyncUserPreferences.getLoadProjectStructureFromDirectoryTraversal();
 
-    ProjectBuilder snapshotBuilder =
-        new ProjectBuilder(
-            createPackageReader(),
-            createParallelPackageReader(),
-            workspaceRoot.path());
+    ProjectBuilder snapshotBuilder = new ProjectBuilder(workspaceRoot.path());
     QueryRunner queryRunner = createQueryRunner(buildSystem);
     ProjectQuerier projectQuerier =
         createProjectQuerier(
@@ -325,7 +323,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
     QuerySyncSourceToTargetMap sourceToTargetMap =
         new QuerySyncSourceToTargetMap(snapshotHolder, workspaceRoot.path());
     return new QuerySyncProjectDeps(
-        importSettings,
         workspaceRoot,
         new WorkspacePathResolverImpl(workspaceRoot),
         languageSettings,
@@ -348,6 +345,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
         handledRules,
         buildSystem.getProtoRules(),
         projectStructureReader,
+        new WorkspaceResolvingPackageReader(workspaceRoot.path(), createPackageReader()),
+        createParallelPackageReader(),
         readProjectStructureFromDirectory);
   }
 
@@ -407,19 +406,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
     return new BazelAppInspectorBuilder(project, buildSystem);
   }
 
-  /**
-   * Returns an {@link ImmutableSet} of rule kinds that query sync or plugin know how to resolve
-   * symbols for without building. The rules query sync always builds even if they are part of the
-   * project are in {@link com.google.idea.blaze.qsync.BlazeQueryParser#ALWAYS_BUILD_RULE_KINDS}
-   */
-  private ImmutableSet<String> getHandledRuleKinds() {
-    ImmutableSet.Builder<String> defaultRules = ImmutableSet.builder();
-    for (HandledRulesProvider ep : HandledRulesProvider.EP_NAME.getExtensionList()) {
-      defaultRules.addAll(ep.handledRuleKinds(project));
-    }
-    return defaultRules.build();
-  }
-
   private static ProjectDefinition createProjectDefinition(
       WorkspaceRoot workspaceRoot, BuildSystemName buildSystem, ProjectViewSet projectViewSet) {
     ImportRoots importRoots =
@@ -454,5 +440,39 @@ public class ProjectLoaderImpl implements ProjectLoader {
             .addAll(importRoots.systemExcludes())
             .add(Path.of(BazelDependencyBuilder.INVOCATION_FILES_DIR))
             .build());
+  }
+
+  @Override
+  public boolean isUpToDate(QuerySyncProject project) {
+    ProjectToLoadDefinition currentDef =
+        loadProjectDefinition(
+            BazelImportSettingsManager.getInstance(this.project).getProjectViewSet());
+
+    if (!project.getProjectDefinition().equals(currentDef.definition())) {
+      return false;
+    }
+
+    if (!project.getLanguageSettings().equals(currentDef.languageSettings())) {
+      return false;
+    }
+
+    if (!project.getWorkspaceLanguageSettings().equals(currentDef.workspaceLanguageSettings())) {
+      return false;
+    }
+
+    if (!project.getWorkspaceRoot().equals(currentDef.workspaceRoot())) {
+      return false;
+    }
+
+    if (!project.getBuildSystem().equals(currentDef.buildSystem())) {
+      return false;
+    }
+
+    ImmutableSet<String> currentHandledRules = ProjectLoader.getHandledRuleKinds(this.project);
+    if (!project.getHandledRuleKinds().equals(currentHandledRules)) {
+      return false;
+    }
+
+    return true;
   }
 }

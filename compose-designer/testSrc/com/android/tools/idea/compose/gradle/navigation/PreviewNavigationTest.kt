@@ -34,7 +34,6 @@ import com.android.tools.idea.compose.preview.util.getRootComponent
 import com.android.tools.idea.compose.renderer.renderPreviewElementForResult
 import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.testing.virtualFile
-import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.android.tools.idea.uibuilder.surface.PreviewNavigatableWrapper
 import com.android.tools.preview.SingleComposePreviewElementInstance
@@ -279,8 +278,7 @@ class PreviewNavigationTest {
     // Create a preview representation with an associated fakeUi
     val myNavigationHandler = TestNavigationHandler(1)
     val previewView = TestComposePreviewView(fixture.testRootDisposable, project, myNavigationHandler)
-    val composePreviewRepresentation =
-      ComposePreviewRepresentation(psiMainFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> previewView }
+    val composePreviewRepresentation = ComposePreviewRepresentation(psiMainFile) { _, _, _, _, _, _ -> previewView }
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
     lateinit var fakeUi: FakeUi
     runInEdtAndWait {
@@ -291,7 +289,6 @@ class PreviewNavigationTest {
             size = Dimension(1000, 800)
             add(previewView, BorderLayout.CENTER)
           },
-          1.0,
           true,
         )
       fakeUi.root.validate()
@@ -318,8 +315,7 @@ class PreviewNavigationTest {
     // Create a preview representation with an associated fakeUi
     val myNavigationHandler = TestNavigationHandler(1)
     val previewView = TestComposePreviewView(fixture.testRootDisposable, project, myNavigationHandler)
-    val composePreviewRepresentation =
-      ComposePreviewRepresentation(psiMainFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ -> previewView }
+    val composePreviewRepresentation = ComposePreviewRepresentation(psiMainFile) { _, _, _, _, _, _ -> previewView }
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
 
     lateinit var fakeUi: FakeUi
@@ -331,7 +327,6 @@ class PreviewNavigationTest {
             size = Dimension(1000, 800)
             add(previewView, BorderLayout.CENTER)
           },
-          1.0,
           true,
         )
       fakeUi.root.validate()

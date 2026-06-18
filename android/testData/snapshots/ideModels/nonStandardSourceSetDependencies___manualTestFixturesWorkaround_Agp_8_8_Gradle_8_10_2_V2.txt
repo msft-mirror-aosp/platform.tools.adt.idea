@@ -2109,7 +2109,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 1.8
-                    moduleName                    : app_debug
+                    moduleName                    : NonStandardSourceSetDependencies:app_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2118,6 +2118,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -2127,7 +2128,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 1.8
-                    moduleName                    : app_debugAndroidTest
+                    moduleName                    : NonStandardSourceSetDependencies:app_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2136,6 +2137,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -2145,7 +2147,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 1.8
-                    moduleName                    : app_debugUnitTest
+                    moduleName                    : NonStandardSourceSetDependencies:app_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2154,6 +2156,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -2209,6 +2212,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2251,7 +2255,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     backendThreads                : 1
                     destination                   : <ROOT>/common/build/classes/kotlin/jvm/main
                     jvmTarget                     : 17
-                    moduleName                    : common
+                    moduleName                    : NonStandardSourceSetDependencies:common
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2262,6 +2266,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - fragmentRefines             : jvmMain:commonMain
                     - fragments                   : jvmMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2332,7 +2337,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     backendThreads                : 1
                     destination                   : <ROOT>/common/build/classes/kotlin/jvm/test
                     jvmTarget                     : 17
-                    moduleName                    : common_test
+                    moduleName                    : NonStandardSourceSetDependencies:common_test
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2343,6 +2348,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - fragmentRefines             : jvmTest:commonTest
                     - fragments                   : jvmTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2404,7 +2410,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     backendThreads                : 1
                     destination                   : <ROOT>/desktop/build/classes/kotlin/main
                     jvmTarget                     : 17
-                    moduleName                    : desktop
+                    moduleName                    : NonStandardSourceSetDependencies:desktop
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2412,6 +2418,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -2428,7 +2435,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     backendThreads                : 1
                     destination                   : <ROOT>/desktop/build/classes/kotlin/test
                     jvmTarget                     : 17
-                    moduleName                    : desktop_test
+                    moduleName                    : NonStandardSourceSetDependencies:desktop_test
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2436,6 +2443,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -3467,7 +3475,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-a/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : feature-a_debug
+                    moduleName                    : NonStandardSourceSetDependencies:feature-a_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -3476,6 +3484,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -3485,7 +3494,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-a/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : feature-a_debugAndroidTest
+                    moduleName                    : NonStandardSourceSetDependencies:feature-a_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -3494,6 +3503,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -3503,7 +3513,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-a/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : feature-a_debugUnitTest
+                    moduleName                    : NonStandardSourceSetDependencies:feature-a_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -3512,6 +3522,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -3960,6 +3971,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
@@ -3999,7 +4011,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-b/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : feature-b_debug
+                    moduleName                    : NonStandardSourceSetDependencies:feature-b_debug
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4010,6 +4022,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - fragmentRefines             : androidDebug:commonMain
                     - fragments                   : androidDebug
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4072,7 +4085,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-b/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : feature-b_debugAndroidTest
+                    moduleName                    : NonStandardSourceSetDependencies:feature-b_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4081,6 +4094,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     - fragments                   : androidInstrumentedTestDebug
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4147,7 +4161,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-b/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : feature-b_debugUnitTest
+                    moduleName                    : NonStandardSourceSetDependencies:feature-b_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4158,6 +4172,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - fragmentRefines             : androidUnitTestDebug:commonTest
                     - fragments                   : androidUnitTestDebug
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4231,7 +4246,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLibrary/build/classes/kotlin/main
                     jvmTarget                     : 17
-                    moduleName                    : javaLibrary
+                    moduleName                    : NonStandardSourceSetDependencies:javaLibrary
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4239,6 +4254,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -4255,7 +4271,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLibrary/build/classes/kotlin/test
                     jvmTarget                     : 17
-                    moduleName                    : javaLibrary_test
+                    moduleName                    : NonStandardSourceSetDependencies:javaLibrary_test
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4263,6 +4279,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -4279,7 +4296,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLibrary/build/classes/kotlin/testEnv
                     jvmTarget                     : 17
-                    moduleName                    : javaLibrary_testEnv
+                    moduleName                    : NonStandardSourceSetDependencies:javaLibrary_testEnv
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4287,6 +4304,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -4364,6 +4382,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -4406,7 +4425,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     backendThreads                : 1
                     destination                   : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main
                     jvmTarget                     : 17
-                    moduleName                    : sample
+                    moduleName                    : NonStandardSourceSetDependencies.kmp-java:sample
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4417,6 +4436,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - fragmentRefines             : jvmMain:commonMain
                     - fragments                   : jvmMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4489,7 +4509,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     backendThreads                : 1
                     destination                   : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test
                     jvmTarget                     : 17
-                    moduleName                    : sample_test
+                    moduleName                    : NonStandardSourceSetDependencies.kmp-java:sample_test
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -4500,6 +4520,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - fragmentRefines             : jvmTest:commonTest
                     - fragments                   : jvmTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -5304,7 +5325,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : manual-test-fixtures_debug
+                    moduleName                    : NonStandardSourceSetDependencies:manual-test-fixtures_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -5313,6 +5334,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -5322,7 +5344,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : manual-test-fixtures_debugAndroidTest
+                    moduleName                    : NonStandardSourceSetDependencies:manual-test-fixtures_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -5331,6 +5353,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -5340,7 +5363,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : manual-test-fixtures_debugUnitTest
+                    moduleName                    : NonStandardSourceSetDependencies:manual-test-fixtures_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -5349,6 +5372,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>

@@ -2568,7 +2568,7 @@ private fun <T> openPreparedProject(
         val defaultTestTimeoutMinutes = 15L
         val testTimeout =
           (System.getenv("TEST_TIMEOUT")?.toLongOrNull()?.let { TimeUnit.SECONDS.toMinutes(it) } ?: defaultTestTimeoutMinutes)
-        val timeoutMinutes = if (testTimeout > defaultTestTimeoutMinutes) 20L else 10L
+        val timeoutMinutes = if (testTimeout > defaultTestTimeoutMinutes) (0.66 * testTimeout).toLong() else defaultTestTimeoutMinutes
         waitForFuture(awaitGradleStartupActivity.asCompletableFuture(), TimeUnit.MINUTES.toMillis(timeoutMinutes))
         runInEdtAndWait {
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
@@ -2589,10 +2589,17 @@ private fun <T> openPreparedProject(
       } finally {
         runInEdtAndWait {
           if (!project.isDisposed) {
+            // Process any pending events queued while the project was active (e.g. document/editor updates)
+            // before we start tearing down resources.
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
             PlatformTestUtil.saveProject(project, true)
             Disposer.dispose(projectScopedDisposable)
             ProjectManager.getInstance().closeAndDispose(project)
+            // Empty the event queue to ensure all disposal and listener unregistration tasks
+            // (e.g. FocusChangeListeners registered by EditorTrackerImpl) that were asynchronously queued onto the
+            // EDT by the closeAndDispose process are completely processed.
+            // This prevents intermittent listener leak assertion errors during test tearDown.
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
           }
         }
       }

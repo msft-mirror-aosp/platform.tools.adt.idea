@@ -16,7 +16,7 @@
 package com.google.idea.blaze.android.run.runner
 
 import com.android.ddmlib.IDevice
-import com.android.tools.deployer.ApkVerifierTracker
+import com.android.tools.deployer.common.ApkVerifierTracker
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
@@ -208,7 +208,7 @@ class BlazeAndroidConfigurationExecutor(
       }
     }
 
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable {
+  override fun debug(indicator: ProgressIndicator): RunContentDescriptor? = runBlockingCancellable {
     val applicationId = applicationContext.applicationId
     val devices = getDevices(env, deviceFutures, indicator)
 
@@ -242,7 +242,7 @@ class BlazeAndroidConfigurationExecutor(
       launchStrategy.startDebuggerSession(runContext, debugger, debuggerState, env, device, console, indicator)
         ?: throw ExecutionException("Failed to start debugger")
 
-    debugSession.runContentDescriptor
+    @Suppress("UnstableApiUsage") debugSession.runContentDescriptor
   }
 
   private suspend fun createConsole(processHandler: ProcessHandler): ConsoleView =

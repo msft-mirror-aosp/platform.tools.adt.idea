@@ -15,8 +15,7 @@
  */
 package com.android.tools.idea.npw.module.recipes.benchmarkModule
 
-import com.android.SdkConstants.FN_BUILD_GRADLE
-import com.android.SdkConstants.FN_BUILD_GRADLE_KTS
+import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.npw.module.recipes.addKotlinIfNeeded
 import com.android.tools.idea.npw.module.recipes.benchmarkModule.src.androidTest.androidManifestXml as testAndroidManifestXml
 import com.android.tools.idea.npw.module.recipes.benchmarkModule.src.androidTest.exampleBenchmarkJava
@@ -30,8 +29,9 @@ import com.android.tools.idea.wizard.template.RecipeExecutor
 private const val minRev = "1.2.4"
 private const val exampleBenchmarkName = "ExampleBenchmark"
 
-fun RecipeExecutor.generateBenchmarkModule(moduleData: ModuleTemplateData, useGradleKts: Boolean, useVersionCatalog: Boolean) {
+fun RecipeExecutor.generateBenchmarkModule(moduleData: ModuleTemplateData, version: AgpVersion) {
   val projectData = moduleData.projectTemplateData
+  val dslLanguage = projectData.dslLanguage
   val testOut = moduleData.testDir
   val packageName = moduleData.packageName
   val moduleOut = moduleData.rootDir
@@ -41,7 +41,14 @@ fun RecipeExecutor.generateBenchmarkModule(moduleData: ModuleTemplateData, useGr
   addClasspathDependency("androidx.benchmark:benchmark-gradle-plugin:+", minRev)
 
   addIncludeToSettings(moduleData.name)
-  save(benchmarkProguardRules(), moduleOut.resolve("benchmark-proguard-rules.pro"))
+
+  if (version < AgpVersion.parse("9.0.0")) {
+    save(benchmarkProguardRules(), moduleOut.resolve("benchmark-proguard-rules.pro"))
+  } else {
+    val aarKeepRulesFolder = moduleOut.resolve("src/main/aarKeepRules")
+    aarKeepRulesFolder.mkdirs()
+    save(benchmarkKeepRules(), aarKeepRulesFolder.resolve("benchmark-rules.keep"))
+  }
 
   val bg =
     buildGradle(
@@ -49,9 +56,9 @@ fun RecipeExecutor.generateBenchmarkModule(moduleData: ModuleTemplateData, useGr
       minApi = minApi,
       targetApi = targetApi,
       agpVersion = projectData.agpVersion,
-      useGradleKts = useGradleKts,
+      dslLanguage = dslLanguage,
     )
-  val buildFile = if (useGradleKts) FN_BUILD_GRADLE_KTS else FN_BUILD_GRADLE
+  val buildFile = dslLanguage.buildFileName
 
   save(bg, moduleOut.resolve(buildFile))
   addCompileSdk(buildApi)

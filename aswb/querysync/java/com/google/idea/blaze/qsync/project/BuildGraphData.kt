@@ -18,9 +18,10 @@ package com.google.idea.blaze.qsync.project
 import com.google.common.annotations.VisibleForTesting
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.Label
+import com.google.idea.blaze.common.RuleKinds
 import com.google.idea.blaze.common.TargetPatternCollection
-import com.google.idea.blaze.qsync.query.PackageSet
 import java.nio.file.Path
+import kotlin.jvm.optionals.getOrNull
 
 interface BuildGraphData {
   /** The language classes supported by the query sync. */
@@ -49,8 +50,16 @@ interface BuildGraphData {
    */
   fun getProtoModes(label: Label): Set<ProtoMode>
 
+  interface BuildPackage {
+    val packageLabel: Label
+    val sourceFileNames: Set<String>
+    val allSupportedTargetNames: Set<String>
+  }
+
+  val allLoadedBuildPackages: Collection<BuildPackage>
+
   /** A set of all the BUILD files */
-  fun packages(): PackageSet
+  fun getBuildPackage(packageLabel: Label): BuildPackage?
 
   /**
    * If the given path represents a currently known source file returns a [Label] representing the given path in the workspace with the
@@ -63,7 +72,7 @@ interface BuildGraphData {
    *
    * Note, this is not the full list of of all targets in the project view.
    */
-  fun allLoadedTargets(): Collection<Label>
+  fun allLoadedTargets(): Sequence<ProjectTarget>
 
   /** Returns the project target info for the given label, if it is supported and built (code analysis enabled). */
   fun getProjectTarget(label: Label): ProjectTarget?
@@ -78,17 +87,12 @@ interface BuildGraphData {
    * If project target A depends on external target B, and external target B depends on project target C, target A is *not* included in
    * `getReverseDeps` for a source file in target C.
    */
-  fun getReverseDepsForSource(sourcePath: Path): Collection<ProjectTarget>
+  fun getReverseDepsForSource(sourceLabel: Label): Collection<ProjectTarget>
 
   // TODO: b/397649793 - Remove this method when fixed.
   fun dependsOnAnyOf_DO_NOT_USE_BROKEN(projectTarget: Label, deps: Set<Label>): Boolean
 
-  fun getSourceFileOwners(path: Path): Set<Label>
-
   fun getSourceFileOwners(label: Label): Set<Label>
-
-  /** Returns a list of all the java source files of the project, relative to the workspace root. */
-  fun getJavaSourceFiles(): List<Path>
 
   /** Returns targets matching the given predicate that have any source files of the given types. */
   fun getSourceFilesByRuleKindAndType(
@@ -96,29 +100,23 @@ interface BuildGraphData {
     vararg sourceTypes: ProjectTarget.SourceType,
   ): Map<Label, List<Path>>
 
-  fun getAndroidResourceFiles(): List<Path>
+  /** Returns the project targets defined in the given build package. */
+  fun getProjectTargetsForBuildPackage(packageLabel: Label): TargetsToBuild
 
-  /** Returns a list of custom_package fields that used by current project. */
-  fun getAllCustomPackages(): Set<String>
+  /** Returns all project targets defined in the given build package and any of its subpackages (recursively). */
+  fun getProjectTargetsForBuildPackageWithSubpackages(packageLabel: Label): TargetsToBuild
 
-  /**
-   * Returns the list of project targets related to the given workspace file.
-   *
-   * @param workspaceRelativePath Workspace relative file path to find targets for. This may be a source file, directory or BUILD file.
-   * @return Corresponding project targets. For a source file, this is the targets that build that file. For a BUILD file, it's the set or
-   *   targets defined in that file. For a directory, it's the set of all targets defined in all build packages within the directory
-   *   (recursively).
-   */
-  fun getProjectTargets(workspaceRelativePath: Path): TargetsToBuild
+  /** Returns the project targets that own/build the given source file. */
+  fun getProjectTargetsForSourceFile(sourceFileLabel: Label): TargetsToBuild
 
-  /** Calculates the [RequestedTargets] for a project target. */
-  fun computeRequestedTargets(
+  /** Calculates a sufficient set of targets to build for the given project targets. */
+  fun computeSufficientTargets(
     projectTargets: Collection<Label>,
     replaceNativeTargetsWithAndroidTransitionTriggeringTargets: Boolean,
-  ): RequestedTargets
+  ): Set<Label>
 
-  /** Calculates the [RequestedTargets] for the whole project. */
-  fun computeWholeProjectTargets(): RequestedTargets
+  /** Calculates a sufficient set of targets to build for the whole project. */
+  fun computeWholeProjectTargets(): Set<Label>
 
   /** Output stats about the the project to the context (and thus normally to the console). */
   fun outputStats(context: Context<*>)
@@ -135,6 +133,8 @@ interface BuildGraphData {
   /** Returns the language classes for which code analysis is currently enabled in this project. */
   fun getActiveLanguages(): Set<QuerySyncLanguage>
 
+  fun isAlwaysBuild(label: Label): Boolean
+
   companion object {
     @JvmField
     val EMPTY: BuildGraphData =
@@ -147,3 +147,29 @@ interface BuildGraphData {
         )
   }
 }
+
+fun BuildGraphData.getJavaSourceFiles(): List<Path> {
+  return getSourceFilesByRuleKindAndType(RuleKinds::isJava, ProjectTarget.SourceType.REGULAR_JVM).values.flatten()
+}
+
+fun BuildGraphData.getAndroidResourceFiles(): List<Path> {
+  return getSourceFilesByRuleKindAndType(RuleKinds::isAndroid, ProjectTarget.SourceType.ANDROID_RESOURCES).values.flatten()
+}
+
+fun BuildGraphData.getAllCustomPackages(): Set<String> {
+  return allLoadedTargets().mapNotNull { it.customPackage().getOrNull() }.toSet()
+}
+
+fun BuildGraphData.getBuildPackage(path: Path): BuildGraphData.BuildPackage? {
+  return this.getBuildPackage(Label.fromWorkspacePackageAndName("", path, Label.PACKAGE_TARGET_NAME))
+}
+
+fun BuildGraphData.getAllSourceFileLabels(): Set<Label> {
+  return allLoadedBuildPackages.flatMap { it.sourceFileLabels }.toSet()
+}
+
+val BuildGraphData.BuildPackage.sourceFileLabels: Set<Label>
+  get() = sourceFileNames.map { packageLabel.siblingWithName(it) }.toSet()
+
+val BuildGraphData.BuildPackage.allSupportedTargets: Set<Label>
+  get() = allSupportedTargetNames.map { packageLabel.siblingWithName(it) }.toSet()

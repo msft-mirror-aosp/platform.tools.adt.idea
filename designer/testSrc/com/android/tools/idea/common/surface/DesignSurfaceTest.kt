@@ -427,7 +427,10 @@ class DesignSurfaceTest : LayoutTestCase() {
 
     // Reset the zoom mask and change the zoom to a non zoom-to-fit value, we also wait for
     // DesignSurface resize.
-    zoomController.resetZoomToFitSettings(shouldWaitForResize = true, surface.size)
+    zoomController.resetZoomToFitSettings(
+      shouldWaitForResize = true,
+      shouldWaitForLayoutCreated = surface.size.height <= 0 || surface.size.width <= 0,
+    )
     assertTrue(zoomController.setScale(0.45))
 
     // Simulate layout creations.
@@ -456,7 +459,10 @@ class DesignSurfaceTest : LayoutTestCase() {
 
     // Reset the zoom mask and change the zoom to a non zoom-to-fit value, we don't wait for
     // DesignSurface resize and the creation of DesignSurface layout creation
-    zoomController.resetZoomToFitSettings(shouldWaitForResize = false, surface.size)
+    zoomController.resetZoomToFitSettings(
+      shouldWaitForResize = false,
+      shouldWaitForLayoutCreated = surface.size.height <= 0 || surface.size.width <= 0,
+    )
     assertTrue(zoomController.setScale(0.45))
 
     // Scale is still not zoom-to-fit.
@@ -472,6 +478,34 @@ class DesignSurfaceTest : LayoutTestCase() {
     assertEquals(fitScaleValue, zoomController.scale)
   }
 
+  fun testResetZoomToFitSettingsSkipLayoutCreated() {
+    val model1 = model("model1.xml", component(RELATIVE_LAYOUT)).buildWithoutSurface()
+    val fitScaleValue = 1.78
+
+    val surface =
+      TestDesignSurface(project = project, disposable = testRootDisposable, fitScaleProvider = { fitScaleValue }).apply {
+        this.setSize(200, 400)
+      }
+    surface.addModelsWithoutRender(listOf(model1))
+
+    val zoomController = surface.zoomController as TestDesignSurfaceZoomController
+    zoomController.resetZoomToFitSettings(shouldWaitForResize = true, shouldWaitForLayoutCreated = false)
+    assertTrue(zoomController.setScale(0.45))
+
+    // Layout creation notification is NOT required because we set shouldWaitForLayoutCreated = false.
+    // However, we still need DesignSurface resize notification because shouldWaitForResize = true.
+    zoomController.zoomToFit()
+    assertEquals(0.45, zoomController.scale) // Not applied yet
+
+    // Simulate layout resize.
+    zoomController.notifyComponentResizedForTest()
+
+    // Zoom-to-fit is now applied without needing layout created notification.
+    zoomController.zoomToFit()
+    assertFalse(zoomController.canZoomToFit())
+    assertEquals(fitScaleValue, zoomController.scale)
+  }
+
   fun testRemoveModelRemovesOldSelections() {
     val model = model("model1.xml", component(RELATIVE_LAYOUT)).build()
     val surface = TestDesignSurface(project, testRootDisposable)
@@ -480,6 +514,34 @@ class DesignSurfaceTest : LayoutTestCase() {
     assertEquals(model.getRoot(), surface.selectionModel.selection.first())
     surface.removeModels(listOf(model))
     assertTrue(surface.selectionModel.selection.isEmpty())
+  }
+
+  fun testZoomMagnify() {
+    val surface = TestDesignSurface(project, testRootDisposable)
+    surface.zoomController.setScale(1.0)
+
+    val startPoint = Point(100, 100)
+    surface.magnificationStarted(startPoint)
+
+    // Zoom in: magnification > 0
+    // newScale = 1.0 [initial scale] + 0.4 [magnification] * 0.25 [sensitivity] = 1.1
+    surface.magnify(0.4)
+    assertEquals(1.1, surface.zoomController.scale, 0.01)
+
+    // Zoom out: magnification < 0
+    // newScale = 1.0 [initial scale] + (-0.4) [magnification] * 0.25 [sensitivity] = 0.9
+    surface.magnify(-0.4)
+    assertEquals(0.9, surface.zoomController.scale, 0.01)
+
+    // Ensure it respects boundaries (max scale is 10.0)
+    // 1.0 [initial scale] + 40 [magnification] * 0.25 [sensitivity] = 11.0 -> should be capped at 10.0
+    surface.magnify(40.0)
+    assertEquals(10.0, surface.zoomController.scale, 0.01)
+
+    // Ensure it respects boundaries (min scale is 0.01)
+    // 1.0 [initial scale] - 5 [magnification] * 0.25 [sensitivity] = -0.25 -> should be capped at 0.01
+    surface.magnify(-5.0)
+    assertEquals(0.01, surface.zoomController.scale, 0.01)
   }
 }
 

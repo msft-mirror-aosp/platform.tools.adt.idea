@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.ui.resourcemanager.widget
 
+import com.android.ide.common.util.AssetUtil
+import com.android.tools.adtui.ImageComponent
 import com.android.tools.idea.ui.resourcemanager.widget.DetailedPreview.Companion.PREVIEW_ICON_SIZE
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
@@ -23,16 +25,22 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import java.awt.Component
 import java.awt.Dimension
+import java.awt.Graphics
+import java.awt.Graphics2D
+import java.awt.Rectangle
 import java.util.Vector
 import javax.swing.BorderFactory
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.Icon
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
+import javax.swing.table.TableCellRenderer
 import kotlin.properties.Delegates
 
 private const val PREVIEW_BOTTOM_MARGIN = 10
@@ -42,7 +50,15 @@ class DetailedPreview : JPanel(null) {
     const val PREVIEW_ICON_SIZE = 200
   }
 
-  private val label = JBLabel(null, JBLabel.CENTER)
+  private val imagePreview =
+    object : ImageComponent() {
+        override fun paintChildren(g: Graphics) {
+          if (myIcon == null) return
+          val image = image ?: return
+          AssetUtil.drawCenterInside(g as Graphics2D, image, Rectangle(0, 0, width, height))
+        }
+      }
+      .apply { isOpaque = false }
   private val valuesTableModel =
     object : DefaultTableModel(0, 2) {
       override fun isCellEditable(row: Int, column: Int) = false
@@ -82,11 +98,11 @@ class DetailedPreview : JPanel(null) {
       valuesContainer.repaint()
     }
 
-  /** An icon to preview. Will try to paint the icon centered over a chessboard with size: [PREVIEW_ICON_SIZE] (won't attempt to scale). */
+  /** An icon to preview. Will try to paint the icon centered over a chessboard with size: [PREVIEW_ICON_SIZE]. */
   var icon: Icon? = null
     set(value) {
       field = value
-      label.icon = value
+      imagePreview.setIcon(value)
       iconPreviewContainer.isVisible = value != null
     }
 
@@ -101,33 +117,47 @@ class DetailedPreview : JPanel(null) {
       preferredSize = JBUI.size(PREVIEW_ICON_SIZE, previewContainerHeight)
       minimumSize = JBUI.size(0, previewContainerHeight)
       maximumSize = JBUI.size(2000, previewContainerHeight)
-      add(label)
+      add(imagePreview)
     }
 
   private val metadataTable =
-    JBTable(tableModel).apply {
-      alignmentX = LEFT_ALIGNMENT
-      rowHeight = JBUI.scale(28)
-      rowMargin = JBUI.scale(8)
-      background = UIUtil.getPanelBackground()
-      setShowGrid(false)
-    }
+    object : JBTable(tableModel) {
+        override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
+          val c = super.prepareRenderer(renderer, row, column)
+          (c as? JComponent)?.putClientProperty("html.disable", true)
+          return c
+        }
+      }
+      .apply {
+        alignmentX = LEFT_ALIGNMENT
+        rowHeight = JBUI.scale(28)
+        rowMargin = JBUI.scale(8)
+        background = UIUtil.getPanelBackground()
+        setShowGrid(false)
+      }
 
   private val valuesTable =
-    JBTable(valuesTableModel).apply {
-      alignmentX = LEFT_ALIGNMENT
-      fillsViewportHeight = false
-      tableHeader.reorderingAllowed = false
-      (tableHeader.defaultRenderer as? DefaultTableCellRenderer)?.let { headerRenderer ->
-        headerRenderer.horizontalAlignment = SwingConstants.LEFT
+    object : JBTable(valuesTableModel) {
+        override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
+          val c = super.prepareRenderer(renderer, row, column)
+          (c as? JComponent)?.putClientProperty("html.disable", true)
+          return c
+        }
       }
-      setDefaultRenderer(String::class.java, I18nStringCellRenderer())
-      rowHeight = JBUI.scale(28)
-      rowMargin = JBUI.scale(8)
-      background = JBColor.white
-      showVerticalLines = true
-      showHorizontalLines = false
-    }
+      .apply {
+        alignmentX = LEFT_ALIGNMENT
+        fillsViewportHeight = false
+        tableHeader.reorderingAllowed = false
+        (tableHeader.defaultRenderer as? DefaultTableCellRenderer)?.let { headerRenderer ->
+          headerRenderer.horizontalAlignment = SwingConstants.LEFT
+        }
+        setDefaultRenderer(String::class.java, I18nStringCellRenderer())
+        rowHeight = JBUI.scale(28)
+        rowMargin = JBUI.scale(8)
+        background = JBColor.white
+        showVerticalLines = true
+        showHorizontalLines = false
+      }
 
   private val valuesContainer =
     JBScrollPane(valuesTable).apply {

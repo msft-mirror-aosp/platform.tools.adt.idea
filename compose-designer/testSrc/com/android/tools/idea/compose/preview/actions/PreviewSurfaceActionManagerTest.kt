@@ -6,6 +6,7 @@ import com.android.tools.idea.common.util.EnableUnderConditionWrapper
 import com.android.tools.idea.common.util.ShowGroupUnderConditionWrapper
 import com.android.tools.idea.common.util.ShowUnderConditionWrapper
 import com.android.tools.idea.compose.preview.ComposeStudioBotActionFactory
+import com.android.tools.idea.compose.preview.PredictiveBackNavigationControlsAction
 import com.android.tools.idea.compose.preview.actions.glasses.GlassesBlendDropdownAction
 import com.android.tools.idea.compose.preview.util.FakeStudioBotActionFactory
 import com.android.tools.idea.flags.StudioFlags
@@ -53,10 +54,13 @@ import org.mockito.kotlin.whenever
 // AnimationInspectorAction(),
 // EnableInteractiveAction(),
 // DeployToDeviceAction(),
-// BackNavigationAction()
+// BackNavigationAction(),
+// PredictiveBackNavigationControlsAction(),
 // ComposePreviewAgentsDropdownAction() or ChangeUIAction(), depending on flag value.
 // in wrappers
-private const val EXPECTED_NUMBER_OF_ACTIONS = 8
+// LookaheadVisualizationAction(),
+// LookaheadLabelsAction()
+private const val EXPECTED_NUMBER_OF_ACTIONS = 11
 
 // SavePreviewInNewSize()
 // EnableUiCheckAction(),
@@ -106,6 +110,7 @@ class PreviewSurfaceActionManagerTest {
     StudioFlags.COMPOSE_PREVIEW_MATCH_UI_AGENT.overrideForTest(true, projectRule.testRootDisposable)
     StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.overrideForTest(true, projectRule.testRootDisposable)
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.overrideForTest(true, projectRule.testRootDisposable)
+    StudioFlags.COMPOSE_PREVIEW_LOOKAHEAD_VISUALIZATION.overrideForTest(true, projectRule.testRootDisposable)
 
     // Simulate multiple actions
     ExtensionTestUtil.maskExtensions(
@@ -140,13 +145,19 @@ class PreviewSurfaceActionManagerTest {
     assertThat(sceneViewContextActions[3]).isInstanceOf(EnableInteractiveAction::class.java)
     assertThat(sceneViewContextActions[4]).isInstanceOf(DeployToDeviceAction::class.java)
 
-    // The back navigation action is wrapped into the EnableUnderConditionWrapper and then into
-    // the visibleOnlyInInteractive wrapper.
-    val backNavigationAction = ((actions[6] as AnActionWrapper).delegate as AnActionWrapper).delegate
+    // The back navigation action is wrapped into the visibleOnlyInInteractive wrapper.
+    val backNavigationAction = (actions[6] as AnActionWrapper).delegate
     assertThat(backNavigationAction).isInstanceOf(BackNavigationAction::class.java)
 
+    // The predictive back navigation action is wrapped into  the visibleOnlyInInteractive wrapper.
+    val predictiveBackNavigationControlsAction = (actions[7] as AnActionWrapper).delegate
+    assertThat(predictiveBackNavigationControlsAction).isInstanceOf(PredictiveBackNavigationControlsAction::class.java)
+
+    assertThat((actions[8] as AnActionWrapper).delegate).isInstanceOf(LookaheadVisualizationAction::class.java)
+    assertThat((actions[9] as AnActionWrapper).delegate).isInstanceOf(LookaheadLabelsAction::class.java)
+
     // AI actions - Multiple actions should be in dropdown
-    val aiActionsDefaultGroup = (actions[7] as ShowGroupUnderConditionWrapper).getChildren(null).single() as DefaultActionGroup
+    val aiActionsDefaultGroup = (actions[10] as ShowGroupUnderConditionWrapper).getChildren(null).single() as DefaultActionGroup
     assertThat(aiActionsDefaultGroup.templatePresentation.text).isEqualTo("previewAgents")
     assertThat(aiActionsDefaultGroup is DefaultActionGroup)
     val children = aiActionsDefaultGroup.getChildren(null)

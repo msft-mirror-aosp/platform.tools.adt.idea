@@ -32,5 +32,6 @@
     </orderEntry>
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" />
     <orderEntry type="module" module-name="intellij.android.gmaven" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
   </component>
 </module>

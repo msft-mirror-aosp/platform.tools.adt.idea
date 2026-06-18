@@ -6,13 +6,15 @@ package(default_visibility = DEFAULT_TEST_VISIBILITY)
 aswb_test(
     name = "NewArtifactTrackerTest",
     size = "small",
-    srcs = ["NewArtifactTrackerTest.java"],
+    srcs = ["NewArtifactTrackerTest.kt"],
     test_class = "com.google.idea.blaze.qsync.deps.NewArtifactTrackerTest",
     deps = [
         "//tools/adt/idea/aswb/base:unit_test_utils",
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts:build_artifact_java_proto",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps:artifact_tracker_state_java_proto",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/java",
@@ -25,7 +27,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@maven//:org.mockito.mockito-core",
     ],
 )
@@ -36,6 +37,7 @@ aswb_test(
     srcs = ["ArtifactTrackerStateSerializationTest.java"],
     test_class = "com.google.idea.blaze.qsync.deps.ArtifactTrackerStateSerializationTest",
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps:artifact_tracker_state_java_proto",
@@ -47,7 +49,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -56,6 +57,7 @@ aswb_test(
     size = "small",
     srcs = ["ArtifactDirectoryBuilderTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
@@ -65,7 +67,5 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
-        "//tools/vendor/google/aswb/plugin_api/maven:protobuf-java",
     ],
 )

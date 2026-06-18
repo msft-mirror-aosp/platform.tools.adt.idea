@@ -1,0 +1,294 @@
+/*
+ * Copyright (C) 2026 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tools.idea.layoutinspector.recompositions
+
+import com.android.adblib.utils.createChildScope
+import com.android.tools.adtui.common.AdtSecondaryPanel
+import com.android.tools.idea.concurrency.createCoroutineScope
+import com.android.tools.idea.layoutinspector.LayoutInspector
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
+import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
+import com.google.common.html.HtmlEscapers
+import com.intellij.execution.filters.HyperlinkInfo
+import com.intellij.execution.impl.EditorHyperlinkListener
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionPlaces.UNKNOWN
+import com.intellij.openapi.actionSystem.ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
+import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.edtWriteAction
+import com.intellij.openapi.command.undo.UndoUtil
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.EditorKind
+import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.impl.DocumentImpl
+import com.intellij.openapi.editor.markup.HighlighterTargetArea.EXACT_RANGE
+import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.Key
+import com.intellij.ui.JBColor
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.scale.JBUIScale
+import com.intellij.util.ui.JBUI
+import java.awt.BorderLayout
+import java.awt.CardLayout
+import java.awt.Component
+import javax.swing.Box
+import javax.swing.BoxLayout
+import javax.swing.JComponent
+import javax.swing.JPanel
+import javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+import javax.swing.SwingConstants
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+
+internal const val EMPTY_STATE_NAME = "EmptyState"
+internal val STATE_READ_EDITOR_KEY = Key.create<Editor>("StateReadEditor")
+const val RECOMPOSITION_TEXT_LABEL_NAME = "RecompositionTextLabel"
+const val STATE_READ_TEXT_LABEL_NAME = "StateReadTextLabel"
+private val INVALIDATED_COLOR = JBColor(0x388E3C, 0x66BB6A)
+private const val INVALIDATED_LAYER = 10
+private const val KEY_EMPTY = "EMPTY_STATE"
+private const val KEY_EDITOR = "EDITOR"
+
+/** Convenience function for creating a RecompositionUiPanel */
+internal fun createRecompositionUiPanel(
+  layoutInspector: LayoutInspector,
+  parentDisposable: Disposable,
+  hyperLinkDetectorFactory: HyperLinkDetectorFactory = RecompositionHyperLinkDetectorFactory(),
+): RecompositionUiPanel {
+  val inspectorModel = layoutInspector.inspectorModel
+  val project = inspectorModel.project
+  val stats = { layoutInspector.currentClient.stats }
+  val model = RecompositionUiModelImpl(inspectorModel, layoutInspector.coroutineScope, parentDisposable) { stats().stateReadsShown() }
+  val uiScope = parentDisposable.createCoroutineScope(extraContext = Dispatchers.EDT)
+  return RecompositionUiPanel(model, project, stats, uiScope, parentDisposable, hyperLinkDetectorFactory)
+}
+
+/** A panel to display recomposition details. */
+internal class RecompositionUiPanel(
+  model: RecompositionUiModel,
+  project: Project,
+  stats: () -> SessionStatistics,
+  scope: CoroutineScope,
+  parentDisposable: Disposable,
+  hyperLinkDetectorFactory: HyperLinkDetectorFactory = RecompositionHyperLinkDetectorFactory(),
+) : AdtSecondaryPanel(BorderLayout()) {
+  private var innerPanel: InnerStateInspectionPanel? = null
+    set(value) {
+      field?.let {
+        Disposer.dispose(it)
+        removeAll()
+      }
+      field = value
+      value?.let { add(it, BorderLayout.CENTER) }
+    }
+
+  init {
+    isVisible = false
+    isFocusable = false
+    scope.launch {
+      model.show.collect { show ->
+        isVisible = show
+        innerPanel =
+          if (!show) null
+          else
+            InnerStateInspectionPanel(this@RecompositionUiPanel, model, stats, project, scope, hyperLinkDetectorFactory, parentDisposable)
+      }
+    }
+  }
+}
+
+/**
+ * This inner panel is not created before we need to show state reads, and it is destroyed when the state read panel is hidden. In this way
+ * the (heavy) editor is not created unless it is needed.
+ */
+private class InnerStateInspectionPanel(
+  private val parent: RecompositionUiPanel,
+  model: RecompositionUiModel,
+  private val stats: () -> SessionStatistics,
+  project: Project,
+  parentScope: CoroutineScope,
+  hyperLinkDetectorFactory: HyperLinkDetectorFactory,
+  parentDisposable: Disposable,
+) : AdtSecondaryPanel(BorderLayout()), Disposable {
+  private val scope = parentScope.createChildScope()
+  private val title =
+    object : JBLabel() {
+      override fun updateUI() {
+        super.updateUI()
+        font = JBUI.Fonts.smallFont()
+      }
+    }
+  private val recompositionText = JBLabel().apply { name = RECOMPOSITION_TEXT_LABEL_NAME }
+  private val stateReadCountText = JBLabel().apply { name = STATE_READ_TEXT_LABEL_NAME }
+  private val contentLayout = CardLayout()
+  private val contentPanel = JPanel(contentLayout)
+  private val emptyPanel = JPanel(BorderLayout())
+  private val editor = createStateReadEditor(project, this)
+  private val listener = EditorHyperlinkListener { logUsageEvent(it) }
+  private val hyperlinkDetector = hyperLinkDetectorFactory.create(editor, scope, listener)
+  private val foldingDetector = RecompositionFoldingDetector(editor, scope)
+  private val prev = ActionButton(model.prevAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
+  private val next = ActionButton(model.nextAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
+  private val minimize = ActionButton(model.minimizeAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
+
+  init {
+    isFocusable = false
+    Disposer.register(parentDisposable, this)
+    parent.putUserData(STATE_READ_EDITOR_KEY, editor) // For testing
+    title.text = LayoutInspectorBundle.message("layout.inspector.recomposition.details")
+    title.border = JBUI.Borders.empty(2, 5)
+    prev.maximumSize = DEFAULT_MINIMUM_BUTTON_SIZE
+    prev.isFocusable = true
+    next.maximumSize = DEFAULT_MINIMUM_BUTTON_SIZE
+    next.isFocusable = true
+    minimize.maximumSize = DEFAULT_MINIMUM_BUTTON_SIZE
+    minimize.border = JBUI.Borders.emptyRight(10)
+    minimize.isFocusable = true
+
+    // Header with title, scroller through the recompositions, a state read count, minimize button
+    val header = JPanel()
+    header.layout = BoxLayout(header, BoxLayout.X_AXIS)
+    header.isFocusable = false
+    header.add(title)
+    header.add(Box.createHorizontalGlue())
+    header.add(prev)
+    header.add(recompositionText)
+    header.add(next)
+    header.add(Box.createHorizontalStrut(JBUIScale.scale(20)))
+    header.add(stateReadCountText)
+    header.add(Box.createHorizontalGlue())
+    header.add(minimize)
+    header.border = JBUI.Borders.customLineBottom(JBColor.border())
+
+    // Use a card layout to switch between empty state and actual content
+    contentPanel.add(emptyPanel, KEY_EMPTY)
+    contentPanel.add(editor.component, KEY_EDITOR)
+
+    add(header, BorderLayout.NORTH)
+    add(contentPanel, BorderLayout.CENTER)
+    border = JBUI.Borders.empty()
+
+    parentScope.launch { model.content.collect { update(it) } }
+    parentScope.launch { model.recompositions.collect { updateButtons(next) } }
+  }
+
+  override fun dispose() {
+    scope.cancel()
+    parent.putUserData(STATE_READ_EDITOR_KEY, null)
+  }
+
+  private suspend fun update(content: RecompositionContent) {
+    recompositionText.text = content.recompositionText
+    stateReadCountText.text = content.stateReadsText
+    editor.putUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY, content.composableInspected)
+    showEmptyStateText(content.emptyStateText)
+    updateButtons(prev, next, minimize)
+    setTextInEditor(content.detailsText)
+  }
+
+  private fun showEmptyStateText(message: String) {
+    if (message.isEmpty()) {
+      contentLayout.show(contentPanel, KEY_EDITOR)
+      emptyPanel.removeAll()
+    } else {
+      val html = "<html><p>${HtmlEscapers.htmlEscaper().escape(message).replace("\n", "</p><p>")}</p></html>"
+      val label = JBLabel(html, SwingConstants.CENTER)
+      label.name = EMPTY_STATE_NAME
+      emptyPanel.removeAll()
+      emptyPanel.add(label, BorderLayout.CENTER)
+      contentLayout.show(contentPanel, KEY_EMPTY)
+    }
+  }
+
+  private fun updateButtons(vararg buttons: ActionButton) {
+    buttons.forEach {
+      it.update()
+      if (it.hasFocus() && !it.isEnabled) {
+        // Focus traversal may get stuck if a button with focus gets disabled:
+        it.transferFocus()
+      }
+    }
+  }
+
+  private suspend fun setTextInEditor(text: String) {
+    val document = editor.document
+    try {
+      document.setReadOnly(false)
+      edtWriteAction { document.setText(text) }
+      editor.markupModel.removeAllHighlighters()
+      highlightInvalidations(text)
+      hyperlinkDetector.detectHyperlinks()
+      foldingDetector.detectFolding()
+    } finally {
+      document.setReadOnly(true)
+    }
+  }
+
+  private fun highlightInvalidations(text: String) {
+    val attrs = TextAttributes().apply { foregroundColor = INVALIDATED_COLOR }
+    var startOffset = text.indexOf(INVALIDATED)
+    while (startOffset > 0) {
+      val endOffset = startOffset + INVALIDATED.length
+      editor.markupModel.addRangeHighlighter(startOffset, endOffset, INVALIDATED_LAYER, attrs, EXACT_RANGE)
+      startOffset = text.indexOf(INVALIDATED, endOffset)
+    }
+  }
+
+  private fun logUsageEvent(linkInfo: HyperlinkInfo?) =
+    when (linkInfo) {
+      is LayoutInspectorExplainWithAIHyperLinkInfo -> stats().stateReadsExplainWithAiClicked()
+      is HyperlinkInfo -> stats().stateReadsGotoSourceFromStackTrace()
+      else -> {}
+    }
+
+  private fun createStateReadEditor(project: Project, disposable: Disposable): EditorEx {
+    val editorFactory = EditorFactory.getInstance()
+    val document = editorFactory.createDocument("")
+    (document as DocumentImpl).setAcceptSlashR(true)
+    UndoUtil.disableUndoFor(document)
+    val editor = editorFactory.createViewer(document, project, EditorKind.CONSOLE) as EditorEx
+    val editorSettings = editor.settings
+    editorSettings.isAllowSingleLogicalLineFolding = true
+    editorSettings.isLineMarkerAreaShown = false
+    editorSettings.isIndentGuidesShown = false
+    editorSettings.isLineNumbersShown = false
+    editorSettings.isFoldingOutlineShown = true
+    editorSettings.isAdditionalPageAtBottom = false
+    editorSettings.additionalColumnsCount = 0
+    editorSettings.additionalLinesCount = 0
+    editorSettings.isRightMarginShown = false
+    editorSettings.isCaretRowShown = false
+    editorSettings.isShowingSpecialChars = false
+    editor.gutterComponentEx.isPaintBackground = false
+    editor.scrollPane.border = JBUI.Borders.empty()
+    editor.scrollPane.verticalScrollBarPolicy = VERTICAL_SCROLLBAR_AS_NEEDED
+    Disposer.register(disposable) { editorFactory.releaseEditor(editor) }
+    editor.component.isFocusable = false
+    editor.contentComponent.isFocusable = true
+    editor.contentComponent.isFocusCycleRoot = false
+    return editor
+  }
+
+  private fun <T> Component?.putUserData(key: Key<T>, data: T?) {
+    (this as? JComponent)?.putClientProperty(key, data)
+  }
+}

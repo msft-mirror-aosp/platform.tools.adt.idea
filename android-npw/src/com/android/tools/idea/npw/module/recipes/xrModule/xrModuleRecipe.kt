@@ -29,17 +29,16 @@ import com.android.tools.idea.wizard.template.RecipeExecutor
 fun RecipeExecutor.generateXRModule(
   data: ModuleTemplateData,
   appTitle: String,
-  useKts: Boolean,
   enableCpp: Boolean = false,
   cppStandard: CppStandardType = CppStandardType.`Toolchain Default`,
-  useVersionCatalog: Boolean = true,
+  hasCustomRenderer: Boolean = false,
+  generateStandardFiles: Boolean = true,
 ) {
   val addBackupRules = data.projectTemplateData.isNewProject && data.apis.targetApi.apiLevel >= 31
   check(data.category != Category.Compose || data.isCompose) { "Template in Compose category must have isCompose set" }
   generateCommonModule(
     data = data,
     appTitle = appTitle,
-    useKts = useKts,
     manifestXml =
       generateManifest(
         hasApplicationBlock = !data.isLibrary,
@@ -53,7 +52,8 @@ fun RecipeExecutor.generateXRModule(
     colorsXml = null,
     enableCpp = enableCpp,
     cppStandard = cppStandard,
-    useVersionCatalog = useVersionCatalog,
+    hasCustomRenderer = hasCustomRenderer,
+    generateStandardFiles = generateStandardFiles,
   )
 
   if (addBackupRules) {

@@ -67,6 +67,7 @@ public abstract class IdeInstallation<T extends Ide> implements AutoCloseable{
   protected final Path systemDir;
   //Points to a location outside bazel sandbox, used to ensure constant path for any artifact placed inside
   protected final Path tmpDir;
+  protected boolean isRestoredFromPrebuiltCache = false;
 
   public final TestFileSystem fileSystem;
 
@@ -297,6 +298,10 @@ public abstract class IdeInstallation<T extends Ide> implements AutoCloseable{
     env.put("JAVA_HOME", javaHome);
     env.put("STUDIO_GRADLE_JDK", javaHome);
     env.put("STUDIO_JDK", javaHome);
+    Path gradleUserHome = tmpDir.resolve(".gradle");
+    env.put("GRADLE_USER_HOME", gradleUserHome.toAbsolutePath().toString());
+    addVmOption("-Dgradle.user.home=" + gradleUserHome.toAbsolutePath().toString());
+    env.put("ANDROID_USER_HOME", tmpDir.resolve(".android").toString());
     addVmOption("-Dgradle.jvm=$javaHome");
     return run(display, env, new String[]{ projectPath.toString() });
   }
@@ -306,7 +311,9 @@ public abstract class IdeInstallation<T extends Ide> implements AutoCloseable{
     env.put(vmOptionEnvName(), vmOptionsPath.toString());
     env.put("HOME", fileSystem.getHome().toString());
     // This is only needed for Android Studio, but does no harm to others
-    env.put("ANDROID_USER_HOME", fileSystem.getAndroidHome().toString());
+    if (!env.containsKey("ANDROID_USER_HOME")) {
+      env.put("ANDROID_USER_HOME", fileSystem.getAndroidHome().toString());
+    }
 
     Path workDir = getWorkDir();
 
@@ -657,18 +664,72 @@ public abstract class IdeInstallation<T extends Ide> implements AutoCloseable{
     FileUtils.copyDirectory(prebuiltSdk.toFile(), sdkDir.toFile());
   }
 
+  /** JDK that is bundled with this IDE installation */
+  public Path bundledJdkPath() {
+    return TestUtils.getEmbeddedJdkPath();
+  }
+
   public void setupJdkAtTmpDir() throws IOException {
     Path jdkDir = getJdkDir();
     Files.createDirectories(jdkDir);
-    FileUtils.copyDirectory(TestUtils.getJava21Jdk().toFile(), jdkDir.toFile());
+    FileUtils.copyDirectory(bundledJdkPath().toFile(), jdkDir.toFile());
   }
 
   public void copySystemDir(Path projectArtifactsPath) throws IOException {
-    FileUtils.copyDirectory(TestUtils.getBinPath(projectArtifactsPath.resolve("system").toString()).toFile(), getSystemDir().toFile());
+    Path sourceSystem = TestUtils.getBinPath(projectArtifactsPath.resolve("system").toString());
+    if (Files.exists(sourceSystem)) {
+      FileUtils.copyDirectory(sourceSystem.toFile(), getSystemDir().toFile());
+    }
   }
 
   public void copyConfigDir(Path projectArtifactsPath) throws IOException {
-    FileUtils.copyDirectory(TestUtils.getBinPath(projectArtifactsPath.resolve("config").toString()).toFile(), getConfigDir().toFile());
+    Path sourceConfig = TestUtils.getBinPath(projectArtifactsPath.resolve("config").toString());
+    if (Files.exists(sourceConfig)) {
+      FileUtils.copyDirectory(sourceConfig.toFile(), getConfigDir().toFile());
+    }
+  }
+
+  public void copyAndroidHome(Path projectArtifactsPath) throws IOException {
+    Path sourceAndroidHome = TestUtils.getBinPath(projectArtifactsPath.resolve(".android").toString());
+    Path targetAndroidHome = tmpDir.resolve(".android");
+    if (Files.exists(sourceAndroidHome)) {
+      FileUtils.copyDirectory(sourceAndroidHome.toFile(), targetAndroidHome.toFile());
+    }
+  }
+
+  public void copyGradleDir(Path projectArtifactsPath) throws IOException {
+    Path sourceGradle = TestUtils.getBinPath(projectArtifactsPath.resolve(".gradle").toString());
+    if (Files.exists(sourceGradle)) {
+      FileUtils.copyDirectory(sourceGradle.toFile(), tmpDir.resolve(".gradle").toFile());
+    }
+  }
+
+  // We clear the transforms cache to prevent Gradle from crashing with an "Immutable workspace
+  // contents have been modified" error. This happens because Bazel assigns new filesystem
+  // timestamps when staging the prebuilt cache, which mismatch Gradle's internal tracking.
+  public void clearTransformsCache() {
+    Path cachesDir = tmpDir.resolve(".gradle/caches");
+    if (Files.exists(cachesDir)) {
+      try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(cachesDir, "transforms-*")) {
+        for (Path entry : stream) {
+          FileUtils.deleteRecursivelyIfExists(entry.toFile());
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  public void restoreCachedIdeState(Path projectArtifactsPath) throws IOException {
+    isRestoredFromPrebuiltCache = true;
+    copySystemDir(projectArtifactsPath);
+    copyConfigDir(projectArtifactsPath);
+    copyGradleDir(projectArtifactsPath);
+    copyAndroidHome(projectArtifactsPath);
+  }
+
+  public boolean isRestoredFromPrebuiltCache() {
+    return isRestoredFromPrebuiltCache;
   }
 
   abstract public T attach() throws IOException, InterruptedException;

@@ -30,7 +30,6 @@ import com.google.idea.blaze.qsync.project.ProjectProto.ProjectArtifact.Artifact
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import java.nio.file.Path
-import kotlin.jvm.optionals.getOrNull
 
 /**
  * Adds external `.aar` files to the project proto as [ExternalAndroidLibrary]s. This allows resources references to external libraries to
@@ -42,8 +41,8 @@ class AddDependencyAars(
 ) : ProjectProtoUpdateOperation {
 
   private fun getDependencyAars(target: TargetBuildInfo): Collection<BuildArtifact> {
-    val javaInfo = target.javaInfo().getOrNull() ?: return emptyList()
-    return if (projectDefinition.isIncluded(javaInfo.label())) emptyList() else listOfNotNull(javaInfo.ideAar())
+    val javaInfo = (target as? TargetBuildInfo.Java)?.javaInfo ?: return emptyList()
+    return if (projectDefinition.isIncluded(javaInfo.label)) emptyList() else listOfNotNull(javaInfo.ideAar)
   }
 
   override fun getRequiredArtifacts(forTarget: TargetBuildInfo): Map<BuildArtifact, Collection<ArtifactMetadata.Extractor<*>>> {
@@ -61,14 +60,14 @@ class AddDependencyAars(
       for (target in artifactState.targets()) {
         val aars = getDependencyAars(target)
         if (aars.isEmpty()) continue
-        update.module(target.label()) {
+        update.module(target.label) {
           for (aar in aars) {
-            val packageName = aar.getMetadata(AarResPackage::class.java).getOrNull()?.name
-            val added = addIfNewer(aar.artifactPath(), aar, target.buildContext(), ArtifactTransform.UNZIP)
+            val packageName = aar.getMetadata(AarResPackage::class.java)?.name
+            val added = addIfNewer(aar.artifactPath, aar, target.buildContext, ArtifactTransform.UNZIP)
             if (added != null) {
               addExternalAndroidLibrary(
                 ProjectProto.ExternalAndroidLibrary(
-                  name = aar.artifactPath().toString().replace('/', '_'),
+                  name = aar.artifactPath.toString().replace('/', '_'),
                   location = added,
                   manifestFile = added.resolveChild(Path.of("AndroidManifest.xml")),
                   resFolder = added.resolveChild(Path.of("res")),

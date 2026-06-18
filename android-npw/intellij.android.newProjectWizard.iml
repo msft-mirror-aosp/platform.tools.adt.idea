@@ -4,7 +4,7 @@
     <facet type="kotlin-language" name="Kotlin">
       <configuration version="5" platform="JVM 21" allPlatforms="JVM [21]" useProjectSettings="false">
         <compilerSettings>
-          <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xsam-conversions=class -Xcontext-receivers" />
+          <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xsam-conversions=class -Xcontext-parameters" />
         </compilerSettings>
         <compilerArguments>
           <stringArguments>
@@ -14,7 +14,7 @@
           </stringArguments>
           <arrayArguments>
             <arrayArg name="pluginClasspaths">
-              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.3.10/kotlin-compose-compiler-plugin-2.3.10.jar</args>
+              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.3.20/kotlin-compose-compiler-plugin-2.3.20.jar</args>
             </arrayArg>
           </arrayArguments>
         </compilerArguments>
@@ -63,5 +63,8 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" />
     <orderEntry type="module" module-name="intellij.android.sdkUpdates" />
     <orderEntry type="module" module-name="intellij.android.ml-api" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
   </component>
 </module>

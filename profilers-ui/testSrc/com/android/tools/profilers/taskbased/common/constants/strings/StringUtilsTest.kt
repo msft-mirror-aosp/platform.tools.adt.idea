@@ -31,7 +31,7 @@ class StringUtilsTest(private val taskType: ProfilerTaskType) {
 
   @Test
   fun testGettingTaskTabTitle() {
-    val taskTabTitle = StringUtils.getTaskTabTitle(taskType, isTaskTitleV2Enabled = false)
+    val taskTabTitle = StringUtils.getTaskTabTitle(taskType, false)
     when (taskType) {
       ProfilerTaskType.SYSTEM_TRACE -> assertEquals(taskTabTitle, "Capture System Activities (System Trace)")
       ProfilerTaskType.HEAP_DUMP -> assertEquals(taskTabTitle, "Analyze Memory Usage (Heap Dump)")
@@ -42,6 +42,22 @@ class StringUtilsTest(private val taskType: ProfilerTaskType) {
       ProfilerTaskType.LIVE_VIEW -> assertEquals(taskTabTitle, "View Live Telemetry")
       ProfilerTaskType.LEAKCANARY -> assertEquals(taskTabTitle, "Find Memory Leaks with LeakCanary")
       ProfilerTaskType.UNSPECIFIED -> assertEquals(taskTabTitle, "Task not supported yet")
+    }
+  }
+
+  @Test
+  fun testGettingTaskTabTitleV2() {
+    val taskTabTitle = StringUtils.getTaskTabTitle(taskType, true)
+    when (taskType) {
+      ProfilerTaskType.SYSTEM_TRACE -> assertEquals("System Trace", taskTabTitle)
+      ProfilerTaskType.HEAP_DUMP -> assertEquals("Heap Dump", taskTabTitle)
+      ProfilerTaskType.CALLSTACK_SAMPLE -> assertEquals("Stack Sampling", taskTabTitle)
+      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> assertEquals("Java/Kotlin Allocations", taskTabTitle)
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> assertEquals("Method Trace", taskTabTitle)
+      ProfilerTaskType.NATIVE_ALLOCATIONS -> assertEquals("Native Allocations", taskTabTitle)
+      ProfilerTaskType.LIVE_VIEW -> assertEquals("Live Telemetry", taskTabTitle)
+      ProfilerTaskType.LEAKCANARY -> assertEquals("LeakCanary", taskTabTitle)
+      ProfilerTaskType.UNSPECIFIED -> assertEquals("", taskTabTitle)
     }
   }
 }

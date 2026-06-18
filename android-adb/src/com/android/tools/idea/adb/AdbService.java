@@ -26,7 +26,6 @@ import com.android.adblib.CoroutineScopeCache;
 import com.android.annotations.concurrency.WorkerThread;
 import com.android.ddmlib.AdbDelegateUsageTracker;
 import com.android.ddmlib.AdbInitOptions;
-import com.android.ddmlib.AdbVersion;
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.IDevice;
@@ -40,27 +39,17 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationGroup;
-import com.intellij.notification.NotificationGroupManager;
-import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ApplicationNamesInfo;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectCloseListener;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.ui.MessageType;
-import com.intellij.openapi.ui.popup.util.PopupUtil;
-import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.concurrency.SequentialTaskExecutor;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -85,25 +74,6 @@ public final class AdbService implements Disposable {
   public static boolean disabled = false;
 
   private static final Logger LOG = Logger.getInstance(AdbService.class);
-  /**
-   * The default timeout used by many calls to ddmlib. This includes executing a command,
-   * waiting for a response from a command, trying to send a command, etc.
-   * The default value is very high because some operations using this timeout can
-   * take a long time to complete (e.g. installing an application on a device). See
-   * <a href="https://github.com/JetBrains/android/commit/c667dabb759df8bddc72120f51192ee4a5b4e308">IDEA-67042 increase timeout</a>
-   * and <a href="https://github.com/JetBrains/android/commit/d17853af32a17788dbd8bd11c1ec5e720fb5bb6a">increase timeout</a>
-   * for commits that resulted in the current value of 50 minutes.
-   *
-   * <p>The problem with such a worst-case timeout value is that many operations are
-   * expected to take a very short amount of time, but, at the same time, ADB can
-   * sometimes hang for unexpected reasons. This state of affairs makes it difficult
-   * for callers to provide a user friendly experience, especially in cases where
-   * ADB hangs unexpectedly.  Addressing this issue would require non trivial refactoring
-   * of this code, and its callers, to either provide an explicit timeout for every invocation,
-   * or maybe expose 2 timeouts: one for short lived operations, and one for operations that
-   * can take a long time.
-   */
-  private static final int ADB_DEFAULT_TIMEOUT_MILLIS = (int)TimeUnit.MINUTES.toMillis(50);
 
   /**
    * Default timeout to use when calling {@link #terminateDdmlib()}. This ensures
@@ -132,13 +102,6 @@ public final class AdbService implements Disposable {
    */
   private boolean myAllowMdnsOpenscreen = true;
 
-  /**
-   * Anticipated adb version for ADB_MDNS_OPENSCREEN option fix.
-   */
-  private static final String MDNS_OPENSCREEN_FIX_ADB_VERSION = "1.0.42";
-
-  private final @NotNull MyDebugBridgeChangeListener myDebugBridgeChangeListener = new MyDebugBridgeChangeListener();
-
   private final @NotNull MyDeviceChangeListener myDeviceChangeListener = new MyDeviceChangeListener();
 
   private final @NotNull MyAdbOptionsListener myAdbOptionsListener = new MyAdbOptionsListener();
@@ -153,31 +116,6 @@ public final class AdbService implements Disposable {
 
   public static AdbService getInstance() {
     return ApplicationManager.getApplication().getService(AdbService.class);
-  }
-
-  @NotNull
-  public static String getDebugBridgeDiagnosticErrorMessage(@NotNull Throwable t, @NotNull File adb) {
-    // If we cannot connect to ADB in a reasonable amount of time (10 seconds timeout in AdbService), then something is seriously
-    // wrong. The only identified reason so far is that some machines have incompatible versions of adb that were already running.
-    // e.g. Genymotion, some HTC flashing software, Ubuntu's adb package may all conflict with the version of adb in the SDK.
-    // A timeout can also happen if the user's hosts file points localhost to the wrong address.
-    String msg;
-    if (t.getMessage() != null) {
-      msg = t.getMessage();
-    }
-    else {
-      msg = String.format("Unable to establish a connection to adb.\n\n" +
-                          "Check the Event Log for possible issues.\n" +
-                          "This can happen if you have an incompatible version of adb running already,\n" +
-                          "or if localhost is pointing to the wrong address.\n" +
-                          "Try re-opening %1$s after killing any existing adb daemons and verifying that your\n" +
-                          "localhost entry is pointing to 127.0.0.1 or ::1 for IPv4 or IPv6, respectively.\n\n" +
-                          "If this happens repeatedly, please file a bug at http://b.android.com including the following:\n" +
-                          "  1. Output of the command: '%2$s devices'\n" +
-                          "  2. Your idea.log file (Help | Show Log in Explorer)\n",
-                          ApplicationNamesInfo.getInstance().getProductName(), adb.getAbsolutePath());
-    }
-    return msg;
   }
 
   /**
@@ -254,7 +192,6 @@ public final class AdbService implements Disposable {
   @Override
   public void dispose() {
     LOG.info("Disposing AdbService");
-    AndroidDebugBridge.removeDebugBridgeChangeListener(myDebugBridgeChangeListener);
     AndroidDebugBridge.removeDeviceChangeListener(myDeviceChangeListener);
     AdbOptionsService.getInstance().removeListener(myAdbOptionsListener);
     try {
@@ -290,12 +227,10 @@ public final class AdbService implements Disposable {
                                ? Log.LogLevel.DEBUG.getStringValue()
                                : Log.LogLevel.INFO.getStringValue();
     DdmPreferences.setLogLevel(defaultLogLevel);
-    DdmPreferences.setTimeOut(ADB_DEFAULT_TIMEOUT_MILLIS);
 
     Log.addLogger(new AdbLogOutput.SystemLogRedirecter());
 
     AdbOptionsService.getInstance().addListener(myAdbOptionsListener);
-    AndroidDebugBridge.addDebugBridgeChangeListener(myDebugBridgeChangeListener);
     AndroidDebugBridge.addDeviceChangeListener(myDeviceChangeListener);
 
     StudioAdbLibJdwpTracerFactory.install(AdbLibApplicationService.getInstance().getSession(), () -> {
@@ -532,67 +467,6 @@ public final class AdbService implements Disposable {
 
       LOG.info("Restart adb server");
       getAndroidDebugBridge(myAdbExecutableFile);
-    }
-  }
-
-  private class MyDebugBridgeChangeListener implements AndroidDebugBridge.IDebugBridgeChangeListener {
-    /**
-     * Tracks whether we have shown the notification popup about ADB crashing during initialization.
-     * We use a static variable to ensure we show the notification only once per Android Studio session.
-     */
-    private boolean myInitializationErrorShown = false;
-
-    @Override
-    public void bridgeChanged(@Nullable AndroidDebugBridge bridge) {
-    }
-
-    @Override
-    public void initializationError(@NotNull Exception exception) {
-      // b/217251994 - ADB crashes when ADB_MDNS_OPENSCREEN is set on certain Windows configs.
-      // Work around by disabling ADB_MDNS_OPENSCREEN and notifying the user that ADB WiFi is disabled.
-      if (!SystemInfo.isWindows ||
-          !(AdbOptionsService.getInstance().getAdbServerMdnsBackend() == AdbServerMdnsBackend.OPENSCREEN) ||
-          !(exception instanceof IOException) ||
-          !exception.getMessage().startsWith("An existing connection was forcibly closed by the remote host")) {
-        return;
-      }
-
-      AndroidDebugBridge bridge = AndroidDebugBridge.getBridge();
-      if (bridge == null) {
-        return;
-      }
-
-      AdbVersion version = bridge.getCurrentAdbVersion();
-      if (version == null || version.compareTo(AdbVersion.parseFrom(MDNS_OPENSCREEN_FIX_ADB_VERSION)) >= 0) {
-        return;
-      }
-
-      Log.w("Remote shutdown of adb host was detected, attempting to restart server without MDNS Openscreen.", exception);
-      String helpMessage = String.format(
-        "Error initializing adb with MDNS Openscreen enabled.\n" +
-        "Attempting restart adb with option disabled.\n" +
-        "Try updating to a newer version of ADB (%s or later).",
-        MDNS_OPENSCREEN_FIX_ADB_VERSION);
-      NotificationGroup notificationGroup = NotificationGroupManager.getInstance().getNotificationGroup("Adb Service");
-      if (notificationGroup != null) {
-        Notification notification = notificationGroup
-          .createNotification(helpMessage, NotificationType.WARNING)
-          .setImportant(true);
-        Arrays.stream(ProjectManager.getInstance().getOpenProjects()).forEach(notification::notify);
-      }
-
-      myAllowMdnsOpenscreen = false;
-
-      if (!myInitializationErrorShown) {
-        PopupUtil.showBalloonForActiveComponent(helpMessage, MessageType.WARNING);
-        myInitializationErrorShown = true;
-      }
-      try {
-        terminateDdmlib();
-      }
-      catch (TimeoutException ignored) {
-      }
-      // Leave until next getBridge caller to reinitialize.
     }
   }
 

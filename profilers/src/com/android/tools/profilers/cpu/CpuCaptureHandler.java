@@ -43,7 +43,8 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
   @Nullable private final String myCaptureProcessNameHint;
 
   private boolean myIsParsing = false;
-
+  @NotNull private CpuCaptureMetadata.CaptureStatus myStatus =
+    CpuCaptureMetadata.CaptureStatus.PARSING_FAILED_CAUSE_UNKNOWN;
 
   @VisibleForTesting
   public CpuCaptureHandler(@NotNull StudioProfilers profilers,
@@ -52,7 +53,7 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
                            @NotNull ProfilingConfiguration configuration,
                            @Nullable String captureProcessNameHint,
                            int captureProcessIdHint) {
-    this(profilers, captureFile, traceId, configuration, CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, captureProcessNameHint,
+    this(profilers, captureFile, traceId, configuration, new CpuCaptureMetadata(configuration), captureProcessNameHint,
          captureProcessIdHint);
   }
 
@@ -60,7 +61,7 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
                            @NotNull File captureFile,
                            long traceId,
                            @NotNull ProfilingConfiguration configuration,
-                           CpuCaptureMetadata.CpuProfilerEntryPoint entryPoint,
+                           @NotNull CpuCaptureMetadata captureMetadata,
                            @Nullable String captureProcessNameHint,
                            int captureProcessIdHint) {
     myCaptureParser = new CpuCaptureParser(profilers);
@@ -71,9 +72,7 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
     myCaptureProcessIdHint = captureProcessIdHint;
     myCaptureProcessNameHint = captureProcessNameHint;
 
-    CpuCaptureMetadata metadata = new CpuCaptureMetadata(configuration);
-    metadata.setCpuProfilerEntryPoint(entryPoint);
-    myCaptureParser.trackCaptureMetadata(traceId, metadata);
+    myCaptureParser.trackCaptureMetadata(traceId, captureMetadata);
   }
 
   /**
@@ -134,11 +133,26 @@ public class CpuCaptureHandler implements Updatable, StatusPanelModel {
     CompletableFuture<CpuCapture> capture = myCaptureParser.parse(
       myCaptureFile, myTraceId, myConfiguration.getTraceType(), myCaptureProcessIdHint, myCaptureProcessNameHint, myTaskTracker);
 
-    // Parsing is in progress. Handle it asynchronously and set the capture afterwards using the main executor.
+    // Parsing is in progress. Handle it asynchronously and set the capture afterward using the main executor.
     capture.handleAsync((parsedCapture, exception) -> {
       myIsParsing = false;
+      myStatus = CpuCaptureParser.getCaptureStatus(parsedCapture, exception);
       captureCompleted.accept(parsedCapture);
       return parsedCapture;
     }, myServices.getMainExecutor());
+  }
+
+  @NotNull
+  public CpuCaptureMetadata.CaptureStatus getStatus() {
+    return myStatus;
+  }
+
+  @NotNull
+  public String getErrorMessage() {
+    return switch (myStatus) {
+      case USER_ABORTED_PARSING -> "Parsing trace file aborted. Please record another trace.";
+      case PREPROCESS_FAILURE -> "The profiler was unable to pre-process the method trace data.";
+      default -> "The profiler was unable to parse the trace file. Please make sure the file selected is a valid trace.";
+    };
   }
 }

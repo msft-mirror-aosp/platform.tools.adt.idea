@@ -1,4 +1,5 @@
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE")
+load("//tools/adt/idea/emulator-snapshots:emulator_test_env.bzl", "emulator_snapshot_data", "emulator_snapshot_jvm_flags")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
@@ -33,6 +34,7 @@ iml_module(
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
     ],
     test_srcs = ["testingSrc"],
@@ -73,6 +75,9 @@ iml_module(
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
+        "@intellij//:intellij.java.debugger.impl",
+        "@intellij//:intellij.java.execution",
+        "@intellij//:intellij.java.debugger",
     ],
 )
 
@@ -155,6 +160,9 @@ iml_module(
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.java.debugger",
+        "@intellij//:intellij.java.debugger.impl",
+        "@intellij//:intellij.java.execution",
     ],
 )
 
@@ -192,7 +200,7 @@ layout_inspector_view_data = [
     "//tools/adt/idea/layout-inspector/integration/testData:emptyApplication",
     INTEGRATION_TEST_GRADLE_VERSION,
     INTEGRATION_TEST_SYSTEM_IMAGE,
-]
+] + emulator_snapshot_data(INTEGRATION_TEST_SYSTEM_IMAGE)
 
 maven_repository(
     name = "view_project_deps",
@@ -207,22 +215,25 @@ maven_repository(
 )
 
 iml_test(
-    name = "LayoutInspectorViewIntegrationTest",
+    name = "StandaloneLayoutInspectorIntegrationTest",
     timeout = "long",
     data = layout_inspector_view_data,
+    jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.layout-inspector.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     tags_windows = [
         "block-network",
         "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
     ],
-    test_class = "com.android.tools.idea.layoutinspector.LayoutInspectorViewIntegrationTest",
+    test_class = "com.android.tools.idea.layoutinspector.StandaloneLayoutInspectorIntegrationTest",
 )
 
 iml_test(
     name = "EmbeddedLayoutInspectorIntegrationTest",
     timeout = "long",
     data = layout_inspector_view_data,
+    jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.layout-inspector.integration",
     tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
@@ -237,6 +248,7 @@ iml_test(
     name = "OnDeviceRenderingIntegrationTest",
     timeout = "long",
     data = layout_inspector_view_data,
+    jvm_flags = emulator_snapshot_jvm_flags(INTEGRATION_TEST_SYSTEM_IMAGE),
     module = ":intellij.android.layout-inspector.integration",
     tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],

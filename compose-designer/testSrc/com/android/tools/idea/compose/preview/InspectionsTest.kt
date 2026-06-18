@@ -39,6 +39,412 @@ class InspectionsTest {
     get() = projectRule.fixture
 
   @Test
+  fun testPreviewWrapperUsageInspection() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+      import $COMPOSABLE_ANNOTATION_FQN
+
+      @Composable
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview1() {
+      }
+
+      // Missing @Composable
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview2() {
+      }
+
+      // Missing @Preview
+      @Composable
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview3() {
+      }
+
+      // Missing both
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview4() {
+      }
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+    val errors =
+      fixture
+        .doHighlighting(HighlightSeverity.ERROR)
+        .filter { it.description == PreviewWrapperUsageInspection().staticDescription }
+        .map { it.descriptionWithLineNumber() }
+
+    assertEquals(
+      """
+      |12: @PreviewWrapper can only be used on functions annotated with @Composable and @Preview or a MultiPreview
+      |18: @PreviewWrapper can only be used on functions annotated with @Composable and @Preview or a MultiPreview
+      |23: @PreviewWrapper can only be used on functions annotated with @Composable and @Preview or a MultiPreview
+      """
+        .trimMargin(),
+      errors.joinToString("\n"),
+    )
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionOnAnnotationClass() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+      import $COMPOSABLE_ANNOTATION_FQN
+
+      @PreviewWrapper(wrapper = Any::class)
+      annotation class MyAnnotation1
+
+      @PreviewWrapper(wrapper = Any::class)
+      @PreviewWrapper(wrapper = Any::class)
+      annotation class MyAnnotation2
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+    val errors =
+      fixture.doHighlighting(HighlightSeverity.ERROR).filter {
+        it.description == "Only one @PreviewWrapper annotation is allowed on an annotation class"
+      }
+
+    assertEquals(1, errors.size)
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionMultipleWrappersInGraph() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+      import $COMPOSABLE_ANNOTATION_FQN
+
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      annotation class MultiPreview1
+
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      annotation class MultiPreview2
+
+      @Composable
+      @MultiPreview1
+      @MultiPreview2
+      fun Preview1() {
+      }
+
+      @Composable
+      @PreviewWrapper(wrapper = Any::class)
+      @MultiPreview1
+      fun Preview2() {
+      }
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+    val errors =
+      fixture.doHighlighting(HighlightSeverity.ERROR).filter {
+        it.description.startsWith("A function cannot have more than one @PreviewWrapper")
+      }
+
+    assertEquals(2, errors.size)
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionMultipleWrappersInAnnotationClassGraph() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+      import $COMPOSABLE_ANNOTATION_FQN
+
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      annotation class MultiPreview1
+
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      annotation class MultiPreview2
+
+      @MultiPreview1
+      @MultiPreview2
+      annotation class MyAnnotation1
+
+      @PreviewWrapper(wrapper = Any::class)
+      @MultiPreview1
+      annotation class MyAnnotation2
+
+      @MultiPreview1
+      annotation class MyAnnotation3
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+    val errors =
+      fixture.doHighlighting(HighlightSeverity.ERROR).filter {
+        it.description.startsWith("An annotation class cannot have more than one @PreviewWrapper")
+      }
+
+    assertEquals(2, errors.size)
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionQuickFix() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @<caret>PreviewWrapper(wrapper = Any::class)
+      fun Preview4() {
+      }
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+
+    val action = fixture.findSingleIntention("Add missing annotations")
+    fixture.launchAction(action)
+
+    val expected =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Composable
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview4() {
+      }
+    """
+        .trimIndent()
+
+    fixture.checkResult(expected)
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionQuickFixMissingComposable() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Preview
+      @<caret>PreviewWrapper(wrapper = Any::class)
+      fun Preview2() {
+      }
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+
+    val action = fixture.findSingleIntention("Add missing annotations")
+    fixture.launchAction(action)
+
+    val expected =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Composable
+      @Preview
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview2() {
+      }
+    """
+        .trimIndent()
+
+    fixture.checkResult(expected)
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionQuickFixMissingPreview() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Composable
+      @<caret>PreviewWrapper(wrapper = Any::class)
+      fun Preview3() {
+      }
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+
+    val action = fixture.findSingleIntention("Add missing annotations")
+    fixture.launchAction(action)
+
+    val expected =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Preview
+      @Composable
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview3() {
+      }
+    """
+        .trimIndent()
+
+    fixture.checkResult(expected)
+  }
+
+  @Test
+  fun testPreviewWrapperUsageInspectionQuickFixMissingComposableWithMultiPreview() {
+    fixture.enableInspections(PreviewWrapperUsageInspection() as InspectionProfileEntry)
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/preview/PreviewWrapper.kt",
+      """
+      package $PREVIEW_TOOLING_PACKAGE
+      annotation class PreviewWrapper(val wrapper: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+
+    @Suppress("TestFunctionName")
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Preview
+      annotation class MyMultiPreview
+
+      @MyMultiPreview
+      @<caret>PreviewWrapper(wrapper = Any::class)
+      fun Preview2() {
+      }
+    """
+        .trimIndent()
+
+    fixture.configureByText("Test.kt", fileContent)
+
+    val action = fixture.findSingleIntention("Add missing annotations")
+    fixture.launchAction(action)
+
+    val expected =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+      import $PREVIEW_TOOLING_PACKAGE.PreviewWrapper
+
+      @Preview
+      annotation class MyMultiPreview
+
+      @Composable
+      @MyMultiPreview
+      @PreviewWrapper(wrapper = Any::class)
+      fun Preview2() {
+      }
+    """
+        .trimIndent()
+
+    fixture.checkResult(expected)
+  }
+
+  @Test
   fun testNeedsComposableInspection() {
     fixture.enableInspections(ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry)
 

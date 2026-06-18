@@ -20,7 +20,6 @@ import com.android.tools.idea.downloads.RemoteFileCache.FetchStats
 import com.android.tools.idea.downloads.RemoteFileCache.RemoteFileCacheException
 import com.android.tools.idea.downloads.UrlFileCache
 import com.android.tools.idea.editing.documentation.AndroidJavaDocExternalFilter
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.googleapis.GoogleApiKeyProvider
 import com.android.tools.idea.googleapis.GoogleApiKeyProvider.GoogleApi.CONTENT_SERVING
 import com.android.tools.idea.stats.getEditorFileTypeForAnalytics
@@ -32,6 +31,7 @@ import com.intellij.codeInsight.javadoc.JavaDocExternalFilter
 import com.intellij.codeInsight.navigation.SingleTargetElementInfo
 import com.intellij.codeInsight.navigation.targetPresentation
 import com.intellij.model.Pointer
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.platform.backend.documentation.DocumentationResult
 import com.intellij.platform.backend.documentation.DocumentationTarget
@@ -66,11 +66,7 @@ sealed class AndroidSdkDocumentationTarget<T>(
   private val url: String,
   private val localJavaDocInfo: String?,
 ) : DocumentationTarget where T : PsiElement, T : Navigatable {
-  private val contentServingApiKey by lazy {
-    GoogleApiKeyProvider.getApiKey(CONTENT_SERVING)?.takeIf {
-      StudioFlags.REMOTE_SDK_DOCUMENTATION_FETCH_VIA_CONTENT_SERVING_API_ENABLED.get()
-    }
-  }
+  private val contentServingApiKey by lazy { GoogleApiKeyProvider.getApiKey(CONTENT_SERVING) }
 
   /** A [String] we can use to refer to this element. */
   protected abstract val displayName: String?
@@ -87,13 +83,9 @@ sealed class AndroidSdkDocumentationTarget<T>(
     val urlWithHeaders = createUrlWithHeaders()
     val deferredPathAndStats =
       UrlFileCache.getInstance(targetElement.project).getWithStats(urlWithHeaders, maxFileAge = 1.days) { it.filterStream() }
-    return if (deferredPathAndStats.isCompleted) {
+    return DocumentationResult.asyncDocumentation {
+      deferredPathAndStats.join() // It will be completed after this.
       DocumentationResult.documentation(getDocumentationHtml(deferredPathAndStats)).externalUrl(url)
-    } else {
-      DocumentationResult.asyncDocumentation {
-        deferredPathAndStats.join() // It will be completed after this.
-        DocumentationResult.documentation(getDocumentationHtml(deferredPathAndStats)).externalUrl(url)
-      }
     }
   }
 
@@ -145,7 +137,7 @@ sealed class AndroidSdkDocumentationTarget<T>(
    *
    * This method also logs metrics related to the fetch/display.
    */
-  private fun getDocumentationHtml(completedDeferredPathAndStats: Deferred<Pair<Path, FetchStats>>): String {
+  private suspend fun getDocumentationHtml(completedDeferredPathAndStats: Deferred<Pair<Path, FetchStats>>): String {
     require(completedDeferredPathAndStats.isCompleted) { "Can only pass a completed Deferred!" }
     @OptIn(ExperimentalCoroutinesApi::class)
     try {
@@ -189,8 +181,8 @@ sealed class AndroidSdkDocumentationTarget<T>(
     return ByteArrayInputStream(safeHtml.toByteArray())
   }
 
-  private fun logFetchStats(fetchStats: FetchStats, numDisplayedHtmlBytes: Int) {
-    val builder =
+  private suspend fun logFetchStats(fetchStats: FetchStats, numDisplayedHtmlBytes: Int) {
+    val builder = readAction {
       AndroidStudioEvent.newBuilder().setKind(EDITING_METRICS_EVENT).apply {
         editingMetricsEventBuilder.apply {
           externalQuickDocEventBuilder.apply {
@@ -205,6 +197,7 @@ sealed class AndroidSdkDocumentationTarget<T>(
           }
         }
       }
+    }
     UsageTracker.log(builder)
   }
 

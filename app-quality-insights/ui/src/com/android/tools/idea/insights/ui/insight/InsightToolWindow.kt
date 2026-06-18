@@ -17,16 +17,16 @@ package com.android.tools.idea.insights.ui.insight
 
 import com.android.tools.adtui.workbench.ToolContent
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.insights.AppInsightsProjectLevelController
+import com.android.tools.idea.insights.AppInsightsCrashController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.events.actions.Action
 import com.android.tools.idea.insights.ui.AppInsightsToolWindowContext
 import com.android.tools.idea.insights.ui.AppInsightsToolWindowDefinition
 import com.android.tools.idea.insights.ui.InsightDeprecatedPanel
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.util.ui.JBDimension
-import icons.StudioIcons
 import java.awt.BorderLayout
 import javax.swing.JPanel
 import kotlinx.coroutines.channels.BufferOverflow
@@ -39,19 +39,14 @@ import kotlinx.coroutines.launch
 
 object InsightToolWindow {
   fun create(
-    projectController: AppInsightsProjectLevelController,
+    projectController: AppInsightsCrashController,
     parentDisposable: Disposable,
     tabVisibility: Flow<Boolean>,
     tracker: AppInsightsTracker,
   ): AppInsightsToolWindowDefinition {
     val insightWindowVisibility = MutableSharedFlow<Boolean>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val content = InsightToolWindowContent(projectController, parentDisposable, tracker, insightWindowVisibility)
-    return AppInsightsToolWindowDefinition(
-        "Insights",
-        StudioIcons.StudioBot.GEMINI_LOGO_MONOCHROME,
-        "APP_INSIGHTS_INSIGHTS",
-        tabVisibility,
-      ) {
+    return AppInsightsToolWindowDefinition("Insights", AllIcons.Actions.IntentionBulbGrey, "APP_INSIGHTS_INSIGHTS", tabVisibility) {
         content
       }
       .apply {
@@ -77,7 +72,7 @@ object InsightToolWindow {
 }
 
 private class InsightToolWindowContent(
-  projectController: AppInsightsProjectLevelController,
+  projectController: AppInsightsCrashController,
   parentDisposable: Disposable,
   tracker: AppInsightsTracker,
   visibilityFlow: Flow<Boolean>,

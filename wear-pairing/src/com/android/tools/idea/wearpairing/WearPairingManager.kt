@@ -18,7 +18,6 @@ package com.android.tools.idea.wearpairing
 import com.android.annotations.concurrency.UiThread
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.AndroidDebugBridge
-import com.android.ddmlib.EmulatorConsole
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.IDevice.HardwareFeature
 import com.android.sdklib.SystemImageTags
@@ -493,8 +492,7 @@ class WearPairingManager(
         // ID, the .. does not match the path information we have in Studio.
         // We intentionally use normalize since it does not access disk and will just normalize the
         // path removing the ..
-        isEmulator && avdData?.isDone == true -> avdData.get()?.avdFolder?.normalize()?.toString() ?: name
-        isEmulator -> EmulatorConsole.getConsole(this@getDeviceID)?.avdNioPath?.normalize()?.toString() ?: name
+        isEmulator -> avdData.get()?.avdFolder?.normalize()?.toString() ?: name
         else -> {
           val firebaseTestLabSession = getProperty(PROP_FIREBASE_TEST_LAB_SESSION)
           if (firebaseTestLabSession != null) {

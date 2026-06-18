@@ -31,7 +31,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/template/test/in/FullscreenActivity.java"
-            line="130"
+            line="127"
             column="9"/>
     </issue>
 

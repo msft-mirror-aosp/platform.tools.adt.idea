@@ -24,8 +24,8 @@ import com.android.tools.idea.wizard.template.RecipeExecutor
 fun RecipeExecutor.generateAutomotiveModule(
   data: ModuleTemplateData,
   appTitle: String,
-  useKts: Boolean,
-  useVersionCatalog: Boolean = true,
+  hasCustomRenderer: Boolean = false,
+  generateStandardFiles: Boolean = true,
 ) {
   val usesFeatureBlock =
     """
@@ -36,7 +36,6 @@ fun RecipeExecutor.generateAutomotiveModule(
   generateCommonModule(
     data = data,
     appTitle = appTitle,
-    useKts = useKts,
     manifestXml =
       generateManifest(
         hasApplicationBlock = !data.isLibrary,
@@ -48,7 +47,8 @@ fun RecipeExecutor.generateAutomotiveModule(
     generateGenericInstrumentedTests = true,
     themesXml = basicThemesXml("android:Theme.Material.Light.DarkActionBar", data.themesData.main.name),
     colorsXml = null,
-    useVersionCatalog = useVersionCatalog,
+    hasCustomRenderer = hasCustomRenderer,
+    generateStandardFiles = generateStandardFiles,
   )
   addDependency("com.android.support:appcompat-v7:${data.apis.appCompatVersion}.+")
 }

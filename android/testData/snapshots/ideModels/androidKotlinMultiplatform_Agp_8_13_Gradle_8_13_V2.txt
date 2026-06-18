@@ -1880,6 +1880,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : commonTest (KotlinSourceSetImpl)
@@ -1929,7 +1930,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpFirstLib/build/classes/kotlin/android/deviceTest
                     jvmTarget                     : 11
-                    moduleName                    : kmpFirstLib_deviceTest
+                    moduleName                    : Kotlin Multiplatform:kmpFirstLib_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -1940,6 +1941,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - fragmentRefines             : androidDeviceTest:commonTest
                     - fragments                   : androidDeviceTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -1992,7 +1994,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpFirstLib/build/classes/kotlin/android/hostTest
                     jvmTarget                     : 11
-                    moduleName                    : kmpFirstLib_hostTest
+                    moduleName                    : Kotlin Multiplatform:kmpFirstLib_hostTest
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2003,6 +2005,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - fragmentRefines             : androidHostTest:commonTest
                     - fragments                   : androidHostTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2064,7 +2067,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpFirstLib/build/classes/kotlin/android/main
                     jvmTarget                     : 11
-                    moduleName                    : kmpFirstLib
+                    moduleName                    : Kotlin Multiplatform:kmpFirstLib
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2075,6 +2078,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - fragmentRefines             : androidMain:commonMain
                     - fragments                   : androidMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2145,6 +2149,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2187,7 +2192,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpJvmOnly/build/classes/kotlin/jvm/main
                     jvmTarget                     : 17
-                    moduleName                    : kmpJvmOnly
+                    moduleName                    : Kotlin Multiplatform:kmpJvmOnly
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2198,6 +2203,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     - fragmentRefines             : jvmMain:commonMain
                     - fragments                   : jvmMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2268,7 +2274,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpJvmOnly/build/classes/kotlin/jvm/test
                     jvmTarget                     : 17
-                    moduleName                    : kmpJvmOnly_test
+                    moduleName                    : Kotlin Multiplatform:kmpJvmOnly_test
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2279,6 +2285,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     - fragmentRefines             : jvmTest:commonTest
                     - fragments                   : jvmTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2473,6 +2480,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : android (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2514,7 +2522,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpSecondLib/build/classes/kotlin/android/main
                     jvmTarget                     : 11
-                    moduleName                    : kmpSecondLib
+                    moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2525,6 +2533,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     - fragmentRefines             : androidMain:commonMain
                     - fragments                   : androidMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2577,7 +2586,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpSecondLib/build/classes/kotlin/jvm/main
                     jvmTarget                     : 11
-                    moduleName                    : kmpSecondLib
+                    moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2588,6 +2597,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     - fragmentRefines             : jvmMain:commonMain
                     - fragments                   : jvmMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2658,7 +2668,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpSecondLib/build/classes/kotlin/jvm/test
                     jvmTarget                     : 11
-                    moduleName                    : kmpSecondLib_test
+                    moduleName                    : Kotlin Multiplatform:kmpSecondLib_test
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2669,6 +2679,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     - fragmentRefines             : jvmTest:commonTest
                     - fragments                   : jvmTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2950,6 +2961,7 @@ MODULE                        : build-logic.lib-foo
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : androidDeviceTest (KotlinSourceSetImpl)
@@ -2979,7 +2991,7 @@ MODULE                        : build-logic.lib-foo
                     backendThreads                : 1
                     destination                   : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/deviceTest
                     jvmTarget                     : 17
-                    moduleName                    : lib-foo_deviceTest
+                    moduleName                    : build-logic:lib-foo_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -2988,6 +3000,7 @@ MODULE                        : build-logic.lib-foo
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     - fragments                   : androidDeviceTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -3057,7 +3070,7 @@ MODULE                        : build-logic.lib-foo
                     backendThreads                : 1
                     destination                   : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/hostTest
                     jvmTarget                     : 17
-                    moduleName                    : lib-foo_hostTest
+                    moduleName                    : build-logic:lib-foo_hostTest
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -3068,6 +3081,7 @@ MODULE                        : build-logic.lib-foo
                     - fragmentRefines             : androidHostTest:commonTest
                     - fragments                   : androidHostTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -3129,7 +3143,7 @@ MODULE                        : build-logic.lib-foo
                     backendThreads                : 1
                     destination                   : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/main
                     jvmTarget                     : 17
-                    moduleName                    : lib-foo
+                    moduleName                    : build-logic:lib-foo
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
@@ -3140,6 +3154,7 @@ MODULE                        : build-logic.lib-foo
                     - fragmentRefines             : androidMain:commonMain
                     - fragments                   : androidMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar

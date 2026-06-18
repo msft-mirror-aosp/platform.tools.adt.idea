@@ -50,7 +50,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.util.PathUtil
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.facet.AndroidFacet
 
@@ -147,9 +146,7 @@ class AndroidRunConfigurations {
         RunManager.getInstance(project)
       } ?: return
 
-    val projectNameInExternalSystemStyle = PathUtil.suggestFileName(project.name, true, false)
-    val moduleName = module.getModuleSystem().getDisplayNameForModuleGroup()
-    val configurationName = resolveWatchFaceName(facet) ?: moduleName.removePrefix("$projectNameInExternalSystemStyle.")
+    val configurationName = resolveWatchFaceName(facet) ?: module.getModuleSystem().getDisplayNameForRunConfiguration()
     val settings =
       runReadAction {
         if (project.isDisposed) return@runReadAction null
@@ -231,13 +228,13 @@ class AndroidRunConfigurations {
         RunManager.getInstance(project)
       } ?: return
 
-    val projectNameInExternalSystemStyle = PathUtil.suggestFileName(project.name, true, false)
-    val moduleName = module.getModuleSystem().getDisplayNameForModuleGroup()
-    val configurationName = moduleName.removePrefix("$projectNameInExternalSystemStyle.")
     val settings =
       runReadAction {
         if (project.isDisposed) return@runReadAction null
-        runManager.createConfiguration(configurationName, AndroidRunConfigurationType::class.java)
+        runManager.createConfiguration(
+          module.getModuleSystem().getDisplayNameForRunConfiguration(),
+          AndroidRunConfigurationType::class.java,
+        )
       } ?: return
     val configuration = settings.configuration as AndroidRunConfiguration
     configuration.setModule(module)
@@ -275,8 +272,7 @@ class AndroidRunConfigurations {
 
   private fun configurationName(module: Module, component: WearComponent): String {
     val presentableComponentName = JavaExecutionUtil.getPresentableClassName(component.name)
-    val projectNameInExternalSystemStyle = PathUtil.suggestFileName(module.project.name, true, false)
-    return "${module.name.removePrefix("$projectNameInExternalSystemStyle.")}.$presentableComponentName"
+    return "${module.getModuleSystem().getDisplayNameForRunConfiguration()}.$presentableComponentName"
   }
 
   private suspend fun extractWearComponents(module: Module): List<WearComponent> {

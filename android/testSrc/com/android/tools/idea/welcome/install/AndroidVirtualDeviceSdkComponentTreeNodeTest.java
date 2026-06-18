@@ -80,7 +80,7 @@ public final class AndroidVirtualDeviceSdkComponentTreeNodeTest {
     builder.put("abi.type", "x86_64");
     builder.put("avd.ini.displayname", "Medium Phone API 34");
     builder.put("avd.ini.encoding", "UTF-8");
-    builder.put("disk.dataPartition.size", "6G");
+    builder.put("disk.dataPartition.size", "10G");
     builder.put("hw.accelerometer", "yes");
     builder.put("hw.arc", "false");
     builder.put("hw.audioInput", "yes");
@@ -397,7 +397,7 @@ public final class AndroidVirtualDeviceSdkComponentTreeNodeTest {
       return null;
     }
     AvdManagerConnection connection =
-      new AvdManagerConnection(sdkHandler, IdeAvdManagers.INSTANCE.getAvdManager(sdkHandler), Dispatchers.getUnconfined());
+      new AvdManagerConnection(sdkHandler, IdeAvdManagers.Instance.getAvdManager(sdkHandler), Dispatchers.getUnconfined());
     Set<AvdInfo> existingAvds = new HashSet<>(connection.getAvds(true));
     InstallContext context = new InstallContext(tempDirectoryRule.newPath().toFile(), progressStep);
     avdCreator.configure(context, sdkHandler);

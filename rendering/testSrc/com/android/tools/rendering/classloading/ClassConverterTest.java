@@ -41,6 +41,7 @@ import static org.objectweb.asm.Opcodes.RETURN;
 import static org.objectweb.asm.Opcodes.V1_6;
 import static org.objectweb.asm.Opcodes.V1_7;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.intellij.openapi.util.text.StringUtil;
 import java.util.HashSet;
@@ -55,7 +56,9 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
 
 public class ClassConverterTest extends TestCase {
   public void testJdkToClassVersion() {
@@ -253,6 +256,61 @@ public class ClassConverterTest extends TestCase {
     assertTrue(methods.contains("onFinishInflate_Original()V"));
   }
 
+  public void testFinalizeStripping() {
+    ClassWriter cw = new ClassWriter(0);
+    cw.visit(V1_7, ACC_SUPER, "TestWithFinalize", null, "android/view/View", null);
+
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+      mv.visitCode();
+      mv.visitVarInsn(ALOAD, 0);
+      mv.visitMethodInsn(INVOKESPECIAL, "android/view/View", "<init>", "()V", false);
+      mv.visitInsn(RETURN);
+      mv.visitMaxs(1, 1);
+      mv.visitEnd();
+    }
+
+    {
+      MethodVisitor mv = cw.visitMethod(ACC_PROTECTED, "finalize", "()V", null, null);
+      mv.visitCode();
+      mv.visitVarInsn(ALOAD, 0);
+      mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "finalize", "()V", false);
+      mv.visitInsn(RETURN);
+      mv.visitMaxs(1, 1);
+      mv.visitEnd();
+    }
+    cw.visitEnd();
+    byte[] data = cw.toByteArray();
+
+    assertTrue(isValidClassFile(data));
+    byte[] modified = rewriteClass(data, UtilKt.toClassTransform(ViewMethodWrapperTransform::new), NopClassLocator.INSTANCE);
+    assertTrue(isValidClassFile(modified));
+
+    ClassNode classNode = new ClassNode();
+    ClassReader classReader = new ClassReader(modified);
+    classReader.accept(classNode, 0);
+
+    MethodNode finalizeMethod = null;
+    for (MethodNode methodObj : classNode.methods) {
+      if ("finalize".equals(methodObj.name) && "()V".equals(methodObj.desc)) {
+        finalizeMethod = methodObj;
+        break;
+      }
+    }
+
+    assertNotNull(finalizeMethod);
+    boolean hasReturn = false;
+    for (int i = 0; i < finalizeMethod.instructions.size(); i++) {
+      AbstractInsnNode insn = finalizeMethod.instructions.get(i);
+      if (insn.getOpcode() == RETURN) {
+        hasReturn = true;
+      } else if (insn.getOpcode() >= 0) {
+        fail("Unexpected instruction in stripped finalize method: " + insn.getOpcode());
+      }
+    }
+    assertTrue(hasReturn);
+  }
+
   public void testMethodWrapping2() throws Exception {
     final byte[] firstData = getFirstOnMeasureClass();
     final byte[] secondData = getSecondOnMeasureClass();
@@ -336,6 +394,57 @@ public class ClassConverterTest extends TestCase {
       // Check that this does not cause any problems
       rewriteClass(data, UtilKt.toClassTransform(), NopClassLocator.INSTANCE);
     }
+  }
+
+  public void testIndependentRewrite() {
+    byte[] data = ClassConverterTest.dumpTestViewClass();
+
+    Set<String> called = new HashSet<>();
+
+    // Transform 1: Always runs
+    ClassTransform transform1 = UtilKt.toClassTransform(
+      visitor -> new TestVisitor(visitor, name -> called.add("Visitor1"))
+    );
+
+    // Transform 2: Runs only if class name contains "Test"
+    ClassTransform transform2 = UtilKt.toClassTransform(
+      ImmutableList.of(visitor -> new TestVisitor(visitor, name -> called.add("Visitor2"))),
+      classData -> new ClassReader(classData).getClassName().contains("Test")
+    );
+
+    // Combine them
+    ClassTransform combined = transform1.plus(transform2);
+
+    // Run on data (it is named "TestView" so it should match)
+    rewriteClass(data, combined, NopClassLocator.INSTANCE);
+    assertThat(called).containsExactly("Visitor1", "Visitor2");
+
+    called.clear();
+
+    // Transform 3: Runs only if class name contains "NonExistent"
+    ClassTransform transform3 = UtilKt.toClassTransform(
+      ImmutableList.of(visitor -> new TestVisitor(visitor, name -> called.add("Visitor3"))),
+      classData -> new ClassReader(classData).getClassName().contains("NonExistent")
+    );
+
+    ClassTransform combined2 = transform1.plus(transform3);
+
+    // Run on data (it is named "TestView" so it should NOT match transform3)
+    rewriteClass(data, combined2, NopClassLocator.INSTANCE);
+    assertThat(called).containsExactly("Visitor1");
+
+    called.clear();
+
+    // Transform 4: Always runs
+    ClassTransform transform4 = UtilKt.toClassTransform(
+      visitor -> new TestVisitor(visitor, name -> called.add("Visitor4"))
+    );
+
+    // Chain: Run, Don't run, Run
+    ClassTransform combined3 = transform1.plus(transform3).plus(transform4);
+
+    rewriteClass(data, combined3, NopClassLocator.INSTANCE);
+    assertThat(called).containsExactly("Visitor1", "Visitor4");
   }
 
   /**

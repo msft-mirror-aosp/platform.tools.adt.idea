@@ -1,3 +1,4 @@
+// This file should not be edited manually! See go/template-diff-tests
 package template.test.`in`
 
 import android.content.Context
@@ -48,11 +49,8 @@ class AdMobFragment : Fragment() {
         // Create the text view to show the level number.
         levelTextView = binding.level
         level = START_LEVEL
-    }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        val appContext = activity?.applicationContext ?: return
+        val appContext = context?.applicationContext ?: return
 
         nextLevelButton.let {
             it.isEnabled = false

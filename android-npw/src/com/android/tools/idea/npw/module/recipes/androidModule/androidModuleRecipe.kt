@@ -33,10 +33,10 @@ import com.android.tools.idea.wizard.template.has
 fun RecipeExecutor.generateAndroidModule(
   data: ModuleTemplateData,
   appTitle: String?, // may be null only for libraries
-  useKts: Boolean,
   enableCpp: Boolean = false,
   cppStandard: CppStandardType = CppStandardType.`Toolchain Default`,
-  useVersionCatalog: Boolean = true,
+  hasCustomRenderer: Boolean = false,
+  generateStandardFiles: Boolean = true,
 ) {
   val useAndroidX = data.projectTemplateData.androidXSupport
   val addBackupRules = data.projectTemplateData.isNewProject && data.apis.targetApi.apiLevel >= 31
@@ -45,7 +45,6 @@ fun RecipeExecutor.generateAndroidModule(
   generateCommonModule(
     data = data,
     appTitle = appTitle,
-    useKts = useKts,
     manifestXml =
       generateManifest(
         hasApplicationBlock = !data.isLibrary,
@@ -63,7 +62,8 @@ fun RecipeExecutor.generateAndroidModule(
     colorsXml = if (isMaterial3 && !data.isCompose) androidModuleColorsMaterial3() else androidModuleColors(),
     enableCpp = enableCpp,
     cppStandard = cppStandard,
-    useVersionCatalog = useVersionCatalog,
+    hasCustomRenderer = hasCustomRenderer,
+    generateStandardFiles = generateStandardFiles,
   )
   val projectData = data.projectTemplateData
   val formFactorNames = projectData.includedFormFactorNames

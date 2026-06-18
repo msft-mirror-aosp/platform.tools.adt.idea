@@ -19,7 +19,6 @@ import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.NoopContext
-import com.google.idea.blaze.qsync.QuerySyncTestUtils
 import com.google.idea.blaze.qsync.TestDataSyncRunner
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact
 import com.google.idea.blaze.qsync.deps.ArtifactDirectories
@@ -61,16 +60,34 @@ class AddDependencyAarsTest {
     intellij.registerApplicationService(ExperimentService::class.java, MockExperimentService())
   }
 
-  private val syncer = TestDataSyncRunner(NoopContext(), QuerySyncTestUtils.PATH_INFERRING_PREFIX_READER)
+  private val syncer = TestDataSyncRunner(NoopContext())
 
   private val aarPackageMetadata = AarPackageNameExtractor(null)
+
+  private fun createJavaArtifactInfo(label: Label, ideAar: BuildArtifact? = null): JavaArtifactInfo {
+    return JavaArtifactInfo(
+      label = label,
+      isExternalDependency = false,
+      isKotlinToolchain = false,
+      jars = emptySet(),
+      outputJars = emptySet(),
+      ideAar = ideAar,
+      genSrcs = emptySet(),
+      genAndroidRes = emptySet(),
+      protoSrcjars = emptySet(),
+      sources = emptySet(),
+      srcJars = emptySet(),
+      androidResourcesPackage = "",
+      kotlinCompilerFlags = emptyList(),
+    )
+  }
 
   @Test
   @Throws(Exception::class)
   fun no_deps_built() {
     val original = syncer.sync(TestData.ANDROID_LIB_QUERY)
 
-    val addAars = AddDependencyAars(original.queryData.projectDefinition(), aarPackageMetadata)
+    val addAars = AddDependencyAars(original.projectDefinition, aarPackageMetadata)
 
     val update = ProjectProtoUpdate(original.project)
 
@@ -87,7 +104,7 @@ class AddDependencyAarsTest {
   fun dep_aar_added() {
     val original = syncer.sync(TestData.ANDROID_LIB_QUERY)
 
-    val addAars = AddDependencyAars(original.queryData.projectDefinition(), aarPackageMetadata)
+    val addAars = AddDependencyAars(original.projectDefinition, aarPackageMetadata)
 
     val update = ProjectProtoUpdate(original.project)
 
@@ -95,13 +112,12 @@ class AddDependencyAarsTest {
       update,
       ArtifactTracker.State.forTargets(
         TargetBuildInfo.forJavaTarget(
-          JavaArtifactInfo.empty(Label.of("//path/to:dep"))
-            .toBuilder()
-            .setIdeAar(
-              BuildArtifact.create("aardigest", Path.of("path/to/dep.aar"), Label.of("//path/to:dep"))
-                .withMetadata(AarResPackage("com.google.idea.blaze.qsync.testdata.android"))
-            )
-            .build(),
+          createJavaArtifactInfo(
+            label = Label.of("//path/to:dep"),
+            ideAar =
+              BuildArtifact("aardigest", Path.of("path/to/dep.aar"), Label.of("//path/to:dep"))
+                .withMetadata(AarResPackage("com.google.idea.blaze.qsync.testdata.android")),
+          ),
           DependencyBuildContext.create("", buildTimestamp),
         )
       ),
@@ -151,7 +167,7 @@ class AddDependencyAarsTest {
   fun dep_aar_no_package_name_added() {
     val original = syncer.sync(TestData.ANDROID_LIB_QUERY)
 
-    val addAars = AddDependencyAars(original.queryData.projectDefinition(), aarPackageMetadata)
+    val addAars = AddDependencyAars(original.projectDefinition, aarPackageMetadata)
 
     val update = ProjectProtoUpdate(original.project)
 
@@ -160,10 +176,10 @@ class AddDependencyAarsTest {
       ArtifactTracker.State.forJavaArtifacts(
         DependencyBuildContext.create("", buildTimestamp),
         ImmutableList.of(
-          JavaArtifactInfo.empty(Label.of("//path/to:dep"))
-            .toBuilder()
-            .setIdeAar(BuildArtifact.create("aardigest", Path.of("path/to/dep.aar"), Label.of("//path/to:dep")))
-            .build()
+          createJavaArtifactInfo(
+            label = Label.of("//path/to:dep"),
+            ideAar = BuildArtifact("aardigest", Path.of("path/to/dep.aar"), Label.of("//path/to:dep")),
+          )
         ),
       ),
       NoopContext(),

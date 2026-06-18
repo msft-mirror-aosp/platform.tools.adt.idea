@@ -8,13 +8,13 @@ aswb_test(
     size = "small",
     srcs = ["PackageStatementParserTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/java",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
         "//tools/adt/idea/aswb/shared/javatests/com/google/idea/blaze/common:test_utils",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -23,6 +23,7 @@ aswb_test(
     size = "small",
     srcs = ["AddCompiledJavaDepsTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/java",
@@ -35,7 +36,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -46,6 +46,7 @@ aswb_test(
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
@@ -62,7 +63,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@maven//:org.mockito.mockito-core",
     ],
 )
@@ -74,7 +74,9 @@ aswb_test(
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/java",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
@@ -88,7 +90,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -99,6 +100,7 @@ aswb_test(
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
@@ -115,8 +117,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@maven//:org.mockito.mockito-core",
     ],
 )
@@ -128,6 +128,7 @@ aswb_test(
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
@@ -144,8 +145,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@maven//:org.mockito.mockito-core",
     ],
 )
@@ -157,6 +156,7 @@ aswb_test(
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/deps",
@@ -173,8 +173,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@maven//:org.mockito.mockito-core",
     ],
 )

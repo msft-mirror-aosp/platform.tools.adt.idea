@@ -33,10 +33,35 @@
     <module name="intellij.platform.jewel.markdown.ideLafBridgeStyling"/>
     <module name="intellij.platform.jewel.ui"/>
     <module name="intellij.platform.jewel.markdown.extensions.gfmTables"/>
+    <module name="intellij.platform.jewel.markdown.extensions.gfmAlerts"/>
     <module name="intellij.libraries.skiko"/>
     <module name="intellij.libraries.compose.foundation.desktop"/>
     <module name="intellij.libraries.compose.runtime.desktop"/>
-
+    <module name="intellij.platform.uast"/>
+    <module name="intellij.java.analysis.impl"/>
+    <module name="intellij.gradle.java.groovy"/>
+    <module name="intellij.java.execution.impl"/>
+    <module name="intellij.libraries.maven.resolver.provider"/>
+    <module name="intellij.java.indexing"/>
+    <module name="intellij.xml.emmet"/>
+    <module name="intellij.java.debugger"/>
+    <module name="intellij.java"/>
+    <module name="intellij.java.debugger.impl.backend"/>
+    <module name="intellij.platform.debugger.impl.frontend"/>
+    <module name="intellij.platform.diagnostic.freezes"/>
+    <module name="intellij.platform.diagnostic.freezeAnalyzer"/>
+    <module name="intellij.java.debugger.impl.frontend"/>
+    <module name="intellij.platform.images.xdebugger"/>
+    <module name="intellij.java.impl.refactorings"/>
+    <module name="intellij.java.uast"/>
+    <module name="intellij.java.ui"/>
+    <module name="intellij.java.execution"/>
+    <module name="intellij.java.analysis"/>
+    <module name="intellij.java.compiler"/>
+    <module name="intellij.platform.debugger.impl.backend"/>
+    <module name="intellij.java.debugger.impl"/>
+    <module name="intellij.java.compiler.impl"/>
+    <module name="intellij.java.impl"/>
   </dependencies>
 
   <!-- This is temporary mechanism to mark certain plugins as K2-compatible. See IntelliJ commit cf213fb139 for details. -->
@@ -64,6 +89,8 @@
   <xi:include href="/META-INF/apkanalyzer-apk.xml" />
   <xi:include href="/META-INF/app-insights-api.xml"/>
   <xi:include href="/META-INF/app-insights.xml"/>
+  <xi:include href="/META-INF/cli-server.xml"/>
+  <xi:include href="/META-INF/cli-command-handler.xml"/>
   <xi:include href="/META-INF/databinding.xml"/>
   <xi:include href="/META-INF/databinding-gradle.xml"/>
   <xi:include href="/META-INF/mlkit.xml"/>
@@ -74,6 +101,7 @@
   <xi:include href="/META-INF/pipeline.xml"/>
   <xi:include href="/META-INF/play-policy.xml"/>
   <xi:include href="/META-INF/play-vitals.xml"/>
+  <xi:include href="/META-INF/play-findings.xml"/>
   <xi:include href="/META-INF/profilers.xml"/>
   <xi:include href="/META-INF/profilers-gradle.xml"/>
   <xi:include href="/META-INF/project-system-plugin.xml"/>
@@ -113,6 +141,7 @@
   <xi:include href="/META-INF/android-execution-common.xml"/>
   <xi:include href="/META-INF/android-deploy.xml"/>
   <xi:include href="/META-INF/google-login.xml"/>
+  <xi:include href="/META-INF/login-onboarding.xml"/>
   <xi:include href="/META-INF/samples-browser.xml"/>
   <xi:include href="/META-INF/native-symbolizer.xml"/>
   <xi:include href="/META-INF/native-symbolizer-gradle.xml"/>
@@ -125,4 +154,6 @@
   <xi:include href="/META-INF/android-declarative-focus.xml" />
   <xi:include href="/META-INF/marketing.xml" />
   <xi:include href="/META-INF/tracer.xml" />
+  <xi:include href="/META-INF/app-publishing.xml" />
+  <xi:include href="/META-INF/play-publishing.xml" />
 </idea-plugin>

@@ -16,6 +16,7 @@
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.kotlin" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.sync" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.tests" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />

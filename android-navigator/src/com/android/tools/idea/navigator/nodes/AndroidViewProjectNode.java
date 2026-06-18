@@ -57,12 +57,6 @@ public class AndroidViewProjectNode extends ProjectViewNode<Project> {
   public Collection<? extends AbstractTreeNode<?>> getChildren() {
     assert myProject != null;
     AndroidProjectSystem projectSystem = ProjectSystemService.getInstance(myProject).getProjectSystem();
-    // Android project view cannot build its usual structure without build models available and instead builds a special fallback
-    // view when they are no available.  Doing so too soon results in re-loadig the tree view twice while opening a project and losing
-    // the state of the tree persisted when closing the project last time.  Therefore we delay responding to getChildren() request
-    // until models are available or an attempt to sync has failed.  Since this code run in a read action we respect any attempts to
-    // begin a write action while waiting.
-    AndroidViewProjectNodeUtil.maybeWaitForAnySyncOutcomeInterruptibly(projectSystem.getSyncManager());
     List<AbstractTreeNode<?>> children =
       ModuleNodeUtils.createChildModuleNodes(myProject, projectSystem.getSubmodules(), settings);
 
@@ -76,6 +70,9 @@ public class AndroidViewProjectNode extends ProjectViewNode<Project> {
         children.add(new PsiDirectoryNode(myProject, folder, settings));
       }
     }
+
+    MigrationArtifactsGroupNode migrationArtifactsGroupNode = MigrationArtifactsGroupNode.createIfAvailable(myProject, settings);
+    if (migrationArtifactsGroupNode != null) children.add(migrationArtifactsGroupNode);
 
     if (getProjectSystem(myProject).getBuildConfigurationSourceProvider() != null) {
       children.add(new AndroidBuildScriptsGroupNode(myProject, settings));

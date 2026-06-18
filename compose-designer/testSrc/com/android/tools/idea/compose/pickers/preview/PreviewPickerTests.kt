@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.pickers.preview
 
 import com.android.sdklib.devices.Device
+import com.android.tools.adtui.model.stdui.EditingErrorCategory
 import com.android.tools.idea.compose.ComposeProjectRule
 import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.pickers.base.model.PsiPropertiesModel
@@ -41,6 +42,8 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
+import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
@@ -124,7 +127,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun `updating model updates the psi correctly`() = runBlocking {
     Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
@@ -160,7 +162,6 @@ class PreviewPickerTests {
     assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotation)
   }
 
-  @RunsInEdt
   @Test
   fun `supported parameters displayed correctly`() = runBlocking {
     @Language("kotlin")
@@ -181,14 +182,14 @@ class PreviewPickerTests {
     assertEquals("1.2", runReadAction { model.properties["", "fontScale"].value })
     assertEquals("0xFFFF0000", runReadAction { model.properties["", "backgroundColor"].value })
 
-    model.properties["", "fontScale"].value = "0.5"
-    model.properties["", "backgroundColor"].value = "0x00FF00"
-
+    runModificationInEdtWaitAndDispatch {
+      model.properties["", "fontScale"].value = "0.5"
+      model.properties["", "backgroundColor"].value = "0x00FF00"
+    }
     assertEquals("0.5", runReadAction { model.properties["", "fontScale"].value })
     assertEquals("0x0000FF00", runReadAction { model.properties["", "backgroundColor"].value })
   }
 
-  @RunsInEdt
   @Test
   fun `preview default values`() = runBlocking {
     @Language("kotlin")
@@ -234,7 +235,6 @@ class PreviewPickerTests {
     assertEquals(null, model.properties["", "backgroundColor"].defaultValue)
   }
 
-  @RunsInEdt
   @Test
   fun fontScaleEditing() = runBlocking {
     @Language("kotlin")
@@ -256,7 +256,9 @@ class PreviewPickerTests {
     fun checkFontScaleChange(newValue: String, expectedPropertyValue: String) {
       val expectedTextValue = expectedPropertyValue + 'f'
 
-      model.properties["", "fontScale"].value = newValue
+      // When writing into model.properties is an operation that triggers [PsiCallParameterPropertyItem.runModification], this operation
+      // runs a WriteAction that runs in EDT
+      runModificationInEdtWaitAndDispatch { model.properties["", "fontScale"].value = newValue }
       assertEquals(expectedPropertyValue, model.properties["", "fontScale"].value)
       assertEquals("@Preview(fontScale = $expectedTextValue)", preview.annotationText())
     }
@@ -271,7 +273,35 @@ class PreviewPickerTests {
     checkFontScaleChange("8.f", "8.0")
   }
 
-  @RunsInEdt
+  @Test
+  fun fontScaleValidation() = runBlocking {
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview
+      fun PreviewNoParameters() {
+      }
+      """
+        .trimIndent()
+
+    val model = getFirstModel(fileContent)
+    val fontScaleProperty = model.properties["", "fontScale"]
+
+    fun assertValidationError(value: String) {
+      val result = fontScaleProperty.editingSupport.validation(value)
+      assertEquals(EditingErrorCategory.ERROR, result.first)
+    }
+
+    assertValidationError("123456789012345678901234567890")
+    assertValidationError("11")
+    assertValidationError("Infinity")
+    assertValidationError("NaN")
+  }
+
   @Test
   fun testUiModeImports() {
     runBlocking<Unit> {
@@ -295,8 +325,7 @@ class PreviewPickerTests {
       val nightModeOption = UiModeWithNightMaskEnumValue.NormalNightEnumValue
       val notNightOption = UiModeWithNightMaskEnumValue.NormalNotNightEnumValue
 
-      notNightOption.select(uiModeProperty) {}
-
+      runModificationInEdtWaitAndDispatch { notNightOption.select(uiModeProperty, {}) }
       assertEquals(
         """
         import android.content.res.Configuration
@@ -312,7 +341,7 @@ class PreviewPickerTests {
         fixture.file.text,
       )
 
-      nightModeOption.select(uiModeProperty) {}
+      runModificationInEdtWaitAndDispatch { nightModeOption.select(uiModeProperty, {}) }
       assertEquals(
         """
         import android.content.res.Configuration
@@ -330,10 +359,9 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun testWallpaperImports() {
-    runBlocking<Unit> {
+    runBlocking {
       @Language("kotlin")
       val fileContent =
         """
@@ -348,9 +376,7 @@ class PreviewPickerTests {
           .trimIndent()
 
       val model = getFirstModel(fileContent)
-
-      Wallpaper.BLUE.select(model.properties["", "wallpaper"]) {}
-
+      runModificationInEdtWaitAndDispatch { Wallpaper.BLUE.select(model.properties["", "wallpaper"], {}) }
       assertEquals(
         """
         import androidx.compose.runtime.Composable
@@ -368,7 +394,6 @@ class PreviewPickerTests {
     }
   }
 
-  @RunsInEdt
   @Test
   fun showBackgroundEditing() = runBlocking {
     @Language("kotlin")
@@ -387,14 +412,18 @@ class PreviewPickerTests {
     val model = getFirstModel(fileContent)
     val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
 
+    // When the parameter is not present, BooleanPsiCallParameter will assign "false" instead of "null"
+    assertEquals("false", model.properties["", "showBackground"].value)
+    assertEquals("false", model.properties["", "showSystemUi"].value)
+
     fun checkShowBackgroundChange(newValue: String?, expectedPropertyValue: String?) {
-      model.properties["", "showBackground"].value = newValue
+      runModificationInEdtWaitAndDispatch { model.properties["", "showBackground"].value = newValue }
       assertEquals(expectedPropertyValue, model.properties["", "showBackground"].value)
       assertEquals("@Preview(showBackground = $expectedPropertyValue)", preview.annotationText())
     }
 
     fun checkShowBackgroundEmptyChange(newValue: String?, expectedPropertyValue: String?) {
-      model.properties["", "showBackground"].value = newValue
+      runModificationInEdtWaitAndDispatch { model.properties["", "showBackground"].value = newValue }
       assertEquals(expectedPropertyValue, model.properties["", "showBackground"].value)
       assertEquals("@Preview", preview.annotationText())
     }
@@ -433,29 +462,30 @@ class PreviewPickerTests {
     assertEquals("showSystemUi", properties.next().name)
   }
 
-  @RunsInEdt
   @Test
   fun testDevicePropertiesTracked() {
     val (testTracker, model) = simpleTrackingTestSetup()
 
-    model.properties["", "Device"].value = "hello world"
+    runModificationInEdtWaitAndDispatch {
+      model.properties["", "Device"].value = "hello world"
 
-    model.properties["", "Orientation"].value = "portrait"
-    model.properties["", "Orientation"].value = "landscape"
-    model.properties["", "Orientation"].value = "bad input"
+      model.properties["", "Orientation"].value = "portrait"
+      model.properties["", "Orientation"].value = "landscape"
+      model.properties["", "Orientation"].value = "bad input"
 
-    model.properties["", "Density"].value = "480" // XXHIGH
-    model.properties["", "Density"].value = "470" // Close to XXHIGH
-    model.properties["", "Density"].value = "320" // XHIGH
-    model.properties["", "Density"].value = "10000" // Extremely high (XXXHIGH is closest)
-    model.properties["", "Density"].value = "bad input"
+      model.properties["", "Density"].value = "480" // XXHIGH
+      model.properties["", "Density"].value = "470" // Close to XXHIGH
+      model.properties["", "Density"].value = "320" // XHIGH
+      model.properties["", "Density"].value = "10000" // Extremely high (XXXHIGH is closest)
+      model.properties["", "Density"].value = "bad input"
 
-    model.properties["", "DimensionUnit"].value = "dp"
-    model.properties["", "DimensionUnit"].value = "px"
-    model.properties["", "DimensionUnit"].value = "bad input"
+      model.properties["", "DimensionUnit"].value = "dp"
+      model.properties["", "DimensionUnit"].value = "px"
+      model.properties["", "DimensionUnit"].value = "bad input"
 
-    model.properties["", "Width"].value = "100"
-    model.properties["", "Height"].value = "200"
+      model.properties["", "Width"].value = "100"
+      model.properties["", "Height"].value = "200"
+    }
 
     assertEquals(14, testTracker.valuesRegistered.size)
     var index = 0
@@ -484,7 +514,6 @@ class PreviewPickerTests {
     assertEquals(PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[index])
   }
 
-  @RunsInEdt
   @Test
   fun testTrackedValuesOfUiModeOptions() {
     val (testTracker, model) = simpleTrackingTestSetup()
@@ -496,10 +525,11 @@ class PreviewPickerTests {
 
     // The Night/NotNight is not explicitly set
     val nightModeUndefined = UiModeWithNightMaskEnumValue.UndefinedEnumValue
-
-    nightModeOption.select(uiModeProperty) {}
-    notNightOption.select(uiModeProperty) {}
-    nightModeUndefined.select(uiModeProperty) {}
+    runModificationInEdtWaitAndDispatch {
+      nightModeOption.select(uiModeProperty, {})
+      notNightOption.select(uiModeProperty, {})
+      nightModeUndefined.select(uiModeProperty, {})
+    }
 
     // Only 2 registered as undefined will not be set, instead property will be removed
     assertEquals(2, testTracker.valuesRegistered.size)
@@ -507,7 +537,6 @@ class PreviewPickerTests {
     assertEquals(PreviewPickerValue.UI_MODE_NOT_NIGHT, testTracker.valuesRegistered[1])
   }
 
-  @RunsInEdt
   @Test
   fun testDeviceTrackedPerModification() {
     // We need the sdk to be able to figure out devices set by ID, including the initial/default
@@ -516,16 +545,17 @@ class PreviewPickerTests {
     val (testTracker, model) = simpleTrackingTestSetup()
 
     // Modifications under default device
-    model.properties["", "name"].value = "my name 1"
-    model.properties["", "Device"].value = "id:pixel"
-
+    runModificationInEdtWaitAndDispatch {
+      model.properties["", "name"].value = "my name 1"
+      model.properties["", "Device"].value = "id:pixel"
+    }
     // Modifications under pixel device
-    model.properties["", "name"].value = "my name 2"
-    model.properties["", "Device"].value = ReferencePhoneConfig.deviceSpec()
-
+    runModificationInEdtWaitAndDispatch {
+      model.properties["", "name"].value = "my name 2"
+      model.properties["", "Device"].value = ReferencePhoneConfig.deviceSpec()
+    }
     // Modifications under Reference Phone device
-    model.properties["", "name"].value = "my name 3"
-
+    runModificationInEdtWaitAndDispatch { model.properties["", "name"].value = "my name 3" }
     assertEquals(5, testTracker.devicesRegistered.size)
     assertEquals("pixel_5", testTracker.devicesRegistered[0]!!.id) // Default device
     assertEquals("pixel_5", testTracker.devicesRegistered[1]!!.id)
@@ -664,21 +694,26 @@ class PreviewPickerTests {
         }
       }
     )
-    model.properties["", "name"].value = "NoHello"
-    // Try to override our previous write. Only the last one should persist
-    model.properties["", "name"].value = "Hello"
 
-    // Clear values
-    model.properties["", "group"].value = null
-    model.properties["", "widthDp"].value = "    " // Blank value is the same as null value
-    model.properties["", "Device"].value = null
+    runModificationInEdtWaitAndDispatch {
+      model.properties["", "name"].value = "NoHello"
+      // Try to override our previous write. Only the last one should persist
+      model.properties["", "name"].value = "Hello"
+
+      // Clear values
+      model.properties["", "group"].value = null
+      model.properties["", "widthDp"].value = "    " // Blank value is the same as null value
+      model.properties["", "Device"].value = null
+    }
     assertEquals("@Preview(name = \"Hello\")", noParametersPreview.annotationText())
 
-    model.properties["", "name"].value = null
-    try {
-      model.properties["", "notexists"].value = "3"
-      fail("Nonexistent property should throw NoSuchElementException")
-    } catch (expected: NoSuchElementException) {}
+    runModificationInEdtWaitAndDispatch {
+      model.properties["", "name"].value = null
+      try {
+        model.properties["", "notexists"].value = "3"
+        fail("Nonexistent property should throw NoSuchElementException")
+      } catch (expected: NoSuchElementException) {}
+    }
 
     // Verify final values on model
     assertNull(model.properties["", "name"].value)
@@ -762,6 +797,21 @@ class PreviewPickerTests {
     ConfigurationManager.getOrCreateInstance(module)
     return ReadAction.compute<PsiPropertiesModel, Throwable> {
       PreviewPickerPropertiesModel.fromPreviewElement(project, module, preview.previewElementDefinition, tracker)
+    }
+  }
+
+  /**
+   * Executes the given [modification] on the EDT and waits for all events to be dispatched.
+   *
+   * This is necessary because `PsiCallParameterPropertyItem.runModification` uses `invokeLater` to schedule a `WriteAction`. By dispatching
+   * all events, we ensure that the modification is applied before the test continues.
+   *
+   * When doing a writing operation in this test you should wrap such change into this function before an assertion or the test will fail.
+   */
+  private fun runModificationInEdtWaitAndDispatch(modification: () -> Unit) {
+    runInEdtAndWait {
+      modification()
+      dispatchAllEventsInIdeEventQueue()
     }
   }
 }

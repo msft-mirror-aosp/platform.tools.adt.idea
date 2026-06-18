@@ -439,6 +439,7 @@ public class CpuProfilingConfigurationsDialog extends SingleConfigurableEditor {
 
       public ProfilingConfigurationsListCellRenderer() {
         myLabel = new JLabel();
+        myLabel.putClientProperty("html.disable", Boolean.TRUE);
         Border marginLeft = new EmptyBorder(0, 10, 0, 0);
         myLabel.setBorder(marginLeft);
       }
@@ -483,8 +484,14 @@ public class CpuProfilingConfigurationsDialog extends SingleConfigurableEditor {
         myPopup = new CommonPopupMenu();
         myPopup.add(buildPopupMenuItem(CpuProfilerConfig.Technology.SAMPLED_NATIVE.getName(), SimpleperfConfiguration::new));
         myPopup.add(buildPopupMenuItemPerfetto(CpuProfilerConfig.Technology.SYSTEM_TRACE.getName()));
-        myPopup.add(buildPopupMenuItem(CpuProfilerConfig.Technology.INSTRUMENTED_JAVA.getName(), ArtInstrumentedConfiguration::new));
-        myPopup.add(buildPopupMenuItem(CpuProfilerConfig.Technology.SAMPLED_JAVA.getName(), ArtSampledConfiguration::new));
+        myPopup.add(buildPopupMenuItem(
+            CpuProfilerConfig.Technology.INSTRUMENTED_JAVA.getName(),
+            name -> ArtInstrumentedConfiguration.create(name, StudioFlags.PROFILER_METHOD_TRACE_IN_EDITOR.get())
+        ));
+        myPopup.add(buildPopupMenuItem(
+            CpuProfilerConfig.Technology.SAMPLED_JAVA.getName(),
+            name -> ArtSampledConfiguration.create(name, StudioFlags.PROFILER_METHOD_TRACE_IN_EDITOR.get())
+        ));
       }
 
       private CommonMenuItem buildPopupMenuItemPerfetto(String name) {

@@ -324,7 +324,10 @@ internal constructor(
       ResourceType.FRACTION,
       ResourceType.STYLE_ITEM, // Hack for default values from LayoutLib
       ResourceType.INTEGER,
-      ResourceType.STRING -> if (resValue.value != null) return resValue.value
+      ResourceType.STRING ->
+        (resValue.rawXmlValue ?: resValue.value)?.let {
+          return it
+        }
       ResourceType.COLOR -> if (resValue.value?.startsWith("#") == true) return resValue.value
       else -> {}
     }

@@ -28,7 +28,6 @@ import com.android.adblib.tools.debugging.processinventory.installProcessInvento
 import com.android.adblib.tools.debugging.processinventory.installProcessInventoryJdwpProcessPropertiesCollectorFactory
 import com.android.adblib.tools.debugging.processinventory.server.ProcessInventoryServerConfiguration
 import com.android.ddmlib.AndroidDebugBridge
-import com.android.ddmlib.DdmPreferences
 import com.android.sdklib.deviceprovisioner.DeviceProvisioner
 import com.android.tools.idea.adb.AdbService
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
@@ -47,7 +46,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ProjectManagerListener
 import com.intellij.openapi.startup.StartupActivity
-import java.time.Duration
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -123,33 +121,25 @@ class AdbLibApplicationService : Disposable {
 
     /** A [AdbSession] customized to work in the Android plugin. */
     val session =
-      AdbSession.create(
-          host = host,
-          channelProvider = channelProvider,
-          // Double the preferred timeout for remote devices that need more time to execute
-          // commands.
-          // TODO (b/390732614) Set higher timeout only for remote devices.
-          connectionTimeout = Duration.ofMillis(DdmPreferences.getTimeOut().toLong() * 2),
-        )
-        .also { session ->
-          // Note: We need to install a ProcessInventoryServerJdwpPropertiesCollectorFactory
-          // instance
-          // on the *application* AdbSession only (i.e. this one), because all JdwpProcess instances
-          // are delegated to this AdbSession.
-          val inventoryServerEnabled = { StudioFlags.ADBLIB_USE_PROCESS_INVENTORY_SERVER.get() }
+      AdbSession.create(host = host, channelProvider = channelProvider).also { session ->
+        // Note: We need to install a ProcessInventoryServerJdwpPropertiesCollectorFactory
+        // instance
+        // on the *application* AdbSession only (i.e. this one), because all JdwpProcess instances
+        // are delegated to this AdbSession.
+        val inventoryServerEnabled = { StudioFlags.ADBLIB_USE_PROCESS_INVENTORY_SERVER.get() }
 
-          // Store the process inventory server in the session cache so it is closed when the
-          // session is closed.
-          val inventoryServerConnection =
-            session.cache.getOrPut(processInventoryServerConnectionKey) {
-              val inventoryServerConfig = StudioProcessInventoryServerConfiguration()
-              ProcessInventoryServerConnection.create(session, inventoryServerConfig)
-            }
+        // Store the process inventory server in the session cache so it is closed when the
+        // session is closed.
+        val inventoryServerConnection =
+          session.cache.getOrPut(processInventoryServerConnectionKey) {
+            val inventoryServerConfig = StudioProcessInventoryServerConfiguration()
+            ProcessInventoryServerConnection.create(session, inventoryServerConfig)
+          }
 
-          session.installProcessInventoryJdwpProcessPropertiesCollectorFactory(inventoryServerConnection, inventoryServerEnabled)
+        session.installProcessInventoryJdwpProcessPropertiesCollectorFactory(inventoryServerConnection, inventoryServerEnabled)
 
-          session.installProcessInventoryJdwpProcessCommandDispatcherFactory(inventoryServerConnection, inventoryServerEnabled)
-        }
+        session.installProcessInventoryJdwpProcessCommandDispatcherFactory(inventoryServerConnection, inventoryServerEnabled)
+      }
 
     init {
       val androidDebugBridge = AdbLibAndroidDebugBridge(session, adbServerController, adbServerConfiguration)
@@ -161,7 +151,7 @@ class AdbLibApplicationService : Disposable {
       adbServerController.close()
     }
 
-    suspend fun closeAndJoin() {
+    suspend fun closeAndJoinForTests() {
       try {
         adbServerController.stop()
       } catch (_: CancellationException) {
@@ -170,6 +160,7 @@ class AdbLibApplicationService : Disposable {
       }
       dispose()
       session.scope.coroutineContext[Job]?.join()
+      AndroidDebugBridge.resetForTests()
     }
 
     /** An [AdbServerChannelProvider] that ensures the ADB server is running before creating an [AdbChannel]. */
@@ -265,7 +256,7 @@ class AdbLibApplicationService : Disposable {
     fun reinitializeForTests() {
       if (isInstanceCreated && ApplicationManager.getApplication().isUnitTestMode) {
         // Shutdown and cleanup
-        runBlocking { instance.configuration.closeAndJoin() }
+        runBlocking { instance.configuration.closeAndJoinForTests() }
 
         // Create a new configuration
         instance.configuration = Configuration(instance.host, instance.adbFileLocationTracker)
@@ -276,7 +267,7 @@ class AdbLibApplicationService : Disposable {
     fun disposeForTests() {
       if (isInstanceCreated && ApplicationManager.getApplication().isUnitTestMode) {
         // Shutdown and cleanup
-        runBlocking { instance.configuration.closeAndJoin() }
+        runBlocking { instance.configuration.closeAndJoinForTests() }
       }
     }
 

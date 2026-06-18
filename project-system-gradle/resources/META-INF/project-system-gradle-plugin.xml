@@ -14,7 +14,6 @@
   ~ limitations under the License.
   -->
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="/META-INF/project-system-gradle-plugin-k2.xml" includeUnless="idea.kotlin.plugin.use.k1"/>
   <depends>com.intellij.gradle</depends>
   <depends>org.jetbrains.plugins.gradle</depends>
   <depends>org.jetbrains.kotlin</depends>
@@ -201,6 +200,7 @@
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <mppProjectResolve implementation="org.jetbrains.kotlin.android.extensions.KotlinMppAndroidProjectResolverExtension"/>
+    <psiReferenceProvider implementation="com.android.tools.idea.gradle.catalog.KtsAndroidReferenceProviderContributor"/>
   </extensions>
   <extensions defaultExtensionNs="com.android.tools.idea.editors.manifest">
     <manifestPanelToken implementation="com.android.tools.idea.editors.manifest.ManifestPanelGradleToken"/>
@@ -246,7 +246,7 @@
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
               topic="com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener"/>
     <listener class="com.android.tools.idea.gradle.project.sync.setup.post.SetUpRunConfigurationsSyncListener"
-              topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
+              topic="com.android.tools.idea.projectsystem.ProjectSystemSyncManager$AndroidModelsUpdatedListener"/>
     <listener class="com.android.tools.idea.gradle.project.sync.setup.post.ProjectStructureUsageTrackerSyncListener"
               topic="com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot"/>
     <listener class="com.android.tools.idea.gradle.project.sync.setup.post.RecordAgpVersionSyncListener"
@@ -312,6 +312,7 @@
     <importCustomizer implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleImportCustomizer"/>
     <settingsControlProvider implementation="com.android.tools.idea.gradle.project.AndroidStudioGradleSettingsControlProvider"/>
     <executionHelperExtension implementation="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$BuildPhaseListenerExecutionHelperExtension"/>
+    <executionHelperExtension implementation="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$AndroidStudioGradleSyncHelperExtension"/>
     <executionHelperExtension implementation="com.android.tools.idea.gradle.project.sync.AgpVersionExecutionHelperExtension"/>
   </extensions>
   <extensions defaultExtensionNs="com.android.gradle.sync">
@@ -328,6 +329,7 @@
         implementation="com.android.tools.idea.projectsystem.gradle.LibraryDependenciesTroubleInfoCollectorGradleToken"/>
     <projectsystem.dynamicAppFeatureOnFeatureToken implementation="com.android.tools.idea.gradle.util.DynamicAppFeatureOnFeatureGradleToken"/>
     <projectsystem.findDependenciesWithResourcesToken implementation="com.android.tools.idea.projectsystem.gradle.FindDependenciesWithResourcesGradleToken"/>
+    <projectsystem.testResourceResolutionToken implementation="com.android.tools.idea.projectsystem.gradle.GradleTestResourceResolutionToken"/>
     <projectsystem.androidIconProviderProjectToken implementation="com.android.tools.idea.projectsystem.gradle.AndroidIconProviderProjectGradleToken"/>
   </extensions>
   <extensions defaultExtensionNs="org.jetbrains.android.actions">

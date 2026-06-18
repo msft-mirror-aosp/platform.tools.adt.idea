@@ -9,7 +9,6 @@
     <orderEntry type="module" module-name="intellij.android.nav.editor" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.nav.editor.gradle" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.compose-designer" scope="RUNTIME" />
-    <orderEntry type="module" module-name="intellij.android.designer.customview" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.layoutlib" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.glance-designer" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.wear-designer" scope="RUNTIME" />

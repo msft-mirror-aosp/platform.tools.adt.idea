@@ -40,9 +40,6 @@
     <!-- Disable JetBrains feedback surveys (b/402895189). Tested by AndroidStudioJetBrainsSurveysTest. -->
     <registryKey overrides="true" key="platform.feedback" defaultValue="false" description="Enables JetBrains feedback surveys"/>
 
-    <!-- This registry flag changed upstream in 2025.1 causing the platform to think JCef is supported in Android Studio. b/416777166 -->
-    <registryKey key="ide.browser.jcef.out-of-process.enabled" overrides="true" defaultValue="false" description="Enable JCEF is a separate process"/>
-
     <welcomeScreen implementation="com.android.tools.idea.welcome.wizard.AndroidStudioWelcomeScreenProvider"/>
 
     <codeStyleSettingsProvider implementation="org.jetbrains.android.formatter.AndroidStudioCodeStyleSettingsProvider" order="last"/>
@@ -75,6 +72,9 @@
     <listener
         class="com.android.tools.idea.diagnostics.LastActionTracker$MyActionListener"
         topic="com.intellij.openapi.actionSystem.ex.AnActionListener" />
+    <listener
+        class="com.android.tools.idea.diagnostics.AndroidStudioSystemHealthMonitor$MyAnActionListener"
+        topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
     <listener
         class="com.android.tools.idea.startup.AndroidStudioAnalyticsImpl$MyDataSharingSettingsChangeListener"
         topic="com.intellij.ide.gdpr.DataSharingSettingsChangeListener"/>
@@ -211,11 +211,6 @@
 
     <welcomeFrameProvider implementation="com.android.tools.idea.welcome.wizard.FirstRunWizardFrameProvider" order="FIRST"/>
 
-    <localInspection groupPath="Java" language="JAVA" suppressId="deprecation" shortName="Deprecation" displayName="Deprecated API usage"
-                     groupKey="group.names.code.maturity.issues" groupBundle="messages.InspectionsBundle"
-                     enabledByDefault="true" level="WARNING"
-                     implementationClass="org.jetbrains.android.inspections.AndroidDeprecationInspection"/>
-
     <applicationConfigurable parentId="preferences.general"
                              displayName="Memory Settings"
                              provider="com.android.tools.idea.memorysettings.MemorySettingsConfigurableProvider"
@@ -224,6 +219,7 @@
     <statistic.eventLog.eventLoggerProvider implementation="com.android.tools.idea.stats.AndroidStudioStatisticsEventLoggerProvider"/>
 
     <postStartupActivity implementation="com.android.tools.idea.startup.ProjectMetricsInitializer$MyStartupActivity"/>
+    <postStartupActivity implementation="com.android.tools.idea.stats.AndroidStudioProjectStateCollectorsBridge"/>
     <postStartupActivity implementation="com.android.tools.idea.diagnostics.commit.GitCommitTrackerActivity"/>
     <applicationService serviceInterface="com.intellij.ide.browsers.BrowserLauncher"
                         serviceImplementation="com.android.tools.idea.browser.AndroidStudioBrowserLauncher"

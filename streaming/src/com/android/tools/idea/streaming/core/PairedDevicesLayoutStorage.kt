@@ -125,20 +125,20 @@ interface PairLayout {
   /** The ratio of the space occupied by the first device to the total available space. The value is between 0.0 and 1.0. */
   val splitRatio: Float
 
-  /** The layout with the devices swapped. */
-  val swapped: PairLayout
+  val oppositeSide: Int
     get() {
-      val oppositeSide =
-        when (side) {
-          TOP -> BOTTOM
-          LEFT -> RIGHT
-          BOTTOM -> TOP
-          RIGHT -> LEFT
-          FIRST_ONLY -> SECOND_ONLY
-          else -> FIRST_ONLY
-        }
-      return PairedDevicesLayoutStorage.PairLayoutImpl(oppositeSide, 1 - splitRatio)
+      return when (side) {
+        TOP -> BOTTOM
+        LEFT -> RIGHT
+        BOTTOM -> TOP
+        RIGHT -> LEFT
+        FIRST_ONLY -> SECOND_ONLY
+        else -> FIRST_ONLY
+      }
     }
+
+  /** The layout with size replaced by its opposite. */
+  fun withOppositeSide(): PairLayout = PairedDevicesLayoutStorage.PairLayoutImpl(oppositeSide, splitRatio)
 
   companion object {
     /** The first device occupies the entire available space. The second device is not visible. */

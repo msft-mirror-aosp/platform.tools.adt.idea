@@ -18,10 +18,11 @@ package com.android.tools.idea.npw.module.recipes.benchmarkModule
 
 import com.android.ide.common.repository.AgpVersion
 import com.android.sdklib.AndroidMajorVersion
-import com.android.tools.idea.npw.module.recipes.androidModule.gradleToKtsIfKts
+import com.android.tools.idea.npw.module.recipes.androidModule.gradleToKtsOrDcl
 import com.android.tools.idea.npw.module.recipes.emptyPluginsBlock
 import com.android.tools.idea.npw.module.recipes.minSdk
 import com.android.tools.idea.npw.module.recipes.targetSdk
+import com.android.tools.idea.wizard.template.DslLanguage
 import com.android.tools.idea.wizard.template.renderIf
 
 fun buildGradle(
@@ -29,7 +30,7 @@ fun buildGradle(
   minApi: AndroidMajorVersion,
   targetApi: AndroidMajorVersion,
   agpVersion: AgpVersion,
-  useGradleKts: Boolean,
+  dslLanguage: DslLanguage,
 ): String {
   val isNewAGP = agpVersion.compareIgnoringQualifiers("3.6.0") >= 0
   // In AGP 8.1, `targetSdk` for benchmark modules was deprecated in `defaultConfig` and moved to
@@ -74,7 +75,7 @@ ${renderIf(!isAgpPre81) { """
             // Since debuggable can"t be modified by gradle for library modules,
             // it must be done in a manifest - see src/androidTest/AndroidManifest.xml
             minifyEnabled true
-            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "benchmark-proguard-rules.pro"
+            ${renderIf(agpVersion < AgpVersion.parse("9.0.0")) { "proguardFiles getDefaultProguardFile(\"proguard-android-optimize.txt\"), \"benchmark-proguard-rules.pro\"" }}
         }
         $releaseBlock
     }
@@ -88,5 +89,5 @@ dependencies {
 
 }
 """
-    .gradleToKtsIfKts(useGradleKts)
+    .gradleToKtsOrDcl(dslLanguage.isKts)
 }

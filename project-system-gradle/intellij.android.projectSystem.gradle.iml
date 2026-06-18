@@ -66,8 +66,17 @@
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.flags" />
     <orderEntry type="module" module-name="intellij.android.testartifacts" />
     <orderEntry type="module" module-name="intellij.android.gradle.declarative.lang.flags" />
+    <orderEntry type="module" module-name="intellij.android.app-publishing" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.properties.backend.psi" level="project" />
     <orderEntry type="library" name="google-api-client" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.gradle.java.groovy" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.compiler" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.compiler.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.execution.impl" level="project" />
   </component>
 </module>

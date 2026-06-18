@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
@@ -39,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,14 +61,17 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.util.Screensh
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils.loadImageMetadata
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.accessibility.AccessibilityUtils
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.util.ColorProgressBar
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.ui.JBColor
 import java.awt.Desktop
 import java.io.File
 import javax.accessibility.AccessibleRole
 import javax.swing.JComponent
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -75,7 +81,7 @@ import org.jetbrains.jewel.ui.theme.colorPalette
 private val LOG = Logger.getInstance(ScreenshotAttributesView::class.java)
 
 /** A view that displays the attributes of a screenshot. */
-class ScreenshotAttributesView {
+class ScreenshotAttributesView : Disposable {
   /**
    * Represents the state of the screenshot attributes view.
    *
@@ -100,8 +106,10 @@ class ScreenshotAttributesView {
   var state by mutableStateOf(ScreenshotAttributesState())
     private set
 
+  private var composePanel: JComponent? = null
   private val panel: JComponent by lazy {
-    val composePanel = StudioComposePanel { ScreenshotAttributesUi(state) }
+    val localComposePanel = StudioComposePanel { ScreenshotAttributesUi(state) }
+    composePanel = localComposePanel
     object : javax.swing.JPanel(java.awt.BorderLayout()) {
         override fun getAccessibleContext(): javax.accessibility.AccessibleContext {
           if (accessibleContext == null) {
@@ -121,7 +129,7 @@ class ScreenshotAttributesView {
       }
       .apply {
         isOpaque = false
-        add(composePanel, java.awt.BorderLayout.CENTER)
+        add(localComposePanel, java.awt.BorderLayout.CENTER)
       }
   }
 
@@ -201,6 +209,8 @@ class ScreenshotAttributesView {
     }
 
     val scrollState = rememberScrollState()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
 
     val matchText =
       currentState.matchPercentage?.let { "Match: $it" }
@@ -237,13 +247,18 @@ class ScreenshotAttributesView {
               else -> GrayText(text)
             }
           }
-          KeyValueRow("Preview") { BlueText(currentState.methodName) }
+          KeyValueRow("Preview") {
+            BlueText(
+              text = currentState.methodName,
+              modifier = Modifier.clickable { scope.launch { bringIntoViewRequester.bringIntoView() } },
+            )
+          }
           KeyValueRow("Related Composables") { BlueText(currentState.className) }
         }
 
-        Section("Preview configuration") { CodeSnippet("@Preview(${currentState.methodName})") }
+        Section("Preview configuration") { LightText("@Preview(${currentState.methodName})") }
 
-        Section("File info") {
+        Section("File info", modifier = Modifier.bringIntoViewRequester(bringIntoViewRequester)) {
           FileInfoTable(
             refMetadata.dimensions,
             newMetadata.dimensions,
@@ -259,6 +274,10 @@ class ScreenshotAttributesView {
       VerticalScrollbar(adapter = rememberScrollbarAdapter(scrollState), modifier = Modifier.fillMaxHeight())
     }
   }
+
+  override fun dispose() {
+    (composePanel as? Disposable)?.let { Disposer.dispose(it) }
+  }
 }
 
 /**
@@ -268,8 +287,8 @@ class ScreenshotAttributesView {
  * @param content The content of the section.
  */
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun Section(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+  Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
     BoldLightText(title, modifier = Modifier.focusable(true).semantics { heading() })
     Column(modifier = Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() }
   }
@@ -365,17 +384,6 @@ private fun FileInfoRow(attribute: String, refValue: String, newValue: String, c
       LightText(newValue, modifier = Modifier.width(cellWidth))
     }
   }
-}
-
-/**
- * A code snippet.
- *
- * @param text The text of the code snippet.
- * @param modifier The modifier.
- */
-@Composable
-private fun CodeSnippet(text: String, modifier: Modifier = Modifier) {
-  Text(text = text, modifier = modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = JewelTheme.editorTextStyle)
 }
 
 /**

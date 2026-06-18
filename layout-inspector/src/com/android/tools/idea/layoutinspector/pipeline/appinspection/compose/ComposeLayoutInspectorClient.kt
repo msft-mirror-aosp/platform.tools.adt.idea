@@ -45,9 +45,9 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capabilit
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMonitor
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AttachErrorInfo
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.toAttachErrorInfo
-import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.All
-import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.None
-import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.Some
+import com.android.tools.idea.layoutinspector.recompositions.ObservedNodes.All
+import com.android.tools.idea.layoutinspector.recompositions.ObservedNodes.None
+import com.android.tools.idea.layoutinspector.recompositions.ObservedNodes.Some
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.Token
@@ -416,7 +416,7 @@ class ComposeLayoutInspectorClient(
 
   val parametersCache = ComposeParametersCache(this, model)
 
-  val recompositionStateReadsCache = RecompositionStateReadCache(this, model, scope)
+  val recompositionCache = RecompositionCache(this, model, scope)
 
   /** The caller will supply a running (increasing) number, that can be used to coordinate the responses from varies commands. */
   private var lastGeneration = 0
@@ -424,7 +424,12 @@ class ComposeLayoutInspectorClient(
   /** The value of [lastGeneration] when the last recomposition reset command was sent. */
   private var lastGenerationReset = 0
 
-  suspend fun getComposeables(rootViewId: Long, newGeneration: Int, forSnapshot: Boolean): GetComposablesResult {
+  suspend fun getComposeables(
+    rootViewId: Long,
+    newGeneration: Int,
+    forSnapshot: Boolean,
+    allowEmptyIfUnchanged: Boolean = false,
+  ): GetComposablesResult {
     lastGeneration = newGeneration
     launchMonitor.updateProgress(AttachErrorState.COMPOSE_REQUEST_SENT)
     logDiagnostics(ComposeLayoutInspectorClient::class.java, "Sending: GetComposablesCommand")
@@ -434,8 +439,9 @@ class ComposeLayoutInspectorClient(
           GetComposablesCommand.newBuilder()
             .apply {
               this.rootViewId = rootViewId
-              generation = lastGeneration
-              extractAllParameters = forSnapshot
+              this.generation = lastGeneration
+              this.extractAllParameters = forSnapshot
+              this.allowEmptyIfUnchanged = allowEmptyIfUnchanged
             }
             .build()
       }
@@ -516,7 +522,7 @@ class ComposeLayoutInspectorClient(
   }
 
   /**
-   * Get recomposition state reads for a composable and a range of recompositions.
+   * Get recomposition details for a composable and a range of recomposition numbers.
    *
    * @param anchorHash The anchor hash of the composable to retrieve state reads for
    * @param recompositionNumberStart the lower recomposition number of the range
@@ -524,7 +530,7 @@ class ComposeLayoutInspectorClient(
    * @param includeExtra If false: return state reads for the specified recompositions only. If true: include extra recompositions after
    *   recomposition_number_end if any of the recompositions in the specified range doesn't have state reads.
    */
-  suspend fun getRecompositionStateReads(
+  suspend fun getRecompositionDetails(
     anchorHash: Int,
     recompositionNumberStart: Int,
     recompositionNumberEnd: Int,
@@ -549,7 +555,7 @@ class ComposeLayoutInspectorClient(
   suspend fun updateSettings(keepRecompositionCounts: Boolean = false): UpdateSettingsResponse {
     lastGenerationReset = lastGeneration
     logDiagnostics(ComposeLayoutInspectorClient::class.java, "Sending: UpdateSettingsCommand")
-    val observations = model.stateReadsModel.observedForStateReads.value
+    val observations = model.recompositionModel.observedForRecompositions.value
     val maxStateReads = StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_MAX_STATE_READS.get()
     val response =
       messenger.sendCommand {
@@ -561,10 +567,14 @@ class ComposeLayoutInspectorClient(
               stateReadSettingsBuilder.apply {
                 when (observations) {
                   is None -> noneBuilder
-                  is All -> allBuilder.maxStateReads = maxStateReads
+                  is All -> {
+                    allBuilder.maxStateReads = maxStateReads
+                    allBuilder.includeParameterChanges = StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.get()
+                  }
                   is Some -> {
                     byIdBuilder.addAllComposableToObserve(observations.nodeAnchors)
                     byIdBuilder.maxStateReads = maxStateReads
+                    byIdBuilder.includeParameterChanges = StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.get()
                   }
                 }
               }
@@ -589,7 +599,7 @@ class ComposeLayoutInspectorClient(
 
   fun disconnect() {
     logDiagnostics(ComposeLayoutInspectorClient::class.java, "disconnect")
-    recompositionStateReadsCache.disconnect()
+    recompositionCache.disconnect()
     messenger.scope.cancel()
   }
 }

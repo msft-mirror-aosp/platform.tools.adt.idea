@@ -48,12 +48,12 @@ class OverflowButton : IconButton(StudioIcons.Common.OVERFLOW) {
       EditDeviceAction(),
       DuplicateDeviceAction(),
       WipeDataAction(),
-      DeleteAction(),
+      DeleteDeviceAction(),
       DeleteTemplateAction(),
       Separator.create(),
       OpenDeviceExplorerAction(),
       ViewDetailsAction(),
-      ShowAction(),
+      ShowOnDiskAction(),
       HideDeviceAction(),
     )
 

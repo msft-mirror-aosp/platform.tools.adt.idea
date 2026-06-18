@@ -18,7 +18,7 @@ package com.android.tools.idea.run.configuration.execution
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.fakeadbserver.services.ShellCommandOutput
 import com.android.tools.deployer.Activator
-import com.android.tools.deployer.DeployerException
+import com.android.tools.deployer.common.DeployerException
 import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.AppComponent
 import com.android.tools.idea.execution.common.AppRunSettings
@@ -195,7 +195,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
     val runContentDescriptor = getRunContentDescriptorForTests { executor.debug(EmptyProgressIndicator()) }
 
     // Stop configuration.
-    runContentDescriptor.processHandler!!.destroyProcess()
+    runContentDescriptor?.processHandler!!.destroyProcess()
     processTerminatedLatch.await(1, TimeUnit.SECONDS)
 
     // Verify commands sent to device.

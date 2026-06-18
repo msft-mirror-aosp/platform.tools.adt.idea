@@ -43,16 +43,18 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 
 /** Orchestrates mouse and keyboard input for XR devices. Keeps track of XR environment and passthrough. Thread safe. */
-internal class DeviceXrInputController(private val deviceClient: DeviceClient) : AbstractXrInputController(), XrEnvironmentListener {
+internal class DeviceXrInputController(private val deviceClient: DeviceClient) :
+  AbstractXrInputController(isHandAndEyeInputSupported = false), XrEnvironmentListener {
 
   override val isPassthroughSupported: Boolean
     get() = StudioFlags.DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH.get()
 
   init {
     Disposer.register(deviceClient, this)
+    inputMode = XrInputMode.MOUSE // Hand tracking is not supported for physical devices yet.
   }
 
-  override suspend fun setPassthrough(passthroughCoefficient: Float) {
+  override suspend fun setPassthroughAndDimming(passthroughCoefficient: Float, dimmingCoefficient: Float) {
     deviceClient.deviceController?.sendControlMessage(XrSetPassthroughCoefficientMessage(passthroughCoefficient))
   }
 

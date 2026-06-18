@@ -21,6 +21,7 @@ import com.android.prefs.AndroidLocationsException
 import com.android.prefs.AndroidLocationsSingleton
 import com.android.repository.api.ProgressIndicator
 import com.android.repository.api.RepoPackage
+import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.DeviceActionCanceledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
@@ -104,7 +105,7 @@ constructor(
   private val uiContext: CoroutineContext = Dispatchers.EDT + ModalityState.any().asContextElement(),
 ) {
   val emulator: EmulatorPackage?
-    get() = sdkHandler?.getEmulatorPackage(REPO_LOG)
+    get() = sdkHandler?.getEmulatorPackage(REPO_LOG, StudioFlags.EMULATOR_PREVIEW_ENABLED.get())
 
   /**
    * @param forceRefresh if true the manager will read the AVD list from disk. If false, the cached version in memory is returned if
@@ -397,7 +398,7 @@ constructor(
     // Clear the paired devices when data is wiped.
     AvdBuilder.updateUserSettings(
       avdInfo.dataFolderPath,
-      mapOf(UserSettingsKey.PAIRED_PHONE_AVD_ID to null, UserSettingsKey.PAIRED_GLASSES_AVD_ID to null),
+      mapOf("${UserSettingsKey.PAIRED_PHONE_AVD_ID_PREFIX}1" to null, UserSettingsKey.PAIRED_GLASSES_AVD_ID to null),
       LogWrapper(IJ_LOG),
     )
     return true
@@ -455,7 +456,8 @@ constructor(
     private fun canLaunchInToolWindow(avd: AvdInfo, project: Project?): Boolean {
       return project != null &&
         ToolWindowManager.getInstance(project).getToolWindow("Running Devices") != null &&
-        (StudioFlags.EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD.get() || !avd.isAiGlassesDevice)
+        (StudioFlags.EMBEDDED_EMULATOR_ALLOW_DESKTOP_SDK37PLUS_AVD.get() ||
+          !(avd.hasTag(SystemImageTags.DESKTOP_TAG.getId()) && avd.androidVersion.isAtLeast(37)))
     }
 
     @JvmStatic

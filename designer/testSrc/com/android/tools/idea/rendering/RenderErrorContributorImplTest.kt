@@ -30,6 +30,7 @@ import com.android.tools.rendering.RenderLogger
 import com.android.tools.rendering.RenderProblem
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderTask
+import com.android.tools.rendering.classloading.TooManyAllocationsException
 import com.android.tools.rendering.security.RenderSecurityException
 import com.google.common.truth.Truth
 import com.google.common.util.concurrent.Futures
@@ -288,7 +289,7 @@ class RenderErrorContributorImplTest {
     if (havePlatformSources) {
       assertHtmlEquals(
         "java.lang.ArithmeticException: / by zero<BR/>" +
-          "&nbsp;&nbsp;at com.example.myapplication574.MyCustomView.&lt;init>(<A HREF=\"open:com.example.myapplication574.MyCustomView#<init>;MyCustomView.java:13\">MyCustomView.java:13</A>)<BR/>" +
+          "&nbsp;&nbsp;at com.example.myapplication574.MyCustomView.&lt;init>(<A HREF=\"open:com.example.myapplication574.MyCustomView#&lt;init>;MyCustomView.java:13\">MyCustomView.java:13</A>)<BR/>" +
           "&nbsp;&nbsp;at java.lang.reflect.Constructor.newInstance(Constructor.java:513)<BR/>" +
           "&nbsp;&nbsp;at android.view.LayoutInflater.rInflate_Original(LayoutInflater.java:755)<BR/>" +
           "&nbsp;&nbsp;at android.view.LayoutInflater_Delegate.rInflate(LayoutInflater_Delegate.java:64)<BR/>" +
@@ -305,7 +306,7 @@ class RenderErrorContributorImplTest {
     } else {
       assertHtmlEquals(
         "java.lang.ArithmeticException: / by zero<BR/>" +
-          "&nbsp;&nbsp;at com.example.myapplication574.MyCustomView.&lt;init>(<A HREF=\"open:com.example.myapplication574.MyCustomView#<init>;MyCustomView.java:13\">MyCustomView.java:13</A>)<BR/>" +
+          "&nbsp;&nbsp;at com.example.myapplication574.MyCustomView.&lt;init>(<A HREF=\"open:com.example.myapplication574.MyCustomView#%3Cinit%3E;MyCustomView.java:13\">MyCustomView.java:13</A>)<BR/>" +
           "&nbsp;&nbsp;at java.lang.reflect.Constructor.newInstance(Constructor.java:513)<BR/>" +
           "&nbsp;&nbsp;at android.view.LayoutInflater.rInflate_Original(LayoutInflater.java:755)<BR/>" +
           "&nbsp;&nbsp;at android.view.LayoutInflater_Delegate.rInflate(LayoutInflater_Delegate.java:64)<BR/>" +
@@ -320,6 +321,49 @@ class RenderErrorContributorImplTest {
         issues[0]!!,
       )
     }
+  }
+
+  @Test
+  fun testHtmlInjectionInThrowable() {
+    val operation = LogOperation { logger: RenderLogger, render: RenderResult ->
+      val throwable = Exception("<img src='http://attacker.com/leak'>")
+      throwable.stackTrace =
+        arrayOf(
+          StackTraceElement("com.example.MyCustomView", "init", "MyCustomView.java", 10),
+          StackTraceElement("com.android.layoutlib.bridge.impl.RenderSessionImpl", "inflate", "RenderSessionImpl.java", 100),
+        )
+      logger.error(null, null, throwable, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(1, issues)
+    val issue = issues[0]!!
+
+    val html = issue.getHtmlContent()
+
+    // After the fix, the HTML should have < escaped to &lt;, which is sufficient to prevent injection.
+    assertTrue("HTML should be escaped, got: $html", html.contains("&lt;img src='http://attacker.com/leak'>"))
+    assertTrue("HTML should not contain raw tag, got: $html", !html.contains("<img src='http://attacker.com/leak'>"))
+
+    val summary = issue.summary
+    assertTrue("Summary should not contain raw HTML, got: $summary", !summary.contains("<img"))
+  }
+
+  @Test
+  fun testHtmlInjectionInRenderSecurityException() {
+    val operation = LogOperation { logger: RenderLogger, render: RenderResult ->
+      val throwable = RenderSecurityException.create("<img src='http://attacker.com/leak'>")
+      logger.error(null, null, throwable, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(1, issues)
+    val issue = issues[0]!!
+
+    val summary = issue.summary
+    assertTrue("Summary should not contain raw HTML, got: $summary", !summary.contains("<img"))
+    // It should be sanitized/stripped
+    assertTrue("Summary should be empty or sanitized, got: $summary", summary.isEmpty() || !summary.contains("<"))
   }
 
   @Test
@@ -416,6 +460,63 @@ class RenderErrorContributorImplTest {
       listOf(MessageTip(AllIcons.General.Information, "Tip: <A HREF=\"refreshRender\">Build &amp; Refresh</A> the preview.")),
       issues[0]!!,
     )
+  }
+
+  @Test
+  fun testTooManyAllocationsError() {
+    val operation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      val throwable = TooManyAllocationsException("1 allocations exceeded in a single render action")
+      logger.error(null, null, throwable, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(1, issues)
+    assertHtmlEquals(
+      "The preview has been interrupted because it has too many allocations. " +
+        "This usually means that your code has a long loop or is doing too many allocations per render action." +
+        "<BR/><BR/><A HREF=\"\">Click here to disable the allocation limiter for this session.</A>",
+      issues[0]!!,
+    )
+    assertEquals("Too many allocations during preview rendering", issues[0]!!.summary)
+  }
+
+  @Test
+  fun testWrappedTooManyAllocationsError() {
+    val operation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      val root = TooManyAllocationsException("1 allocations exceeded in a single render action")
+      val wrapped = NoClassDefFoundError("Could not initialize class com.example.myapplication.ui.theme.TypeKt")
+      wrapped.initCause(ExceptionInInitializerError(root))
+      logger.error(null, null, wrapped, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(1, issues)
+    assertHtmlEquals(
+      "The preview has been interrupted because it has too many allocations. " +
+        "This usually means that your code has a long loop or is doing too many allocations per render action." +
+        "<BR/><BR/><A HREF=\"\">Click here to disable the allocation limiter for this session.</A>",
+      issues[0]!!,
+    )
+    assertEquals("Too many allocations during preview rendering", issues[0]!!.summary)
+  }
+
+  @Test
+  fun testMessageBasedTooManyAllocationsError() {
+    val operation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      // Simulate an error where the exception is part of the message but not the cause
+      val throwable = Exception("Some wrapper: com.android.tools.rendering.classloading.TooManyAllocationsException: message")
+      logger.error(null, null, throwable, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(1, issues)
+    assertHtmlEquals(
+      "The preview has been interrupted because it has too many allocations. " +
+        "This usually means that your code has a long loop or is doing too many allocations per render action." +
+        "<BR/><BR/><A HREF=\"\">Click here to disable the allocation limiter for this session.</A>",
+      issues[0]!!,
+    )
+    assertEquals("Too many allocations during preview rendering", issues[0]!!.summary)
   }
 
   @Test
@@ -634,7 +735,7 @@ class RenderErrorContributorImplTest {
         "555;\">Exception Details</font><BR/>java.lang.ArithmeticExcept" +
         "ion: / by zero<BR/>&nbsp;&nbsp;at com.example.myapplication.M" +
         "yButton.&lt;init>(<A HREF=\"open:com.example.myapplication.MyB" +
-        "utton#<init>;MyButton.java:14\">MyButton.java:14</A>)<BR/><A H" +
+        "utton#%3Cinit%3E;MyButton.java:14\">MyButton.java:14</A>)<BR/><A H" +
         "REF=\"\">Copy stack to clipboard</A><BR/><BR/>",
       issues[0]!!,
     )
@@ -734,6 +835,37 @@ class RenderErrorContributorImplTest {
     assertSize(2, issues)
   }
 
+  @Test
+  fun testDeduplicationByRootCause() {
+    val rootCause = Exception("Error 1")
+    val wrapper = java.lang.reflect.InvocationTargetException(rootCause)
+
+    val operation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      logger.error(null, "Message", rootCause, null, null)
+      logger.error(null, "Message", wrapper, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(1, issues)
+    assertEquals("Error 1", issues[0]!!.summary)
+  }
+
+  @Test
+  fun testDistinctRootCausesAreReportedSeparately() {
+    val wrapper = java.lang.reflect.InvocationTargetException(Exception("Error 1"))
+    val wrapper2 = java.lang.reflect.InvocationTargetException(Exception("Error 2"))
+
+    val operation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      logger.error(null, "Message 1", wrapper, null, null)
+      logger.error(null, "Message 2", wrapper2, null, null)
+    }
+
+    val issues = getRenderOutput(fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"), operation)
+    assertSize(2, issues)
+    assertEquals("Error 1", issues[0]!!.summary)
+    assertEquals("Error 2", issues[1]!!.summary)
+  }
+
   /** Tests that the RenderErrorContributor builds issues using the correct severity */
   @Test
   fun testIssueSeverity() {
@@ -808,9 +940,8 @@ class RenderErrorContributorImplTest {
 
   private fun stripSdkHome(html: String): String {
     var html = html
-    val platform = getInstance(module)
-    assertNotNull(platform)
-    var location = platform!!.getSdkData().getLocation().toString()
+    val platform = checkNotNull(getInstance(module))
+    var location = platform.sdkData.location.toString()
     location = FileUtil.toSystemIndependentName(location)
     html = html.replace(location, "\$SDK_HOME").replace("file:///", "file://") // On Windows JavaDoc source may start with /
     return html

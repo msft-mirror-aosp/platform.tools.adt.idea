@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package google.play.developer.reporting.v1beta1;
 
+import "engagement.proto";
+import "first_opens.proto";
+import "ratings.proto";
 import "releases.proto";
 
 option java_multiple_files = true;
@@ -17,6 +20,38 @@ service ReportingService {
   // Searches for Apps accessible by the user.
   rpc SearchAccessibleApps(SearchAccessibleAppsRequest)
       returns (SearchAccessibleAppsResponse) {}
+
+  // Describes the properties of the first opens metric set.
+  rpc GetFirstOpensMetricSet(GetFirstOpensMetricSetRequest)
+      returns (FirstOpensMetricSet) {}
+
+  // Queries the metrics in the first opens metric set.
+  rpc QueryFirstOpensMetricSet(QueryFirstOpensMetricSetRequest)
+      returns (QueryFirstOpensMetricSetResponse) {}
+
+  // Describes the properties of the metric set.
+  rpc GetAverageRatingsMetricSet(GetAverageRatingsMetricSetRequest)
+      returns (AverageRatingsMetricSet) {}
+
+  // Queries the metrics in the metric set.
+  rpc QueryAverageRatingsMetricSet(QueryAverageRatingsMetricSetRequest)
+      returns (QueryAverageRatingsMetricSetResponse) {}
+
+  // Describes the properties of the google play rating metric set.
+  rpc GetGooglePlayRatingMetricSet(GetGooglePlayRatingMetricSetRequest)
+      returns (GooglePlayRatingMetricSet) {}
+
+  // Queries the metrics in the google play rating metric set.
+  rpc QueryGooglePlayRatingMetricSet(QueryGooglePlayRatingMetricSetRequest)
+      returns (QueryGooglePlayRatingMetricSetResponse) {}
+
+  // Describes the properties of the engagement metric set.
+  rpc GetEngagementMetricSet(GetEngagementMetricSetRequest)
+      returns (EngagementMetricSet) {}
+
+  // Queries the metrics in the engagement metric set.
+  rpc QueryEngagementMetricSet(QueryEngagementMetricSetRequest)
+      returns (QueryEngagementMetricSetResponse) {}
 }
 
 // Request message for

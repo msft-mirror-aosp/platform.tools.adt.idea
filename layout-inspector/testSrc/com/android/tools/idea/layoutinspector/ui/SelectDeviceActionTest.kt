@@ -30,6 +30,7 @@ import com.android.tools.idea.appinspection.internal.process.toDeviceDescriptor
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
+import com.android.tools.idea.layoutinspector.TestScopeRule
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.SelectDeviceAction
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -65,7 +66,7 @@ class SelectDeviceActionTest {
   private val deviceProvisionerRule = DeviceProvisionerRule()
   private val disposableRule = DisposableRule()
 
-  @get:Rule val rule = RuleChain(deviceProvisionerRule, disposableRule)
+  @get:Rule val rule = RuleChain(TestScopeRule(), deviceProvisionerRule, disposableRule)
 
   private val deviceProvisioner
     get() = deviceProvisionerRule.deviceProvisioner
@@ -522,6 +523,69 @@ class SelectDeviceActionTest {
 
     callbackFiredLatch.await(2, TimeUnit.SECONDS)
     Truth.assertThat(actionPerformed).isTrue()
+  }
+
+  @Test
+  fun htmlIsEscaped() = runBlocking {
+    val testNotifier = TestProcessDiscovery()
+    val model = ProcessesModel(testNotifier)
+
+    val supportedDevice =
+      Common.Device.newBuilder()
+        .setDeviceId(1)
+        .setSerial("serial1")
+        .setApiLevel(AndroidVersion.VersionCodes.O)
+        .setFeatureLevel(AndroidVersion.VersionCodes.O)
+        .setManufacturer("<b>Google</b>")
+        .setModel("<i>Pixel_6</i>")
+        .setIsEmulator(false)
+        .setState(Common.Device.State.ONLINE)
+        .build()
+    val supportedStream = Common.Stream.newBuilder().setDevice(supportedDevice).build()
+
+    val unsupportedDevice =
+      Common.Device.newBuilder()
+        .setDeviceId(2)
+        .setSerial("serial2")
+        .setApiLevel(AndroidVersion.VersionCodes.O)
+        .setFeatureLevel(AndroidVersion.VersionCodes.O)
+        .setManufacturer("<b>Genymotion</b>")
+        .setModel("<i>Nexus_5</i>")
+        .setIsEmulator(true)
+        .setState(Common.Device.State.ONLINE)
+        .build()
+    val unsupportedStream = Common.Stream.newBuilder().setDevice(unsupportedDevice).build()
+
+    val process =
+      TransportProcessDescriptor(
+        unsupportedStream,
+        FakeTransportService.FAKE_PROCESS.toBuilder().setName("<html>unsafe-process").setPid(100).build(),
+      )
+
+    testNotifier.addDevice(supportedStream.device.toDeviceDescriptor())
+    testNotifier.addDevice(unsupportedStream.device.toDeviceDescriptor())
+    testNotifier.fireConnected(process)
+
+    val deviceModel = DeviceModel(projectRule.testRootDisposable, model, setOf(supportedStream.device.toDeviceDescriptor()))
+    val selectDeviceAction = SelectDeviceAction(deviceProvisioner, scope, deviceModel, {}, {})
+
+    selectDeviceAction.updateActions(DataContext.EMPTY_CONTEXT)
+    val children = selectDeviceAction.getChildren(null)
+    children.forEach { it.update(createFakeEvent()) }
+
+    Truth.assertThat(children).hasLength(3)
+
+    // Supported device name should be escaped. "_" replaced by " " in model.
+    Truth.assertThat(children[0].templateText).isEqualTo("&lt;b&gt;Google&lt;/b&gt; &lt;i&gt;Pixel 6&lt;/i&gt;")
+
+    // Unsupported device name should be escaped. "_" replaced by " " in model.
+    val expectedMsg = " " + LayoutInspectorBundle.message("cant.detect.foreground.process")
+    Truth.assertThat(children[1].templateText).isEqualTo("&lt;i&gt;Nexus 5&lt;/i&gt;$expectedMsg")
+
+    // Process name should be escaped
+    val processes = (children[1] as ActionGroup).getChildren(null)
+    Truth.assertThat(processes).hasLength(1)
+    Truth.assertThat(processes[0].templateText).isEqualTo("&lt;html&gt;unsafe-process")
   }
 
   private fun update(action: AnAction): AnActionEvent {

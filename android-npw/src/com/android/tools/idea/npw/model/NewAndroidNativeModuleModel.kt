@@ -75,13 +75,14 @@ class NewAndroidNativeModuleModel(
           if (data !is ModuleTemplateData) {
             throw IllegalStateException()
           }
+          val customStrategy = projectModelData.templateRendererStrategy.valueOrNull
           generateAndroidModule(
             data = data,
             appTitle = applicationName.get(),
-            useKts = useGradleKts.get(),
             enableCpp = true,
             cppStandard = cppStandard.value,
-            useVersionCatalog = useVersionCatalog.get(),
+            hasCustomRenderer = customStrategy != null,
+            generateStandardFiles = customStrategy?.generateStandardAndroidModuleFiles ?: true,
           )
           val nativeLibraryName = data.packageName.deriveNativeLibraryName()
           val nativeSourceName = "$nativeLibraryName.cpp"

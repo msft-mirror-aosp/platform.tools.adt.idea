@@ -24,6 +24,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Journey
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkLinkListener
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.getName
+import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScreenshotTestEvent
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.html.HtmlEscapers
@@ -38,6 +39,8 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -45,7 +48,6 @@ import com.intellij.openapi.util.ActionCallback
 import com.intellij.openapi.util.ActiveRunnable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfoRt
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
@@ -54,22 +56,23 @@ import com.intellij.ui.components.panels.NonOpaquePanel
 import com.intellij.ui.tabs.JBTabs
 import com.intellij.ui.tabs.JBTabsFactory.createTabs
 import com.intellij.ui.tabs.TabInfo
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.messages.MessageBus
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import com.intellij.util.ui.accessibility.AccessibleContextUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
-import java.util.Arrays
 import java.util.Locale
+import java.util.concurrent.Callable
+import java.util.concurrent.Future
 import javax.accessibility.AccessibleContext
 import javax.accessibility.AccessibleRole
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
 /** Shows detailed tests results for a selected device. */
-class DetailsViewContentView(
+open class DetailsViewContentView(
   parentDisposable: Disposable,
   private val project: Project,
   logger: AndroidTestSuiteLogger,
@@ -116,72 +119,47 @@ class DetailsViewContentView(
 
     // Journey results tab
     myJourneysResultsPanel = JourneysResultsPanel(project)
-    myJourneyScreenshotsTab = TabInfo(myJourneysResultsPanel)
-    myJourneyScreenshotsTab.setText("Results")
-    myJourneyScreenshotsTab.setTooltipText("Show the actions taken by Gemini")
-    myJourneyScreenshotsTab.isHidden = true
+    Disposer.register(this, myJourneysResultsPanel)
+    myJourneyScreenshotsTab =
+      TabInfo(myJourneysResultsPanel).apply {
+        setText("Results")
+        setTooltipText("Show the actions taken by Gemini")
+        isHidden = true
+      }
     tabs.addTab(myJourneyScreenshotsTab)
 
     // Screenshot tab
     myScreenshotResultView = ScreenshotResultView(project)
-    myScreenshotTab = TabInfo(myScreenshotResultView.getComponent())
-    myScreenshotTab.setText("Screenshot")
-    myScreenshotTab.setTooltipText("Show screenshot information")
-    myScreenshotTab.isHidden = true
+    Disposer.register(this, myScreenshotResultView)
+    myScreenshotTab =
+      TabInfo(myScreenshotResultView.getComponent()).apply {
+        setText("Screenshot")
+        setTooltipText("Show screenshot information")
+        isHidden = true
+      }
     tabs.addTab(myScreenshotTab)
 
     // Screenshot attributes tab
     myScreenshotAttributesView = ScreenshotAttributesView()
-    myScreenshotAttributesTab = TabInfo(myScreenshotAttributesView.getComponent())
-    myScreenshotAttributesTab.setText("Attributes")
-    myScreenshotAttributesTab.setTooltipText("Show preview attributes")
-    myScreenshotAttributesTab.isHidden = true
+    Disposer.register(this, myScreenshotAttributesView)
+    myScreenshotAttributesTab =
+      TabInfo(myScreenshotAttributesView.getComponent()).apply {
+        setText("Attributes")
+        setTooltipText("Show preview attributes")
+        isHidden = true
+      }
     tabs.addTab(myScreenshotAttributesTab)
 
     // Create logcat tab.
     myLogsView = ConsoleViewImpl(project, /* viewer= */ true)
     Disposer.register(this, myLogsView)
     logger.addImpressionWhenDisplayed(myLogsView.component, ParallelAndroidTestReportUiEvent.UiElement.TEST_SUITE_LOG_VIEW)
-    val logsHeadingLabel =
-      object : JBLabel("Logs") {
-          override fun getAccessibleContext(): AccessibleContext {
-            if (accessibleContext == null) {
-              accessibleContext =
-                object : AccessibleJLabel() {
-                  override fun getAccessibleRole() =
-                    if (SystemInfoRt.isMac) {
-                      AccessibilityUtils.GROUPED_ELEMENTS
-                    } else {
-                      AccessibleRole.LABEL
-                    }
-                }
-            }
-            return accessibleContext
-          }
-        }
-        .apply {
-          isFocusable = true
-          AccessibleContextUtil.setName(this, "Heading: Logs")
-        }
-
-    val logsContainer = JPanel(BorderLayout()).apply { add(logsHeadingLabel, BorderLayout.NORTH) }
 
     val logsViewWithVerticalToolbar =
-      object : NonOpaquePanel(BorderLayout()) {
-          override fun getAccessibleContext(): javax.accessibility.AccessibleContext {
-            if (accessibleContext == null) {
-              accessibleContext =
-                object : AccessibleJPanel() {
-                  override fun getAccessibleRole() = javax.accessibility.AccessibleRole.PANEL
-                }
-            }
-            return accessibleContext
-          }
-        }
-        .apply {
-          accessibleContext.accessibleName = "Logs View"
-          isFocusable = true
-        }
+      createAccessiblePanel(BorderLayout(), accessibleName = "Logs View", roleOnMac = AccessibleRole.PANEL).apply {
+        isOpaque = false
+        isFocusable = true
+      }
     logsViewWithVerticalToolbar.add(myLogsView.component, BorderLayout.CENTER)
     val logViewToolbar =
       ActionManager.getInstance()
@@ -192,32 +170,22 @@ class DetailsViewContentView(
         )
     logViewToolbar.targetComponent = myLogsView.component
     logsViewWithVerticalToolbar.add(logViewToolbar.component, BorderLayout.EAST)
-    logsContainer.add(logsViewWithVerticalToolbar, BorderLayout.CENTER)
 
-    logsTab = TabInfo(logsContainer)
-    logsTab.setText("Logs")
-    logsTab.setTooltipText("Show logcat output")
+    logsTab =
+      TabInfo(logsViewWithVerticalToolbar).apply {
+        setText("Logs")
+        setTooltipText("Show logcat output")
+      }
     tabs.addTab(logsTab)
 
     // Create benchmark tab.
     myBenchmarkView = ConsoleViewImpl(project, /* viewer= */ true)
     Disposer.register(this, myBenchmarkView)
     val benchmarkViewWithVerticalToolbar =
-      object : NonOpaquePanel(BorderLayout()) {
-          override fun getAccessibleContext(): javax.accessibility.AccessibleContext {
-            if (accessibleContext == null) {
-              accessibleContext =
-                object : AccessibleJPanel() {
-                  override fun getAccessibleRole() = javax.accessibility.AccessibleRole.PANEL
-                }
-            }
-            return accessibleContext
-          }
-        }
-        .apply {
-          accessibleContext.accessibleName = "Benchmark View"
-          isFocusable = true
-        }
+      createAccessiblePanel(BorderLayout(), accessibleName = "Benchmark View", roleOnMac = AccessibleRole.PANEL).apply {
+        isOpaque = false
+        isFocusable = true
+      }
     benchmarkViewWithVerticalToolbar.add(myBenchmarkView.component, BorderLayout.CENTER)
     val benchmarkViewToolbar =
       ActionManager.getInstance()
@@ -227,10 +195,12 @@ class DetailsViewContentView(
           false,
         )
     benchmarkViewWithVerticalToolbar.add(benchmarkViewToolbar.component, BorderLayout.EAST)
-    myBenchmarkTab = TabInfo(benchmarkViewWithVerticalToolbar)
-    myBenchmarkTab.setText("Benchmark")
-    myBenchmarkTab.setTooltipText("Show benchmark results")
-    myBenchmarkTab.isHidden = true
+    myBenchmarkTab =
+      TabInfo(benchmarkViewWithVerticalToolbar).apply {
+        setText("Benchmark")
+        setTooltipText("Show benchmark results")
+        isHidden = true
+      }
     tabs.addTab(myBenchmarkTab)
 
     // Device info tab.
@@ -239,29 +209,14 @@ class DetailsViewContentView(
       myDeviceInfoTableView.getComponent(),
       ParallelAndroidTestReportUiEvent.UiElement.TEST_SUITE_DEVICE_INFO_VIEW,
     )
-    myDeviceInfoTab = TabInfo(myDeviceInfoTableView.getComponent())
-    myDeviceInfoTab.setText("Device Info")
-    myDeviceInfoTab.setTooltipText("Show device information")
+    myDeviceInfoTab =
+      TabInfo(myDeviceInfoTableView.getComponent()).apply {
+        setText("Device Info")
+        setTooltipText("Show device information")
+      }
     tabs.addTab(myDeviceInfoTab)
 
-    rootPanel =
-      object : JPanel(BorderLayout()) {
-        override fun getAccessibleContext(): AccessibleContext {
-          if (accessibleContext == null) {
-            accessibleContext =
-              object : AccessibleJPanel() {
-                  override fun getAccessibleRole() =
-                    if (SystemInfoRt.isMac) {
-                      AccessibilityUtils.GROUPED_ELEMENTS
-                    } else {
-                      AccessibleRole.PANEL
-                    }
-                }
-                .apply { accessibleName = "Test Results Panel Structure" }
-          }
-          return accessibleContext
-        }
-      }
+    rootPanel = createAccessiblePanel(BorderLayout(), accessibleName = "Test Results Panel Structure")
     val actionGroup = DefaultActionGroup()
     actionGroup.addAll(headerActions)
     val toolbar = ActionManager.getInstance().createActionToolbar("AndroidTestSuite.DetailsView.Header", actionGroup, true)
@@ -286,10 +241,16 @@ class DetailsViewContentView(
               westPanel.add(AndroidTestSuiteView.MyItemSeparator())
               add(westPanel, BorderLayout.WEST)
 
-              // Wrap the error label in a scroll pane
+              // Wrap the error label in a FlowLayout identical to westPanel to vertically center it
+              val errorLabelContainer = NonOpaquePanel(FlowLayout(FlowLayout.LEFT, 0, 0))
+              errorLabelContainer.add(myTestResultLabel)
+              // Add a rigid area to force the row height to match the separator's 24px height.
+              errorLabelContainer.add(javax.swing.Box.createRigidArea(Dimension(0, com.intellij.ui.scale.JBUIScale.scale(24))))
+
+              // Wrap the error label container in a scroll pane
               val scrollPane =
                 JBScrollPane(
-                  myTestResultLabel,
+                  errorLabelContainer,
                   ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
                   ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED,
                 )
@@ -326,36 +287,26 @@ class DetailsViewContentView(
     myAndroidDevice = androidDevice
     refreshTestResultLabel()
     myDeviceInfoTableView.setAndroidDevice(androidDevice)
-
-    updateSelectedTab()
   }
 
   private fun setAndroidTestCaseResult(result: AndroidTestCaseResult?) {
     myAndroidTestCaseResult = result
     refreshTestResultLabel()
-
-    updateSelectedTab()
   }
 
-  private fun setLogcat(logcat: String) {
-    // force refresh myLogsView on first call to setLogcat
-    needsRefreshLogsView = needsRefreshLogsView || (myLogcat != logcat)
-    if (needsRefreshLogsView) {
-      myLogcat = logcat
+  private fun setLogs(logcat: String?, errorStackTrace: String?) {
+    val nonNullLogcat = logcat.orEmpty()
+    val nonNullError = errorStackTrace.orEmpty()
+    val logcatChanged = myLogcat != nonNullLogcat
+    val errorChanged = myErrorStackTrace != nonNullError
+    if (needsRefreshLogsView || logcatChanged || errorChanged) {
+      needsRefreshLogsView = false
+      myLogcat = nonNullLogcat
+      myErrorStackTrace = nonNullError
+      if (errorChanged) {
+        refreshTestResultLabel()
+      }
       refreshLogsView()
-
-      updateSelectedTab()
-    }
-  }
-
-  private fun setErrorStackTrace(errorStackTrace: String) {
-    needsRefreshLogsView = myErrorStackTrace != errorStackTrace
-    if (needsRefreshLogsView) {
-      myErrorStackTrace = errorStackTrace
-      refreshTestResultLabel()
-      refreshLogsView()
-
-      updateSelectedTab()
     }
   }
 
@@ -366,145 +317,179 @@ class DetailsViewContentView(
     }
     val benchmarkOutputIsEmpty = benchmarkText.lines.isEmpty()
     myBenchmarkTab.isHidden = benchmarkOutputIsEmpty
-
-    updateSelectedTab()
   }
 
+  @VisibleForTesting var pathResolutionFuture: Future<*>? = null
+
   private fun setAdditionalTestArtifacts(additionalTestArtifacts: Map<String, String>, testResults: AndroidTestResults?) {
-    val newImage = additionalTestArtifacts["PreviewScreenshot.newImagePath"]
-    val refImage = additionalTestArtifacts["PreviewScreenshot.refImagePath"]
-    val diffImage = additionalTestArtifacts["PreviewScreenshot.diffImagePath"]
-    val diffPercentString = additionalTestArtifacts["PreviewScreenshot.diffPercent"]?.takeIf { it.isNotBlank() }
-    val diffPercent: Double? = diffPercentString?.toDoubleOrNull()
+    val className = testResults?.className
 
-    val shouldButtonBeVisible = (newImage != null || refImage != null || diffImage != null)
+    // Perform path resolution in background to avoid blocking the UI thread
+    pathResolutionFuture?.cancel(true)
+    pathResolutionFuture =
+      ReadAction.nonBlocking(
+          Callable {
+            val newImage = ScreenshotTestUtils.resolvePath(project, className, additionalTestArtifacts["PreviewScreenshot.newImagePath"])
+            val refImage = ScreenshotTestUtils.resolvePath(project, className, additionalTestArtifacts["PreviewScreenshot.refImagePath"])
+            val diffImage = ScreenshotTestUtils.resolvePath(project, className, additionalTestArtifacts["PreviewScreenshot.diffImagePath"])
+            val diffPercentString = additionalTestArtifacts["PreviewScreenshot.diffPercent"]?.takeIf { it.isNotBlank() }
+            val diffPercent: Double? = diffPercentString?.toDoubleOrNull()
+            listOf(newImage, refImage, diffImage, diffPercent)
+          }
+        )
+        .expireWith(this)
+        .finishOnUiThread(ModalityState.any()) { results ->
+          val newImage = results[0] as? String
+          val refImage = results[1] as? String
+          val diffImage = results[2] as? String
+          val diffPercent = results[3] as? Double
 
-    if (shouldButtonBeVisible) {
-      myScreenshotAttributesTab.isHidden = false
-      myScreenshotTab.isHidden = false
-      myDeviceInfoTab.isHidden = true
-      myScreenshotResultView.newImagePath = newImage ?: ""
-      myScreenshotResultView.refImagePath = refImage ?: ""
-      myScreenshotResultView.diffImagePath = diffImage ?: ""
-      myScreenshotResultView.testFailed = (myAndroidTestCaseResult == AndroidTestCaseResult.FAILED)
-      myScreenshotResultView.updateView()
-      myScreenshotAttributesView.updateData(
-        refImage,
-        newImage,
-        testResults?.methodName,
-        testResults?.className,
-        myAndroidTestCaseResult,
-        diffPercent,
-      )
-    } else {
-      myScreenshotTab.isHidden = true
-      myScreenshotAttributesTab.isHidden = true
-    }
+          val shouldButtonBeVisible = (newImage != null || refImage != null || diffImage != null)
+
+          if (shouldButtonBeVisible) {
+            myScreenshotAttributesTab.isHidden = false
+            myScreenshotTab.isHidden = false
+
+            // If we are about to hide Device Info but it was selected, swap to Screenshot first
+            if (tabs.selectedInfo == myDeviceInfoTab) {
+              tabs.select(myScreenshotTab, false)
+            }
+            myDeviceInfoTab.isHidden = true
+            myScreenshotResultView.newImagePath = newImage ?: ""
+            myScreenshotResultView.refImagePath = refImage ?: ""
+            myScreenshotResultView.diffImagePath = diffImage ?: ""
+            myScreenshotResultView.testFailed = (myAndroidTestCaseResult == AndroidTestCaseResult.FAILED)
+            val errorTrace = (myErrorStackTrace as? String) ?: ""
+            myScreenshotResultView.isSizeMismatch = errorTrace.contains("Size Mismatch")
+            myScreenshotResultView.sizeMismatchMessage =
+              errorTrace
+                .lineSequence()
+                .firstOrNull { it.contains("Size Mismatch") }
+                ?.let { line -> line.substring(line.indexOf("Size Mismatch")).trim() }
+            myScreenshotResultView.updateView()
+            myScreenshotAttributesView.updateData(
+              refImage,
+              newImage,
+              testResults?.methodName,
+              testResults?.className,
+              myAndroidTestCaseResult,
+              diffPercent,
+            )
+            if (tabs.selectedInfo == logsTab && lastTabSelectedByUser == null) {
+              val savedLastSelected = lastTabSelectedByUser
+              tabs.select(myScreenshotTab, false)
+              lastTabSelectedByUser = savedLastSelected
+            }
+          } else {
+            // If we are about to hide Screenshots but one was selected, swap to Logs first
+            val activeTab = tabs.selectedInfo
+            if (activeTab == myScreenshotTab || activeTab == myScreenshotAttributesTab) {
+              tabs.select(logsTab, false)
+            }
+
+            myScreenshotTab.isHidden = true
+            myScreenshotAttributesTab.isHidden = true
+            myDeviceInfoTab.isHidden = false
+          }
+        }
+        .submit(AppExecutorUtil.getAppExecutorService())
 
     val journeyActionArtifacts = JourneyActionArtifacts.parseFromAdditionalTestArtifacts(additionalTestArtifacts)
     myJourneysResultsPanel.updateArtifacts(journeyActionArtifacts)
     myJourneyScreenshotsTab.isHidden = journeyActionArtifacts.isEmpty()
-
-    updateSelectedTab()
   }
 
   fun setResults(androidDevice: AndroidDevice, testResults: AndroidTestResults) {
     setAndroidDevice(androidDevice)
     setAndroidTestCaseResult(testResults.getTestCaseResult(androidDevice))
-    setLogcat(testResults.getLogcat(androidDevice))
-    setErrorStackTrace(testResults.getErrorStackTrace(androidDevice))
+    setLogs(testResults.getLogcat(androidDevice), testResults.getErrorStackTrace(androidDevice))
     setBenchmarkText(testResults.getBenchmark(androidDevice))
     setAdditionalTestArtifacts(testResults.getAdditionalTestArtifacts(androidDevice), testResults)
   }
 
   @VisibleForTesting
   fun refreshTestResultLabel() {
-    val device = myAndroidDevice
-    if (device == null) {
-      myTestResultLabel.text = "No test status available"
-      return
-    }
-    val testCaseResult = myAndroidTestCaseResult
+    val device =
+      myAndroidDevice
+        ?: run {
+          myTestResultLabel.text = "No test status available"
+          myDeviceTestResultLabel.text = ""
+          return
+        }
     myDeviceTestResultLabel.text = String.format(Locale.US, "<html>%s</html>", device.getName().htmlEscape())
-    if (testCaseResult == null) {
-      myTestResultLabel.text = "No test status available"
-      return
-    }
-    if (testCaseResult.isTerminalState) {
-      val statusColor = getColorFor(testCaseResult) ?: UIUtil.getActiveTextColor()
-      when (testCaseResult) {
-        AndroidTestCaseResult.PASSED ->
-          myTestResultLabel.text =
-            String.format(Locale.US, "<html><font color='%s'>Passed</font></html>", ColorUtil.toHtmlColor(statusColor))
-        AndroidTestCaseResult.FAILED -> {
-          val errorMessage = Arrays.stream(StringUtil.splitByLines(myErrorStackTrace)).findFirst().orElse("")
-          if (StringUtil.isEmptyOrSpaces(errorMessage)) {
-            myTestResultLabel.text =
-              String.format(Locale.US, "<html><font color='%s'>Failed</font></html>", ColorUtil.toHtmlColor(statusColor))
-          } else {
-            myTestResultLabel.text =
-              String.format(
-                Locale.US,
-                "<html><font color='%s'>Failed</font> %s</html>",
-                ColorUtil.toHtmlColor(statusColor),
-                errorMessage.htmlEscape(),
-              )
+
+    val testCaseResult =
+      myAndroidTestCaseResult
+        ?: run {
+          myTestResultLabel.text = "No test status available"
+          return
+        }
+
+    myTestResultLabel.text =
+      if (testCaseResult.isTerminalState) {
+        val statusColor = getColorFor(testCaseResult) ?: UIUtil.getActiveTextColor()
+        val hexColor = ColorUtil.toHtmlColor(statusColor)
+        when (testCaseResult) {
+          AndroidTestCaseResult.PASSED -> String.format(Locale.US, "<html><font color='%s'>Passed</font></html>", hexColor)
+          AndroidTestCaseResult.FAILED -> {
+            val errorMessage = myErrorStackTrace.lineSequence().firstOrNull { it.isNotBlank() } ?: ""
+            if (errorMessage.isBlank()) {
+              String.format(Locale.US, "<html><font color='%s'>Failed</font></html>", hexColor)
+            } else {
+              String.format(Locale.US, "<html><font color='%s'>Failed</font> %s</html>", hexColor, errorMessage.htmlEscape())
+            }
+          }
+          AndroidTestCaseResult.SKIPPED -> String.format(Locale.US, "<html><font color='%s'>Skipped</font></html>", hexColor)
+          AndroidTestCaseResult.CANCELLED -> String.format(Locale.US, "<html><font color='%s'>Cancelled</font></html>", hexColor)
+          else -> {
+            Logger.getInstance(javaClass).warn(String.format(Locale.US, "Unexpected result type: %s", testCaseResult))
+            ""
           }
         }
-        AndroidTestCaseResult.SKIPPED ->
-          myTestResultLabel.text =
-            String.format(Locale.US, "<html><font color='%s'>Skipped</font></html>", ColorUtil.toHtmlColor(statusColor))
-        AndroidTestCaseResult.CANCELLED ->
-          myTestResultLabel.text =
-            String.format(Locale.US, "<html><font color='%s'>Cancelled</font></html>", ColorUtil.toHtmlColor(statusColor))
-        else -> {
-          myTestResultLabel.text = ""
-          Logger.getInstance(javaClass).warn(String.format(Locale.US, "Unexpected result type: %s", testCaseResult))
-        }
+      } else {
+        String.format(Locale.US, "Running on %s", device.getName())
       }
-    } else {
-      myTestResultLabel.text = String.format(Locale.US, "Running on %s", device.getName())
-    }
   }
 
   @VisibleForTesting
-  fun refreshLogsView() {
+  open fun refreshLogsView() {
     needsRefreshLogsView = false
     myLogsView.clear()
 
-    if (StringUtil.isEmptyOrSpaces(myLogcat) && StringUtil.isEmptyOrSpaces(myErrorStackTrace)) {
+    if (myLogcat.isBlank() && myErrorStackTrace.isBlank()) {
       myLogsView.print("No logs available", ConsoleViewContentType.NORMAL_OUTPUT)
       return
     }
     logsTab.isHidden = false
-    if (!StringUtil.isEmptyOrSpaces(myLogcat)) {
+    if (myLogcat.isNotBlank()) {
       myLogsView.print(myLogcat, ConsoleViewContentType.NORMAL_OUTPUT)
       myLogsView.print("\n", ConsoleViewContentType.NORMAL_OUTPUT)
     }
-    myLogsView.print(myErrorStackTrace, ConsoleViewContentType.ERROR_OUTPUT)
+    if (myErrorStackTrace.isNotBlank()) {
+      myLogsView.print(myErrorStackTrace, ConsoleViewContentType.ERROR_OUTPUT)
+    }
 
     myLogsView.scrollToEnd()
   }
 
   private fun updateSelectedTab() {
-    val lastSelectedTab = this.lastTabSelectedByUser
+    invokeLater {
+      val lastSelectedTab = lastTabSelectedByUser
 
-    // Let's always default to the tab last selected by the user (if it's visible)
-    if (lastSelectedTab != null && !lastSelectedTab.isHidden) {
-      tabs.select(lastSelectedTab, false)
-      return
-    }
-
-    // Otherwise select the first visible tab in the ordered set defined below
-    for (tab in setOf(myJourneyScreenshotsTab, myScreenshotTab, myBenchmarkTab, logsTab, myDeviceInfoTab)) {
-      if (!tab.isHidden) {
-        tabs.select(tab, false)
-
-        // We only want to track tabs selected by the user - so reset it to the previous value
-        this.lastTabSelectedByUser = lastSelectedTab
-
-        return
+      // Let's always default to the tab last selected by the user (if it's visible)
+      if (lastSelectedTab?.isHidden == false) {
+        tabs.select(lastSelectedTab, false)
+        return@invokeLater
       }
+
+      // Otherwise select the first visible tab in the ordered set defined below
+      listOf(myJourneyScreenshotsTab, myScreenshotTab, myBenchmarkTab, logsTab, myDeviceInfoTab)
+        .firstOrNull { !it.isHidden }
+        ?.let { tab ->
+          tabs.select(tab, false)
+          // We only want to track tabs selected by the user - so reset it to the previous value
+          lastTabSelectedByUser = lastSelectedTab
+        }
     }
   }
 
@@ -519,9 +504,48 @@ class DetailsViewContentView(
   }
 
   override fun dispose() {
+    pathResolutionFuture?.cancel(true)
     // Clear the logcat message to reduce the impact of the memory leak. b/446684393.
     myLogcat = ""
     myErrorStackTrace = ""
+  }
+}
+
+private fun createAccessiblePanel(
+  layout: java.awt.LayoutManager,
+  accessibleName: String? = null,
+  roleOnMac: AccessibleRole = AccessibilityUtils.GROUPED_ELEMENTS,
+  defaultRole: AccessibleRole = AccessibleRole.PANEL,
+): JPanel {
+  return object : JPanel(layout) {
+    override fun getAccessibleContext(): AccessibleContext {
+      if (accessibleContext == null) {
+        accessibleContext =
+          object : AccessibleJPanel() {
+            override fun getAccessibleRole() = if (SystemInfoRt.isMac) roleOnMac else defaultRole
+          }
+        accessibleName?.let { accessibleContext.accessibleName = it }
+      }
+      return accessibleContext
+    }
+  }
+}
+
+private fun createAccessibleLabel(
+  text: String,
+  roleOnMac: AccessibleRole = AccessibilityUtils.GROUPED_ELEMENTS,
+  defaultRole: AccessibleRole = AccessibleRole.LABEL,
+): JBLabel {
+  return object : JBLabel(text) {
+    override fun getAccessibleContext(): AccessibleContext {
+      if (accessibleContext == null) {
+        accessibleContext =
+          object : AccessibleJLabel() {
+            override fun getAccessibleRole() = if (SystemInfoRt.isMac) roleOnMac else defaultRole
+          }
+      }
+      return accessibleContext
+    }
   }
 }
 

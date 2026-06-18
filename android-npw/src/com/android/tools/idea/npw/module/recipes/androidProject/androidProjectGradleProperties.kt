@@ -16,11 +16,17 @@
 package com.android.tools.idea.npw.module.recipes.androidProject
 
 import com.android.ide.common.repository.AgpVersion
+import com.android.tools.idea.wizard.template.DslLanguage
 import com.android.tools.idea.wizard.template.renderIf
 
 private val ANDROIDX_DEFAULT_IN_AGP = AgpVersion.parse("9.0.0-alpha01")
 
-fun androidProjectGradleProperties(agpVersion: AgpVersion, generateKotlin: Boolean, overridePathCheck: Boolean?): String {
+fun androidProjectGradleProperties(
+  agpVersion: AgpVersion,
+  generateKotlin: Boolean,
+  dslLanguage: DslLanguage,
+  overridePathCheck: Boolean?,
+): String {
   val androidXBlock =
     renderIf(agpVersion < ANDROIDX_DEFAULT_IN_AGP) {
       """
@@ -47,6 +53,16 @@ android.overridePathCheck=$overridePathCheck
 """
     }
 
+  val declarativeBlock =
+    renderIf(dslLanguage.isDcl) {
+      """
+      # Declarative declarations
+      android.experimental.declarative=true
+      org.gradle.kotlin.dsl.dcl=true
+      """
+        .trimIndent()
+    }
+
   return """
 # Project-wide Gradle settings.
 
@@ -66,9 +82,15 @@ org.gradle.jvmargs=-Xmx${maxHeapSize}m -Dfile.encoding=UTF-8
 # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
 # org.gradle.parallel=true
 
+# When enabled, the Configuration Cache allows Gradle to skip the configuration
+# phase entirely if nothing that affects the build configuration (such as build scripts)
+# has changed. Additionally, Gradle applies performance optimizations to task execution.
+org.gradle.configuration-cache=true
+
 $androidXBlock
 $kotlinStyleBlock
 $overridePathCheckBlock
+$declarativeBlock
 """
 }
 

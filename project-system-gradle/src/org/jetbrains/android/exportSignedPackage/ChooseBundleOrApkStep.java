@@ -31,6 +31,8 @@ import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
 import org.jetbrains.android.util.AndroidBundle;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.TestOnly;
 
 public class ChooseBundleOrApkStep extends ExportSignedPackageWizardStep {
   public static final String DOC_URL = "https://d.android.com/r/studio-ui/dynamic-delivery/overview.html";
@@ -101,6 +103,9 @@ public class ChooseBundleOrApkStep extends ExportSignedPackageWizardStep {
     myBundlePanel.add(myLearnMoreLink, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                            GridConstraints.SIZEPOLICY_FIXED, null, null, null, 2, false));
+    final Spacer spacer1 = new Spacer();
+    myBundlePanel.add(spacer1, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+                                                    GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 14), null, 0, false));
     myApkPanel = new JPanel();
     myApkPanel.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
     myContentPanel.add(myApkPanel, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
@@ -119,9 +124,12 @@ public class ChooseBundleOrApkStep extends ExportSignedPackageWizardStep {
     myApkPanel.add(jBLabel2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                  GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                  GridConstraints.SIZEPOLICY_FIXED, null, null, null, 2, false));
-    final Spacer spacer1 = new Spacer();
-    myContentPanel.add(spacer1, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+    final Spacer spacer2 = new Spacer();
+    myContentPanel.add(spacer2, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                                     GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 2), null, 0, false));
+    final Spacer spacer3 = new Spacer();
+    myContentPanel.add(spacer3, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+                                                    GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
     ButtonGroup buttonGroup;
     buttonGroup = new ButtonGroup();
     buttonGroup.add(myBundleButton);
@@ -149,5 +157,11 @@ public class ChooseBundleOrApkStep extends ExportSignedPackageWizardStep {
                             ? new Font(font.getFamily(), font.getStyle(), font.getSize())
                             : new StyleContext().getFont(font.getFamily(), font.getStyle(), font.getSize());
     return fontWithFallback instanceof FontUIResource ? fontWithFallback : new FontUIResource(fontWithFallback);
+  }
+
+  @TestOnly
+  public void setButtonForType(@NotNull ExportSignedPackageWizard.TargetType type) {
+    myApkButton.setSelected(type.equals(ExportSignedPackageWizard.TargetType.APK));
+    myBundleButton.setSelected(type.equals(ExportSignedPackageWizard.TargetType.BUNDLE));
   }
 }

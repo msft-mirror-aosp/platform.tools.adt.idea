@@ -49,6 +49,7 @@ import com.intellij.testFramework.DisposableRule
 import java.util.concurrent.CompletableFuture
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -105,6 +106,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
         openStates = openStates,
         onOpenStatesChange = { openStates = it },
+        onCopy = {},
       )
     }
     composeTestRule.onAllNodesWithContentDescription(LeakingStatus.YES.name).assertCountEquals(1) // 1 - yes leak icon
@@ -139,6 +141,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
         openStates = openStates,
         onOpenStatesChange = { openStates = it },
+        onCopy = {},
       )
     }
 
@@ -156,7 +159,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
     composeTestRule.onNodeWithTag("dalvik.system.PathClassLoader").performClick()
     composeTestRule.onAllNodesWithText("Leaking").assertCountEquals(2) // 2 occurrence of this text are open now
     composeTestRule.onAllNodesWithText("No").assertCountEquals(2) // 2 occurrence of this text are open now
-    composeTestRule.onNodeWithText("InternalLeakCanary↓ is not leaking and A ClassLoader is never leaking").isDisplayed()
+    composeTestRule.onNodeWithText("InternalLeakCanary is not leaking and A ClassLoader is never leaking").isDisplayed()
 
     composeTestRule.onNodeWithTag("androidx.constraintlayout.widget.ConstraintLayout").performClick()
     composeTestRule.onAllNodesWithText("Leaking").assertCountEquals(3) // 3 occurrence of this text are open now
@@ -190,6 +193,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = mockLeakCanaryModel::isDeclarationAvailableAsync,
         openStates = openStates,
         onOpenStatesChange = { openStates = it },
+        onCopy = {},
       )
     }
 
@@ -235,6 +239,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
         openStates = emptyList(),
         onOpenStatesChange = {},
+        onCopy = {},
       )
     }
     composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE).assertIsDisplayed()
@@ -252,6 +257,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
         openStates = emptyList(),
         onOpenStatesChange = {},
+        onCopy = {},
       )
     }
     composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE).assertDoesNotExist()
@@ -311,6 +317,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = mockLeakCanaryModel::isDeclarationAvailableAsync,
         openStates = openStates,
         onOpenStatesChange = { openStates = it },
+        onCopy = {},
       )
     }
 
@@ -359,6 +366,7 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
         openStates = openStates,
         onOpenStatesChange = { openStates = it },
+        onCopy = {},
       )
     }
 
@@ -378,11 +386,40 @@ class LeakDetailsPanelTest : WithFakeTimer {
         isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
         openStates = emptyList(),
         onOpenStatesChange = {},
+        onCopy = {},
       )
     }
 
     composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_MISSING_MESSAGE).assertIsDisplayed()
     composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE).assertDoesNotExist()
+  }
+
+  @Test
+  fun `test analyze with studio bot button triggers callback`() {
+    val leaks = getSampleLeak()
+    val selectedLeak = leaks[0]
+    var callbackInvoked = false
+
+    composeTestRule.setContent {
+      val traceNodes = selectedLeak.displayedLeakTrace.firstOrNull()?.nodes ?: emptyList()
+      var openStates by remember(selectedLeak) { mutableStateOf(List(traceNodes.size) { false }) }
+      LeakDetailsPanel(
+        selectedLeak = selectedLeak,
+        gotoDeclaration = leakCanaryModel::goToDeclaration,
+        isRecording = true,
+        isLeakCanaryPresent = true,
+        isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
+        openStates = openStates,
+        onOpenStatesChange = { openStates = it },
+        onAnalyzeLeakWithStudioBot = { callbackInvoked = true },
+        isLeakCanaryStudioBotEnabled = true,
+        onCopy = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_FIX_WITH_AGENT).assertIsDisplayed()
+    composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_FIX_WITH_AGENT).performClick()
+    assertTrue(callbackInvoked)
   }
 
   private fun getLeakWithNavigatableAndNonNavigatableNode(): List<Leak> {

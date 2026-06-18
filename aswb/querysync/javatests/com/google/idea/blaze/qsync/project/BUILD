@@ -7,6 +7,7 @@ aswb_test(
     name = "BuildGraphDataImplTest",
     srcs = ["BuildGraphDataImplTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/query",
@@ -17,7 +18,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -25,6 +25,7 @@ aswb_test(
     name = "SnapshotSerializationTest",
     srcs = ["SnapshotSerializationTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/query:querysummary_java_proto",
         "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync:TestUtils",
@@ -34,8 +35,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
-        "//tools/vendor/google/aswb/plugin_api/maven:protobuf-java",
     ],
 )
 
@@ -43,6 +42,7 @@ aswb_test(
     name = "ProjectProtoUpdateTest",
     srcs = ["ProjectProtoUpdateTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project/update",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/query:querysummary_java_proto",
@@ -53,7 +53,6 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -62,11 +61,25 @@ aswb_test(
     size = "small",
     srcs = ["ProjectDefinitionTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
+    ],
+)
+
+aswb_test(
+    name = "ProjectStructureDataTest",
+    size = "small",
+    srcs = ["ProjectStructureDataTest.kt"],
+    deps = [
+        "//tools/adt/idea/aswb/plugin_api",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
+        "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
     ],
 )
 
@@ -76,12 +89,12 @@ aswb_test(
     srcs = ["QuerySyncLanguageTest.java"],
     test_class = "com.google.idea.blaze.qsync.project.QuerySyncLanguageTest",
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project:language_class_java_proto",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:protobuf-java",
     ],
 )
 
@@ -91,11 +104,11 @@ aswb_test(
     srcs = ["TestSourceGlobMatcherTest.java"],
     test_class = "com.google.idea.blaze.qsync.project.TestSourceGlobMatcherTest",
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -117,10 +130,24 @@ aswb_test(
     size = "small",
     srcs = ["ProjectPathTest.kt"],
     deps = [
+        "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/plugin_api/maven:guava",
+    ],
+)
+
+aswb_test(
+    name = "RequestedTargetsComputerTest",
+    size = "small",
+    srcs = ["RequestedTargetsComputerTest.kt"],
+    deps = [
+        "//tools/adt/idea/aswb/plugin_api",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
+        "//tools/adt/idea/aswb/shared",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
     ],
 )

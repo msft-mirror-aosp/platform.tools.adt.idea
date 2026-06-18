@@ -15,21 +15,26 @@
  */
 package com.android.tools.idea.npw.module.recipes.tvModule
 
-import com.android.tools.idea.npw.module.recipes.IconsGenerationStyle
 import com.android.tools.idea.npw.module.recipes.generateCommonModule
 import com.android.tools.idea.npw.module.recipes.generateManifest
+import com.android.tools.idea.templates.recipe.IconsGenerationStyle
 import com.android.tools.idea.wizard.template.ModuleTemplateData
 import com.android.tools.idea.wizard.template.RecipeExecutor
 
-fun RecipeExecutor.generateTvModule(data: ModuleTemplateData, appTitle: String, useKts: Boolean, useVersionCatalog: Boolean = true) {
+fun RecipeExecutor.generateTvModule(
+  data: ModuleTemplateData,
+  appTitle: String,
+  hasCustomRenderer: Boolean = false,
+  generateStandardFiles: Boolean = true,
+) {
   generateCommonModule(
     data,
     appTitle,
-    useKts,
     generateManifest(hasApplicationBlock = !data.isLibrary, hasRoundIcon = false, theme = "@android:style/Theme.DeviceDefault"),
     iconsGenerationStyle = IconsGenerationStyle.MIPMAP_SQUARE_ONLY,
     themesXml = null,
     colorsXml = null,
-    useVersionCatalog = useVersionCatalog,
+    hasCustomRenderer = hasCustomRenderer,
+    generateStandardFiles = generateStandardFiles,
   )
 }

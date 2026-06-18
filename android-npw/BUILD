@@ -47,6 +47,9 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/sdk-updates:intellij.android.sdkUpdates",
         "//tools/adt/idea/ml-api:intellij.android.ml-api",
+        "@intellij//:intellij.java.ui",
+        "@intellij//:intellij.java",
+        "@intellij//:intellij.java.impl",
     ],
 )
 
@@ -200,6 +203,7 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:intellij.java.ui",
     ],
 )
 
@@ -253,6 +257,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.9.23",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_2.2.0",
         "@maven//:org.jetbrains.kotlin.kotlin-test-junit_" + KGP_VERSION_FOR_TESTS,  # Used by AddKotlinMultiplatformLibraryModuleTest
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core-jvm_1.4.1",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
     ],
 )

@@ -19,14 +19,14 @@ import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.projectview.parser.ProjectViewParser;
 import com.google.idea.blaze.base.projectview.section.sections.WorkspaceLocationSection;
 import com.google.idea.blaze.base.scope.BlazeContext;
-import com.google.idea.blaze.base.settings.BlazeImportSettings;
-import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
+import com.google.idea.blaze.base.settings.BazelImportSettingsManager;
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver;
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolverImpl;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.exception.ConfigurationException;
 import com.intellij.openapi.project.Project;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.Nullable;
@@ -43,33 +43,43 @@ public final class ProjectViewManagerImpl extends ProjectViewManager {
   @Nullable
   @Override
   public ProjectViewSet getProjectViewSet() {
-      return BlazeImportSettingsManager.getInstance(project).getProjectViewSet();
+    return BazelImportSettingsManager.getInstance(project).getProjectViewSet();
   }
 
   @Override
   public ProjectViewSet reloadProjectView(BlazeContext context) throws BuildException {
-    return BlazeImportSettingsManager.getInstance(project).reloadProjectView();
+    return BazelImportSettingsManager.getInstance(project).reloadProjectView();
   }
 
   @Override
-  public ProjectViewSet doLoadProjectView(BlazeContext context, BlazeImportSettings importSettings) throws ConfigurationException {
-    final var projectViewRootFile = new File(importSettings.getProjectViewFile());
+  public ProjectViewSet doLoadProjectView(
+      BlazeContext context, Path projectViewRootFile, Path workspaceRoot)
+      throws ConfigurationException {
+    final var projectViewFile = projectViewRootFile.toFile();
     ProjectViewParser rootParser = new ProjectViewParser(BlazeContext.create(), null);
-    rootParser.parseProjectViewFile(projectViewRootFile, List.of(WorkspaceLocationSection.PARSER));
+    rootParser.parseProjectViewFile(projectViewFile, List.of(WorkspaceLocationSection.PARSER));
     final var rootProjectViewSet = rootParser.getResult();
-    final var rootProjectView = Optional.ofNullable(rootProjectViewSet.getTopLevelProjectViewFile()).map(it -> it.projectView);
-    final var workspaceLocation = rootProjectView.map(it -> it.getScalarValue(WorkspaceLocationSection.KEY));
+    final var rootProjectView =
+        Optional.ofNullable(rootProjectViewSet.getTopLevelProjectViewFile())
+            .map(it -> it.projectView);
+    final var workspaceLocation =
+        rootProjectView.map(it -> it.getScalarValue(WorkspaceLocationSection.KEY));
     final WorkspacePathResolver workspacePathResolver;
-    workspacePathResolver =
-      new WorkspacePathResolverImpl(WorkspaceRoot.fromProto(workspaceLocation.orElseGet(importSettings::getWorkspaceRoot)));
+    String location = workspaceLocation.orElseGet(workspaceRoot::toString);
+    File locationFile = resolveWorkspaceRoot(projectViewFile, location);
+    workspacePathResolver = new WorkspacePathResolverImpl(new WorkspaceRoot(locationFile));
 
     ProjectViewParser parser = new ProjectViewParser(context, workspacePathResolver);
-    parser.parseProjectViewFile(projectViewRootFile);
+    parser.parseProjectViewFile(projectViewFile);
 
     if (context.hasErrors()) {
-      throw new ConfigurationException(
-          "Failed to read project view from " + projectViewRootFile.getAbsolutePath());
+      throw new ConfigurationException("Failed to read project view from " + projectViewRootFile);
     }
     return parser.getResult();
+  }
+
+  public static File resolveWorkspaceRoot(File projectViewRootFile, String workspaceLocation) {
+    Path parent = projectViewRootFile.getParentFile().toPath();
+    return parent.resolve(workspaceLocation).toAbsolutePath().normalize().toFile();
   }
 }

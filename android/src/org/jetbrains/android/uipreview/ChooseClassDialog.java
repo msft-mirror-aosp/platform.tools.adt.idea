@@ -9,6 +9,7 @@ import static com.android.tools.lint.checks.AnnotationDetectorKt.RESTRICT_TO_ANN
 
 import com.intellij.ide.util.PsiClassListCellRenderer;
 import com.intellij.openapi.application.AccessToken;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.DumbModeBlockedFunctionality;
 import com.intellij.openapi.project.DumbService;
@@ -45,7 +46,6 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.function.Predicate;
 import javax.swing.DefaultListModel;
-import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.ListModel;
@@ -118,8 +118,10 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
       @Override
       protected boolean isMatchingElement(Object element, String pattern) {
         PsiClass psiClass = (PsiClass)element;
-        assert psiClass.getName() != null && psiClass.getQualifiedName() != null;
-        return compare(psiClass.getName(), pattern) || compare(psiClass.getQualifiedName(), pattern);
+        return ReadAction.computeBlocking(() -> {
+          assert psiClass.getName() != null && psiClass.getQualifiedName() != null;
+          return compare(psiClass.getName(), pattern) || compare(psiClass.getQualifiedName(), pattern);
+        });
       }
     };
     search.setupListeners();
@@ -132,11 +134,16 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
 
   private void setSelectedClass(@NotNull String className) {
     ListModel<PsiClass> model = myList.getModel();
-    for (int index = 0; index < myList.getModel().getSize(); index++) {
-      if (className.equals(model.getElementAt(index).getQualifiedName())) {
-        myList.setSelectedIndex(index);
-        break;
+    int targetIndex = ReadAction.computeBlocking(() -> {
+      for (int index = 0; index < model.getSize(); index++) {
+        if (className.equals(model.getElementAt(index).getQualifiedName())) {
+          return index;
+        }
       }
+      return -1;
+    });
+    if (targetIndex != -1) {
+      myList.setSelectedIndex(targetIndex);
     }
   }
 
@@ -217,7 +224,9 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
 
     Collection<PsiClass> publicAndUnrestrictedClasses;
     try (AccessToken ignore = SlowOperations.knownIssue("b/450553368")) {
-      publicAndUnrestrictedClasses = findPublicAndUnrestrictedClasses(module, classes);
+      publicAndUnrestrictedClasses = ReadAction.compute(
+        () -> findPublicAndUnrestrictedClasses(module, classes)
+      );
     }
     if (publicAndUnrestrictedClasses.isEmpty()) {
       String emptyErrorTitle = "No " + title + " Found";
@@ -227,8 +236,9 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
     }
     Predicate<PsiClass> filter = getIsUserDefinedClassesFilter();
 
-    Map<Boolean, List<PsiClass>> partitionedMap = publicAndUnrestrictedClasses.stream()
-      .collect(Collectors.partitioningBy(filter));
+    Map<Boolean, List<PsiClass>> partitionedMap = ReadAction.compute(
+      () -> publicAndUnrestrictedClasses.stream().collect(Collectors.partitioningBy(filter))
+    );
 
     List<PsiClass> userDefinedClasses = partitionedMap.get(true);
     List<PsiClass> nonUserDefinedClasses = partitionedMap.get(false);
@@ -296,6 +306,6 @@ public class ChooseClassDialog extends DialogWrapper implements ListSelectionLis
   public void valueChanged(ListSelectionEvent e) {
     PsiClass psiClass = myList.getSelectedValue();
     setOKActionEnabled(psiClass != null);
-    myResultClassName = psiClass == null ? null : psiClass.getQualifiedName();
+    myResultClassName = psiClass == null ? null : ReadAction.computeBlocking(() -> psiClass.getQualifiedName());
   }
 }

@@ -27,7 +27,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.project.ProjectManager
-import org.jetbrains.kotlin.idea.gradleTooling.get
+import com.intellij.ui.treeStructure.ProjectViewUpdateCause
 
 class ShowBuildFilesInModuleAction : ToggleAction("Display Build Files In Module") {
   private val settings = ProjectToolWindowSettings.Companion.getInstance()
@@ -37,7 +37,10 @@ class ShowBuildFilesInModuleAction : ToggleAction("Display Build Files In Module
   override fun setSelected(e: AnActionEvent, state: Boolean) {
     if (settings.showBuildFilesInModule != state) {
       settings.showBuildFilesInModule = state
-      ProjectManager.getInstance().openProjects.filter { !it.isDisposed }.forEach { ProjectView.getInstance(it)?.refresh() }
+      ProjectManager.getInstance()
+        .openProjects
+        .filter { !it.isDisposed }
+        .forEach { ProjectView.getInstance(it)?.refresh(ProjectViewUpdateCause.SETTINGS) }
       trackShowBuildFileInModuleSettingChange(state)
     }
   }

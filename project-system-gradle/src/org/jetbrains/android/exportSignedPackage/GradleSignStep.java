@@ -27,7 +27,6 @@ import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gservices.DevServicesDeprecationData;
 import com.android.tools.idea.help.AndroidWebHelpProvider;
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.intellij.icons.AllIcons;
@@ -39,12 +38,15 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.ui.ListSpeedSearch;
 import com.intellij.ui.TitledSeparator;
+import com.android.tools.idea.publishing.AdiClient;
+import com.android.tools.idea.publishing.RegistrationState;
 import com.intellij.ui.components.BrowserLink;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.util.ui.components.BorderLayoutPanel;
 import com.intellij.util.ModalityUiUtil;
 import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.JBUI;
@@ -53,12 +55,11 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.security.cert.CertificateEncodingException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.Collections;
@@ -69,6 +70,7 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.DefaultListSelectionModel;
 import javax.swing.Icon;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -96,6 +98,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
   private final Set<String> disabledItems = new HashSet<>();
 
   private GradleAndroidModel myAndroidModel;
+  private RegistrationState myRegistrationState = RegistrationState.UNKNOWN;
 
   private final JBLabel mySelectedKeyLabel = new JBLabel("Selected Key");
   private final JBLabel mySelectedKey = new JBLabel();
@@ -107,6 +110,8 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
   final JBLabel myAdiStatusDescription = new JBLabel();
   private final BrowserLink myLearnMoreLink = new BrowserLink("Learn more", "https://d.android.com/r/studio-ui/developer-verification/learn-more");
   private final JBLabel myWarningText = new JBLabel();
+  final JCheckBox myContinueToPlayCheckBox = new JCheckBox();
+  final BorderLayoutPanel myPublishingPanel = new BorderLayoutPanel();
 
   private final AdiClient myAdiClient;
 
@@ -229,6 +234,14 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
     if (StudioFlags.SIGNED_BUILD_ADV_FEATURE.get()) {
       updateAdiStatus();
     }
+
+    boolean isBundle = targetType == BUNDLE;
+    if (StudioFlags.PLAY_PUBLISHING_WIZARD_INTEGRATION.get() && isBundle) {
+      myPublishingPanel.setVisible(true);
+    } else {
+      myPublishingPanel.setVisible(false);
+      myContinueToPlayCheckBox.setSelected(false);
+    }
   }
 
   @Override
@@ -257,6 +270,10 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
       throw new CommitStepException(AndroidBundle.message("android.apk.sign.gradle.missing.variants"));
     }
 
+    if (myContinueToPlayCheckBox.isSelected() && selectedVariantIndices.length != 1) {
+      throw new CommitStepException(AndroidBundle.message("android.apk.sign.gradle.publishing.multiple.variants"));
+    }
+
     List<String> buildVariants = myBuildVariantsList.getSelectedValuesList().stream().map(item -> item.name).toList();
 
     myWizard.setApkPath(apkFolder);
@@ -265,6 +282,9 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
     PropertiesComponent properties = PropertiesComponent.getInstance(myWizard.getProject());
     properties.setValue(getApkPathPropertyName(myAndroidModel.getModuleName(), myWizard.getTargetType()), apkFolder);
     properties.setList(PROPERTY_BUILD_VARIANTS, buildVariants);
+
+    myWizard.setUploadToPlay(myContinueToPlayCheckBox.isSelected());
+    myWizard.setRegistrationState(registrationStateToBoolean());
   }
 
   @Override
@@ -294,7 +314,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
 
   private void setupUI() {
     myContentPanel = new JPanel();
-    myContentPanel.setLayout(new GridLayoutManager(8, 3, JBUI.emptyInsets(), -1, 7));
+    myContentPanel.setLayout(new GridLayoutManager(9, 3, JBUI.emptyInsets(), -1, 7));
     final JBLabel destinationFolderLabel = new JBLabel();
     destinationFolderLabel.setText("Destination Folder");
     destinationFolderLabel.setDisplayedMnemonic('D');
@@ -380,6 +400,40 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
                                                               GridConstraints.SIZEPOLICY_FIXED,
                                                               null, null, null));
     }
+
+    if (StudioFlags.PLAY_PUBLISHING_WIZARD_INTEGRATION.get()) {
+      final TitledSeparator publishingSeparator = new TitledSeparator("Publish your app to Google Play for testing");
+      myPublishingPanel.addToTop(publishingSeparator);
+
+      BorderLayoutPanel textPanel = new BorderLayoutPanel(0, 5);
+      textPanel.setBorder(JBUI.Borders.empty(2));
+      JBLabel checkboxLabel = new JBLabel("Continue to the Publish for Testing Wizard");
+      checkboxLabel.addMouseListener(new MouseAdapter() {
+        @Override
+        public void mouseClicked(MouseEvent e) {
+          myContinueToPlayCheckBox.setSelected(!myContinueToPlayCheckBox.isSelected());
+        }
+      });
+      JBLabel descriptionLabel = new JBLabel("Upload the signed App Bundle to a new or existing Play app listing.");
+      descriptionLabel.setForeground(DISABLED_TEXT_COLOR);
+
+      textPanel.addToTop(checkboxLabel);
+      textPanel.addToCenter(descriptionLabel);
+
+      BorderLayoutPanel publishingPanel = new BorderLayoutPanel();
+      BorderLayoutPanel checkBoxPanel = new BorderLayoutPanel();
+      checkBoxPanel.addToTop(myContinueToPlayCheckBox);
+
+      publishingPanel.addToLeft(checkBoxPanel);
+      publishingPanel.addToCenter(textPanel);
+      publishingPanel.setBorder(JBUI.Borders.emptyBottom(4));
+
+      myPublishingPanel.addToCenter(publishingPanel);
+
+      myContentPanel.add(myPublishingPanel, new GridConstraints(8, 0, 1, 3, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
+                                                          GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
+                                                          GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+    }
   }
 
   private boolean shouldDisableDebuggable() {
@@ -409,6 +463,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
 
   private void updateAdiStatus() {
     String appId = null;
+    myRegistrationState = RegistrationState.UNKNOWN;
     List<VariantItem> selectedValues = myBuildVariantsList.getSelectedValuesList();
     if (selectedValues.size() == 1) {
       VariantItem selectedVariant = selectedValues.getFirst();
@@ -439,6 +494,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
         myCurrentAdiCheck.thenAccept(result -> ModalityUiUtil.invokeLaterIfNeeded(ModalityState.any(), () -> {
           var state = result.getFirst().get(currentAppId);
             if (myCurrentAdiCheck != null && !myCurrentAdiCheck.isCancelled() && currentAppId.equals(getAppId(selectedVariant.name))) {
+              myRegistrationState = state;
               if (state == RegistrationState.UNKNOWN) {
                 myAdiStatusIcon.setIcon(AllIcons.General.Note);
                 myAdiStatus.setText(AndroidBundle.message("android.apk.sign.gradle.adi.check.failed"));
@@ -511,6 +567,12 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
       return variant.getApplicationId();
     }
     return null;
+  }
+
+  private @Nullable Boolean registrationStateToBoolean() {
+    return
+      myRegistrationState == RegistrationState.REGISTERED ? Boolean.TRUE :
+      myRegistrationState == RegistrationState.NOT_REGISTERED ? Boolean.FALSE : null;
   }
 
   private class DisabledItemListCellRenderer extends DefaultListCellRenderer {

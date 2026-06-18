@@ -779,6 +779,8 @@ MODULE                        : NonStandardSourceSetDependencies
                     - taskArtifacts               : <ROOT>/common/build/libs/common-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/common/build/libs/common-jvm.jar [-]
                     configurationArtifacts
+                        - archives                    : <ROOT>/common/build/libs/common-jvm.jar [-]
+                        - archives                    : <ROOT>/common/build/libs/common-metadata.jar [-]
                         - jvmApiElements              : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmApiElements-published    : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmRuntimeElements          : <ROOT>/common/build/libs/common-jvm.jar [-]
@@ -978,6 +980,7 @@ MODULE                        : NonStandardSourceSetDependencies
                     configurationArtifacts
                         - androidDebugArchives        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - androidReleaseArchives      : <ROOT>/feature-b/build/outputs/aar/feature-b-release.aar [-]
+                        - archives                    : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                         - debugApiElements-published  : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - debugRuntimeElements-published        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - debugSourcesElements        : <ROOT>/feature-b/build/libs/feature-b-android-debug-sources.jar [-]
@@ -1155,6 +1158,8 @@ MODULE                        : NonStandardSourceSetDependencies
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                             configurationArtifacts
+                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
+                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                                 - jvmApiElements              : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmApiElements-published    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmRuntimeElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
@@ -2118,6 +2123,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -2136,6 +2142,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -2154,12 +2161,13 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -2208,7 +2216,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2262,6 +2271,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - fragmentRefines             : jvmMain:commonMain
                     - fragments                   : jvmMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2343,6 +2353,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - fragmentRefines             : jvmTest:commonTest
                     - fragments                   : jvmTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2412,6 +2423,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -2436,6 +2448,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -2448,7 +2461,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -3476,6 +3489,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -3494,6 +3508,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -3512,12 +3527,13 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -3871,11 +3887,11 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:feature-b-MAIN
-                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:common-jvmMain
                         module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                        module                        : <ROOT>-:feature-b-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -3923,11 +3939,11 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        module                        : <ROOT>-:feature-b-MAIN
-                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:common-jvmMain
                         module                        : <ROOT>-:common-commonMain
                         module                        : <ROOT>-:common-commonMain
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                        module                        : <ROOT>-:feature-b-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -3958,7 +3974,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
@@ -4009,6 +4026,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - fragmentRefines             : androidDebug:commonMain
                     - fragments                   : androidDebug
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4080,6 +4098,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     - fragments                   : androidInstrumentedTestDebug
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4157,6 +4176,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - fragmentRefines             : androidUnitTestDebug:commonTest
                     - fragments                   : androidUnitTestDebug
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4238,6 +4258,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -4262,6 +4283,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -4286,6 +4308,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
@@ -4298,7 +4321,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -4362,7 +4385,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
+        swiftExport                   : KotlinSwiftExportModelImpl
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -4416,6 +4440,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - fragmentRefines             : jvmMain:commonMain
                     - fragments                   : jvmMain
                     - fragments                   : commonMain
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4499,6 +4524,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - fragmentRefines             : jvmTest:commonTest
                     - fragments                   : jvmTest
                     - fragments                   : commonTest
+                    headerModeType                : any
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -5312,6 +5338,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -5330,6 +5357,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -5348,12 +5376,13 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

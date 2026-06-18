@@ -1653,7 +1653,7 @@ MODULE                        : My_First_App.app
                     backendThreads                : 1
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : app_debug
+                    moduleName                    : My First App:app_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -1663,6 +1663,7 @@ MODULE                        : My_First_App.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -1672,7 +1673,7 @@ MODULE                        : My_First_App.app
                     backendThreads                : 1
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugAndroidTest
+                    moduleName                    : My First App:app_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -1682,6 +1683,7 @@ MODULE                        : My_First_App.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -1691,7 +1693,7 @@ MODULE                        : My_First_App.app
                     backendThreads                : 1
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : app_debugUnitTest
+                    moduleName                    : My First App:app_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -1700,6 +1702,7 @@ MODULE                        : My_First_App.app
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -2784,7 +2787,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : mysharedlibrary_debug
+                    moduleName                    : My First App.app:mysharedlibrary_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2793,6 +2796,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugAndroidTest
@@ -2802,7 +2806,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : mysharedlibrary_debugAndroidTest
+                    moduleName                    : My First App.app:mysharedlibrary_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2812,6 +2816,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
             debugUnitTest
@@ -2821,7 +2826,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : mysharedlibrary_debugUnitTest
+                    moduleName                    : My First App.app:mysharedlibrary_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2830,6 +2835,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
+                    headerModeType                : any
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>

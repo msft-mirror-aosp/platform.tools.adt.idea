@@ -65,6 +65,8 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
 
     coroutineScope.launch { uiModel.getAndroidProjectEntries() }
 
+    uiModel.onTemplateDoubleClick = { wizard.goForward() }
+
     // Might not be needed
     FormScalingUtil.scaleComponentTree(this.javaClass, rootView)
   }

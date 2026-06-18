@@ -109,7 +109,10 @@ abstract class SyncedProjectTest(selfTest: Boolean = false, agpVersion: AgpVersi
 
   @Test fun testBasicCmakeApp() = testProject(TestProject.BASIC_CMAKE_APP)
 
-  @Test fun testPsdSampleGroovy() = testProject(TestProject.PSD_SAMPLE_GROOVY)
+  @Test
+  fun testPsdSampleGroovy() {
+    testProject(TestProject.PSD_SAMPLE_GROOVY)
+  }
 
   @Test fun testCompositeBuild() = testProject(TestProject.COMPOSITE_BUILD)
 

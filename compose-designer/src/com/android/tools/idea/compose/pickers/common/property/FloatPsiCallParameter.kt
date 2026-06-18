@@ -15,9 +15,11 @@
  */
 package com.android.tools.idea.compose.pickers.common.property
 
+import com.android.annotations.concurrency.UiThread
+import com.android.tools.adtui.model.stdui.EDITOR_NO_ERROR
+import com.android.tools.adtui.model.stdui.EditingValidation
 import com.android.tools.idea.compose.pickers.base.model.PsiCallPropertiesModel
 import com.android.tools.idea.compose.pickers.base.property.PsiCallParameterPropertyItem
-import com.android.tools.idea.compose.pickers.common.editingsupport.FloatValidator
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtExpression
@@ -38,6 +40,7 @@ internal class FloatPsiCallParameter(
   argumentExpression: KtExpression?,
   defaultValue: String?,
   initialValue: String? = null,
+  validation: EditingValidation = { EDITOR_NO_ERROR },
 ) :
   PsiCallParameterPropertyItem(
     project,
@@ -47,11 +50,12 @@ internal class FloatPsiCallParameter(
     parameterTypeNameIfStandard,
     argumentExpression,
     defaultValue,
-    FloatValidator,
+    validation,
     initialValue,
   ) {
   override var value: String?
     get() = super.value?.removeSuffix("f")
+    @UiThread
     set(newValue) {
       super.value = newValue?.toFloatOrNull()?.let { "${it}f" } ?: newValue
     }

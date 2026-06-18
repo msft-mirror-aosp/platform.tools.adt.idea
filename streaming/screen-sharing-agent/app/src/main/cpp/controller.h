@@ -25,6 +25,7 @@
 #include "accessors/clipboard_manager.h"
 #include "accessors/device_state_manager.h"
 #include "accessors/display_manager.h"
+#include "accessors/input_manager.h"
 #include "accessors/key_character_map.h"
 #include "accessors/key_event.h"
 #include "accessors/motion_event.h"
@@ -84,8 +85,14 @@ private:
   void ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message);
   void ProcessTextInput(const TextInputMessage& message);
   void InjectMotionEvent(const MotionEvent& input_event);
+  // Injects an event that cancels the current gesture.
+  void InjectCancelMotionEvent();
+  void InjectUnicodeCharacter(uint16_t c);
+  void InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state);
   void InjectKeyEvent(const KeyEvent& input_event);
-  void InjectInputEvent(const JObject& input_event);
+  bool UseUInputForKeyEvents() const;
+
+  void InjectInputEvent(const JObject& input_event, InputEventInjectionSync mode);
 
   static void ProcessSetDeviceOrientation(const SetDeviceOrientationMessage& message);
   static void ProcessSetMaxVideoResolution(const SetMaxVideoResolutionMessage& message);

@@ -18,7 +18,7 @@ package com.android.tools.idea.run.configuration.execution
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.fakeadbserver.services.ShellCommandOutput
 import com.android.tools.deployer.Activator
-import com.android.tools.deployer.DeployerException
+import com.android.tools.deployer.common.DeployerException
 import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.AppComponent
 import com.android.tools.idea.execution.common.AppRunSettings
@@ -139,7 +139,7 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
     assertThat(receivedAmCommands[2]).isEqualTo(showTile)
 
     // Verify that a warning was raised in console.
-    val consoleViewImpl = runContentDescriptor.executionConsole as ConsoleViewImpl
+    val consoleViewImpl = runContentDescriptor?.executionConsole as ConsoleViewImpl
     // Print deferred text
     val consoleOutputPromise = CompletableFuture<String>()
     invokeLater {
@@ -323,10 +323,10 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
       )
 
     val runContentDescriptor = getRunContentDescriptorForTests { executor.debug(EmptyProgressIndicator()) }
-    assertThat(runContentDescriptor.processHandler).instanceOf(AndroidRemoteDebugProcessHandler::class)
+    assertThat(runContentDescriptor?.processHandler).instanceOf(AndroidRemoteDebugProcessHandler::class)
 
     // Stop configuration.
-    runContentDescriptor.processHandler!!.destroyProcess()
+    runContentDescriptor?.processHandler!!.destroyProcess()
     if (!processTerminatedLatch.await(10, TimeUnit.SECONDS)) {
       fail("process is not terminated")
     }

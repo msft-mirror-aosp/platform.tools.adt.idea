@@ -26,6 +26,7 @@ iml_module(
         "//tools/base/common:studio.android.sdktools.common",
         "//tools/adt/idea/analytics",
         "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
+        "@intellij//:intellij.platform.uast",
     ],
 )
 
@@ -59,6 +60,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/testartifacts:intellij.android.testartifacts",

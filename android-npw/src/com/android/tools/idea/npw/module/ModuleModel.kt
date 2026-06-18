@@ -24,8 +24,10 @@ import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.npw.model.ModuleModelData
 import com.android.tools.idea.npw.model.MultiTemplateRenderer
 import com.android.tools.idea.npw.model.NewAndroidModuleModel
+import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.model.ProjectModelData
 import com.android.tools.idea.npw.model.TemplateMetrics
+import com.android.tools.idea.npw.model.TemplateRendererStrategy
 import com.android.tools.idea.npw.model.moduleTemplateRendererToModuleType
 import com.android.tools.idea.npw.model.render
 import com.android.tools.idea.npw.platform.AndroidVersionsInfo
@@ -105,7 +107,7 @@ abstract class ModuleModel(
       |Package name: ${packageName.get()}
       |Language: ${language.value}
       |Minimum SDK: ${androidSdkInfo.valueOrNull?.minApiLevel ?: "N/A"}
-      |Kotlin DSL: ${useGradleKts.get()}
+      |Kotlin DSL: ${dslLanguage.get().isKts}
     """
       .trimMargin()
   }
@@ -126,6 +128,7 @@ abstract class ModuleModel(
           if (agpVersion == null) {
             agpVersion = this@ModuleModel.agpVersionSelector.get().resolveVersion(AgpVersions::getAvailableVersions)
           }
+          dslLanguage = this@ModuleModel.dslLanguage.get()
         }
         formFactor = this@ModuleModel.formFactor.get()
         category = this@ModuleModel.category.get()
@@ -156,7 +159,14 @@ abstract class ModuleModel(
     @UiThread
     override fun finish() {
       if (success) {
-        DumbService.getInstance(project).smartInvokeLater { TemplateUtils.openEditors(project, createdFiles, true) }
+        val renderStrategy = TemplateRendererStrategy.getTemplateRendererStrategy(project)
+        if (renderStrategy?.isOpenImmediate() == true) {
+          com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+            TemplateUtils.openEditors(project, createdFiles, true)
+          }
+        } else {
+          DumbService.getInstance(project).smartInvokeLater { TemplateUtils.openEditors(project, createdFiles, true) }
+        }
       }
     }
 
@@ -196,14 +206,21 @@ abstract class ModuleModel(
             minSdk = androidSdkInfo.valueOrNull?.minSdk?.majorVersion,
             targetSdk = androidSdkInfo.valueOrNull?.compileSdk?.majorVersion,
             bytecodeLevel = (this@ModuleModel as? NewAndroidModuleModel)?.bytecodeLevel?.valueOrNull,
-            useGradleKts = useGradleKts.get(),
+            dslLanguage = dslLanguage.get(),
             useAppCompat = false,
           )
         } else null
 
-      val executor = if (dryRun) FindReferencesRecipeExecutor(context) else DefaultRecipeExecutor(context)
+      val renderStrategy = (projectModelData as? NewProjectModel)?.templateRendererStrategy?.valueOrNull
 
-      if (StudioFlags.NPW_ENABLE_GRADLE_VERSION_CATALOG.get() && isNewProject && useVersionCatalog.get()) {
+      val executor =
+        if (dryRun) {
+          FindReferencesRecipeExecutor(context)
+        } else {
+          renderStrategy?.createRecipeExecutor(context) ?: DefaultRecipeExecutor(context)
+        }
+
+      if (renderStrategy == null && StudioFlags.NPW_ENABLE_GRADLE_VERSION_CATALOG.get() && isNewProject && useVersionCatalog.get()) {
         // Create a conventional default toml file for the new project because
         // GradleVersionCatalogModel expects
         // the toml file already exists. This needs to be before start rendering the template.

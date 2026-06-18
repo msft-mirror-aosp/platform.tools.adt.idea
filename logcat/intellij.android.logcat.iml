@@ -45,5 +45,7 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="studio-plugin-com.intellij.modules.json" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />
   </component>
 </module>

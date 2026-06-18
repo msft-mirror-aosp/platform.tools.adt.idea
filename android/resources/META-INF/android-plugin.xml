@@ -93,8 +93,6 @@
             class="com.android.tools.idea.actions.DisableAllPluginsAction"/>
 
     <group id="Internal.Android" text="Android" popup="true" internal="true">
-      <action internal="true" id="Android.GetAdbAction" class="com.android.tools.idea.ddms.actions.GetAdbAction" />
-      <action internal="true" id="Android.TerminateAdbAction" class="com.android.tools.idea.ddms.actions.TerminateAdbAction" />
       <action internal="true" id="StatisticsViewer" class="com.android.tools.idea.stats.ShowStatisticsViewerAction" text="Show statistics viewer"/>
       <action internal="true" id="Android.EditFlags" class="com.android.tools.idea.flags.ShowStudioFlagsDialogAction"/>
       <action internal="true" id="Android.ServerFlags" class="com.android.tools.idea.serverflags.ServerFlagsMenuAction" />
@@ -194,11 +192,11 @@
         description="Dismisses banner for Gradle project notifications">
     </action>
     <action
-        id="Android.RunAnalysisScript"
         internal="true"
-        class="com.android.tools.idea.analysis.RunAnalysisScriptAction"
-        text="Run As Analysis Script"
-        description="Runs the current file as an analysis script"
+        id="Android.RunIdeScript"
+        class="com.android.tools.idea.script.RunIdeScriptAction"
+        text="Run As IDE Script"
+        description="Runs the current file as an IDE script"
         icon="AllIcons.Actions.Execute">
       <add-to-group group-id="RunContextPopupGroup" anchor="first"/>
     </action>
@@ -220,7 +218,7 @@
     <cachesInvalidator implementation="com.android.tools.idea.project.metrics.CacheInvalidatorMetricCollector"/>
     <requiredForSmartModeStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$PopulateCachesActivity"/>
     <lang.foldingBuilder language="JAVA" implementationClass="com.android.tools.idea.folding.ResourceFoldingBuilder" />
-    <codeFoldingOptionsProvider instance="com.android.tools.idea.folding.AndroidCodeFoldingOptionsProvider"/>
+    <codeFoldingOptionsProvider instance="com.android.tools.idea.folding.AndroidCodeFoldingOptionsProvider" id="Android" order="after General"/>
 
     <actionConfigurationCustomizer implementation="org.jetbrains.android.AndroidPlugin$ActionCustomizer"/>
     <applicationService serviceImplementation="org.jetbrains.android.AndroidPlugin" preload="true"/>
@@ -347,14 +345,6 @@
 
     <facetType implementation="com.android.tools.idea.apk.ApkFacetType"/>
     <fileTemplateGroup implementation="org.jetbrains.android.AndroidFileTemplateProvider"/>
-    <completion.contributor language="JAVA"
-                            id="JavaAndroidDeprecationPresentationCompletionContributor"
-                            implementationClass="org.jetbrains.android.completion.AndroidDeprecationPresentationCompletionContributor"
-                            order="first"/>
-    <completion.contributor language="kotlin"
-                            id="KotlinAndroidDeprecationPresentationCompletionContributor"
-                            implementationClass="org.jetbrains.android.completion.AndroidDeprecationPresentationCompletionContributor"
-                            order="first"/>
     <completion.contributor language="kotlin"
                             id="KotlinResourceCompletionContributor"
                             implementationClass="com.android.tools.idea.res.completion.KotlinResourceCompletionContributor"
@@ -485,7 +475,7 @@
 
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceFolderRegistry"/>
     <projectService serviceImplementation="com.android.tools.idea.rendering.RenderSettings" />
-    <projectService serviceInterface="com.android.tools.idea.databinding.analytics.api.DataBindingTracker"
+    <projectService serviceInterface="com.android.tools.idea.databinding.analytics.api.DataBindingTracker" open="true"
                     serviceImplementation="com.android.tools.idea.databinding.analytics.DataBindingDefaultTracker"/>
     <projectService serviceImplementation="com.android.tools.idea.ndk.NativeWorkspaceService" />
     <projectService serviceInterface="com.android.tools.idea.editors.fast.FastPreviewTrackerManager"
@@ -671,6 +661,8 @@
     <postStartupActivity implementation="com.android.tools.idea.ndk.PageAlignProjectActivity"/>
 
     <internalFileTemplate name="Version_Catalog_File.versions" />
+
+    <appStarter id="run-ide-script" implementation="com.android.tools.idea.script.IdeScriptApplicationStarter"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
@@ -678,7 +670,7 @@
     <codeinsight.quickfix.registrar implementation="com.android.tools.idea.imports.AndroidMavenImportKotlinQuickFixRegistrar"/>
     <renameHandler implementation="org.jetbrains.android.refactoring.renaming.KotlinResourceRenameHandler" order="first"/>
     <k2KaModuleFactory implementation="org.jetbrains.android.augment.AndroidLightClassBase$AndroidLightClassKaModuleFactory"/>
-    <scriptDefinitionsProvider implementation="com.android.tools.idea.analysis.AnalysisScriptDefinitionProvider" />
+    <scriptDefinitionsProvider implementation="com.android.tools.idea.script.IdeScriptDefinitionProvider" />
   </extensions>
 
 

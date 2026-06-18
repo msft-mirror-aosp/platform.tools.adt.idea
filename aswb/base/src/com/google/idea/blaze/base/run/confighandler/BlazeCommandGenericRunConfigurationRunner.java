@@ -39,8 +39,6 @@ import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFetcher;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.OutputSink;
 import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.base.settings.BlazeImportSettings;
-import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
 import com.google.idea.blaze.common.Interners;
 import com.google.idea.blaze.common.PrintOutput;
@@ -125,9 +123,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
     @Override
     protected ProcessHandler startProcess() throws ExecutionException {
       Project project = configuration.getProject();
-      BlazeImportSettings importSettings =
-          BlazeImportSettingsManager.getInstance(project).getImportSettings();
-      assert importSettings != null;
+      assert Blaze.isBlazeProject(project);
 
       ProjectViewSet projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
       assert projectViewSet != null;
@@ -138,8 +134,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
           getBlazeCommand(
               project,
               ExecutorType.fromExecutor(getEnvironment().getExecutor()),
-              ImmutableList.of()
-          );
+              ImmutableList.of());
       return isTest()
           ? getProcessHandlerForTests(project, invoker, blazeCommand, context)
           : getProcessHandlerForNonTests(project, invoker, blazeCommand, context);
@@ -178,9 +173,9 @@ public final class BlazeCommandGenericRunConfigurationRunner
         throws ExecutionException {
       if (invoker.getCapabilities().contains(BuildInvoker.Capability.RETURN_PROCESS_HANDLER)) {
         try {
-          return invoker.invokeAsProcessHandler(blazeCommandBuilder, context, bepStreamProvider -> Unit.INSTANCE);
-        }
-        catch (BuildException e) {
+          return invoker.invokeAsProcessHandler(
+              blazeCommandBuilder, context, bepStreamProvider -> Unit.INSTANCE);
+        } catch (BuildException e) {
           throw new ExecutionException(e);
         }
       }
@@ -206,7 +201,8 @@ public final class BlazeCommandGenericRunConfigurationRunner
                         streamProvider -> {
                           BlazeBuildOutputs outputs =
                               BlazeBuildOutputs.fromParsedBepOutput(
-                                  BuildResultParser.getBuildOutput(streamProvider, Interners.STRING));
+                                  BuildResultParser.getBuildOutput(
+                                      streamProvider, Interners.STRING));
                           return outputs;
                         });
                   });
@@ -250,7 +246,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
       if (testResultFinderStrategy != null) {
         ConsoleView consoleView =
             SmRunnerUtils.getConsoleView(
-              project, configuration, getEnvironment().getExecutor(), testResultFinderStrategy);
+                project, configuration, getEnvironment().getExecutor(), testResultFinderStrategy);
         setConsoleBuilder(
             new TextConsoleBuilderImpl(project) {
               @Override
@@ -271,15 +267,17 @@ public final class BlazeCommandGenericRunConfigurationRunner
         BlazeTestResultFetcher testResultFinderStrategy,
         BlazeContext context) {
       ProcessHandler processHandler = getGenericProcessHandler();
-      final var testResults = BlazeExecutor.getInstance()
+      final var testResults =
+          BlazeExecutor.getInstance()
               .submit(
-                  () -> invoker.invoke(
-                      blazeCommandBuilder,
-                      context,
-                      bepStreamProvider -> {
-                        testResultFinderStrategy.setTestResults(bepStreamProvider);
-                        return null;
-                      }));
+                  () ->
+                      invoker.invoke(
+                          blazeCommandBuilder,
+                          context,
+                          bepStreamProvider -> {
+                            testResultFinderStrategy.setTestResults(bepStreamProvider);
+                            return null;
+                          }));
       Futures.addCallback(
           testResults,
           new FutureCallback<>() {
@@ -309,9 +307,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
     }
 
     private BlazeCommand.Builder getBlazeCommand(
-        Project project,
-        ExecutorType executorType,
-        ImmutableList<String> testHandlerFlags) {
+        Project project, ExecutorType executorType, ImmutableList<String> testHandlerFlags) {
 
       List<String> extraBlazeFlags = new ArrayList<>(testHandlerFlags);
       BlazeCommandName command = getCommand();

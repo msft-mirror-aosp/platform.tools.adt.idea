@@ -113,6 +113,8 @@ import com.intellij.util.Alarm;
 import com.intellij.util.PsiNavigateUtil;
 import java.io.File;
 import java.net.MalformedURLException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Set;
@@ -329,6 +331,8 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     if (delimiterPos != -1) {
       String wrongTag = url.substring(start, delimiterPos);
       String rightTag = url.substring(delimiterPos + 1);
+      wrongTag = URLDecoder.decode(wrongTag, StandardCharsets.UTF_8);
+      rightTag = URLDecoder.decode(rightTag, StandardCharsets.UTF_8);
       new ReplaceTagFix((XmlFile)file, wrongTag, rightTag).run();
     }
   }
@@ -359,6 +363,7 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
   private static void handleOpenClassUrl(@NotNull String url, @NotNull Module module) {
     assert url.startsWith(URL_OPEN_CLASS) : url;
     String className = url.substring(URL_OPEN_CLASS.length());
+    className = URLDecoder.decode(className, StandardCharsets.UTF_8);
     Project project = module.getProject();
     PsiClass clz = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project));
     if (clz != null) {
@@ -376,7 +381,9 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
 
   private static void handleShowTagUrl(@NotNull String url, @NotNull Module module, @NotNull final PsiFile file) {
     assert url.startsWith(URL_SHOW_TAG) : url;
-    final String tagName = url.substring(URL_SHOW_TAG.length());
+    String decodedTag = url.substring(URL_SHOW_TAG.length());
+    decodedTag = URLDecoder.decode(decodedTag, StandardCharsets.UTF_8);
+    final String tagName = decodedTag;
 
     XmlTag first = ApplicationManager.getApplication().runReadAction((Computable<XmlTag>)() -> {
       Collection<XmlTag> xmlTags = PsiTreeUtil.findChildrenOfType(file, XmlTag.class);
@@ -401,6 +408,7 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
   private static void handleNewClassUrl(@NotNull String url, @NotNull Module module) {
     assert url.startsWith(URL_CREATE_CLASS) : url;
     String s = url.substring(URL_CREATE_CLASS.length());
+    s = URLDecoder.decode(s, StandardCharsets.UTF_8);
 
     final Project project = module.getProject();
     String title = "Create Custom View";
@@ -529,6 +537,14 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     if (hash != -1) {
       method = className.substring(hash + 1);
       className = className.substring(0, hash);
+    }
+
+    className = URLDecoder.decode(className, StandardCharsets.UTF_8);
+    if (fileName != null) {
+      fileName = URLDecoder.decode(fileName, StandardCharsets.UTF_8);
+    }
+    if (method != null) {
+      method = URLDecoder.decode(method, StandardCharsets.UTF_8);
     }
 
     Project project = module.getProject();
@@ -662,13 +678,19 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     final String fragmentClass = getFragmentClass(module, className);
 
     int start = URL_ASSIGN_FRAGMENT_URL.length();
+    String decodedId = null;
+    if (start != url.length()) {
+      decodedId = url.substring(start);
+      decodedId = URLDecoder.decode(decodedId, StandardCharsets.UTF_8);
+    }
+    
     final String id;
-    if (start == url.length()) {
+    if (decodedId == null) {
       // No specific fragment identified; use the first one
       id = null;
     }
     else {
-      id = Lint.stripIdPrefix(url.substring(start));
+      id = Lint.stripIdPrefix(decodedId);
     }
 
     WriteCommandAction.writeCommandAction(module.getProject(), file).withName("Assign Fragment").run(()-> {
@@ -713,12 +735,15 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     if (layoutStart == -1) {
       // Only specified activity; pick it
       String activityName = url.substring(start);
+      activityName = URLDecoder.decode(activityName, StandardCharsets.UTF_8);
       pickLayout(module, xmlFile, activityName);
     }
     else {
       // Set directory to specified layoutName
-      final String activityName = url.substring(start, layoutStart);
-      final String layoutName = url.substring(layoutStart + 1);
+      String activityName = url.substring(start, layoutStart);
+      String layoutName = url.substring(layoutStart + 1);
+      activityName = URLDecoder.decode(activityName, StandardCharsets.UTF_8);
+      layoutName = URLDecoder.decode(layoutName, StandardCharsets.UTF_8);
       final String layout = LAYOUT_RESOURCE_PREFIX + layoutName;
       assignLayout(project, xmlFile, activityName, layout);
     }
@@ -785,8 +810,11 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     assert url.startsWith(URL_EDIT_ATTRIBUTE);
     int attributeStart = URL_EDIT_ATTRIBUTE.length();
     int valueStart = url.indexOf('/');
-    final String attributeName = url.substring(attributeStart, valueStart);
-    final String value = url.substring(valueStart + 1);
+    final String attributeNameEncoded = url.substring(attributeStart, valueStart);
+    final String valueEncoded = url.substring(valueStart + 1);
+
+    final String attributeName = URLDecoder.decode(attributeNameEncoded, StandardCharsets.UTF_8);
+    final String value = URLDecoder.decode(valueEncoded, StandardCharsets.UTF_8);
 
     XmlAttribute first = ApplicationManager.getApplication().runReadAction((Computable<XmlAttribute>)() -> {
       Collection<XmlAttribute> attributes = PsiTreeUtil.findChildrenOfType(file, XmlAttribute.class);
@@ -813,9 +841,13 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     int attributeStart = URL_REPLACE_ATTRIBUTE_VALUE.length();
     int valueStart = url.indexOf('/');
     int newValueStart = url.indexOf('/', valueStart + 1);
-    final String attributeName = url.substring(attributeStart, valueStart);
-    final String oldValue = url.substring(valueStart + 1, newValueStart);
-    final String newValue = url.substring(newValueStart + 1);
+    final String attributeNameEncoded = url.substring(attributeStart, valueStart);
+    final String oldValueEncoded = url.substring(valueStart + 1, newValueStart);
+    final String newValueEncoded = url.substring(newValueStart + 1);
+
+    final String attributeName = URLDecoder.decode(attributeNameEncoded, StandardCharsets.UTF_8);
+    final String oldValue = URLDecoder.decode(oldValueEncoded, StandardCharsets.UTF_8);
+    final String newValue = URLDecoder.decode(newValueEncoded, StandardCharsets.UTF_8);
 
     WriteCommandAction.writeCommandAction(module.getProject(), file).withName("Set Attribute Value").run(() -> {
       Collection<XmlAttribute> attributes = PsiTreeUtil.findChildrenOfType(file, XmlAttribute.class);
@@ -845,9 +877,18 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
   }
 
   private static void handleDisableSandboxUrl(@NotNull Module module, @Nullable HtmlLinkManager.RefreshableSurface surface) {
+    int answer = Messages.showYesNoDialog(module.getProject(),
+        "Disabling the custom view rendering sandbox allows project-supplied bytecode (including " +
+        "third-party libraries) to run with full IDE process permissions, including file-system and " +
+        "network access.\n\nOnly do this if you fully trust ALL code on this project's classpath.",
+        "Disable Rendering Sandbox?", Messages.getWarningIcon());
+    if (answer != Messages.YES) {
+      return;
+    }
     RenderSecurityManager.sEnabled = false;
-    surface.requestRender();
-
+    if (surface != null) {
+      surface.requestRender();
+    }
     Messages.showInfoMessage(module.getProject(),
                              "The custom view rendering sandbox was disabled for this session.\n\n" +
                              "You can turn it off permanently by adding\n" +

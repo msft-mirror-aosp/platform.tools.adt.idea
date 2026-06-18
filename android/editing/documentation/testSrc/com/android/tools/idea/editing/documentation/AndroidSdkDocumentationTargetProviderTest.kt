@@ -21,7 +21,6 @@ import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.downloads.RemoteFileCache
 import com.android.tools.idea.downloads.RemoteFileCache.FetchStats
 import com.android.tools.idea.downloads.UrlFileCache
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.googleapis.GoogleApiKeyProvider
 import com.android.tools.idea.googleapis.GoogleApiKeyProvider.GoogleApi.CONTENT_SERVING
 import com.android.tools.idea.stats.getEditorFileTypeForAnalytics
@@ -39,7 +38,6 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.backend.documentation.AsyncDocumentation
 import com.intellij.platform.backend.documentation.DocumentationData
-import com.intellij.platform.backend.documentation.DocumentationResult.Documentation
 import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiEnumConstant
@@ -160,62 +158,13 @@ class AndroidSdkDocumentationTargetProviderTest(private val testConfig: TestConf
 
   @Before
   fun setUp() {
-    StudioFlags.REMOTE_SDK_DOCUMENTATION_FETCH_VIA_CONTENT_SERVING_API_ENABLED.override(
-      testConfig.useContentServingApi != ContentServingApiState.DISABLED
-    )
     project.replaceService(UrlFileCache::class.java, mockUrlFileCache, fixture.testRootDisposable)
     val providers = if (testConfig.useContentServingApi == ContentServingApiState.MISSING_PROVIDER) listOf() else listOf(fakeApiKeyProvider)
     ExtensionTestUtil.maskExtensions(GoogleApiKeyProvider.EP_NAME, providers, fixture.testRootDisposable)
   }
 
   @Test
-  fun checkDocumentation_fast() {
-    whenever(mockUrlFileCache.getWithStats(eq(urlWithHeaders), any(), isNull(), any()))
-      .thenReturn(
-        // This one is already completed.
-        CompletableDeferred(simpleHtmlPath to FETCH_STATS)
-      )
-
-    setUpCursor()
-    val doc = getDocsAtCursor().single()
-
-    val documentation = runReadAction { doc.computeDocumentation() }
-    assertThat(documentation).isInstanceOf(Documentation::class.java)
-
-    val documentationData = runBlocking { (documentation as Documentation) }
-    assertThat(documentationData).isInstanceOf(DocumentationData::class.java)
-    assertThat((documentationData as DocumentationData).html).isEqualTo(SIMPLE_HTML)
-
-    // Independently check that the passed-in filter is doing the right thing.
-    @Suppress("DeferredResultUnused") verify(mockUrlFileCache).getWithStats(eq(urlWithHeaders), any(), isNull(), transformCaptor.capture())
-
-    val filterOutput =
-      FileInputStream(preFilteringPath.toFile())
-        .use { inputStream -> String(transformCaptor.firstValue.invoke(inputStream).readAllBytes()) }
-        .collapseSpaces()
-
-    assertThat(filterOutput).isEqualTo(documentationContentAfterFiltering)
-
-    val editingMetricsEvents = usageTrackerRule.usages.map { it.studioEvent }.filter { it.kind == EDITING_METRICS_EVENT }
-    assertThat(editingMetricsEvents).hasSize(1)
-    with(editingMetricsEvents.single()) {
-      assertThat(hasEditingMetricsEvent())
-      assertThat(editingMetricsEvent.hasExternalQuickDocEvent())
-      with(editingMetricsEvent.externalQuickDocEvent) {
-        assertThat(fileType).isEqualTo(getEditorFileTypeForAnalytics(testConfig.language.id))
-        assertThat(fetchDurationMs).isEqualTo(FETCH_STATS.fetchDuration.inWholeMilliseconds)
-        assertThat(success).isEqualTo(FETCH_STATS.success)
-        assertThat(cacheHit).isEqualTo(FETCH_STATS.cacheHit)
-        assertThat(serverNotModified).isEqualTo(FETCH_STATS.notModified)
-        assertThat(numBytesFetched).isEqualTo(FETCH_STATS.numBytesFetched)
-        assertThat(numBytesCached).isEqualTo(FETCH_STATS.numBytesCached)
-        assertThat(numBytesDisplayed).isEqualTo(SIMPLE_HTML.toByteArray().size.toLong())
-      }
-    }
-  }
-
-  @Test
-  fun checkDocumentation_slow() {
+  fun checkDocumentation() {
     val completableDeferred = CompletableDeferred<Pair<Path, FetchStats>>()
     whenever(mockUrlFileCache.getWithStats(eq(urlWithHeaders), any(), isNull(), any())).thenReturn(completableDeferred)
 
@@ -453,7 +402,6 @@ class AndroidSdkDocumentationTargetProviderTest(private val testConfig: TestConf
 
   enum class ContentServingApiState {
     ENABLED,
-    DISABLED,
     MISSING_PROVIDER,
   }
 
@@ -503,9 +451,8 @@ class AndroidSdkDocumentationTargetProviderTest(private val testConfig: TestConf
     fun data(): List<TestConfig> {
       val kotlinConfigs = JAVA_CONFIGS.map { it.copy(language = KotlinLanguage.INSTANCE) }
       val enabledConfigs = JAVA_CONFIGS + kotlinConfigs
-      val disabledConfigs = enabledConfigs.map { it.copy(useContentServingApi = ContentServingApiState.DISABLED) }
       val missingConfigs = enabledConfigs.map { it.copy(useContentServingApi = ContentServingApiState.MISSING_PROVIDER) }
-      return enabledConfigs + disabledConfigs + missingConfigs
+      return enabledConfigs + missingConfigs
     }
   }
 }

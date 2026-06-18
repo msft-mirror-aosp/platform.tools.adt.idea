@@ -15,6 +15,7 @@
  */
 package com.android.tools.adtui
 
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBPanel
@@ -27,6 +28,7 @@ import java.awt.FlowLayout
 import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JPanel
+import javax.swing.plaf.basic.BasicHTML
 
 object ComboCheckBox {
 
@@ -62,8 +64,11 @@ object ComboCheckBox {
       options.map {
         val title = abbreviate(it)
         JBCheckBox(title).apply {
+          putClientProperty(BasicHTML.documentBaseKey, null)
+          putClientProperty("html.disable", true)
           isSelected = it in initialSelection
-          toolTipText = elaborate(it)
+          text = title
+          toolTipText = elaborate(it).takeIf { it.isNotEmpty() }?.let { StringUtil.escapeXmlEntities(it) }
           addItemListener { _ ->
             if (isSelected) selectionState.add(it) else selectionState.remove(it)
             okButton.isEnabled = selectionState != initialSelection

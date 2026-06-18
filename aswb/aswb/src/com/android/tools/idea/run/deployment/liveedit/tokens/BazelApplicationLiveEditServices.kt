@@ -17,10 +17,13 @@ package com.android.tools.idea.run.deployment.liveedit.tokens
 
 import com.android.tools.idea.projectsystem.ClassContent
 import com.android.tools.idea.run.classes.BuildOutcome
+import com.android.tools.idea.run.deployment.liveedit.setOptions
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.common.Label
+import com.google.idea.blaze.qsync.deps.TargetBuildInfo
 import com.google.idea.blaze.qsync.project.TargetsToBuild
+import com.google.idea.blaze.qsync.project.pathToLabel
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
@@ -30,6 +33,7 @@ import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.cli.common.arguments.toLanguageVersionSettings
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.KtFile
@@ -73,28 +77,27 @@ class BazelApplicationLiveEditServices(
 
   override fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration {
     val qSyncManager = QuerySyncManager.getInstance(project)
-    val snapshot = qSyncManager.currentSnapshot.getOrNull() ?: return CompilerConfiguration.EMPTY
+    val snapshot = qSyncManager.currentSnapshot.getOrNull() ?: return CompilerConfiguration.create()
 
     val workspaceRoot = WorkspaceRoot.fromProject(project)
     val path = workspaceRoot.relativize(ktFile.virtualFile.toNioPath())
-    val labels = snapshot.getTargetOwners(path)
-    if (labels.isEmpty()) return CompilerConfiguration.EMPTY
+    val sourceFileLabel = snapshot.projectStructureData.pathToLabel(path) ?: return CompilerConfiguration.create()
+    val labels = snapshot.staleGraph.getSourceFileOwners(sourceFileLabel)
+    if (labels.isEmpty()) return CompilerConfiguration.create()
 
     // Choose the target that would normally be selected for previews.
     val label =
-      listOf(snapshot.graph.getProjectTargets(path))
+      listOf(snapshot.staleGraph.getProjectTargetsForSourceFile(sourceFileLabel))
         .toPreferredLabel(isPreferredTarget = { buildOutcomeProvider.lastBuildOutcome()?.builtJavaTargetPredicate(it) ?: false })
         ?: labels.first()
 
-    val targetBuildInfo = snapshot.artifactIndex.builtDepsMap()[label] ?: return CompilerConfiguration.EMPTY
-    val javaInfo = targetBuildInfo.javaInfo().getOrNull() ?: return CompilerConfiguration.EMPTY
-    val flags = javaInfo.kotlinCompilerFlags()
+    val targetBuildInfo = snapshot.artifactIndex.builtDepsMap()[label] ?: return CompilerConfiguration.create()
+    val javaInfo = (targetBuildInfo as? TargetBuildInfo.Java)?.javaInfo ?: return CompilerConfiguration.create()
+    val flags = javaInfo.kotlinCompilerFlags
 
-    return CompilerConfiguration().apply {
+    return CompilerConfiguration.create().apply {
+      setOptions(parseCommandLineArguments<K2JVMCompilerArguments>(flags).toLanguageVersionSettings(MessageCollector.NONE))
       put(CommonConfigurationKeys.MODULE_NAME, label.toString())
-      val arguments = parseCommandLineArguments<K2JVMCompilerArguments>(flags)
-      val languageVersionSettings = arguments.toLanguageVersionSettings(MessageCollector.NONE)
-      put(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS, languageVersionSettings)
 
       // Add a TODO for improvement on target selection if needed.
       // TODO: Refine target selection to match the actual dependency of the main build target if ambiguous.

@@ -35,6 +35,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.contextOfType
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.kotlin.asJava.classes.runReadAction
 import org.jetbrains.kotlin.idea.base.psi.imports.addImport
 import org.jetbrains.kotlin.idea.base.psi.kotlinFqName
 import org.jetbrains.kotlin.idea.base.util.allScope
@@ -360,9 +361,11 @@ class ComposePositioningCompletionContributor : CompletionContributor() {
 /** Suggests completion for the Alignment and Arrangement interfaces. */
 class ComposePositioningCompletionWeigher : CompletionWeigher() {
   override fun weigh(lookupElement: LookupElement, location: CompletionLocation): Int? {
-    val parameters = location.completionParameters
+    val parameters = location.baseCompletionParameters
     val elementToComplete = parameters.position
-    if (!isComposeEnabled(elementToComplete) || parameters.originalFile !is KtFile) {
+
+    val isComposeEnabled = runReadAction { isComposeEnabled(elementToComplete) }
+    if (!isComposeEnabled || parameters.originalFile !is KtFile) {
       // Return null when this isn't a completion we care about to avoid any further comparisons or
       // object allocations.
       return null

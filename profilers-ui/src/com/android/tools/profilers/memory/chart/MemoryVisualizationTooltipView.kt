@@ -24,6 +24,7 @@ import com.android.tools.profilers.ProfilerColors
 import com.android.tools.profilers.memory.adapters.classifiers.NativeCallStackSet
 import javax.swing.JComponent
 import javax.swing.JLabel
+import javax.swing.plaf.basic.BasicHTML
 
 /** When the user mouses over an element in the {@link MemoryVisualizationView} this class represents the tooltip to be displayed. */
 class MemoryVisualizationTooltipView(
@@ -34,7 +35,12 @@ class MemoryVisualizationTooltipView(
 
   public override fun showTooltip(node: ClassifierSetHNode) {
     tooltipContainer.removeAll()
-    val nameLabel = JLabel(node.name)
+    val nameLabel =
+      JLabel().apply {
+        putClientProperty(BasicHTML.propertyKey, null)
+        putClientProperty("html.disable", true)
+        text = node.name
+      }
     nameLabel.font = TooltipView.TOOLTIP_BODY_FONT
     nameLabel.foreground = ProfilerColors.TOOLTIP_TEXT
     val formattedNumber =

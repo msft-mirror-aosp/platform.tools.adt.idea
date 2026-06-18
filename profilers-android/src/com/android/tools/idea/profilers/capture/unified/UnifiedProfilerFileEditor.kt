@@ -88,12 +88,8 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
   private fun importFileIntoAndroidProfiler(project: Project, file: VirtualFile) {
     val window = ToolWindowManager.getInstance(project).getToolWindow(AndroidProfilerToolWindowFactory.ID)
     if (window != null) {
-      window.isShowStripeButton = true
-      // Makes sure the window is visible because opening a file is an explicit indication that the user wants to view the file,
-      // and for that we need the profiler window to be open.
-      if (!window.isVisible) {
-        window.show(null)
-      }
+      window.isAvailable = true
+
       val profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(project)
       profilerToolWindow?.openFile(file)
     }

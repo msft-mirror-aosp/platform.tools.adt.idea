@@ -36,38 +36,28 @@ class SnapshotSerializationTest {
   @Test
   @Throws(IOException::class)
   fun testSerialization_withVcsState() {
+    val projectDefinition =
+      ProjectDefinition(
+        projectIncludes = setOf(Path.of("project/path")),
+        projectExcludes = setOf(Path.of("project/path/excluded")),
+        deriveTargetsFromDirectories = false,
+        targetPatterns = emptyList(),
+        isAndroidWorkspace = false,
+        languageClasses = setOf(QuerySyncLanguage.JVM),
+        testSources = setOf("javatests/*"),
+        systemExcludes = setOf(Path.of(".aswb")),
+      )
     val original =
       PostQuerySyncData.builder()
-        .setProjectDefinition(
-          ProjectDefinition(
-            projectIncludes = setOf(Path.of("project/path")),
-            projectExcludes = setOf(Path.of("project/path/excluded")),
-            deriveTargetsFromDirectories = false,
-            targetPatterns = emptyList(),
-            isAndroidWorkspace = false,
-            languageClasses = setOf(QuerySyncLanguage.JVM),
-            testSources = setOf("javatests/*"),
-            systemExcludes = setOf(Path.of(".aswb")),
-          )
-        )
         .setVcsState(
           Optional.of(
             VcsState(
               "workspaceId",
               "123",
               ImmutableSet.of(
-                WorkspaceFileChange(
-                  WorkspaceFileChange.Operation.ADD,
-                  Path.of("project/path/Added.java"),
-                ),
-                WorkspaceFileChange(
-                  WorkspaceFileChange.Operation.DELETE,
-                  Path.of("project/path/Deleted.java"),
-                ),
-                WorkspaceFileChange(
-                  WorkspaceFileChange.Operation.MODIFY,
-                  Path.of("project/path/Modified.java"),
-                ),
+                WorkspaceFileChange(WorkspaceFileChange.Operation.ADD, Path.of("project/path/Added.java")),
+                WorkspaceFileChange(WorkspaceFileChange.Operation.DELETE, Path.of("project/path/Deleted.java")),
+                WorkspaceFileChange(WorkspaceFileChange.Operation.MODIFY, Path.of("project/path/Modified.java")),
               ),
               Optional.empty(),
             )
@@ -76,103 +66,80 @@ class SnapshotSerializationTest {
         .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path"))
         .setBazelVersion(Optional.of("1.2.3"))
         .build()
-    val serialized = SnapshotSerializer().visit(original).toProto().toByteArray()
-    val deserialized: PostQuerySyncData? =
-      SnapshotDeserializer.readFrom(
-        ByteArrayInputStream(serialized),
-        QuerySyncTestUtils.NOOP_CONTEXT,
-      )
-    Truth8.assertThat(deserialized?.vcsState()).isEqualTo(original.vcsState())
-    Truth.assertThat(deserialized).isEqualTo(original)
+    val serialized =
+      SnapshotSerializer().visit(projectDefinition).visit(original).visit(createDefaultProjectStructureData()).toProto().toByteArray()
+    val deserialized = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+    Truth8.assertThat(deserialized?.queryData?.vcsState()).isEqualTo(original.vcsState())
+    Truth.assertThat(deserialized?.queryData).isEqualTo(original)
+    Truth.assertThat(deserialized?.projectDefinition).isEqualTo(projectDefinition)
   }
 
   @Test
   @Throws(IOException::class)
   fun testSerialization_withVcsState_including_workspaceSnapshot() {
+    val projectDefinition = ProjectDefinition.EMPTY
     val original =
       PostQuerySyncData.builder()
-        .setProjectDefinition(ProjectDefinition.EMPTY)
-        .setVcsState(
-          Optional.of(
-            VcsState(
-              "workspaceId",
-              "123",
-              ImmutableSet.of(),
-              Optional.of(Path.of("/snapshot/user/snapshot/1")),
-            )
-          )
-        )
+        .setVcsState(Optional.of(VcsState("workspaceId", "123", ImmutableSet.of(), Optional.of(Path.of("/snapshot/user/snapshot/1")))))
         .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path"))
         .setBazelVersion(Optional.of("1.2.3"))
         .build()
-    val serialized = SnapshotSerializer().visit(original).toProto().toByteArray()
-    val deserialized: PostQuerySyncData? =
-      SnapshotDeserializer.readFrom(
-        ByteArrayInputStream(serialized),
-        QuerySyncTestUtils.NOOP_CONTEXT,
-      )
-    Truth8.assertThat(deserialized?.vcsState()).isEqualTo(original.vcsState())
-    Truth.assertThat(deserialized).isEqualTo(original)
+    val serialized =
+      SnapshotSerializer().visit(projectDefinition).visit(original).visit(createDefaultProjectStructureData()).toProto().toByteArray()
+    val deserialized = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+    Truth8.assertThat(deserialized?.queryData?.vcsState()).isEqualTo(original.vcsState())
+    Truth.assertThat(deserialized?.queryData).isEqualTo(original)
+    Truth.assertThat(deserialized?.projectDefinition).isEqualTo(projectDefinition)
   }
 
   @Test
   @Throws(IOException::class)
   fun testSerialization_noVcsState() {
+    val projectDefinition =
+      ProjectDefinition(
+        projectIncludes = setOf(Path.of("project/path")),
+        projectExcludes = setOf(Path.of("project/path/excluded")),
+        deriveTargetsFromDirectories = false,
+        targetPatterns = listOf(parse("//some/pattern:all"), parse("-//some/negative/pattern")),
+        isAndroidWorkspace = false,
+        languageClasses = setOf(QuerySyncLanguage.JVM),
+        testSources = setOf("javatests/*"),
+        systemExcludes = emptySet(),
+      )
     val original =
       PostQuerySyncData.builder()
-        .setProjectDefinition(
-          ProjectDefinition(
-            projectIncludes = setOf(Path.of("project/path")),
-            projectExcludes = setOf(Path.of("project/path/excluded")),
-            deriveTargetsFromDirectories = false,
-            targetPatterns = listOf(parse("//some/pattern:all"), parse("-//some/negative/pattern")),
-            isAndroidWorkspace = false,
-            languageClasses = setOf(QuerySyncLanguage.JVM),
-            testSources = setOf("javatests/*"),
-            systemExcludes = emptySet(),
-          )
-        )
         .setVcsState(Optional.empty())
         .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path"))
         .build()
-    val serialized = SnapshotSerializer().visit(original).toProto().toByteArray()
-    val deserialized: PostQuerySyncData? =
-      SnapshotDeserializer.readFrom(
-        ByteArrayInputStream(serialized),
-        QuerySyncTestUtils.NOOP_CONTEXT,
-      )
-    Truth8.assertThat(deserialized?.vcsState()).isEqualTo(original.vcsState())
-    Truth.assertThat(deserialized).isEqualTo(original)
+    val serialized =
+      SnapshotSerializer().visit(projectDefinition).visit(original).visit(createDefaultProjectStructureData()).toProto().toByteArray()
+    val deserialized = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+    Truth8.assertThat(deserialized?.queryData?.vcsState()).isEqualTo(original.vcsState())
+    Truth.assertThat(deserialized?.queryData).isEqualTo(original)
+    Truth.assertThat(deserialized?.projectDefinition).isEqualTo(projectDefinition)
   }
 
   @Test
   @Throws(IOException::class)
   fun testSerialization_versionBump() {
+    val projectDefinition =
+      ProjectDefinition(
+        projectIncludes = setOf(Path.of("project/path")),
+        projectExcludes = setOf(Path.of("project/path/excluded")),
+        deriveTargetsFromDirectories = false,
+        targetPatterns = emptyList(),
+        isAndroidWorkspace = false,
+        languageClasses = setOf(QuerySyncLanguage.JVM),
+        testSources = setOf("javatests/*"),
+        systemExcludes = emptySet(),
+      )
     val original =
       PostQuerySyncData.builder()
-        .setProjectDefinition(
-          ProjectDefinition(
-            projectIncludes = setOf(Path.of("project/path")),
-            projectExcludes = setOf(Path.of("project/path/excluded")),
-            deriveTargetsFromDirectories = false,
-            targetPatterns = emptyList(),
-            isAndroidWorkspace = false,
-            languageClasses = setOf(QuerySyncLanguage.JVM),
-            testSources = setOf("javatests/*"),
-            systemExcludes = emptySet(),
-          )
-        )
         .setVcsState(Optional.empty())
         .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path"))
         .build()
-    val serialized = SnapshotSerializer(-1).visit(original).toProto().toByteArray()
-    Truth.assertThat(
-        SnapshotDeserializer.readFrom(
-          ByteArrayInputStream(serialized),
-          QuerySyncTestUtils.NOOP_CONTEXT,
-        )
-      )
-      .isNull()
+    val serialized = SnapshotSerializer(-1).visit(projectDefinition).visit(original).toProto().toByteArray()
+    Truth.assertThat(SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)).isNull()
   }
 
   @Test
@@ -191,16 +158,101 @@ class SnapshotSerializationTest {
       )
     val original =
       PostQuerySyncData.builder()
-        .setProjectDefinition(projectDefinition)
         .setVcsState(Optional.empty())
         .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path"))
         .build()
-    val serialized = SnapshotSerializer().visit(original).toProto().toByteArray()
-    val deserialized: PostQuerySyncData? =
-      SnapshotDeserializer.readFrom(
-        ByteArrayInputStream(serialized),
-        QuerySyncTestUtils.NOOP_CONTEXT,
-      )
-    Truth.assertThat(deserialized?.projectDefinition()).isEqualTo(projectDefinition)
+    val serialized =
+      SnapshotSerializer().visit(projectDefinition).visit(original).visit(createDefaultProjectStructureData()).toProto().toByteArray()
+    val deserialized = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+    Truth.assertThat(deserialized?.projectDefinition).isEqualTo(projectDefinition)
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun testSerialization_projectStructureData() {
+    val projectDefinition = ProjectDefinition.EMPTY
+    val originalSyncData = createDefaultSyncData()
+    val originalProjectStructureData = createDefaultProjectStructureData()
+
+    val serializer = SnapshotSerializer()
+    serializer.visit(projectDefinition)
+    serializer.visit(originalSyncData)
+    serializer.visit(originalProjectStructureData)
+    val serialized = serializer.toProto().toByteArray()
+
+    val deserializedSnapshot = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+
+    Truth.assertThat(deserializedSnapshot).isNotNull()
+    Truth.assertThat(deserializedSnapshot!!.queryData).isEqualTo(originalSyncData)
+    Truth.assertThat(deserializedSnapshot.projectDefinition).isEqualTo(projectDefinition)
+    Truth.assertThat(deserializedSnapshot.projectStructureData?.roots).isEqualTo(originalProjectStructureData.roots)
+    Truth.assertThat(deserializedSnapshot.projectStructureData?.activeLanguages).isEqualTo(originalProjectStructureData.activeLanguages)
+  }
+
+  private fun createDefaultProjectStructureData(): ProjectStructureData =
+    ProjectStructureData.create(
+      roots =
+        listOf(
+          ProjectStructureRoot(
+            projectStructureRootPath = Path.of("project"),
+            buildPackages =
+              mapOf(
+                Path.of("project/path") to
+                  BuildPackage(
+                    path = Path.of("project/path"),
+                    sourceSets =
+                      listOf(
+                        SourceSet(
+                          rootPath = Path.of("project/path"),
+                          javaSourceFiles = listOf(Path.of("A.java")),
+                          nonJavaSourceFiles = listOf(Path.of("B.txt")),
+                          javaPackage = "com.example",
+                        )
+                      ),
+                  )
+              ),
+          )
+        ),
+      activeLanguages = setOf(QuerySyncLanguage.JVM),
+    )
+
+  @Test
+  @Throws(IOException::class)
+  fun testSerialization_withoutProjectStructureData() {
+    val projectDefinition = ProjectDefinition.EMPTY
+    val originalSyncData = createDefaultSyncData()
+
+    val serializer = SnapshotSerializer()
+    serializer.visit(projectDefinition)
+    serializer.visit(originalSyncData)
+    val serialized = serializer.toProto().toByteArray()
+
+    val deserializedSnapshot = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+
+    Truth.assertThat(deserializedSnapshot).isNull()
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun testSerialization_withNullProjectStructureData() {
+    val projectDefinition = ProjectDefinition.EMPTY
+    val originalSyncData = createDefaultSyncData()
+
+    val serializer = SnapshotSerializer()
+    serializer.visit(projectDefinition)
+    serializer.visit(originalSyncData)
+    serializer.visit(null as ProjectStructureData?)
+    val serialized = serializer.toProto().toByteArray()
+
+    val deserializedSnapshot = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+
+    Truth.assertThat(deserializedSnapshot).isNull()
+  }
+
+  private fun createDefaultSyncData(): PostQuerySyncData {
+    return PostQuerySyncData.builder()
+      .setVcsState(Optional.empty())
+      .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path"))
+      .build()
   }
 }

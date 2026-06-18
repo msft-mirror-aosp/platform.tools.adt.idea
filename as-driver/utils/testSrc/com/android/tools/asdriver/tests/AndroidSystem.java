@@ -31,12 +31,12 @@ import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -61,8 +61,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
   private int nextPort = 8554;
   private boolean useTmpDir = false;
 
-  @Nullable
-  private static Throwable initializedAt = null;
+  @Nullable private static Throwable initializedAt = null;
 
   private AndroidSystem(TestFileSystem fileSystem, Display display, AndroidSdk sdk) {
     this.fileSystem = fileSystem;
@@ -92,7 +91,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
             install.verify();
           }
         } finally {
-          if (project != null) project.stopGradleDaemon();
+          stopGradleDaemons();
           AndroidSystem.this.close();
         }
       }
@@ -103,6 +102,11 @@ public class AndroidSystem implements AutoCloseable, TestRule {
     return sdk;
   }
 
+
+  public static AndroidSystem standard() {
+    return withCustomJdkForGradle(AndroidStudioFlavor.FOR_EXTERNAL_USERS, null);
+  }
+
   /**
    * Creates a standard system with a default temp folder
    * that contains a preinstalled version of android studio
@@ -110,6 +114,13 @@ public class AndroidSystem implements AutoCloseable, TestRule {
    * to the standard prebuilts one.
    */
   public static AndroidSystem standard(AndroidStudioFlavor androidStudioFlavor) {
+    return withCustomJdkForGradle(androidStudioFlavor, null);
+  }
+
+  /**
+   * @param gradleJdk JDK to use for Gradle, if none provided - default to Studio embedded JRE.
+   */
+  public static AndroidSystem withCustomJdkForGradle(AndroidStudioFlavor androidStudioFlavor, JdkVersion gradleJdk) {
     try {
       AndroidSystem system = basic(Files.createTempDirectory("root"));
 
@@ -118,15 +129,26 @@ public class AndroidSystem implements AutoCloseable, TestRule {
       system.install.setNewUi();
       system.install.createGeneralPropertiesXml();
 
+      // Point JAVA_HOME to Studio bundled JRE
+      final Path jdkDir;
+      if (gradleJdk != null) {
+        jdkDir = gradleJdk.getPath();
+      }
+      else {
+        jdkDir = system.install.bundledJdkPath();
+      }
+      String javaHome = jdkDir.toAbsolutePath().toString();
+      system.setEnv("GRADLE_LOCAL_JAVA_HOME", javaHome);
+      system.setEnv("JAVA_HOME", javaHome);
+      system.setEnv("STUDIO_GRADLE_JDK", javaHome);
+      system.setEnv("STUDIO_JDK", javaHome);
+      system.install.addVmOption("-Dgradle.jvm=" + javaHome);
+
       return system;
     }
     catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-  }
-
-  public static AndroidSystem standard() {
-    return standard(AndroidStudioFlavor.FOR_EXTERNAL_USERS);
   }
 
   /**
@@ -388,6 +410,51 @@ public class AndroidSystem implements AutoCloseable, TestRule {
     }
   }
 
+  /**
+   * Finds all Gradle executables in the test directory and stops the associated daemons.
+   */
+  public void stopGradleDaemons() {
+    Path searchRoot = useTmpDir ? IdeInstallation.getTmpDir() : fileSystem.getRoot();
+    if (!Files.exists(searchRoot)) return;
+
+    String executableName = SystemInfo.isWindows ? "gradlew.bat" : "gradlew";
+
+    try (var stream = Files.walk(searchRoot, 5)) {
+      List<Path> executables = stream
+        .filter(path -> path.getFileName().toString().equals(executableName))
+        .filter(Files::isRegularFile)
+        .toList();
+
+      for (Path executable : executables) {
+        try {
+          TestLogger.log("Stopping Gradle daemon using: " + executable);
+          ProcessBuilder pb = new ProcessBuilder(executable.toAbsolutePath().toString(), "--stop");
+          pb.directory(executable.getParent().toFile());
+          String javaHome = env.get("JAVA_HOME");
+          if (javaHome == null && install != null) {
+            javaHome = install.getJdkDir().toAbsolutePath().toString();
+          }
+          pb.environment().put("JAVA_HOME", javaHome == null ? "" : javaHome);
+          Process process = pb.start();
+          if (!process.waitFor(1, TimeUnit.MINUTES)) {
+            process.destroyForcibly();
+            TestLogger.log("Gradle stop process for " + executable + " timed out and was killed.");
+          }
+          else {
+            int exitCode = process.exitValue();
+            TestLogger.log("Gradle stop process for " + executable + " exited with code: " + exitCode);
+          }
+        }
+        catch (IOException | InterruptedException e) {
+          TestLogger.log("Failed to stop Gradle daemon for " + executable + ": " + e.getMessage());
+        }
+      }
+    }
+    catch (IOException e) {
+      TestLogger.log("Failed to walk file system to stop Gradle daemons in " + searchRoot + ": " + e.getMessage());
+    }
+  }
+
   private static void printContents(File root) throws IOException {
     if (root.isDirectory()) {
       for (File subPath : root.listFiles()) {
@@ -395,5 +462,19 @@ public class AndroidSystem implements AutoCloseable, TestRule {
       }
     }
     System.out.printf("%s%n", root.getCanonicalPath());
+  }
+
+  public enum JdkVersion {
+    JDK_17,
+    JDK_21,
+    JDK_25;
+
+    public Path getPath() {
+      return switch (this) {
+        case JDK_17 -> TestUtils.getJava17Jdk();
+        case JDK_21 -> TestUtils.getJava21Jdk();
+        case JDK_25 -> TestUtils.getJava25Jdk();
+      };
+    }
   }
 }

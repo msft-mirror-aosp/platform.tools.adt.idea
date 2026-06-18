@@ -26,6 +26,7 @@ import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Splitter;
+import com.intellij.openapi.util.NlsContexts;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.CollectionListModel;
 import com.intellij.ui.EditorTextField;
@@ -42,6 +43,7 @@ import com.intellij.ui.scale.JBUIScale;
 import com.intellij.ui.table.JBTable;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.util.Function;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -53,6 +55,7 @@ import java.util.Locale;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import org.jdesktop.swingx.sort.RowFilters.GeneralFilter;
@@ -82,7 +85,7 @@ public class ResourceTablePanel {
     Collection<PackageChunk> packages = resourceTableChunk.getPackages();
     StringPoolChunk stringPool = resourceTableChunk.getStringPool();
     myPackageCombo.setModel(new CollectionComboBoxModel<>(ImmutableList.copyOf(packages)));
-    myPackageCombo.setRenderer(SimpleListCellRenderer.create("<No Resources>", PackageChunk::getPackageName));
+    myPackageCombo.setRenderer(getListCellRenderer("<No Resources>", PackageChunk::getPackageName));
     myPackageCombo.setMinimumAndPreferredWidth(JBUIScale.scale(250));
     myPackageCombo.addItemListener(e -> {
       if (e.getStateChange() == ItemEvent.SELECTED) {
@@ -113,7 +116,7 @@ public class ResourceTablePanel {
 
   private void onPackageSelected(PackageChunk packageChunk, StringPoolChunk stringPool) {
     myTypesList.setModel(new CollectionListModel<>(packageChunk.getTypeSpecChunks()));
-    myTypesList.setCellRenderer(SimpleListCellRenderer.create("", TypeSpecChunk::getTypeName));
+    myTypesList.setCellRenderer(getListCellRenderer("", TypeSpecChunk::getTypeName));
     myTypesList.addListSelectionListener(e -> {
       TypeSpecChunk selectedValue = myTypesList.getSelectedValue();
       if (selectedValue == null) {
@@ -153,6 +156,7 @@ public class ResourceTablePanel {
     resourceTypesPanel.add(ScrollPaneFactory.createScrollPane(myTypesList), BorderLayout.CENTER);
 
     myResourceTypeTable = new JBTable();
+    myResourceTypeTable.setDefaultRenderer(Object.class, getDefaultTableCellRenderer());
     myResourceTypeTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
     myResourceTypeTable.getEmptyText().setText("No resource type selected.");
 
@@ -193,6 +197,22 @@ public class ResourceTablePanel {
   }
 
   public JComponent getRootComponent() { return myContainer; }
+
+  @NotNull
+  private static <T> SimpleListCellRenderer<T> getListCellRenderer(
+    String nullValue,
+    Function<T, @NlsContexts.Label String> getText) {
+    SimpleListCellRenderer<T> renderer = SimpleListCellRenderer.create(nullValue, getText);
+    renderer.putClientProperty("html.disable", Boolean.TRUE);
+    return renderer;
+  }
+
+  @NotNull
+  private static DefaultTableCellRenderer getDefaultTableCellRenderer() {
+    DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
+    renderer.putClientProperty("html.disable", Boolean.TRUE);
+    return renderer;
+  }
 
   private static class ResourceFilter extends GeneralFilter {
 

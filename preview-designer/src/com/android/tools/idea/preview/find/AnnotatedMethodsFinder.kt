@@ -24,7 +24,6 @@ import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
@@ -33,6 +32,7 @@ import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.impl.java.stubs.index.JavaAnnotationIndex
+import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
@@ -45,17 +45,19 @@ import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.concurrency.Promise
 import org.jetbrains.concurrency.isRejected
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
+import org.jetbrains.kotlin.psi.KtAnnotated
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UFile
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.getContainingUMethod
+import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.toUElementOfType
 
@@ -81,7 +83,10 @@ class CacheKeysManager() {
 fun <T> CachedValuesManager.getCachedValue(dataHolder: UserDataHolder, key: Key<CachedValue<T>>, provider: CachedValueProvider<T>): T =
   this.getCachedValue(dataHolder, key, provider, false)
 
-/** Finds all the [UAnnotation]s in [vFile] in [project] with [shortAnnotationName] as name. */
+/**
+ * Finds all the [UAnnotation]s in [vFile] in [project] with [shortAnnotationName] as name. Light elements (such as Kotlin light classes or
+ * Java synthetic elements) are explicitly excluded.
+ */
 @RequiresReadLock
 @VisibleForTesting
 internal fun findAnnotations(project: Project, vFile: VirtualFile, shortAnnotationName: String): Collection<UAnnotation> {
@@ -104,7 +109,12 @@ internal fun findAnnotations(project: Project, vFile: VirtualFile, shortAnnotati
         JavaAnnotationIndex.getInstance().getAnnotations(shortAnnotationName, project, scope).asSequence()
       }
 
-    CachedValueProvider.Result.create(annotations.toList().mapNotNull { it.toUElementOfType<UAnnotation>() }.distinct(), psiFile)
+    // We skip light/synthetic elements (such as Kotlin light classes or Java synthetic elements)
+    // to avoid expensive and redundant conversions to UAST, since preview annotations are intended
+    // to be processed from original source files.
+    val filteredAnnotations = annotations.filter { it !is LightElement }
+
+    CachedValueProvider.Result.create(filteredAnnotations.toList().mapNotNull { it.toUElementOfType<UAnnotation>() }.distinct(), psiFile)
   }
 }
 
@@ -127,7 +137,34 @@ private class PromiseModificationTracker(private val promise: Promise<*>) : Modi
 
 @RequiresReadLock
 fun UMethod?.isAnnotatedWith(annotationFqn: String) = runReadAction {
-  this?.uAnnotations?.any { annotation -> annotationFqn == annotation.qualifiedName } ?: false
+  if (this == null) return@runReadAction false
+
+  val psi = sourcePsi
+  if (psi is KtAnnotated) {
+    isAnnotatedWithFast(psi, annotationFqn)?.let {
+      return@runReadAction it
+    }
+  }
+
+  this.uAnnotations.any { annotation -> annotationFqn == annotation.qualifiedName }
+}
+
+@RequiresReadLock
+private fun isAnnotatedWithFast(psi: KtAnnotated, annotationFqn: String): Boolean? {
+  // Optimization: If the element has no annotations at all, we can immediately exit.
+  if (psi.annotationEntries.isEmpty()) return false
+
+  val ktFile = psi.containingFile as? KtFile
+  val importDirective = ktFile?.importDirectives?.firstOrNull { it.importedFqName?.asString() == annotationFqn }
+
+  val expectedName = importDirective?.aliasName ?: annotationFqn.substringAfterLast('.')
+  val hasExpectedName = psi.annotationEntries.any { it.shortName?.asString() == expectedName }
+  if (!hasExpectedName) {
+    return false
+  }
+
+  // Fall-through to do a full resolution check
+  return null
 }
 
 /**
@@ -140,7 +177,12 @@ fun UAnnotation.getContainingUMethodAnnotatedWith(annotationFqn: String): UMetho
   // read lock are left to this method.
   // The method is tagged RequiresReadLock so it should never be called without the read lock.
   fun getContainingUMethodWithReadLock(): UMethod? {
-    val uMethod = getContainingUMethod() ?: javaPsi?.parentOfType<PsiMethod>()?.toUElement(UMethod::class.java)
+    // We terminate the search early at UClass and UFile boundaries. This prevents UAST from eagerly
+    // traversing beyond the local class/file scopes and performing unnecessary resolution/AST conversions
+    // when annotations are placed on non-method elements (e.g. class declarations or top-level fields).
+    val uMethod =
+      getParentOfType(UMethod::class.java, true, UClass::class.java, UFile::class.java)
+        ?: javaPsi?.parentOfType<PsiMethod>()?.toUElement(UMethod::class.java)
     return if (uMethod.isAnnotatedWith(annotationFqn)) uMethod else null
   }
 
@@ -153,39 +195,28 @@ fun UAnnotation.getContainingUMethodAnnotatedWith(annotationFqn: String): UMetho
 }
 
 /**
- * Returns a [CachedValueProvider] that provides values of type [T] from the methods annotated with [annotationFqn] and
- * [shortAnnotationName], from [vFile] of [project]. Technically, this function could just return a collection of methods, but [toValues]
- * might be slow to calculate so caching the values rather than methods is more useful. To benefit from caching make sure the same
- * parameters are passed to the function call as all the parameters constitute the key.
+ * Returns a [CachedValueProvider] that provides the methods annotated with [annotationFqn] and [shortAnnotationName], from [vFile] of
+ * [project]. To benefit from caching make sure the same parameters are passed to the function call as all the parameters constitute the
+ * key.
  */
-private fun <T> findAnnotatedMethodsCachedValues(
+private fun findAnnotatedMethodsCachedValues(
   project: Project,
   vFile: VirtualFile,
   annotationFqn: String,
   shortAnnotationName: String,
-  toValues: (methods: List<UMethod>) -> Flow<T>,
-): CachedValueProvider<CompletableDeferred<Collection<T>>> = CachedValueProvider {
+): CachedValueProvider<CompletableDeferred<List<UMethod>>> = CachedValueProvider {
   // This Deferred should not be needed, the promise could be returned directly. However, it seems
   // there is a compiler issue that
   // causes the findAnnotatedMethodsValues to fail when using the "dist" build (not from source).
   // Using the deferred seems to avoid the problem. b/222843951.
-  val deferred = CompletableDeferred<Collection<T>>()
+  val deferred = CompletableDeferred<List<UMethod>>()
 
   val promise =
     ReadAction.nonBlocking(
-        Callable<Collection<T>> {
-          val uMethods =
-            findAnnotations(project, vFile, shortAnnotationName)
-              .mapNotNull { it.getContainingUMethodAnnotatedWith(annotationFqn) }
-              .distinct() // avoid looking more than once per method
-
-          // TODO(b/381827960): avoid using runBlockingCancellable
-          // At the moment we use runBlockingCancellable to calculate the list of values within this
-          // smart read lock.
-          // Callers of findAnnotatedMethodsValues must first ensure that any processing on their
-          // flow provides smart read locks where necessary before removing the terminal .toList()
-          // call.
-          runBlockingCancellable { toValues(uMethods).toList() }
+        Callable {
+          findAnnotations(project, vFile, shortAnnotationName)
+            .mapNotNull { it.getContainingUMethodAnnotatedWith(annotationFqn) }
+            .distinct() // avoid looking more than once per method
         }
       )
       .inSmartMode(project)
@@ -201,31 +232,21 @@ private fun <T> findAnnotatedMethodsCachedValues(
   CachedValueProvider.Result.create(deferred, kotlinJavaModificationTracker, dumbModificationTracker, PromiseModificationTracker(promise))
 }
 
-private data class CachedValuesKey<T>(
-  val annotationFqn: String,
-  val shortAnnotationName: String,
-  val toValues: (methods: List<UMethod>) -> Flow<T>,
-)
+private data class CachedValuesKey(val annotationFqn: String, val shortAnnotationName: String)
 
 /**
- * Finds all the values calculated by [toValues] associated with the methods annotated with [annotationFqn] and [shortAnnotationName] from
- * [vFile] in [project].
+ * Finds all the [UMethod] instances annotated with [annotationFqn] and [shortAnnotationName] from [vFile] in [project]. The results are
+ * cached.
  */
-suspend fun <T> findAnnotatedMethodsValues(
-  project: Project,
-  vFile: VirtualFile,
-  annotationFqn: String,
-  shortAnnotationName: String,
-  toValues: (methods: List<UMethod>) -> Flow<T>,
-): Collection<T> {
+suspend fun findAnnotatedMethods(project: Project, vFile: VirtualFile, annotationFqn: String, shortAnnotationName: String): List<UMethod> {
   val psiFile = getPsiFileSafely(project, vFile) ?: return emptyList()
   return withContext(Dispatchers.Default) {
     val promiseResult =
       CachedValuesManager.getManager(project)
         .getCachedValue(
           psiFile,
-          CacheKeysManager.getInstance(project).getKey(CachedValuesKey(annotationFqn, shortAnnotationName, toValues)),
-          findAnnotatedMethodsCachedValues(project, vFile, annotationFqn, shortAnnotationName, toValues),
+          CacheKeysManager.getInstance(project).getKey(CachedValuesKey(annotationFqn, shortAnnotationName)),
+          findAnnotatedMethodsCachedValues(project, vFile, annotationFqn, shortAnnotationName),
         )
     try {
       return@withContext promiseResult.await()

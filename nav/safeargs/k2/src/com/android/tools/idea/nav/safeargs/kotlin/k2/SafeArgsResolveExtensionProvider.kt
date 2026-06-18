@@ -18,14 +18,16 @@ package com.android.tools.idea.nav.safeargs.kotlin.k2
 import com.android.tools.idea.nav.safeargs.SafeArgsMode
 import com.android.tools.idea.nav.safeargs.module.NavInfoFetcher
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.KaSpiExtensionPoint
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.resolve.extensions.KaResolveExtension
 import org.jetbrains.kotlin.analysis.api.resolve.extensions.KaResolveExtensionProvider
 import org.jetbrains.kotlin.idea.base.projectStructure.openapiModule
 
-@OptIn(KaExperimentalApi::class)
+@OptIn(KaExperimentalApi::class, KaSpiExtensionPoint::class)
 class SafeArgsResolveExtensionProvider : KaResolveExtensionProvider() {
+  @KaSpiExtensionPoint
   override fun provideExtensionsFor(module: KaModule): List<KaResolveExtension> =
     when (module) {
       is KaSourceModule -> {

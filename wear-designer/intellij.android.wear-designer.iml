@@ -23,5 +23,8 @@
     <orderEntry type="module" module-name="intellij.android.rendering" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.wear-preview-elements" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.indexing.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.java.analysis" level="project" />
   </component>
 </module>
