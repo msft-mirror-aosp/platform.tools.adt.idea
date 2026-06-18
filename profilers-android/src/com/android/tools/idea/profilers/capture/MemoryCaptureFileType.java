@@ -18,19 +18,24 @@ package com.android.tools.idea.profilers.capture;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.FileTypeRegistry;
 import com.intellij.openapi.util.io.ByteSequence;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Represents a heap dump file that can be imported into memory profiler.
  */
 public class MemoryCaptureFileType extends AndroidProfilerCaptureFileType {
 
+  @Deprecated
   public static final String EXTENSION = "hprof";
+
+  public static final List<String> EXTENSIONS = Arrays.asList("hprof", "prof");
 
   private static final MemoryCaptureFileType INSTANCE = new MemoryCaptureFileType();
 
@@ -44,19 +49,19 @@ public class MemoryCaptureFileType extends AndroidProfilerCaptureFileType {
   @NotNull
   @Override
   public String getDisplayName() {
-    return "Android Profiler Memory capture (.hprof)";
+    return "Android Profiler Memory capture";
   }
 
   @NotNull
   @Override
   public String getDescription() {
-    return "Android Profiler Memory capture file (.hprof)";
+    return "Android Profiler Memory capture file";
   }
 
   @NotNull
   @Override
   public String getDefaultExtension() {
-    return EXTENSION;
+    return EXTENSIONS.get(0);
   }
 
   public static FileType getInstance() {
@@ -71,7 +76,7 @@ public class MemoryCaptureFileType extends AndroidProfilerCaptureFileType {
     public @Nullable FileType detect(@NotNull VirtualFile file,
                                      @NotNull ByteSequence firstBytes,
                                      @Nullable CharSequence firstCharsIfText) {
-      if (!EXTENSION.equalsIgnoreCase(file.getExtension())) {
+      if (file.getExtension() == null || !EXTENSIONS.contains(StringUtil.toLowerCase(file.getExtension()))) {
         return null;
       }
       if (firstBytes.length() < magic.length) {
