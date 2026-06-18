@@ -443,6 +443,13 @@ public class AndroidSystem implements AutoCloseable, TestRule {
             javaHome = install.getJdkDir().toAbsolutePath().toString();
           }
           pb.environment().put("JAVA_HOME", javaHome == null ? "" : javaHome);
+          String gradleUserHome = env.get("GRADLE_USER_HOME");
+          if (gradleUserHome != null) {
+            pb.environment().put("GRADLE_USER_HOME", gradleUserHome);
+          } else {
+            Path path = useTmpDir ? IdeInstallation.getTmpDir() : fileSystem.getHome();
+            pb.environment().put("GRADLE_USER_HOME", path.resolve(".gradle").toAbsolutePath().toString());
+          }
           Process process = pb.start();
           if (!process.waitFor(1, TimeUnit.MINUTES)) {
             process.destroyForcibly();
