@@ -74,6 +74,7 @@ public abstract class JarDependencyDetailsForm implements ConfigurationDependenc
                                                          GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
                                                          null, 0, false));
     myIncludesText = new JXLabel();
+    myIncludesText.putClientProperty("html.disable", Boolean.TRUE);
     Font myIncludesTextFont = UIManager.getFont("Tree.font");
     if (myIncludesTextFont != null) myIncludesText.setFont(myIncludesTextFont);
     myIncludesText.setText("");
@@ -89,6 +90,7 @@ public abstract class JarDependencyDetailsForm implements ConfigurationDependenc
                                                          GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
                                                          null, 0, false));
     myExcludesText = new JXLabel();
+    myExcludesText.putClientProperty("html.disable", Boolean.TRUE);
     Font myExcludesTextFont = UIManager.getFont("Tree.font");
     if (myExcludesTextFont != null) myExcludesText.setFont(myExcludesTextFont);
     myMainPanel.add(myExcludesText, new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
