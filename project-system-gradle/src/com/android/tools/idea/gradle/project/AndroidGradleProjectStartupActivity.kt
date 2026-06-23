@@ -115,8 +115,8 @@ class AndroidGradleProjectStartupActivity : ProjectActivity {
     suspend fun performStartupActivity() {
       runInitialization {
         // Need to wait for both JpsProjectLoadingManager and ExternalProjectsManager, as well as the completion of
-        // AndroidNewProjectInitializationStartupActivity.  In old-skool thread
-        // programming I'd probably use an atomic integer and wait for the count to reach 3.
+        // AndroidNewProjectInitializationStartupActivity and AndroidIdeSdksInitializationStartupActivity.  In old-skool thread
+        // programming I'd probably use an atomic integer and wait for the count to reach 4.
         coroutineScope {
           val myJob = currentCoroutineContext().job
           val externalProjectsJob = CompletableDeferred<Unit>(parent = myJob)
@@ -124,10 +124,13 @@ class AndroidGradleProjectStartupActivity : ProjectActivity {
           val newProjectStartupJob = async {
             project.service<AndroidNewProjectInitializationStartupActivity.StartupService>().awaitInitialization()
           }
+          val ideSdksStartupJob = async {
+            project.service<AndroidIdeSdksInitializationStartupActivity.StartupService>().awaitInitialization()
+          }
 
           ExternalProjectsManager.getInstance(project).runWhenInitializedInBackground { externalProjectsJob.complete(Unit) }
           whenAllModulesLoaded(project) { jpsProjectJob.complete(Unit) }
-          awaitAll(newProjectStartupJob, externalProjectsJob, jpsProjectJob)
+          awaitAll(newProjectStartupJob, ideSdksStartupJob, externalProjectsJob, jpsProjectJob)
         }
 
         performActivity(project)
