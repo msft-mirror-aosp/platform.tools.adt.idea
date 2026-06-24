@@ -113,10 +113,10 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
                 runCatching {
                     val versions = cachedModels.versions[gradleProject] ?: return@BuildAction null
                     val modelVersions = versions.convert()
-                    val basicAndroidProject = controller.findModel(gradleProject, BasicAndroidProject::class.java)
-                    val androidProject = controller.findModel(gradleProject, AndroidProject::class.java)
-                    val androidDsl = controller.findModel(gradleProject, AndroidDsl::class.java)
-                    val gradlePropertiesModel = controller.findModel(gradleProject, GradlePropertiesModel::class.java)
+                    val basicAndroidProject = controller.findModel(gradleProject, BasicAndroidProject::class.java)!!
+                    val androidProject = controller.findModel(gradleProject, AndroidProject::class.java)!!
+                    val androidDsl = controller.findModel(gradleProject, AndroidDsl::class.java)!!
+                    val gradlePropertiesModel = controller.findModel(gradleProject, GradlePropertiesModel::class.java)!!
                     val legacyAndroidGradlePluginProperties =
                       getLegacyAndroidGradlePluginProperties(controller, gradleProject, modelVersions)
 
@@ -148,9 +148,9 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
                         basicAndroidProject,
                         androidProject,
                         androidDsl,
-                        controller.findModel(gradleProject, DeclaredDependencies::class.java),
-                        controller.findModel(gradleProject, GradlePluginModel::class.java),
-                        controller.findModel(gradleProject, GradleTaskModel::class.java),
+                        controller.findModel(gradleProject, DeclaredDependencies::class.java)!!,
+                        controller.findModel(gradleProject, GradlePluginModel::class.java)!!,
+                        controller.findModel(gradleProject, GradleTaskModel::class.java)!!,
                         ideAndroidProject,
                         selectedVariantName,
                         shouldSkipRuntimeClasspathForLibraries(androidProject.flags, gradlePropertiesModel),
@@ -208,7 +208,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
               // If this is not a project that we support , then we should not fetch the KAPT model in this case.
               cachedModels.versions[gradleProject] ?: return@BuildAction null
               val kaptModel = controller.fetchModel<KaptGradleModel>(gradleProject, cachedModels.data[gradleProject]?.selectedVariantName)
-              gradleProject to kaptModel
+              gradleProject to kaptModel!!
             }
           }
         }
