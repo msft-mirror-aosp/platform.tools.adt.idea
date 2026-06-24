@@ -610,7 +610,7 @@ class DatabaseInspectorControllerImpl(
       .addCallback(
         edtExecutor,
         object : FutureCallback<Unit> {
-          override fun onSuccess(result: Unit?) {}
+          override fun onSuccess(result: Unit) {}
 
           override fun onFailure(t: Throwable) {
             view.reportError("Error reading Sqlite table \"${table.name}\"", t)

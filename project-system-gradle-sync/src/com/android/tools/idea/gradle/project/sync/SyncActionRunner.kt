@@ -127,12 +127,12 @@ data class ActionToRun<T>(
         return delegate.getModel(target, modelType)
       }
 
-      override fun <T, P> getModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
+      override fun <T, P : Any> getModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
         validateModelType(modelType)
         return delegate.getModel(modelType, parameterType, parameterInitializer)
       }
 
-      override fun <T, P> getModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
+      override fun <T, P : Any> getModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
         validateModelType(modelType)
         return delegate.getModel(target, modelType, parameterType, parameterInitializer)
       }
@@ -147,12 +147,12 @@ data class ActionToRun<T>(
         return delegate.findModel(target, modelType)
       }
 
-      override fun <T, P> findModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
+      override fun <T, P : Any> findModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
         validateModelType(modelType)
         return delegate.findModel(modelType, parameterType, parameterInitializer)
       }
 
-      override fun <T, P> findModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
+      override fun <T, P : Any> findModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
         validateModelType(modelType)
         return delegate.findModel(target, modelType, parameterType, parameterInitializer)
       }
@@ -294,11 +294,11 @@ private fun BuildController.toMeasuringController(syncCounters: SyncCounters): B
       return syncCounters.measure(modelType) { delegate.getModel(target, modelType) }
     }
 
-    override fun <T, P> getModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
+    override fun <T, P : Any> getModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
       return syncCounters.measure(modelType) { delegate.getModel(modelType, parameterType, parameterInitializer) }
     }
 
-    override fun <T, P> getModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
+    override fun <T, P : Any> getModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
       return syncCounters.measure(modelType) { delegate.getModel(target, modelType, parameterType, parameterInitializer) }
     }
 
@@ -310,11 +310,11 @@ private fun BuildController.toMeasuringController(syncCounters: SyncCounters): B
       return syncCounters.measure(modelType) { delegate.findModel(target, modelType) }
     }
 
-    override fun <T, P> findModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
+    override fun <T, P : Any> findModel(modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
       return syncCounters.measure(modelType) { delegate.findModel(modelType, parameterType, parameterInitializer) }
     }
 
-    override fun <T, P> findModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
+    override fun <T, P : Any> findModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
       return syncCounters.measure(modelType) { delegate.findModel(target, modelType, parameterType, parameterInitializer) }
     }
 

@@ -94,7 +94,7 @@ fun <I> List<ListenableFuture<I>>.whenAllComplete(): Futures.FutureCombiner<I?> 
 }
 
 /** Wrapper function to add callback for a ListenableFuture */
-fun <I> ListenableFuture<I>.addCallback(executor: Executor, success: (I?) -> Unit, failure: (Throwable) -> Unit) {
+fun <I> ListenableFuture<I>.addCallback(executor: Executor, success: (I) -> Unit, failure: (Throwable) -> Unit) {
   addCallback(
     executor,
     object : FutureCallback<I> {
@@ -102,7 +102,7 @@ fun <I> ListenableFuture<I>.addCallback(executor: Executor, success: (I?) -> Uni
         failure(t)
       }
 
-      override fun onSuccess(result: I?) {
+      override fun onSuccess(result: I) {
         success(result)
       }
     },
@@ -206,7 +206,7 @@ fun <I> ListenableFuture<I>.finallySync(executor: Executor, finallyBlock: () -> 
   addCallback(
     executor,
     object : FutureCallback<I> {
-      override fun onSuccess(result: I?) {
+      override fun onSuccess(result: I) {
         try {
           finallyBlock()
           futureResult.set(result)

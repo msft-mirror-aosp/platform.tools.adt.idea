@@ -23,6 +23,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndWait
 import javax.swing.JMenuItem
+import javax.swing.MenuElement
 import javax.swing.MenuSelectionManager
 import junit.framework.Assert
 import org.jetbrains.android.AndroidTestCase
@@ -86,7 +87,7 @@ class SystemUiModeActionTest : AndroidTestCase() {
       val selectionManager = MenuSelectionManager.defaultManager()
 
       // 1. Simulate selecting the first wallpaper item.
-      selectionManager.selectedPath = arrayOf(menu, wallpaperItems[0])
+      selectionManager.selectedPath = arrayOf<MenuElement>(menu, wallpaperItems[0])
 
       // 2. Test horizontal navigation to the right.
       val handledRight = handleNavigation(menu, NavigationDirection.RIGHT, selectionManager)

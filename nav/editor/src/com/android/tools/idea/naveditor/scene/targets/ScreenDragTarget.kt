@@ -63,7 +63,7 @@ class ScreenDragTarget(component: SceneComponent) : BaseTarget(), MultiComponent
         ImmutableList.of(getComponent())
       } else {
         val scene = myComponent.scene
-        selection.stream().map { c: NlComponent? -> scene.getSceneComponent(c) }.collect(ImmutableList.toImmutableList())
+        selection.stream().map { c: NlComponent? -> scene.getSceneComponent(c) }.toList()
       }
     }
     return null

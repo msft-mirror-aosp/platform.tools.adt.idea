@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import org.jetbrains.annotations.TestOnly
 
-class DesignerUsageTrackerManager<T, K : Disposable>(
+class DesignerUsageTrackerManager<T : Any, K : Disposable>(
   private val factory: (Executor, K?, Consumer<AndroidStudioEvent.Builder>) -> T,
   private val nopTracker: T,
 ) {
