@@ -48,7 +48,6 @@
     <module name="intellij.java"/>
     <module name="intellij.java.debugger.impl.backend"/>
     <module name="intellij.platform.debugger.impl.frontend"/>
-    <module name="intellij.platform.diagnostic.freezes"/>
     <module name="intellij.platform.diagnostic.freezeAnalyzer"/>
     <module name="intellij.java.debugger.impl.frontend"/>
     <module name="intellij.platform.images.xdebugger"/>
