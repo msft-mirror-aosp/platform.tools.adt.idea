@@ -22,6 +22,7 @@ import com.android.tools.apk.analyzer.ArchiveNode
 import com.android.tools.apk.analyzer.ArchivePathEntry
 import com.android.tools.apk.analyzer.dex.tree.DexClassNode
 import com.android.tools.apk.analyzer.internal.ArchiveTreeNode
+import com.android.tools.idea.apk.viewer.ApkEditor.Companion.createEditor
 import com.android.tools.idea.apk.viewer.ApkViewPanel.ApkTreeModel
 import com.android.tools.idea.apk.viewer.arsc.ArscViewer
 import com.android.tools.idea.apk.viewer.dex.DexFileViewer
@@ -38,6 +39,7 @@ import com.google.gson.JsonObject
 import com.intellij.diff.util.FileEditorBase
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.fileEditor.AsyncFileEditorProvider
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorProvider
 import com.intellij.openapi.fileEditor.ex.FileEditorProviderManager
@@ -51,6 +53,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
 import com.intellij.openapi.vfs.readText
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -73,12 +76,16 @@ import kotlin.io.path.createParentDirectories
 import kotlin.io.path.pathString
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.mockito.kotlin.any
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.refEq
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 // Timeout to use when waiting for isLoaded condition
@@ -599,6 +606,29 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun createEditor() {
+    val provider = mock<FileEditorProvider>()
+    whenever(provider.createEditor(any(), any())).thenReturn(mock())
+    val file = LightVirtualFile()
+
+    provider.createEditor(project, disposableRule.disposable, file)
+
+    verify(provider).createEditor(project, file)
+  }
+
+  @Suppress("UnstableApiUsage")
+  @Test
+  fun createEditor_asyncProvider(): Unit = runBlocking {
+    val provider = mock<AsyncFileEditorProvider>()
+    whenever(provider.createFileEditor(any(), any(), any(), any())).thenReturn(mock())
+    val file = LightVirtualFile()
+
+    provider.createEditor(project, disposableRule.disposable, file)
+
+    verify(provider).createFileEditor(refEq(project), refEq(file), isNull(), any())
   }
 
   private fun apkEditor(path: String, isResource: Boolean = true): ApkEditor {
