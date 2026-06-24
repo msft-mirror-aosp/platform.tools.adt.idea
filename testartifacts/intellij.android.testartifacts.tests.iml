@@ -47,6 +47,7 @@
     <orderEntry type="module" module-name="intellij.android.core.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-Coverage" level="project" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.sync" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.plugins.gradle" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.execution.common" scope="TEST" />
