@@ -49,20 +49,19 @@ import java.nio.file.StandardWatchEventKinds.OVERFLOW
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.regex.Pattern
-import kotlin.concurrent.read
-import kotlin.concurrent.write
 import kotlin.io.path.deleteIfExists
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.annotations.TestOnly
 
 /** Keeps track of Android Emulators running on the local machine under the current user account. */
@@ -73,8 +72,6 @@ class RunningEmulatorCatalog : Disposable.Parent {
   private val fileNamePattern = Pattern.compile("pid_(\\d+).ini")
   @GuardedBy("dataLock") private var updateJob: Job? = null
   @Volatile private var isDisposing = false
-  /** This lock is held for reading while an update is running. */
-  private val updateLock = ReentrantReadWriteLock()
   private val updateChannel = Channel<Unit>(Channel.CONFLATED)
   @GuardedBy("dataLock") private var updateWorkerJob: Job? = null
   private val dataLock = Any()
@@ -181,7 +178,7 @@ class RunningEmulatorCatalog : Disposable.Parent {
       updateWorkerJob =
         scope.launch(Dispatchers.IO) {
           for (request in updateChannel) {
-            updateLock.read { update() }
+            update()
           }
         }
     }
@@ -526,7 +523,8 @@ class RunningEmulatorCatalog : Disposable.Parent {
       registrationDirectory = directory ?: computeRegistrationDirectory()
     }
 
-    updateLock.write {} // Make sure that previously running updates have finished.
+    runBlocking { updateWorkerJob?.cancelAndJoin() }
+    startUpdateWorker()
     startWatchService()
   }
 
