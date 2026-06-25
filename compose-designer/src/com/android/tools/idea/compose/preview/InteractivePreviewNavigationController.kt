@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.environment.Logger
 import com.android.tools.idea.compose.preview.interactive.NavigationControlsContent
+import com.android.tools.idea.compose.preview.util.isEdgeNavigationImplemented
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.intellij.openapi.actionSystem.DataKey
@@ -32,10 +33,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 /** Enum representing the edge from which a back navigation gesture can be initiated. */
 enum class BackNavigationEdge(val visibleName: String) {
   /** Represents a back gesture initiated from the left edge of the screen. */
-  EDGE_LEFT("Left"),
+  EDGE_LEFT("Swipe Left"),
 
   /** Represents a back gesture initiated from the right edge of the screen. */
-  EDGE_RIGHT("Right"),
+  EDGE_RIGHT("Swipe Right"),
 
   /** Represents no specific edge for the back gesture. */
   EDGE_NONE("None"),
@@ -58,8 +59,14 @@ class InteractivePreviewNavigationController(
   var isBackGestureInProgress: Boolean = false
     private set
 
-  private val showNavigationControlsProvider = {
-    StudioComposePanel { NavigationControlsContent(interactivePreviewNavigationController = this, fpsUpdater = fpsUpdater) }
+  private val showNavigationControlsProvider: (ComposePreviewElementInstance<*>) -> JComponent = { instance ->
+    StudioComposePanel {
+      NavigationControlsContent(
+        interactivePreviewNavigationController = this,
+        fpsUpdater = fpsUpdater,
+        isEdgeNavigationImplemented = { instance.isEdgeNavigationImplemented() },
+      )
+    }
   }
 
   /** The currently active [JComponent] for back navigation controls, or null if controls are hidden. */
@@ -221,7 +228,7 @@ class InteractivePreviewNavigationController(
   @UiThread
   fun showNavigationControls(instance: ComposePreviewElementInstance<*>) {
     if (activeBackNavigationPanelInInteractiveMode == null) {
-      activeBackNavigationPanelInInteractiveMode = showNavigationControlsProvider()
+      activeBackNavigationPanelInInteractiveMode = showNavigationControlsProvider(instance)
       onAfterPanelUpdate()
       usageTrackerProvider().trackNavigationPanelVisibilityChange(isShown = true)
     }

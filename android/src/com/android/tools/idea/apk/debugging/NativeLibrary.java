@@ -15,23 +15,32 @@
  */
 package com.android.tools.idea.apk.debugging;
 
+import static com.intellij.openapi.util.io.FileUtil.toSystemDependentName;
+import static com.intellij.openapi.util.io.OSAgnosticPathUtil.isUncPath;
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static com.intellij.openapi.util.text.StringUtil.isNotEmpty;
+
 import com.android.sdklib.devices.Abi;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.serialization.ClassUtil;
 import com.intellij.util.xmlb.annotations.Transient;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static com.intellij.openapi.util.io.FileUtil.toSystemDependentName;
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
-import static com.intellij.openapi.util.text.StringUtil.isNotEmpty;
 
 public class NativeLibrary {
 
@@ -86,6 +95,10 @@ public class NativeLibrary {
     List<String> nonExistingPaths = new ArrayList<>();
     LocalFileSystem fileSystem = LocalFileSystem.getInstance();
     for (String path : sharedObjectFilePaths) {
+      if (isUncPath(path)) {
+        Logger.getInstance(this.getClass()).warn("Ignoring UNC path: " + path);
+        continue;
+      }
       VirtualFile file = fileSystem.findFileByPath(path);
       if (file != null) {
         Abi abi = extractAbiFrom(file);

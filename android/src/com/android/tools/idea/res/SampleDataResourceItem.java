@@ -144,26 +144,41 @@ public class SampleDataResourceItem implements ResourceItem, ResolvableResourceI
                                                          @NotNull SmartPsiElementPointer<PsiElement> filePointer) {
     VirtualFile vFile = filePointer.getVirtualFile();
     String fileName = vFile.getName();
-    PsiElement sourceElement = runReadAction(filePointer::getElement);
-    boolean isImageType = (sourceElement instanceof PsiBinaryFile
-                           && ((PsiBinaryFile)sourceElement).getFileType() == ImageFileTypeManager.getInstance().getImageFileType());
+    boolean isImageType = runReadAction(() -> {
+      PsiElement sourceElement = filePointer.getElement();
+      return sourceElement instanceof PsiBinaryFile
+             && ((PsiBinaryFile)sourceElement).getFileType() == ImageFileTypeManager.getInstance().getImageFileType();
+    });
 
     return new SampleDataResourceItem(repository,
                                       fileName,
                                       output -> {
-                                        if (sourceElement == null) {
-                                          LOG.warn("File pointer was invalidated and the repository was not refreshed");
-                                          return null;
-                                        }
+                                         String text = null;
+                                         boolean isValid;
+                                         if (isImageType) {
+                                           isValid = runReadAction(() -> filePointer.getElement() != null);
+                                         }
+                                         else {
+                                           text = runReadAction(() -> {
+                                             PsiElement element = filePointer.getElement();
+                                             return element != null ? element.getText() : null;
+                                           });
+                                           isValid = text != null;
+                                         }
 
-                                        try {
-                                          if (isImageType) {
-                                            output.write(vFile.getPath().getBytes(UTF_8));
-                                          }
-                                          else {
-                                            output.write(sourceElement.getText().getBytes(UTF_8));
-                                          }
-                                        }
+                                         if (!isValid) {
+                                           LOG.warn("File pointer was invalidated and the repository was not refreshed");
+                                           return null;
+                                         }
+
+                                         try {
+                                           if (isImageType) {
+                                             output.write(vFile.getPath().getBytes(UTF_8));
+                                           }
+                                           else {
+                                             output.write(text.getBytes(UTF_8));
+                                           }
+                                         }
                                         catch (IOException e) {
                                           LOG.warn("Unable to load content from plain file " + fileName, e);
                                           return e;
@@ -212,14 +227,17 @@ public class SampleDataResourceItem implements ResourceItem, ResolvableResourceI
         return null;
       }
 
-      PsiElement source = runReadAction(jsonPointer::getElement);
-      if (source == null) {
+      String text = runReadAction(() -> {
+        PsiElement source = jsonPointer.getElement();
+        return source != null ? source.getText() : null;
+      });
+      if (text == null) {
         LOG.warn("JSON file pointer was invalidated and the repository was not refreshed");
         return null;
       }
 
       try {
-        StringReader input = new StringReader(source.getText());
+        StringReader input = new StringReader(text);
         SampleDataJsonParser parser = SampleDataJsonParser.parse(input);
         if (parser != null) {
           output.write(parser.getContentFromPath(contentPath));
@@ -235,8 +253,10 @@ public class SampleDataResourceItem implements ResourceItem, ResolvableResourceI
 
   @NotNull
   private static String getTextFromPsiElementPointer(SmartPsiElementPointer<PsiElement> pointer) {
-    PsiElement rootJsonElement = pointer.getElement();
-    return rootJsonElement != null ? rootJsonElement.getText() : "";
+    return runReadAction(() -> {
+      PsiElement rootJsonElement = pointer.getElement();
+      return rootJsonElement != null ? rootJsonElement.getText() : "";
+    });
   }
 
   /**

@@ -132,6 +132,7 @@ public class ModuleDependencyDetails implements ConfigurationDependencyDetails {
                                                   GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                                                   false));
     myNameLabel = new JXLabel();
+    myNameLabel.putClientProperty("html.disable", Boolean.TRUE);
     Font myNameLabelFont = UIManager.getFont("Tree.font");
     if (myNameLabelFont != null) myNameLabel.setFont(myNameLabelFont);
     myMainPanel.add(myNameLabel, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
@@ -139,6 +140,7 @@ public class ModuleDependencyDetails implements ConfigurationDependencyDetails {
                                                      GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
                                                      null, null, 0, false));
     myGradlePathLabel = new JXLabel();
+    myGradlePathLabel.putClientProperty("html.disable", Boolean.TRUE);
     Font myGradlePathLabelFont = UIManager.getFont("Tree.font");
     if (myGradlePathLabelFont != null) myGradlePathLabel.setFont(myGradlePathLabelFont);
     myMainPanel.add(myGradlePathLabel, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,

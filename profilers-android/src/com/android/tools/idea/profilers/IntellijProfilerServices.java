@@ -49,7 +49,6 @@ import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorService;
 import com.android.tools.profilers.stacktrace.NativeFrameSymbolizer;
-import com.android.tools.profilers.taskbased.home.TaskHomeTabModel.TaskRecordingType;
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.google.common.annotations.VisibleForTesting;
@@ -97,6 +96,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import com.android.ide.common.gradle.Dependency;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.tools.idea.projectsystem.AndroidModuleSystem;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
@@ -390,7 +390,7 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   }
 
   @Override
-  public void enableStartupTask(@NotNull ProfilerTaskType taskType, @NotNull TaskRecordingType recordingType) {
+  public void enableStartupTask(@NotNull ProfilerTaskType taskType) {
     // This method should only be called by tasks that can be run on startup.
     assert (isTaskSupportedOnStartup(taskType));
 
@@ -410,7 +410,7 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
         else {
           profilerState.STARTUP_CPU_PROFILING_ENABLED = true;
           profilerState.STARTUP_CPU_PROFILING_CONFIGURATION_NAME =
-            CpuProfilerConfigConverter.fromTaskTypeToConfigName(taskType, recordingType);
+            CpuProfilerConfigConverter.fromTaskTypeToConfigName(taskType);
         }
       }
     }
@@ -610,12 +610,16 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
                   if (versionString != null) {
                     // Update both the UI string AND the backend injected ID to ensure they match (Addressing code review feedback)
                     final String resolvedCoordinate = artifact.getMavenGroupId() + ":" + artifact.getMavenArtifactId() + ":" + versionString;
-                    finalResolvedId = new RegisteredDependencyId() {
-                      @Override
-                      public String toString() {
-                        return resolvedCoordinate;
-                      }
-                    };
+                    try {
+                      Dependency dependencyObj = Dependency.parse(resolvedCoordinate);
+
+                      java.lang.reflect.Constructor<?> constructor = unresolvedId.getClass().getDeclaredConstructor(Dependency.class);
+                      constructor.setAccessible(true);
+                      finalResolvedId = (RegisteredDependencyId) constructor.newInstance(dependencyObj);
+                    } catch (Exception innerE) {
+                      getLogger().warn("Failed to reflectively create exact version for LeakCanary. Falling back to dynamic version.", innerE);
+                      finalResolvedId = unresolvedId;
+                    }
                   }
                 } catch (Exception ignored) {
                   // If reflection fails (e.g., method signature changes), silently swallow the exception and fall back to the '+' version.

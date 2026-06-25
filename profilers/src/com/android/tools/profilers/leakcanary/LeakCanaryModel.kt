@@ -50,6 +50,7 @@ import com.android.tools.profilers.tasks.analytics.LeakCanaryUiAction
 import com.android.tools.profilers.tasks.analytics.TaskFinishedState
 import com.android.tools.profilers.tasks.analytics.TaskProcessingFailedMetadata
 import com.android.tools.profilers.tasks.analytics.TaskStartFailedMetadata
+import com.android.tools.profilers.tasks.analytics.TaskTracker
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -933,42 +934,19 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers, heapDumpe
     }
 
     private const val KEY_LEAKCANARY_BANNER_DO_NOT_SHOW = "leakcanary.banner.donotshow"
-
-    /**
-     * Extracts the class name of the node that is actually leaking (LeakingStatus.YES).
-     *
-     * @param leak The Leak object.
-     * @return The fully qualified class name of the leaking object, or an empty string if not found.
-     */
-    @JvmStatic
-    fun getLeakingFullClassName(leak: Leak?): String {
-      if (leak?.displayedLeakTrace == null || leak.displayedLeakTrace.isEmpty()) {
-        return ""
-      }
-      val leakTrace = leak.displayedLeakTrace.first()
-      return leakTrace.nodes.find { it.leakingStatus == LeakingStatus.YES }?.className ?: ""
-    }
-
-    /**
-     * Extracts the class name of the "Anchor" node. This is the last node in the trace that is marked as NO (not leaking) before the chain
-     * of UNKNOWN or YES nodes begins. This node usually holds the reference that causes the leak.
-     *
-     * @param leak The Leak object.
-     * @return The fully qualified class name of the anchor object, or an empty string if not found.
-     */
-    @JvmStatic
-    fun getAnchorFullClassName(leak: Leak?): String {
-      if (leak?.displayedLeakTrace == null || leak.displayedLeakTrace.isEmpty()) {
-        return ""
-      }
-      val leakTrace = leak.displayedLeakTrace.first()
-      // Find the last index of a node that is explicitly NOT leaking.
-      val lastNoIndex = leakTrace.nodes.indexOfLast { it.leakingStatus == LeakingStatus.NO }
-      return if (lastNoIndex != -1) leakTrace.nodes[lastNoIndex].className else ""
-    }
   }
 
   override fun update(elapsedNs: Long) {
     _elapsedNs.value += elapsedNs
+  }
+
+  /** Tracks a user interaction within an active LeakCanary task (e.g. clicking "Force Dump"). */
+  private fun TaskTracker.trackLeakCanaryUiAction(uiAction: LeakCanaryUiAction) {
+    profilers.ideServices.featureTracker.trackLeakCanaryEvent(this.taskMetadata, uiAction)
+  }
+
+  /** Tracks the completion of a LeakCanary memory analysis, logging the specific leak metrics. */
+  private fun TaskTracker.trackLeakCanaryAnalysis(leakAnalysis: LeakCanaryLeakAnalysis) {
+    profilers.ideServices.featureTracker.trackLeakCanaryEvent(this.taskMetadata, leakAnalysis)
   }
 }

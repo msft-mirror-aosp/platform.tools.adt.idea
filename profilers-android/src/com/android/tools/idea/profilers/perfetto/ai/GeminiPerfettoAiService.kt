@@ -20,8 +20,11 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.GeminiPluginApiV2
 import com.android.tools.idea.gemini.LlmChatInToolWindowResult
+import com.android.tools.idea.gemini.LlmFailureReason
 import com.android.tools.idea.gemini.buildLlmPrompt
+import com.android.tools.idea.project.AndroidNotification
 import com.android.tools.sherlock.common.perfetto.ai.PerfettoAiService
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.CoroutineScope
@@ -81,7 +84,8 @@ class GeminiPerfettoAiService(private val project: Project, private val scope: C
   private fun sendPromptToAgent(prompt: String, systemMessageText: String) {
     val api = GeminiPluginApi.getInstance()
     if (!api.isAvailable()) {
-      LOG.warn("Api unavailable")
+      LOG.warn("Failed to submit query to Gemini tool window")
+      showErrorNotification(getUserFriendlyErrorMessage())
     }
 
     val llmPrompt =
@@ -108,11 +112,23 @@ class GeminiPerfettoAiService(private val project: Project, private val scope: C
           }
           is LlmChatInToolWindowResult.RequestNotSubmitted -> {
             LOG.warn("Failed to submit query to Gemini tool window: ${result.reason}")
+            showErrorNotification(getUserFriendlyErrorMessage(result.reason))
           }
         }
       } catch (e: Exception) {
         LOG.warn("Exception while submitting query to Gemini tool window", e)
       }
     }
+  }
+
+  private fun getUserFriendlyErrorMessage(reason: LlmFailureReason? = null): String {
+    return when (reason) {
+      LlmFailureReason.NO_MODELS_AVAILABLE -> "Please ensure a model is configured and available"
+      else -> "Failed to submit query"
+    }
+  }
+
+  private fun showErrorNotification(message: String) {
+    AndroidNotification.getInstance(project).showBalloon("Request failed", message, NotificationType.ERROR)
   }
 }

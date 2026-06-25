@@ -20,7 +20,8 @@ import com.android.emulator.control.CameraList
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.createTestEvent
 import com.android.tools.adtui.actions.executeAction
-import com.android.tools.idea.avdmanager.EnvironmentsUpdater
+import com.android.tools.idea.avd.EnvironmentImage
+import com.android.tools.idea.avd.EnvironmentsUpdater
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.emulator.EMULATOR_CONTROLLER_KEY
@@ -39,21 +40,22 @@ import com.intellij.openapi.actionSystem.DataSnapshotProvider
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.io.FileUtilRt.toSystemIndependentName
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.zip.Deflater
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
@@ -99,20 +101,29 @@ class EmulatorEnvironmentActionTest {
   @Test
   fun testBuiltInEnvironments() {
     val environmentsUpdater = mock<EnvironmentsUpdater>()
-    runBlocking {
-      doAnswer { Path.of("/Sdk/environments/${it.getArgument<String>(0)}") }.whenever(environmentsUpdater).getUpdatedFile(any())
-    }
+    val list =
+      listOf(
+        EnvironmentImage(Path.of("/Sdk/environments/outdoor-nature-bright.jpg"), "Outdoor Nature Bright", false),
+        EnvironmentImage(Path.of("/Sdk/environments/indoor-study-dark.jpg"), "Indoor Study Dark", true),
+        EnvironmentImage(Path.of("/Sdk/environments/outdoor-city-bright.jpg"), "Outdoor City Bright", false),
+      )
+    runBlocking { whenever(environmentsUpdater.getEnvironments()).thenReturn(list) }
     ApplicationManager.getApplication().replaceService(EnvironmentsUpdater::class.java, environmentsUpdater, testRootDisposable)
+
+    val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
+    val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
+    group.update(event)
+    val children = group.getChildren(event)
+
     val environments = listOf("indoor-study-dark", "outdoor-city-bright", "outdoor-nature-bright")
-    for (environment in environments) {
-      val actionId = "android.emulator.environment.${environment.replace('-', '.')}"
-      val action = ActionManager.getInstance().getAction(actionId)
+    for (i in environments.indices) {
+      val action = children[i]
       executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
 
       val call = emulator.getNextGrpcCall(2.seconds)
       assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
       assertThat(shortDebugString(call.request))
-        .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:/Sdk/environments/$environment.jpg\" }")
+        .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:/Sdk/environments/${environments[i]}.jpg\" }")
     }
   }
 
@@ -273,4 +284,231 @@ class EmulatorEnvironmentActionTest {
     camerasGroup.update(event)
     assertThat(event.presentation.isVisible).isFalse()
   }
+
+  @Test
+  fun testBuiltInImageActionPresentationText() {
+    val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
+    val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
+    group.update(event)
+    val children = group.getChildren(event)
+
+    val indoorAction = children.firstOrNull() as? EmulatorEnvironmentAction.BuiltInImage
+    assertThat(indoorAction).isNotNull()
+    assertThat(indoorAction!!.environmentPath.fileName.toString()).isEqualTo("indoor-study-dark.jpg")
+    assertThat(indoorAction.templatePresentation.text).isEqualTo("Indoor Study Dark")
+    assertThat(indoorAction.templatePresentation.description).isEqualTo("Select Indoor Study Dark environment")
+  }
+
+  @Test
+  fun testCustom360Environment_featureFlagOn() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    val xml =
+      """
+      <x:xmpmeta xmlns:x="adobe:ns:meta/">
+       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
+       </rdf:RDF>
+      </x:xmpmeta>
+      """
+        .trimIndent()
+    val jpeg = createMockJpegWithXml(xml)
+
+    val imageFile = mock<VirtualFile>()
+    whenever(imageFile.path).thenReturn(jpeg.toString())
+    testRootDisposable.registerFakeFileChooserFactory(imageFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"image360:${jpeg.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testCustom360Environment_featureFlagOff() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    val xml =
+      """
+      <x:xmpmeta xmlns:x="adobe:ns:meta/">
+       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
+       </rdf:RDF>
+      </x:xmpmeta>
+      """
+        .trimIndent()
+    val jpeg = createMockJpegWithXml(xml)
+
+    val imageFile = mock<VirtualFile>()
+    whenever(imageFile.path).thenReturn(jpeg.toString())
+    testRootDisposable.registerFakeFileChooserFactory(imageFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${jpeg.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testRecentCustom360Environment_featureFlagOn() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    val xml =
+      """
+      <x:xmpmeta xmlns:x="adobe:ns:meta/">
+       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
+       </rdf:RDF>
+      </x:xmpmeta>
+      """
+        .trimIndent()
+    val jpeg = createMockJpegWithXml(xml)
+
+    val action = EmulatorEnvironmentAction.RecentCustom(jpeg)
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"image360:${jpeg.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testRecentCustom360Environment_featureFlagOff() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    val xml =
+      """
+      <x:xmpmeta xmlns:x="adobe:ns:meta/">
+       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
+       </rdf:RDF>
+      </x:xmpmeta>
+      """
+        .trimIndent()
+    val jpeg = createMockJpegWithXml(xml)
+
+    val action = EmulatorEnvironmentAction.RecentCustom(jpeg)
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${jpeg.systemIndependentString}\" }")
+  }
+
+  private fun createMockJpegWithXml(xml: String): Path {
+    val xmlBytes = xml.toByteArray()
+    val xmpHeader = "http://ns.adobe.com/xap/1.0/\u0000".toByteArray()
+    val payloadLength = xmpHeader.size + xmlBytes.size
+    val totalLength = payloadLength + 2
+
+    val jpeg = ByteArray(2 + 4 + payloadLength + 2)
+    jpeg[0] = 0xFF.toByte()
+    jpeg[1] = 0xD8.toByte() // SOI
+
+    jpeg[2] = 0xFF.toByte()
+    jpeg[3] = 0xE1.toByte() // APP1
+    jpeg[4] = ((totalLength shr 8) and 0xFF).toByte()
+    jpeg[5] = (totalLength and 0xFF).toByte()
+
+    System.arraycopy(xmpHeader, 0, jpeg, 6, xmpHeader.size)
+    System.arraycopy(xmlBytes, 0, jpeg, 6 + xmpHeader.size, xmlBytes.size)
+
+    val eoiIdx = 6 + payloadLength
+    jpeg[eoiIdx] = 0xFF.toByte()
+    jpeg[eoiIdx + 1] = 0xD9.toByte() // EOI
+
+    val file = tempDirRule.newPath("test_image.jpg")
+    Files.write(file, jpeg)
+    return file
+  }
+
+  @Test
+  fun testCustomPng360Environment_featureFlagOn() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    val xml =
+      """
+      <x:xmpmeta xmlns:x="adobe:ns:meta/">
+       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
+       </rdf:RDF>
+      </x:xmpmeta>
+      """
+        .trimIndent()
+    val pngPath = createMockPngWithXml(xml)
+
+    val imageFile = mock<VirtualFile>()
+    whenever(imageFile.path).thenReturn(pngPath.toString())
+    testRootDisposable.registerFakeFileChooserFactory(imageFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"image360:${pngPath.systemIndependentString}\" }")
+  }
+
+  private fun createMockPngWithXml(xml: String, compressed: Boolean = false): Path {
+    val bos = ByteArrayOutputStream()
+    // Signature
+    bos.write(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
+
+    // IHDR
+    writePngChunk(bos, "IHDR", byteArrayOf(0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0))
+
+    // iTXt
+    val chunkBos = ByteArrayOutputStream()
+    chunkBos.write("XML:com.adobe.xmp\u0000".toByteArray())
+    if (compressed) {
+      chunkBos.write(1) // compression flag
+      chunkBos.write(0) // compression method
+      chunkBos.write(0) // language tag null
+      chunkBos.write(0) // translated keyword null
+      val deflater = Deflater()
+      deflater.setInput(xml.toByteArray())
+      deflater.finish()
+      val deflatedBytes = ByteArray(1024)
+      val compressedBos = ByteArrayOutputStream()
+      while (!deflater.finished()) {
+        val count = deflater.deflate(deflatedBytes)
+        compressedBos.write(deflatedBytes, 0, count)
+      }
+      deflater.end()
+      chunkBos.write(compressedBos.toByteArray())
+    } else {
+      chunkBos.write(0) // compression flag
+      chunkBos.write(0) // compression method
+      chunkBos.write(0) // language tag null
+      chunkBos.write(0) // translated keyword null
+      chunkBos.write(xml.toByteArray())
+    }
+    writePngChunk(bos, "iTXt", chunkBos.toByteArray())
+
+    // IEND
+    writePngChunk(bos, "IEND", ByteArray(0))
+
+    val file = tempDirRule.newPath("test_image.png")
+    Files.write(file, bos.toByteArray())
+    return file
+  }
+
+  private fun writePngChunk(bos: ByteArrayOutputStream, type: String, data: ByteArray) {
+    val length = data.size
+    bos.write((length shr 24) and 0xFF)
+    bos.write((length shr 16) and 0xFF)
+    bos.write((length shr 8) and 0xFF)
+    bos.write(length and 0xFF)
+    bos.write(type.toByteArray(Charsets.US_ASCII))
+    bos.write(data)
+    // CRC (dummy)
+    bos.write(byteArrayOf(0, 0, 0, 0))
+  }
 }
+
+private val Path.systemIndependentString: String
+  get() = toSystemIndependentName(toString())

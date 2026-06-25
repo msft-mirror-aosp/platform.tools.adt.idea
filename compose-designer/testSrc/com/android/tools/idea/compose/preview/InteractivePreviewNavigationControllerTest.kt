@@ -20,7 +20,7 @@ import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
 import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.google.common.truth.Truth.assertThat
-import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.runInEdtAndWait
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Rule
@@ -28,7 +28,7 @@ import org.junit.Test
 
 class InteractivePreviewNavigationControllerTest {
 
-  @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val projectRule = ProjectRule()
 
   @Test
   fun testBackPressCompletedFromViewAdapterObj() {
@@ -211,5 +211,12 @@ class InteractivePreviewNavigationControllerTest {
     assertThat(controller.isNavigationControlsShown()).isFalse()
     assertThat(controller.getBottomPanelComponent()).isNull()
     assertThat(panelUpdated).isTrue()
+  }
+
+  @Test
+  fun testBackNavigationEdgeVisibleNames() {
+    assertThat(BackNavigationEdge.EDGE_LEFT.visibleName).isEqualTo("Swipe Left")
+    assertThat(BackNavigationEdge.EDGE_RIGHT.visibleName).isEqualTo("Swipe Right")
+    assertThat(BackNavigationEdge.EDGE_NONE.visibleName).isEqualTo("None")
   }
 }

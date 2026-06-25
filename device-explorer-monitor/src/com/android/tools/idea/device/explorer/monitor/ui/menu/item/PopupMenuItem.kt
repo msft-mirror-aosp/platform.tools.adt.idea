@@ -24,6 +24,9 @@ import javax.swing.Icon
 interface PopupMenuItem : Runnable {
   val text: String
 
+  val description: String?
+    get() = null
+
   val icon: Icon?
 
   val isEnabled: Boolean

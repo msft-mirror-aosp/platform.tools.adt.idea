@@ -1258,6 +1258,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "camera.environment", "Enable Camera Environment",
     "Enables displaying host cameras in the environment menu for AI Glasses");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT = new BooleanFlag(
+    EMBEDDED_EMULATOR, "360.image.environment", "Enable 360 Image Environment",
+    "Enables 360 image support for AI Glasses environments");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs");
@@ -2383,6 +2386,11 @@ public final class StudioFlags {
                     "Enable the restrictive tools for quick edit.",
                     "When enabled, the quick edit agent will use a highly-targeted restrictive toolset to reduce latency.");
 
+  public static final Flag<Boolean> STUDIOBOT_IS_QUICK_EDIT_WORKLOG_ENABLED =
+    new BooleanFlag(STUDIOBOT, "quick.edit.worklog.enabled",
+                    "Enable the worklog in quick-edit.",
+                    "When enabled, the UI to view the detailed work-log of the tasks being done by the agent when using quick-edit is visible.");
+
   public static final Flag<Boolean> STUDIOBOT_USE_BM25_FOR_FIND_FILES =
     new BooleanFlag(STUDIOBOT, "use.bm25.find.files",
                     "Use BM25 for find_files tool",
@@ -2475,7 +2483,7 @@ public final class StudioFlags {
     new EnumFlag<>(STUDIOBOT, "plan.mode",
                    "Select Studio Bot planning mode",
                    "Controls whether planning mode is disabled, uses v2 planning, or uses guided mode.",
-                   StudioBotPlanMode.V2);
+                   StudioBotPlanMode.GUIDED_MODE);
 
   public static final Flag<Boolean> STUDIOBOT_ASK_FOR_MORE_DETAIL_ENABLED =
     new BooleanFlag(STUDIOBOT, "ask.for.more.detail.enabled",
@@ -2650,6 +2658,18 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "include.gradle.project.structure.tools.by.default",
                     "Enable using Gradle project structure Agent tools by default",
                     "When enabled, a set of tools allowing the agent to query for the Gradle project structure will be included by default.");
+
+  public static final Flag<Boolean> STUDIOBOT_SMART_GRADLE_BUILD_TOOL =
+    new BooleanFlag(STUDIOBOT, "include.gradle.smart.build.tool",
+                    "Use Smart Gradle Build Tool in Agent",
+                    "When enabled, 'gradle_build' tool is replaced with a smarter version that can calculate required tasks from provided context.");
+
+
+  public static final Flag<Boolean> STUDIOBOT_GRADLE_PROJECT_INFO_TOOL =
+    new BooleanFlag(STUDIOBOT, "include.gradle.project.info.tool",
+                    "Use Gradle Project Info Tool in Agent",
+                    "When enabled, bunch of gradle project structure tools replaced with single `get_gradle_project_info` tool that provides all needed information for a gradle project.");
+
 
   public static final Flag<Boolean> STUDIOBOT_SUGGESTION_SMART_GROUPING_ENABLED =
     new BooleanFlag(STUDIOBOT, "suggestion.smart.grouping.enabled",
@@ -2961,6 +2981,13 @@ public final class StudioFlags {
     new BooleanFlag(STUDIO_LABS, "fakefeature", "Enable fake feature in StudioLabs.", "Enable this for testing.");
   // endregion STUDIO_LABS
 
+  // region SDK_MANAGER
+  private static final FlagGroup SDK_MANAGER = new FlagGroup(FLAGS, "sdk.manager", "SDK Manager");
+  public static final Flag<Boolean> SDK_MANAGER_SHOW_PACKAGE_DETAILS =
+    new BooleanFlag(SDK_MANAGER, "show.package.details", "Enable Show Package Details",
+                    "Enable a right-click menu and shortcut to show package details in the SDK Manager.");
+  // endregion SDK_MANAGER
+
   // region WEAR_RUN_CONFIGS_AUTOCREATE
   private static final FlagGroup WEAR_RUN_CONFIGS_AUTOCREATE =
     new FlagGroup(FLAGS, "wear.runconfigs.autocreate", "Autocreate Wear Run Configs");
@@ -2991,6 +3018,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_FSTS =
     new BooleanFlag(GOOGLE_LOGIN, "enable.fsts", "Enable flexible scoped tokens",
                     "Enable flexible scoped tokens and disable feature selection UI");
+  public static final Flag<Boolean> ENABLE_STARTUP_SIGN_IN_DIALOG =
+    new BooleanFlag(GOOGLE_LOGIN, "enable.startup.sign.in.dialog", "Enable startup sign-in dialog",
+                    "Enable startup sign-in dialog for logged-out users to prompt them to sign in");
   // endregion Google Login
 
   // region Backup
