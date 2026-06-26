@@ -86,12 +86,12 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.concurrent.Volatile
 import kotlin.jvm.optionals.getOrNull
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.guava.asListenableFuture
 import kotlinx.coroutines.guava.await
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 
 /**
  * The project component for a query based sync.

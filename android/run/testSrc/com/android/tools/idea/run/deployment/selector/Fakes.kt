@@ -51,10 +51,10 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Duration
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.datetime.Instant
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 

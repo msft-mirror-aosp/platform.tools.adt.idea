@@ -21,7 +21,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.JDOMUtil
 import com.intellij.util.xmlb.XmlSerializer
 import java.nio.file.Path
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.junit.Test
 
 class SelectionStatePersistenceTest {

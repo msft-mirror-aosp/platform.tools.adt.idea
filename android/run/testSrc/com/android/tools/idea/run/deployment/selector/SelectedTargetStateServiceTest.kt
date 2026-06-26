@@ -21,7 +21,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.SimpleConfigurationType
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test

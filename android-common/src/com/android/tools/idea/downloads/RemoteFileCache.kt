@@ -29,9 +29,12 @@ import kotlin.io.path.exists
 import kotlin.io.path.fileSize
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.setLastModifiedTime
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+import kotlin.time.toJavaInstant
+import kotlin.time.toKotlinInstant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -40,9 +43,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.yield
-import kotlinx.datetime.Clock
-import kotlinx.datetime.toJavaInstant
-import kotlinx.datetime.toKotlinInstant
 
 private val NEGATIVE_INFINITY = Duration.INFINITE * -1
 
