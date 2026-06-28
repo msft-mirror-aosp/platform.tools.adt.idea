@@ -80,5 +80,7 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-tanvd.grazi" level="project" />
     <orderEntry type="library" scope="TEST" name="google-api-client" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.idea.reposearch" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.smRunner" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.testRunner" level="project" />
   </component>
 </module>
