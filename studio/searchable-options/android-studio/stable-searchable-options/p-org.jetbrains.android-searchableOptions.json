@@ -1254,10 +1254,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "No Environment",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Obtain a screenshot from the device",
       "path": "ActionManager"
     },
@@ -1335,6 +1331,10 @@
     },
     {
       "hit": "Phone",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Pitch Dark",
       "path": "ActionManager"
     },
     {
@@ -1566,6 +1566,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Select a completely dark environment",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Select a custom environment",
       "path": "ActionManager"
     },
@@ -1583,10 +1587,6 @@
     },
     {
       "hit": "Select mode of interaction with running apps",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Select no environment",
       "path": "ActionManager"
     },
     {
