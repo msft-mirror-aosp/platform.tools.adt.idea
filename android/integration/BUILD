@@ -482,6 +482,9 @@ studio_test(
         "stable",
     ],
     data = apply_changes_data + emulator_snapshot_data("//prebuilts/studio/sdk:system_image_android-33_default"),
+    exec_properties = {
+        "dockerNetwork": "standard",
+    },
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
     module = ":intellij.android.core.integration",
     tags = [
@@ -489,10 +492,7 @@ studio_test(
     ],
     tags_linux = ["block-network"],
     tags_mac = [],
-    tags_windows = [
-        "block-network",
-        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
-    ],
+    tags_windows = [],
     test_class = "com.android.tools.idea.ApplyChangesTest",
 )
 
