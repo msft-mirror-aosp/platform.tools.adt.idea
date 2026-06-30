@@ -19,6 +19,7 @@
     <orderEntry type="module" module-name="directaccess" />
     <orderEntry type="module" module-name="test-recorder" />
     <orderEntry type="module" module-name="url-assistant" />
+    <orderEntry type="module" module-name="app-link-assistant-ai" />
     <orderEntry type="module" module-name="targetsdkversion-upgrade-assistant" />
     <orderEntry type="module" module-name="intellij.android.gmd-code-completion" />
     <orderEntry type="module" module-name="aiplugin.android-plugin" />
