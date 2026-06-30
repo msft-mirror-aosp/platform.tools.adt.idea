@@ -705,6 +705,36 @@ public abstract class IdeInstallation<T extends Ide> implements AutoCloseable{
     Path sourceConfig = TestUtils.getBinPath(projectArtifactsPath.resolve("config").toString());
     if (Files.exists(sourceConfig)) {
       FileUtils.copyDirectory(sourceConfig.toFile(), getConfigDir().toFile());
+      relocateJdkTablePaths();
+    }
+  }
+
+  /**
+   * Relocate absolute paths in options/jdk.table.xml to the active test's workspace root.
+   * <p>
+   * In Bazel, every build and test target executes inside its own temporary sandbox directory.
+   * Because Android Studio writes absolute filesystem paths into jdk.table.xml during cache generation,
+   * the generated file bakes in the temporary sandbox path of the generator target. Sharing this
+   * non-hermetic file unmodified across downstream test targets breaks RBE, because downstream
+   * test sandboxes cannot access files inside dead sandbox directories from prior build targets.
+   */
+  private void relocateJdkTablePaths() throws IOException {
+    Path jdkTable = getConfigDir().resolve("options/jdk.table.xml");
+    if (Files.exists(jdkTable)) {
+      String content = Files.readString(jdkTable);
+      String workspaceRoot = TestUtils.getWorkspaceRoot().toString().replace('\\', '/');
+      String updated = content
+        .replaceAll("value=\"[^\"]*/prebuilts/studio/jdk/([^\"]*)\"",
+                    "value=\"" + workspaceRoot + "/prebuilts/studio/jdk/$1\"")
+        .replaceAll("jrt://[^\"]*/prebuilts/studio/jdk/([^\"]*)\"",
+                    "jrt://" + workspaceRoot + "/prebuilts/studio/jdk/$1\"")
+        .replaceAll("file://[^\"]*/prebuilts/studio/jdk/([^\"]*)\"",
+                    "file://" + workspaceRoot + "/prebuilts/studio/jdk/$1\"")
+        .replaceAll("jar://[^\"]*/prebuilts/studio/jdk/([^\"]*)\"",
+                    "jar://" + workspaceRoot + "/prebuilts/studio/jdk/$1\"");
+      if (!updated.equals(content)) {
+        Files.writeString(jdkTable, updated);
+      }
     }
   }
 
