@@ -83,17 +83,6 @@ class GoldenFileValidator(template: Template, goldenDirName: String, private val
           "Unable to initialize metrics", // In remote config
         ),
 
-      // TODO: b/390508796
-      "testGameActivityWithKotlin" to
-        setOf(
-          "'var systemUiVisibility: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_IMMERSIVE_STICKY: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-        ),
       // TODO: b/390509166
       "testNewIntentServiceWithKotlin" to
         setOf(
@@ -118,12 +107,6 @@ class GoldenFileValidator(template: Template, goldenDirName: String, private val
       "testNewPrimaryDetailFlowWithKotlin" to
         setOf("'fun startDrag(p0: ClipData!, p1: View.DragShadowBuilder!, p2: Any!, p3: Int): Boolean' is deprecated. Deprecated in Java."),
 
-      // TODO: b/390510579
-      "testAutomotiveMediaServiceWithKotlin" to
-        setOf(
-          "'static field FLAG_HANDLES_MEDIA_BUTTONS: Int' is deprecated. Deprecated in Java.",
-          "'static field FLAG_HANDLES_TRANSPORT_CONTROLS: Int' is deprecated. Deprecated in Java.",
-        ),
       // TODO: b/446181730
       "testJourneysWithTestSuite" to setOf("The option setting 'android.experimental.testSuiteSupport=true' is experimental."),
     )

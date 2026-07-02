@@ -68,8 +68,7 @@ object MaterialColors {
     override fun toString() = displayName
   }
 
-  private val table: Table<Color?, Category?, java.awt.Color?> =
-    ArrayTable.create(Color.values().asIterable(), Category.values().asIterable())
+  private val table: ArrayTable<Color, Category, java.awt.Color> = ArrayTable.create(Color.entries, Category.entries)
 
   // Helper extension to allow using assignment to put value to the table
   operator fun <R, C, V> Table<R, C, V>.set(r: R, c: C, v: V) = put(r, c, v)
@@ -355,7 +354,7 @@ object MaterialColors {
   @JvmStatic fun getColorSeries(name: Color) = table.row(name)
 
   /** Get the set of [java.awt.Color] by the given [Category]. */
-  @JvmStatic fun getColorSet(category: Category): Map<Color?, java.awt.Color?> = table.column(category)
+  @JvmStatic fun getColorSet(category: Category): Map<Color, java.awt.Color?> = table.column(category)
 
   // Keep these constants for back compatibility
 

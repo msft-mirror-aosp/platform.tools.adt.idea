@@ -22,11 +22,11 @@ import com.android.tools.idea.editing.metrics.CodeEdited
 import com.android.tools.idea.editing.metrics.Source
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith

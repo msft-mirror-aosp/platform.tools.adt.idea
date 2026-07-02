@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import java.util.function.Function
 import java.util.function.Supplier
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 interface IdeProfilerServices {
   /** Executor to run the tasks that should get back to the main thread. */
@@ -231,4 +233,16 @@ interface IdeProfilerServices {
    * @param leak The Leak object context (used for display text or other metadata). Can be null if manually entered.
    */
   fun analyzeLeakWithStudioBot(rawTrace: String, leak: Leak?) {}
+
+  /** Checks if the app is a Private Compute Core (PCC) app by scanning the manifest. */
+  fun isPccApp(packageName: String): Boolean = false
+
+  /**
+   * Fetches an AI interpretation of a LeakCanary leak.
+   *
+   * @param rawTrace The raw text of the leak trace to be analyzed.
+   * @param leak The Leak object context.
+   * @return A flow of strings representing the AI's response (markdown).
+   */
+  fun fetchLeakInsight(rawTrace: String): Flow<String> = emptyFlow()
 }

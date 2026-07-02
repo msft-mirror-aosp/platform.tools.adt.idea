@@ -263,6 +263,7 @@ public class IdeSdks {
    * Clean environment variable settings initialization, this method should only be used by tests that called
    * IdeSdks#initializeJdkEnvVariable(java.lang.String).
    */
+  @TestOnly
   public void cleanJdkEnvVariableInitialization() {
     myEnvVariableSettings.cleanInitialization();
   }
@@ -271,8 +272,17 @@ public class IdeSdks {
    * Allow to override the value of the environment variable {JDK_LOCATION_ENV_VARIABLE_NAME}, this method should only be used by tests that
    * need to use a different JDK from a thread that can perform write actions.
    */
+  @TestOnly
   public void overrideJdkEnvVariable(@Nullable String envVariableValue) {
     myEnvVariableSettings.overrideValue(envVariableValue);
+  }
+
+  /**
+   * Called from a project startup activity from a known threading state, before other activities and functions start calling other
+   * methods from variously arbitrary threading states.
+   */
+  public void ensureEnvVariableSettingsInitialized() {
+    myEnvVariableSettings.ensureInitialized();
   }
 
   /**
@@ -1106,6 +1116,10 @@ public class IdeSdks {
       mySdk = sdk;
       myUseJdkEnvVariable = (variableValue != null) && (jdkFile != null) && (sdk != null);
       myInitialized = true;
+    }
+
+    public void ensureInitialized() {
+      initialize();
     }
 
     public boolean isUseJdkEnvVariable() {

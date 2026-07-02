@@ -34,7 +34,7 @@ internal class ListenableFutureToCompletionStageAdapter<T>(val wrapped: Listenab
     return result1 && result2
   }
 
-  override fun onSuccess(result: T?) {
+  override fun onSuccess(result: T) {
     complete(result)
   }
 

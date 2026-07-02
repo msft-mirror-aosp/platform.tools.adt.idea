@@ -59,9 +59,9 @@ data class RefinableImage(val image: Image? = null, val refined: CompletableFutu
 /** Creates and caches preview images of screens in the nav editor. */
 open class ThumbnailManager protected constructor(facet: AndroidFacet) : AndroidFacetScopedService(facet) {
 
-  private val myImages = HashBasedTable.create<VirtualFile, Configuration, SoftReference<BufferedImage>?>()
+  private val myImages = HashBasedTable.create<VirtualFile, Configuration, SoftReference<BufferedImage>>()
   private val myScaledImages =
-    HashBasedTable.create<VirtualFile, Configuration, HashBasedTable<Dimension, ScaleContext, SoftReference<Image>?>?>()
+    HashBasedTable.create<VirtualFile, Configuration, HashBasedTable<Dimension, ScaleContext, SoftReference<Image>>>()
   private val myRenderVersions = HashBasedTable.create<VirtualFile, Configuration, ResourceNotificationManager.ResourceVersion>()
   private var myResourceRepository: CacheableResourceRepository? =
     StudioResourceRepositoryManager.getAppResources(facet).apply {
@@ -100,7 +100,7 @@ open class ThumbnailManager protected constructor(facet: AndroidFacet) : Android
     val file = xmlFile.virtualFile
     val cachedByDimension =
       myScaledImages[file, configuration]
-        ?: HashBasedTable.create<Dimension, ScaleContext, SoftReference<Image>?>().also { myScaledImages.put(file, configuration, it) }
+        ?: HashBasedTable.create<Dimension, ScaleContext, SoftReference<Image>>().also { myScaledImages.put(file, configuration, it) }
     val cached = cachedByDimension[dimensions, scaleContext]?.get()
     return if (cached != null && myRenderVersions.get(file, configuration) == resourceVersion(xmlFile, configuration)) {
       RefinableImage(cached)
@@ -147,9 +147,9 @@ open class ThumbnailManager protected constructor(facet: AndroidFacet) : Android
           val scaledFuture =
             scaleImage(full, dimensions, scaleContext)
               .thenApply { scaled ->
-                val dimensionMap: HashBasedTable<Dimension, ScaleContext, SoftReference<Image>?> =
+                val dimensionMap: HashBasedTable<Dimension, ScaleContext, SoftReference<Image>> =
                   myScaledImages[xmlFile.virtualFile, configuration]
-                    ?: HashBasedTable.create<Dimension, ScaleContext, SoftReference<Image>?>().also {
+                    ?: HashBasedTable.create<Dimension, ScaleContext, SoftReference<Image>>().also {
                       myScaledImages.put(xmlFile.virtualFile, configuration, it)
                     }
                 dimensionMap.put(dimensions, scaleContext, SoftReference(scaled))

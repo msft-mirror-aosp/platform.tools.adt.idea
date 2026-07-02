@@ -72,15 +72,14 @@ class RegularClassVisitor(private val className: String, private val unrestricte
   }
 
   // Allow adding and removing synthetic methods, such as compiler-generated accessor methods.
+  // Also allow adding and removing private static methods, as these are often generated for invoke-dynamic instructions.
   override fun visitMethods(added: List<IrMethod>, removed: List<IrMethod>, modified: List<MethodDiff>) {
-    if (added.filterNot { it.isSyntheticOrBridge() || it.name.startsWith("get\$stable") }.isNotEmpty()) {
-      if (!unrestricted) {
-        val msg = "added method(s): " + added.joinToString(", ") { it.getReadableDesc() }
-        throw unsupportedSourceModificationAddedMethod(location, msg)
-      }
+    if (added.filterNot(::isMethodAdditionAllowed).isNotEmpty() && !unrestricted) {
+      val msg = "added method(s): " + added.joinToString(", ") { it.getReadableDesc() }
+      throw unsupportedSourceModificationAddedMethod(location, msg)
     }
 
-    if (removed.filterNot { it.isSyntheticOrBridge() || it.name.startsWith("get\$stable") }.isNotEmpty()) {
+    if (removed.filterNot(::isMethodDeletionAllowed).isNotEmpty()) {
       if (!unrestricted) {
         val msg = "removed method(s): " + removed.joinToString(", ") { it.getReadableDesc() }
         throw unsupportedSourceModificationRemovedMethod(location, msg)
@@ -92,6 +91,18 @@ class RegularClassVisitor(private val className: String, private val unrestricte
       method.accept(visitor)
       if (visitor.hasNonSourceInfoChanges) changedMethods.add(method)
     }
+  }
+
+  private fun isMethodAdditionAllowed(added: IrMethod): Boolean {
+    return added.isSyntheticOrBridge() ||
+      added.name.startsWith("get\$stable") ||
+      (IrAccessFlag.PRIVATE in added.access && IrAccessFlag.STATIC in added.access)
+  }
+
+  private fun isMethodDeletionAllowed(removed: IrMethod): Boolean {
+    return removed.isSyntheticOrBridge() ||
+      removed.name.startsWith("get\$stable") ||
+      (IrAccessFlag.PRIVATE in removed.access && IrAccessFlag.STATIC in removed.access)
   }
 
   override fun visitFields(added: List<IrField>, removed: List<IrField>, modified: List<FieldDiff>) {

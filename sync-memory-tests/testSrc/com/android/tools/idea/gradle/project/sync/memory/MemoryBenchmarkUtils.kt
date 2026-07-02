@@ -19,7 +19,7 @@ import com.android.tools.perflogger.Benchmark
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.io.createDirectories
 import java.io.File
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 val MEMORY_BENCHMARK = Benchmark.Builder("Retained heap size").setProject("Android Studio Sync Test").build()
 

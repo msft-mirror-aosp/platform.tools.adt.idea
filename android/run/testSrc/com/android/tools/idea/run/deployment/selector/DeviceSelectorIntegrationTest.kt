@@ -28,10 +28,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
+import kotlin.time.Clock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.guava.await
-import kotlinx.datetime.Clock
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule

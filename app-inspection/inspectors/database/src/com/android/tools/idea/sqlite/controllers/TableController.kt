@@ -394,7 +394,7 @@ class TableController(
         .addCallback(
           edtExecutor,
           object : FutureCallback<Unit> {
-            override fun onSuccess(result: Unit?) {
+            override fun onSuccess(result: Unit) {
               refreshData()
             }
 
@@ -420,7 +420,7 @@ class TableController(
         .addCallback(
           edtExecutor,
           object : FutureCallback<Unit> {
-            override fun onSuccess(result: Unit?) {
+            override fun onSuccess(result: Unit) {
               databaseInspectorAnalyticsTracker.trackTableCellEdited()
               refreshData()
             }

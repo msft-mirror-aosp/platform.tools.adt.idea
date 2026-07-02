@@ -74,7 +74,7 @@ constructor(
   @VisibleForTesting
   class DefaultCallback : FutureCallback<DeviceNameProperties> {
     /** Does nothing. Use [DeviceNamePropertiesFetcher.get] to get the properties. */
-    override fun onSuccess(properties: DeviceNameProperties?) {}
+    override fun onSuccess(properties: DeviceNameProperties) {}
 
     override fun onFailure(throwable: Throwable) {
       if (throwable !is CancellationException) {

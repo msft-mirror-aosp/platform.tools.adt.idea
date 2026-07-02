@@ -29,8 +29,8 @@
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="module" module-name="optional-plugins" />
-    <orderEntry type="module" module-name="intellij.android.projectSystem.lume" />
-    <orderEntry type="module" module-name="intellij.android.lume.aiplugin" />
+    <orderEntry type="module" module-name="intellij.android.projectSystem.lightbuild" />
+    <orderEntry type="module" module-name="intellij.android.lightbuild.aiplugin" />
     <orderEntry type="module" module-name="intellij.android.smali" />
   </component>
 </module>

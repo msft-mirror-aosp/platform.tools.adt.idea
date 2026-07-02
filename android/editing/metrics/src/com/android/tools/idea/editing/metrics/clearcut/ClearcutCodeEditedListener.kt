@@ -22,10 +22,10 @@ import com.android.tools.idea.editing.metrics.Source
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.EditingMetricsEvent.CharacterMetrics
 import com.intellij.openapi.Disposable
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.annotations.TestOnly
 
 /** [CodeEditedListener] that reports results to Clearcut lazily. */

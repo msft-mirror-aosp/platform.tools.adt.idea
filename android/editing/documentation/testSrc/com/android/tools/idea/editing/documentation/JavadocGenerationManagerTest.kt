@@ -10,6 +10,7 @@ import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.io.path.createTempDirectory
 import org.junit.After
 import org.junit.Assert.fail
 import org.junit.Rule
@@ -28,7 +29,7 @@ class JavadocGenerationManagerTest {
   @Test
   @RunsInEdt
   fun invokeGenerateJavaDocAction() {
-    val outputDirectory = createTempDir().also { it.deleteOnExit() }
+    val outputDirectory = createTempDirectory().toFile().also { it.deleteOnExit() }
     projectRule.fixture.addFileToProject(
       "src/main/java/com/test/Test.java",
       """

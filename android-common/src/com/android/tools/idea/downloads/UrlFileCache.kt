@@ -26,6 +26,7 @@ import java.net.URL
 import java.nio.file.Path
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
@@ -33,7 +34,6 @@ import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.datetime.Clock
 import org.jetbrains.annotations.TestOnly
 
 private val CONNECT_TIMEOUT = 5.seconds

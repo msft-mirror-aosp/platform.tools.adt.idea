@@ -18,7 +18,7 @@ package com.google.idea.blaze.qsync
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.qsync.java.PackageReader
-import com.google.idea.blaze.qsync.java.choosePackageCandidate
+import com.google.idea.blaze.qsync.java.choosePackageCandidates
 import com.google.idea.blaze.qsync.project.BuildPackage
 import com.google.idea.blaze.qsync.project.FileExtensions
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -68,23 +68,39 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
     val buildPackageCache = ConcurrentHashMap<Path, Optional<Path>>()
 
     fun findBuildPackage(filePath: Path): Path? {
-      val parent = filePath.parent ?: return null
-      return buildPackageCache
-        .computeIfAbsent(parent) { dir ->
-          var current: Path? = dir
-          while (current != null) {
-            if (
-              Files.exists(workspaceRoot.resolve(current).resolve("BUILD")) ||
-                Files.exists(workspaceRoot.resolve(current).resolve("BUILD.bazel"))
-            ) {
-              return@computeIfAbsent Optional.of(current)
-            }
-            if (current == Path.of("")) break
-            current = current.parent
-          }
-          Optional.empty()
+      val parent = filePath.parent ?: Path.of("")
+      val cached = buildPackageCache[parent]
+      if (cached != null) {
+        return cached.orElse(null)
+      }
+
+      val visited = mutableListOf<Path>()
+      var current = parent
+      var result: Path? = null
+      do {
+        val cachedParent = buildPackageCache[current]
+        if (cachedParent != null) {
+          result = cachedParent.orElse(null)
+          break
         }
-        .orElse(null)
+        val resolved = workspaceRoot.resolve(current)
+        if (Files.exists(resolved.resolve("BUILD")) || Files.exists(resolved.resolve("BUILD.bazel"))) {
+          result = current
+          break
+        }
+        visited.add(current)
+        val reachedRoot = current == Path.of("")
+        current = current.parent ?: Path.of("")
+      } while (!reachedRoot)
+
+      val buildPackage = Optional.ofNullable(result)
+      for (dir in visited) {
+        buildPackageCache[dir] = buildPackage
+      }
+      if (result != null) {
+        buildPackageCache[result] = buildPackage
+      }
+      return result
     }
 
     fun aggregateResult(includeRoot: Path, result: FileProcessResult, forcedPackage: String? = null) {
@@ -125,9 +141,10 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
       val contents = directoryProcessorImpl.processDirectory(rootDir, currentDir)
       if (contents != null) {
         val includeRoot = workspaceRoot.relativize(rootDir)
-        val candidateFile =
-          choosePackageCandidate(contents.files, fileExtensions) { Files.exists(workspaceRoot.resolve(currentDir).resolve(it)) }
-        val javaPackage = candidateFile?.let { packageReader.readPackage(context, workspaceRoot.resolve(currentDir).resolve(it)) } ?: ""
+        val candidateFiles =
+          choosePackageCandidates(contents.files, fileExtensions) { Files.exists(workspaceRoot.resolve(currentDir).resolve(it)) }
+        val javaPackage =
+          candidateFiles.firstNotNullOfOrNull { packageReader.readPackage(context, workspaceRoot.resolve(currentDir).resolve(it)) } ?: ""
 
         for (file in contents.files) {
           val result = fileProcessor.processRegularFile(file, currentDir)

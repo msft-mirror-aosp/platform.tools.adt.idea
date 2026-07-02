@@ -41,7 +41,7 @@ class RoomSqlBooleanLiteralInspectionTest(private val minSdk: Int, private val e
     @Suppress("unused") // Used by JUnit via reflection
     @JvmStatic
     @get:Parameters(name = "minSdk={0}")
-    val data =
+    val data: List<Array<Any>> =
       listOf(
         arrayOf(28, /* expectWarning= */ true),
         arrayOf(29, /* expectWarning= */ true),

@@ -385,6 +385,22 @@ public final class StudioFlags {
     PROFILER, "method.trace.in.editor", "Open Method Trace in Editor",
     "Opens Java/Kotlin Method Trace files in a new editor tab");
 
+  public static final Flag<Boolean> PROFILER_CALLSTACK_SAMPLE_TRACE_IN_EDITOR = new BooleanFlag(
+    PROFILER, "callstack.sample.trace.in.editor", "Open Callstack Sample in Editor",
+    "Opens Callstack Sample Trace files in a new editor tab");
+
+  public static final Flag<Boolean> PROFILER_HEAP_DUMP_TRACE_IN_EDITOR = new BooleanFlag(
+    PROFILER, "heap.dump.trace.in.editor", "Open Heap Dump in Editor",
+    "Opens Heap Dump files in a new editor tab");
+
+  public static final Flag<Boolean> PROFILER_NATIVE_ALLOCATIONS_TRACE_IN_EDITOR = new BooleanFlag(
+    PROFILER, "native.allocations.trace.in.editor", "Open Native Allocations in Editor",
+    "Opens Native Allocations files in a new editor tab");
+
+  public static final Flag<Boolean> PROFILER_JAVA_KOTLIN_ALLOCATIONS_LEGACY_TRACE_IN_EDITOR = new BooleanFlag(
+    PROFILER, "java.kotlin.allocations.legacy.trace.in.editor", "Open Java/Kotlin Allocations (Legacy) in Editor",
+    "Opens Java/Kotlin Allocations (Legacy) files in a new editor tab");
+
   public static final Flag<Boolean> PROFILER_PERFETTO_QUERY_GENERATION = new BooleanFlag(
     PROFILER, "perfetto.query.generation", "Generate Perfetto SQL queries",
     "Uses AI to generate Perfetto SQL queries");
@@ -475,10 +491,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> FORCE_MONOCHROME_ADAPTIVE_ICON = new BooleanFlag(
     NELE, "force.monochrome.adaptive.icon", "Display monochrome preview of adaptive icon when none provided",
     "When enabled, the adaptive icon preview will automatically create a monochrome version if none is provided.");
-
-  public static final Flag<Boolean> ENABLE_MONOCHROME_ICON_EDITOR_TAB = new BooleanFlag(
-    NELE, "enable.monochrome.icon.editor.tab", "Show monochrome editor tab in Image Asset Editor",
-    "When enabled, shows a tab in Image Asset Editor where to add monochrome layer for launcher icons");
 
   public static final Flag<Boolean> USE_BYTECODE_R_CLASS_PARSING = new BooleanFlag(
     NELE, "use.bytecode.r.class.loading", "Uses bytecode R class parsing instead of reflection",
@@ -1113,6 +1125,14 @@ public final class StudioFlags {
     "Enables consumer-driven variant resolution to determine the selected variant at early stage of Gradle Sync."
   );
 
+  public static final Flag<Boolean> SHOW_PARALLEL_SYNC_PROPERTY_MIGRATION_WINDOW = new BooleanFlag(
+    GRADLE_IDE,
+    "parallel.sync.property.migration.notification",
+    "Show parallel Sync property migration.",
+    "Enables a notification balloon suggesting to add 'org.gradle.tooling.parallel=true' to gradle.properties if the legacy " +
+    "'org.gradle.parallel' flag is detected."
+  );
+
   //endregion
 
   //region Gradle Phased Sync
@@ -1641,6 +1661,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK = new BooleanFlag(
     COMPOSE, "interactive.preview.predictive.back", "Enable predictive back navigation in Interactive Preview",
     "When using navigation3, enables a bottom panel to interact with the predictive back feature.");
+
+  public static final Flag<Boolean> COMPOSE_DYNAMIC_PROTOTYPING_ENABLED = new BooleanFlag(
+    COMPOSE, "preview.dynamic.prototyping", "Enable Dynamic Compose Prototyping",
+    "Enables the agentic tool to prototype Compose UI in memory without modifying project files.");
   //endregion
 
   // region Wear surfaces
@@ -2117,6 +2141,41 @@ public final class StudioFlags {
                     "Enable Agent Tabs",
                     "Enables opening the Agent UI as Editor Tabs.");
 
+  public static final Flag<Boolean> STUDIOBOT_NPA_ONBOARDING_ENABLED =
+    new BooleanFlag(STUDIOBOT, "npa.onboarding.enabled",
+                    "Enable NPA Onboarding",
+                    "Enables the onboarding flow within the New Project Agent Wizard");
+
+  public static final Flag<Boolean> STUDIOBOT_USE_DEFAULT_CONVERSATION =
+    new BooleanFlag(STUDIOBOT, "use.default.conversation",
+                    "Use DefaultConversation",
+                    "Enables using DefaultConversation instead of TopLevelConversation.");
+
+  public static final Flag<Boolean> STUDIOBOT_TRANSFORMS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "transforms.enabled",
+                    "Enable Studio Bot Transforms",
+                    "Enables the Studio Bot Code Transformations/Refactorings.");
+
+  public static final Flag<Boolean> STUDIOBOT_TRANSFORM_HISTORY_ENABLED =
+    new BooleanFlag(STUDIOBOT, "transforms.history.enabled",
+                    "Enable Studio Bot Transforms History",
+                    "Enables the Studio Bot Code Transformations/Refactorings History.");
+
+  public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
+    new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
+                    "Enable suggesting commit messages",
+                    "Enables AI-suggested commit messages.");
+
+  public static final Flag<Boolean> AI_RENAME_ACTION =
+    new BooleanFlag(STUDIOBOT, "ai.rename.action",
+                    "Enable AI Rename Action",
+                    "Enables the AI Rename Action.");
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.ces.telemetry",
+                    "Enable CES Telemetry",
+                    "Enables the CES Telemetry.");
+
   public enum CompletionGhostTextHintStyle {
     NONE,
     NEXT_LINE,
@@ -2142,11 +2201,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "timeline.show.mapped.calls",
                     "Show original shell command for mapped tool calls",
                     "When enabled, tool calls that were originally shell commands but were mapped to better tools will show the original command in the timeline.");
-
-  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
-    new BooleanFlag(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
-                    "Enable sending inline code completion metrics to the AIDA CES service",
-                    "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.");
 
   public static final Flag<Boolean> STUDIOBOT_QUERY_CODE_COMPLETION_ENABLED =
     new BooleanFlag(STUDIOBOT, "query.completion",
@@ -2233,16 +2287,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.action.context.enabled",
                     "Enable sending context with editor actions.",
                     "When enabled, queries sent by editor actions, like Explain Code, will attach context (e.g. resolved references) from the project.");
-
-  public static final Flag<Boolean> STUDIOBOT_TRANSFORMS_ENABLED =
-    new BooleanFlag(STUDIOBOT, "editor.ai.transforms.enabled",
-                    "Enable the transform actions.",
-                    "When enabled, the transform actions (document, comment, the custom transform action, etc.) are enabled.");
-
-  public static final Flag<Boolean> STUDIOBOT_TRANSFORM_HISTORY_ENABLED =
-    new BooleanFlag(STUDIOBOT, "editor.ai.transform.history.enabled",
-                    "Enable the transform history in the transform diff.",
-                    "When enabled, allows the user to navigate transform history in the diff view.");
 
   public static final Flag<Boolean> STUDIOBOT_SHOW_TRANSFORM_HISTORY_FORWARD_BACK =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.show.history.forward.back",
@@ -2500,11 +2544,6 @@ public final class StudioFlags {
                     "Enable multiple sessions in gemini window",
                     "When enabled, allows creating and selecting different sessions for the gemini Chat/Agent window.");
 
-  public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
-    new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
-                    "Use ML model to suggest commit messages",
-                    "Enables the \"Suggest Commit Message\" button in the Commit tool window");
-
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION_OVERRIDE =
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion.override",
                     "Allow users to override prompt for suggesting commit messages",
@@ -2525,11 +2564,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "analyze.thread.safety",
                     "Use ML model analyze thread safety of selected files",
                     "Enables the \"Analyze Thread Safety\" button in the Project tool window");
-
-  public static final Flag<Boolean> AI_RENAME_ACTION =
-    new BooleanFlag(STUDIOBOT, "ai.rename.action",
-                    "Use AI to suggest a better identifier name",
-                    "Enables AI rename suggestion functionality");
 
   public static final Flag<Boolean> FIX_WITH_AI_EDITOR_ACTION =
     new BooleanFlag(STUDIOBOT, "ai.fix.error.editor.action",
@@ -2924,6 +2958,12 @@ public final class StudioFlags {
                     "Enable AICode integration",
                     "Enable AICode backend integration to be used for agent, code transform and code completion");
 
+  public static final Flag<Boolean> STUDIOBOT_BAICODE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "baicode",
+                    "Enable Baicode integration",
+                    "Enable Baicode backend integration to be used for agent and onboarding selection");
+
+
   public static final Flag<Boolean> STUDIOBOT_USER_QUOTA_UI_ENABLED =
     new BooleanFlag(STUDIOBOT, "user.quota.ui.enabled",
                     "Enable user quota UI",
@@ -3261,6 +3301,13 @@ public final class StudioFlags {
       "Set Play Publishing server address",
       "Set Play Publishing server address",
       "androidpublisher.googleapis.com"
+    );
+  public static final Flag<Boolean> PLAY_PUBLISHING_BUILD_MENU_ACTION =
+    new BooleanFlag(
+      PLAY_PUBLISHING,
+      "play.publishing.build.menu.action",
+      "Enable Play Publishing Build Menu Action",
+      "When enabled, the Publish submenu is shown in the Build menu."
     );
   // endregion Play Publishing
 

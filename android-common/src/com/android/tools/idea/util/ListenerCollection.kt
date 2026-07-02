@@ -37,7 +37,7 @@ import org.jetbrains.annotations.TestOnly
  * @param T the listener type
  * @param myExecutor the executor to use when calling listeners in this collection
  */
-class ListenerCollection<T> private constructor(private val myExecutor: Executor) {
+class ListenerCollection<T : Any> private constructor(private val myExecutor: Executor) {
   /** Lock that guards the access to the instance state */
   private val myLock = ReentrantReadWriteLock()
 
@@ -77,17 +77,17 @@ class ListenerCollection<T> private constructor(private val myExecutor: Executor
    * Iterates over all the listeners in the given [Executor]. This method returns a [ListenableFuture] to know when the processing has
    * finished.
    */
-  fun forEach(runOnListener: Consumer<T>): ListenableFuture<Void> {
+  fun forEach(runOnListener: Consumer<T>): ListenableFuture<Unit> {
     val listeners: Set<T> = getUpToDateListeners()
 
     if (listeners.isEmpty()) {
-      return Futures.immediateFuture(null)
+      return Futures.immediateFuture(Unit)
     }
 
-    val future = SettableFuture.create<Void>()
+    val future = SettableFuture.create<Unit>()
     myExecutor.execute {
       listeners.forEach(runOnListener)
-      future.set(null)
+      future.set(Unit)
     }
 
     return future
@@ -110,13 +110,13 @@ class ListenerCollection<T> private constructor(private val myExecutor: Executor
   companion object {
     /** Creates a ListenerCollection that will call listeners in the [.forEach] caller thread */
     @JvmStatic
-    fun <T> createWithDirectExecutor(): ListenerCollection<T> {
+    fun <T : Any> createWithDirectExecutor(): ListenerCollection<T> {
       return createWithExecutor(MoreExecutors.directExecutor())
     }
 
     /** Creates a ListenerCollection that will call listeners in the given [Executor] */
     @JvmStatic
-    fun <T> createWithExecutor(executor: Executor): ListenerCollection<T> {
+    fun <T : Any> createWithExecutor(executor: Executor): ListenerCollection<T> {
       return ListenerCollection(executor)
     }
   }

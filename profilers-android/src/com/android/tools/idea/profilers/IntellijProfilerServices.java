@@ -55,6 +55,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.execution.RunManager;
+import kotlinx.coroutines.flow.Flow;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.impl.EditConfigurationsDialog;
 import com.intellij.ide.BrowserUtil;
@@ -789,6 +790,43 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     LeakCanaryAiHandler.getInstance(myProject).analyzeLeakWithStudioBot(rawTrace, leak);
   }
 
+  @Override
+  public boolean isPccApp(@NotNull String packageName) {
+    return ApplicationManager.getApplication().runReadAction((Computable<Boolean>) () -> {
+      for (com.intellij.openapi.module.Module module : com.intellij.openapi.module.ModuleManager.getInstance(myProject).getModules()) {
+        try {
+          com.android.tools.idea.model.MergedManifestSnapshot manifest =
+            com.android.tools.idea.model.MergedManifestManager.getSnapshot(module);
+          if (manifest == null) continue;
+          if (!packageName.equals(manifest.getPackage())) continue;
+
+          org.w3c.dom.Document document = manifest.getDocument();
+          if (document == null) continue;
+          org.w3c.dom.NodeList elements = document.getElementsByTagName("*");
+          for (int i = 0; i < elements.getLength(); i++) {
+            org.w3c.dom.Node child = elements.item(i);
+            if (child instanceof org.w3c.dom.Element) {
+              org.w3c.dom.Element component = (org.w3c.dom.Element) child;
+              String pcc = component.getAttributeNS("http://schemas.android.com/apk/res/android", "privateComputeCore");
+              String isPccProcess = component.getAttributeNS("http://schemas.android.com/apk/res/android", "isPrivateComputeCoreProcess");
+              if ("true".equals(pcc) || "true".equals(isPccProcess)) {
+                return true;
+              }
+            }
+          }
+        } catch (Exception e) {
+          getLogger().warn("Failed to check manifest for PCC components in module: " + module.getName(), e);
+        }
+      }
+      return false;
+    });
+  }
+
+  @NotNull
+  @Override
+  public Flow<String> fetchLeakInsight(@NotNull String rawTrace) {
+    return LeakCanaryAiHandler.fetchLeakInsight(myProject, rawTrace);
+  }
   /**
    * Implementation of {@link FeatureConfig} with values used in production.
    */
@@ -802,6 +840,26 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     @Override
     public boolean isPerformanceMonitoringEnabled() {
       return StudioFlags.PROFILER_PERFORMANCE_MONITORING.get();
+    }
+
+    @Override
+    public boolean isCallstackSampleTraceInEditorEnabled() {
+      return StudioFlags.PROFILER_CALLSTACK_SAMPLE_TRACE_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isHeapDumpTraceInEditorEnabled() {
+      return StudioFlags.PROFILER_HEAP_DUMP_TRACE_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isNativeAllocationsTraceInEditorEnabled() {
+      return StudioFlags.PROFILER_NATIVE_ALLOCATIONS_TRACE_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isJavaKotlinAllocationsLegacyTraceInEditorEnabled() {
+      return StudioFlags.PROFILER_JAVA_KOTLIN_ALLOCATIONS_LEGACY_TRACE_IN_EDITOR.get();
     }
 
     @Override

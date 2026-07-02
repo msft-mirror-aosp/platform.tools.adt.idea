@@ -28,10 +28,10 @@ import com.android.tools.perflogger.Metric
 import com.android.tools.perflogger.UTestAnalyzer
 import com.intellij.openapi.project.Project
 import java.io.File
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.jetbrains.annotations.SystemIndependent
 import org.junit.rules.ExternalResource
 

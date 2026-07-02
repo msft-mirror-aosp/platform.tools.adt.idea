@@ -15,7 +15,7 @@ import com.android.tools.lint.checks.MavenIdentifier
 import com.android.tools.lint.checks.Sdk
 import com.google.common.truth.Truth.assertThat
 import java.io.ByteArrayInputStream
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.junit.Test
 import org.junit.experimental.runners.Enclosed
 import org.junit.runner.RunWith
