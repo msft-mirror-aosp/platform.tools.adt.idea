@@ -26,6 +26,7 @@ import java.awt.Insets;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import org.jetbrains.android.util.AndroidBundle;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
@@ -34,6 +35,7 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
   private JCheckBox myUseMultiVariantExtraArtifacts;
   private JCheckBox myConfigureAllGradleTasks;
   private JCheckBox myEnableParallelSync;
+  private JCheckBox myEnableMigrationToParallelSync;
   private JCheckBox myEnableDeviceApiOptimization;
   private JCheckBox myDeriveRuntimeClasspathsForLibraries;
   private JCheckBox myShowAgpVersionChooserInNewProjectWizard;
@@ -54,6 +56,11 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
     myEnableDeviceApiOptimization.setVisible(StudioFlags.API_OPTIMIZATION_ENABLE.get());
     myUseMultiVariantExtraArtifacts.setVisible(StudioFlags.GRADLE_MULTI_VARIANT_ADDITIONAL_ARTIFACT_SUPPORT.get());
     myShowAgpVersionChooserInNewProjectWizard.setVisible(StudioFlags.NPW_SHOW_AGP_VERSION_COMBO_BOX_EXPERIMENTAL_SETTING.get());
+    if (StudioFlags.SHOW_PARALLEL_SYNC_PROPERTY_MIGRATION_WINDOW.get()) {
+      myEnableMigrationToParallelSync.setVisible(true);
+      myEnableMigrationToParallelSync.setSelected(settings.ALWAYS_ENABLE_MIGRATION_TO_PARALLEL_SYNC);
+    }
+
     reset();
   }
 
@@ -70,7 +77,8 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
            mySettings.ENABLE_PARALLEL_SYNC != isParallelSyncEnabled() ||
            mySettings.ENABLE_GRADLE_API_OPTIMIZATION != isGradleApiOptimizationEnabled() ||
            mySettings.DERIVE_RUNTIME_CLASSPATHS_FOR_LIBRARIES != isDeriveRuntimeClasspathsForLibraries() ||
-           mySettings.SHOW_ANDROID_GRADLE_PLUGIN_VERSION_COMBO_BOX_IN_NEW_PROJECT_WIZARD != isShowAgpVersionChooserInNewProjectWizard();
+           mySettings.SHOW_ANDROID_GRADLE_PLUGIN_VERSION_COMBO_BOX_IN_NEW_PROJECT_WIZARD != isShowAgpVersionChooserInNewProjectWizard() ||
+           mySettings.ALWAYS_ENABLE_MIGRATION_TO_PARALLEL_SYNC != isMigrationToParallelSyncEnabled();
   }
 
   @Override
@@ -78,6 +86,7 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
     mySettings.USE_MULTI_VARIANT_EXTRA_ARTIFACTS = isUseMultiVariantExtraArtifact();
     mySettings.SKIP_GRADLE_TASKS_LIST = !isConfigureAllGradleTasksEnabled();
     mySettings.ENABLE_PARALLEL_SYNC = isParallelSyncEnabled();
+    mySettings.ALWAYS_ENABLE_MIGRATION_TO_PARALLEL_SYNC = isMigrationToParallelSyncEnabled();
     mySettings.ENABLE_GRADLE_API_OPTIMIZATION = isGradleApiOptimizationEnabled();
     mySettings.DERIVE_RUNTIME_CLASSPATHS_FOR_LIBRARIES = isDeriveRuntimeClasspathsForLibraries();
     mySettings.SHOW_ANDROID_GRADLE_PLUGIN_VERSION_COMBO_BOX_IN_NEW_PROJECT_WIZARD = isShowAgpVersionChooserInNewProjectWizard();
@@ -88,6 +97,7 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
     myUseMultiVariantExtraArtifacts.setSelected(mySettings.USE_MULTI_VARIANT_EXTRA_ARTIFACTS);
     myConfigureAllGradleTasks.setSelected(!mySettings.SKIP_GRADLE_TASKS_LIST);
     myEnableParallelSync.setSelected(mySettings.ENABLE_PARALLEL_SYNC);
+    myEnableMigrationToParallelSync.setSelected(mySettings.ALWAYS_ENABLE_MIGRATION_TO_PARALLEL_SYNC);
     myEnableDeviceApiOptimization.setSelected(mySettings.ENABLE_GRADLE_API_OPTIMIZATION);
     myDeriveRuntimeClasspathsForLibraries.setSelected(mySettings.DERIVE_RUNTIME_CLASSPATHS_FOR_LIBRARIES);
     myShowAgpVersionChooserInNewProjectWizard.setSelected(mySettings.SHOW_ANDROID_GRADLE_PLUGIN_VERSION_COMBO_BOX_IN_NEW_PROJECT_WIZARD);
@@ -114,6 +124,10 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
 
   boolean isParallelSyncEnabled() {
     return myEnableParallelSync.isSelected();
+  }
+
+  boolean isMigrationToParallelSyncEnabled() {
+    return myEnableMigrationToParallelSync.isSelected();
   }
 
   @TestOnly
@@ -150,7 +164,7 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
 
   private void setupUI() {
     myPanel = new JPanel();
-    myPanel.setLayout(new GridLayoutManager(8, 2, new Insets(0, 0, 0, 0), -1, -1));
+    myPanel.setLayout(new GridLayoutManager(9, 2, new Insets(0, 0, 0, 0), -1, -1));
     final Spacer spacer1 = new Spacer();
     myPanel.add(spacer1, new GridConstraints(7, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                              GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
@@ -188,5 +202,12 @@ public class GradleExperimentalSettingsConfigurable implements ExperimentalConfi
                 new GridConstraints(5, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                     GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                     GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+    myEnableMigrationToParallelSync = new JCheckBox();
+    myEnableMigrationToParallelSync.setText(AndroidBundle.message("gradle.sync.parallel.migration.notification.always.enable"));
+    myPanel.add(myEnableMigrationToParallelSync,
+                new GridConstraints(6, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                                    GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                    GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+
   }
 }
