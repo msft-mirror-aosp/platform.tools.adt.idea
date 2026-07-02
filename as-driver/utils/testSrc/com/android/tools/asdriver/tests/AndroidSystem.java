@@ -17,7 +17,6 @@ package com.android.tools.asdriver.tests;
 
 import com.android.testutils.TestUtils;
 import com.android.tools.asdriver.tests.AndroidStudioInstallation.AndroidStudioFlavor;
-import com.android.tools.asdriver.tests.base.IdeInstallation;
 import com.android.tools.perflogger.Benchmark;
 import com.android.tools.testlib.Adb;
 import com.android.tools.testlib.AndroidSdk;
@@ -59,7 +58,6 @@ public class AndroidSystem implements AutoCloseable, TestRule {
   // Currently running emulators
   private final List<Emulator> emulators;
   private int nextPort = 8554;
-  private boolean useTmpDir = false;
 
   @Nullable private static Throwable initializedAt = null;
 
@@ -153,32 +151,6 @@ public class AndroidSystem implements AutoCloseable, TestRule {
     }
   }
 
-
-  // TODO b/525444688 standard should use the bundled JRE
-  public static AndroidSystem standardWithTmpDir() {
-    return standardWithTmpDir(JdkVersion.JDK_21);
-  }
-
-  /**
-   * Creates a standard system and sets up a tmp dir outside bazel sandbox.
-   * It moves the sdk to the tmp dir and tells the ide to use that sdk.
-   */
-  public static AndroidSystem standardWithTmpDir(JdkVersion gradleJdk) {
-    try {
-      AndroidSystem system = withCustomJdkForGradle(AndroidStudioFlavor.FOR_EXTERNAL_USERS, gradleJdk);
-      Path sdkDir = IdeInstallation.getTmpDir().resolve("sdk");
-      AndroidSdk sdk = new AndroidSdk(sdkDir);
-      sdk.install(system.env);
-      system.getInstallation().setupTmpDir();
-      system.getInstallation().setGlobalSdk(sdk);
-      system.useTmpDir = true;
-      return system;
-    }
-    catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
   /**
    * Creates a system that contains only the sdk installed
    * and with a default temp folder.
@@ -260,12 +232,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
   public AndroidStudio runStudio(AndroidProject project) throws IOException, InterruptedException {
     this.project = project;
     AndroidStudioInstallation install = getInstallation();
-    if (useTmpDir) {
-      return install.runIdeFromTmpDir(display, env, project);
-    }
-    else {
-      return install.run(display, env, project, sdk.getSourceDir());
-    }
+    return install.run(display, env, project, sdk.getSourceDir());
   }
 
   public void runStudio(@NotNull final AndroidProject project,
@@ -310,7 +277,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
 
   public void installRepo(MavenRepo repo) throws Exception {
     AndroidStudioInstallation install = getInstallation();
-    Path repoDir = useTmpDir ? IdeInstallation.getTmpDir() : fileSystem.getRoot();
+    Path repoDir = fileSystem.getRoot();
     repo.install(repoDir, install, env);
   }
 
@@ -422,7 +389,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
    * Finds all Gradle executables in the test directory and stops the associated daemons.
    */
   public void stopGradleDaemons() {
-    Path searchRoot = useTmpDir ? IdeInstallation.getTmpDir() : fileSystem.getRoot();
+    Path searchRoot = fileSystem.getRoot();
     if (!Files.exists(searchRoot)) return;
 
     String executableName = SystemInfo.isWindows ? "gradlew.bat" : "gradlew";
@@ -440,7 +407,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
           pb.directory(executable.getParent().toFile());
           String javaHome = env.get("JAVA_HOME");
           if (javaHome == null && install != null) {
-            javaHome = install.getJdkDir().toAbsolutePath().toString();
+            javaHome = install.bundledJdkPath().toAbsolutePath().toString();
           }
           pb.environment().put("JAVA_HOME", javaHome == null ? "" : javaHome);
           String gradleUserHome = env.get("GRADLE_USER_HOME");
