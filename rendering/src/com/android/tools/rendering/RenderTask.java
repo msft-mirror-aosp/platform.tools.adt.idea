@@ -15,7 +15,6 @@
  */
 package com.android.tools.rendering;
 
-import com.android.ide.common.rendering.api.RenderSizeProvider;
 import com.android.ide.common.rendering.api.ResourceReference;
 
 import static com.android.tools.rendering.ProblemSeverity.ERROR;
@@ -27,6 +26,7 @@ import com.android.SdkConstants;
 import com.android.ide.common.rendering.HardwareConfigHelper;
 import com.android.ide.common.rendering.api.DrawableParams;
 import com.android.ide.common.rendering.api.HardwareConfig;
+import com.android.ide.common.rendering.api.IImageFactory;
 import com.android.ide.common.rendering.api.ILayoutPullParser;
 import com.android.ide.common.rendering.api.RenderResources;
 import com.android.ide.common.rendering.api.RenderSession;
@@ -62,16 +62,15 @@ import com.android.tools.rendering.classloading.ClassTransform;
 import com.android.tools.rendering.classloading.ModuleClassLoader;
 import com.android.tools.rendering.classloading.ModuleClassLoaderManager;
 import com.android.tools.rendering.compose.RenderTaskPatcher;
-import com.android.ide.common.rendering.api.RecyclableImage;
 import com.android.tools.rendering.imagepool.ImagePool;
-import com.android.tools.rendering.imagepool.NonPooledImage;
-import com.android.tools.rendering.imagepool.RecyclablePooledImage;
 import com.android.tools.rendering.parsers.ILayoutPullParserFactory;
 import com.android.tools.rendering.parsers.LayoutFilePullParser;
 import com.android.tools.rendering.parsers.LayoutPullParsers;
 import com.android.tools.rendering.parsers.LayoutRenderPullParser;
 import com.android.tools.rendering.parsers.RenderXmlFile;
 import com.android.tools.rendering.parsers.RenderXmlTag;
+import com.android.tools.rendering.security.RenderSandbox;
+import com.android.tools.rendering.security.RenderSecurityManager;
 import com.android.tools.rendering.security.RenderSecurity;
 import com.android.tools.rendering.tracking.RenderTaskAllocationTracker;
 import com.android.tools.rendering.tracking.StackTraceCapture;
@@ -135,6 +134,28 @@ public class RenderTask {
   private static final Logger LOG = Logger.getInstance(RenderTask.class);
 
   /**
+   * When an element in Layoutlib does not take any space, it will ask for a 0px X 0px image. This will throw an exception so we limit the
+   * min size of the returned bitmap to 1x1.
+   */
+  private static final int MIN_BITMAP_SIZE_PX = 1;
+
+  /**
+   * {@link IImageFactory} that returns a new image exactly of the requested size. It does not do caching or resizing.
+   */
+  private static final IImageFactory SIMPLE_IMAGE_FACTORY = new IImageFactory() {
+    @NotNull
+    @Override
+    public BufferedImage getImage(int width, int height) {
+      @SuppressWarnings("UndesirableClassUsage")
+      BufferedImage image =
+        new BufferedImage(Math.max(MIN_BITMAP_SIZE_PX, width), Math.max(MIN_BITMAP_SIZE_PX, height), BufferedImage.TYPE_INT_ARGB_PRE);
+      image.setAccelerationPriority(1f);
+
+      return image;
+    }
+  };
+
+  /**
    * Limit each render image size (width x height) to 2^23 pixels, i.e. 32 MB (4 bytes per pixel
    * due to using type = TYPE_INT_ARGB_PRE in SIMPLE_IMAGE_FACTORY)
    */
@@ -157,6 +178,7 @@ public class RenderTask {
     AppExecutorUtil.createBoundedApplicationPoolExecutor("RenderTask Dispose Thread", 1);
 
   @NotNull RenderTaskAllocationTracker myTracker;
+  @NotNull private final ImagePool myImagePool;
   @NotNull private final RenderContext myContext;
 
   @NotNull private final RenderLogger myLogger;
@@ -170,7 +192,7 @@ public class RenderTask {
    */
   private float myTargetQuality = 1f;
   /**
-   *  Indicates the quality value used in the last {@link RenderTask#render()},
+   *  Indicates the quality value used in the last {@link RenderTask#render(IImageFactory)},
    *  or in the current one when a render is being executed.
    */
   private float myCurrentQuality = 1f;
@@ -186,7 +208,8 @@ public class RenderTask {
   @NotNull private final Locale myLocale;
   @NotNull private final Object myCredential;
   @Nullable private RenderSession myRenderSession;
-  private final RenderSizeProvider mySizeProvider;
+  @NotNull private final IImageFactory myImageFactory;
+  @Nullable private IImageFactory myImageFactoryDelegate;
   private final boolean isSecurityManagerEnabled;
   @NotNull private CrashReporter myCrashReporter;
   private final List<CompletableFuture<?>> myRunningFutures = new LinkedList<>();
@@ -219,6 +242,7 @@ public class RenderTask {
              @NotNull LayoutLibrary layoutLib,
              @NotNull Object credential,
              @NotNull CrashReporter crashReporter,
+             @NotNull ImagePool imagePool,
              @Nullable ILayoutPullParserFactory parserFactory,
              boolean isSecurityManagerEnabled,
              float quality,
@@ -234,8 +258,10 @@ public class RenderTask {
              boolean useCustomInflater,
              boolean useLoadViewFallbacks,
              @NotNull TestEventListener testEventListener,
-             float animatorDurationScale) throws NoDeviceException {
+             float animatorDurationScale,
+             boolean useCachingImageFactory) throws NoDeviceException {
     myTracker = tracker;
+    myImagePool = imagePool;
     myContext = renderContext;
     this.isSecurityManagerEnabled = isSecurityManagerEnabled;
     this.reportOutOfDateUserClasses = reportOutOfDateUserClasses;
@@ -285,7 +311,13 @@ public class RenderTask {
         myLayoutlibCallback.loadAndParseRClass();
       }
       myLocale = renderContext.getConfiguration().getLocale();
-      mySizeProvider = new ConstrainedRenderSizeProvider(MAX_IMAGE_SIZE, () -> myTargetQuality);
+      IImageFactory imageFactory;
+      if (useCachingImageFactory) {
+        imageFactory = new CachingImageFactory(SIMPLE_IMAGE_FACTORY);
+      } else {
+        imageFactory = SIMPLE_IMAGE_FACTORY;
+      }
+      myImageFactory = new ConstrainedImageFactory(MAX_IMAGE_SIZE, () -> myTargetQuality, imageFactory);
       setQuality(quality);
 
       stackTraceCaptureElement.bind(this);
@@ -420,6 +452,7 @@ public class RenderTask {
       else {
         clearClassLoader();
       }
+      myImageFactoryDelegate = null;
       myContext.getModule().dispose();
 
       return null;
@@ -585,20 +618,15 @@ public class RenderTask {
   }
 
   /**
-   * Returns a valid pooled image or {@link ImagePool#NULL_POOLED_IMAGE} if the input is null or not valid.
+   * Returns a valid pooled image or {@link ImagePool#NULL_POOLED_IMAGE} if the input if null or not valid.
    */
   @NotNull
-  private ImagePool.Image toPooledImage(@Nullable RenderSession session) {
-    if (session != null) {
-      RecyclableImage recyclableImage = session.getRecyclableImage();
-      if (recyclableImage != null && recyclableImage.getWidth() > 1 && recyclableImage.getHeight() > 1) {
-        return new RecyclablePooledImage(recyclableImage);
-      }
-      // Fallback for screenshot testing running with older version of layoutlib-api
-      BufferedImage image = session.getImage();
-      if (image != null && image.getWidth() > 1 && image.getHeight() > 1) {
-        return NonPooledImage.create(image);
-      }
+  private ImagePool.Image toPooledImage(@Nullable BufferedImage result) {
+    // Check if the image exists and it's a valid image. Layoutlib can sometimes return a 1x1 image when
+    // an error has happened. Even if the image is valid, a 1x1 image is not useful so we approximate it to
+    // the null image.
+    if (result != null && result.getWidth() > 1 && result.getHeight() > 1) {
+      return myImagePool.copyOf(result);
     }
     return ImagePool.NULL_POOLED_IMAGE;
   }
@@ -606,10 +634,11 @@ public class RenderTask {
   /**
    * Renders the model and returns the result as a {@link RenderSession}.
    *
+   * @param factory Factory for images which would be used to render layouts to.
    * @return the {@link RenderResult resulting from rendering the current model
    */
   @Nullable
-  private RenderResult createRenderSession() {
+  private RenderResult createRenderSession(@NotNull IImageFactory factory) {
     RenderContext context = getContext();
     RenderModelModule module = context.getModule();
     if (module.isDisposed()) {
@@ -744,7 +773,7 @@ public class RenderTask {
       params.setTransparentBackground();
     }
 
-    params.setSizeProvider(mySizeProvider);
+    params.setImageFactory(factory);
 
     if (myTimeout > 0) {
       params.setTimeout(myTimeout);
@@ -777,8 +806,9 @@ public class RenderTask {
           // Advance the frame time to display the material progress bars
           session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
         }
+        BufferedImage resultImage = session.getImage();
 
-        RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toPooledImage(session), myLayoutlibCallback.isUsed());
+        RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toPooledImage(resultImage), myLayoutlibCallback.isUsed());
         RenderSession oldRenderSession = myRenderSession;
         myRenderSession = session;
         RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
@@ -916,7 +946,14 @@ public class RenderTask {
     long startInflateTimeMs = System.currentTimeMillis();
     // Inflation can be way slower than a regular render since it will load classes and initiate most of the state.
     // That's why, for inflating, we allow a more generous timeout than for rendering.
-    return runAsyncRenderAction(this::createRenderSession, DEFAULT_RENDER_THREAD_TIMEOUT_MS * 10, TimeUnit.MILLISECONDS)
+    return runAsyncRenderAction(() -> createRenderSession((width, height) -> {
+      myTestEventListener.onBeforeInflate();
+      if (myImageFactoryDelegate != null) {
+        return myImageFactoryDelegate.getImage(width, height);
+      }
+
+      return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE);
+    }), DEFAULT_RENDER_THREAD_TIMEOUT_MS * 10, TimeUnit.MILLISECONDS)
       .whenComplete((result, ex) -> myTestEventListener.onAfterInflate())
       .handle((result, ex) -> {
         if (ex != null) {
@@ -1055,7 +1092,7 @@ public class RenderTask {
   }
 
   /**
-   * Renders the layout
+   * Renders the layout to the current {@link IImageFactory} set in {@link #myImageFactoryDelegate}
    *
    * @param forceMeasure indicates whether it is necessary to re-measure before rendering. This is
    *                     needed for example when re-rendering after changing the quality up.
@@ -1094,8 +1131,9 @@ public class RenderTask {
         return runAsyncRenderAction(() -> {
           myTestEventListener.onBeforeRender();
           myRenderSession.render(forceMeasure);
+          BufferedImage resultImage = myRenderSession.getImage();
           RenderResult result =
-            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toPooledImage(myRenderSession), myLayoutlibCallback.isUsed());
+            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toPooledImage(resultImage), myLayoutlibCallback.isUsed());
           Result renderResult = result.getRenderResult();
           if (renderResult.getException() != null) {
             reportException(renderResult.getException());
@@ -1152,19 +1190,31 @@ public class RenderTask {
   }
 
   /**
-   * Method that renders the layout to a bitmap. This render call will render the image to a
+   * Method that renders the layout to a bitmap using the given {@link IImageFactory}. This render call will render the image to a
    * bitmap that can be accessed via the returned {@link RenderResult}.
    * <p/>
    * If {@link #inflate()} hasn't been called before, this method will implicitly call it.
    */
   @NotNull
-  public CompletableFuture<RenderResult> render() {
+  public CompletableFuture<RenderResult> render(@NotNull IImageFactory factory) {
+    myImageFactoryDelegate = factory;
     // If a re-render is happening after changing the quality up, then we need to re-measure
     // to avoid the rendered image to show things out of place. Also if size has changed, we need to re-measure.
     boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged;
     myCurrentQuality = myTargetQuality;
     isSizeChanged = false;
     return renderInner(forceMeasure);
+  }
+
+  /**
+   * Run rendering with default IImageFactory implementation provided by RenderTask. This render call will render the image to a bitmap
+   * that can be accessed via the returned {@link RenderResult}
+   * <p/>
+   * If {@link #inflate()} hasn't been called before, this method will implicitly call it.
+   */
+  @NotNull
+  public CompletableFuture<RenderResult> render() {
+    return render(myImageFactory);
   }
 
   /**

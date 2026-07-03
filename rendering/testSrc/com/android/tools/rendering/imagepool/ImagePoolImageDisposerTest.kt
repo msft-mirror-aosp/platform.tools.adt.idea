@@ -18,6 +18,7 @@ package com.android.tools.rendering.imagepool
 import com.android.tools.rendering.imagepool.ImagePoolImageDisposer.runWithDisposeLock
 import java.awt.Graphics
 import java.awt.Graphics2D
+import java.awt.GraphicsConfiguration
 import java.awt.image.BufferedImage
 import java.util.concurrent.CountDownLatch
 import java.util.function.Consumer
@@ -40,7 +41,7 @@ private class TestDisposableImage : ImagePool.Image, DisposableImage {
 
   override fun paint(command: Consumer<Graphics2D>?) {}
 
-  override fun getCopy(x: Int, y: Int, w: Int, h: Int): BufferedImage? = null
+  override fun getCopy(gc: GraphicsConfiguration?, x: Int, y: Int, w: Int, h: Int): BufferedImage? = null
 
   override fun isValid(): Boolean = !isDisposed
 }

@@ -39,7 +39,6 @@ import com.android.tools.rendering.RenderLogger
 import com.android.tools.rendering.RenderProblem
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderTask
-import com.android.tools.rendering.imagepool.NonPooledImage
 import com.google.wireless.android.sdk.stats.LayoutEditorRenderResult
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -183,7 +182,7 @@ class LayoutlibSceneRenderer(
               // newResult can not be null if isErrorResult is true
               // oldResult can not be null if containsValidImage is true
               newResult!!.copyWithNewImageAndRootViewDimensions(
-                NonPooledImage.copyOf(oldResult!!.getRenderedImage()),
+                StudioRenderService.getInstance(newResult.project).sharedImagePool.copyOf(oldResult!!.getRenderedImage().copy),
                 oldResult.rootViewDimensions,
               )
             } else newResult

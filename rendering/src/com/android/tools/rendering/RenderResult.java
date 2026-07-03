@@ -28,11 +28,9 @@ import com.android.tools.rendering.imagepool.ImagePoolImageDisposer;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.PsiFile;
 import java.awt.Dimension;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -46,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.TestOnly;
 
-public class RenderResult implements Disposable {
+public class RenderResult {
   private static Logger LOG = Logger.getInstance(RenderResult.class);
 
   @NotNull private final Supplier<PsiFile> mySourceFileProvider;
@@ -127,7 +125,6 @@ public class RenderResult implements Disposable {
     );
   }
 
-  @Override
   public void dispose() {
     myDisposeLock.writeLock().lock();
     try {

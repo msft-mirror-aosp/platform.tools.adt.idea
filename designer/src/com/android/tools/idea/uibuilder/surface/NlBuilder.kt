@@ -58,6 +58,7 @@ fun defaultSceneManagerProvider(surface: NlDesignSurface, model: NlModel, listen
   val settings = getProjectSettings(model.project)
   sceneManager.sceneRenderConfiguration.let { config ->
     config.showDecorations = settings.showDecorations
+    config.useImagePool = settings.useLiveRendering
     config.quality = settings.quality
   }
   return sceneManager

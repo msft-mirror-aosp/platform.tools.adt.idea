@@ -166,9 +166,6 @@ public class ScreenViewLayer extends Layer {
     RenderResult renderResult = myScreenView.getResult();
     boolean drawNewImg = false;
     if (newRenderImageAvailable(renderResult)) {
-      if (myLastRenderResult != null) {
-        myLastRenderResult.dispose();
-      }
       myLastRenderResult = renderResult;
       myScreenView.getScene().needsRebuildList();
       drawNewImg = true;
