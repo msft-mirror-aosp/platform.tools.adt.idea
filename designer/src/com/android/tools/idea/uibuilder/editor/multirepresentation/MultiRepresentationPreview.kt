@@ -241,27 +241,6 @@ open class MultiRepresentationPreview(
   // Becomes true when the file containing the preview representations is opened
   private val isInitialized = AtomicBoolean(false)
 
-  init {
-    launch(Dispatchers.Default) {
-      updateRepresentationsFlow.collect { request ->
-        if (request == null) return@collect
-        isUpdating.set(true)
-        val callbacks = updateCallbacksLock.withLock { updateCallbacks.toSet() }
-        try {
-          updateRepresentationsImpl()
-          updateCallbacksLock.withLock { updateCallbacks.removeAll(callbacks) }
-          callbacks.forEach { it.complete(Unit) }
-        } catch (ex: CancellationException) {
-          throw ex
-        } catch (t: Throwable) {
-          LOG.warn("Unexpected error while updating representations", t)
-        } finally {
-          isUpdating.set(false)
-        }
-      }
-    }
-  }
-
   private fun onRepresentationChanged() = invokeAndWaitIfNeeded {
     component.removeAll()
 
@@ -488,7 +467,26 @@ open class MultiRepresentationPreview(
    * [onDeactivate] might be called multiple times.
    */
   suspend fun onInit() {
-    isInitialized.set(true)
+    if (!isInitialized.getAndSet(true)) {
+      launch(Dispatchers.Default) {
+        updateRepresentationsFlow.collect { request ->
+          if (request == null) return@collect
+          isUpdating.set(true)
+          val callbacks = updateCallbacksLock.withLock { updateCallbacks.toSet() }
+          try {
+            updateRepresentationsImpl()
+            updateCallbacksLock.withLock { updateCallbacks.removeAll(callbacks) }
+            callbacks.forEach { it.complete(Unit) }
+          } catch (ex: CancellationException) {
+            throw ex
+          } catch (t: Throwable) {
+            LOG.warn("Unexpected error while updating representations", t)
+          } finally {
+            isUpdating.set(false)
+          }
+        }
+      }
+    }
     updateRepresentationsAsync().await()
   }
 
