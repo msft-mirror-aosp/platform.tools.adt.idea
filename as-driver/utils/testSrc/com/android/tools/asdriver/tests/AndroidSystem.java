@@ -414,7 +414,7 @@ public class AndroidSystem implements AutoCloseable, TestRule {
           if (gradleUserHome != null) {
             pb.environment().put("GRADLE_USER_HOME", gradleUserHome);
           } else {
-            Path path = useTmpDir ? IdeInstallation.getTmpDir() : fileSystem.getHome();
+            Path path = fileSystem.getHome();
             pb.environment().put("GRADLE_USER_HOME", path.resolve(".gradle").toAbsolutePath().toString());
           }
           Process process = pb.start();
