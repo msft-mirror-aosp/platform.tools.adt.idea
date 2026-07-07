@@ -69,8 +69,6 @@ import com.android.tools.rendering.parsers.LayoutPullParsers;
 import com.android.tools.rendering.parsers.LayoutRenderPullParser;
 import com.android.tools.rendering.parsers.RenderXmlFile;
 import com.android.tools.rendering.parsers.RenderXmlTag;
-import com.android.tools.rendering.security.RenderSandbox;
-import com.android.tools.rendering.security.RenderSecurityManager;
 import com.android.tools.rendering.security.RenderSecurity;
 import com.android.tools.rendering.tracking.RenderTaskAllocationTracker;
 import com.android.tools.rendering.tracking.StackTraceCapture;
@@ -409,7 +407,7 @@ public class RenderTask {
    * Disposes the RenderTask and releases the allocated resources. The execution of the dispose operation will run asynchronously.
    * The returned {@link Future} can be used to wait for the dispose operation to complete.
    */
-  public Future<?> dispose() {
+  public Future<?> disposeAsync() {
     if (isDisposed.getAndSet(true)) {
       assert false : "RenderTask was already disposed";
       return Futures.immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
@@ -881,7 +879,7 @@ public class RenderTask {
   }
 
   /**
-   * Executes the passed {@link Callable} as an async render action and keeps track of it. If {@link #dispose()} is called, the call will
+   * Executes the passed {@link Callable} as an async render action and keeps track of it. If {@link #disposeAsync()} is called, the call will
    * wait until all the async actions have finished running.
    *
    * @param callable the {@link Callable} to be executed in the Render thread.
@@ -915,7 +913,7 @@ public class RenderTask {
   }
 
   /**
-   * Executes the passed {@link Callable} as an async render action and keeps track of it. If {@link #dispose()} is called, the call will
+   * Executes the passed {@link Callable} as an async render action and keeps track of it. If {@link #disposeAsync()} is called, the call will
    * wait until all the async actions have finished running. This will wait the default timeout
    * (see {@link DEFAULT_RENDER_THREAD_TIMEOUT_MS}) for the invoked action to complete.
    * See {@link RenderService#getRenderAsyncActionExecutor()}.

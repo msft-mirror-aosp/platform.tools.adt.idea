@@ -53,7 +53,6 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.LightVirtualFile;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -144,7 +143,7 @@ public class DrawableRenderer implements Disposable {
   public void dispose() {
     myRenderTaskFuture.whenComplete((renderTask, throwable) -> {
       if (renderTask != null) {
-        renderTask.dispose();
+        renderTask.disposeAsync();
       }
     });
   }
