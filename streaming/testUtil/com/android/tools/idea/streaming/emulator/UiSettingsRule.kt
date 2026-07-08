@@ -92,7 +92,8 @@ class UiSettingsRule : ExternalResource() {
     gestureOverlayInstalled: Boolean = true,
     gestureNavigation: Boolean = true,
     applicationId: String = APPLICATION_ID1,
-    appLocales: String = "",
+    appLocale: String = "",
+    appLocales: List<String> = emptyList(),
     talkBackInstalled: Boolean = false,
     talkBackOn: Boolean = false,
     selectToSpeakOn: Boolean = false,
@@ -132,10 +133,12 @@ class UiSettingsRule : ExternalResource() {
 
     adb.configureShellCommand(
       deviceSelector,
-      POPULATE_LANGUAGE_COMMAND.format(applicationId),
+      POPULATE_LANGUAGE_COMMAND.format(applicationId, applicationId),
       """
       -- App Language --
-      Locales for $applicationId for user 0 are [$appLocales]"
+      Locales for $applicationId for user 0 are [$appLocale]
+      -- App Locales --
+      Locales within the LocaleConfig for $applicationId for user 0 are [${appLocales.joinToString(",")}]
     """
         .trimIndent(),
     )
