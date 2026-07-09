@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.analysis.api.types.KaDefinitelyNotNullType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaFlexibleType
 import org.jetbrains.kotlin.analysis.api.types.KaType
-import org.jetbrains.kotlin.analysis.api.types.KaTypeNullability
 import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
 import org.jetbrains.kotlin.psi.KtBinaryExpressionWithTypeRHS
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -49,7 +48,7 @@ class K2TypeParameterFindViewByIdInspection : TypeParameterFindViewByIdInspectio
             val castTargetType = cast.right?.type ?: return null
             if (castTargetType is KaErrorType) return null
 
-            val castTargetTypeNonNull = castTargetType.withNullability(KaTypeNullability.NON_NULLABLE)
+            val castTargetTypeNonNull = castTargetType.withNullability(false)
             if (!typeParameterSymbol.upperBounds.all { castTargetTypeNonNull.isSubtypeOf(it) }) return null
 
             return FindViewCallInfo(

@@ -23,6 +23,7 @@ import com.intellij.codeInsight.intention.impl.IntentionActionGroup
 import com.intellij.codeInsight.template.impl.InvokeTemplateAction
 import com.intellij.codeInsight.template.impl.TemplateImpl
 import com.intellij.codeInsight.template.impl.TemplateSettings
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -36,7 +37,6 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.prevLeaf
 import com.intellij.psi.util.startOffset
-import org.jetbrains.kotlin.asJava.classes.runReadAction
 import org.jetbrains.kotlin.idea.util.ElementKind
 import org.jetbrains.kotlin.idea.util.findElements
 import org.jetbrains.kotlin.idea.util.isLineBreak
@@ -153,7 +153,7 @@ abstract class ComposeSurroundWithWidgetAction : IntentionAction, HighPriorityAc
 
   override fun startInWriteAction(): Boolean = true
 
-  private fun findSurroundableRange(file: PsiFile, editor: Editor): TextRange? = runReadAction {
+  private fun findSurroundableRange(file: PsiFile, editor: Editor): TextRange? = runReadActionBlocking {
     if (editor.selectionModel.hasSelection()) {
       findSurroundingSelectionRange(file, editor)
     } else {

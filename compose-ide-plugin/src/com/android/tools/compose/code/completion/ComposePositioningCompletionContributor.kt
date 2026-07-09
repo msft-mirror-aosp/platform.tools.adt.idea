@@ -28,6 +28,7 @@ import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupElementDecorator
 import com.intellij.codeInsight.lookup.LookupElementPresentation
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -35,7 +36,6 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.contextOfType
 import com.intellij.psi.util.parentOfType
-import org.jetbrains.kotlin.asJava.classes.runReadAction
 import org.jetbrains.kotlin.idea.base.psi.imports.addImport
 import org.jetbrains.kotlin.idea.base.psi.kotlinFqName
 import org.jetbrains.kotlin.idea.base.util.allScope
@@ -364,7 +364,7 @@ class ComposePositioningCompletionWeigher : CompletionWeigher() {
     val parameters = location.baseCompletionParameters
     val elementToComplete = parameters.position
 
-    val isComposeEnabled = runReadAction { isComposeEnabled(elementToComplete) }
+    val isComposeEnabled = runReadActionBlocking { isComposeEnabled(elementToComplete) }
     if (!isComposeEnabled || parameters.originalFile !is KtFile) {
       // Return null when this isn't a completion we care about to avoid any further comparisons or
       // object allocations.

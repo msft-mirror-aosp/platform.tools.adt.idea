@@ -45,7 +45,6 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.psi.kotlinFqName
-import org.jetbrains.kotlin.idea.completion.LookupElementFactory
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.kdoc.psi.impl.KDocName
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -127,8 +126,8 @@ class ComposeCompletionContributor : CompletionContributor() {
 
   /**
    * Checks if the [LookupElement] is an additional, "special" lookup element created for functions that can be invoked using the lambda
-   * syntax. These are created by [LookupElementFactory.addSpecialFunctionCallElements] and can be confusing for Compose APIs that often use
-   * overloaded function names.
+   * syntax. These are created by FunctionLookupElementFactory#createLookupWithTrailingLambda and can be confusing for Compose APIs that
+   * often use overloaded function names.
    */
   private fun LookupElement.isForSpecialLambdaLookupElement(): Boolean {
     val presentation = LookupElementPresentation()
