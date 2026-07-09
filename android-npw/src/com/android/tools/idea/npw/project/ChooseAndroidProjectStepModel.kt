@@ -20,15 +20,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
-import com.android.tools.idea.npw.ui.getTemplateTitle
+import com.android.tools.idea.npw.startup.PromotedTemplate
+import com.android.tools.idea.npw.startup.PromotionTemplateStateService
 import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.Template
 import java.util.function.Supplier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private fun PromotedTemplate.matches(gridItem: GridItem?, currentFormFactor: FormFactor): Boolean {
+  val isPromotedMatch = gridItem is PluginPromotionGridItem && gridItem.pluginId == this.pluginId
+  val isRegularMatch = gridItem is TemplateGridItem && gridItem.template.name == this.name && currentFormFactor == this.formFactor
+  return isPromotedMatch || isRegularMatch
+}
+
 class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<List<FormFactor>>) {
-  var onTemplateDoubleClick: () -> Unit = {}
+  var onGridItemDoubleClick: () -> Unit = {}
 
   var chooseAndroidProjectEntries by mutableStateOf<List<ChooseAndroidProjectEntry>>(emptyList())
     private set
@@ -48,15 +55,23 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
 
   suspend fun getAndroidProjectEntries() {
     isLoading = true
+    val stateService = PromotionTemplateStateService.getInstance()
+    val promotedTemplate = stateService.consumePromotedTemplate()
     val entries = mutableListOf<ChooseAndroidProjectEntry>()
+    var hasMatchedPromotedTemplate = false
     withContext(Dispatchers.IO) {
       entries.addAll(AndroidProjectEntryProvider.getAllProjectEntries())
       formFactorSupplier.get().forEach {
         if (it != FormFactor.AiGlasses) {
-          val entry = createFormFactorEntry(it)
-          if (it == FormFactor.Mobile) {
-            // Default to Phone & Tablet
+          val entry = createFormFactorEntry(it, promotedTemplate)
+          if (it == FormFactor.Mobile && !hasMatchedPromotedTemplate) {
+            // Default to Phone & Tablet if no promoted template matched yet
             selectedAndroidProjectEntry = entry
+          }
+          val selectedGridItem = entry.selectedGridItem
+          if (!hasMatchedPromotedTemplate && promotedTemplate?.matches(selectedGridItem, it) == true) {
+            selectedAndroidProjectEntry = entry
+            hasMatchedPromotedTemplate = true
           }
           entries.add(entry)
         }
@@ -70,16 +85,31 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
     selectedAndroidProjectEntry = entry
   }
 
-  private fun getDefaultSelectedTemplateIndex(templates: List<Template>, emptyItemLabel: String = "Empty Activity"): Template? =
-    templates.firstOrNull { getTemplateTitle(it) == emptyItemLabel } ?: templates.firstOrNull { it != Template.NoActivity }
+  private fun getDefaultSelectedGridItem(
+    gridItems: List<GridItem>,
+    promotedTemplate: PromotedTemplate?,
+    currentFormFactor: FormFactor,
+    emptyItemLabel: String = "Empty Activity",
+  ): GridItem? {
+    if (promotedTemplate != null) {
+      if (promotedTemplate.formFactor == currentFormFactor) {
+        val regularMatch = gridItems.filterIsInstance<TemplateGridItem>().firstOrNull { it.template.name == promotedTemplate.name }
+        if (regularMatch != null) return regularMatch
+      }
+      val promotionMatch = gridItems.filterIsInstance<PluginPromotionGridItem>().firstOrNull { it.pluginId == promotedTemplate.pluginId }
+      if (promotionMatch != null) return promotionMatch
+    }
+    return gridItems.firstOrNull { it.getTitle() == emptyItemLabel }
+      ?: gridItems.filterIsInstance<TemplateGridItem>().firstOrNull { it.template != Template.NoActivity }
+  }
 
-  private fun createFormFactorEntry(formFactor: FormFactor): FormFactorProjectEntry {
-    val templates = formFactor.getProjectTemplates()
+  private fun createFormFactorEntry(formFactor: FormFactor, promotedTemplate: PromotedTemplate?): FormFactorProjectEntry {
+    val gridItems = formFactor.getProjectTemplates()
     return FormFactorProjectEntry(
       formFactor.toString(),
-      templates,
-      getDefaultSelectedTemplateIndex(templates),
-      onTemplateDoubleClick = { onTemplateDoubleClick() },
+      gridItems,
+      getDefaultSelectedGridItem(gridItems = gridItems, promotedTemplate = promotedTemplate, currentFormFactor = formFactor),
+      onGridItemDoubleClick = { onGridItemDoubleClick() },
     )
   }
 }
