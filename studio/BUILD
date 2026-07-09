@@ -90,20 +90,17 @@ studio_plugin(
         "//prebuilts/tools/common/m2:tensorflow-lite-metadata",
         "//prebuilts/tools/common/m2:trace-perfetto-library",
         "//prebuilts/tools/common/m2:oauth2",
-        "//prebuilts/tools/common/m2:okio-jvm-3.17.0",
         "//prebuilts/tools/common/m2:google-api-services-drive-v3-rev20241027-2.0.0",
         "//prebuilts/tools/common/m2:shark-2.14",
         "//prebuilts/tools/common/m2:shark-android-2.14",
         "//prebuilts/tools/common/m2:shark-graph-2.14",
         "//prebuilts/tools/common/m2:shark-hprof-2.14",
         "//prebuilts/tools/common/m2:shark-log-2.14",
-        "//prebuilts/tools/common/m2:tracing-desktop-2.0.0-alpha09",
-        "//prebuilts/tools/common/m2:tracing-wire-desktop-2.0.0-alpha09",
-        "//prebuilts/tools/common/m2:wire-runtime-jvm-6.4.0",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/.idea/libraries:android-core-proto",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
+        "//tools/adt/idea/.idea/libraries:androidx-tracing",
         "//tools/adt/idea/.idea/libraries:asm-tools",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/adt/idea/.idea/libraries:ffmpeg",
@@ -706,7 +703,7 @@ studio_plugin(
     libs = [
         "//tools/base/adb-proxy:adb_proxy_proto",
         "//tools/vendor/google/directaccess-client:directaccess_client_proto",
-        "//prebuilts/tools/common/m2:google-api-services",
+        "//prebuilts/tools/common/m2:google_api_services_testing",
     ],
     modules = {
         "directaccess.jar": [
@@ -802,7 +799,27 @@ studio_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
-        ":com.google.tools.ij.aiplugin",  # TODO: make optional once optional plugin dependencies are supported in Bazel build
+        ":org.jetbrains.android",
+        "@intellij//:com.intellij.java",
+        "@intellij//:intellij.java.analysis.impl",
+        "@intellij//:intellij.java.execution",
+        "@intellij//:org.intellij.groovy",
+        "@intellij//:org.jetbrains.kotlin",
+    ],
+)
+
+studio_plugin(
+    name = "com.google.urlassistant.ai",
+    directory = "app-link-assistant-ai",
+    modules = {
+        "app-link-assistant-ai.jar": [
+            "//tools/vendor/google/app-link-assistant-ai:app-link-assistant-ai",
+        ],
+    },
+    visibility = ["//visibility:public"],
+    deps = [
+        ":com.google.tools.ij.aiplugin",
+        ":com.google.urlassistant",
         ":org.jetbrains.android",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.java.analysis.impl",
@@ -1065,6 +1082,7 @@ STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:com.android.tools.idea.smali",
     "//tools/adt/idea/studio:com.google.gct.test.recorder",
     "//tools/adt/idea/studio:com.google.urlassistant",
+    "//tools/adt/idea/studio:com.google.urlassistant.ai",
     "//tools/adt/idea/studio:com.google.targetsdkversionassistant",
     "//tools/adt/idea/studio:com.android.tools.gradle.dcl",
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
@@ -1400,6 +1418,7 @@ iml_module(
         "//tools/studio/google/cloud/testing/directaccess",
         "//tools/studio/google/cloud/testing/test-recorder",
         "//tools/vendor/google/url-assistant",
+        "//tools/vendor/google/app-link-assistant-ai",
         "//tools/vendor/google/targetsdkversion-upgrade-assistant",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
         "//tools/vendor/google/ml/aiplugin/android-plugin:aiplugin.android-plugin",

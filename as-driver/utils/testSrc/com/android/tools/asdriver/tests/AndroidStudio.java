@@ -46,14 +46,25 @@ public class AndroidStudio extends Ide {
 
   @Override
   public void close() throws Exception {
-    createVideos();
-    quitAndWaitForShutdown();
-    // We must terminate the process on close. If we don't and expect the test to gracefully terminate it always, it means
-    // that if the test has an assertEquals, when the assertion exception is thrown the try-catch will attempt to close
-    // this object that has not been asked to terminate, blocking forever until the test times out, swallowing the
-    // assertion information.
-    process.destroyForcibly();
-    waitForProcess();
+    java.util.List<ProcessHandle> descendants = new java.util.ArrayList<>();
+    if (process != null) {
+      process.descendants().forEach(descendants::add);
+    }
+    try {
+      createVideos();
+      quitAndWaitForShutdown();
+    } finally {
+      if (process != null) {
+        descendants.forEach(d -> {
+          String cmd = d.info().command().orElse("").toLowerCase();
+          if (!cmd.contains("restarter") && !cmd.contains("studio")) {
+            d.destroyForcibly();
+          }
+        });
+        process.destroyForcibly();
+        waitForProcess();
+      }
+    }
   }
 
   public void addBenchmark(Benchmark benchmark){
@@ -147,7 +158,11 @@ public class AndroidStudio extends Ide {
     }
     catch (Throwable t) {
       if (t.getMessage() == PAST_DEADLINE) {
-        install.getStdout().waitForMatchingLine(".*Exiting Studio.", 10, TimeUnit.SECONDS);
+        try {
+          install.getStdout().waitForMatchingLine(".*Exiting Studio.", 10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          TestLogger.log("Timed out waiting for 'Exiting Studio.'. Proceeding to forcefully kill processes.");
+        }
         return;
       }
       throw t;
@@ -296,49 +311,4 @@ public class AndroidStudio extends Ide {
     }
   }
 
-  /**
-   * Waits for IDE to log that indexing is skipped because the index is up to date. Use this when using pre-indexed project
-   */
-  public void waitForIndexingSkippedLog() throws IOException, InterruptedException {
-    benchmarkLog("calling_waitForIndex");
-    TestLogger.log("Waiting for indexing to complete");
-    ASDriver.WaitForIndexRequest rq = ASDriver.WaitForIndexRequest.newBuilder().build();
-    ASDriver.WaitForIndexResponse ignore = ide.waitForIndex(rq);
-    install.getIdeaLog().reset(); //Log position can be moved past if used after waitForBuild
-    var indexSkipped = ".*No files to index.*";
-    var indexUpdated = ".*Unindexed files update took (.*)ms;.*";
-    var matcher = install.getIdeaLog().waitForMatchingLine(String.format("(?:%s)|(%s)", indexUpdated, indexSkipped), 300, TimeUnit.SECONDS);
-    if (matcher.group(0).contains("Unindexed files")) {
-      TestLogger.log("Checking: " + matcher.group(1));
-      var indexingMs = Integer.parseInt(matcher.group(1));
-      var indexingTime = String.format("%ds %dms", indexingMs / 1000, indexingMs % 1000);
-      TestLogger.log("Indexing took %s", indexingTime);
-    } else {
-      TestLogger.log("Indexing skipped");
-    }
-    benchmarkLog("after_waitForIndex");
-  }
-
-  /**
-   * Waits for IDE to log that Gradle sync is skipped because the model is up to date. Use this when using pre-synced project
-   */
-  public void waitForSyncSkippedLog() throws IOException, InterruptedException {
-    long timeout = 15;
-    TimeUnit unit = TimeUnit.MINUTES;
-    TestLogger.log("Waiting up to %d %s for Gradle sync", timeout, unit);
-    var syncFinished = ".*Gradle sync finished in (.*)";
-    var syncSkipped = ".*Up-to-date models found in the cache. Not invoking Gradle sync.*";
-    Matcher matcher = install.getIdeaLog()
-      .waitForMatchingLine(String.format("(?:%s)|(%s)", syncFinished, syncSkipped),
-                           "(.*org\\.gradle\\.tooling\\.\\w+Exception.*)|" +
-                           "(.*Gradle sync failed in (.*))", timeout, unit);
-    if (matcher.group(0).contains("sync finished")) {
-      TestLogger.log("Sync took %s", matcher.group(1));
-    } else {
-      TestLogger.log("Sync skipped");
-      if (install.isRestoredFromPrebuiltCache()) {
-        install.clearTransformsCache();
-      }
-    }
-  }
 }

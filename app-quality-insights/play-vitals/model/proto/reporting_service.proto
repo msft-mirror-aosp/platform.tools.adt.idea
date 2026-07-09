@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package google.play.developer.reporting.v1beta1;
 
+import "acquisitions.proto";
 import "engagement.proto";
 import "first_opens.proto";
+import "impressions.proto";
 import "ratings.proto";
 import "releases.proto";
 
@@ -52,6 +54,22 @@ service ReportingService {
   // Queries the metrics in the engagement metric set.
   rpc QueryEngagementMetricSet(QueryEngagementMetricSetRequest)
       returns (QueryEngagementMetricSetResponse) {}
+
+  // Describes the properties of the acquisition metric set.
+  rpc GetAcquisitionMetricSet(GetAcquisitionMetricSetRequest)
+      returns (AcquisitionMetricSet) {}
+
+  // Queries the metrics in the acquisition metric set.
+  rpc QueryAcquisitionMetricSet(QueryAcquisitionMetricSetRequest)
+      returns (QueryAcquisitionMetricSetResponse) {}
+
+  // Describes the properties of the impressions metric set.
+  rpc GetImpressionsMetricSet(GetImpressionsMetricSetRequest)
+      returns (ImpressionsMetricSet) {}
+
+  // Queries the metrics in the impressions metric set.
+  rpc QueryImpressionsMetricSet(QueryImpressionsMetricSetRequest)
+      returns (QueryImpressionsMetricSetResponse) {}
 }
 
 // Request message for

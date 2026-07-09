@@ -21,6 +21,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
+import com.intellij.testFramework.runInEdtAndWait
 import io.ktor.util.reflect.instanceOf
 import junit.framework.TestCase.assertFalse
 import kotlinx.coroutines.runBlocking
@@ -41,6 +42,11 @@ class AndroidRunConfigurationsManifestIndexNotReadyTest {
       val runConfigurations = RunManager.getInstance(projectRule.project).allConfigurationsList
       assertThat(runConfigurations).hasSize(1)
       assertThat(runConfigurations.single().type).instanceOf(AndroidRunConfigurationType::class)
+
+      runInEdtAndWait {
+        val selected = RunManager.getInstance(projectRule.project).selectedConfiguration
+        assertThat(selected?.configuration).isEqualTo(runConfigurations.single())
+      }
 
       // Wear configurations are not created when the index is not ready as they need the index to be ready to
       // check if the watch face feature is set.

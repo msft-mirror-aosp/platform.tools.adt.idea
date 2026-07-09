@@ -161,6 +161,7 @@ android-studio/jbr/bin/jli.dll
 android-studio/jbr/bin/jlink.exe
 android-studio/jbr/bin/jmap.exe
 android-studio/jbr/bin/jmod.exe
+android-studio/jbr/bin/jnativescan.exe
 android-studio/jbr/bin/jps.exe
 android-studio/jbr/bin/jrunscript.exe
 android-studio/jbr/bin/jsound.dll
@@ -172,7 +173,6 @@ android-studio/jbr/bin/kinit.exe
 android-studio/jbr/bin/klist.exe
 android-studio/jbr/bin/ktab.exe
 android-studio/jbr/bin/lcms.dll
-android-studio/jbr/bin/le.dll
 android-studio/jbr/bin/management.dll
 android-studio/jbr/bin/management_agent.dll
 android-studio/jbr/bin/management_ext.dll
@@ -180,7 +180,7 @@ android-studio/jbr/bin/mlib_image.dll
 android-studio/jbr/bin/msvcp140.dll
 android-studio/jbr/bin/net.dll
 android-studio/jbr/bin/nio.dll
-android-studio/jbr/bin/nvdaControllerClient64.dll
+android-studio/jbr/bin/nvdaControllerClient.dll
 android-studio/jbr/bin/prefs.dll
 android-studio/jbr/bin/rmi.dll
 android-studio/jbr/bin/rmiregistry.exe
@@ -197,13 +197,13 @@ android-studio/jbr/bin/verify.dll
 android-studio/jbr/bin/w2k_lsa_auth.dll
 android-studio/jbr/bin/windowsaccessbridge-64.dll
 android-studio/jbr/bin/zip.dll
+android-studio/jbr/conf/jaxp-strict.properties.template
 android-studio/jbr/conf/jaxp.properties
 android-studio/jbr/conf/logging.properties
 android-studio/jbr/conf/management/jmxremote.access
 android-studio/jbr/conf/management/jmxremote.password.template
 android-studio/jbr/conf/management/management.properties
 android-studio/jbr/conf/net.properties
-android-studio/jbr/conf/security/java.policy
 android-studio/jbr/conf/security/java.security
 android-studio/jbr/conf/security/policy/README.txt
 android-studio/jbr/conf/security/policy/limited/default_US_export.policy
@@ -216,7 +216,6 @@ android-studio/jbr/legal/java.base/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/java.base/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/java.base/LICENSE
 android-studio/jbr/legal/java.base/aes.md
-android-studio/jbr/legal/java.base/asm.md
 android-studio/jbr/legal/java.base/c-libutl.md
 android-studio/jbr/legal/java.base/cldr.md
 android-studio/jbr/legal/java.base/icu.md
@@ -300,8 +299,16 @@ android-studio/jbr/legal/java.xml/LICENSE
 android-studio/jbr/legal/java.xml/bcel.md
 android-studio/jbr/legal/java.xml/dom.md
 android-studio/jbr/legal/java.xml/jcup.md
+android-studio/jbr/legal/java.xml/schema10part1.md
+android-studio/jbr/legal/java.xml/schema10part2.md
 android-studio/jbr/legal/java.xml/xalan.md
 android-studio/jbr/legal/java.xml/xerces.md
+android-studio/jbr/legal/java.xml/xhtml10.md
+android-studio/jbr/legal/java.xml/xhtml10schema.md
+android-studio/jbr/legal/java.xml/xhtml11.md
+android-studio/jbr/legal/java.xml/xhtml11schema.md
+android-studio/jbr/legal/java.xml/xmlspec.md
+android-studio/jbr/legal/java.xml/xmlxsd.md
 android-studio/jbr/legal/jdk.accessibility/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/jdk.accessibility/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/jdk.accessibility/LICENSE
@@ -342,6 +349,10 @@ android-studio/jbr/legal/jdk.internal.le/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/jdk.internal.le/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/jdk.internal.le/LICENSE
 android-studio/jbr/legal/jdk.internal.le/jline.md
+android-studio/jbr/legal/jdk.internal.md/ADDITIONAL_LICENSE_INFO
+android-studio/jbr/legal/jdk.internal.md/ASSEMBLY_EXCEPTION
+android-studio/jbr/legal/jdk.internal.md/LICENSE
+android-studio/jbr/legal/jdk.internal.md/commonmark.md
 android-studio/jbr/legal/jdk.internal.opt/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/jdk.internal.opt/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/jdk.internal.opt/LICENSE
@@ -355,6 +366,8 @@ android-studio/jbr/legal/jdk.jartool/LICENSE
 android-studio/jbr/legal/jdk.javadoc/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/jdk.javadoc/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/jdk.javadoc/LICENSE
+android-studio/jbr/legal/jdk.javadoc/dejavufonts.md
+android-studio/jbr/legal/jdk.javadoc/highlightjs.md
 android-studio/jbr/legal/jdk.javadoc/jquery.md
 android-studio/jbr/legal/jdk.javadoc/jqueryUI.md
 android-studio/jbr/legal/jdk.jcmd/ADDITIONAL_LICENSE_INFO
@@ -375,9 +388,6 @@ android-studio/jbr/legal/jdk.jfr/LICENSE
 android-studio/jbr/legal/jdk.jlink/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/jdk.jlink/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/jdk.jlink/LICENSE
-android-studio/jbr/legal/jdk.jsobject/ADDITIONAL_LICENSE_INFO
-android-studio/jbr/legal/jdk.jsobject/ASSEMBLY_EXCEPTION
-android-studio/jbr/legal/jdk.jsobject/LICENSE
 android-studio/jbr/legal/jdk.localedata/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/jdk.localedata/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/jdk.localedata/LICENSE
@@ -493,7 +503,6 @@ android-studio/jbr/lib/psfont.properties.ja
 android-studio/jbr/lib/psfontj2d.properties
 android-studio/jbr/lib/security/blocked.certs
 android-studio/jbr/lib/security/cacerts
-android-studio/jbr/lib/security/default.policy
 android-studio/jbr/lib/security/public_suffix_list.dat
 android-studio/jbr/lib/tzdb.dat
 android-studio/jbr/lib/tzmappings
@@ -741,6 +750,8 @@ android-studio/lib/intellij.platform.lang.jar
 android-studio/lib/intellij.platform.langInjection.backend.jar
 android-studio/lib/intellij.platform.langInjection.jar
 android-studio/lib/intellij.platform.locking.impl.jar
+android-studio/lib/intellij.platform.lsp.impl.jar
+android-studio/lib/intellij.platform.lsp.jar
 android-studio/lib/intellij.platform.lvcs.impl.jar
 android-studio/lib/intellij.platform.managed.cache.backend.jar
 android-studio/lib/intellij.platform.managed.cache.jar
@@ -1646,11 +1657,11 @@ android-studio/plugins/android/lib/android-screenshot-testing.jar
 android-studio/plugins/android/lib/android.jar
 android-studio/plugins/android/lib/android.so.jar
 android-studio/plugins/android/lib/artwork.jar
-android-studio/plugins/android/lib/asm-9.6.jar
-android-studio/plugins/android/lib/asm-analysis-9.6.jar
-android-studio/plugins/android/lib/asm-commons-9.6.jar
-android-studio/plugins/android/lib/asm-tree-9.6.jar
-android-studio/plugins/android/lib/asm-util-9.6.jar
+android-studio/plugins/android/lib/asm-9.9.jar
+android-studio/plugins/android/lib/asm-analysis-9.9.jar
+android-studio/plugins/android/lib/asm-commons-9.9.jar
+android-studio/plugins/android/lib/asm-tree-9.9.jar
+android-studio/plugins/android/lib/asm-util-9.9.jar
 android-studio/plugins/android/lib/auto-common-0.10.jar
 android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 android-studio/plugins/android/lib/build-analysis-results-proto.jar
@@ -2138,6 +2149,7 @@ android-studio/plugins/android/resources/transport/native/agent/x86/libjvmtiagen
 android-studio/plugins/android/resources/transport/native/agent/x86_64/libjvmtiagent.so
 android-studio/plugins/android/resources/transport/x86/transport
 android-studio/plugins/android/resources/transport/x86_64/transport
+android-studio/plugins/app-link-assistant-ai/lib/app-link-assistant-ai.jar
 android-studio/plugins/c/lib/LICENSE.txt
 android-studio/plugins/c/lib/c.jar
 android-studio/plugins/c/lib/modules/intellij.c.core.jar
@@ -2454,7 +2466,6 @@ android-studio/plugins/directaccess/lib/device_streaming_kt_proto.jar
 android-studio/plugins/directaccess/lib/directaccess.jar
 android-studio/plugins/directaccess/lib/directaccess.so.jar
 android-studio/plugins/directaccess/lib/ftl_client_kt_proto.jar
-android-studio/plugins/directaccess/lib/google-api-services-serviceusage-v1-rev20240220-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-testing-v1-rev20250327-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
