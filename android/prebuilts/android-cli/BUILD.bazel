@@ -18,16 +18,16 @@ copy_file(
 )
 
 copy_file(
-    name = "android_cli_mac_local",
-    src = "@android_cli_mac//file",
-    out = "mac/android",
+    name = "android_cli_mac_x86_64_local",
+    src = "@android_cli_mac_x86_64//file",
+    out = "mac_x86_64/android",
     is_executable = True,
 )
 
 copy_file(
-    name = "android_cli_mac_arm_local",
-    src = "@android_cli_mac_arm//file",
-    out = "mac_arm/android",
+    name = "android_cli_mac_arm64_local",
+    src = "@android_cli_mac_arm64//file",
+    out = "mac_arm64/android",
     is_executable = True,
 )
 
@@ -39,11 +39,11 @@ copy_file(
 )
 
 filegroup(
-    name = "android_cli_launchers",
+    name = "android_cli_binaries",
     srcs = [
         ":android_cli_linux_local",
-        ":android_cli_mac_arm_local",
-        ":android_cli_mac_local",
+        ":android_cli_mac_arm64_local",
+        ":android_cli_mac_x86_64_local",
         ":android_cli_win_local",
     ],
     visibility = ["//tools/adt/idea/android:__pkg__"],
@@ -52,13 +52,13 @@ filegroup(
 studio_data(
     name = "android-cli-launcher-bundle",
     files_linux = [":android_cli_linux_local"],
-    files_mac = [":android_cli_mac_local"],
-    files_mac_arm = [":android_cli_mac_arm_local"],
+    files_mac = [":android_cli_mac_x86_64_local"],
+    files_mac_arm = [":android_cli_mac_arm64_local"],
     files_win = [":android_cli_win_local"],
     mappings = {
         "tools/adt/idea/android/prebuilts/android-cli/linux/": "android-cli/bin/",
-        "tools/adt/idea/android/prebuilts/android-cli/mac/": "android-cli/bin/",
-        "tools/adt/idea/android/prebuilts/android-cli/mac_arm/": "android-cli/bin/",
+        "tools/adt/idea/android/prebuilts/android-cli/mac_x86_64/": "android-cli/bin/",
+        "tools/adt/idea/android/prebuilts/android-cli/mac_arm64/": "android-cli/bin/",
         "tools/adt/idea/android/prebuilts/android-cli/win/": "android-cli/bin/",
     },
     visibility = ["//visibility:public"],
