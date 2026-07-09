@@ -18,17 +18,38 @@ package com.android.tools.idea.profilers.capture.unified
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.profilers.capture.CpuCaptureFileType
 import com.android.tools.idea.profilers.capture.PerfettoCaptureFileType
+import com.android.tools.idea.profilers.capture.unified.UnifiedProfilerEditorProvider.Companion.isSupportedByPerfettoEditor
 import com.android.tools.profilers.ProfilerFormat
+import com.android.tools.sherlock.common.system.editor.PerfettoEditorStateManager
+import com.android.tools.sherlock.common.system.editor.PerfettoFileEditorState
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
 import com.intellij.openapi.fileEditor.FileEditorProvider
+import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import org.jdom.Element
 
-/** Custom [FileEditorProvider] which allows opening profiler captures in a new editor tab. */
+/**
+ * Custom [FileEditorProvider] which allows opening profiler captures in a new editor tab. Also accommodates state persistence (e.g.,
+ * zoom/scroll) for supported formats like Perfetto and ART traces.
+ */
 class UnifiedProfilerEditorProvider : FileEditorProvider, DumbAware {
+
+  override fun writeState(state: FileEditorState, project: Project, targetElement: Element) {
+    if (state is PerfettoFileEditorState) {
+      project.getService(PerfettoEditorStateManager::class.java).writeState(state, targetElement)
+    }
+  }
+
+  override fun readState(sourceElement: Element, project: Project, file: VirtualFile): FileEditorState {
+    if (isSupportedByPerfettoEditor(file)) {
+      return project.getService(PerfettoEditorStateManager::class.java).readState(sourceElement, file)
+    }
+    return FileEditorState.INSTANCE
+  }
 
   override fun accept(project: Project, file: VirtualFile): Boolean {
     // Fail fast if extension is not supported
