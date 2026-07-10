@@ -28,9 +28,11 @@ import com.android.tools.rendering.imagepool.ImagePoolImageDisposer;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.PsiFile;
 import java.awt.Dimension;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -44,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.TestOnly;
 
-public class RenderResult {
+public class RenderResult implements Disposable {
   private static Logger LOG = Logger.getInstance(RenderResult.class);
 
   @NotNull private final Supplier<PsiFile> mySourceFileProvider;
@@ -125,6 +127,7 @@ public class RenderResult {
     );
   }
 
+  @Override
   public void dispose() {
     myDisposeLock.writeLock().lock();
     try {
@@ -159,8 +162,16 @@ public class RenderResult {
                                     boolean hasRequestedCustomViews) {
     List<ViewInfo> rootViews = session.getRootViews();
     List<ViewInfo> systemRootViews = session.getSystemRootViews();
-    Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties = session.getDefaultNamespacedProperties();
-    Map<Object, ResourceReference> defaultStyles = session.getDefaultNamespacedStyles();
+    Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties = null;
+    Map<Object, ResourceReference> defaultStyles = null;
+    if (session.getResult().isSuccess()) {
+      try {
+        defaultProperties = session.getDefaultNamespacedProperties();
+        defaultStyles = session.getDefaultNamespacedStyles();
+      } catch (Throwable t) {
+        LOG.warn("Failed to get default properties/styles", t);
+      }
+    }
     RenderResult result = new RenderResult(
       createSourceFileProvider(renderContext.getModule().getEnvironment(), file),
       renderContext.getModule().getProject(),
