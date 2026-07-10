@@ -238,6 +238,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/focus-plugin/declarative-gradle.focus-plugin.iml" filepath="$PROJECT_DIR$/../../vendor/google/focus-plugin/declarative-gradle.focus-plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/device-manager-v2/integration/device-manager-v2.integration.iml" filepath="$PROJECT_DIR$/device-manager-v2/integration/device-manager-v2.integration.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../studio/google/cloud/testing/directaccess/directaccess.iml" filepath="$PROJECT_DIR$/../../studio/google/cloud/testing/directaccess/directaccess.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/directaccess-client/cli/directaccess-cli.iml" filepath="$PROJECT_DIR$/../../vendor/google/directaccess-client/cli/directaccess-cli.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/directaccess-client/directaccess-client.iml" filepath="$PROJECT_DIR$/../../vendor/google/directaccess-client/directaccess-client.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/dynamic-layout-inspector/common/dynamic-layout-inspector.common.iml" filepath="$PROJECT_DIR$/../../base/dynamic-layout-inspector/common/dynamic-layout-inspector.common.iml" />
       <module fileurl="file://$PROJECT_DIR$/emulator-snapshots/emulator-snapshots.iml" filepath="$PROJECT_DIR$/emulator-snapshots/emulator-snapshots.iml" />
