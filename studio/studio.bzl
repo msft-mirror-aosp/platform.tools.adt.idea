@@ -832,7 +832,7 @@ def _get_external_attributes(all_files):
 
     return attrs
 
-def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
+def _android_studio_os(ctx, platform, added_plugins, out):
     files = []
     all_files = {}
 
@@ -904,11 +904,6 @@ def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
     if platform == LINUX:
         _produce_manifest(ctx, LINUX, platform_files)
 
-    args = ctx.actions.args()
-    args.add_all(all_files.keys())
-    args.set_param_file_format("multiline")
-    ctx.actions.write(output = lst_out, content = args)
-
     attrs = _get_external_attributes(all_files)
     _lnzipper(ctx, out.basename, all_files.items(), out, attrs = attrs)
     return all_files
@@ -962,15 +957,9 @@ def _android_studio_impl(ctx):
         MAC_ARM: ctx.outputs.mac_arm,
         WIN: ctx.outputs.win,
     }
-    lst_outputs = {
-        LINUX: ctx.outputs.linux_lst,
-        MAC: ctx.outputs.mac_lst,
-        MAC_ARM: ctx.outputs.mac_arm_lst,
-        WIN: ctx.outputs.win_lst,
-    }
     all_files = {}
     for (platform, output) in outputs.items():
-        all_files[platform] = _android_studio_os(ctx, platform, ctx.attr.plugins, output, lst_outputs[platform])
+        all_files[platform] = _android_studio_os(ctx, platform, ctx.attr.plugins, output)
 
     _produce_update_message_html(ctx)
 
@@ -1064,10 +1053,6 @@ _android_studio = rule(
         "mac": "%{name}.mac.zip",
         "mac_arm": "%{name}.mac_arm.zip",
         "win": "%{name}.win.zip",
-        "linux_lst": "%{name}.linux.lst",
-        "mac_lst": "%{name}.mac.lst",
-        "mac_arm_lst": "%{name}.mac_arm.lst",
-        "win_lst": "%{name}.win.lst",
         "plugins": "%{name}.plugin.lst",
         "manifest": "%{name}_build_manifest.textproto",
         "update_message": "%{name}_update_message.html",
@@ -1203,10 +1188,10 @@ def android_studio(
                 "tests/expected_studio_files/%s/%s/expected_diff_mac_arm.txt" % (name, config_name),
                 "tests/expected_studio_files/%s/%s/expected_diff_win.txt" % (name, config_name),
             ]) + [
-                ":%s.%s.linux.lst" % (name, config_name),
-                ":%s.%s.mac.lst" % (name, config_name),
-                ":%s.%s.mac_arm.lst" % (name, config_name),
-                ":%s.%s.win.lst" % (name, config_name),
+                ":%s.%s.linux.zip" % (name, config_name),
+                ":%s.%s.mac.zip" % (name, config_name),
+                ":%s.%s.mac_arm.zip" % (name, config_name),
+                ":%s.%s.win.zip" % (name, config_name),
             ],
             env = {
                 "ide": "%s/%s" % (native.package_name(), name),
@@ -1228,8 +1213,7 @@ def android_studio(
             "--ide-configuration " + " ".join([Label(configuration).name for configuration in configurations]),
         ] + (["--plugins %s" % " ".join([Label(plugin).name for plugin in searchable_options_plugin_lst])] if searchable_options_plugin_lst else []),
         data = [
-            ":%s.%s.plugin.lst" % (name, Label(config).name)
-            for config in configurations
+            ":%s.%s.plugin.lst" % (name, Label(config).name) for config in configurations
         ] + select({
             "@platforms//os:linux": [":%s.%s.linux.zip" % (name, Label(config).name) for config in configurations],
             "//tools/base/bazel/platforms:macos-x86_64": [":%s.%s.mac.zip" % (name, Label(config).name) for config in configurations],
@@ -1257,10 +1241,10 @@ def android_studio(
             file % (name, Label(configuration).name)
             for configuration in configurations
             for file in (
-                ":%s.%s.linux.lst",
-                ":%s.%s.mac.lst",
-                ":%s.%s.mac_arm.lst",
-                ":%s.%s.win.lst",
+                ":%s.%s.linux.zip",
+                ":%s.%s.mac.zip",
+                ":%s.%s.mac_arm.zip",
+                ":%s.%s.win.zip",
             )
         ],
         main = "update_expected_studio_files.py",

@@ -34,7 +34,9 @@ import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.text.nullize
 import java.util.concurrent.Callable
+import org.jetbrains.kotlin.K1Deprecation
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.idea.core.deleteElementAndCleanParent
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtExpression
@@ -42,7 +44,6 @@ import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
-import org.jetbrains.kotlin.psi.KtValueArgumentList
 
 private val WRITE_COMMAND = { parameterName: String -> "Parameter $parameterName Modification" }
 private const val DELETE_COMMAND = "Delete Parameter"
@@ -169,19 +170,10 @@ internal open class PsiCallParameterPropertyItem(
   }
 
   @UiThread
+  @OptIn(K1Deprecation::class)
   fun deleteParameter() {
     runModification(DELETE_COMMAND) {
-      val arg = argumentExpression?.parent
-      if (arg is KtValueArgument) {
-        val argList = arg.parent
-        if (argList is KtValueArgumentList) {
-          if (argList.arguments.size == 1) {
-            argList.delete() // This deletes the parentheses too, which are unnecessary on annotations with no args.
-          } else {
-            argList.removeArgument(arg)
-          }
-        }
-      }
+      argumentExpression?.parent?.deleteElementAndCleanParent()
       argumentExpression = null
     }
   }

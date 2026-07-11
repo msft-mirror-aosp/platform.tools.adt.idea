@@ -29,21 +29,22 @@ class TestStudioFiles(unittest.TestCase):
 
     actual = {}
     for platform in PLATFORMS:
-      name = "%s.%s.%s.lst" % (ide, configuration, platform)
-      with open(name, "r") as txt:
-        actual[platform] = sorted(txt.read().splitlines())
+      name = "%s.%s.%s.zip" % (ide,configuration,platform)
+      with zipfile.ZipFile(name) as file:
+        actual[platform] = sorted(file.namelist())
 
     ide_path_prefix = "/".join(ide.split("/")[:-1])
     ide_name = ide.split("/")[-1]
     expected = {}
     for platform in PLATFORMS:
       with open("%s/tests/expected_studio_files/%s/expected_%s.txt" % (ide_path_prefix,ide_name,platform), "r") as txt:
-        expected_lines = set(txt.read().splitlines())
+        expected_lines = {line.strip() for line in txt.readlines()}
       
       diff_path = "%s/tests/expected_studio_files/%s/%s/expected_diff_%s.txt" % (ide_path_prefix,ide_name,configuration,platform)
       if os.path.exists(diff_path):
         with open(diff_path, "r") as txt:
-          for line in txt.read().splitlines():
+          for line in txt.readlines():
+            line = line.strip()
             if line.startswith("+++"):
               expected_lines.add(line[3:])
             elif line.startswith("---"):

@@ -90,21 +90,10 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     EditorFactory.getInstance().eventMulticaster.addDocumentListener(ResourceFolderDocumentListener(project, this), this)
   }
 
-  operator fun get(facet: AndroidFacet, dir: VirtualFile) =
-    get(facet, dir, StudioResourceRepositoryManager.getInstance(facet).namespace, true)
-
-  operator fun get(facet: AndroidFacet, dir: VirtualFile, ensureLoaded: Boolean) =
-    get(facet, dir, StudioResourceRepositoryManager.getInstance(facet).namespace, ensureLoaded)
-
-  operator fun get(facet: AndroidFacet, dir: VirtualFile, namespace: ResourceNamespace) = get(facet, dir, namespace, true)
+  operator fun get(facet: AndroidFacet, dir: VirtualFile) = get(facet, dir, StudioResourceRepositoryManager.getInstance(facet).namespace)
 
   @VisibleForTesting
-  operator fun get(
-    facet: AndroidFacet,
-    dir: VirtualFile,
-    namespace: ResourceNamespace,
-    ensureLoaded: Boolean = true,
-  ): ResourceFolderRepository {
+  operator fun get(facet: AndroidFacet, dir: VirtualFile, namespace: ResourceNamespace): ResourceFolderRepository {
     val cache = if (namespace === ResourceNamespace.RES_AUTO) nonNamespacedCache else namespacedCache
     val repository = cache.getAndUnwrap(dir) { createRepository(facet, dir, namespace) }
     assert(repository.namespace == namespace)
@@ -112,8 +101,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     // TODO(b/80179120): figure out why this is not always true.
     // assert repository.getFacet().equals(facet);
 
-    // In some cases we don't want to load the repository immediately as we can be holding on to a lock and can enter a deadlock situation.
-    return if (ensureLoaded) repository.ensureLoaded() else repository
+    return repository.ensureLoaded()
   }
 
   /** Returns the resource repository for the given directory, or null if such repository doesn't already exist. */
