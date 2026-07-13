@@ -2122,11 +2122,6 @@ public final class StudioFlags {
                     "Enable NPA Onboarding",
                     "Enables the onboarding flow within the New Project Agent Wizard");
 
-  public static final Flag<Boolean> STUDIOBOT_USE_DEFAULT_CONVERSATION =
-    new BooleanFlag(STUDIOBOT, "use.default.conversation",
-                    "Use DefaultConversation",
-                    "Enables using DefaultConversation instead of TopLevelConversation.");
-
   public static final Flag<Boolean> STUDIOBOT_TRANSFORMS_ENABLED =
     new BooleanFlag(STUDIOBOT, "transforms.enabled",
                     "Enable Studio Bot Transforms",
