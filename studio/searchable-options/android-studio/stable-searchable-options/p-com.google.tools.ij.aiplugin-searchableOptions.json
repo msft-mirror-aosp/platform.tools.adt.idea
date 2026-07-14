@@ -96,7 +96,13 @@
       "hit": "Model:"
     },
     {
+      "hit": "Next Edit Prediction"
+    },
+    {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Smart Rename"
     }
   ]
 }
@@ -130,6 +136,12 @@
     },
     {
       "hit": "Access sensitive files"
+    },
+    {
+      "hit": "Add custom instructions"
+    },
+    {
+      "hit": "Additional prompt:"
     },
     {
       "hit": "Agent Permissions"
@@ -187,6 +199,9 @@
     },
     {
       "hit": "Read files outside the project"
+    },
+    {
+      "hit": "Show Full Prompt..."
     },
     {
       "hit": "Strict"
