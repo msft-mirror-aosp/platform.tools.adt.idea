@@ -32,7 +32,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginSuggestionProvider
-import com.intellij.openapi.util.IntellijInternalApi
 import com.intellij.util.application
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -98,7 +97,6 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
     invokeLater { AndroidSdkUtils.createNewAndroidPlatform(androidSdkPath.toString()) }
   }
 
-  @OptIn(IntellijInternalApi::class)
   private fun removePluginSuggestionProviderExtension() {
     val ep = application.extensionArea.getExtensionPoint<PluginSuggestionProvider>("com.intellij.pluginSuggestionProvider")
     ep.unregisterExtensions({ _, _ -> false }, false)

@@ -54,7 +54,6 @@ import com.intellij.openapi.extensions.PluginDescriptor
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.extensions.impl.ExtensionPointImpl
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.IntellijInternalApi
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.settingsSync.core.ServerState
 import com.intellij.settingsSync.core.SettingsSyncLocalSettings
@@ -118,7 +117,6 @@ class WizardFlowTest {
     communicator = FakeRemoteCommunicator(USER_EMAIL).apply { Disposer.register(disposableRule.disposable, this) }
     communicatorProvider = FakeCommunicatorProvider(communicator)
 
-    @OptIn(IntellijInternalApi::class) // For SettingsSyncCommunicatorProvider.
     val communicatorProviderBean =
       object : SettingsSyncCommunicatorBean() {
         override fun createInstance(
