@@ -510,7 +510,7 @@ public class AndroidGradleTests {
     return StringUtil.join(
       Iterables.concat(getLocalRepositoryDirectories(), localRepos),
       file -> "maven {\n" +
-              "  url \"" + file.toURI() + "\"\n" +
+              "  url = \"" + file.toURI() + "\"\n" +
               "  try {\n" +
               "    metadataSources() {\n" +
               "      mavenPom()\n" +
