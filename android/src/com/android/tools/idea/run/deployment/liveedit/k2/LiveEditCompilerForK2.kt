@@ -33,12 +33,15 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.KaImplementationDetail
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptions
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationResult
-import org.jetbrains.kotlin.analysis.api.components.KaCompilerTarget
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationTarget
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnostic
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.diagnostics.getDefaultMessageWithFactoryName
+import org.jetbrains.kotlin.analysis.api.impl.base.components.KaBaseCompilationOptionsBuilder
 import org.jetbrains.kotlin.analysis.api.projectStructure.contextModule
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.facet.implementingModules
@@ -104,18 +107,15 @@ fun backendCodeGenForK2(file: KtFile, module: Module, configuration: CompilerCon
 
   val substituteFile = getCompileTargetFile(file, module)
   analyze(substituteFile) {
-    val result =
-      this@analyze.compile(
-        substituteFile,
-        configuration,
-        KaCompilerTarget.Jvm(isTestMode = false, compiledClassHandler = null, debuggerExtension = null),
-      ) {
-        // This is a lambda for `allowedErrorFilter` parameter. `compiler` API internally filters diagnostic errors with
-        // `allowedErrorFilter`. If `allowedErrorFilter(diagnosticError)` is true, the error will not be reported.
-        // Since we want to always report the diagnostic errors, we just return `false` here.
-        false
-      }
-    when (result) {
+    @OptIn(KaImplementationDetail::class) // TODO(b/535771719): fully migrate to the new compilation API; stop using CompilerConfiguration.
+    val options: KaCompilationOptions =
+      KaBaseCompilationOptionsBuilder(token, configuration)
+        .apply {
+          target(KaCompilationTarget.JVM)
+          allowedErrorFilter { false } // Always report diagnostic errors, do not filter.
+        }
+        .build()
+    when (val result = this@analyze.compile(substituteFile, options)) {
       is KaCompilationResult.Success -> return result
       is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage() })
     }
