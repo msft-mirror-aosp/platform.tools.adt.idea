@@ -54,6 +54,8 @@ open class FakeComponentPopupBuilder(
   override fun setRequestFocus(requestFocus: Boolean) = this.also { isRequestFocus = requestFocus }
 
   // Section for unimplemented overrides
+  override fun setHeaderAlwaysFocusable(headerAlwaysFocusable: Boolean): ComponentPopupBuilder = this
+
   override fun setTitleIcon(icon: ActiveIcon) = this
 
   override fun setProject(project: Project?) = this

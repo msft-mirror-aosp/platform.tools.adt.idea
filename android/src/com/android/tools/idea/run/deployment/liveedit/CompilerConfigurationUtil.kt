@@ -17,11 +17,11 @@ package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.module.Module
+import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArgumentsConfigurator
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.cli.common.arguments.toLanguageVersionSettings
-import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -72,7 +72,7 @@ fun getCompilerConfiguration(module: Module, file: KtFile): CompilerConfiguratio
       if (StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS.get().isNotEmpty()) {
         val flags = StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS.get().split(" ")
         val mainKotlinCompilerOptions = parseCommandLineArguments<K2JVMCompilerArguments>(flags)
-        val languageSettings = mainKotlinCompilerOptions.toLanguageVersionSettings(MessageCollector.NONE)
+        val languageSettings = mainKotlinCompilerOptions.toLanguageVersionSettings(CommonCompilerArgumentsConfigurator.Reporter.DoNothing)
         setOptions(languageSettings)
       } else {
         setOptions(file.languageVersionSettings)

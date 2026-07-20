@@ -232,7 +232,7 @@ import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.MultiMap
 import com.intellij.util.messages.MessageBusConnection
 import com.intellij.workspaceModel.core.fileIndex.impl.WorkspaceFileIndexImpl
-import com.intellij.workspaceModel.ide.impl.jps.serialization.DelayedProjectSynchronizer
+import com.intellij.workspaceModel.ide.ProjectSynchronizerUtil
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_MODULE_ENTITY_TYPE_ID_NAME
 import java.io.File
 import java.io.IOException
@@ -2568,7 +2568,7 @@ private fun <T> openPreparedProject(
         emulateStartupActivityForTest(project)
         val awaitGradleStartupActivity =
           project.coroutineScope.launch {
-            DelayedProjectSynchronizer.Util.backgroundPostStartupProjectLoading(project)
+            ProjectSynchronizerUtil.getInstance(project).applyJpsModelToProjectModel()
             project.service<AndroidGradleProjectStartupActivity.StartupService>().awaitInitialization()
           }
         val defaultTestTimeoutMinutes = 15L
