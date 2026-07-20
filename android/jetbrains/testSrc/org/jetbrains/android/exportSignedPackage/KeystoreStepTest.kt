@@ -19,7 +19,6 @@ import com.android.testutils.MockitoThreadLocalsCleaner
 import com.android.testutils.file.createInMemoryFileSystem
 import com.android.testutils.file.recordExistingFile
 import com.android.testutils.file.someRoot
-import com.android.testutils.waitForCondition
 import com.android.tools.idea.help.AndroidWebHelpProvider
 import com.android.tools.idea.testing.IdeComponents
 import com.google.common.truth.Truth
@@ -31,6 +30,7 @@ import com.intellij.ide.passwordSafe.impl.TestPasswordSafeImpl
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.util.concurrency.SameThreadExecutor
 import com.intellij.util.io.outputStream
 import com.intellij.workspaceModel.ide.legacyBridge.ModuleBridge
 import java.io.File
@@ -38,9 +38,7 @@ import java.math.BigInteger
 import java.nio.file.FileSystem
 import java.security.KeyPairGenerator
 import java.security.KeyStore
-import java.util.Arrays
 import java.util.Date
-import java.util.concurrent.TimeUnit
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -122,7 +120,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     settings.REMEMBER_PASSWORDS = false
     ideComponents.replaceProjectService(GenerateSignedApkSettings::class.java, settings)
 
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep.myFileSystem =
       createInMemoryFileSystem().apply {
         val keystorePath = someRoot.resolve(testKeyStorePath).recordExistingFile()
@@ -138,7 +136,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
   fun testModuleDropDownEnabledByDefault() {
     val wizard = setupWizardHelper()
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     assertEquals(true, keystoreStep.myModuleCombo.isEnabled)
   }
 
@@ -146,7 +144,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     val wizard = setupWizardHelper()
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
     facets.add(myAndroidFacet1)
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
     assertEquals(false, keystoreStep.myModuleCombo.isEnabled)
   }
@@ -166,7 +164,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
       Disposer.register(testRootDisposable, nModule)
       facets.add(FakeAndroidFacet(nModule))
     }
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
 
     val expectedModulesOrder = listOf("app1", "appA", "appB", "appD", "xappC")
@@ -180,7 +178,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
     facets.add(myAndroidFacet1)
     facets.add(myAndroidFacet2)
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
     assertEquals(myAndroidFacet1, keystoreStep.myModuleCombo.selectedItem)
 
@@ -211,7 +209,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     whenever(wizard.project).thenReturn(project)
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
 
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep.myFileSystem = fileSystem
 
     assertEquals(testKeyStorePath, keystoreStep.keyStorePathField.text)
@@ -225,11 +223,11 @@ class KeystoreStepTest : LightPlatformTestCase() {
     keystoreStep.commitForNext()
 
     // Assert that the passwords are persisted and a new form instance fields populated as necessary.
-    val keystoreStep2 = KeystoreStep(wizard, facets)
+    val keystoreStep2 = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     assertEquals(testKeyStorePath, keystoreStep2.keyStorePathField.text)
     assertEquals(KEY_ALIAS, keystoreStep2.keyAliasField.text)
-    waitForCondition(1, TimeUnit.SECONDS) { Arrays.equals(KEY_STORE_PASSWORD.toCharArray(), keystoreStep2.keyStorePasswordField.password) }
-    waitForCondition(1, TimeUnit.SECONDS) { Arrays.equals(KEY_PASSWORD.toCharArray(), keystoreStep2.keyPasswordField.password) }
+    assertEquals(KEY_STORE_PASSWORD, String(keystoreStep2.keyStorePasswordField.password))
+    assertEquals(KEY_PASSWORD, String(keystoreStep2.keyPasswordField.password))
   }
 
   fun testRemembersPasswordForAllKeystoresAndAliases() {
@@ -281,7 +279,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
       keyPasswordField.text = keyPassword
       commitForNext()
     }
-    KeystoreStep(wizard, facets)
+    KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
       .apply { myFileSystem = fileSystem }
       .setFieldsAndCommit(
         keyStore = testKeyStoreLocation1,
@@ -290,9 +288,8 @@ class KeystoreStepTest : LightPlatformTestCase() {
         keyPassword = "keystore1_alias1",
       )
 
-    KeystoreStep(wizard, facets)
+    KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
       .apply { myFileSystem = fileSystem }
-      .also { waitForCondition(1, TimeUnit.SECONDS) { it.keyStorePasswordField.password.isNotEmpty() } }
       .setFieldsAndCommit(
         keyStore = testKeyStoreLocation1,
         keyAlias = testKeyAlias2,
@@ -300,9 +297,8 @@ class KeystoreStepTest : LightPlatformTestCase() {
         keyPassword = "keystore1_alias2",
       )
 
-    KeystoreStep(wizard, facets)
+    KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
       .apply { myFileSystem = fileSystem }
-      .also { waitForCondition(1, TimeUnit.SECONDS) { it.keyStorePasswordField.password.isNotEmpty() } }
       .setFieldsAndCommit(
         keyStore = testKeyStoreLocation2,
         keyAlias = testKeyAlias1,
@@ -311,7 +307,6 @@ class KeystoreStepTest : LightPlatformTestCase() {
       )
 
     fun KeystoreStep.checkFields(keyStore: String, keyAlias: String, keyStorePassword: String, keyPassword: String) {
-      waitForCondition(1, TimeUnit.SECONDS) { keyStorePasswordField.password.isNotEmpty() && keyPasswordField.password.isNotEmpty() }
       assertEquals(keyStore, keyStorePathField.text)
       assertEquals(keyAlias, keyAliasField.text)
       assertEquals(keyStorePassword, String(keyStorePasswordField.password))
@@ -321,7 +316,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     settings.KEY_STORE_PATH = testKeyStoreLocation1
     settings.KEY_ALIAS = testKeyAlias1
 
-    KeystoreStep(wizard, facets)
+    KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
       .checkFields(
         keyStore = testKeyStoreLocation1,
         keyAlias = testKeyAlias1,
@@ -333,7 +328,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     settings.KEY_STORE_PATH = testKeyStoreLocation1
     settings.KEY_ALIAS = testKeyAlias2
 
-    KeystoreStep(wizard, facets)
+    KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
       .checkFields(
         keyStore = testKeyStoreLocation1,
         keyAlias = testKeyAlias2,
@@ -345,7 +340,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     settings.KEY_STORE_PATH = testKeyStoreLocation2
     settings.KEY_ALIAS = testKeyAlias1
 
-    KeystoreStep(wizard, facets)
+    KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
       .apply { myFileSystem = fileSystem }
       .checkFields(
         keyStore = testKeyStoreLocation2,
@@ -378,14 +373,13 @@ class KeystoreStepTest : LightPlatformTestCase() {
     whenever(wizard.project).thenReturn(project)
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
 
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep.myFileSystem = fileSystem
     assertEquals(testKeyStorePath, keystoreStep.keyStorePathField.text)
     assertEquals(KEY_ALIAS, keystoreStep.keyAliasField.text)
     // Yes, it's weird but before the fix for b/64995008 this was exactly the observed behavior: the keystore password would
     // never be populated, whereas the key password would be saved as expected.
     assertEquals(0, keystoreStep.keyStorePasswordField.password.size)
-    waitForCondition(1, TimeUnit.SECONDS) { keystoreStep.keyPasswordField.password.isNotEmpty() }
     assertEquals(testLegacyKeyPassword, String(keystoreStep.keyPasswordField.password))
 
     // Set passwords and commit.
@@ -427,14 +421,12 @@ class KeystoreStepTest : LightPlatformTestCase() {
     whenever(wizard.project).thenReturn(project)
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
 
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep.myFileSystem = fileSystem
     assertEquals(testKeyStorePath, keystoreStep.keyStorePathField.text)
     assertEquals(KEY_ALIAS, keystoreStep.keyAliasField.text)
-    waitForCondition(1, TimeUnit.SECONDS) {
-      Arrays.equals(testLegacyKeyStorePassword.toCharArray(), keystoreStep.keyStorePasswordField.password)
-    }
-    waitForCondition(1, TimeUnit.SECONDS) { Arrays.equals(testLegacyKeyPassword.toCharArray(), keystoreStep.keyPasswordField.password) }
+    assertEquals(testLegacyKeyStorePassword, String(keystoreStep.keyStorePasswordField.password))
+    assertEquals(testLegacyKeyPassword, String(keystoreStep.keyPasswordField.password))
 
     // Set passwords and commit.
     keystoreStep.keyStorePasswordField.text = KEY_STORE_PASSWORD
@@ -475,7 +467,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     trySavePasswords(testKeyStorePath1, testKeyStorePassword1.toCharArray(), testKeyAlias1, testKeyPassword1.toCharArray(), true)
     trySavePasswords(testKeyStorePath2, testKeyStorePassword2.toCharArray(), testKeyAlias2, testKeyPassword2.toCharArray(), true)
 
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
 
     assertEquals(testKeyStorePassword1, String(keystoreStep.keyStorePasswordField.password))
@@ -503,7 +495,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
   fun testGetHelpId() {
     val wizard = setupWizardHelper()
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
-    val keystoreStep = KeystoreStep(wizard, facets)
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
     Truth.assertThat(keystoreStep.helpId).startsWith(AndroidWebHelpProvider.HELP_PREFIX + "studio/publish/app-signing")
   }
