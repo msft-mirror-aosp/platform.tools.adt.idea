@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.npw.project
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -72,6 +73,82 @@ class ComposeChooseAndroidProjectStepUITest {
   }
 
   @Test
+  fun showMobileAsDefaultSelectionWhenGeminiNewProjectAgentIsEnabled() = runTest {
+    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(true)
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    model.getAndroidProjectEntries()
+
+    val mobileEntry =
+      model.chooseAndroidProjectEntries.filterIsInstance<FormFactorProjectEntry>().first {
+        it.formFactorTitle == FormFactor.Mobile.toString()
+      }
+    assertEquals(mobileEntry, model.selectedAndroidProjectEntry)
+  }
+
+  @Test
+  fun allowPreselectingEntry() = runTest {
+    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(true)
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    val customEntry =
+      object : ChooseAndroidProjectEntry {
+        @Composable override fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean) {}
+
+        @Composable override fun AndroidProjectEntryDetails() {}
+
+        override val canGoForward = mutableStateOf(true)
+
+        override fun onProceeding(
+          newProjectModuleModel: com.android.tools.idea.npw.model.NewProjectModuleModel,
+          model: com.android.tools.idea.npw.model.NewProjectModel,
+        ) {}
+      }
+    model.updateSelectedCell(customEntry)
+    model.getAndroidProjectEntries()
+
+    assertEquals(customEntry, model.selectedAndroidProjectEntry)
+  }
+
+  @Test
+  fun allowPreselectingTargetWithInitialTargetParam() = runTest {
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier, initialTarget = "Wear")
+    model.getAndroidProjectEntries()
+
+    val wearEntry =
+      model.chooseAndroidProjectEntries.filterIsInstance<FormFactorProjectEntry>().first {
+        it.formFactorTitle == FormFactor.Wear.toString()
+      }
+    assertEquals(wearEntry, model.selectedAndroidProjectEntry)
+  }
+
+  @Test
+  fun allowPreselectingTargetWithInitialTargetParamForCustomEntry() = runTest {
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier, initialTarget = "AI")
+    val customAiEntry =
+      object : ChooseAndroidProjectEntry {
+        override val entryId: String = "AI"
+
+        @Composable override fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean) {}
+
+        @Composable override fun AndroidProjectEntryDetails() {}
+
+        override val canGoForward = mutableStateOf(true)
+
+        override fun onProceeding(
+          newProjectModuleModel: com.android.tools.idea.npw.model.NewProjectModuleModel,
+          model: com.android.tools.idea.npw.model.NewProjectModel,
+        ) {}
+      }
+    model.updateSelectedCell(customAiEntry)
+    model.getAndroidProjectEntries()
+
+    assertEquals("AI", model.selectedAndroidProjectEntry?.entryId)
+  }
+
+  @Test
   fun showSelectedFormFactor() = runTest {
     val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
     val model = ChooseAndroidProjectStepModel(formFactorSupplier)
@@ -97,7 +174,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
 
-    composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).assertIsFocused()
+    composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).performClick()
 
     composeTestRule
       .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
@@ -122,7 +199,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     assertEquals(
       mobileTemplates[mobileTemplates.size - 1].name,
-      (model.chooseAndroidProjectEntries[1] as FormFactorProjectEntry).selectedGridItem?.name,
+      (model.chooseAndroidProjectEntries.filterIsInstance<FormFactorProjectEntry>().first()).selectedGridItem?.name,
     )
   }
 

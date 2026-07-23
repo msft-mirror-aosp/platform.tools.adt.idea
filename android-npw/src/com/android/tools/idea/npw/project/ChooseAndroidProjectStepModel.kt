@@ -34,7 +34,7 @@ private fun PromotedTemplate.matches(gridItem: GridItem?, currentFormFactor: For
   return isPromotedMatch || isRegularMatch
 }
 
-class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<List<FormFactor>>) {
+class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<List<FormFactor>>, private val initialTarget: String? = null) {
   var onGridItemDoubleClick: () -> Unit = {}
 
   var chooseAndroidProjectEntries by mutableStateOf<List<ChooseAndroidProjectEntry>>(emptyList())
@@ -64,7 +64,7 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
       formFactorSupplier.get().forEach {
         if (it != FormFactor.AiGlasses) {
           val entry = createFormFactorEntry(it, promotedTemplate)
-          if (it == FormFactor.Mobile && !hasMatchedPromotedTemplate) {
+          if (it == FormFactor.Mobile && selectedAndroidProjectEntry == null && !hasMatchedPromotedTemplate) {
             // Default to Phone & Tablet if no promoted template matched yet
             selectedAndroidProjectEntry = entry
           }
@@ -77,8 +77,17 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
         }
       }
     }
+
+    if (!initialTarget.isNullOrBlank()) {
+      entries.firstOrNull { matchesTarget(it, initialTarget) }?.let { selectedAndroidProjectEntry = it }
+    }
+
     chooseAndroidProjectEntries = entries
     isLoading = false
+  }
+
+  private fun matchesTarget(entry: ChooseAndroidProjectEntry, target: String): Boolean {
+    return entry.entryId.contains(target, ignoreCase = true)
   }
 
   fun updateSelectedCell(entry: ChooseAndroidProjectEntry?) {
