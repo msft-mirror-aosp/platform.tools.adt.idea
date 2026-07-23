@@ -84,10 +84,6 @@
     </group>
 
     <action internal="true"
-            text="Validate Essential Plugins"
-            id="Android.ValidateEssentialPlugins"
-            class="com.android.tools.idea.actions.ValidateEssentialPluginsAction"/>
-    <action internal="true"
             text="Disable All Plugins"
             id="Android.DisableAllPlugins"
             class="com.android.tools.idea.actions.DisableAllPluginsAction"/>
