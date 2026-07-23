@@ -35,6 +35,7 @@ import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablement
 import com.android.tools.idea.streaming.core.DeviceDisplayListener
 import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.core.DisplayView
+import com.android.tools.idea.streaming.core.FloatingToolbarContainer
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.expandFloatingToolbar
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
@@ -748,6 +749,38 @@ class DeviceToolWindowPanelTest {
     waitForCondition(1.seconds) { !agent.audioStreamActive }
   }
 
+  @Test
+  fun testFloatingToolbarOrientation() {
+    device = agentRule.connectDevice("Pixel 4", 31, Dimension(1080, 2280))
+    panel.createContent(false)
+    fakeUi.layoutAndDispatchEvents()
+    waitForCondition(10.seconds) { agent.isRunning && panel.isConnected }
+    waitForFrame()
+    fakeUi.layoutAndDispatchEvents()
+
+    val zoomToolbarDefault = fakeUi.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarDefault).isNotNull()
+    assertThat(zoomToolbarDefault.width).isGreaterThan(zoomToolbarDefault.height)
+
+    StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.overrideForTest(true, testRootDisposable)
+    val panelWithFlag = createToolWindowPanel()
+    val fakeUiWithFlag = FakeUi(panelWithFlag, createFakeWindow = true, parentDisposable = testRootDisposable)
+    panelWithFlag.createContent(false)
+    fakeUiWithFlag.layoutAndDispatchEvents()
+    waitForCondition(10.seconds) { device.agent.isRunning && panelWithFlag.isConnected }
+    waitForCondition(5.seconds) {
+      fakeUiWithFlag.render()
+      panelWithFlag.isConnected &&
+        device.agent.getFrameNumber(PRIMARY_DISPLAY_ID) >= 1u &&
+        panelWithFlag.findDisplayView(PRIMARY_DISPLAY_ID)!!.frameNumber == device.agent.getFrameNumber(PRIMARY_DISPLAY_ID)
+    }
+    fakeUiWithFlag.layoutAndDispatchEvents()
+
+    val zoomToolbarVertical = fakeUiWithFlag.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarVertical).isNotNull()
+    assertThat(zoomToolbarVertical.height).isGreaterThan(zoomToolbarVertical.width)
+  }
+
   private fun FakeUi.mousePressOn(component: Component) {
     val location: Point = getPosition(component)
     mouse.press(location.x, location.y)
@@ -766,7 +799,7 @@ class DeviceToolWindowPanelTest {
   }
 
   private fun createToolWindowPanel(): DeviceToolWindowPanel {
-    val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
+    val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
     val panel = DeviceToolWindowPanel(testRootDisposable, project, device.handle, deviceClient)
     panel.size = Dimension(310, 300)

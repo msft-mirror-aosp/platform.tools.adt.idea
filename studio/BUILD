@@ -269,6 +269,7 @@ studio_plugin(
             "//tools/adt/idea/logcat/gradle:intellij.android.logcat.gradle",
             "//tools/vendor/google/login:google-login",
             "//tools/vendor/google/login/onboarding:login.onboarding",
+            "//tools/vendor/google/play-client/findings:google-play-client-findings",
             "//tools/adt/idea/mlkit:intellij.android.mlkit",
             "//tools/adt/idea/nav/safeargs:intellij.android.nav.safeargs",
             "//tools/adt/idea/nav/safeargs/common:intellij.android.nav.safeargs.common",
@@ -326,6 +327,7 @@ studio_plugin(
             "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
             "//tools/vendor/google/marketing:marketing",
             "//tools/adt/idea/app-publishing:intellij.android.app-publishing",
+            "//tools/vendor/google/play-client/metadata:intellij.android.play-client.metadata",
             "//tools/adt/idea/play-publishing:intellij.android.play-publishing",
             "//tools/adt/idea/cli-server/server:cli-server.server",
             "//tools/adt/idea/cli-server/command-handler:cli-server.command-handler",
@@ -914,7 +916,7 @@ studio_plugin(
         "//tools/vendor/modelcontextprotocol/kotlin-sdk:mcp-sdk-libraries",
         "//tools/vendor/google/ml/aiplugin/backends/aicode:aicode_grpc",
         "//tools/vendor/google/ml/aiplugin/backends/baicode:baicode_grpc",
-        "//tools/vendor/google/ml/gemini-coder:libgemini-coder_proto",
+        "//tools/vendor/google/ml/gemini-coder:gemini-coder_proto_shaded",
     ],
     modules = {
         "aiplugin.jar": [

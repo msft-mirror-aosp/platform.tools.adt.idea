@@ -20,12 +20,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.doubleClick
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
@@ -162,11 +162,47 @@ class ComposeChooseAndroidProjectStepUITest {
 
     composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
 
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
-      .onChildren()[0]
-      .performTouchInput { doubleClick() }
+    composeTestRule.onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid).onChildren()[0].performTouchInput {
+      doubleClick()
+    }
 
     assertTrue(callbackTriggered)
+  }
+
+  @Test
+  fun canSelectTemplatesAcrossRowsAfterSelectingNoActivity() = runTest {
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    model.getAndroidProjectEntries()
+
+    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
+
+    // Switch to Wear OS
+    composeTestRule.onNodeWithText(FormFactor.Wear.displayName).performClick()
+
+    val templateGrid = composeTestRule.onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
+    val wearTemplates = FormFactor.Wear.getProjectTemplates()
+    assertTrue(wearTemplates.size >= 2, "Wear OS must have at least 2 templates")
+
+    // Click 'No Activity' (index 0 in Row 1)
+    templateGrid.onChildren()[0].performClick()
+    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+
+    // Click subsequent template in the next row / index 1
+    templateGrid.onChildren()[1].performClick()
+    assertEquals(wearTemplates[1].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+
+    // Also verify in Mobile (Phone and Tablet)
+    composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).performClick()
+    val mobileTemplates = FormFactor.Mobile.getProjectTemplates()
+    assertTrue(mobileTemplates.size >= 3, "Mobile must have at least 3 templates")
+
+    // In Phone, auto focus lands on default (e.g. Empty Compose Activity at index 1). Verify we can click index 0 (No Activity) and index 2
+    // (Gemini API / next item).
+    templateGrid.onChildren()[0].performClick()
+    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+
+    templateGrid.onChildren()[2].performClick()
+    assertEquals(mobileTemplates[2].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
   }
 }

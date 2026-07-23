@@ -1263,7 +1263,7 @@ internal class DeviceViewTest {
   }
 
   private fun createDeviceViewWithoutWaitingForAgent(width: Int, height: Int) {
-    val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
+    val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
     // DeviceView has to be disposed before DeviceClient.
     val disposable = Disposer.newDisposable()
@@ -1271,7 +1271,7 @@ internal class DeviceViewTest {
     val displayPanel = DeviceDisplayPanel(disposable, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, project, false)
     displayPanel.size = Dimension(width, height)
     view = displayPanel.displayView
-    fakeUi = FakeUi(displayPanel, createFakeWindow = true)
+    fakeUi = FakeUi(displayPanel, createFakeWindow = true, parentDisposable = testRootDisposable)
   }
 
   private fun assertAppearance(goldenImageName: String) {

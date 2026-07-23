@@ -26,6 +26,8 @@ import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurfaceActionHandler
+import com.android.tools.idea.common.surface.SceneViewPanel
+import com.android.tools.idea.common.surface.ZoomConstants
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.TestProjectSystemBuildManager
@@ -101,9 +103,7 @@ class NlDesignSurfaceTest : LayoutTestCase() {
     val model: NlModel =
       model("absolute.xml", component(SdkConstants.ABSOLUTE_LAYOUT).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight())
         .build()
-    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies
-    // on
-    // the Material theme
+    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on the Material theme
     model.configuration.setTheme("android:Theme.NoTitleBar.Fullscreen")
     designSurface.setModel(model)
 
@@ -133,8 +133,7 @@ class NlDesignSurfaceTest : LayoutTestCase() {
     // Simulate that we are in the middle of a build
     val buildManager = TestProjectSystemBuildManager.get(project)
     buildManager.buildStarted(ProjectSystemBuildManager.BuildMode.COMPILE_OR_ASSEMBLE)
-    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on
-    // the Material theme
+    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on the Material theme
     model.configuration.setTheme("android:Theme.NoTitleBar.Fullscreen")
     designSurface.setModel(model)
 
@@ -494,8 +493,7 @@ class NlDesignSurfaceTest : LayoutTestCase() {
     val model: NlModel =
       model("absolute.xml", component(SdkConstants.ABSOLUTE_LAYOUT).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight())
         .build()
-    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on
-    // the Material theme
+    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on the Material theme
     model.configuration.setTheme("android:Theme.NoTitleBar.Fullscreen")
     designSurface.setModel(model)
     waitForSurfaceToBeReady(model)
@@ -519,69 +517,97 @@ class NlDesignSurfaceTest : LayoutTestCase() {
     assertTrue(designSurface.zoomController.canZoomOut())
   }
 
-  fun ignore_testCannotZoomToFit() {
-    val model: NlModel =
-      model("absolute.xml", component(SdkConstants.ABSOLUTE_LAYOUT).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight())
-        .build()
+  fun testCannotZoomToFit() {
+    val createModel = {
+      val model =
+        model("absolute.xml", component(SdkConstants.ABSOLUTE_LAYOUT).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight())
+          .build()
+      // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on the Material theme
+      model.configuration.setTheme("android:Theme.NoTitleBar.Fullscreen")
+      model
+    }
 
     val surfaceWidth = 500
     val surfaceHeight = 500
 
     // First use an empty surface to measure the zoom-to-fit scale.
     var surface = builder(project, getTestRootDisposable()).build()
-    // TODO(b/370994254): it may be necessary to render after adding the model here
-    surface.addModelsWithoutRender(listOf(model))
+    var model = createModel()
     surface.setSize(surfaceWidth, surfaceHeight)
+    surface.setModel(model)
+    waitForSurfaceToBeReady(model, surface)
     surface.doLayout()
-    surface.zoomController.zoomToFit()
+    // We call zoom(ZoomType.FIT) directly instead of zoomToFit to keep this test simple, since we don't need to call helper methods such as
+    // notifyLayoutCreatedForTest or notifyComponentResizedForTest, which deal with ZoomMaskConstants. This logic is already covered by
+    // DesignSurfaceTest.
+    surface.zoomController.zoom(ZoomType.FIT)
     val fitScale = surface.zoomController.scale
     surface.removeModels(listOf(model))
 
-    // Create another surface which the minimum scale is larger than fitScale.
+    // Create another surface which the minimum scale is greater than fitScale.
     surface = builder(project, getTestRootDisposable()).build()
-    // TODO(b/370994254): it may be necessary to render after adding the model here
-    surface.addModelsWithoutRender(listOf(model))
+    (surface.zoomController as NlDesignSurfaceZoomController).overrideMinScaleForTests(fitScale * 2)
+    model = createModel()
     surface.setSize(surfaceWidth, surfaceHeight)
+    surface.setModel(model)
+    waitForSurfaceToBeReady(model, surface)
     surface.doLayout()
     // Cannot zoom lower than min scale.
-    surface.zoomController.zoomToFit()
+    surface.zoomController.zoom(ZoomType.FIT)
     assertEquals(fitScale * 2, surface.zoomController.scale, 0.01)
     assertFalse(surface.zoomController.canZoomToFit())
     surface.removeModels(listOf(model))
 
     // Create another surface which the maximum scale is lower than fitScale.
     surface = builder(project, getTestRootDisposable()).build()
-    // TODO(b/370994254): it may be necessary to render after adding the model here
-    surface.addModelsWithoutRender(listOf(model))
+    (surface.zoomController as NlDesignSurfaceZoomController).overrideMaxScaleForTests(fitScale / 2)
+    model = createModel()
     surface.setSize(surfaceWidth, surfaceHeight)
+    surface.setModel(model)
+    waitForSurfaceToBeReady(model, surface)
     surface.doLayout()
     // Cannot zoom larger than max scale.
-    surface.zoomController.zoomToFit()
+    // We call zoom(ZoomType.FIT) directly instead of zoomToFit to keep this test simple, since we don't need to call helper methods such as
+    // notifyLayoutCreatedForTest or notifyComponentResizedForTest, which deal with ZoomMaskConstants. This logic is already covered by
+    // DesignSurfaceTest.
+    surface.zoomController.zoom(ZoomType.FIT)
     assertEquals(fitScale / 2, surface.zoomController.scale, 0.01)
     assertFalse(surface.zoomController.canZoomToFit())
     surface.removeModels(listOf(model))
   }
 
-  /** Test that we don't have any negative scale in case the windows size becomes too small */
-  fun ignore_testsMinScale() {
+  /** Test that we don't go below the minimum scale in case the window size becomes too small */
+  fun testMinScale() {
     val model: NlModel =
       model("absolute.xml", component(SdkConstants.ABSOLUTE_LAYOUT).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight())
         .build()
-    val surface = designSurface
-    surface.setModel(model)
-    surface.setBounds(0, 0, 1000, 1000)
-    surface.validate()
-    surface.getLayout().layoutContainer(surface)
-    surface.validateScrollArea()
-    surface.zoomController.zoomToFit()
-    assertEquals(0.5, surface.zoomController.scale, 0.1)
+    // Avoid rendering any other components (nav bar and similar) so we do not have dependencies on the Material theme
+    model.configuration.setTheme("android:Theme.NoTitleBar.Fullscreen")
 
-    surface.setBounds(0, 0, 1, 1)
-    surface.revalidateScrollArea()
-    surface.validate()
-    surface.layout.layoutContainer(surface)
-    surface.zoomController.zoomToFit()
-    assertEquals(0.01, surface.zoomController.scale)
+    val surface = builder(project, getTestRootDisposable()).build()
+    surface.setScrollViewSizeAndValidateForTest(1000, 1000)
+    surface.setModel(model)
+    waitForSurfaceToBeReady(model, surface)
+    val sceneViewPanel = surface.interactionPane as SceneViewPanel
+    sceneViewPanel.doLayout()
+    // Now wait for the asynchronous launchLayoutUpdate flow collection to finish adding components to the panel
+    waitAndDispatchEvents { sceneViewPanel.positionableContent.isNotEmpty() }
+
+    // We call zoom(ZoomType.FIT) directly instead of zoomToFit to keep this test simple, since we don't need to call helper methods such as
+    // notifyLayoutCreatedForTest or notifyComponentResizedForTest, which deal with ZoomMaskConstants. This logic is already covered by
+    // DesignSurfaceTest.
+    surface.zoomController.zoom(ZoomType.FIT)
+    val fitScale = surface.zoomController.scale
+    // Zoom to fit should work and the scale should be within valid bounds (greater than minScale)
+    assertTrue(fitScale > ZoomConstants.DEFAULT_MIN_SCALE)
+
+    // Now resize the viewport to be extremely small (1x1)
+    surface.setScrollViewSizeAndValidateForTest(1, 1)
+    surface.doLayout()
+
+    // Zoom to fit shouldn't go below the minimum scale
+    surface.zoomController.zoom(ZoomType.FIT)
+    assertEquals(ZoomConstants.DEFAULT_MIN_SCALE, surface.zoomController.scale, 0.001)
   }
 
   fun testNlSupportedActions() {
@@ -612,7 +638,11 @@ class NlDesignSurfaceTest : LayoutTestCase() {
   }
 
   private fun waitForSurfaceToBeReady(model: NlModel) {
-    waitAndDispatchEvents { designSurface.getSceneManager(model)?.renderResult != null && designSurface.focusedSceneView != null }
+    waitForSurfaceToBeReady(model, designSurface)
+  }
+
+  private fun waitForSurfaceToBeReady(model: NlModel, surface: NlDesignSurface) {
+    waitAndDispatchEvents { surface.getSceneManager(model)?.renderResult != null && surface.focusedSceneView != null }
   }
 
   private fun waitAndDispatchEvents(condition: () -> Boolean) {

@@ -59,8 +59,7 @@ interface ConfigurablePreviewElement<T> : PreviewElement<T> {
 }
 
 /** Contains settings for rendering. */
-data class PreviewConfiguration
-internal constructor(
+data class PreviewConfiguration(
   val apiLevel: Int,
   val width: Int,
   val height: Int,

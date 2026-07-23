@@ -35,6 +35,7 @@ import com.android.tools.idea.run.configuration.AndroidDeclarativeWatchFaceConfi
 import com.android.tools.idea.run.configuration.AndroidTileRunConfigurationProducer
 import com.android.tools.idea.run.configuration.AndroidWatchFaceRunConfigurationProducer
 import com.android.tools.idea.run.configuration.AndroidWearConfiguration
+import com.android.tools.idea.run.configuration.AndroidWearWidgetRunConfigurationProducer
 import com.android.tools.idea.run.util.LaunchUtils
 import com.android.tools.idea.util.androidFacet
 import com.intellij.execution.JavaExecutionUtil
@@ -53,8 +54,13 @@ import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.facet.AndroidFacet
 
-private val wearConfigurationProducers =
-  listOf(AndroidTileRunConfigurationProducer(), AndroidComplicationRunConfigurationProducer(), AndroidWatchFaceRunConfigurationProducer())
+internal val wearConfigurationProducers =
+  listOf(
+    AndroidTileRunConfigurationProducer(),
+    AndroidWearWidgetRunConfigurationProducer(),
+    AndroidComplicationRunConfigurationProducer(),
+    AndroidWatchFaceRunConfigurationProducer(),
+  )
 
 class AndroidRunConfigurations {
 

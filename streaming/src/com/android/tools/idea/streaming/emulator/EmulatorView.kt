@@ -51,6 +51,7 @@ import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.BUTTON_MASK
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.StreamingDeviceId
+import com.android.tools.idea.streaming.core.isMouseInside
 import com.android.tools.idea.streaming.core.isSameAspectRatio
 import com.android.tools.idea.streaming.core.scaledDown
 import com.android.tools.idea.streaming.core.scaledUnbiased
@@ -376,10 +377,13 @@ internal class EmulatorView(
     lastModifiers = modifiers
 
     val is360Environment = emulatorConfig.deviceType == DeviceType.AI_GLASSES && sceneMode?.startsWith("image360:") == true
-    val cameraReadyToOperate = (virtualSceneCameraActive || is360Environment) && isFocusOwner && !isHardwareInputEnabled()
+    val is3dEnvironment = emulatorConfig.deviceType == DeviceType.AI_GLASSES && sceneMode?.startsWith("mesh3d:") == true
+    val cameraReadyToOperate =
+      (virtualSceneCameraActive || is360Environment || is3dEnvironment) && isFocusOwner && isMouseInside() && !isHardwareInputEnabled()
     if (cameraReadyToOperate && modifiers and SHIFT_DOWN_MASK != 0) {
       if (virtualSceneCameraController == null) {
-        virtualSceneCameraController = VirtualSceneCameraController(this, this, emulator, allowTranslation = virtualSceneCameraActive)
+        virtualSceneCameraController =
+          VirtualSceneCameraController(this, this, emulator, allowTranslation = virtualSceneCameraActive || is3dEnvironment)
       }
     } else {
       virtualSceneCameraController?.let { Disposer.dispose(it) }
@@ -404,7 +408,7 @@ internal class EmulatorView(
     multiTouchMode =
       emulatorConfig.hasTouchScreen &&
         mouseCoordinates != null &&
-        !(virtualSceneCameraActive || is360Environment) &&
+        !(virtualSceneCameraActive || is360Environment || is3dEnvironment) &&
         modifiers and CTRL_DOWN_MASK != 0 &&
         !isHardwareInputEnabled() &&
         xrInputController == null

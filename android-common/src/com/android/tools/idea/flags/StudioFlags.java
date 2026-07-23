@@ -1277,6 +1277,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "360.image.environment", "Enable 360 Image Environment",
     "Enables 360 image support for AI Glasses environments");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT = new BooleanFlag(
+    EMBEDDED_EMULATOR, "3d.scene.environment", "Enable 3D Scene Environment",
+    "Enables 3D scene (.obj) support for AI Glasses environments");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs");
@@ -1286,6 +1289,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_CONTEXT_MENU = new BooleanFlag(
     EMBEDDED_EMULATOR, "context.menu", "Enable Context Menu",
     "Enables context menu in the Running Devices tool window");
+  public static final Flag<Boolean> RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS = new BooleanFlag(
+    EMBEDDED_EMULATOR, "vertical.floating.toolbars", "Vertical Floating Toolbars",
+    "Makes floating toolbars in the Running Devices tool window vertical.");
   //endregion
 
   //region Device Mirroring
@@ -1855,6 +1861,14 @@ public final class StudioFlags {
       "play.policy.insights",
       "Play Policy Insights",
       "Enable Play Policy Insights"
+    );
+
+  public static final Flag<Boolean> PLAY_POLICY_METADATA_EXPORT_ENABLED =
+    new BooleanFlag(
+      PLAY_POLICY_INSIGHTS,
+      "play.policy.metadata.export.enabled",
+      "Play Policy Metadata Export",
+      "Enable Play Policy Metadata export via MetadataProvider"
     );
 
   // Flag only for unplanned compatibility issues between Android Studio and lint libraries.
@@ -2718,6 +2732,11 @@ public final class StudioFlags {
                     "Enable project-wide symbol linkification and navigation",
                     "Enables one-click navigation to code symbols mentioned in Studio Bot responses");
 
+  public static final Flag<Boolean> STUDIOBOT_SYMBOL_LINKS_FROM_MODEL =
+    new BooleanFlag(STUDIOBOT, "symbol.links.from.model",
+                    "Enable symbol links from model",
+                    "Enables the new explicit model-provided link translation and disables legacy index-based recognition by default");
+
   public static final Flag<Boolean> STUDIOBOT_TASK_ROADMAP_ENABLED =
     new BooleanFlag(STUDIOBOT, "task.roadmap.enabled",
                     "Enable Task Roadmap progress panels",
@@ -2732,6 +2751,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "ask.user.in.query.box",
                     "Replace the query box with the pending ask user tool call or permisisons request.",
                     "When true, the query box UI will be completely replaced with the pending ask user tool call or permissions request instead of rendering them in the timeline.");
+
+  public static final Flag<Boolean> STUDIOBOT_CONVERSATION_SEARCH_ENABLED =
+    new BooleanFlag(STUDIOBOT, "conversation.search.enabled",
+                    "Enable past conversation search",
+                    "Enables a conversational search feature inside the Studio Bot tool window to allow users to search their historical chat histories.");
 
   // endregion STUDIO_BOT
 
