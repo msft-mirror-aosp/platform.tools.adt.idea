@@ -82,7 +82,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.mockito.kotlin.any
-import org.mockito.kotlin.isNull
+import org.mockito.kotlin.isNotNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.refEq
 import org.mockito.kotlin.verify
@@ -628,7 +628,7 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
 
     provider.createEditor(project, disposableRule.disposable, file)
 
-    verify(provider).createFileEditor(refEq(project), refEq(file), isNull(), any())
+    verify(provider).createFileEditor(refEq(project), refEq(file), isNotNull(), any())
   }
 
   private fun apkEditor(path: String, isResource: Boolean = true): ApkEditor {
