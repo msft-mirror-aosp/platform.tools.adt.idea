@@ -72,7 +72,6 @@
     <orderEntry type="module" module-name="intellij.android.wizardTemplate.plugin" />
     <orderEntry type="module" module-name="intellij.lint" />
     <orderEntry type="library" name="test-result-proto" level="project" />
-    <orderEntry type="library" name="android-test-plugin-host-device-info-proto" level="project" />
     <orderEntry type="library" name="android-core-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.zipflinger" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" />
