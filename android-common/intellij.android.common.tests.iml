@@ -33,4 +33,5 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="android-core-proto" level="project" />
   </component>
+  <component name="TestModuleProperties" production-module="intellij.android.common" />
 </module>
