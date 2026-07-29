@@ -15,17 +15,10 @@
  */
 package com.android.tools.idea.play
 
-import com.android.tools.idea.flags.StudioFlags
-import com.intellij.openapi.extensions.ExtensionPointName
-import java.util.function.Supplier
+import com.android.flags.Flag
+import com.android.tools.idea.serverflags.DynamicServerFlagService
 
-interface HoldoutRatioProvider : Supplier<Double> {
-  companion object {
-    @JvmStatic
-    val EP_NAME: ExtensionPointName<HoldoutRatioProvider> = ExtensionPointName.create("com.android.tools.idea.play.holdoutRatioProvider")
-  }
-}
-
-class HoldoutRatioProviderImpl : HoldoutRatioProvider {
-  override fun get(): Double = StudioFlags.PLAY_POLICY_INSIGHTS_HOLDOUT_RATIO.getLatest().toDoubleOrNull() ?: 0.0
+/** Returns the string value from server flag when available. */
+fun Flag<String>.getLatest(): String {
+  return DynamicServerFlagService.instance.getString("studio_flags/$id") ?: get()
 }
