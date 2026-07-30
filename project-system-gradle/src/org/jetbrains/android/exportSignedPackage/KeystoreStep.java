@@ -32,6 +32,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.ModalityUiUtil;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.io.IOException;
@@ -49,6 +50,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -92,10 +94,19 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   AndroidFacet mySelection;
   @VisibleForTesting final List<AndroidFacet> myFacets;
   @VisibleForTesting FileSystem myFileSystem = FileSystems.getDefault();
+  private final Executor myBackgroundExecutor;
 
   public KeystoreStep(@NotNull ExportSignedPackageWizard wizard,
                       @NotNull List<AndroidFacet> facets) {
+    this(wizard, facets, AppExecutorUtil.getAppExecutorService());
+  }
+
+  @VisibleForTesting
+  KeystoreStep(@NotNull ExportSignedPackageWizard wizard,
+               @NotNull List<AndroidFacet> facets,
+               @NotNull Executor backgroundExecutor) {
     setupUI();
+    myBackgroundExecutor = backgroundExecutor;
     myWizard = wizard;
     myFacets = facets;
     Project project = wizard.getProject();
@@ -334,7 +345,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   private void tryLoadSavedPasswords() {
     String keyStorePath = myKeyStorePathField.getText();
     String keyAlias = myKeyAliasField.getText();
-    executeInBackground(() -> {
+    myBackgroundExecutor.execute(() -> {
       String keyStorePasswordKey = makePasswordKey(KEY_STORE_PASSWORD_KEY, keyStorePath, null);
       String keyPasswordKey = makePasswordKey(KEY_PASSWORD_KEY, keyStorePath, keyAlias);
       try {
@@ -370,20 +381,6 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
         Logger.getInstance(KeystoreStep.class).error("Unable to use password safe", t);
       }
     });
-  }
-
-  /**
-   * Execute task in background unless it is a unit test. Otherwise testing passwords loading becomes very tricky.
-   */
-  @SuppressWarnings("WrongThread")
-  @AnyThread
-  private void executeInBackground(@WorkerThread Runnable runnable) {
-    if (ApplicationManager.getApplication().isUnitTestMode()) {
-      runnable.run();
-    }
-    else {
-      ApplicationManager.getApplication().executeOnPooledThread(runnable);
-    }
   }
 
   /**

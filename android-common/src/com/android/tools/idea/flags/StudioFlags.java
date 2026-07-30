@@ -450,6 +450,10 @@ public final class StudioFlags {
     DESIGN_TOOLS, "render.tool.diff.viewer", "Enable the render tool diff viewer",
     "If enabled, the render tool shows previous render in a diff viewer");
 
+  public static final Flag<Boolean> COMPOSE_IN_MEMORY_PREVIEW_ENABLED = new BooleanFlag(
+    DESIGN_TOOLS, "preview.in.memory.preview", "Enable In-Memory Compose Preview",
+    "Enables the agentic tool to preview Compose UI in memory without modifying project files.");
+
   public static final Flag<Boolean> COMPOSE_MESH_GRADIENT_EDITOR = new BooleanFlag(
     DESIGN_TOOLS, "compose.mesh.gradient.editor", "Enable the Mesh Gradient Editor",
     "If enabled, the Mesh Gradient Editor gutter icon and Tools menu action will be available.");
@@ -1797,13 +1801,6 @@ public final class StudioFlags {
     "Enable the support of the displayless AI Glasses device in the device manager"
   );
 
-  public static final Flag<Boolean> AI_GLASSES_DISPLAY_SETTING_ENABLED = new BooleanFlag(
-    DEVICE_MANAGER,
-    "ai.glasses.display.setting.enabled",
-    "AI Glasses Display Setting Enabled",
-    "Enable the configuration of Display or Displayless for AI Glasses AVDs"
-  );
-
   public static final Flag<Boolean> XR_GLASSES_DEVICE_SUPPORT_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "xr.glasses.device.support.enabled",
@@ -1887,6 +1884,14 @@ public final class StudioFlags {
       "Play Policy Insights Holdout Ratio",
       "Holdout some Play Policy lint checks for a subset of applications.",
       "1.0");
+
+  public static final Flag<String> PLAY_POLICY_INSIGHTS_DETAILED_HOLDOUT_RATIO =
+    new StringFlag(
+      PLAY_POLICY_INSIGHTS,
+      "play.policy.insights.detailed.holdout.ratio",
+      "Play Policy Insights Detailed Holdout Ratio",
+      "Holdout some Play Policy lint checks with different ratios.",
+      "[]");
   // endregion Play Policy Insights
 
   // region Firebase Test Lab
@@ -2403,6 +2408,11 @@ public final class StudioFlags {
                     "Enable the inactivity monitor for tool calls",
                     "When enabled, tool execution will be monitored for inactivity and cancelled after a timeout");
 
+  public static final Flag<Boolean> STUDIOBOT_CENTRAL_TOOL_TOKEN_CAPPING_ENABLED =
+    new BooleanFlag(STUDIOBOT, "central.tool.token.capping.enabled",
+                    "Central tool token capping enabled",
+                    "When enabled, truncates/caps any tool output exceeding max tokens at the central level.");
+
   public static final Flag<Integer> STUDIOBOT_MAX_TOOL_OUTPUT_TOKENS =
     new IntFlag(STUDIOBOT, "max.tool.output.tokens",
                 "Max tokens for tool outputs",
@@ -2462,12 +2472,6 @@ public final class StudioFlags {
       new BooleanFlag(STUDIOBOT, "agentic.test.generation",
                       "Enable agentic automated unit test generation",
                       "When enabled, generate unit tests using studio bot agent.");
-
-
-  public static final Flag<Boolean> STUDIOBOT_SUPPORT_GIAS_ENTERPRISE =
-    new BooleanFlag(STUDIOBOT, "support.gias.enterprise",
-                    "Enable support for GCA Enterprise tier",
-                    "Enable support for GCA Enterprise tier");
 
   public static Flag<Boolean> STUDIOBOT_SHIMMER_PLACEHOLDER =
     new BooleanFlag(STUDIOBOT, "show.shimmer.placeholder",
@@ -2895,10 +2899,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_RUN_WITH_AGENT = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.agent.support", "Enable the Journeys agent",
     "Enable running Journey tests using an AI agent"
-  );
-  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_ANDROID_CLI_TOOLS = new BooleanFlag(
-    JOURNEYS_WITH_GEMINI, "enable.android.cli.tools", "Enable Android CLI tools based Journeys agent",
-    "Enable the use of the Android CLI skill and tool when running Journey tests with an agent"
   );
   // endregion JOURNEYS_WITH_GEMINI
 

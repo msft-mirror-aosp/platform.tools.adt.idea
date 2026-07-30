@@ -62,7 +62,6 @@
     <orderEntry type="library" scope="TEST" name="test-result-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.lint-api" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-proto" level="project" />
-    <orderEntry type="library" scope="TEST" name="android-test-plugin-host-device-info-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="emulator-proto" level="project" />
     <orderEntry type="module" module-name="analytics-shared" scope="TEST" />

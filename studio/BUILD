@@ -99,7 +99,6 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/.idea/libraries:android-core-proto",
-        "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
         "//tools/adt/idea/.idea/libraries:androidx-tracing",
         "//tools/adt/idea/.idea/libraries:asm-tools",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
@@ -145,7 +144,7 @@ studio_plugin(
         "//tools/adt/idea/profilers:traceprocessor-proto",
         "//tools/profiler/common:sherlock-plugin-protos",
         "//tools/profiler/common:sherlock-perfetto-proto",
-        "//tools/adt/idea/utp:libstudio.android-test-plugin-result-listener-gradle-proto",
+        "//tools/adt/idea/utp:libstudio.android-test-engine-result-listener-proto",
         "//tools/base/deploy/deployer:deploy_java_proto",
         "//tools/base/deploy/deployer:libjava_sites",
         "//tools/base/lint:liblint-checks-proto",
@@ -791,7 +790,7 @@ studio_plugin(
 )
 
 studio_plugin(
-    name = "com.google.urlassistant",
+    name = "com.google.applinkassistant",
     directory = "url-assistant",
     libs = [
         "//tools/vendor/google/url-assistant:urlassistant_proto",
@@ -814,7 +813,7 @@ studio_plugin(
 )
 
 studio_plugin(
-    name = "com.google.urlassistant.ai",
+    name = "com.google.applinkassistant.ai",
     directory = "app-link-assistant-ai",
     modules = {
         "app-link-assistant-ai.jar": [
@@ -823,8 +822,8 @@ studio_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
+        ":com.google.applinkassistant",
         ":com.google.tools.ij.aiplugin",
-        ":com.google.urlassistant",
         ":org.jetbrains.android",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.java.analysis.impl",
@@ -1085,8 +1084,8 @@ STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:com.android.gmdcodecompletion",
     "//tools/adt/idea/studio:com.android.tools.idea.smali",
     "//tools/adt/idea/studio:com.google.gct.test.recorder",
-    "//tools/adt/idea/studio:com.google.urlassistant",
-    "//tools/adt/idea/studio:com.google.urlassistant.ai",
+    "//tools/adt/idea/studio:com.google.applinkassistant",
+    "//tools/adt/idea/studio:com.google.applinkassistant.ai",
     "//tools/adt/idea/studio:com.google.targetsdkversionassistant",
     "//tools/adt/idea/studio:com.android.tools.gradle.dcl",
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",

@@ -17,7 +17,6 @@
 package com.android.tools.idea.compose.preview.interactive
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -36,6 +34,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,10 +46,14 @@ import com.android.tools.idea.compose.preview.BackNavigationEdge
 import com.android.tools.idea.compose.preview.InteractivePreviewNavigationController
 import com.android.tools.idea.compose.preview.message
 import icons.StudioIconsCompose
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
@@ -124,8 +127,9 @@ fun NavigationControlsPanel(
 ) {
   var sliderPosition by remember { mutableFloatStateOf(0f) }
   var backStarted by remember { mutableStateOf(false) }
+  val coroutineScope = rememberCoroutineScope()
   val showEdgeNavigation by produceState(false, isEdgeNavigationImplemented) { value = isEdgeNavigationImplemented() }
-  val selectedEdge = remember { mutableStateOf(BackNavigationEdge.EDGE_LEFT) }
+  val selectedEdge = remember { mutableStateOf(BackNavigationEdge.EDGE_NONE) }
   val backNavigationAvailable by produceState(canBackPress(), fpsUpdater) { fpsUpdater.collect { value = canBackPress() } }
 
   LaunchedEffect(backPressCompletedFlow) {
@@ -136,12 +140,6 @@ fun NavigationControlsPanel(
   }
 
   Column(modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().testTag(NavigationControlsPanelTestTags.panel)) {
-    // Add a horizontal divider at the top of the panel to clearly indicate the splitter boundary
-    Divider(
-      orientation = org.jetbrains.jewel.ui.Orientation.Horizontal,
-      modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).testTag(NavigationControlsPanelTestTags.divider),
-    )
-
     FlowRow(
       modifier = Modifier.padding(vertical = DEFAULT_SPACING).fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceBetween,
@@ -151,7 +149,23 @@ fun NavigationControlsPanel(
         OutlinedButton(
           modifier = Modifier.testTag(NavigationControlsPanelTestTags.backButton).widthIn(min = 135.dp),
           enabled = backNavigationAvailable,
-          onClick = onBackPress,
+          onClick = {
+            coroutineScope.launch {
+              if (!backStarted) {
+                backStarted = true
+                val selectedEdge = selectedEdge.value
+                // TODO(b/539916536): This is a temporary solution for predictive back navigation.
+                // Currently, the limitation is about the predictive back gesture transition continuing to the end,
+                // but we expect it to hand off to a separate transition spec after the swipe passes the committed threshold.
+                // This should be properly fixed when new APIs for predictive back are released.
+                onBackPressStart(selectedEdge)
+                // Introduce a minor delay to allow the initial back navigation gesture animation frame
+                // to initialize properly before triggering the back press completion event.
+                delay(100.milliseconds)
+              }
+              onBackPress()
+            }
+          },
         ) {
           Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -173,15 +187,15 @@ fun NavigationControlsPanel(
       )
     }
     Row(
-      modifier =
-        Modifier.padding(vertical = DEFAULT_SPACING)
-          .widthIn(min = 16.dp, max = 800.dp)
-          .align(Alignment.CenterHorizontally)
-          .border(width = 1.dp, color = JewelTheme.globalColors.borders.normal, shape = RoundedCornerShape(4.dp)),
+      modifier = Modifier.padding(vertical = DEFAULT_SPACING).widthIn(min = 16.dp, max = 800.dp).align(Alignment.CenterHorizontally),
       horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Column {
+        Divider(
+          orientation = Orientation.Horizontal,
+          modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).testTag(NavigationControlsPanelTestTags.divider),
+        )
         Text(modifier = Modifier.padding(DEFAULT_SPACING), text = message("action.navigate.back.predictive.back.progress", sliderPosition))
         Slider(
           modifier = Modifier.padding(DEFAULT_SPACING).testTag(NavigationControlsPanelTestTags.progressSlider),

@@ -49,7 +49,6 @@ class NavigationControlsPanelUiTest {
     val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     var backPressCallCount = 0
-    var backPressStartCalledWithEdge: BackNavigationEdge? = null
     var backPressProgressCallCount = 0
     var backPressTrackProgressCallCount = 0
     var edgeDropdownPressCallCount = 0
@@ -59,7 +58,7 @@ class NavigationControlsPanelUiTest {
         isEdgeNavigationImplemented = { true },
         canBackPress = { canBackPressMutable.value },
         onBackPress = { backPressCallCount++ },
-        onBackPressStart = { backPressStartCalledWithEdge = it },
+        onBackPressStart = {},
         onBackPressProgress = { _, _ -> backPressProgressCallCount++ },
         onBackPressTrackProgress = { backPressTrackProgressCallCount++ },
         onEdgeDropdownPress = { edgeDropdownPressCallCount++ },
@@ -70,14 +69,13 @@ class NavigationControlsPanelUiTest {
     // Verify main panel is displayed
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).assertIsDisplayed()
 
-    // Verify divider is displayed
-    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.divider).assertIsDisplayed()
-
     // Emulate the update from the fps counter
     fpsUpdater.tryEmit(Unit)
 
     // Verify Back button triggers onBackPress
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).assertIsDisplayed().performClick()
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.waitForIdle()
     assertEquals(1, backPressCallCount)
 
     // Verify Dropdown selection triggers onEdgeDropdownPress
@@ -86,11 +84,13 @@ class NavigationControlsPanelUiTest {
     assertEquals(1, edgeDropdownPressCallCount)
     composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_RIGHT.visibleName).assertIsDisplayed()
 
+    // Verify divider is displayed
+    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.divider).assertIsDisplayed()
+
     // Verify Progress slider triggers start, progress and track callbacks
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.progressSlider).assertIsDisplayed().assertIsEnabled().performTouchInput {
       swipeRight()
     }
-    assertEquals(BackNavigationEdge.EDGE_RIGHT, backPressStartCalledWithEdge)
     assertTrue("Progress callback should be called", backPressProgressCallCount > 0)
     assertEquals(1, backPressTrackProgressCallCount)
 
@@ -112,6 +112,36 @@ class NavigationControlsPanelUiTest {
     val countBeforeClick = backPressCallCount
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).performClick()
     assertEquals("Callback should not be triggered when button is disabled", countBeforeClick, backPressCallCount)
+  }
+
+  @Test
+  fun testBackButtonTriggersStartDelayAndCompleted() {
+    var backPressStartCalledWithEdge: BackNavigationEdge? = null
+    var backPressCalled = false
+
+    composeTestRule.setContent {
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        canBackPress = { true },
+        onBackPress = { backPressCalled = true },
+        onBackPressStart = { backPressStartCalledWithEdge = it },
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = MutableSharedFlow(),
+      )
+    }
+
+    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).performClick()
+
+    // Immediately after click, onBackPressStart should be called, but onBackPress should wait for delay
+    assertEquals(BackNavigationEdge.EDGE_NONE, backPressStartCalledWithEdge)
+
+    // Advance clock past the delay (100ms)
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.waitForIdle()
+
+    assertTrue("onBackPress should be called after delay", backPressCalled)
   }
 
   @Test
@@ -179,7 +209,7 @@ class NavigationControlsPanelUiTest {
 
     val controller =
       InteractivePreviewNavigationController(usageTrackerProvider = { tracker }, fpsUpdater = fpsUpdater).apply {
-        updateObjects(null, composeViewAdapterObjFake)
+        updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
       }
 
     composeTestRule.setContent {
@@ -190,8 +220,8 @@ class NavigationControlsPanelUiTest {
       )
     }
 
-    // Verify initially dropdown shows "Left"
-    composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_LEFT.visibleName).assertIsDisplayed()
+    // Verify initially dropdown shows "None"
+    composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_NONE.visibleName).assertIsDisplayed()
 
     // Click on the edge dropdown to select "Right"
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.edgeDropdown).assertIsDisplayed().performClick()

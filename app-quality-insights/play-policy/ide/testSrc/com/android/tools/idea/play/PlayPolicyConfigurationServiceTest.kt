@@ -21,6 +21,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_SYNC_TOPIC
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager.SyncResult
+import com.android.tools.idea.serverflags.DynamicServerFlagService
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -117,6 +118,39 @@ class PlayPolicyConfigurationServiceTest {
   }
 
   @Test
+  fun testRefreshMetadataFailure() = runTest {
+    fakeMetadataClient.exceptions["com.example.app1"] = RuntimeException("Network error")
+    fakeMetadataClient.exceptions["com.example.app2"] = RuntimeException("Package not found")
+
+    val metadata = service.refreshMetadata()
+
+    assertThat(metadata).hasSize(2)
+    assertThat(metadata["com.example.app1"]).isEqualTo(PlayMetadata("com.example.app1", "", "", "Network error"))
+    assertThat(metadata["com.example.app2"]).isEqualTo(PlayMetadata("com.example.app2", "", "", "Package not found"))
+    assertThat(metadata["com.example.lib"]).isNull()
+
+    // Verify cache is updated
+    assertThat(service.cachedMetadata.value).isEqualTo(metadata)
+  }
+
+  @Test
+  fun testRefreshMetadataEmptyApplicationData() = runTest {
+    // Clear stub for app1 application data
+    fakeMetadataClient.applications.remove("com.example.app1")
+
+    val metadata = service.refreshMetadata()
+
+    assertThat(metadata).hasSize(2)
+    // com.example.app1 should still be present but with empty applicationInfoJson
+    assertThat(metadata["com.example.app1"]).isEqualTo(PlayMetadata("com.example.app1", "", "app1_declaration"))
+    assertThat(metadata["com.example.app2"]).isEqualTo(PlayMetadata("com.example.app2", "app2_info", "app2_declaration"))
+    assertThat(metadata["com.example.lib"]).isNull()
+
+    // Verify cache is updated
+    assertThat(service.cachedMetadata.value).isEqualTo(metadata)
+  }
+
+  @Test
   fun testSyncTriggersRefresh() = runTest {
     // Update server metadata to verify sync re-fetches
     fakeMetadataClient.applications["com.example.app1"] = "app1_info_updated"
@@ -167,6 +201,7 @@ class PlayPolicyConfigurationServiceTest {
     val provider = MetadataProvider.EP_NAME.getExtensionList(projectRule.project).first()
     val json = provider.get()
 
+    assertThat(json).contains(""""issueHoldouts":"[]"""")
     assertThat(json).contains(""""applicationId":"com.example.app1"""")
     assertThat(json).contains(""""applicationInfoJson":"app1_info"""")
     assertThat(json).contains(""""appContentDeclarationJson":"app1_declaration"""")
@@ -185,7 +220,27 @@ class PlayPolicyConfigurationServiceTest {
     val provider = MetadataProvider.EP_NAME.getExtensionList(projectRule.project).first()
     val json = provider.get()
 
-    assertThat(json).isEqualTo("[]")
+    assertThat(json).isEqualTo("{}")
+  }
+
+  @Test
+  fun testMetadataProviderReturnsJsonWithDetailedHoldoutRatio() = runTest {
+    // Mock DynamicServerFlagService
+    val mockServerFlagService = mock<DynamicServerFlagService>()
+    whenever(mockServerFlagService.getString("studio_flags/${StudioFlags.PLAY_POLICY_INSIGHTS_DETAILED_HOLDOUT_RATIO.id}"))
+      .thenReturn("[{\"ratio\":0.5}]")
+    ApplicationManager.getApplication()
+      .replaceService(DynamicServerFlagService::class.java, mockServerFlagService, projectRule.testRootDisposable)
+
+    // Populate service cache
+    service.refreshMetadata()
+
+    val provider = MetadataProvider.EP_NAME.getExtensionList(projectRule.project).first()
+    val json = provider.get()
+
+    // Verify that the JSON contains the mocked holdout ratio and the metadata
+    assertThat(json).contains("\"issueHoldouts\":\"[{\\\"ratio\\\":0.5}]\"")
+    assertThat(json).contains(""""applicationId":"com.example.app1"""")
   }
 
   private fun createApp(applicationId: String) =
@@ -206,10 +261,17 @@ class PlayPolicyConfigurationServiceTest {
 class FakePlayMetadataClient : PlayMetadataClient {
   val applications = mutableMapOf<String, String>()
   val declarations = mutableMapOf<String, String>()
+  val exceptions = mutableMapOf<String, Exception>()
 
-  override suspend fun getApplication(packageName: String): String = applications[packageName] ?: ""
+  override suspend fun getApplication(packageName: String): String {
+    exceptions[packageName]?.let { throw it }
+    return applications[packageName] ?: ""
+  }
 
-  override suspend fun getAppContentDeclaration(packageName: String): String = declarations[packageName] ?: ""
+  override suspend fun getAppContentDeclaration(packageName: String): String {
+    exceptions[packageName]?.let { throw it }
+    return declarations[packageName] ?: ""
+  }
 
   override fun close() {}
 }

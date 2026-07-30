@@ -2511,8 +2511,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/libjava_sites.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libjava_version.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libjourneys-java-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/liblint-checks-proto.lib.jar
-Android Studio Preview.app/Contents/plugins/android/lib/libstudio.android-test-plugin-host-device-info-proto.jar
-Android Studio Preview.app/Contents/plugins/android/lib/libstudio.android-test-plugin-result-listener-gradle-proto.jar
+Android Studio Preview.app/Contents/plugins/android/lib/libstudio.android-test-engine-result-listener-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libstudio.proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/libstudio.test-result-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/lint-ide.jar
@@ -3490,8 +3489,8 @@ Android Studio Preview.app/Contents/plugins/keymap-eclipse/lib/keymap-eclipse.ja
 Android Studio Preview.app/Contents/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 Android Studio Preview.app/Contents/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
 Android Studio Preview.app/Contents/plugins/lume-aiplugin/lib/aiplugin-lightbuild.jar
-Android Studio Preview.app/Contents/plugins/lume/lib/json-schema-validator-1.4.3.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/kaml-jvm-0.61.0.jar
+Android Studio Preview.app/Contents/plugins/lume/lib/libjson-schema-validator-shaded.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/liblume-android-plugin.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/liblume-ide-api-impl.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/liblume-kotlin-plugin.jar
