@@ -215,7 +215,8 @@
       <module fileurl="file://$PROJECT_DIR$/as-driver/utils/as-driver.utils.iml" filepath="$PROJECT_DIR$/as-driver/utils/as-driver.utils.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.tests.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/external/asfp.external.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/external/asfp.external.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/external/core/asfp.external.core.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/external/core/asfp.external.core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/external/gemini/asfp.external.gemini.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/external/gemini/asfp.external.gemini.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/internal/asfp.internal.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/internal/asfp.internal.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/studio/asfp.studio.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/studio/asfp.studio.iml" />
       <module fileurl="file://$PROJECT_DIR$/assistant/assistant.iml" filepath="$PROJECT_DIR$/assistant/assistant.iml" />
