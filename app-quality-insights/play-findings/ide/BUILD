@@ -6,9 +6,22 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.app-quality-insights.play-findings.ide.iml"],
     resources = ["resources"],
+    test_class = "com.android.tools.idea.play.findings.PlayFindingsIdeTestSuite",
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+    ],
+    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
+        "//tools/adt/idea/app-quality-insights/play-findings/client:intellij.android.app-quality-insights.play-findings.client",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
@@ -19,5 +32,6 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/ui:intellij.android.app-quality-insights.ui",
         "//tools/adt/idea/app-quality-insights/ide:intellij.android.app-quality-insights.ide",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "//tools/vendor/google/login:google-login",
     ],
 )
