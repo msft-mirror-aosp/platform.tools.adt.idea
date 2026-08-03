@@ -875,6 +875,7 @@ iml_test(
     tags_mac = [],
     tags_windows = [
         "block-network",
+        "manual",  # TODO(b/542306930): fails with IntelliJ 2026.2.
     ],
     test_class = "com.android.tools.idea.MultiProjectTest",
 )
@@ -889,7 +890,10 @@ iml_test(
     ],
     tags_linux = ["block-network"],
     tags_mac = [],
-    tags_windows = ["block-network"],
+    tags_windows = [
+        "block-network",
+        "manual",  # TODO(b/542306930): fails with IntelliJ 2026.2.
+    ],
     test_class = "com.android.tools.idea.MultiProjectSameWindowTest",
 )
 
