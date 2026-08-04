@@ -64,5 +64,6 @@
     <orderEntry type="module" module-name="intellij.android.core.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="intellij-test-framework" level="project" />
+    <orderEntry type="module" module-name="google-login.tests" scope="TEST" />
   </component>
 </module>

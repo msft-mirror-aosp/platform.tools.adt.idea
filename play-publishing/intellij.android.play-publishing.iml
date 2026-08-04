@@ -61,6 +61,7 @@
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.analytics-testing" scope="TEST" />
+    <orderEntry type="module" module-name="google-login.tests" scope="TEST" />
     <orderEntry type="module-library" scope="TEST">
       <library name="libktor-client-mock">
         <CLASSES>
