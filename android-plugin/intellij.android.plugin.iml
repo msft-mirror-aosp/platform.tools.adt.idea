@@ -79,6 +79,7 @@
     <orderEntry type="module" module-name="intellij.android.settings-sync" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.testartifacts" scope="RUNTIME" />
     <orderEntry type="module" module-name="marketing" scope="RUNTIME" />
+    <orderEntry type="module" module-name="android-keys" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.logcat.gradle" scope="RUNTIME" />
     <orderEntry type="module" module-name="firebase-provisioning" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.tracer" scope="RUNTIME" />
