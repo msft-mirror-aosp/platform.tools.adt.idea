@@ -20,6 +20,7 @@ plugins {
 
 android {
     compileSdk 33
+    buildToolsVersion "37.0.0"
     namespace = "com.google.samples.apps.kmp"
     defaultConfig {
         applicationId "com.google.samples.apps.kmp"

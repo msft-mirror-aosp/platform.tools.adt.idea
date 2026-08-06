@@ -27,7 +27,7 @@ iml_test(
     data = [
         ":minapp",
         ":minapp_deps",
-        "//prebuilts/studio/sdk:build-tools/36.0.0",
+        "//prebuilts/studio/sdk:build-tools/37.0.0",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
         INTEGRATION_TEST_GRADLE_VERSION,

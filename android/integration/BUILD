@@ -532,6 +532,7 @@ iml_test(
 create_project_test_data = [
     ":createproject_deps",
     INTEGRATION_TEST_BUILD_TOOLS,
+    "//prebuilts/studio/sdk:build-tools/36.0.0",
     "//prebuilts/studio/sdk:platforms/android-36",
     "//tools/base/build-system:gradle-distrib-9.6.0",  # The test itself sets a flag for which AGP version to use, so we can't rely on the framework choosing INTEGRATION_TEST_GRADLE_VERSION for us
 ]
@@ -870,26 +871,20 @@ iml_test(
 first_launch_test_data = [
     ":buildproject_deps",
     ":minapp",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/addon2-3.xml",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/addon2-4.xml",
     "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/android-ndk-r23-beta4-linux-x86_64.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/build-tools_r35.0.1_linux.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/build-tools_r35.0.1_windows.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/build-tools_r36_linux.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/build-tools_r36_windows.zip",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/build-tools_r37_linux.zip",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/build-tools_r37_windows.zip",
     "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/cmake-3.22.1-linux.zip",
     "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/google_apis-24_r1.zip",
     "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-24_r02.zip",
     "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-35_r02.zip",
     "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/source-35_r01.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-tools_r36.0.0-linux.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-tools_r36.0.0-win.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-tools_r36.0.1-linux.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-tools_r36.0.1-win.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/emulator-linux_x64-13823996.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/emulator-windows_x64-13823996.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/emulator-linux_x64-13935797.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/emulator-windows_x64-13935797.zip",
-    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/repository2-3.xml",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-tools_r37.0.1-linux.zip",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/platform-tools_r37.0.1-win.zip",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/emulator-linux_x64-15982021.zip",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/emulator-windows_x64-15982021.zip",
+    "//prebuilts/studio/sdk/remote:dl.google.com/android/repository/repository2-4.xml",
     INTEGRATION_TEST_GRADLE_VERSION,
 ]
 

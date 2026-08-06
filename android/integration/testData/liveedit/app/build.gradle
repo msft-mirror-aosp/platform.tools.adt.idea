@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = 'com.example.liveedittest'
     compileSdk 35
+    buildToolsVersion "37.0.0"
 
     defaultConfig {
         applicationId "com.example.liveedittest"

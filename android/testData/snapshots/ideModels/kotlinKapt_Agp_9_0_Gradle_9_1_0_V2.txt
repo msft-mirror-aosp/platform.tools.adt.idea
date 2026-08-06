@@ -908,7 +908,7 @@ MODULE                        : MainActivity.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/app/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : true
     GroupId                       : MainActivity
     Namespace                     : com.example.mainactivity
@@ -1914,7 +1914,7 @@ MODULE                        : MainActivity.lib
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/lib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : false
     GroupId                       : MainActivity
     Namespace                     : com.example.lib

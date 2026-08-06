@@ -253,7 +253,7 @@ iml_module(
 
 layout_editor_data = [
     ":layout_preview_deps",
-    "//prebuilts/studio/sdk:build-tools/36.0.0",
+    "//prebuilts/studio/sdk:build-tools/37.0.0",
     "//tools/adt/idea/designer/testData:simpleApplication",
     "//tools/adt/idea/designer/testData:visualLintApplication",
     INTEGRATION_TEST_GRADLE_VERSION,

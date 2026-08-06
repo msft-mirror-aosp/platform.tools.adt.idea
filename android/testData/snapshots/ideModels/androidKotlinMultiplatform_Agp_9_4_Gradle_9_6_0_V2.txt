@@ -588,7 +588,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-36.1
     BuildFolder                   : <ROOT>/androidLib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : false
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.androidlib
@@ -1276,7 +1276,7 @@ MODULE                        : Kotlin_Multiplatform.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-36.1
     BuildFolder                   : <ROOT>/app/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : true
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.app
@@ -1807,7 +1807,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
     ProjectType                   : PROJECT_TYPE_KOTLIN_MULTIPLATFORM
     CompileTarget                 : android-36.1
     BuildFolder                   : <ROOT>/kmpFirstLib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : false
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.kmpfirstlib
@@ -2584,7 +2584,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
     ProjectType                   : PROJECT_TYPE_KOTLIN_MULTIPLATFORM
     CompileTarget                 : android-36.1
     BuildFolder                   : <ROOT>/kmpSecondLib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : false
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.kmpsecondlib
@@ -2984,7 +2984,7 @@ MODULE                        : build-logic.lib-foo
     ProjectType                   : PROJECT_TYPE_KOTLIN_MULTIPLATFORM
     CompileTarget                 : android-36.1
     BuildFolder                   : <ROOT>/build-logic/lib-foo/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : false
     GroupId                       : build-logic
     Namespace                     : com.buildlogic.lib.foo

@@ -24,6 +24,7 @@ kotlin {
     android {
         namespace = "com.google.samples.apps.kmp.shared"
         compileSdk = 33
+        buildToolsVersion = "37.0.0"
         minSdk = 26
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)

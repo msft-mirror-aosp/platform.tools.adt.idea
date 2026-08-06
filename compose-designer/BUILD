@@ -270,7 +270,7 @@ iml_module(
 
 compose_preview_data = [
     ":compose_preview_deps",
-    "//prebuilts/studio/sdk:build-tools/36.0.0",
+    "//prebuilts/studio/sdk:build-tools/37.0.0",
     "//tools/adt/idea/compose-designer/testData:composepreview",
     INTEGRATION_TEST_GRADLE_VERSION,
 ]

@@ -12,7 +12,7 @@ INTEGRATION_TEST_GRADLE_VERSION = "//tools/base/build-system:gradle-distrib-9.6.
 INTEGRATION_TEST_SYSTEM_IMAGE = "//prebuilts/studio/sdk:system_image_android-31_default"
 
 # The build tools to use for integration tests.
-INTEGRATION_TEST_BUILD_TOOLS = "//prebuilts/studio/sdk:build-tools/36.0.0"
+INTEGRATION_TEST_BUILD_TOOLS = "//prebuilts/studio/sdk:build-tools/37.0.0"
 
 # Kotlin version used in test projects
 KOTLIN_VERSION_FOR_TESTS = "2.2.10"

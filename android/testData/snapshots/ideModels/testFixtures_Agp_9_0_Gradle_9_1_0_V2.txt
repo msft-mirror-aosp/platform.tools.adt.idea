@@ -855,7 +855,7 @@ MODULE                        : project.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/app/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : true
     GroupId                       : project
     Namespace                     : google.simpleapplication
@@ -2131,7 +2131,7 @@ MODULE                        : project.lib
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/lib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 36.0.0
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.lib

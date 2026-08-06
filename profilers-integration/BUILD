@@ -25,7 +25,7 @@ iml_module(
 profilers_test_common_data_base = [
     ":minapp",
     ":minapp_deps",
-    "//prebuilts/studio/sdk:build-tools/36.0.0",
+    "//prebuilts/studio/sdk:build-tools/37.0.0",
     "//prebuilts/studio/sdk:emulator",
     "//prebuilts/studio/sdk:platform-tools",
     "//prebuilts/studio/sdk:system_image_android-33_default",
@@ -332,7 +332,6 @@ iml_test(
     timeout = "long",
     data = profilers_test_common_data + [
         ":helloworldapk",
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/android-31",
     ],
     jvm_flags = emulator_snapshot_jvm_flags("//prebuilts/studio/sdk:system_image_android-33_default"),
@@ -353,7 +352,6 @@ iml_test(
     timeout = "long",
     data = profilers_test_common_data + [
         ":helloworldapk",
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/android-31",
     ],
     module = ":intellij.android.profilers.integration",

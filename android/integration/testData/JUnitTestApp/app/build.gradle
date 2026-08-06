@@ -5,6 +5,7 @@ plugins {
 android {
   namespace = 'com.example.junittestapp'
   compileSdk 33
+  buildToolsVersion "37.0.0"
 
   defaultConfig {
     namespace = "com.example.junittestapp"
