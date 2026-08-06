@@ -31,6 +31,7 @@ import com.android.tools.idea.apk.viewer.ApkFileEditorComponent;
 import com.android.tools.proguard.ProguardMap;
 import com.android.tools.proguard.ProguardSeedsMap;
 import com.android.tools.proguard.ProguardUsagesMap;
+import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
@@ -81,6 +82,8 @@ import com.intellij.ui.components.JBLoadingPanel;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.concurrency.EdtExecutorService;
 import com.intellij.util.ui.EmptyIcon;
+import com.intellij.util.ui.JBEmptyBorder;
+import com.intellij.util.ui.JBUI.Borders;
 import com.intellij.util.ui.tree.TreeModelAdapter;
 import java.awt.BorderLayout;
 import java.awt.event.KeyAdapter;
@@ -111,7 +114,6 @@ import javax.swing.tree.TreePath;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.ide.PooledThreadExecutor;
-import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile;
 
 public class DexFileViewer extends UserDataHolderBase implements ApkFileEditorComponent, FileEditor {
   private final Disposable myDisposable;
@@ -189,29 +191,34 @@ public class DexFileViewer extends UserDataHolderBase implements ApkFileEditorCo
       myDeobfuscateNames = true;
       myDexTreeRenderer.setMappings(myProguardMappings);
     }
+    JBEmptyBorder padding = Borders.empty(0, 8);
     ColumnTreeBuilder builder = new ColumnTreeBuilder(myTree)
       .addColumn(new ColumnTreeBuilder.ColumnBuilder()
                    .setName("Class")
                    .setPreferredWidth(500)
                    .setHeaderAlignment(SwingConstants.LEFT)
+                   .setHeaderBorder(padding)
                    .setComparator(Comparator.comparing(DexElementNode::getName).reversed())
                    .setRenderer(myDexTreeRenderer))
       .addColumn(new ColumnTreeBuilder.ColumnBuilder()
                    .setName("Defined Methods")
                    .setPreferredWidth(100)
                    .setHeaderAlignment(SwingConstants.LEFT)
+                   .setHeaderBorder(padding)
                    .setComparator(Comparator.comparing(DexElementNode::getMethodDefinitionsCount))
                    .setRenderer(new MethodCountRenderer(true)))
       .addColumn(new ColumnTreeBuilder.ColumnBuilder()
                    .setName("Referenced Methods")
                    .setPreferredWidth(100)
                    .setHeaderAlignment(SwingConstants.LEFT)
+                   .setHeaderBorder(padding)
                    .setComparator(Comparator.comparing(DexElementNode::getMethodReferencesCount))
                    .setRenderer(new MethodCountRenderer(false)))
       .addColumn(new ColumnTreeBuilder.ColumnBuilder()
                    .setName("Size")
                    .setPreferredWidth(50)
                    .setHeaderAlignment(SwingConstants.LEFT)
+                   .setHeaderBorder(padding)
                    .setComparator(Comparator.comparing(DexElementNode::getSize))
                    .setRenderer(new SizeRenderer()));
 

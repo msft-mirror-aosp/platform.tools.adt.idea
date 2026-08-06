@@ -31,6 +31,7 @@ import com.android.tools.idea.preview.find.NodeInfo
 import com.android.tools.idea.preview.find.UAnnotationSubtreeInfo
 import com.android.tools.idea.preview.find.UastAnnotatedMethod
 import com.android.tools.idea.preview.find.UastAnnotationAttributesProvider
+import com.android.tools.idea.preview.find.anyAnnotationInGraphSync
 import com.android.tools.idea.preview.find.directPreviewChildrenCount
 import com.android.tools.idea.preview.find.findAllAnnotationsInGraph
 import com.android.tools.idea.preview.find.findPreviewDefaultValues
@@ -44,7 +45,6 @@ import com.android.tools.preview.PreviewNode
 import com.android.tools.preview.previewAnnotationToPreviewElement
 import com.google.wireless.android.sdk.stats.ComposeMultiPreviewEvent
 import com.intellij.openapi.application.readAction
-import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import kotlinx.coroutines.flow.Flow
@@ -77,10 +77,12 @@ fun UAnnotation.isPreviewAnnotation(includingMultiplatform: Boolean = true) =
 /**
  * Returns true if the [UMethod] is annotated with a @Preview annotation, taking in consideration indirect annotations with MultiPreview.
  */
+@RequiresReadLock
 @RequiresBackgroundThread
-internal fun UMethod?.hasPreviewElements() =
-  // TODO(b/381827960): avoid using runBlockingCancellable
-  this?.let { runBlockingCancellable { getPreviewElements(it).firstOrNull() } } != null
+internal fun UMethod?.hasPreviewElements(): Boolean {
+  if (this == null || !isComposable()) return false
+  return anyAnnotationInGraphSync { it.isPreviewAnnotation() }
+}
 
 /**
  * Returns true if this is not a Preview annotation, but a MultiPreview annotation, i.e. an annotation that is annotated with @Preview or
@@ -88,16 +90,10 @@ internal fun UMethod?.hasPreviewElements() =
  */
 @RequiresReadLock
 @RequiresBackgroundThread
-fun UAnnotation?.isMultiPreviewAnnotation() =
-  this?.let {
-    !it.isPreviewAnnotation() &&
-      // TODO(b/381827960): avoid using runBlockingCancellable
-      runBlockingCancellable { it.getPreviewNodes(includeAllNodes = false).firstOrNull() != null }
-  } == true
-
-/** Given a Composable method, return a sequence of [ComposePreviewElement] corresponding to its Preview annotations */
-private suspend fun getPreviewElements(uMethod: UMethod, overrideGroupName: String? = null) =
-  getPreviewNodes(uMethod, overrideGroupName, false).mapNotNull { it as? ComposePreviewElement<*> }
+fun UAnnotation?.isMultiPreviewAnnotation(): Boolean {
+  if (this == null || isPreviewAnnotation()) return false
+  return anyAnnotationInGraphSync { it.isPreviewAnnotation() }
+}
 
 /**
  * Given a Composable method, return a sequence of [PreviewNode] that are part of the method's MultiPreview graph. Notes:
@@ -185,25 +181,6 @@ private suspend fun getPreviewWrapperProviderFqn(composableMethod: UMethod): Str
   val previewWrapperAnnotation =
     composableMethod.findAllAnnotationsInGraph { readAction { it.isPreviewWrapper() } }.firstOrNull()?.element as? UAnnotation
   return readAction { (previewWrapperAnnotation?.findAttributeValue("wrapper") as? UClassLiteralExpression)?.type?.canonicalText }
-}
-
-/**
- * Convenience method for returning a sequence of [PreviewNode]s for a given [UAnnotation]. This method calls [getPreviewNodes] with the
- * composable [UMethod] attached to the [UAnnotation]. If the given [UAnnotation] is not attached to a composable method then an empty
- * sequence will be returned instead.
- *
- * @see getPreviewNodes
- */
-@RequiresReadLock
-@Slow
-private suspend fun UAnnotation.getPreviewNodes(overrideGroupName: String? = null, includeAllNodes: Boolean): Flow<PreviewNode> {
-  val composableMethod = getContainingComposableUMethod() ?: return emptyFlow()
-  return getPreviewNodes(
-    composableMethod = composableMethod,
-    overrideGroupName = overrideGroupName,
-    includeAllNodes = includeAllNodes,
-    rootSearchElement = this,
-  )
 }
 
 /**

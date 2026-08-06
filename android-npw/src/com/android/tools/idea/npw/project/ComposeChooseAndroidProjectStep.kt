@@ -60,7 +60,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.tools.idea.npw.ui.getTemplateTitle
 import com.android.tools.idea.wizard.template.Template
 import com.intellij.openapi.diagnostic.fileLogger
 import com.intellij.ui.JBColor
@@ -169,19 +168,19 @@ private fun RightSidePanel(selectedEntry: ChooseAndroidProjectEntry?) {
 }
 
 @Composable
-internal fun TemplateGrid(
-  templates: List<Template>,
-  selectedTemplate: Template?,
-  onTemplateClick: (Template?) -> Unit,
-  onTemplateDoubleClick: (Template) -> Unit = {},
+internal fun ItemGrid(
+  gridItems: List<GridItem>,
+  selectedGridItem: GridItem?,
+  onGridItemClick: (GridItem?) -> Unit,
+  onGridItemDoubleClick: (GridItem) -> Unit = {},
 ) {
   val scrollState = rememberLazyGridState()
   var hasFocus by remember { mutableStateOf(false) }
   val gridFocusRequester = remember { FocusRequester() }
 
-  LaunchedEffect(selectedTemplate) {
-    if (selectedTemplate != null) {
-      val index = templates.indexOf(selectedTemplate)
+  LaunchedEffect(selectedGridItem) {
+    if (selectedGridItem != null) {
+      val index = gridItems.indexOf(selectedGridItem)
       if (index != -1) {
         val visibleItems = scrollState.layoutInfo.visibleItemsInfo
         if (visibleItems.isNotEmpty() && !visibleItems.any { it.index == index }) {
@@ -205,45 +204,45 @@ internal fun TemplateGrid(
             .focusRequester(gridFocusRequester)
             .focusable()
             .onKeyEvent { event ->
-              if (!hasFocus || selectedTemplate == null) return@onKeyEvent false
-              val currentTemplateIndex = templates.indexOf(selectedTemplate)
+              if (!hasFocus || selectedGridItem == null) return@onKeyEvent false
+              val currentTemplateIndex = gridItems.indexOf(selectedGridItem)
 
               return@onKeyEvent when {
                 event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentTemplateIndex > columnCount - 1 -> {
-                  onTemplateClick(templates[currentTemplateIndex - columnCount])
+                  onGridItemClick(gridItems[currentTemplateIndex - columnCount])
                   true
                 }
                 event.type == KeyEventType.KeyUp &&
                   event.key == Key.DirectionDown &&
-                  currentTemplateIndex < templates.size - columnCount -> {
-                  onTemplateClick(templates[currentTemplateIndex + columnCount])
+                  currentTemplateIndex < gridItems.size - columnCount -> {
+                  onGridItemClick(gridItems[currentTemplateIndex + columnCount])
                   true
                 }
                 event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentTemplateIndex > 0 -> {
-                  onTemplateClick(templates[currentTemplateIndex - 1])
+                  onGridItemClick(gridItems[currentTemplateIndex - 1])
                   true
                 }
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentTemplateIndex < templates.size - 1 -> {
-                  onTemplateClick(templates[currentTemplateIndex + 1])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentTemplateIndex < gridItems.size - 1 -> {
+                  onGridItemClick(gridItems[currentTemplateIndex + 1])
                   true
                 }
                 else -> false
               }
             },
       ) {
-        itemsIndexed(items = templates) { _, template ->
-          val isSelected = template == selectedTemplate
+        itemsIndexed(items = gridItems) { _, gridItem ->
+          val isSelected = gridItem == selectedGridItem
           val isFocused = hasFocus && isSelected
 
-          Template(
-            template = template,
+          GridItemCell(
+            gridItem = gridItem,
             isSelected = isSelected,
             isFocused = isFocused,
-            onTemplateClick = {
-              onTemplateClick(template)
+            onGridItemClick = {
+              onGridItemClick(gridItem)
               if (!hasFocus) gridFocusRequester.requestFocus()
             },
-            onTemplateDoubleClick = { onTemplateDoubleClick(template) },
+            onGridItemDoubleClick = { onGridItemDoubleClick(gridItem) },
           )
         }
       }
@@ -253,24 +252,24 @@ internal fun TemplateGrid(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Template(
-  template: Template,
+private fun GridItemCell(
+  gridItem: GridItem,
   isSelected: Boolean,
   isFocused: Boolean,
-  onTemplateClick: () -> Unit,
-  onTemplateDoubleClick: () -> Unit,
+  onGridItemClick: () -> Unit,
+  onGridItemDoubleClick: () -> Unit,
 ) {
   Column(
     modifier =
       Modifier.fillMaxSize()
         .focusProperties { canFocus = false }
         .border(1.dp, UIUtil.getListBackground(isSelected, isFocused).toComposeColor())
-        .handleClick(onClick = onTemplateClick, onDoubleClick = onTemplateDoubleClick),
+        .handleClick(onClick = onGridItemClick, onDoubleClick = onGridItemDoubleClick),
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    TemplateImage(template)
-    TemplateText(template, isSelected, isFocused)
+    GridItemImage(gridItem)
+    GridItemText(gridItem, isSelected, isFocused)
   }
 }
 
@@ -293,15 +292,15 @@ private fun Modifier.handleClick(onClick: () -> Unit, onDoubleClick: () -> Unit)
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun TemplateImage(template: Template) {
-  if (template == Template.NoActivity) {
+private fun GridItemImage(gridItem: GridItem) {
+  if (gridItem is TemplateGridItem && gridItem.template == Template.NoActivity) {
     Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
   } else {
     val imageBitmap by
-      produceState<ImageBitmap?>(initialValue = null, template) {
+      produceState<ImageBitmap?>(initialValue = null, gridItem) {
         value =
           withContext(Dispatchers.Default) {
-            val iconUrl = template.thumb().path()
+            val iconUrl = gridItem.thumb().path()
             try {
               val bytes = withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
               bytes.decodeToImageBitmap()
@@ -321,14 +320,14 @@ private fun TemplateImage(template: Template) {
 }
 
 @Composable
-private fun TemplateText(template: Template, isSelected: Boolean, isFocused: Boolean) {
+private fun GridItemText(gridItem: GridItem, isSelected: Boolean, isFocused: Boolean) {
   Box(
     modifier = Modifier.fillMaxWidth().background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
     contentAlignment = Alignment.Center,
   ) {
     Text(
       modifier = Modifier.padding(vertical = 4.dp),
-      text = getTemplateTitle(template),
+      text = gridItem.getTitle(),
       color = UIUtil.getListForeground(isSelected, isFocused).toComposeColor(),
       textAlign = TextAlign.Center,
     )

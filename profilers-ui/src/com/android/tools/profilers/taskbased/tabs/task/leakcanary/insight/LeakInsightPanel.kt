@@ -16,6 +16,7 @@
 package com.android.tools.profilers.taskbased.tabs.task.leakcanary.insight
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +58,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import com.android.tools.profilers.leakcanary.AiInsight
 import com.android.tools.profilers.leakcanary.InsightFeedback
 import com.android.tools.profilers.leakcanary.LoadingState
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizontalDivider
 import icons.StudioIconsCompose
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -66,7 +69,9 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.icon.IntelliJIconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @OptIn(ExperimentalJewelApi::class)
@@ -84,17 +89,35 @@ fun LeakInsightPanel(
   modifier: Modifier = Modifier,
 ) {
   val clipboardManager = LocalClipboardManager.current
+  val currentInsight = (insightState as? LoadingState.Ready)?.value
+  var lastInsight by remember { mutableStateOf<AiInsight?>(null) }
+  if (currentInsight != null) {
+    lastInsight = currentInsight
+  }
+
+  val failureMessage = (insightState as? LoadingState.Failure)?.message
+  var lastFailureMessage by remember { mutableStateOf<String?>(null) }
+  if (failureMessage != null) {
+    lastFailureMessage = failureMessage
+  }
 
   Column(modifier = modifier.fillMaxWidth().fillMaxHeight()) {
     InsightHeader(onClose = onClose, modifier = Modifier.fillMaxWidth())
     ToolWindowHorizontalDivider()
 
-    Crossfade(targetState = insightState, modifier = Modifier.weight(1f)) { state ->
+    val screenState =
+      when (insightState) {
+        is LoadingState.Loading -> InsightScreenState.LOADING
+        is LoadingState.Failure -> InsightScreenState.FAILURE
+        is LoadingState.Ready -> if (insightState.value == null) InsightScreenState.EMPTY else InsightScreenState.CONTENT
+      }
+
+    Crossfade(targetState = screenState, modifier = Modifier.weight(1f)) { state ->
       Box(modifier = Modifier.fillMaxSize()) {
         when (state) {
-          is LoadingState.Loading -> InsightLoadingState(modifier = Modifier.fillMaxSize())
-          is LoadingState.Ready -> {
-            val insight = state.value
+          InsightScreenState.LOADING -> InsightLoadingState(modifier = Modifier.fillMaxSize())
+          InsightScreenState.CONTENT -> {
+            val insight = currentInsight ?: lastInsight
             if (insight != null) {
               InsightContent(
                 insight = insight,
@@ -106,25 +129,27 @@ fun LeakInsightPanel(
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
               )
-            } else {
-              InsightEmptyState(
-                isLeakSelected = isLeakSelected,
-                autoGenerateEnabled = autoGenerateEnabled,
-                onAutoGenerateChange = onAutoGenerateChange,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
-              )
             }
           }
-          is LoadingState.Failure ->
-            InsightFailureState(errorMessage = state.message, onRefresh = onRefresh, modifier = Modifier.fillMaxSize())
+          InsightScreenState.EMPTY -> {
+            InsightEmptyState(
+              isLeakSelected = isLeakSelected,
+              autoGenerateEnabled = autoGenerateEnabled,
+              onAutoGenerateChange = onAutoGenerateChange,
+              onRefresh = onRefresh,
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
+          InsightScreenState.FAILURE -> {
+            val message = failureMessage ?: lastFailureMessage ?: "Unknown error"
+            InsightFailureState(errorMessage = message, onRefresh = onRefresh, modifier = Modifier.fillMaxSize())
+          }
         }
       }
     }
 
     ToolWindowHorizontalDivider()
 
-    val currentInsight = (insightState as? LoadingState.Ready)?.value
     InsightFooter(
       isFixEnabled = currentInsight != null,
       onGenerateFix = { currentInsight?.rawInsight?.let { onGenerateFix(it) } },
@@ -209,6 +234,7 @@ private fun InsightContent(
   modifier: Modifier = Modifier,
 ) {
   val scrollState = rememberScrollState()
+  LaunchedEffect(insight.rawInsight) { scrollState.scrollTo(0) }
   Box(modifier = modifier) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 16.dp, vertical = 12.dp)) {
       Text(text = "From ${insight.modelName}", color = JewelTheme.globalColors.text.info, fontWeight = FontWeight.Medium)
@@ -225,6 +251,33 @@ private fun InsightContent(
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun InsightActionButton(
+  tooltipText: String,
+  iconKey: IntelliJIconKey,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  isSelected: Boolean = false,
+) {
+  Tooltip(tooltip = { Text(tooltipText) }) {
+    IconButton(
+      onClick = onClick,
+      modifier =
+        modifier.then(
+          if (isSelected) {
+            Modifier.background(color = JewelTheme.globalColors.text.info.copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp))
+              .border(width = 1.dp, color = JewelTheme.globalColors.text.info.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
+          } else {
+            Modifier
+          }
+        ),
+    ) {
+      Icon(key = iconKey, contentDescription = tooltipText)
+    }
+  }
+}
+
 @Composable
 private fun InsightFeedbackToolbar(
   feedback: InsightFeedback?,
@@ -234,44 +287,28 @@ private fun InsightFeedbackToolbar(
   modifier: Modifier = Modifier,
 ) {
   Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-    IconButton(
-      onClick = {
-        if (feedback == InsightFeedback.THUMBS_UP) {
-          onFeedback(null)
-        } else {
-          onFeedback(InsightFeedback.THUMBS_UP)
-        }
-      },
-      modifier =
-        if (feedback == InsightFeedback.THUMBS_UP) {
-          Modifier.background(color = JewelTheme.globalColors.text.info.copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp))
-            .border(width = 1.dp, color = JewelTheme.globalColors.text.info.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
-        } else {
-          Modifier
-        },
-    ) {
-      Icon(key = StudioIconsCompose.Common.Like, contentDescription = "Upvote Insight")
-    }
-    IconButton(
-      onClick = {
-        if (feedback == InsightFeedback.THUMBS_DOWN) {
-          onFeedback(null)
-        } else {
-          onFeedback(InsightFeedback.THUMBS_DOWN)
-        }
-      },
-      modifier =
-        if (feedback == InsightFeedback.THUMBS_DOWN) {
-          Modifier.background(color = JewelTheme.globalColors.text.info.copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp))
-            .border(width = 1.dp, color = JewelTheme.globalColors.text.info.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp))
-        } else {
-          Modifier
-        },
-    ) {
-      Icon(key = StudioIconsCompose.Common.Dislike, contentDescription = "Downvote Insight")
-    }
-    IconButton(onClick = onCopyClick) { Icon(key = AllIconsKeys.Actions.Copy, contentDescription = "Copy Insight") }
-    IconButton(onClick = onRefresh) { Icon(key = AllIconsKeys.Actions.Refresh, contentDescription = "Regenerate Insight") }
+    InsightActionButton(
+      tooltipText = TaskBasedUxStrings.LEAKCANARY_UPVOTE_INSIGHT,
+      iconKey = StudioIconsCompose.Common.Like,
+      onClick = { onFeedback(if (feedback == InsightFeedback.THUMBS_UP) null else InsightFeedback.THUMBS_UP) },
+      isSelected = feedback == InsightFeedback.THUMBS_UP,
+    )
+    InsightActionButton(
+      tooltipText = TaskBasedUxStrings.LEAKCANARY_DOWNVOTE_INSIGHT,
+      iconKey = StudioIconsCompose.Common.Dislike,
+      onClick = { onFeedback(if (feedback == InsightFeedback.THUMBS_DOWN) null else InsightFeedback.THUMBS_DOWN) },
+      isSelected = feedback == InsightFeedback.THUMBS_DOWN,
+    )
+    InsightActionButton(
+      tooltipText = TaskBasedUxStrings.LEAKCANARY_COPY_INSIGHT,
+      iconKey = AllIconsKeys.Actions.Copy,
+      onClick = onCopyClick,
+    )
+    InsightActionButton(
+      tooltipText = TaskBasedUxStrings.LEAKCANARY_REGENERATE_INSIGHT,
+      iconKey = AllIconsKeys.Actions.Refresh,
+      onClick = onRefresh,
+    )
   }
 }
 
@@ -333,4 +370,11 @@ private fun InsightFooter(
       }
     }
   }
+}
+
+private enum class InsightScreenState {
+  LOADING,
+  FAILURE,
+  EMPTY,
+  CONTENT,
 }

@@ -244,6 +244,10 @@
   <extensions defaultExtensionNs="com.android.tools.idea.imports">
     <androidMavenImportToken implementation="com.android.tools.idea.imports.AndroidMavenImportGradleToken"/>
   </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.projectsystem">
+    <buildBundleActionToken implementation="com.android.tools.idea.projectsystem.gradle.BuildBundleActionTokenGradle"/>
+    <buildApkActionToken implementation="com.android.tools.idea.projectsystem.gradle.BuildApkActionTokenGradle"/>
+  </extensions>
   <projectListeners>
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
               topic="com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener"/>
@@ -380,8 +384,8 @@
     </group>
     <group id="Android.BuildApkOrBundle" class="com.android.tools.idea.gradle.actions.BuildApkOrBundleActionGroup" text="Generate App Bundles or APKs" popup="true">
       <add-to-group group-id="BuildMenu" anchor="last"/>
-      <action id="Android.BuildApk" class="com.android.tools.idea.gradle.actions.GenerateApkAction"/>
-      <action id="Android.BuildBundle" class="com.android.tools.idea.gradle.actions.GenerateBundleAction"/>
+      <action id="Android.BuildApk" class="com.android.tools.idea.projectsystem.actions.GenerateApkAction"/>
+      <action id="Android.BuildBundle" class="com.android.tools.idea.projectsystem.actions.GenerateBundleAction"/>
     </group>
     <action id="Android.GenerateSignedApk" class="org.jetbrains.android.actions.GenerateSignedAppBundleOrApkAction">
       <add-to-group group-id="BuildMenu" anchor="last"/>

@@ -23,6 +23,7 @@ import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.model.NewProjectModuleModel
 import com.android.tools.idea.npw.template.ConfigureTemplateParametersStep
 import com.android.tools.idea.npw.template.TemplateResolver
+import com.android.tools.idea.npw.template.WizardPluginPromotionTemplateProvider
 import com.android.tools.idea.observable.core.BoolValueProperty
 import com.android.tools.idea.observable.core.ObservableBool
 import com.android.tools.idea.wizard.model.ModelWizard.Facade
@@ -32,6 +33,8 @@ import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.TemplateFlag
 import com.android.tools.idea.wizard.template.WizardUiContext
 import com.google.common.base.Suppliers
+import com.intellij.ide.plugins.PluginManagerCore
+import com.intellij.openapi.extensions.PluginId
 import java.util.function.Supplier
 import javax.swing.JComponent
 import kotlinx.coroutines.Dispatchers
@@ -65,14 +68,15 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
 
     coroutineScope.launch { uiModel.getAndroidProjectEntries() }
 
-    uiModel.onTemplateDoubleClick = { wizard.goForward() }
+    uiModel.onGridItemDoubleClick = { wizard.goForward() }
 
     // Might not be needed
     FormScalingUtil.scaleComponentTree(this.javaClass, rootView)
   }
 
   override fun onProceeding() {
-    uiModel.selectedAndroidProjectEntry?.onProceeding(newProjectModuleModel!!, model)
+    val entry = uiModel.selectedAndroidProjectEntry ?: return
+    entry.onProceeding(newProjectModuleModel!!, model)
   }
 
   override fun canGoForward(): ObservableBool = canGoForward
@@ -86,12 +90,18 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
   override fun getPreferredFocusComponent(): JComponent = rootView
 
   companion object {
-    fun FormFactor.getProjectTemplates() =
-      if (includeNoActivity) {
-        listOf(Template.NoActivity) + this.getNewProjectTemplates()
-      } else {
-        this.getNewProjectTemplates()
-      }
+    fun FormFactor.getProjectTemplates(): List<GridItem> {
+      val newProjectTemplates =
+        if (includeNoActivity) {
+          listOf(Template.NoActivity) + this.getNewProjectTemplates()
+        } else {
+          this.getNewProjectTemplates()
+        }
+
+      val pluginPromotionTemplates = this.getPluginPromotionTemplates()
+
+      return newProjectTemplates.map { TemplateGridItem(it) } + pluginPromotionTemplates.map { PluginPromotionGridItem(it) }
+    }
 
     /** Indicates which form factor in the Project Chooser this form factor should be grouped under. */
     private fun FormFactor.projectChooserCategory() =
@@ -106,6 +116,11 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
           it.formFactor.projectChooserCategory() == this &&
           (!it.flags.contains(TemplateFlag.NewProjectAgent) || StudioFlags.NPW_SHOW_NPA_TEMPLATES.get())
       }
+
+    private fun FormFactor.getPluginPromotionTemplates() =
+      WizardPluginPromotionTemplateProvider.getAllPromotionTemplates()
+        .filter { it.formFactor == this }
+        .filterNot { PluginManagerCore.isPluginInstalled(PluginId.getId(it.pluginId)) }
 
     private fun createFormFactors(): List<FormFactor> = FormFactor.values().filterNot { it.getProjectTemplates().isEmpty() }
   }

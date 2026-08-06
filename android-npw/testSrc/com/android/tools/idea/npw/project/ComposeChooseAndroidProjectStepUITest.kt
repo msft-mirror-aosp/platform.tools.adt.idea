@@ -29,7 +29,13 @@ import androidx.compose.ui.test.performTouchInput
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
+import com.android.tools.idea.npw.template.PluginPromotionTemplate
+import com.android.tools.idea.npw.template.WizardPluginPromotionTemplateProvider
+import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.wizard.template.FormFactor
+import com.android.tools.idea.wizard.template.Thumb
+import com.intellij.openapi.extensions.ExtensionPointName
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
 import java.util.function.Supplier
 import kotlin.test.assertEquals
@@ -116,7 +122,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     assertEquals(
       mobileTemplates[mobileTemplates.size - 1].name,
-      (model.chooseAndroidProjectEntries[1] as FormFactorProjectEntry).selectedTemplate?.name,
+      (model.chooseAndroidProjectEntries[1] as FormFactorProjectEntry).selectedGridItem?.name,
     )
   }
 
@@ -157,7 +163,7 @@ class ComposeChooseAndroidProjectStepUITest {
     var callbackTriggered = false
     val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
     val model = ChooseAndroidProjectStepModel(formFactorSupplier)
-    model.onTemplateDoubleClick = { callbackTriggered = true }
+    model.onGridItemDoubleClick = { callbackTriggered = true }
     model.getAndroidProjectEntries()
 
     composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
@@ -186,11 +192,11 @@ class ComposeChooseAndroidProjectStepUITest {
 
     // Click 'No Activity' (index 0 in Row 1)
     templateGrid.onChildren()[0].performClick()
-    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
 
     // Click subsequent template in the next row / index 1
     templateGrid.onChildren()[1].performClick()
-    assertEquals(wearTemplates[1].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+    assertEquals(wearTemplates[1].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
 
     // Also verify in Mobile (Phone and Tablet)
     composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).performClick()
@@ -200,9 +206,108 @@ class ComposeChooseAndroidProjectStepUITest {
     // In Phone, auto focus lands on default (e.g. Empty Compose Activity at index 1). Verify we can click index 0 (No Activity) and index 2
     // (Gemini API / next item).
     templateGrid.onChildren()[0].performClick()
-    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
 
     templateGrid.onChildren()[2].performClick()
-    assertEquals(mobileTemplates[2].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedTemplate?.name)
+    assertEquals(mobileTemplates[2].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
   }
+
+  @Test
+  fun showPluginPromotionTemplateInGrid() = runTest {
+    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(false)
+    registerPromotionTemplates(FakePluginPromotionTemplate(PROMOTION_NAME, PROMOTION_PLUGIN_ID, FormFactor.Mobile))
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    model.getAndroidProjectEntries()
+
+    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
+
+    composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).assertExists().performClick()
+
+    // The Mobile template grid now includes the registered promotion template.
+    composeTestRule
+      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
+      .onChildren()
+      .assertCountEquals(FormFactor.Mobile.getProjectTemplates().size)
+
+    composeTestRule.onNodeWithText(PROMOTION_NAME, substring = true).assertExists()
+  }
+
+  @Test
+  fun selectingPluginPromotionTemplateUpdatesSelectedTemplate() = runTest {
+    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(false)
+    registerPromotionTemplates(FakePluginPromotionTemplate(PROMOTION_NAME, PROMOTION_PLUGIN_ID, FormFactor.Mobile))
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    val mobileTemplateInfos = FormFactor.Mobile.getProjectTemplates()
+    model.getAndroidProjectEntries()
+
+    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
+
+    composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).assertExists().performClick()
+
+    // The promotion template is appended after the regular templates, so it is the last cell.
+    composeTestRule
+      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
+      .onChildren()[mobileTemplateInfos.size - 1]
+      .performClick()
+
+    val selectedGridItem = (model.chooseAndroidProjectEntries[0] as FormFactorProjectEntry).selectedGridItem
+    assertEquals(PROMOTION_PLUGIN_ID, (selectedGridItem as PluginPromotionGridItem).pluginId)
+  }
+
+  @Test
+  fun pluginPromotionTemplateAppearsOnlyForItsFormFactor() = runTest {
+    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(false)
+    registerPromotionTemplates(FakePluginPromotionTemplate(PROMOTION_NAME, PROMOTION_PLUGIN_ID, FormFactor.Wear))
+    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
+    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
+    model.getAndroidProjectEntries()
+
+    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
+
+    // The Mobile grid must not show the Wear-only promotion template.
+    composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).assertExists().performClick()
+    composeTestRule.onNodeWithText(PROMOTION_NAME, substring = true).assertDoesNotExist()
+
+    // Switching to Wear reveals the promotion template in its grid.
+    composeTestRule.onNodeWithText(FormFactor.Wear.displayName).performClick()
+
+    composeTestRule
+      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
+      .onChildren()
+      .assertCountEquals(FormFactor.Wear.getProjectTemplates().size)
+
+    composeTestRule.onNodeWithText(PROMOTION_NAME, substring = true).assertExists()
+  }
+
+  private fun registerPromotionTemplates(vararg templates: PluginPromotionTemplate) {
+    ExtensionTestUtil.maskExtensions(
+      PROMOTION_EP_NAME,
+      listOf(FakeWizardPluginPromotionTemplateProvider(templates.toList())),
+      projectRule.disposable,
+    )
+  }
+}
+
+private const val PROMOTION_NAME = "Test Promotion Plugin"
+private const val PROMOTION_PLUGIN_ID = "com.example.testpromotion"
+
+private val PROMOTION_EP_NAME =
+  ExtensionPointName<WizardPluginPromotionTemplateProvider>("com.android.tools.idea.npw.template.wizardPluginPromotionTemplateProvider")
+
+private val fakeThumbUrl by lazy {
+  val file = java.io.File.createTempFile("fake_thumb", ".png").apply { deleteOnExit() }
+  javax.imageio.ImageIO.write(java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB), "png", file)
+  file.toURI().toURL()
+}
+
+private class FakePluginPromotionTemplate(override val name: String, override val pluginId: String, override val formFactor: FormFactor) :
+  PluginPromotionTemplate {
+  override fun thumb(): Thumb = Thumb { fakeThumbUrl }
+}
+
+private class FakeWizardPluginPromotionTemplateProvider(private val templates: List<PluginPromotionTemplate>) :
+  WizardPluginPromotionTemplateProvider() {
+  override fun getTemplates(): List<PluginPromotionTemplate> = templates
 }
