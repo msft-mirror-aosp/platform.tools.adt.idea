@@ -73,9 +73,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.jewel.bridge.toComposeColor
-import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
-import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
-import org.jetbrains.jewel.foundation.lazy.SelectionMode
+import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyColumn
+import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyListState
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -112,7 +111,7 @@ private fun LeftSidePanel(
 ) {
   val focusRequester = remember { FocusRequester() }
   val stateList = remember {
-    SelectableLazyListState(lazyListState = LazyListState()).apply {
+    SingleSelectionLazyListState(lazyListState = LazyListState(), initialSelectedKey = selectedEntry).apply {
       // Initialize state based on selectedEntry, i.e., restore previous selection state
       val selectedEntryIndex = entries.indexOf(selectedEntry)
       if (selectedEntryIndex >= 0) {
@@ -128,9 +127,8 @@ private fun LeftSidePanel(
       text = "Templates",
       color = JBColor(0x999999, 0x787878).toComposeColor(),
     )
-    SelectableLazyColumn(
+    SingleSelectionLazyColumn(
       modifier = Modifier.testTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column).focusRequester(focusRequester),
-      selectionMode = SelectionMode.Single,
       onSelectedIndexesChange = { newSelectedList ->
         val newSelectedCell = newSelectedList.firstOrNull()
         updateEntrySelected(if (newSelectedCell != null) entries[newSelectedCell] else null)
