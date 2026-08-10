@@ -52,7 +52,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
   }
 
   fun testLaunch() {
-    state.launch(device, app, TestApksProvider(apk, "com.example.myapplication"), false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, null, app, TestApksProvider(apk, "com.example.myapplication"), false, "", EmptyTestConsoleView(), stats)
 
     Mockito.verify(device)
       .executeShellCommand(
@@ -74,7 +74,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
         )
       )
 
-    state.launch(device, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, null, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
 
     Mockito.verify(device)
       .executeShellCommand(
@@ -97,7 +97,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
       )
 
     val exception =
-      assertFailsWith<IllegalStateException> { state.launch(device, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
+      assertFailsWith<IllegalStateException> { state.launch(device, null, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
 
     assertThat(exception.message).isEqualTo("No matching APK for application: com.example.myapplication\n")
   }
@@ -112,7 +112,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
       )
 
     val exception =
-      assertFailsWith<IllegalStateException> { state.launch(device, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
+      assertFailsWith<IllegalStateException> { state.launch(device, null, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
 
     assertThat(exception.message)
       .isEqualTo(
@@ -130,7 +130,9 @@ Projects:
     val emptyApkProvider = TestApksProvider(emptyList())
 
     val exception =
-      assertFailsWith<AndroidExecutionException> { state.launch(device, app, emptyApkProvider, false, "", EmptyTestConsoleView(), stats) }
+      assertFailsWith<AndroidExecutionException> {
+        state.launch(device, null, app, emptyApkProvider, false, "", EmptyTestConsoleView(), stats)
+      }
 
     assertThat(exception.message).isEqualTo("No APKs provided. Unable to extract default activity")
   }

@@ -27,6 +27,9 @@ import com.android.tools.deployer.common.DeviceHolder;
 import com.android.tools.deployer.common.InstallOptions;
 import com.android.tools.deployer.install.InstallMode;
 import com.android.tools.deployer.model.App;
+import com.android.adblib.AdbSession;
+import com.android.adblib.ConnectedDevice;
+import com.android.tools.idea.adblib.AdbLibService;
 import com.android.tools.deployer.common.Canceller;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.ApkInfo;
@@ -36,6 +39,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class DeployTask extends AbstractDeployTask {
 
@@ -78,6 +82,7 @@ public class DeployTask extends AbstractDeployTask {
 
   @Override
   protected Deployer.Result perform(IDevice device,
+                                    @Nullable ConnectedDevice connectedDevice,
                                     Deployer deployer,
                                     @NotNull ApkInfo apkInfo,
                                     @NotNull Canceller canceller) throws DeployerException {
@@ -146,7 +151,10 @@ public class DeployTask extends AbstractDeployTask {
     }
 
     // Skip verification if possible.
-    options.setSkipVerification(new DeviceHolder(device, null), apkInfo.getApplicationId());
+    AdbSession adbSession = AdbLibService.getSession(getProject());
+    options.setSkipVerification(
+        new DeviceHolder(device, connectedDevice, adbSession),
+        apkInfo.getApplicationId());
 
     LOG.info("Installing application: " + apkInfo.getApplicationId());
     InstallMode installMode = InstallMode.DELTA;

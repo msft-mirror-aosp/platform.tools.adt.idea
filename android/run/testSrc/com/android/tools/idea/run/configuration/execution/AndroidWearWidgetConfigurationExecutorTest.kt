@@ -97,7 +97,7 @@ class AndroidWearWidgetConfigurationExecutorTest : AndroidConfigurationExecutorB
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
     val executor = createExecutor(device)
 
-    val exception = assertThrows(ExecutionException::class.java) { executor.launch(device, mock(), mock(), isDebug = false, mock()) }
+    val exception = assertThrows(ExecutionException::class.java) { executor.launch(device, null, mock(), mock(), isDebug = false, mock()) }
 
     assertThat(exception.message).contains("Protolayout renderer was not found on the device.")
     assertThat(exception.message).contains("Wear Widgets require version 1.6.1 or higher")
@@ -119,7 +119,7 @@ class AndroidWearWidgetConfigurationExecutorTest : AndroidConfigurationExecutorB
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
     val executor = createExecutor(device)
 
-    val exception = assertThrows(ExecutionException::class.java) { executor.launch(device, mock(), mock(), isDebug = false, mock()) }
+    val exception = assertThrows(ExecutionException::class.java) { executor.launch(device, null, mock(), mock(), isDebug = false, mock()) }
 
     assertThat(exception.message).contains("The Protolayout renderer version on the device (1.6.0) is too low.")
     assertThat(exception.message).contains("Wear Widgets require version 1.6.1 or higher")

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
+import com.android.adblib.ConnectedDevice
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.MultiLineReceiver
@@ -27,6 +28,7 @@ import com.android.tools.deployer.model.component.ComponentType
 import com.android.tools.deployer.model.component.Tile
 import com.android.tools.deployer.model.component.Tile.ShellCommand.SHOW_TILE_COMMAND
 import com.android.tools.deployer.modelv1.component.CommandResultReceiverV1
+import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.WearSurfaceLaunchOptions
@@ -61,7 +63,14 @@ class AndroidTileConfigurationExecutor(
   }
 
   @WorkerThread
-  override fun launch(device: IDevice, app: App, console: ConsoleView, isDebug: Boolean, indicator: ProgressIndicator) {
+  override fun launch(
+    device: IDevice,
+    connectedDevice: ConnectedDevice?,
+    app: App,
+    console: ConsoleView,
+    isDebug: Boolean,
+    indicator: ProgressIndicator,
+  ) {
     ProgressManager.checkCanceled()
     val mode = if (isDebug) AppComponent.Mode.DEBUG else AppComponent.Mode.RUN
 
@@ -75,21 +84,28 @@ class AndroidTileConfigurationExecutor(
 
     // TODO(b/226550406): Only add this sleep for older versions where the race condition exists.
     Thread.sleep(Duration.ofSeconds(2).toMillis())
-    val tileIndex = setWatchTile(app, mode, indicator, console, device)
+    val tileIndex = setWatchTile(app, mode, indicator, console, device, connectedDevice)
     val showTileCommand = SHOW_TILE_COMMAND + tileIndex!!
     val showTileReceiver = CommandResultReceiverV1()
     device.executeShellCommand(showTileCommand, console, showTileReceiver, indicator = indicator)
     verifyResponse(showTileReceiver, console)
   }
 
-  private fun setWatchTile(app: App, mode: AppComponent.Mode, indicator: ProgressIndicator?, console: ConsoleView, device: IDevice): Int? {
+  private fun setWatchTile(
+    app: App,
+    mode: AppComponent.Mode,
+    indicator: ProgressIndicator?,
+    console: ConsoleView,
+    device: IDevice,
+    connectedDevice: ConnectedDevice?,
+  ): Int? {
     val outputReceiver = RecordOutputReceiver { indicator?.isCanceled == true }
     val consoleReceiver = ConsoleOutputReceiver({ indicator?.isCanceled == true }, console)
     val indexReceiver = AddTileCommandResultReceiver { indicator?.isCanceled == true }
     val receiver = MultiReceiver(outputReceiver, consoleReceiver, indexReceiver)
     try {
-      getActivator(app)
-        .activate(tileLaunchOptions.componentType, tileLaunchOptions.componentName!!, mode, receiver, DeviceHolder(device, null))
+      val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibService.getSession(environment.project))
+      getActivator(app).activate(tileLaunchOptions.componentType, tileLaunchOptions.componentName!!, mode, receiver, deviceHolder)
     } catch (ex: DeployerException) {
       throw ExecutionException("Error while setting the tile, message: ${outputReceiver.getOutput().ifEmpty { ex.details }}", ex)
     }
