@@ -2202,6 +2202,11 @@ public final class StudioFlags {
                     "Enable Agent Tabs",
                     "Enables opening the Agent UI as Editor Tabs.");
 
+  public static final Flag<Boolean> STUDIOBOT_AGENT_NESTED_EDITOR_ENABLED =
+    new BooleanFlag(STUDIOBOT, "agent.nested.editor.enabled",
+                    "Enable Agent Nested Editor",
+                    "Enables opening files in a nested editor inside the Agent Tab.");
+
   public static final Flag<Boolean> STUDIOBOT_NPA_ONBOARDING_ENABLED =
     new BooleanFlag(STUDIOBOT, "npa.onboarding.enabled",
                     "Enable NPA Onboarding",
