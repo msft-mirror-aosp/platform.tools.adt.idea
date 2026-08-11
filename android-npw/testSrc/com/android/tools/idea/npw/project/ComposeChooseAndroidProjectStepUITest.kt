@@ -29,6 +29,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.npw.model.NewProjectModel
+import com.android.tools.idea.npw.model.NewProjectModuleModel
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
 import com.android.tools.idea.npw.template.PluginPromotionTemplate
 import com.android.tools.idea.npw.template.WizardPluginPromotionTemplateProvider
@@ -38,16 +40,34 @@ import com.android.tools.idea.wizard.template.Thumb
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
+import java.awt.image.BufferedImage
+import java.io.File
 import java.util.function.Supplier
+import javax.imageio.ImageIO
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 class ComposeChooseAndroidProjectStepUITest {
   @get:Rule val composeTestRule = createStudioComposeTestRule()
   @get:Rule val projectRule = ProjectRule()
+
+  private var originalNewTemplateEngineFlag: Boolean = false
+
+  @Before
+  fun setUp() {
+    originalNewTemplateEngineFlag = StudioFlags.NPW_NEW_TEMPLATE_ENGINE.get()
+    StudioFlags.NPW_NEW_TEMPLATE_ENGINE.override(false)
+  }
+
+  @After
+  fun tearDown() {
+    StudioFlags.NPW_NEW_TEMPLATE_ENGINE.override(originalNewTemplateEngineFlag)
+  }
 
   @Test
   fun showMobileFormFactorAsDefaultFocus() = runTest {
@@ -100,10 +120,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
         override val canGoForward = mutableStateOf(true)
 
-        override fun onProceeding(
-          newProjectModuleModel: com.android.tools.idea.npw.model.NewProjectModuleModel,
-          model: com.android.tools.idea.npw.model.NewProjectModel,
-        ) {}
+        override fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel) {}
       }
     model.updateSelectedCell(customEntry)
     model.getAndroidProjectEntries()
@@ -138,10 +155,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
         override val canGoForward = mutableStateOf(true)
 
-        override fun onProceeding(
-          newProjectModuleModel: com.android.tools.idea.npw.model.NewProjectModuleModel,
-          model: com.android.tools.idea.npw.model.NewProjectModel,
-        ) {}
+        override fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel) {}
       }
     model.updateSelectedCell(customAiEntry)
     model.getAndroidProjectEntries()
@@ -199,8 +213,8 @@ class ComposeChooseAndroidProjectStepUITest {
       .assertCountEquals(FormFactor.Mobile.getProjectTemplates().size)
 
     assertEquals(
-      mobileTemplates[mobileTemplates.size - 1].name,
-      (model.chooseAndroidProjectEntries.filterIsInstance<FormFactorProjectEntry>().first()).selectedGridItem?.name,
+      mobileTemplates[mobileTemplates.size - 1].title,
+      (model.chooseAndroidProjectEntries.filterIsInstance<FormFactorProjectEntry>().first()).selectedGridItem?.title,
     )
   }
 
@@ -270,11 +284,11 @@ class ComposeChooseAndroidProjectStepUITest {
 
     // Click 'No Activity' (index 0 in Row 1)
     templateGrid.onChildren()[0].performClick()
-    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
+    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.title)
 
     // Click subsequent template in the next row / index 1
     templateGrid.onChildren()[1].performClick()
-    assertEquals(wearTemplates[1].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
+    assertEquals(wearTemplates[1].title, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.title)
 
     // Also verify in Mobile (Phone and Tablet)
     composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).performClick()
@@ -284,10 +298,10 @@ class ComposeChooseAndroidProjectStepUITest {
     // In Phone, auto focus lands on default (e.g. Empty Compose Activity at index 1). Verify we can click index 0 (No Activity) and index 2
     // (Gemini API / next item).
     templateGrid.onChildren()[0].performClick()
-    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
+    assertEquals("No Activity", (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.title)
 
     templateGrid.onChildren()[2].performClick()
-    assertEquals(mobileTemplates[2].name, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.name)
+    assertEquals(mobileTemplates[2].title, (model.selectedAndroidProjectEntry as FormFactorProjectEntry).selectedGridItem?.title)
   }
 
   @Test
@@ -376,8 +390,8 @@ private val PROMOTION_EP_NAME =
   ExtensionPointName<WizardPluginPromotionTemplateProvider>("com.android.tools.idea.npw.template.wizardPluginPromotionTemplateProvider")
 
 private val fakeThumbUrl by lazy {
-  val file = java.io.File.createTempFile("fake_thumb", ".png").apply { deleteOnExit() }
-  javax.imageio.ImageIO.write(java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB), "png", file)
+  val file = File.createTempFile("fake_thumb", ".png").apply { deleteOnExit() }
+  ImageIO.write(BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), "png", file)
   file.toURI().toURL()
 }
 

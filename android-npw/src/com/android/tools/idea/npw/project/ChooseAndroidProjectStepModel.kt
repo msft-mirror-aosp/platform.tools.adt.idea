@@ -108,7 +108,7 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
       val promotionMatch = gridItems.filterIsInstance<PluginPromotionGridItem>().firstOrNull { it.pluginId == promotedTemplate.pluginId }
       if (promotionMatch != null) return promotionMatch
     }
-    return gridItems.firstOrNull { it.getTitle() == emptyItemLabel }
+    return gridItems.firstOrNull { it.title == emptyItemLabel }
       ?: gridItems.filterIsInstance<TemplateGridItem>().firstOrNull { it.template != Template.NoActivity }
   }
 
