@@ -34,17 +34,14 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
-import org.jetbrains.kotlin.analysis.api.KaImplementationDetail
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptions
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptionsBuilder
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationResult
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationTarget
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnostic
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.diagnostics.getDefaultMessageWithFactoryName
-import org.jetbrains.kotlin.analysis.api.impl.base.components.KaBaseCompilationOptionsBuilder
 import org.jetbrains.kotlin.analysis.api.projectStructure.contextModule
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.facet.implementingModules
 import org.jetbrains.kotlin.idea.base.facet.platform.platform
 import org.jetbrains.kotlin.idea.base.projectStructure.toKaSourceModuleForProduction
@@ -66,11 +63,8 @@ internal class LiveEditCompilerForK2(private val project: Project, private val m
     inputs: Collection<LiveEditCompilerInput>,
   ) = runWithCompileLock {
     LOGGER.info("Using Live Edit K2 CodeGen")
-    val configuration = runReadActionBlocking {
-      readActionPrebuildChecks(project, file)
-      applicationLiveEditServices.getKotlinCompilerConfiguration(file)
-    }
-    val result = backendCodeGenForK2(file, module, configuration)
+    runReadActionBlocking { readActionPrebuildChecks(project, file) }
+    val result = backendCodeGenForK2(file, module) { with(applicationLiveEditServices) { configureKotlinCompilerOptions(file) } }
     return@runWithCompileLock result.output.map { OutputFileForKtCompiledFile(it) }
   }
 }
@@ -95,7 +89,7 @@ private fun getCompileTargetFile(original: KtFile, module: Module): KtFile {
 }
 
 @OptIn(KaExperimentalApi::class)
-fun backendCodeGenForK2(file: KtFile, module: Module, configuration: CompilerConfiguration): KaCompilationResult.Success {
+fun backendCodeGenForK2(file: KtFile, module: Module, configurator: KaCompilationOptionsBuilder.() -> Unit): KaCompilationResult.Success {
   // TODO(316965795): Check the performance and the responsiveness once we complete K2 LE implementation.
   //                  Add/remove ProgressManager.checkCanceled() based on the performance and the responsiveness.
   ProgressManager.checkCanceled()
@@ -118,14 +112,11 @@ fun backendCodeGenForK2(file: KtFile, module: Module, configuration: CompilerCon
 
     val substituteFile = getCompileTargetFile(file, module)
     analyze(substituteFile) {
-      @OptIn(KaImplementationDetail::class) // TODO(b/535771719): fully migrate to the new compilation API; stop using CompilerConfiguration.
-      val options: KaCompilationOptions =
-        KaBaseCompilationOptionsBuilder(token, configuration)
-          .apply {
-            target(KaCompilationTarget.JVM)
-            allowedErrorFilter { false } // Always report diagnostic errors, do not filter.
-          }
-          .build()
+      val options = createCompilationOptions {
+        target(KaCompilationTarget.JVM)
+        allowedErrorFilter { false } // Always report diagnostic errors, do not filter.
+        configurator()
+      }
       when (val result = this@analyze.compile(substituteFile, options)) {
         is KaCompilationResult.Success -> result
         is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage() })
