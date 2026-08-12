@@ -2057,6 +2057,14 @@ public final class StudioFlags {
       "Activate migration of device streaming from FTL to DDP"
     );
 
+  public static final Flag<Boolean> DIRECT_ACCESS_CLOUD_BRANDING =
+    new BooleanFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.cloud.branding",
+      "Update Device Streaming branding",
+      "Update the Device Streaming branding from Firebase to Google Cloud"
+    );
+
   // endregion Firebase Test Lab
 
   // region App Insights
