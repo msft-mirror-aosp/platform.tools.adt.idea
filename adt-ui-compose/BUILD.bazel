@@ -19,6 +19,7 @@ iml_module(
         "@intellij//:intellij.libraries.compose.runtime.desktop",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.autolink",
     ],
     # do not sort: must match IML order
     deps = [
@@ -33,6 +34,7 @@ iml_module(
         "@intellij//:intellij.libraries.compose.runtime.desktop",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.autolink",
     ],
 )
 
