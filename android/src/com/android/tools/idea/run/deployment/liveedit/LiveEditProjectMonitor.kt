@@ -16,6 +16,7 @@
 package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.annotations.Trace
+import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
@@ -26,11 +27,14 @@ import com.android.tools.deploy.proto.Deploy.UnsupportedChange
 import com.android.tools.deployer.AdbInstaller
 import com.android.tools.deployer.MetricsRecorder
 import com.android.tools.deployer.common.AdbClient
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.common.Installer
 import com.android.tools.deployer.tasks.LiveUpdateDeployer
 import com.android.tools.deployer.tasks.LiveUpdateDeployer.UpdateLiveEditError
 import com.android.tools.deployer.tasks.LiveUpdateDeployer.UpdateLiveEditResult
 import com.android.tools.deployer.tasks.LiveUpdateDeployer.UpdateLiveEditsParam
+import com.android.tools.idea.adblib.AdbLibService
+import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration
 import com.android.tools.idea.editors.liveedit.LiveEditService
@@ -52,6 +56,7 @@ import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -574,10 +579,11 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
     return true
   }
 
+  @WorkerThread
   private fun pushUpdatesToDevice(applicationId: String, device: IDevice, update: LiveEditDesugarResponse): UpdateLiveEditResult {
     val deployer = LiveUpdateDeployer(logger)
-    val installer = newInstaller(device)
-    val adb = AdbClient(device, logger)
+    val adbClient = createAdbClient(device)
+    val installer = newInstaller(adbClient)
 
     val config = LiveEditAdvancedConfiguration.getInstance()
     val useDebugMode = config.useDebugMode
@@ -594,7 +600,7 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
         useStructureRedefinition,
       )
 
-    val result = deployer.updateLiveEdit(installer, adb, applicationId, param)
+    val result = deployer.updateLiveEdit(installer, adbClient, applicationId, param)
 
     if (filesWithCompilationErrors.isEmpty() || StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get()) {
       updateEditStatus(device, LiveEditStatus.UpToDate)
@@ -603,7 +609,7 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
       val errorMsg = leErrorMessage(LiveEditUpdateException.Error.COMPILATION_ERROR, errorFilename.get())
       updateEditStatus(device, LiveEditStatus.createPausedStatus(errorMsg))
     }
-    scheduleErrorPolling(deployer, installer, adb, applicationId)
+    scheduleErrorPolling(deployer, installer, adbClient, applicationId)
 
     if (result.errors.isNotEmpty()) {
       val firstProblem = result.errors[0]
@@ -614,6 +620,14 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
       }
     }
     return result
+  }
+
+  @WorkerThread
+  private fun createAdbClient(device: IDevice): AdbClient {
+    val session = AdbLibService.getSession(project)
+    val connectedDevice = runBlockingCancellable { device.toConnectedDevice(project) }
+    val deviceHolder = DeviceHolder(device, connectedDevice, session)
+    return AdbClient(deviceHolder, logger, session)
   }
 
   fun requestRerun() {
@@ -723,10 +737,9 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
     fun supportLiveEdits(device: IDevice) = device.getVersion().isAtLeast(AndroidVersion.VersionCodes.R)
 
     @VisibleForTesting
-    fun newInstaller(device: IDevice): Installer {
+    fun newInstaller(adbClient: AdbClient): Installer {
       val metrics = MetricsRecorder()
-      val adb = AdbClient(device, logger)
-      return AdbInstaller(getLocalInstaller(), adb, metrics.deployMetrics, logger, AdbInstaller.Mode.DAEMON)
+      return AdbInstaller(getLocalInstaller(), adbClient, metrics.deployMetrics, logger, AdbInstaller.Mode.DAEMON)
     }
   }
 }
