@@ -58,7 +58,7 @@ class EnvironmentsUpdater : Disposable {
           thisLogger().warn("Error updating environment images in $destinationDir", e)
         }
         try {
-          val list = EnvironmentImageScanner.scanEnvironments(destinationDir)
+          val list = EnvironmentFileAnalyzer.scanEnvironments(destinationDir)
           environmentsList = list
           list
         } catch (e: Exception) {
