@@ -29,7 +29,7 @@ import com.android.tools.idea.apk.viewer.dex.DexFileViewer
 import com.android.tools.idea.apk.viewer.pagealign.AlignmentWarningViewer
 import com.android.tools.idea.apk.viewer.testing.FakeAndroidApplicationInfoProvider
 import com.android.tools.idea.testing.ApplicationServiceRule
-import com.android.tools.idea.testing.TemporaryDirectoryRule
+import com.android.tools.idea.testing.WaitForIndexRule
 import com.google.common.truth.Truth.assertThat
 import com.google.devrel.gmscore.tools.apk.arsc.Chunk
 import com.google.devrel.gmscore.tools.apk.arsc.ChunkWithChunks
@@ -57,6 +57,7 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.ui.LoadingNode
 import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.treeStructure.Tree
@@ -69,6 +70,7 @@ import java.util.zip.ZipInputStream
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.JTable
 import javax.swing.text.JTextComponent
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.TreePath
@@ -82,7 +84,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.mockito.kotlin.any
-import org.mockito.kotlin.isNull
+import org.mockito.kotlin.isNotNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.refEq
 import org.mockito.kotlin.verify
@@ -107,7 +109,7 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
     get() = projectRule.project
 
   private val disposableRule = DisposableRule()
-  val temporaryDirectoryRule = TemporaryDirectoryRule()
+  val temporaryDirectoryRule = TemporaryDirectory()
 
   companion object {
     @Parameterized.Parameters(name = "isPageAlignFeatureEnabled={0}") @JvmStatic fun data() = arrayOf(true, false)
@@ -120,6 +122,7 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
       disposableRule,
       ApplicationServiceRule(FileEditorProviderManager::class.java, mockFileEditorProviderManager()),
       temporaryDirectoryRule,
+      WaitForIndexRule(projectRule),
       EdtRule(),
     )
 
@@ -303,6 +306,32 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
   }
 
   @Test
+  fun treeSorting() {
+    val apkEditor = apkEditor("/test.apk")
+    apkEditor.waitForUpdateComplete()
+
+    val model = apkEditor.getNodesModel() as ApkTreeModel
+    val rootNode = model.root as ArchiveTreeNode
+
+    val table = TreeWalker(apkEditor.getTopPane()).descendants().filterIsInstance<JTable>().first()
+
+    // 1. Sort by File Name Ascending
+    table.rowSorter.toggleSortOrder(0)
+    val sortedAscending = rootNode.children().asSequence().map { (it as ArchiveTreeNode).data.getNodeDisplayString() }.toList()
+    assertThat(sortedAscending).containsExactly("AndroidManifest.xml", "instant-run.zip", "res").inOrder()
+
+    // 2. Sort by File Name Descending
+    table.rowSorter.toggleSortOrder(0)
+    val sortedDescending = rootNode.children().asSequence().map { (it as ArchiveTreeNode).data.getNodeDisplayString() }.toList()
+    assertThat(sortedDescending).containsExactly("res", "instant-run.zip", "AndroidManifest.xml").inOrder()
+
+    // 3. Sort by Size (raw file size) Ascending
+    table.rowSorter.toggleSortOrder(1)
+    val sortedBySize = rootNode.children().asSequence().map { (it as ArchiveTreeNode).data.rawFileSize }.toList()
+    assertThat(sortedBySize).isOrdered()
+  }
+
+  @Test
   fun selectKotlinBuiltin_createsEmptyPanel() {
     val apkEditor = apkEditor("/test-app.apk")
 
@@ -433,12 +462,12 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
           """
           Does not support 16 KB devices
             lib
-              x86_64
-                libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
-                liba16kbbash.so | 4 KB LOAD section alignment, but 16 KB is required
               arm64-v8a
-                libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
                 liba16kbbash.so | 4 KB LOAD section alignment, but 16 KB is required
+                libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
+              x86_64
+                liba16kbbash.so | 4 KB LOAD section alignment, but 16 KB is required
+                libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
           """
             .trimIndent()
         )
@@ -482,12 +511,12 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
           Does not support 16 KB devices
             base
               lib
-                x86_64
-                  libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
-                  liba16kbbash.so | 4 KB LOAD section alignment, but 16 KB is required
                 arm64-v8a
-                  libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
                   liba16kbbash.so | 4 KB LOAD section alignment, but 16 KB is required
+                  libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
+                x86_64
+                  liba16kbbash.so | 4 KB LOAD section alignment, but 16 KB is required
+                  libtensorflowlite_jni.so | 4 KB LOAD section alignment, but 16 KB is required
           """
             .trimIndent()
         )
@@ -628,7 +657,7 @@ class ApkEditorTest(val isPageAlignFeatureEnabled: Boolean) {
 
     provider.createEditor(project, disposableRule.disposable, file)
 
-    verify(provider).createFileEditor(refEq(project), refEq(file), isNull(), any())
+    verify(provider).createFileEditor(refEq(project), refEq(file), isNotNull(), any())
   }
 
   private fun apkEditor(path: String, isResource: Boolean = true): ApkEditor {

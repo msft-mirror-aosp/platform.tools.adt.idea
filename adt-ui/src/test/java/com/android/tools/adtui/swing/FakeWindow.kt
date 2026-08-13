@@ -20,6 +20,7 @@ import com.android.mockito.kotlin.whenever
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.ReflectionUtil
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
@@ -34,12 +35,12 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
-internal inline fun <reified T : Window> createFakeWindow(root: JComponent, parentDisposable: Disposable?): T {
+internal inline fun <reified T : Window> createFakeWindow(root: JComponent, parentDisposable: Disposable): T {
   // A mock is used here because in a headless environment it is not possible to instantiate
   // Window or any of its subclasses due to checks in the Window constructor.
   val mockWindow = mock(T::class.java)
   wrapInFakeWindow(mockWindow, root, parentDisposable)
-  parentDisposable?.addWindow(mockWindow)
+  parentDisposable.addWindow(mockWindow)
   return mockWindow
 }
 
@@ -51,6 +52,8 @@ private fun wrapInFakeWindow(mockWindow: Window, root: JComponent, parentDisposa
   whenever(mockWindow.isShowing).thenReturn(true)
   whenever(mockWindow.isActive).thenReturn(true)
   whenever(mockWindow.isVisible).thenReturn(true)
+  // We also set the 'visible' field itself because it is used by isRecursivelyVisible(), a non-mockable package-private method.
+  check(ReflectionUtil.setField(Window::class.java, mockWindow, Boolean::class.java, "visible", true))
   whenever(mockWindow.isEnabled).thenReturn(true)
   whenever(mockWindow.isLightweight).thenReturn(true)
   whenever(mockWindow.isFocusableWindow).thenReturn(true)
@@ -77,7 +80,12 @@ private fun wrapInFakeWindow(mockWindow: Window, root: JComponent, parentDisposa
   ComponentAccessor.setParent(root, mockWindow)
   root.addNotify()
   if (parentDisposable != null) {
-    Disposer.register(parentDisposable) { runInEdtAndWait { root.removeNotify() } }
+    Disposer.register(parentDisposable) {
+      runInEdtAndWait {
+        ComponentAccessor.setParent(root, null)
+        root.removeNotify()
+      }
+    }
   }
 }
 

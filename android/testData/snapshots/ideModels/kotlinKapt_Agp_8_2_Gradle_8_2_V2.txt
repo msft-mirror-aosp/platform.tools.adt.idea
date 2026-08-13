@@ -1688,7 +1688,6 @@ MODULE                        : MainActivity.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1707,7 +1706,6 @@ MODULE                        : MainActivity.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1726,7 +1724,6 @@ MODULE                        : MainActivity.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1804,7 +1801,6 @@ MODULE                        : MainActivity.javaLib
                     moduleName                    : javaLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1822,7 +1818,6 @@ MODULE                        : MainActivity.javaLib
                     moduleName                    : javaLib_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2914,7 +2909,6 @@ MODULE                        : MainActivity.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2933,7 +2927,6 @@ MODULE                        : MainActivity.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2952,7 +2945,6 @@ MODULE                        : MainActivity.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

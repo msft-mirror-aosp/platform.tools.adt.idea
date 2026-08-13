@@ -19,6 +19,7 @@ import com.android.processmonitor.common.ProcessEvent.ProcessAdded
 import com.android.processmonitor.monitor.ProcessNameMonitor
 import com.android.processmonitor.monitor.testing.FakeProcessNameMonitor
 import com.android.sdklib.AndroidVersion
+import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeMouse.Button.CTRL_LEFT
@@ -69,7 +70,6 @@ import com.android.tools.idea.run.ClearLogcatListener
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.ApplicationServiceRule
 import com.android.tools.idea.testing.ProjectServiceRule
-import com.android.tools.idea.testing.TemporaryDirectoryRule
 import com.android.tools.idea.testing.TestLoggerRule
 import com.android.tools.idea.testing.WaitForIndexRule
 import com.google.common.truth.Truth.assertThat
@@ -98,6 +98,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
@@ -144,7 +145,7 @@ class LogcatMainPanelTest {
   private val fakeLogcatService = FakeLogcatService()
   private val deviceTracker = FakeDeviceComboBoxDeviceTracker()
   private val fakeProcessNameMonitor = FakeProcessNameMonitor()
-  private val temporaryDirectoryRule = TemporaryDirectoryRule()
+  private val temporaryDirectoryRule = TemporaryDirectory()
 
   @get:Rule
   val rule =
@@ -173,8 +174,10 @@ class LogcatMainPanelTest {
   private val disposable
     get() = disposableRule.disposable
 
-  private val device1 = Device.createPhysical("device1", true, "11", AndroidVersion(30, 0), "Google", "Pixel")
-  private val device2 = Device.createPhysical("device2", true, "11", AndroidVersion(30, 0), "Google", "Pixel")
+  private val device1 =
+    Device.createPhysical(DeviceId("Fake", false, "id1"), "device1", true, "11", AndroidVersion(30, 0), "Google", "Pixel")
+  private val device2 =
+    Device.createPhysical(DeviceId("Fake", false, "id2"), "device2", true, "11", AndroidVersion(30, 0), "Google", "Pixel")
 
   @RunsInEdt
   @Test
@@ -924,7 +927,9 @@ class LogcatMainPanelTest {
         headerPanel.filter = ""
       }
     }
-    val fakeUi = runInEdtAndGet { FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true) }
+    val fakeUi = runInEdtAndGet {
+      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    }
 
     logcatMainPanel.messageProcessor.appendMessages(
       listOf(LogcatMessage(LogcatHeader(INFO, 1, 2, "app2", "", "tag2", Instant.ofEpochMilli(1000)), "message2"))
@@ -943,7 +948,9 @@ class LogcatMainPanelTest {
   @Test
   fun clickToSetFilter_addToNotEmpty() = runBlocking {
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().apply { size = Dimension(100, 100) } }
-    val fakeUi = runInEdtAndGet { FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true) }
+    val fakeUi = runInEdtAndGet {
+      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    }
     logcatMainPanel.processMessages(
       listOf(
         LogcatMessage(LogcatHeader(INFO, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "foo"),
@@ -967,7 +974,9 @@ class LogcatMainPanelTest {
   @Test
   fun clickToSetFilter_remove() = runBlocking {
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().apply { size = Dimension(100, 100) } }
-    val fakeUi = runInEdtAndGet { FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true) }
+    val fakeUi = runInEdtAndGet {
+      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    }
     logcatMainPanel.processMessages(
       listOf(
         LogcatMessage(LogcatHeader(INFO, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "foo"),
@@ -989,7 +998,9 @@ class LogcatMainPanelTest {
   @Test
   fun clickToSetFilter_removeMultiple() = runBlocking {
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().apply { size = Dimension(100, 100) } }
-    val fakeUi = runInEdtAndGet { FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true) }
+    val fakeUi = runInEdtAndGet {
+      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    }
     logcatMainPanel.processMessages(
       listOf(
         LogcatMessage(LogcatHeader(INFO, 1, 2, "app1", "", "tag1", Instant.ofEpochMilli(1000)), "foo"),
@@ -1016,7 +1027,9 @@ class LogcatMainPanelTest {
         headerPanel.filter = "package:mine | level:error"
       }
     }
-    val fakeUi = runInEdtAndGet { FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true) }
+    val fakeUi = runInEdtAndGet {
+      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    }
 
     logcatMainPanel.messageProcessor.appendMessages(
       listOf(LogcatMessage(LogcatHeader(LogLevel.ERROR, 1, 2, "app2", "", "tag2", Instant.ofEpochMilli(1000)), "message2"))

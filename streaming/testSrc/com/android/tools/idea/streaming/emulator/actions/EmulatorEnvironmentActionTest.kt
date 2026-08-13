@@ -33,7 +33,6 @@ import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
-import com.android.tools.idea.testing.TemporaryDirectoryRule
 import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.testing.file.registerFakeFileChooserFactory
 import com.android.tools.idea.testing.flags.overrideForTest
@@ -45,17 +44,26 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.util.io.FileUtilRt.toSystemIndependentName
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.replaceService
+import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeoutException
 import java.util.zip.Deflater
+import javax.imageio.ImageIO
+import kotlin.math.PI
+import kotlin.math.sin
+import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -71,7 +79,7 @@ class EmulatorEnvironmentActionTest {
   private val projectRule = ProjectRule()
   private val emulatorRule = FakeEmulatorRule()
   @get:Rule val rule = RuleChain(projectRule, emulatorRule, EdtRule())
-  @get:Rule val tempDirRule = TemporaryDirectoryRule()
+  @get:Rule val tempDirRule = TemporaryDirectory()
 
   val testRootDisposable
     get() = projectRule.disposable
@@ -92,6 +100,8 @@ class EmulatorEnvironmentActionTest {
   @Before
   fun setUp() {
     StudioFlags.EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(true, testRootDisposable)
   }
 
   @Test
@@ -147,6 +157,94 @@ class EmulatorEnvironmentActionTest {
   }
 
   @Test
+  fun testCustom3dEnvironment() {
+    val objFileContent =
+      """
+      # Wavefront OBJ file
+      v 0.0 0.0 0.0
+      v 1.0 0.0 0.0
+      v 0.0 1.0 0.0
+      f 1 2 3
+      """
+        .trimIndent()
+    val objPath = tempDirRule.newPath("test_scene.obj")
+    Files.write(objPath, objFileContent.toByteArray(Charsets.UTF_8))
+
+    val objFile = mock<VirtualFile>()
+    whenever(objFile.path).thenReturn(objPath.toString())
+    testRootDisposable.registerFakeFileChooserFactory(objFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"mesh3d:${objPath.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testCustom3dEnvironment_invalidFile() {
+    val objFileContent =
+      """
+      This is not a valid Wavefront OBJ file
+      random text
+      """
+        .trimIndent()
+    val objPath = tempDirRule.newPath("test_scene_invalid.obj")
+    Files.write(objPath, objFileContent.toByteArray(Charsets.UTF_8))
+
+    val objFile = mock<VirtualFile>()
+    whenever(objFile.path).thenReturn(objPath.toString())
+    testRootDisposable.registerFakeFileChooserFactory(objFile)
+
+    var dialogShownMessage: String? = null
+    val previousDialog =
+      TestDialogManager.setTestDialog { message ->
+        dialogShownMessage = message
+        0 // OK
+      }
+    try {
+      val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+      executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+      assertFailsWith<TimeoutException> { emulator.getNextGrpcCall(1.seconds) }
+
+      assertThat(dialogShownMessage).isEqualTo("The selected file is not a valid Wavefront 3D scene file.")
+    } finally {
+      TestDialogManager.setTestDialog(previousDialog)
+    }
+  }
+
+  @Test
+  fun testCustom3dEnvironment_binaryFile() {
+    val binaryContent = byteArrayOf(0x4C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00) // Looks like Intel 386 COFF header
+    val objPath = tempDirRule.newPath("test_scene_binary.obj")
+    Files.write(objPath, binaryContent)
+
+    val objFile = mock<VirtualFile>()
+    whenever(objFile.path).thenReturn(objPath.toString())
+    testRootDisposable.registerFakeFileChooserFactory(objFile)
+
+    var dialogShownMessage: String? = null
+    val previousDialog =
+      TestDialogManager.setTestDialog { message ->
+        dialogShownMessage = message
+        0 // OK
+      }
+    try {
+      val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+      executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+      assertFailsWith<TimeoutException> { emulator.getNextGrpcCall(1.seconds) }
+
+      assertThat(dialogShownMessage).isEqualTo("The selected file is not a valid Wavefront 3D scene file.")
+    } finally {
+      TestDialogManager.setTestDialog(previousDialog)
+    }
+  }
+
+  @Test
   fun testRecentCustomEnvironment() {
     val filePath = "/tmp/recent_image.png"
     val action = EmulatorEnvironmentAction.RecentCustom(Path.of(filePath))
@@ -155,6 +253,111 @@ class EmulatorEnvironmentActionTest {
     val call = emulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
     assertThat(shortDebugString(call.request)).isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:$filePath\" }")
+  }
+
+  @Test
+  fun testRecentCustom3dEnvironment() {
+    val filePath = "/tmp/recent_scene.obj"
+    val action = EmulatorEnvironmentAction.RecentCustom(Path.of(filePath))
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request)).isEqualTo("environment { key: \"scene.mode\" value: \"mesh3d:$filePath\" }")
+  }
+
+  @Test
+  fun testCustomVideoEnvironment() {
+    val videoFile = mock<VirtualFile>()
+    whenever(videoFile.path).thenReturn("/tmp/test_video.mp4")
+    testRootDisposable.registerFakeFileChooserFactory(videoFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request)).isEqualTo("environment { key: \"scene.mode\" value: \"videofile:${videoFile.path}\" }")
+  }
+
+  @Test
+  fun testCustomVideoEnvironment_featureFlagOff() {
+    StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    val videoFile = mock<VirtualFile>()
+    whenever(videoFile.path).thenReturn("/tmp/test_video.mp4")
+    testRootDisposable.registerFakeFileChooserFactory(videoFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request)).isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${videoFile.path}\" }")
+  }
+
+  @Test
+  fun testRecentCustomVideoEnvironment() {
+    val filePath = "/tmp/recent_video.mp4"
+    val action = EmulatorEnvironmentAction.RecentCustom(Path.of(filePath))
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request)).isEqualTo("environment { key: \"scene.mode\" value: \"videofile:$filePath\" }")
+  }
+
+  @Test
+  fun testRecentEnvironmentsExcludesVideoWhenFlagOff() {
+    val file1 = tempDirRule.newPath("file1.png")
+    val file2 = tempDirRule.newPath("file2.mp4")
+    Files.createFile(file1)
+    Files.createFile(file2)
+
+    val properties = PropertiesComponent.getInstance()
+    properties.setValue("EmulatorEnvironmentAction.recentFiles", "")
+    EmulatorEnvironmentAction.addRecentFile(file1.toString())
+    EmulatorEnvironmentAction.addRecentFile(file2.toString())
+
+    val group = EmulatorRecentEnvironmentsActionGroup()
+    val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
+
+    // With flag ON, both should be shown
+    StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    var children = group.getChildren(event)
+    assertThat(children.size).isEqualTo(2)
+
+    // With flag OFF, file2 (.mp4) should be filtered out
+    StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    children = group.getChildren(event)
+    assertThat(children.size).isEqualTo(1)
+    assertThat(children[0].templatePresentation.text).isEqualTo(file1.fileName.toString())
+  }
+
+  @Test
+  fun testRecentEnvironmentsExcludes3dWhenFlagOff() {
+    val file1 = tempDirRule.newPath("file1.png")
+    val file2 = tempDirRule.newPath("file2.obj")
+    Files.createFile(file1)
+    Files.createFile(file2)
+
+    val properties = PropertiesComponent.getInstance()
+    properties.setValue("EmulatorEnvironmentAction.recentFiles", "")
+    EmulatorEnvironmentAction.addRecentFile(file1.toString())
+    EmulatorEnvironmentAction.addRecentFile(file2.toString())
+
+    val group = EmulatorRecentEnvironmentsActionGroup()
+    val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
+
+    // With flag ON, both should be shown
+    StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    var children = group.getChildren(event)
+    assertThat(children.size).isEqualTo(2)
+
+    // With flag OFF, file2 (.obj) should be filtered out
+    StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    children = group.getChildren(event)
+    assertThat(children.size).isEqualTo(1)
+    assertThat(children[0].templatePresentation.text).isEqualTo(file1.fileName.toString())
   }
 
   @Test
@@ -171,10 +374,11 @@ class EmulatorEnvironmentActionTest {
     val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
     val children = group.getChildren(null)
 
-    // Expect original children + Separator + Recent Environments submenu
+    // Expect original children + Separators + Recent Environments submenu
     assertThat(children.size).isEqualTo(9)
-    val recentGroup = children[4] as DefaultActionGroup
-    assertThat(children[5]).isInstanceOf(Separator::class.java)
+    assertThat(children[3]).isInstanceOf(Separator::class.java)
+    val recentGroup = children[5] as DefaultActionGroup
+    assertThat(children[7]).isInstanceOf(Separator::class.java)
     assertThat(recentGroup.templatePresentation.text).isEqualTo("Recent Custom Environments")
     val recentChildren = recentGroup.getChildren(null)
     assertThat(recentChildren.size).isEqualTo(2)
@@ -203,6 +407,66 @@ class EmulatorEnvironmentActionTest {
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
     assertThat(shortDebugString(call.request))
       .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${jpeg.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testRecentCustom360ImageCandidate_userConfirms() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    val w = 200
+    val h = 100
+    val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+    for (y in 0 until h) {
+      for (x in 0 until w) {
+        val v = (128 + 127 * sin(2 * PI * x / w)).toInt().coerceIn(0, 255)
+        val color = (v shl 16) or (v shl 8) or v
+        img.setRGB(x, y, color)
+      }
+    }
+    val tempFile = tempDirRule.newPath("equirectangular_candidate.png")
+    ImageIO.write(img, "png", tempFile.toFile())
+
+    val oldDialog = TestDialogManager.setTestDialog(TestDialog.YES)
+    try {
+      val action = EmulatorEnvironmentAction.RecentCustom(tempFile)
+      executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+      val call = emulator.getNextGrpcCall(2.seconds)
+      assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+      assertThat(shortDebugString(call.request))
+        .isEqualTo("environment { key: \"scene.mode\" value: \"image360:${tempFile.systemIndependentString}\" }")
+    } finally {
+      TestDialogManager.setTestDialog(oldDialog)
+    }
+  }
+
+  @Test
+  fun testRecentCustom360ImageCandidate_userDeclines() {
+    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    val w = 200
+    val h = 100
+    val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+    for (y in 0 until h) {
+      for (x in 0 until w) {
+        val v = (128 + 127 * sin(2 * PI * x / w)).toInt().coerceIn(0, 255)
+        val color = (v shl 16) or (v shl 8) or v
+        img.setRGB(x, y, color)
+      }
+    }
+    val tempFile = tempDirRule.newPath("equirectangular_candidate.png")
+    ImageIO.write(img, "png", tempFile.toFile())
+
+    val oldDialog = TestDialogManager.setTestDialog(TestDialog.NO)
+    try {
+      val action = EmulatorEnvironmentAction.RecentCustom(tempFile)
+      executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+      val call = emulator.getNextGrpcCall(2.seconds)
+      assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+      assertThat(shortDebugString(call.request))
+        .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${tempFile.systemIndependentString}\" }")
+    } finally {
+      TestDialogManager.setTestDialog(oldDialog)
+    }
   }
 
   @Test
@@ -301,7 +565,7 @@ class EmulatorEnvironmentActionTest {
 
     val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
     val children = group.getChildren(null)
-    val recentGroup = children[4] as DefaultActionGroup
+    val recentGroup = children[5] as DefaultActionGroup
 
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
     assertThat(updateAndGetActionPresentation(recentGroup, event).isVisible).isFalse()
@@ -320,10 +584,11 @@ class EmulatorEnvironmentActionTest {
     val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
     val children = group.getChildren(null)
 
-    // Expect original children + Separator + Recent Environments submenu containing 1 file (file1)
+    // Expect original children + Separators + Recent Environments submenu containing 1 file (file1)
     assertThat(children.size).isEqualTo(9)
-    val recentGroup = children[4] as DefaultActionGroup
-    assertThat(children[5]).isInstanceOf(Separator::class.java)
+    assertThat(children[3]).isInstanceOf(Separator::class.java)
+    val recentGroup = children[5] as DefaultActionGroup
+    assertThat(children[7]).isInstanceOf(Separator::class.java)
     assertThat(recentGroup.templatePresentation.text).isEqualTo("Recent Custom Environments")
     val recentChildren = recentGroup.getChildren(null)
     assertThat(recentChildren.size).isEqualTo(1)
@@ -350,9 +615,10 @@ class EmulatorEnvironmentActionTest {
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
     val children = group.getChildren(event)
 
-    // Expect original children (5) + Separator + Cameras submenu
+    // Expect original children (5) + Separators + Cameras submenu
     assertThat(children.size).isEqualTo(9)
-    assertThat(children[5]).isInstanceOf(Separator::class.java)
+    assertThat(children[3]).isInstanceOf(Separator::class.java)
+    assertThat(children[7]).isInstanceOf(Separator::class.java)
     val camerasGroup = children[6] as DefaultActionGroup
     assertThat(camerasGroup.templatePresentation.text).isEqualTo("Camera")
     val cameraChildren = camerasGroup.getChildren(event)
@@ -659,6 +925,16 @@ class EmulatorEnvironmentActionTest {
     assertThat(Toggleable.isSelected(updateAndGetActionPresentation(builtInAction, builtInEvent))).isFalse()
 
     // And customAction should be SELECTED!
+    assertThat(Toggleable.isSelected(updateAndGetActionPresentation(customAction, customEvent))).isTrue()
+
+    // 3. Set environment to custom 3D scene
+    val custom3dPath = "/tmp/my_custom_scene.obj"
+    val recentAction3d = EmulatorEnvironmentAction.RecentCustom(Path.of(custom3dPath))
+    val recentEvent3d = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
+    executeAction(recentAction3d, project = projectRule.project, extra = dataSnapshotProvider)
+    waitForCondition(5.seconds) { Toggleable.isSelected(updateAndGetActionPresentation(recentAction3d, recentEvent3d)) }
+
+    // customAction should STILL be SELECTED!
     assertThat(Toggleable.isSelected(updateAndGetActionPresentation(customAction, customEvent))).isTrue()
   }
 

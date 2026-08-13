@@ -963,6 +963,16 @@ LIBRARY_TABLE
         artifactAddress               : org.hamcrest:hamcrest-library:1.3@jar
         component                     : org.hamcrest:hamcrest-library:1.3
         - srcJars                     : <M2>/org/hamcrest/hamcrest-library/1.3/hamcrest-library-1.3-sources.jar
+    - library                     : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> (IdeJavaLibraryImpl)
+        artifact                      : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+        artifactAddress               : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+        component                     : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+    - library                     : org.jetbrains:annotations:13.0 (IdeJavaLibraryImpl)
+        artifact                      : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+        artifactAddress               : org.jetbrains:annotations:13.0@jar
+        component                     : org.jetbrains:annotations:13.0
+        docJar                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-javadoc.jar
+        - srcJars                     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
     - library                     : <ROOT>::app@debug (IdeModuleLibraryImpl)
         buildId                       : <ROOT>
         projectPath                   : :app
@@ -1002,8 +1012,6 @@ MODULE                        : navgraph
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             lib                           : :lib (DefaultExternalProject)
@@ -1023,15 +1031,11 @@ MODULE                        : navgraph
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :lib:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :lib:testDebugUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
 MODULE                        : navgraph.app
@@ -1044,7 +1048,6 @@ MODULE                        : navgraph.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -1105,6 +1108,7 @@ MODULE                        : navgraph.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : com.example.navgraph
         testApplicationId             : com.example.navgraph.test
@@ -1253,7 +1257,6 @@ MODULE                        : navgraph.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1296,6 +1299,7 @@ MODULE                        : navgraph.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -1469,6 +1473,9 @@ MODULE                        : navgraph.app
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -1478,6 +1485,7 @@ MODULE                        : navgraph.app
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -1668,6 +1676,9 @@ MODULE                        : navgraph.app
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -1677,6 +1688,7 @@ MODULE                        : navgraph.app
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             androidLibrary                : androidx.navigation:navigation-fragment:2.3.5@aar
                             androidLibrary                : androidx.navigation:navigation-ui:2.3.5@aar
@@ -1711,6 +1723,7 @@ MODULE                        : navgraph.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -1923,13 +1936,18 @@ MODULE                        : navgraph.app
                         javaLibrary                   : org.hamcrest:hamcrest-integration:1.3@jar
                             javaLibrary                   : org.hamcrest:hamcrest-library:1.3@jar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.collection:collection:1.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
                         module                        : <ROOT>-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : androidx.test.ext:junit:1.1.2@aar
                             javaLibrary                   : junit:junit:4.12@jar
@@ -2014,6 +2032,8 @@ MODULE                        : navgraph.app
                     - provided                    : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
                     - provided                    : androidx.viewpager:viewpager:1.0.0@aar
                     - provided                    : com.google.android.material:material:1.0.0@aar
+                    - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                    - provided                    : org.jetbrains:annotations:13.0
                 ApplicationId                 : com.example.navgraph.test
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -2037,6 +2057,7 @@ MODULE                        : navgraph.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_r_class_jar/debug/processDebugResources/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -2210,6 +2231,9 @@ MODULE                        : navgraph.app
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -2222,7 +2246,9 @@ MODULE                        : navgraph.app
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         module                        : <ROOT>-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -2413,6 +2439,9 @@ MODULE                        : navgraph.app
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -2425,12 +2454,14 @@ MODULE                        : navgraph.app
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         module                        : <ROOT>-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             androidLibrary                : androidx.navigation:navigation-fragment:2.3.5@aar
                             androidLibrary                : androidx.navigation:navigation-ui:2.3.5@aar
                             androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             module                        : <ROOT>-:lib-MAIN
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             androidLibrary                : androidx.navigation:navigation-fragment:2.3.5@aar
                             androidLibrary                : androidx.navigation:navigation-ui:2.3.5@aar
@@ -2443,6 +2474,80 @@ MODULE                        : navgraph.app
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/tracing-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/transition-1.3.0/jars/classes.jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :app (DefaultExternalProject) (*seen*)
 MODULE                        : navgraph.app.androidTest
 MODULE                        : navgraph.app.main
@@ -2457,7 +2562,6 @@ MODULE                        : navgraph.lib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -2518,6 +2622,7 @@ MODULE                        : navgraph.lib
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         testApplicationId             : com.example.lib.test
         buildType                     : debug
@@ -2668,7 +2773,6 @@ MODULE                        : navgraph.lib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -2702,6 +2806,7 @@ MODULE                        : navgraph.lib
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/lib/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/lib/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/lib/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/lib/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -2875,6 +2980,9 @@ MODULE                        : navgraph.lib
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -2884,6 +2992,8 @@ MODULE                        : navgraph.lib
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
                     runtimeClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                             androidLibrary                : androidx.core:core:1.5.0@aar
@@ -2907,6 +3017,7 @@ MODULE                        : navgraph.lib
                             androidLibrary                : androidx.transition:transition:1.3.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         androidLibrary                : androidx.core:core:1.5.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -3104,6 +3215,7 @@ MODULE                        : navgraph.lib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/lib/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/lib/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/lib/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -3316,12 +3428,16 @@ MODULE                        : navgraph.lib
                         javaLibrary                   : org.hamcrest:hamcrest-integration:1.3@jar
                             javaLibrary                   : org.hamcrest:hamcrest-library:1.3@jar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.collection:collection:1.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : androidx.test.ext:junit:1.1.2@aar
                             javaLibrary                   : junit:junit:4.12@jar
@@ -3551,12 +3667,16 @@ MODULE                        : navgraph.lib
                         javaLibrary                   : org.hamcrest:hamcrest-integration:1.3@jar
                             javaLibrary                   : org.hamcrest:hamcrest-library:1.3@jar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.collection:collection:1.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             androidLibrary                : androidx.navigation:navigation-fragment:2.3.5@aar
                             androidLibrary                : androidx.navigation:navigation-ui:2.3.5@aar
@@ -3591,6 +3711,7 @@ MODULE                        : navgraph.lib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/lib/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/lib/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/lib/build/intermediates/compile_and_runtime_r_class_jar/debugUnitTest/generateDebugUnitTestStubRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/lib/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -3764,6 +3885,9 @@ MODULE                        : navgraph.lib
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -3776,6 +3900,7 @@ MODULE                        : navgraph.lib
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -3966,6 +4091,9 @@ MODULE                        : navgraph.lib
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                         androidLibrary                : androidx.constraintlayout:constraintlayout:1.1.3@aar
                             javaLibrary                   : androidx.constraintlayout:constraintlayout-solver:1.1.3@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
@@ -3978,6 +4106,7 @@ MODULE                        : navgraph.lib
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         module                        : <ROOT>-:lib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.3.0@aar
                             androidLibrary                : androidx.navigation:navigation-fragment:2.3.5@aar
                             androidLibrary                : androidx.navigation:navigation-ui:2.3.5@aar
@@ -3990,6 +4119,79 @@ MODULE                        : navgraph.lib
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/tracing-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/transition-1.3.0/jars/classes.jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/lib/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/lib/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/lib/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :lib (DefaultExternalProject) (*seen*)
 MODULE                        : navgraph.lib.androidTest
 MODULE                        : navgraph.lib.main

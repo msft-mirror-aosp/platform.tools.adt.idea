@@ -28,23 +28,15 @@ import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
-import com.android.tools.idea.run.deployment.liveedit.setOptions
+import com.android.tools.idea.run.deployment.liveedit.configureCompilerOptions
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices.Companion.DEFAULT_RUNTIME_VERSION
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import java.nio.file.Path
-import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
-import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
-import org.jetbrains.kotlin.cli.create
-import org.jetbrains.kotlin.cli.extensionsStorage
-import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
-import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
-import org.jetbrains.kotlin.idea.base.projectStructure.languageVersionSettings
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptionsBuilder
 import org.jetbrains.kotlin.idea.base.util.module
-import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import org.jetbrains.kotlin.psi.KtFile
 
 class GradleBuildSystemLiveEditServices :
@@ -89,25 +81,10 @@ internal class GradleApplicationLiveEditServices(private val module: Module) : A
     return file.module?.let { GradleCompilationDependencies(it) }
   }
 
-  override fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration {
-    val module = ktFile.module ?: return CompilerConfiguration.create()
-    val compilerConfiguration =
-      CompilerConfiguration.create().apply<CompilerConfiguration> {
-        @OptIn(ExperimentalCompilerApi::class)
-        extensionsStorage = CompilerPluginRegistrar.ExtensionStorage()
-        put(CommonConfigurationKeys.MODULE_NAME, module.name)
-        KotlinFacet.get(module)?.let { kotlinFacet ->
-          val moduleName =
-            when (val compilerArguments = kotlinFacet.configuration.settings.compilerArguments) {
-              is K2JVMCompilerArguments -> compilerArguments.moduleName
-              is K2MetadataCompilerArguments -> compilerArguments.moduleName
-              else -> null
-            }
-          moduleName?.let { put(CommonConfigurationKeys.MODULE_NAME, it) }
-        }
-        setOptions(ktFile.languageVersionSettings)
-      }
-    return compilerConfiguration
+  @OptIn(KaExperimentalApi::class)
+  override fun KaCompilationOptionsBuilder.configureKotlinCompilerOptions(ktFile: KtFile) {
+    val module = ktFile.module ?: return
+    configureCompilerOptions(module, ktFile)
   }
 
   override fun getDesugarConfigs(): DesugarConfigs {

@@ -28,6 +28,9 @@ public class AndroidSqlAnnotator implements Annotator {
   @Override
   public void annotate(@NotNull PsiElement element,
                        @NotNull AnnotationHolder holder) {
+    // Batch mode only keeps annotations above INFORMATION level. Since this method only returns INFORMATION level annotations, it can be
+    // skipped in batch mode.
+    if (holder.isBatchMode()) return;
     IElementType type = element.getNode().getElementType();
 
     // Some identifiers were added after lexing time, make sure they are all highlighted properly.

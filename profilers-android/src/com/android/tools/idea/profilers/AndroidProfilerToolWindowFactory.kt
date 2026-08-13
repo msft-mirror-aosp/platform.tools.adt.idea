@@ -31,6 +31,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.content.ContentFactory
 import icons.StudioIcons
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,7 +54,7 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
 
       // If the window is re-opened after all tabs were manually closed, re-create the home tab.
       project.messageBus
-        .connect()
+        .connect(toolWindow.disposable)
         .subscribe(
           ToolWindowManagerListener.TOPIC,
           object : ToolWindowManagerListener {
@@ -128,13 +129,11 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
           },
         )
 
-      // Prevents leaking AndroidProfilerToolWindow instance.
-      Disposer.register(project, profilerToolWindow)
       return
     }
 
     project.messageBus
-      .connect()
+      .connect(toolWindow.disposable)
       .subscribe(
         ToolWindowManagerListener.TOPIC,
         object : ToolWindowManagerListener {
@@ -159,14 +158,13 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
   companion object {
     const val ID = "Android Profiler"
     private const val PROFILER_TOOL_WINDOW_TITLE = "Profiler"
-    @VisibleForTesting @JvmField val PROJECT_PROFILER_MAP: MutableMap<Project, AndroidProfilerToolWindow> = HashMap()
+    @VisibleForTesting @JvmField val PROJECT_PROFILER_MAP: MutableMap<Project, AndroidProfilerToolWindow> = ConcurrentHashMap()
 
     private fun createContent(project: Project, toolWindow: ToolWindow) {
       val view = createProfilerToolWindow(project, toolWindow)
       val contentFactory = ContentFactory.getInstance()
       val content = contentFactory.createContent(view.profilersPanel, "", false)
       content.isCloseable = false
-      Disposer.register(project, view)
       toolWindow.contentManager.addContent(content)
 
       // Forcibly synchronize the Tool Window to a visible state. Otherwise, the Tool Window may not auto-hide correctly.
@@ -176,9 +174,10 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
     private fun createProfilerToolWindow(project: Project, toolWindow: ToolWindow): AndroidProfilerToolWindow {
       val wrapper = ToolWindowWrapperImpl(project, toolWindow)
       val profilerToolWindow = AndroidProfilerToolWindow(wrapper, project)
+      Disposer.register(toolWindow.disposable, profilerToolWindow)
       toolWindow.setIcon(StudioIcons.Shell.ToolWindows.ANDROID_PROFILER)
       PROJECT_PROFILER_MAP[project] = profilerToolWindow
-      Disposer.register(profilerToolWindow) { PROJECT_PROFILER_MAP.remove(project) }
+      Disposer.register(profilerToolWindow) { PROJECT_PROFILER_MAP.remove(project, profilerToolWindow) }
       return profilerToolWindow
     }
 

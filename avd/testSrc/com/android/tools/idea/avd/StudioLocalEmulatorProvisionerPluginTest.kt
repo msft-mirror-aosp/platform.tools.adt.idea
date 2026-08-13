@@ -45,13 +45,13 @@ import com.android.tools.idea.avd.glassespairing.WizardController
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.sdk.AndroidSdks
-import com.android.tools.idea.testing.TemporaryDirectoryRule
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.replaceService
 import icons.StudioIcons
 import java.nio.file.Files
@@ -78,7 +78,7 @@ import org.mockito.kotlin.whenever
 
 class StudioLocalEmulatorProvisionerPluginTest {
   @get:Rule val projectRule = ProjectRule()
-  @get:Rule val temporaryDirectoryRule = TemporaryDirectoryRule()
+  @get:Rule val temporaryDirectoryRule = TemporaryDirectory()
 
   private val session = FakeAdbSession()
   private lateinit var avdManager: FakeAvdManager
@@ -530,7 +530,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
       provisioner.devices.value.first { it.state.properties.deviceType == DeviceType.AI_GLASSES } as StudioLocalEmulatorDeviceHandle
 
     // Mock wizard to return the phone
-    glassesHandle.wizardProvider = { _, _, _, _ -> GlassesPairingResult(phoneHandle, "00:11:22:33:44:55") }
+    glassesHandle.wizardProvider = { _, _, _, _, _ -> GlassesPairingResult(phoneHandle, "00:11:22:33:44:55") }
     val expectedMac = "00:11:22:33:44:55"
 
     glassesHandle.pairGlasses(null, projectRule.project)

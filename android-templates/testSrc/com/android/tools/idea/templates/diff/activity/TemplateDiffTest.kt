@@ -318,18 +318,6 @@ class TemplateDiffTest(private val testMode: TestMode) {
   }
 
   @Test
-  fun testNewNavigationDrawerActivity() {
-    StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.override(false)
-    checkCreateTemplate("Navigation Drawer Views Activity")
-  }
-
-  @Test
-  fun testNewNavigationDrawerActivityWithKotlin() {
-    StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.override(false)
-    checkCreateTemplate("Navigation Drawer Views Activity", withKotlin())
-  }
-
-  @Test
   fun testNewPrimaryDetailFlow() {
     checkCreateTemplate("Primary/Detail Views Flow")
   }
@@ -413,18 +401,6 @@ class TemplateDiffTest(private val testMode: TestMode) {
       withKotlin(),
       templateStateCustomizer = mapOf("Split settings hierarchy into separate sub-screens" to true),
     )
-  }
-
-  @Test
-  fun testBottomNavigationActivity() {
-    StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.override(false)
-    checkCreateTemplate("Bottom Navigation Views Activity")
-  }
-
-  @Test
-  fun testBottomNavigationActivityWithKotlin() {
-    StudioFlags.NPW_ENABLE_NAVIGATION_UI_TEMPLATE.override(false)
-    checkCreateTemplate("Bottom Navigation Views Activity", withKotlin())
   }
 
   @Test
@@ -762,6 +738,11 @@ class TemplateDiffTest(private val testMode: TestMode) {
   fun testBasicWatchFace() {
     StudioFlags.NPW_ENABLE_BASIC_WATCH_FACE_TEMPLATE.override(true)
     checkCreateTemplate("Basic Watch Face", withKotlin(), { moduleData, _ -> moduleData.isWatchFace = true })
+  }
+
+  @Test
+  fun testNewAiGlassesActivity() {
+    checkCreateTemplate("Basic Display Glasses Activity", withKotlin(), formFactor = FormFactor.AiGlasses)
   }
 }
 

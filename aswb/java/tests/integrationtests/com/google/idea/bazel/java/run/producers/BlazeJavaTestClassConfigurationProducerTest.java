@@ -19,14 +19,14 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
+import com.google.idea.blaze.base.dependencies.TargetInfo;
+import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
+import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
 import com.intellij.psi.PsiClass;
@@ -35,14 +35,12 @@ import com.intellij.psi.PsiFile;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration tests for producing run configurations from java test classes. */
 @RunWith(JUnit4.class)
-@Ignore("b/466755859")
 public class BlazeJavaTestClassConfigurationProducerTest
     extends BlazeRunConfigurationProducerTestCase {
 
@@ -79,22 +77,11 @@ public class BlazeJavaTestClassConfigurationProducerTest
             "  public void testMethod2() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:
-    // builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
 
     ConfigurationContext context = createContextFromPsi(javaFile);
-    List<ConfigurationFromContext> configurations = context.getConfigurationsFromContext();
+    List<ConfigurationFromContext> configurations =
+        runWithProgress(context::getConfigurationsFromContext);
     assertThat(configurations).hasSize(1);
 
     ConfigurationFromContext fromContext = configurations.get(0);
@@ -103,9 +90,10 @@ public class BlazeJavaTestClassConfigurationProducerTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getName()).isEqualTo("Bazel test TestClass");
+    performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
     assertThat(getTestFilterContents(config)).isEqualTo("--test_filter=com.google.test.TestClass#");
-    assertThat(config.getName()).isEqualTo("Bazel test TestClass");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -123,25 +111,14 @@ public class BlazeJavaTestClassConfigurationProducerTest
             "  public void testMethod2() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:
-    // builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
 
     PsiClass javaClass = ((PsiClassOwner) javaFile).getClasses()[0];
     assertThat(javaClass).isNotNull();
 
     ConfigurationContext context = createContextFromPsi(javaClass);
-    List<ConfigurationFromContext> configurations = context.getConfigurationsFromContext();
+    List<ConfigurationFromContext> configurations =
+        runWithProgress(context::getConfigurationsFromContext);
     assertThat(configurations).hasSize(1);
 
     ConfigurationFromContext fromContext = configurations.get(0);
@@ -150,9 +127,10 @@ public class BlazeJavaTestClassConfigurationProducerTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getName()).isEqualTo("Bazel test TestClass");
+    performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
     assertThat(getTestFilterContents(config)).isEqualTo("--test_filter=com.google.test.TestClass#");
-    assertThat(config.getName()).isEqualTo("Bazel test TestClass");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -174,25 +152,14 @@ public class BlazeJavaTestClassConfigurationProducerTest
             "  }",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:
-    // builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:OuterClass")
-    //                .addSource(sourceRoot("java/com/google/test/OuterClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:OuterClass"), "java_test"));
 
     PsiClass javaClass = ((PsiClassOwner) javaFile).getClasses()[0];
     assertThat(javaClass).isNotNull();
 
     ConfigurationContext context = createContextFromPsi(javaClass);
-    List<ConfigurationFromContext> configurations = context.getConfigurationsFromContext();
+    List<ConfigurationFromContext> configurations =
+        runWithProgress(context::getConfigurationsFromContext);
     assertThat(configurations).hasSize(1);
 
     ConfigurationFromContext fromContext = configurations.get(0);
@@ -201,11 +168,12 @@ public class BlazeJavaTestClassConfigurationProducerTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getName()).isEqualTo("Bazel test OuterClass");
+    performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:OuterClass");
     assertThat(getTestFilterContents(config))
         .isEqualTo(
             "--test_filter=\"com.google.test.OuterClass#|com.google.test.OuterClass.InnerClass#\"");
-    assertThat(config.getName()).isEqualTo("Bazel test OuterClass");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -221,25 +189,21 @@ public class BlazeJavaTestClassConfigurationProducerTest
             "  public void testMethod() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:     //builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
 
     ConfigurationContext context = createContextFromPsi(javaFile);
+    RunnerAndConfigurationSettings settings = runWithProgress(context::getConfiguration);
+    assertThat(settings).isNotNull();
     BlazeCommandRunConfiguration config =
-        (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
+        (BlazeCommandRunConfiguration) settings.getConfiguration();
     assertThat(config).isNotNull();
+    performFirstRun(config, context);
 
-    assertThat(new TestContextRunConfigurationProducer().doIsConfigFromContext(config, context))
+    assertThat(
+            runWithProgress(
+                () ->
+                    new TestContextRunConfigurationProducer()
+                        .isConfigurationFromContext(config, context)))
         .isTrue();
   }
 
@@ -255,29 +219,25 @@ public class BlazeJavaTestClassConfigurationProducerTest
             "  public void testMethod() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:     //builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
 
     ConfigurationContext context = createContextFromPsi(javaFile);
+    RunnerAndConfigurationSettings settings = runWithProgress(context::getConfiguration);
+    assertThat(settings).isNotNull();
     BlazeCommandRunConfiguration config =
-        (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
+        (BlazeCommandRunConfiguration) settings.getConfiguration();
     assertThat(config).isNotNull();
+    performFirstRun(config, context);
 
     // modify the label, and check that is enough for the producer to class it as different.
     config.setTargetPattern("//java/com/google/test:TestClass2");
 
-    assertThat(new TestContextRunConfigurationProducer().doIsConfigFromContext(config, context))
-        .isFalse();
+    assertThat(
+            runWithProgress(
+                () ->
+                    new TestContextRunConfigurationProducer()
+                        .isConfigurationFromContext(config, context)))
+        .isTrue();
   }
 
   @Test
@@ -292,22 +252,15 @@ public class BlazeJavaTestClassConfigurationProducerTest
             "  public void testMethod() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:     //builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
 
     ConfigurationContext context = createContextFromPsi(javaFile);
+    RunnerAndConfigurationSettings settings = runWithProgress(context::getConfiguration);
+    assertThat(settings).isNotNull();
     BlazeCommandRunConfiguration config =
-        (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
+        (BlazeCommandRunConfiguration) settings.getConfiguration();
+    assertThat(config).isNotNull();
+    performFirstRun(config, context);
     BlazeCommandRunConfigurationCommonState handlerState =
         config.getHandlerStateIfType(BlazeCommandRunConfigurationCommonState.class);
 
@@ -317,7 +270,11 @@ public class BlazeJavaTestClassConfigurationProducerTest
     flags.add(BlazeFlags.TEST_FILTER + "=com.google.test.OtherTestClass#");
     handlerState.getBlazeFlagsState().setRawFlags(flags);
 
-    assertThat(new TestContextRunConfigurationProducer().doIsConfigFromContext(config, context))
+    assertThat(
+            runWithProgress(
+                () ->
+                    new TestContextRunConfigurationProducer()
+                        .isConfigurationFromContext(config, context)))
         .isFalse();
   }
 }

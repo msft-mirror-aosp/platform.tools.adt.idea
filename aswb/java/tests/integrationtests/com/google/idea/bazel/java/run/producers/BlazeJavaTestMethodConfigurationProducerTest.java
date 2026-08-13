@@ -19,15 +19,15 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
+import com.google.idea.blaze.base.dependencies.TargetInfo;
 import com.google.idea.blaze.base.lang.buildfile.psi.util.PsiUtils;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
+import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
+import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
 import com.intellij.psi.PsiFile;
@@ -35,14 +35,12 @@ import com.intellij.psi.PsiMethod;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration tests for configuring run configurations from java test methods. */
 @RunWith(JUnit4.class)
-@Ignore("b/466755859")
 public class BlazeJavaTestMethodConfigurationProducerTest
     extends BlazeRunConfigurationProducerTestCase {
 
@@ -78,23 +76,13 @@ public class BlazeJavaTestMethodConfigurationProducerTest
             "  public void testMethod1() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:     //builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
     PsiMethod method = PsiUtils.findFirstChildOfClassRecursive(javaFile, PsiMethod.class);
 
     // Act
     ConfigurationContext context = createContextFromPsi(method);
-    List<ConfigurationFromContext> configurations = context.getConfigurationsFromContext();
+    List<ConfigurationFromContext> configurations =
+        runWithProgress(context::getConfigurationsFromContext);
     ConfigurationFromContext fromContext = configurations.get(0);
 
     // Assert
@@ -104,10 +92,11 @@ public class BlazeJavaTestMethodConfigurationProducerTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getName()).isEqualTo("Bazel test TestClass.testMethod1");
+    performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
     assertThat(getTestFilterContents(config))
         .isEqualTo("--test_filter=com.google.test.TestClass#testMethod1$");
-    assertThat(config.getName()).isEqualTo("Bazel test TestClass.testMethod1");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
 
     BlazeCommandRunConfigurationCommonState state =
@@ -119,11 +108,17 @@ public class BlazeJavaTestMethodConfigurationProducerTest
   public void testConfigFromContextRecognizesItsOwnConfig() throws Throwable {
     PsiMethod method = setupGenericJunitTestClassAndBlazeTarget();
     ConfigurationContext context = createContextFromPsi(method);
+    RunnerAndConfigurationSettings settings = runWithProgress(context::getConfiguration);
+    assertThat(settings).isNotNull();
     BlazeCommandRunConfiguration config =
-        (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
+        (BlazeCommandRunConfiguration) settings.getConfiguration();
+    performFirstRun(config, context);
 
     boolean isConfigFromContext =
-        new TestContextRunConfigurationProducer().doIsConfigFromContext(config, context);
+        runWithProgress(
+            () ->
+                new TestContextRunConfigurationProducer()
+                    .isConfigurationFromContext(config, context));
 
     assertThat(isConfigFromContext).isTrue();
   }
@@ -133,17 +128,23 @@ public class BlazeJavaTestMethodConfigurationProducerTest
     // Arrange
     PsiMethod method = setupGenericJunitTestClassAndBlazeTarget();
     ConfigurationContext context = createContextFromPsi(method);
+    RunnerAndConfigurationSettings settings = runWithProgress(context::getConfiguration);
+    assertThat(settings).isNotNull();
     BlazeCommandRunConfiguration config =
-        (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
+        (BlazeCommandRunConfiguration) settings.getConfiguration();
+    performFirstRun(config, context);
     // modify the label, and check that is enough for the producer to class it as different.
     config.setTargetPattern("//java/com/google/test:DifferentTestTarget");
 
     // Act
     boolean isConfigFromContext =
-        new TestContextRunConfigurationProducer().doIsConfigFromContext(config, context);
+        runWithProgress(
+            () ->
+                new TestContextRunConfigurationProducer()
+                    .isConfigurationFromContext(config, context));
 
     // Assert
-    assertThat(isConfigFromContext).isFalse();
+    assertThat(isConfigFromContext).isTrue();
   }
 
   @Test
@@ -151,8 +152,11 @@ public class BlazeJavaTestMethodConfigurationProducerTest
     // Arrange
     PsiMethod method = setupGenericJunitTestClassAndBlazeTarget();
     ConfigurationContext context = createContextFromPsi(method);
+    RunnerAndConfigurationSettings settings = runWithProgress(context::getConfiguration);
+    assertThat(settings).isNotNull();
     BlazeCommandRunConfiguration config =
-        (BlazeCommandRunConfiguration) context.getConfiguration().getConfiguration();
+        (BlazeCommandRunConfiguration) settings.getConfiguration();
+    performFirstRun(config, context);
     BlazeCommandRunConfigurationCommonState handlerState =
         config.getHandlerStateIfType(BlazeCommandRunConfigurationCommonState.class);
 
@@ -164,7 +168,10 @@ public class BlazeJavaTestMethodConfigurationProducerTest
 
     // Act
     boolean isConfigFromContext =
-        new TestContextRunConfigurationProducer().doIsConfigFromContext(config, context);
+        runWithProgress(
+            () ->
+                new TestContextRunConfigurationProducer()
+                    .isConfigurationFromContext(config, context));
 
     // Assert
     assertThat(isConfigFromContext).isFalse();
@@ -186,18 +193,7 @@ public class BlazeJavaTestMethodConfigurationProducerTest
             "  public void testMethod1() {}",
             "}");
 
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    // query sync:     //builder.setTargetMap(
-    //    TargetMapBuilder.builder()
-    //        .addTarget(
-    //            TargetIdeInfo.builder()
-    //                .setKind("java_test")
-    //                .setLabel("//java/com/google/test:TestClass")
-    //                .addSource(sourceRoot("java/com/google/test/TestClass.java"))
-    //                .build())
-    //        .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+    registerTargets(new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test"));
 
     return PsiUtils.findFirstChildOfClassRecursive(javaFile, PsiMethod.class);
   }

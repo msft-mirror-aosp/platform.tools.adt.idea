@@ -140,12 +140,14 @@ public class AndroidRunConfigurationTest {
 
     ConsoleView consolePrinter = Mockito.mock(ConsoleView.class);
     IDevice device = Mockito.mock(IDevice.class);
+    when(device.getSerialNumber()).thenReturn("1234");
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.S_V2));
 
     final App app =
       createApp(device, "com.example.mypackage", Collections.emptyList(), Collections.singletonList("com.example.mypackage.MyActivity"));
     myRunConfiguration.launch(app,
                               device,
+                              null,
                               getAndroidFacet(myProjectRule.getModule()),
                               "--start-profiler file",
                               false,
@@ -163,11 +165,13 @@ public class AndroidRunConfigurationTest {
 
     ConsoleView consolePrinter = Mockito.mock(ConsoleView.class);
     IDevice device = Mockito.mock(IDevice.class);
+    when(device.getSerialNumber()).thenReturn("1234");
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.S_V2));
     final App app =
       createApp(device, "com.example.mypackage", Collections.emptyList(), Collections.singletonList("com.example.mypackage.MyActivity"));
     myRunConfiguration.launch(app,
                               device,
+                              null,
                               getAndroidFacet(myProjectRule.getModule()),
                               "",
                               false,
@@ -181,6 +185,7 @@ public class AndroidRunConfigurationTest {
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.TIRAMISU));
     myRunConfiguration.launch(app,
                               device,
+                              null,
                               getAndroidFacet(myProjectRule.getModule()),
                               "",
                               false,
@@ -240,6 +245,7 @@ public class AndroidRunConfigurationTest {
   private void testDeepLink(String link, String extraFlags, String expectedCommand) throws Exception {
     ConsoleView consolePrinter = Mockito.mock(ConsoleView.class);
     IDevice device = Mockito.mock(IDevice.class);
+    when(device.getSerialNumber()).thenReturn("1234");
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.S_V2));
     final App app =
       createApp(device, "com.example.mypackage", Collections.emptyList(), Collections.singletonList("com.example.mypackage.MyActivity"));
@@ -248,6 +254,7 @@ public class AndroidRunConfigurationTest {
 
     myRunConfiguration.launch(app,
                               device,
+                              null,
                               getAndroidFacet(myProjectRule.getModule()),
                               extraFlags,
                               false,

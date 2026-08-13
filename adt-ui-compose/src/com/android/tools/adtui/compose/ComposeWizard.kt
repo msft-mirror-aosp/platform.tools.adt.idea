@@ -54,8 +54,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.suspendCancellableCoroutine
-import org.jetbrains.jewel.foundation.ExperimentalJewelApi
-import org.jetbrains.jewel.foundation.enableNewSwingCompositing
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Divider
@@ -131,9 +129,8 @@ class ComposeWizard(
   override fun createSouthPanel(): JComponent? = null
 
   override fun createCenterPanel(): JComponent {
-    @OptIn(ExperimentalJewelApi::class) (enableNewSwingCompositing())
     val component = StudioComposePanel {
-      CompositionLocalProvider(LocalProject provides project) {
+      CompositionLocalProvider(LocalProject provides project, LocalWizardDialogScope provides wizardDialogScope) {
         currentPageScope.apply { WizardPageScaffold(wizardDialogScope, currentPage) }
       }
     }
@@ -268,6 +265,7 @@ class WizardPageScope(val coroutineScope: CoroutineScope, private val state: Sna
 
 val LocalFileSystem = staticCompositionLocalOf<FileSystem> { FileSystems.getDefault() }
 val LocalProject = staticCompositionLocalOf<Project?> { throw AssertionError() }
+val LocalWizardDialogScope = staticCompositionLocalOf<WizardDialogScope> { throw AssertionError() }
 
 private val DEFAULT_PREFERRED_SIZE: Dimension = JBUI.size(900, 650)
 private val DEFAULT_MIN_SIZE: Dimension = JBUI.size(600, 350)

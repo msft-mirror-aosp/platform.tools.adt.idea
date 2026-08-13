@@ -45,6 +45,7 @@ import com.android.tools.idea.gradle.project.model.GradleModuleModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
 import com.android.tools.idea.gradle.project.model.V2NdkModel
 import com.android.tools.idea.gradle.project.sync.AndroidExtraModelProvider
+import com.android.tools.idea.gradle.project.sync.AndroidProjectSyncMarker
 import com.android.tools.idea.gradle.project.sync.AndroidSyncException
 import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType
 import com.android.tools.idea.gradle.project.sync.IdeAndroidModels
@@ -121,6 +122,7 @@ import com.intellij.serviceContainer.NonInjectable
 import com.intellij.util.ExceptionUtil
 import com.intellij.util.PathUtil
 import com.intellij.util.SystemProperties
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import java.io.File
 import java.io.IOException
 import java.util.IdentityHashMap
@@ -129,6 +131,7 @@ import java.util.zip.ZipException
 import kotlin.io.path.Path
 import kotlinx.coroutines.async
 import kotlinx.coroutines.future.asCompletableFuture
+import kotlinx.coroutines.Job
 import org.gradle.tooling.model.build.BuildEnvironment
 import org.gradle.tooling.model.idea.IdeaModule
 import org.gradle.tooling.model.idea.IdeaProject
@@ -305,7 +308,13 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
   }
 
   override fun getToolingExtensionsClasses(): Set<Class<*>> {
-    return setOf(KaptModelBuilderService::class.java, Unit::class.java)
+    return setOf(
+      KaptModelBuilderService::class.java,
+      Unit::class.java,
+      AndroidProjectSyncMarker::class.java,
+      Object2ObjectOpenHashMap::class.java,
+      Job::class.java,
+    )
   }
 
   /**

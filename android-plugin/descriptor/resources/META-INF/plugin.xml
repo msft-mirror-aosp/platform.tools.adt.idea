@@ -14,6 +14,8 @@
     <plugin id="com.intellij.modules.java"/>
     <plugin id="com.intellij.java"/>
     <plugin id="com.intellij.modules.json"/>
+    <module name="intellij.platform.smRunner"/>
+    <module name="intellij.platform.testRunner"/>
     <module name="intellij.platform.lvcs.impl"/>
     <module name="intellij.platform.vcs.impl"/>
     <module name="intellij.platform.vcs.impl.shared"/>
@@ -41,7 +43,8 @@
     <module name="intellij.java.analysis.impl"/>
     <module name="intellij.gradle.java.groovy"/>
     <module name="intellij.java.execution.impl"/>
-    <module name="intellij.libraries.maven.resolver.provider"/>
+    <module name="intellij.platform.structureView"/>
+    <module name="intellij.xml.structureView"/>
     <module name="intellij.java.indexing"/>
     <module name="intellij.xml.emmet"/>
     <module name="intellij.java.debugger"/>
@@ -62,12 +65,6 @@
     <module name="intellij.java.compiler.impl"/>
     <module name="intellij.java.impl"/>
   </dependencies>
-
-  <!-- This is temporary mechanism to mark certain plugins as K2-compatible. See IntelliJ commit cf213fb139 for details. -->
-  <extensions defaultExtensionNs="org.jetbrains.kotlin">
-    <!--suppress PluginXmlValidity -->
-    <supportsKotlinPluginMode supportsK2="true"/>
-  </extensions>
 
   <xi:include href="/META-INF/android-plugin.xml"/>
   <xi:include href="/META-INF/android-kotlin.xml"/>

@@ -1126,7 +1126,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   private fun getOrCreateDeviceClient(serialNumber: String, deviceHandle: DeviceHandle, config: DeviceConfiguration): DeviceClient {
     return adoptDeviceClient(serialNumber, deviceHandle) {
         deviceClientRegistry.getOrCreateDeviceClient(serialNumber, this@StreamingToolWindowManager) {
-          DeviceClient(serialNumber, config, config.deviceProperties.primaryAbi.toString()).apply {
+          DeviceClient(deviceHandle.id, serialNumber, config, config.deviceProperties.primaryAbi.toString()).apply {
             establishAgentConnectionWithoutVideoStreamAsync(project)
           }
         }
@@ -1218,7 +1218,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   }
 
   private fun getStartableVirtualDevices(): List<AvdInfo> {
-    val avds = AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(false)
+    val avds = AvdManagerConnection.getDefaultAvdManagerConnection().getCachedAvds()
     val runningAvdFolders = RunningAvdTracker.getInstance().runningAvds.filter { !it.value.isShuttingDown }.keys
     return avds.filter {
       it.dataFolderPath !in runningAvdFolders &&

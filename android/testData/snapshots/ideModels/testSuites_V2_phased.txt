@@ -685,8 +685,6 @@ MODULE                        : project
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
                         testFirstT1DebugTestSuite     : testFirstT1DebugTestSuite (DefaultExternalTask)
@@ -698,8 +696,6 @@ MODULE                        : project
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
                 testFirstT1DebugTestSuite     : testFirstT1DebugTestSuite (DefaultExternalTask)
@@ -718,7 +714,6 @@ MODULE                        : project.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
         - taskNames                   : testFirstT1DebugTestSuite
         - taskNames                   : testSecondT1DebugTestSuite
@@ -978,7 +973,6 @@ MODULE                        : project.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1834,7 +1828,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1853,7 +1846,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1872,7 +1864,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

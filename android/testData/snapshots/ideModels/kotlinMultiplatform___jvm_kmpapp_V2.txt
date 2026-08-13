@@ -688,8 +688,6 @@ MODULE                        : kotlinMultiPlatform
                                     patterns                      : FilePatternSetImpl
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         jvmTest                       : jvmTest (DefaultExternalTask)
                             qName                         : :app:jvmTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -781,8 +779,6 @@ MODULE                        : kotlinMultiPlatform
                                     patterns                      : FilePatternSetImpl
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :module2:connectedDebugAndroidTest
                         jvmTest                       : jvmTest (DefaultExternalTask)
                             qName                         : :module2:jvmTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -790,8 +786,6 @@ MODULE                        : kotlinMultiPlatform
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 jvmTest                       : jvmTest (DefaultExternalTask)
                     qName                         : :app:jvmTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -806,7 +800,6 @@ MODULE                        : kotlinMultiPlatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : jvmTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
@@ -1049,7 +1042,6 @@ MODULE                        : kotlinMultiPlatform.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1883,6 +1875,8 @@ MODULE                        : kotlinMultiPlatform.app
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :app:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -1941,7 +1935,6 @@ MODULE                        : kotlinMultiPlatform.app
                     moduleName                    : kotlinMultiPlatform:app_debug
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2017,7 +2010,6 @@ MODULE                        : kotlinMultiPlatform.app
                     moduleName                    : kotlinMultiPlatform:app_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2112,7 +2104,6 @@ MODULE                        : kotlinMultiPlatform.app
                     moduleName                    : kotlinMultiPlatform:app_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2181,7 +2172,6 @@ MODULE                        : kotlinMultiPlatform.app
                     moduleName                    : kotlinMultiPlatform:app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2246,7 +2236,6 @@ MODULE                        : kotlinMultiPlatform.app
                     moduleName                    : kotlinMultiPlatform:app_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2310,7 +2299,6 @@ MODULE                        : kotlinMultiPlatform.module2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : jvmTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
@@ -2551,7 +2539,6 @@ MODULE                        : kotlinMultiPlatform.module2
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -2735,6 +2722,8 @@ MODULE                        : kotlinMultiPlatform.module2
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :module2:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2793,7 +2782,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debug
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2868,7 +2856,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2963,7 +2950,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3032,7 +3018,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3097,7 +3082,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

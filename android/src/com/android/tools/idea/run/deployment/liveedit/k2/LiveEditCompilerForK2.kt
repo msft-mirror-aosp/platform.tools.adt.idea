@@ -26,6 +26,7 @@ import com.android.tools.idea.run.deployment.liveedit.readActionPrebuildChecks
 import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.android.tools.idea.util.findAndroidModule
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -34,13 +35,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptionsBuilder
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationResult
-import org.jetbrains.kotlin.analysis.api.components.KaCompilerTarget
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationTarget
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnostic
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.diagnostics.getDefaultMessageWithFactoryName
 import org.jetbrains.kotlin.analysis.api.projectStructure.contextModule
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.facet.implementingModules
 import org.jetbrains.kotlin.idea.base.facet.platform.platform
 import org.jetbrains.kotlin.idea.base.projectStructure.toKaSourceModuleForProduction
@@ -62,8 +63,8 @@ internal class LiveEditCompilerForK2(private val project: Project, private val m
     inputs: Collection<LiveEditCompilerInput>,
   ) = runWithCompileLock {
     LOGGER.info("Using Live Edit K2 CodeGen")
-    readActionPrebuildChecks(project, file)
-    val result = backendCodeGenForK2(file, module, applicationLiveEditServices.getKotlinCompilerConfiguration(file))
+    runReadActionBlocking { readActionPrebuildChecks(project, file) }
+    val result = backendCodeGenForK2(file, module) { with(applicationLiveEditServices) { configureKotlinCompilerOptions(file) } }
     return@runWithCompileLock result.output.map { OutputFileForKtCompiledFile(it) }
   }
 }
@@ -88,36 +89,38 @@ private fun getCompileTargetFile(original: KtFile, module: Module): KtFile {
 }
 
 @OptIn(KaExperimentalApi::class)
-fun backendCodeGenForK2(file: KtFile, module: Module, configuration: CompilerConfiguration): KaCompilationResult.Success {
-  if (ModuleUtilCore.findModuleForFile(file) != module) {
-    throw LiveEditUpdateException.internalErrorFileOutsideModule(file)
-  }
-
-  // Since K2 compile AA reports syntax error, this may be unnecessary, but it throws an exception early when it has a syntax error.
-  // In other words, there is no performance penalty from this early check. Let's keep it because there is no guarantee that
-  // K2 compile AA covers all cases.
-  listOf(file).checkPsiErrorElement()
-
+fun backendCodeGenForK2(file: KtFile, module: Module, configurator: KaCompilationOptionsBuilder.() -> Unit): KaCompilationResult.Success {
   // TODO(316965795): Check the performance and the responsiveness once we complete K2 LE implementation.
   //                  Add/remove ProgressManager.checkCanceled() based on the performance and the responsiveness.
   ProgressManager.checkCanceled()
 
-  val substituteFile = getCompileTargetFile(file, module)
-  analyze(substituteFile) {
-    val result =
-      this@analyze.compile(
-        substituteFile,
-        configuration,
-        KaCompilerTarget.Jvm(isTestMode = false, compiledClassHandler = null, debuggerExtension = null),
-      ) {
-        // This is a lambda for `allowedErrorFilter` parameter. `compiler` API internally filters diagnostic errors with
-        // `allowedErrorFilter`. If `allowedErrorFilter(diagnosticError)` is true, the error will not be reported.
-        // Since we want to always report the diagnostic errors, we just return `false` here.
-        false
+  return runReadActionBlocking {
+    if (!file.isValid) {
+      throw LiveEditUpdateException.fileNotValid(file)
+    }
+    if (module.isDisposed) {
+      throw LiveEditUpdateException.moduleIsDisposed(module)
+    }
+    if (ModuleUtilCore.findModuleForFile(file) != module) {
+      throw LiveEditUpdateException.internalErrorFileOutsideModule(file)
+    }
+
+    // Since K2 compile AA reports syntax error, this may be unnecessary, but it throws an exception early when it has a syntax error.
+    // In other words, there is no performance penalty from this early check. Let's keep it because there is no guarantee that
+    // K2 compile AA covers all cases.
+    listOf(file).checkPsiErrorElement()
+
+    val substituteFile = getCompileTargetFile(file, module)
+    analyze(substituteFile) {
+      val options = createCompilationOptions {
+        target(KaCompilationTarget.JVM)
+        allowedErrorFilter { false } // Always report diagnostic errors, do not filter.
+        configurator()
       }
-    when (result) {
-      is KaCompilationResult.Success -> return result
-      is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage() })
+      when (val result = this@analyze.compile(substituteFile, options)) {
+        is KaCompilationResult.Success -> result
+        is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage() })
+      }
     }
   }
 }

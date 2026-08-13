@@ -81,7 +81,19 @@
       "hit": "AI next edit prediction"
     },
     {
+      "hit": "Automatically collapse diff chunks below:"
+    },
+    {
+      "hit": "Change Review"
+    },
+    {
       "hit": "Configure colors..."
+    },
+    {
+      "hit": "Dock thoughts to bottom"
+    },
+    {
+      "hit": "Don't Collapse"
     },
     {
       "hit": "Editor"
@@ -93,10 +105,22 @@
       "hit": "Enable AI smart rename suggestions"
     },
     {
-      "hit": "Model:"
+      "hit": "Major"
+    },
+    {
+      "hit": "Minor"
+    },
+    {
+      "hit": "Moderate"
+    },
+    {
+      "hit": "Next Edit Prediction"
     },
     {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Smart Rename"
     }
   ]
 }
@@ -123,9 +147,6 @@
       "hit": "\nBlocked shell commands (none)"
     },
     {
-      "hit": "\nLocked by administrator"
-    },
-    {
       "hit": "Access gitignored files"
     },
     {
@@ -142,6 +163,9 @@
     },
     {
       "hit": "Automatically run safe shell commands"
+    },
+    {
+      "hit": "Customize..."
     },
     {
       "hit": "Delete or rename files in the project"
@@ -360,6 +384,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Inline Edit",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Instantly loads the migration agent configured for resumption from disk artifacts.",
       "path": "ActionManager"
     },
@@ -377,6 +405,10 @@
     },
     {
       "hit": "Keep this change",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Manage Skills",
       "path": "ActionManager"
     },
     {
@@ -421,10 +453,6 @@
     },
     {
       "hit": "Prompt Library",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Quick Edit",
       "path": "ActionManager"
     },
     {
@@ -557,6 +585,9 @@
       "hit": "Refresh"
     },
     {
+      "hit": "Show Gemma in the model picker when no models are downloaded"
+    },
+    {
       "hit": "Sign in"
     },
     {
@@ -620,6 +651,18 @@
       "path": "Available Models"
     },
     {
+      "hit": "Update",
+      "path": "Available Models"
+    },
+    {
+      "hit": "0 (Disabled)",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "1 draft token",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "10 minutes of no requests",
       "path": "Host Configuration"
     },
@@ -628,11 +671,31 @@
       "path": "Host Configuration"
     },
     {
+      "hit": "2 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "3 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "30 minutes of no requests",
       "path": "Host Configuration"
     },
     {
+      "hit": "4 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "5 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "5 minutes of no requests",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "6 draft tokens",
       "path": "Host Configuration"
     },
     {
@@ -648,11 +711,11 @@
       "path": "Host Configuration"
     },
     {
-      "hit": "Never",
+      "hit": "Multi-Token Prediction (MTP) draft tokens:",
       "path": "Host Configuration"
     },
     {
-      "hit": "Parallel request processing",
+      "hit": "Never",
       "path": "Host Configuration"
     }
   ]
@@ -662,7 +725,20 @@
   "name": "Model Providers",
   "entries": [
     {
+      "hit": "Model Assignment"
+    }
+  ]
+}
+{
+  "id": "templates.modelproviders.configurable",
+  "name": "Model Providers",
+  "entries": [
+    {
       "hit": "Model Providers"
+    },
+    {
+      "hit": "Model Assignment",
+      "path": "Model Assignment"
     },
     {
       "hit": "API key header:",
@@ -710,6 +786,10 @@
     },
     {
       "hit": "Refresh",
+      "path": "Model Providers"
+    },
+    {
+      "hit": "Show Gemma in the model picker when no models are downloaded",
       "path": "Model Providers"
     },
     {
@@ -781,6 +861,18 @@
       "path": "Model Providers.Available Models"
     },
     {
+      "hit": "Update",
+      "path": "Model Providers.Available Models"
+    },
+    {
+      "hit": "0 (Disabled)",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "1 draft token",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "10 minutes of no requests",
       "path": "Model Providers.Host Configuration"
     },
@@ -789,11 +881,31 @@
       "path": "Model Providers.Host Configuration"
     },
     {
+      "hit": "2 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "3 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "30 minutes of no requests",
       "path": "Model Providers.Host Configuration"
     },
     {
+      "hit": "4 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "5 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "5 minutes of no requests",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "6 draft tokens",
       "path": "Model Providers.Host Configuration"
     },
     {
@@ -809,11 +921,11 @@
       "path": "Model Providers.Host Configuration"
     },
     {
-      "hit": "Never",
+      "hit": "Multi-Token Prediction (MTP) draft tokens:",
       "path": "Model Providers.Host Configuration"
     },
     {
-      "hit": "Parallel request processing",
+      "hit": "Never",
       "path": "Model Providers.Host Configuration"
     }
   ]

@@ -28,15 +28,11 @@ MODULE                        : gradle_project_1
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
 MODULE                        : gradle_project_1.app
@@ -49,7 +45,6 @@ MODULE                        : gradle_project_1.app
         rootFolderPath                : <ROOT>/gradle_project_1
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -258,7 +253,6 @@ MODULE                        : gradle_project_1.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1102,7 +1096,6 @@ MODULE                        : gradle_project_1.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1121,7 +1114,6 @@ MODULE                        : gradle_project_1.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1140,7 +1132,6 @@ MODULE                        : gradle_project_1.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1196,15 +1187,11 @@ MODULE                        : gradle_project_name
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
 MODULE                        : gradle_project_name.app
@@ -1217,7 +1204,6 @@ MODULE                        : gradle_project_name.app
         rootFolderPath                : <ROOT>/gradle_project_2
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -1426,7 +1412,6 @@ MODULE                        : gradle_project_name.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -2270,7 +2255,6 @@ MODULE                        : gradle_project_name.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2289,7 +2273,6 @@ MODULE                        : gradle_project_name.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2308,7 +2291,6 @@ MODULE                        : gradle_project_name.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

@@ -360,11 +360,11 @@ fun migratePackageAttribute(root: File) {
       when {
         buildGradle?.exists() == true -> {
           buildGradle.replaceContent { it.placeNamespaceProperty(namespace) }
-          VfsUtil.markDirtyAndRefresh(false, false, false, buildGradle.toFile())
+          VfsUtil.markDirtyAndRefresh(false, false, false, buildGradle)
         }
         buildGradleKts?.exists() == true -> {
           buildGradleKts.replaceContent { it.placeNamespaceProperty(namespace) }
-          VfsUtil.markDirtyAndRefresh(false, false, false, buildGradleKts.toFile())
+          VfsUtil.markDirtyAndRefresh(false, false, false, buildGradleKts)
         }
         else -> {
           error("Cannot find a build file to store the value of 'package' attribute in $manifestPath")

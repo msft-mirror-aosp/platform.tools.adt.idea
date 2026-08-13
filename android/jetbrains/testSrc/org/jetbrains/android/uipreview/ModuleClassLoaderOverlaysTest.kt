@@ -18,8 +18,8 @@ package org.jetbrains.android.uipreview
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.utils.FileUtils.toSystemIndependentPath
+import com.intellij.ide.trustedProjects.TrustedProjects
 import java.nio.file.Files
-import java.nio.file.Paths
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -101,13 +101,15 @@ internal class ModuleClassLoaderOverlaysTest {
 
     val moduleClassLoaderOverlays = ModuleClassLoaderOverlays.getInstance(buildTargetReference)
 
-    moduleClassLoaderOverlays.pushOverlayPath(Paths.get("/tmp/overlay2"))
-    moduleClassLoaderOverlays.pushOverlayPath(Paths.get("/tmp/overlay1"))
+    val overlay1 = Files.createTempDirectory("overlay1")
+    val overlay2 = Files.createTempDirectory("overlay2")
+    moduleClassLoaderOverlays.pushOverlayPath(overlay2)
+    moduleClassLoaderOverlays.pushOverlayPath(overlay1)
     val state = moduleClassLoaderOverlays.state
     assertEquals(
       """
-      /tmp/overlay1
-      /tmp/overlay2
+      ${toSystemIndependentPath(overlay1.toString())}
+      ${toSystemIndependentPath(overlay2.toString())}
       """
         .trimIndent(),
       state.paths.asPlatformIndependent().joinToString("\n"),
@@ -117,12 +119,47 @@ internal class ModuleClassLoaderOverlaysTest {
     val state2 = moduleClassLoaderOverlays.state
     assertEquals(
       """
-      /tmp/overlay1
-      /tmp/overlay2
+      ${toSystemIndependentPath(overlay1.toString())}
+      ${toSystemIndependentPath(overlay2.toString())}
       """
         .trimIndent(),
       state2.paths.asPlatformIndependent().joinToString("\n"),
     )
+  }
+
+  @Test
+  fun `state loading ignores paths not in temp directory`() {
+    val moduleClassLoaderOverlays = ModuleClassLoaderOverlays.getInstance(buildTargetReference)
+    val state = ModuleClassLoaderOverlays.State(listOf("/not/in/temp/overlay"))
+    moduleClassLoaderOverlays.loadState(state)
+    assertTrue(moduleClassLoaderOverlays.state.paths.isEmpty())
+  }
+
+  @Test
+  fun `untrusted project does not save state, load state, or load class`() {
+    val tempOverlayPath = Files.createTempDirectory("overlayTest")
+    val packageDirPath = Files.createDirectories(tempOverlayPath.resolve(TestClass::class.java.packageName.replace(".", "/")))
+    val classFilePath = packageDirPath.resolve(TestClass::class.java.simpleName + ".class")
+    Files.write(classFilePath, loadClassBytes(TestClass::class.java))
+
+    val moduleClassLoaderOverlay = ModuleClassLoaderOverlays.getInstance(buildTargetReference)
+    moduleClassLoaderOverlay.pushOverlayPath(tempOverlayPath)
+
+    try {
+      TrustedProjects.setProjectTrusted(projectRule.project, false)
+      assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
+      assertNull(moduleClassLoaderOverlay.classLoaderLoader.loadClass(testClassName))
+
+      val state = ModuleClassLoaderOverlays.State(listOf(tempOverlayPath.toString()))
+      moduleClassLoaderOverlay.loadState(state)
+      assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
+
+      val anotherTempPath = Files.createTempDirectory("overlayTest2")
+      moduleClassLoaderOverlay.pushOverlayPath(anotherTempPath)
+      assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
+    } finally {
+      TrustedProjects.setProjectTrusted(projectRule.project, true)
+    }
   }
 
   @Test
@@ -149,5 +186,33 @@ internal class ModuleClassLoaderOverlaysTest {
     assertTrue(moduleClassLoaderOverlays.containsClass("a.TestClass"))
     assertTrue(moduleClassLoaderOverlays.containsClass("d.e.OtherTestClass"))
     assertTrue(moduleClassLoaderOverlays.containsClass("d.e.f.OtherTestClass"))
+  }
+
+  @Test
+  fun `non-persistent overlay is transient, loads classes, and does not fire notifications`() {
+    // Copy the classes into a temp directory to use as non-persistent overlay
+    val tempOverlayPath = Files.createTempDirectory("nonPersistentOverlayTest")
+    val packageDirPath = Files.createDirectories(tempOverlayPath.resolve(TestClass::class.java.packageName.replace(".", "/")))
+    val classFilePath = packageDirPath.resolve(TestClass::class.java.simpleName + ".class")
+    Files.write(classFilePath, loadClassBytes(TestClass::class.java))
+
+    val moduleClassLoaderOverlay = ModuleClassLoaderOverlays.getInstance(buildTargetReference)
+
+    val initialProjectModCount = projectOverlayModificationCount
+    val initialModuleModCount = moduleOverlayModificationCount
+
+    // Push the non-persistent overlay
+    moduleClassLoaderOverlay.pushNonPersistentOverlayPath(tempOverlayPath)
+
+    // 1. Verify class finding and loading works
+    assertTrue(moduleClassLoaderOverlay.containsClass(testClassName))
+    assertNotNull(moduleClassLoaderOverlay.classLoaderLoader.loadClass(testClassName))
+
+    // 2. Verify state does NOT persist the non-persistent path
+    assertFalse(moduleClassLoaderOverlay.state.paths.contains(tempOverlayPath.toString()))
+
+    // 3. Verify modification counters did not change
+    assertEquals(initialProjectModCount, projectOverlayModificationCount)
+    assertEquals(initialModuleModCount, moduleOverlayModificationCount)
   }
 }

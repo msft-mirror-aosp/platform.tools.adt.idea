@@ -31,6 +31,7 @@ import org.jetbrains.android.AndroidTestCase
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 class DefaultActivityLaunchTest : AndroidTestCase() {
   lateinit var apk: String
@@ -45,12 +46,13 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
     apk = "${myFixture.testDataPath}/configurations/activity/apkWithDefaultActivity.apk"
     state = DefaultActivityLaunch.State()
     device = mock<IDevice>()
+    whenever(device.serialNumber).thenReturn("1234")
     app = createApp(device, "com.example.myapplication", emptyList(), ArrayList(setOf("com.example.myapplication.MainActivity")))
     stats = RunStats(myFixture.project)
   }
 
   fun testLaunch() {
-    state.launch(device, app, TestApksProvider(apk, "com.example.myapplication"), false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, null, app, TestApksProvider(apk, "com.example.myapplication"), false, "", EmptyTestConsoleView(), stats)
 
     Mockito.verify(device)
       .executeShellCommand(
@@ -72,7 +74,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
         )
       )
 
-    state.launch(device, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, null, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
 
     Mockito.verify(device)
       .executeShellCommand(
@@ -95,7 +97,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
       )
 
     val exception =
-      assertFailsWith<IllegalStateException> { state.launch(device, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
+      assertFailsWith<IllegalStateException> { state.launch(device, null, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
 
     assertThat(exception.message).isEqualTo("No matching APK for application: com.example.myapplication\n")
   }
@@ -110,7 +112,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
       )
 
     val exception =
-      assertFailsWith<IllegalStateException> { state.launch(device, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
+      assertFailsWith<IllegalStateException> { state.launch(device, null, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats) }
 
     assertThat(exception.message)
       .isEqualTo(
@@ -128,7 +130,9 @@ Projects:
     val emptyApkProvider = TestApksProvider(emptyList())
 
     val exception =
-      assertFailsWith<AndroidExecutionException> { state.launch(device, app, emptyApkProvider, false, "", EmptyTestConsoleView(), stats) }
+      assertFailsWith<AndroidExecutionException> {
+        state.launch(device, null, app, emptyApkProvider, false, "", EmptyTestConsoleView(), stats)
+      }
 
     assertThat(exception.message).isEqualTo("No APKs provided. Unable to extract default activity")
   }

@@ -103,7 +103,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -133,23 +132,26 @@ class StudioLocalEmulatorProvisionerPlugin(
     avdScanner.rescan()
   }
 
-  override val devices: StateFlow<List<StudioLocalEmulatorDeviceHandle>> =
-    flow {
-        val handles = mutableMapOf<LocalEmulatorDeviceHandle, StudioLocalEmulatorDeviceHandle>()
-        basePlugin.devices.collect { baseHandles ->
-          val wrappedHandles = mutableListOf<StudioLocalEmulatorDeviceHandle>()
-          for (baseHandle in baseHandles) {
-            wrappedHandles.add(
-              handles.computeIfAbsent(baseHandle as LocalEmulatorDeviceHandle) {
-                StudioLocalEmulatorDeviceHandle(project, baseHandle, context, devices, ioDispatcher)
-              }
-            )
-          }
-          handles.keys.retainAll(baseHandles.toSet())
-          emit(wrappedHandles.toList())
+  private val _devices = MutableStateFlow<List<StudioLocalEmulatorDeviceHandle>>(emptyList())
+  override val devices: StateFlow<List<StudioLocalEmulatorDeviceHandle>> = _devices.asStateFlow()
+
+  init {
+    scope.launch {
+      val handles = mutableMapOf<LocalEmulatorDeviceHandle, StudioLocalEmulatorDeviceHandle>()
+      basePlugin.devices.collect { baseHandles ->
+        val wrappedHandles = mutableListOf<StudioLocalEmulatorDeviceHandle>()
+        for (baseHandle in baseHandles) {
+          wrappedHandles.add(
+            handles.computeIfAbsent(baseHandle as LocalEmulatorDeviceHandle) {
+              StudioLocalEmulatorDeviceHandle(project, baseHandle, context, devices, ioDispatcher)
+            }
+          )
         }
+        handles.keys.retainAll(baseHandles.toSet())
+        _devices.value = wrappedHandles.toList()
       }
-      .stateIn(scope, SharingStarted.Eagerly, emptyList())
+    }
+  }
 
   private val notificationBanners: StateFlow<List<EditorNotificationPanel>> =
     combine(devices, accelerationError, dismissedErrors) { deviceList, accelError, dismissed ->
@@ -240,10 +242,9 @@ class StudioLocalEmulatorDeviceHandle(
 
   // Returning GlassesPairingResult instead of just the device handle allows
   // propagating the MAC address back to avoid race conditions.
-  internal var wizardProvider: suspend (Component?, Project?, Flow<List<DeviceHandle>>, DeviceHandle) -> GlassesPairingResult? =
-    { par, proj, flow, handle ->
-      GlassesPairingWizard.show(par, proj, flow, handle)
-    }
+  internal var wizardProvider:
+    suspend (Component?, Project?, Flow<List<DeviceHandle>>, DeviceHandle, DeviceHandle?) -> GlassesPairingResult? =
+    GlassesPairingWizard::show
 
   internal fun refreshDevicesAsync() {
     baseDeviceHandle.avdScanner.rescanAsync()
@@ -511,7 +512,7 @@ class StudioLocalEmulatorDeviceHandle(
   override suspend fun pairGlasses(parent: Component?, project: Project?): Boolean {
     val glassesHandle = this@StudioLocalEmulatorDeviceHandle
     logger.info("User initiated Glasses Pairing Wizard for ${glassesHandle.id}")
-    val result = withContext(edtDispatcher) { wizardProvider(parent, project, deviceHandleFlow, glassesHandle) }
+    val result = withContext(edtDispatcher) { wizardProvider(parent, project, deviceHandleFlow, glassesHandle, null) }
 
     if (result != null) {
       val pairedPhone = result.phone as? StudioLocalEmulatorDeviceHandle
@@ -547,17 +548,22 @@ class StudioLocalEmulatorDeviceHandle(
     GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_ACTION_CLICKED)
     val properties = state.properties
     val phoneId = properties.pairedPhoneId
+    val glassesId = this.id
 
     val phoneHandle = phoneId?.let { id -> deviceHandleFlow.value.find { it.id == id } }
-
-    // 1. If Phone is Online, send UNPAIR broadcast
-    if (phoneHandle != null) {
+    // Multi-tier MAC resolution: if the phone's host .ini lacks the glasses MAC, query the
+    // live glasses AVD directly via getBluetoothAddress() so the IDE can construct and dispatch
+    // the targeted UNPAIR broadcast intent to the companion app running on the phone.
+    val glassesMac =
+      phoneHandle?.state?.properties?.pairedGlassesInfos?.find { it.id == glassesId }?.mac
+        ?: state.connectedDevice?.let { dev -> with(AiGlassesPairing(dev.session)) { dev.getBluetoothAddress() } }
+    if (phoneHandle != null && glassesMac != null) {
       val phoneDevice = phoneHandle.state.connectedDevice
       if (phoneDevice != null) {
         try {
           val adbSession = phoneDevice.session
           val pairing = AiGlassesPairing(adbSession)
-          withContext(ioDispatcher) { with(pairing) { phoneDevice.sendUnpairCommand() } }
+          withContext(ioDispatcher) { with(pairing) { phoneDevice.sendUnpairCommand(glassesMac) } }
         } catch (e: CancellationException) {
           throw e
         } catch (e: ShellCommandException) {

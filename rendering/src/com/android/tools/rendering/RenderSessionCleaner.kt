@@ -22,12 +22,14 @@ import com.android.SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER
 import com.android.ide.common.rendering.api.RenderSession
 import com.android.ide.common.rendering.api.ViewInfo
 import com.android.tools.rendering.classloading.ModuleClassLoader
+import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.rendering.compose.RECOMPOSER_CLASS
 import com.intellij.openapi.diagnostic.Logger
 import java.lang.ref.WeakReference
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.util.Arrays
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -49,12 +51,13 @@ private const val TYPEFACE_COMPAT_FQN = "androidx.core.graphics.TypefaceCompat"
 private const val WINDOW_RECOMPOSER_ANDROID_KT_FQN = "androidx.compose.ui.platform.WindowRecomposer_androidKt"
 private const val LOCAL_BROADCAST_MANAGER_FQN = "androidx.localbroadcastmanager.content.LocalBroadcastManager"
 
-private const val GAP_WORKER_CLASS_NAME = "androidx.recyclerview.widget.GapWorker"
+private val GAP_WORKER_CLASS_NAMES = listOf("androidx.recyclerview.widget.GapWorker", "android.support.v7.widget.GapWorker")
 
 private const val INTERNAL_PACKAGE = "_layoutlib_._internal_."
 private const val ANDROID_UI_DISPATCHER_FQN = "androidx.compose.ui.platform.AndroidUiDispatcher"
 private const val ANDROID_UI_DISPATCHER_COMPANION_FQN = "$ANDROID_UI_DISPATCHER_FQN\$Companion"
 private const val COMBINED_CONTEXT_FQN = "${INTERNAL_PACKAGE}kotlin.coroutines.CombinedContext"
+private const val ANDROID_COMPOSE_VIEW_FQN = "androidx.compose.ui.platform.AndroidComposeView"
 
 /**
  * Initiates a custom [RenderSession] disposal, involving clearing several static collections including some Compose-related objects as well
@@ -67,10 +70,10 @@ fun RenderSession.dispose(classLoader: ModuleClassLoader): CompletableFuture<Voi
   var applyObserversRef: WeakReference<MutableCollection<*>?>? = null
   var globalWriteObserversRef: WeakReference<MutableCollection<*>?>? = null
   var toRunTrampolinedRef: WeakReference<MutableCollection<*>?>? = null
-  // After render clean-up. Dispose the GapWorker, FontRequestWorker, and TypefaceCompat caches for all projects.
-  clearGapWorkerCache(classLoader)
+  // After render clean-up. Dispose the FontRequestWorker cache and TypefaceCompat caches for all projects.
   clearFontRequestWorker(classLoader)
   clearTypefaceCompatCache(classLoader)
+  clearAndroidComposeView(classLoader)
 
   if (classLoader.hasLoadedClass(CLASS_COMPOSE_VIEW_ADAPTER)) {
     clearCompositions(classLoader)
@@ -122,6 +125,7 @@ fun RenderSession.dispose(classLoader: ModuleClassLoader): CompletableFuture<Voi
     toRunTrampolinedRef?.get()?.clear()
     broadcastManagerInstanceField.get()?.set(null, null)
     this@dispose.dispose()
+    clearGapWorkerCache(classLoader)
   }
 }
 
@@ -217,8 +221,10 @@ private fun findSnapshotKtObserversField(classLoader: ModuleClassLoader, fieldNa
 }
 
 private fun findLocalBroadcastManagerInstance(classLoader: ModuleClassLoader): Field? {
+  if (!classLoader.hasLoadedClass(LOCAL_BROADCAST_MANAGER_FQN)) return null
+
   return try {
-    val broadcastManagerClass = classLoader.loadClass(LOCAL_BROADCAST_MANAGER_FQN)
+    val broadcastManagerClass: Class<*> = classLoader.loadClass(LOCAL_BROADCAST_MANAGER_FQN)
     broadcastManagerClass.getDeclaredField("mInstance").apply { this.isAccessible = true }
   } catch (ex: ReflectiveOperationException) {
     LOG.debug("Unable to find $LOCAL_BROADCAST_MANAGER_FQN.mInstance", ex)
@@ -283,29 +289,22 @@ private fun clearGapWorkerCache(classLoader: ModuleClassLoader) {
     return
   }
 
-  try {
-    val gapWorkerClass = classLoader.loadClass(GAP_WORKER_CLASS_NAME)
-
-    if (gapWorkerClass.classLoader !== classLoader) {
-      LOG.debug("GapWorker loaded by parent classloader, skipping clean-up")
-      return
-    }
-
-    val gapWorkerField = gapWorkerClass.getDeclaredField("sGapWorker")
-    gapWorkerField.isAccessible = true
-
-    // Because we are clearing-up a ThreadLocal, the code must run on the Layoutlib Thread
-    RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingTopic.CLEAN) {
-      try {
-        val gapWorkerFieldValue = gapWorkerField[null] as? ThreadLocal<*>
-        gapWorkerFieldValue?.set(null)
-        LOG.debug("GapWorker was cleared")
-      } catch (e: Exception) {
-        LOG.debug(e)
+  for (className in GAP_WORKER_CLASS_NAMES) {
+    try {
+      val gapWorkerClass = classLoader.loadClass(className)
+      if (gapWorkerClass.classLoader !is DelegatingClassLoader) {
+        LOG.debug("GapWorker loaded by IDE/system classloader, skipping clean-up")
+        continue
       }
+      val gapWorkerField = gapWorkerClass.getDeclaredField("sGapWorker")
+      gapWorkerField.isAccessible = true
+
+      val gapWorkerFieldValue = gapWorkerField[null] as? ThreadLocal<*>
+      gapWorkerFieldValue?.set(null)
+      LOG.debug("GapWorker was cleared")
+    } catch (t: Throwable) {
+      LOG.debug(t)
     }
-  } catch (t: Throwable) {
-    LOG.debug(t)
   }
 }
 
@@ -347,5 +346,49 @@ private fun clearTypefaceCompatCache(classLoader: ModuleClassLoader) {
     clearCacheMethod.invoke(null)
   } catch (ex: ReflectiveOperationException) {
     LOG.debug("Unable to dispose TypefaceCompat.sTypefaceCache", ex)
+  }
+}
+
+/** Clear static variables or caches held by `AndroidComposeView`. */
+private fun clearAndroidComposeView(classLoader: ModuleClassLoader) {
+  if (!classLoader.hasLoadedClass(ANDROID_COMPOSE_VIEW_FQN)) return
+
+  try {
+    val androidComposeViewClass = classLoader.loadClass(ANDROID_COMPOSE_VIEW_FQN)
+
+    // Safety check to ensure we only modify classes loaded by the ModuleClassLoader itself
+    if (androidComposeViewClass.classLoader !== classLoader) {
+      LOG.debug("AndroidComposeView loaded by parent classloader, skipping clean-up")
+      return
+    }
+
+    clearStaticFields(androidComposeViewClass)
+
+    val companionFqn = "$ANDROID_COMPOSE_VIEW_FQN\$Companion"
+    if (classLoader.hasLoadedClass(companionFqn)) {
+      val companionClass = classLoader.loadClass(companionFqn)
+      clearStaticFields(companionClass)
+    }
+  } catch (ex: ReflectiveOperationException) {
+    LOG.debug("Unable to dispose AndroidComposeView static fields", ex)
+  }
+}
+
+private fun clearStaticFields(clazz: Class<*>) {
+  for (field in clazz.declaredFields) {
+    if (Modifier.isStatic(field.modifiers)) {
+      runCatching {
+        field.isAccessible = true
+        val value = field[null]
+        if (value is MutableCollection<*>) {
+          value.clear()
+        } else if (value is MutableMap<*, *>) {
+          value.clear()
+        }
+        if (!Modifier.isFinal(field.modifiers)) {
+          field.set(null, null)
+        }
+      }
+    }
   }
 }

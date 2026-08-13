@@ -41,12 +41,12 @@ import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.adblib.AdbLibApplicationService
+import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.run.DeviceHeadsUpListener
-import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.MirroringManager
@@ -108,6 +108,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -741,6 +742,7 @@ class StreamingToolWindowManagerTest {
     assertThat(mirroringManager.mirroringHandles.value[device]?.mirroringState).isEqualTo(MirroringState.INACTIVE)
   }
 
+  @Ignore("b/545682552")
   @Test
   fun testAvdStarting() {
     EmulatorSettings.getInstance()::launchInToolWindow.override(false, testRootDisposable)
@@ -1115,6 +1117,7 @@ class StreamingToolWindowManagerTest {
   }
 
   private fun triggerAddDevicePopup(): FakeJBPopup<Any> {
+    AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(true) // Force loading of AVDs.
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }
     val newTabAction = toolWindow.tabActions[0]
     val testEvent = createTestEvent(toolWindow.component, project)

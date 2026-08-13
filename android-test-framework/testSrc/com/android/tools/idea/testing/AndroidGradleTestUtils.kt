@@ -194,8 +194,8 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.blockingContext
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ex.ProjectEx
+import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtil.toCanonicalPath
@@ -232,7 +232,7 @@ import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.MultiMap
 import com.intellij.util.messages.MessageBusConnection
 import com.intellij.workspaceModel.core.fileIndex.impl.WorkspaceFileIndexImpl
-import com.intellij.workspaceModel.ide.impl.jps.serialization.DelayedProjectSynchronizer
+import com.intellij.workspaceModel.ide.ProjectSynchronizerUtil
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_MODULE_ENTITY_TYPE_ID_NAME
 import java.io.File
 import java.io.IOException
@@ -2568,7 +2568,7 @@ private fun <T> openPreparedProject(
         emulateStartupActivityForTest(project)
         val awaitGradleStartupActivity =
           project.coroutineScope.launch {
-            DelayedProjectSynchronizer.Util.backgroundPostStartupProjectLoading(project)
+            ProjectSynchronizerUtil.getInstance(project).applyJpsModelToProjectModel()
             project.service<AndroidGradleProjectStartupActivity.StartupService>().awaitInitialization()
           }
         val defaultTestTimeoutMinutes = 15L
@@ -2600,7 +2600,7 @@ private fun <T> openPreparedProject(
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
             PlatformTestUtil.saveProject(project, true)
             Disposer.dispose(projectScopedDisposable)
-            ProjectManager.getInstance().closeAndDispose(project)
+            ProjectManagerEx.getInstanceEx().forceCloseProject(project)
             // Empty the event queue to ensure all disposal and listener unregistration tasks
             // (e.g. FocusChangeListeners registered by EditorTrackerImpl) that were asynchronously queued onto the
             // EDT by the closeAndDispose process are completely processed.

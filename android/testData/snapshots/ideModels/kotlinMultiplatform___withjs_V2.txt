@@ -610,8 +610,6 @@ MODULE                        : kotlinMultiPlatform
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             jsModule                      : :jsModule (DefaultExternalProject)
@@ -677,16 +675,12 @@ MODULE                        : kotlinMultiPlatform
                     - additionalArtifacts         : <ROOT>/module2/build/libs/module2-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :module2:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :module2:testDebugUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
             configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 jsBrowserTest                 : jsBrowserTest (DefaultExternalTask)
                     qName                         : :jsModule:jsBrowserTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -701,7 +695,6 @@ MODULE                        : kotlinMultiPlatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -908,7 +901,6 @@ MODULE                        : kotlinMultiPlatform.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1713,7 +1705,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1733,7 +1724,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1753,7 +1743,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1830,6 +1819,8 @@ MODULE                        : kotlinMultiPlatform.jsModule
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :jsModule:integrateLinkagePackage [-]
         - targets                     : js (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : webMain (KotlinSourceSetImpl)
@@ -1887,7 +1878,6 @@ MODULE                        : kotlinMultiPlatform.jsModule
                 compilerArguments             : K2JVMCompilerArguments
                     assertionsMode                : legacy
                     backendThreads                : 1
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
@@ -2003,7 +1993,6 @@ MODULE                        : kotlinMultiPlatform.jsModule
                 compilerArguments             : K2JVMCompilerArguments
                     assertionsMode                : legacy
                     backendThreads                : 1
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
@@ -2081,7 +2070,6 @@ MODULE                        : kotlinMultiPlatform.module2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -2321,7 +2309,6 @@ MODULE                        : kotlinMultiPlatform.module2
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -2494,6 +2481,8 @@ MODULE                        : kotlinMultiPlatform.module2
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :module2:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
@@ -2536,7 +2525,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debug
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2610,7 +2598,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2686,7 +2673,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

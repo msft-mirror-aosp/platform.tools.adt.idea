@@ -15,10 +15,10 @@
  */
 package com.google.idea.blaze.base.run.smrunner;
 
-
 import com.google.common.base.Strings;
 import com.google.idea.blaze.base.dependencies.TargetInfo;
 import com.google.idea.blaze.base.model.primitives.Kind;
+import com.google.idea.blaze.base.run.producers.TestSelector;
 import com.google.idea.blaze.base.run.smrunner.BlazeXmlSchema.TestSuite;
 import com.google.idea.blaze.base.run.targetfinder.TargetFinder;
 import com.google.idea.blaze.common.Label;
@@ -46,8 +46,7 @@ public interface BlazeTestEventsHandler {
    * <p>Test results will still be displayed for unhandled kinds if they're included in a test_suite
    * or multi-target Blaze invocation, where we don't know up front the languages involved.
    */
-  static boolean targetsSupported(
-      Project project, List<? extends String> targets) {
+  static boolean targetsSupported(Project project, List<? extends String> targets) {
     Kind kind = getKindForTargets(project, targets);
     return Arrays.stream(EP_NAME.getExtensions()).anyMatch(handler -> handler.handlesKind(kind));
   }
@@ -125,6 +124,16 @@ public interface BlazeTestEventsHandler {
    */
   @Nullable
   String getTestFilter(Project project, List<Location<?>> testLocations);
+
+  /**
+   * Domain test selectors for the given test locations.
+   *
+   * @return {@code null} if no domain test selectors can be constructed for these tests
+   */
+  @Nullable
+  default List<TestSelector> getTestSelectors(Project project, List<Location<?>> testLocations) {
+    return null;
+  }
 
   /** Returns {@code null} if this test events handler doesn't support test filtering. */
   @Nullable

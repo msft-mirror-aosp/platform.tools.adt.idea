@@ -9,12 +9,14 @@ iml_module(
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
     visibility = ["//visibility:public"],
+    exports = ["//tools/base/adblib:studio.android.sdktools.adblib"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/base/adblib:studio.android.sdktools.adblib",
+        "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
         "//tools/adt/idea/.idea/libraries:zxing-core",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/android-common:intellij.android.common",

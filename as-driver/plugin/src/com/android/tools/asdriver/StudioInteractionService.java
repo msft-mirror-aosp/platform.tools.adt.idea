@@ -30,6 +30,7 @@ import com.intellij.openapi.actionSystem.impl.ActionButton;
 import com.intellij.openapi.actionSystem.impl.ActionMenu;
 import com.intellij.openapi.actionSystem.impl.ActionMenuItem;
 import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.TransactionGuard;
@@ -48,6 +49,8 @@ import java.awt.Container;
 import java.awt.Frame;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
@@ -81,6 +84,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.ListModel;
 import javax.swing.event.HyperlinkEvent;
 
@@ -171,9 +175,23 @@ public class StudioInteractionService {
   }
 
   private void setTextOnComponent(Component component, String text) {
-    if (component instanceof JTextField componentAsJTextField) {
-      log("Setting text on JTextField: " + componentAsJTextField);
-      componentAsJTextField.setText(text);
+    if (component instanceof JTextField) {
+      JTextField componentAsJTextField = (JTextField) component;
+      log("Setting text on JTextField: " + componentAsJTextField.getClass().getName());
+      if (ApplicationInfo.getInstance().getBuild().getBaselineVersion() >= 262) {
+        SwingUtilities.invokeLater(() -> {
+          componentAsJTextField.setText(text);
+          KeyEvent enterEvent = new KeyEvent(
+              componentAsJTextField, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ENTER, '\n');
+          for (KeyListener listener : componentAsJTextField.getKeyListeners()) {
+            listener.keyPressed(enterEvent);
+          }
+          componentAsJTextField.dispatchEvent(enterEvent);
+          componentAsJTextField.postActionEvent();
+        });
+      } else {
+        componentAsJTextField.setText(text);
+      }
     } else {
       throw new IllegalArgumentException(String.format(Locale.ROOT, "Don't know how to invoke set text on class \"%s\"", component.getClass()));
     }
@@ -220,6 +238,31 @@ public class StudioInteractionService {
 
     int numComponentsFound = componentsFound.size();
     if (numComponentsFound > 1) {
+      // If multiple components matched, first prefer components that are actively showing on screen.
+      Set<Component> showingComponents = componentsFound.stream()
+          .filter(Component::isShowing)
+          .collect(Collectors.toSet());
+      if (!showingComponents.isEmpty()) {
+        componentsFound = showingComponents;
+        numComponentsFound = componentsFound.size();
+      }
+    }
+
+    if (numComponentsFound > 1) {
+      // b/542306930: If multiple components matched and none are directly showing (e.g. components
+      // placed on an inactive CardLayout card beneath another component), prefer components whose
+      // ancestor container hierarchy is visible (e.g. filtering out components inside inactive/hidden
+      // tabs in JTabbedPane, such as the WSL tab in UniversalFileChooser on Windows).
+      Set<Component> componentsWithVisibleAncestors = componentsFound.stream()
+          .filter(StudioInteractionService::areAncestorsVisible)
+          .collect(Collectors.toSet());
+      if (!componentsWithVisibleAncestors.isEmpty()) {
+        componentsFound = componentsWithVisibleAncestors;
+        numComponentsFound = componentsFound.size();
+      }
+    }
+
+    if (numComponentsFound > 1) {
       StringBuilder sb = new StringBuilder();
       int index = 1;
       for (Component component : componentsFound) {
@@ -232,6 +275,17 @@ public class StudioInteractionService {
     }
 
     return componentsFound.stream().findFirst();
+  }
+
+  private static boolean areAncestorsVisible(Component c) {
+    Component parent = c.getParent();
+    while (parent != null) {
+      if (!parent.isVisible()) {
+        return false;
+      }
+      parent = parent.getParent();
+    }
+    return true;
   }
 
   /**
@@ -861,13 +915,14 @@ public class StudioInteractionService {
       Method getConfig = semanticsNode.getClass().getMethod("getConfig");
       Object config = getConfig.invoke(semanticsNode);
 
-      Class<?> actionsClass = Class.forName("androidx.compose.ui.semantics.SemanticsActions");
+      ClassLoader composeClassLoader = semanticsNode.getClass().getClassLoader();
+      Class<?> actionsClass = Class.forName("androidx.compose.ui.semantics.SemanticsActions", true, composeClassLoader);
       Field instanceField = actionsClass.getField("INSTANCE");
       Object actionsInstance = instanceField.get(null);
 
       Object actionKey = actionsClass.getMethod("getOnClick").invoke(actionsInstance);
 
-      Class<?> keyClass = Class.forName("androidx.compose.ui.semantics.SemanticsPropertyKey");
+      Class<?> keyClass = Class.forName("androidx.compose.ui.semantics.SemanticsPropertyKey", true, composeClassLoader);
       Method contains = config.getClass().getMethod("contains", keyClass);
       if (!(Boolean) contains.invoke(config, actionKey)) {
         return false;

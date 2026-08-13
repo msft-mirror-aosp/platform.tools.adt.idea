@@ -32,6 +32,7 @@ import org.jetbrains.jewel.markdown.extensions.markdownProcessor
 import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
 import org.jetbrains.jewel.ui.component.Typography
 import org.jetbrains.jewel.ui.component.copyWithSize
+import org.jetbrains.jewel.ui.typography
 
 /**
  * Renders a Markdown string with a default styling for information text. This means that text will be based on [Typography.medium] with
@@ -49,10 +50,10 @@ import org.jetbrains.jewel.ui.component.copyWithSize
  * @param textColor The color to use for the Markdown text.
  * @param renderingDispatcher The coroutine dispatcher to use for rendering the Markdown.
  * @param onUrlClick A callback that is invoked when the user clicks on a URL.
- * @param onTextClick A callback that is invoked when the user clicks on the text.
  * @param markdownFactory The [MarkdownFactory] to use for styling the Markdown.
  * @param processor The [MarkdownProcessor] to use for processing the Markdown.
  */
+@Suppress("UnstableApiUsage")
 @OptIn(ExperimentalJewelApi::class)
 @Composable
 fun InfoMarkdown(
@@ -60,17 +61,16 @@ fun InfoMarkdown(
   modifier: Modifier = Modifier,
   selectable: Boolean = false,
   enabled: Boolean = true,
-  textStyle: TextStyle = Typography.medium(),
+  textStyle: TextStyle = JewelTheme.typography.medium,
   editorTextStyle: TextStyle = JewelTheme.editorTextStyle.copyWithSize(textStyle.fontSize),
   textColor: Color = JewelTheme.globalColors.text.info,
   renderingDispatcher: CoroutineDispatcher = Dispatchers.Default,
   onUrlClick: (String) -> Unit = {},
-  onTextClick: () -> Unit = {},
   markdownFactory: MarkdownFactory = JewelTheme.markdownFactory,
   processor: MarkdownProcessor = JewelTheme.markdownProcessor,
 ) {
   val markdownStyling =
-    remember(JewelTheme.name, JewelTheme.isDark, textStyle, markdownFactory, editorTextStyle, textColor) {
+    remember(JewelTheme.instanceUuid, textStyle, markdownFactory, editorTextStyle, textColor) {
       markdownFactory.createStyling(
         baseTextStyle = if (textColor.isSpecified) textStyle.copy(color = textColor) else textStyle,
         editorTextStyle = if (textColor.isSpecified) editorTextStyle.copy(color = textColor) else editorTextStyle,
@@ -84,7 +84,6 @@ fun InfoMarkdown(
     enabled = enabled,
     renderingDispatcher = renderingDispatcher,
     onUrlClick = onUrlClick,
-    onTextClick = onTextClick,
     markdownStyling = markdownStyling,
     processor = processor,
     blockRenderer = remember(markdownStyling, markdownFactory) { markdownFactory.createBlockRenderer(markdownStyling) },

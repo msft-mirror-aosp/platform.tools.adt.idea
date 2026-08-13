@@ -53,7 +53,7 @@ class K2AndroidKotlinResourceExternalAnnotator : AndroidKotlinResourceExternalAn
         /** Since this function uses [KtJavaFieldSymbol], it must run inside [analyze]. */
         private fun KaSession.getResourceReferenceType(field: KaJavaFieldSymbol): ResourceReferenceType {
             val containingClassId = field.callableId?.classId ?: return ResourceReferenceType.NONE
-            val rClassName = containingClassId.parentClassId?.shortClassName ?: return ResourceReferenceType.NONE
+            val rClassName = containingClassId.outerClassId?.shortClassName ?: return ResourceReferenceType.NONE
 
             if (SdkConstants.R_CLASS == rClassName.asString()) {
                 val rClassPackageFqName = containingClassId.packageFqName

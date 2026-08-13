@@ -893,14 +893,6 @@ MODULE                        : Kotlin_Multiplatform
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedTypeoneModeoneDebugAndroidTest : connectedTypeoneModeoneDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypeoneModeoneDebugAndroidTest
-                        connectedTypeoneModetwoDebugAndroidTest : connectedTypeoneModetwoDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypeoneModetwoDebugAndroidTest
-                        connectedTypetwoModeoneDebugAndroidTest : connectedTypetwoModeoneDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypetwoModeoneDebugAndroidTest
-                        connectedTypetwoModetwoDebugAndroidTest : connectedTypetwoModetwoDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypetwoModetwoDebugAndroidTest
                         testTypeoneModeoneDebugUnitTest         : testTypeoneModeoneDebugUnitTest (DefaultExternalTask)
                             qName                         : :androidLib:testTypeoneModeoneDebugUnitTest
                         testTypeoneModetwoDebugUnitTest         : testTypeoneModetwoDebugUnitTest (DefaultExternalTask)
@@ -926,8 +918,6 @@ MODULE                        : Kotlin_Multiplatform
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             build-logic                   : :build-logic (DefaultExternalProject)
@@ -965,15 +955,11 @@ MODULE                        : Kotlin_Multiplatform
                             - additionalArtifacts         : <ROOT>/build-logic/lib-foo/build/libs/lib-foo-metadata.jar [-]
                         taskModel                     : DefaultGradleTaskModel
                             tasks
-                                connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                                    qName                         : :lib-foo:connectedAndroidDeviceTest
                                 testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
                                     qName                         : :lib-foo:testAndroidHostTest
                 sourceSetModel                : DefaultGradleSourceSetModel
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                            qName                         : :lib-foo:connectedAndroidDeviceTest
                         testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
                             qName                         : :lib-foo:testAndroidHostTest
             kmpFirstLib                   : :kmpFirstLib (DefaultExternalProject)
@@ -1000,8 +986,6 @@ MODULE                        : Kotlin_Multiplatform
                     - additionalArtifacts         : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                            qName                         : :kmpFirstLib:connectedAndroidDeviceTest
                         testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
                             qName                         : :kmpFirstLib:testAndroidHostTest
             kmpJvmOnly                    : :kmpJvmOnly (DefaultExternalProject)
@@ -1176,18 +1160,6 @@ MODULE                        : Kotlin_Multiplatform
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                    qName                         : :kmpFirstLib:connectedAndroidDeviceTest
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
-                connectedTypeoneModeoneDebugAndroidTest : connectedTypeoneModeoneDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypeoneModeoneDebugAndroidTest
-                connectedTypeoneModetwoDebugAndroidTest : connectedTypeoneModetwoDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypeoneModetwoDebugAndroidTest
-                connectedTypetwoModeoneDebugAndroidTest : connectedTypetwoModeoneDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypetwoModeoneDebugAndroidTest
-                connectedTypetwoModetwoDebugAndroidTest : connectedTypetwoModetwoDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypetwoModetwoDebugAndroidTest
                 jvmTest                       : jvmTest (DefaultExternalTask)
                     qName                         : :kmpJvmOnly:jvmTest
                 testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
@@ -1212,10 +1184,6 @@ MODULE                        : Kotlin_Multiplatform.androidLib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedTypeoneModeoneDebugAndroidTest
-        - taskNames                   : connectedTypeoneModetwoDebugAndroidTest
-        - taskNames                   : connectedTypetwoModeoneDebugAndroidTest
-        - taskNames                   : connectedTypetwoModetwoDebugAndroidTest
         - taskNames                   : testTypeoneModeoneDebugUnitTest
         - taskNames                   : testTypeoneModetwoDebugUnitTest
         - taskNames                   : testTypetwoModeoneDebugUnitTest
@@ -1630,7 +1598,6 @@ MODULE                        : Kotlin_Multiplatform.androidLib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1832,7 +1799,6 @@ MODULE                        : Kotlin_Multiplatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -2038,7 +2004,6 @@ MODULE                        : Kotlin_Multiplatform.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -2279,7 +2244,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedAndroidDeviceTest
         - taskNames                   : testAndroidHostTest
     CurrentVariantReportedVersions
         minSdk
@@ -2391,7 +2355,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
+            StorePassword                 :
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -2782,6 +2746,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpFirstLib:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : commonTest (KotlinSourceSetImpl)
@@ -2834,7 +2800,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2898,7 +2863,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib_hostTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2971,7 +2935,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3054,6 +3017,8 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpJvmOnly:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3099,7 +3064,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     moduleName                    : Kotlin Multiplatform:kmpJvmOnly
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3181,7 +3145,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     moduleName                    : Kotlin Multiplatform:kmpJvmOnly_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3391,6 +3354,8 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpSecondLib:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3436,7 +3401,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3500,7 +3464,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3582,7 +3545,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3643,7 +3605,6 @@ MODULE                        : build-logic.lib-foo
         rootFolderPath                : <ROOT>/build-logic
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedAndroidDeviceTest
         - taskNames                   : testAndroidHostTest
     CurrentVariantReportedVersions
         minSdk
@@ -3752,7 +3713,7 @@ MODULE                        : build-logic.lib-foo
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
+            StorePassword                 :
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -3881,6 +3842,8 @@ MODULE                        : build-logic.lib-foo
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :lib-foo:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : androidDeviceTest (KotlinSourceSetImpl)
@@ -3913,7 +3876,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3992,7 +3954,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo_hostTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4065,7 +4026,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

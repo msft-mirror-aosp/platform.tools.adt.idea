@@ -616,8 +616,6 @@ MODULE                        : kotlinMultiPlatform
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             module2                       : :module2 (DefaultExternalProject)
@@ -673,8 +671,6 @@ MODULE                        : kotlinMultiPlatform
                     - additionalArtifacts         : <ROOT>/module2/build/libs/module2-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :module2:connectedDebugAndroidTest
                         iosSimulatorArm64Test         : iosSimulatorArm64Test (DefaultExternalTask)
                             qName                         : :module2:iosSimulatorArm64Test
                         iosX64Test                    : iosX64Test (DefaultExternalTask)
@@ -684,8 +680,6 @@ MODULE                        : kotlinMultiPlatform
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 iosSimulatorArm64Test         : iosSimulatorArm64Test (DefaultExternalTask)
                     qName                         : :module2:iosSimulatorArm64Test
                 iosX64Test                    : iosX64Test (DefaultExternalTask)
@@ -702,7 +696,6 @@ MODULE                        : kotlinMultiPlatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -909,7 +902,6 @@ MODULE                        : kotlinMultiPlatform.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -1720,7 +1712,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1740,7 +1731,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1760,7 +1750,6 @@ MODULE                        : kotlinMultiPlatform.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1797,7 +1786,6 @@ MODULE                        : kotlinMultiPlatform.module2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : iosSimulatorArm64Test
         - taskNames                   : iosX64Test
         - taskNames                   : testDebugUnitTest
@@ -2039,7 +2027,6 @@ MODULE                        : kotlinMultiPlatform.module2
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
     VariantBuildInformation
         VariantBuildInformation
@@ -4422,6 +4409,8 @@ MODULE                        : kotlinMultiPlatform.module2
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :module2:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -4480,7 +4469,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debug
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4555,7 +4543,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -4650,7 +4637,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     moduleName                    : kotlinMultiPlatform:module2_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4762,13 +4748,11 @@ MODULE                        : kotlinMultiPlatform.module2
                     assertionsMode                : legacy
                     backendThreads                : 1
                     moduleName                    : kotlinMultiPlatform:module2
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
                         - unknownArgs                 : -g
                         - unknownArgs                 : -ea
-                        - unknownArgs                 : -no-endorsed-libs
                         - unknownArgs                 : -nopack
                         - unknownArgs                 : -nostdlib
                         - unknownArgs                 : -o
@@ -4902,13 +4886,11 @@ MODULE                        : kotlinMultiPlatform.module2
                     assertionsMode                : legacy
                     backendThreads                : 1
                     moduleName                    : kotlinMultiPlatform:module2_test
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
                         - unknownArgs                 : -g
                         - unknownArgs                 : -ea
-                        - unknownArgs                 : -no-endorsed-libs
                         - unknownArgs                 : -nopack
                         - unknownArgs                 : -nostdlib
                         - unknownArgs                 : -o
@@ -4981,13 +4963,11 @@ MODULE                        : kotlinMultiPlatform.module2
                     assertionsMode                : legacy
                     backendThreads                : 1
                     moduleName                    : kotlinMultiPlatform:module2
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
                         - unknownArgs                 : -g
                         - unknownArgs                 : -ea
-                        - unknownArgs                 : -no-endorsed-libs
                         - unknownArgs                 : -nopack
                         - unknownArgs                 : -nostdlib
                         - unknownArgs                 : -o
@@ -5055,13 +5035,11 @@ MODULE                        : kotlinMultiPlatform.module2
                     assertionsMode                : legacy
                     backendThreads                : 1
                     moduleName                    : kotlinMultiPlatform:module2_test
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
                         - unknownArgs                 : -g
                         - unknownArgs                 : -ea
-                        - unknownArgs                 : -no-endorsed-libs
                         - unknownArgs                 : -nopack
                         - unknownArgs                 : -nostdlib
                         - unknownArgs                 : -o
@@ -5134,13 +5112,11 @@ MODULE                        : kotlinMultiPlatform.module2
                     assertionsMode                : legacy
                     backendThreads                : 1
                     moduleName                    : kotlinMultiPlatform:module2
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
                         - unknownArgs                 : -g
                         - unknownArgs                 : -ea
-                        - unknownArgs                 : -no-endorsed-libs
                         - unknownArgs                 : -nopack
                         - unknownArgs                 : -nostdlib
                         - unknownArgs                 : -o
@@ -5208,13 +5184,11 @@ MODULE                        : kotlinMultiPlatform.module2
                     assertionsMode                : legacy
                     backendThreads                : 1
                     moduleName                    : kotlinMultiPlatform:module2_test
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     errors                        : ArgumentParseErrors
                         - unknownArgs                 : -g
                         - unknownArgs                 : -ea
-                        - unknownArgs                 : -no-endorsed-libs
                         - unknownArgs                 : -nopack
                         - unknownArgs                 : -nostdlib
                         - unknownArgs                 : -o

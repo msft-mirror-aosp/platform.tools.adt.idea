@@ -2021,7 +2021,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2040,7 +2039,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2059,7 +2057,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2167,7 +2164,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     moduleName                    : common
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2245,7 +2241,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     moduleName                    : common_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2317,7 +2312,6 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     moduleName                    : desktop
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2342,7 +2336,6 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     moduleName                    : desktop_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3383,7 +3376,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3402,7 +3394,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3421,7 +3412,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3920,7 +3910,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     moduleName                    : feature-b_debug
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3994,7 +3983,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     moduleName                    : feature-b_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4069,7 +4057,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     moduleName                    : feature-b_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4152,7 +4139,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : javaLibrary
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4177,7 +4163,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : javaLibrary_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4202,7 +4187,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : javaLibrary_testEnv
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4329,7 +4313,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     moduleName                    : sample
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4409,7 +4392,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     moduleName                    : sample_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -5224,7 +5206,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -5243,7 +5224,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -5262,7 +5242,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

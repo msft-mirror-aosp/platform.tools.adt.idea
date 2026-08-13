@@ -2120,7 +2120,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2139,7 +2138,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2158,7 +2156,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2220,6 +2217,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :common:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2265,7 +2264,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     moduleName                    : NonStandardSourceSetDependencies:common
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2347,7 +2345,6 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     moduleName                    : NonStandardSourceSetDependencies:common_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2420,7 +2417,6 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     moduleName                    : NonStandardSourceSetDependencies:desktop
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2445,7 +2441,6 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     moduleName                    : NonStandardSourceSetDependencies:desktop_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3486,7 +3481,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3505,7 +3499,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3524,7 +3517,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3979,6 +3971,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :feature-b:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
@@ -4021,7 +4015,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     moduleName                    : NonStandardSourceSetDependencies:feature-b_debug
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4095,7 +4088,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     moduleName                    : NonStandardSourceSetDependencies:feature-b_debugAndroidTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4171,7 +4163,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     moduleName                    : NonStandardSourceSetDependencies:feature-b_debugUnitTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4256,7 +4247,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : NonStandardSourceSetDependencies:javaLibrary
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4281,7 +4271,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : NonStandardSourceSetDependencies:javaLibrary_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4306,7 +4295,6 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     moduleName                    : NonStandardSourceSetDependencies:javaLibrary_testEnv
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4390,6 +4378,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmp-java:sample:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -4435,7 +4425,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     moduleName                    : NonStandardSourceSetDependencies.kmp-java:sample
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4519,7 +4508,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     moduleName                    : NonStandardSourceSetDependencies.kmp-java:sample_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -5336,7 +5324,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -5355,7 +5342,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -5374,7 +5360,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

@@ -64,11 +64,13 @@ class ComposePreviewRunConfigurationTest {
     runConfiguration.providerIndex = 3
 
     val device = mock(IDevice::class.java)
+    whenever(device.serialNumber).thenReturn("1234")
     whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.S_V2))
     val noApksProvider = NoApksProvider()
     runConfiguration.launch(
       createApp(device, "com.example.myapp", emptyList(), listOf("androidx.compose.ui.tooling.PreviewActivity")),
       device,
+      null,
       AndroidFacet.getInstance(fixture.module)!!,
       "",
       false,

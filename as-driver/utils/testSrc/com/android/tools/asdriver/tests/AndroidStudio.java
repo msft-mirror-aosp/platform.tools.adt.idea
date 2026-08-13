@@ -18,6 +18,7 @@ package com.android.tools.asdriver.tests;
 import com.android.annotations.Nullable;
 import com.android.tools.asdriver.proto.ASDriver;
 import com.android.tools.asdriver.tests.base.Ide;
+import com.android.tools.asdriver.tests.metric.StepTimingRecorder;
 import com.android.tools.idea.io.grpc.StatusRuntimeException;
 import com.android.tools.perflogger.Benchmark;
 import com.android.tools.testlib.TestLogger;
@@ -150,7 +151,7 @@ public class AndroidStudio extends Ide {
     try {
       quit(false);
       try {
-        install.getIdeaLog().waitForMatchingLine(".*PersistentFSImpl - VFS dispose completed.*", 30, TimeUnit.SECONDS);
+        install.getIdeaLog().waitForMatchingLine(".*PersistentFSImpl - VFS (dispose|disconnect) completed.*", 30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         // Sometimes, it just doesn't print the shutdown.
         TestLogger.log("VFS dispose did not occur/complete during shutdown.");
@@ -190,7 +191,13 @@ public class AndroidStudio extends Ide {
         .setRunWhenSmart(whenSmart)
         .build();
     ASDriver.ExecuteActionResponse response;
+    if ("MakeGradleProject".equals(action)) {
+      StepTimingRecorder.startSpan("MakeGradleProject");
+    }
     response = ide.executeAction(rq);
+    if ("MakeGradleProject".equals(action)) {
+      StepTimingRecorder.endSpan("MakeGradleProject");
+    }
 
     switch (response.getResult()) {
       case OK -> {
@@ -208,7 +215,10 @@ public class AndroidStudio extends Ide {
     ASDriver.WaitForIndexRequest rq = ASDriver.WaitForIndexRequest.newBuilder().build();
     ASDriver.WaitForIndexResponse ignore = ide.waitForIndex(rq);
     install.getIdeaLog().reset(); //Log position can be moved past if used after waitForBuild
-    install.getIdeaLog().waitForMatchingLine(".*Unindexed files update took.*", 300, TimeUnit.SECONDS);
+    Matcher matcher = install.getIdeaLog().waitForMatchingLine(".*Unindexed files update took ([^;]*);.*", 300, TimeUnit.SECONDS);
+    String indexingDuration = matcher.group(1);
+    TestLogger.log("Indexing took %s", indexingDuration);
+    StepTimingRecorder.recordParsedDuration("Indexing", indexingDuration);
     benchmarkLog("after_waitForIndex");
   }
 
@@ -239,7 +249,9 @@ public class AndroidStudio extends Ide {
       .waitForMatchingLine(".*Gradle build finished in (.*)",
                            "(.*org\\.gradle\\.tooling\\.\\w+Exception.*)|" +
                            "(.*Gradle build failed in (.*))", timeout, unit);
-    TestLogger.log("Build took %s", matcher.group(1));
+    String buildDuration = matcher.group(1);
+    TestLogger.log("Build took %s", buildDuration);
+    StepTimingRecorder.recordParsedDuration("GradleBuild", buildDuration);
   }
 
   public void waitForSync() throws IOException, InterruptedException {
@@ -251,10 +263,16 @@ public class AndroidStudio extends Ide {
   public void waitForSync(long timeout, TimeUnit unit) throws IOException, InterruptedException {
     TestLogger.log("Waiting up to %d %s for Gradle sync", timeout, unit);
     Matcher matcher = install.getIdeaLog()
-      .waitForMatchingLine(".*Gradle sync finished in (.*)",
+      .waitForMatchingLine(".*(?:Gradle sync finished in (.*)|Up-to-date models found in the cache\\. Not invoking Gradle sync.*)",
                            "(.*org\\.gradle\\.tooling\\.\\w+Exception.*)|" +
                            "(.*Gradle sync failed in (.*))", timeout, unit);
-    TestLogger.log("Sync took %s", matcher.group(1));
+    String syncDuration = matcher.group(1);
+    if (syncDuration != null) {
+      TestLogger.log("Sync took %s", syncDuration);
+      StepTimingRecorder.recordParsedDuration("GradleSync", syncDuration);
+    } else {
+      TestLogger.log("Sync was skipped (Up-to-date models found in cache)");
+    }
   }
 
   private void benchmarkLog(String name){
@@ -310,5 +328,4 @@ public class AndroidStudio extends Ide {
       this.dataContextSource = dataContextSource;
     }
   }
-
 }

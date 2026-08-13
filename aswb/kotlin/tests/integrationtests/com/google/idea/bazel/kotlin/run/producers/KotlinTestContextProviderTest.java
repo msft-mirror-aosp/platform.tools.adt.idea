@@ -31,6 +31,7 @@ import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
+import com.intellij.execution.RunConfigurationProducerService;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
 import com.intellij.execution.configurations.RunConfiguration;
@@ -43,14 +44,12 @@ import javax.annotation.Nullable;
 import org.jetbrains.kotlin.psi.KtClass;
 import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration tests for run configurations for Kotlin test classes. */
 @RunWith(JUnit4.class)
-@Ignore("b/466755859")
 public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducerTestCase {
 
   private static final Correspondence<RunConfiguration, Boolean> IS_BLAZE_RUN_CONFIGURATION =
@@ -81,6 +80,25 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
         new WorkspacePath("com/google/testing/testsize/MediumTest.java"),
         "package com.google.testing.testsize;",
         "public @interface MediumTest {}");
+    RunConfigurationProducerService.getInstance(getProject())
+        .getState()
+        .ignoredProducers
+        .addAll(
+            java.util.Arrays.asList(
+                "com.intellij.execution.junit.AbstractAllInDirectoryConfigurationProducer",
+                "com.intellij.execution.junit.AllInDirectoryConfigurationProducer",
+                "com.intellij.execution.junit.AllInPackageConfigurationProducer",
+                "com.intellij.execution.junit.TestInClassConfigurationProducer",
+                "com.intellij.execution.junit.TestClassConfigurationProducer",
+                "com.intellij.execution.junit.TestMethodConfigurationProducer",
+                "com.intellij.execution.junit.PatternConfigurationProducer",
+                "com.intellij.execution.junit.UniqueIdConfigurationProducer",
+                "com.intellij.execution.junit.testDiscovery.JUnitTestDiscoveryConfigurationProducer",
+                "com.intellij.execution.application.ApplicationConfigurationProducer",
+                "org.jetbrains.kotlin.idea.junit.KotlinJUnitRunConfigurationProducer",
+                "org.jetbrains.kotlin.idea.junit.KotlinPatternConfigurationProducer",
+                "com.android.tools.idea.run.AndroidConfigurationProducer",
+                "com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducer"));
   }
 
   @Test
@@ -101,7 +119,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
     // Fake the BUILD file.
     TargetInfo testTarget =
         new TargetInfo(Label.create("//com/google/test:TestClass"), "kt_jvm_test");
-    // query sync:    registerTargets(testTarget);
+    registerTargets(testTarget);
 
     ImmutableList<RunConfiguration> configurations = getRunConfigurations(testClass);
 
@@ -128,7 +146,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
     // Fake the BUILD file.
     TargetInfo testTarget =
         new TargetInfo(Label.create("//com/google/test:TestClass"), "kt_jvm_test");
-    // query sync: registerTargets(testTarget);
+    registerTargets(testTarget);
 
     ImmutableList<BlazeCommandRunConfiguration> configurations =
         getBlazeRunConfigurations(testClass);
@@ -160,7 +178,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
     // Fake the BUILD file.
     TargetInfo testTarget =
         new TargetInfo(Label.create("//com/google/test:TestClass"), "kt_jvm_test");
-    // query sync: registerTargets(testTarget);
+    registerTargets(testTarget);
 
     ImmutableList<RunConfiguration> configurations = getRunConfigurations(firstMethod);
 
@@ -189,7 +207,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
     // Fake the BUILD file.
     TargetInfo testTarget =
         new TargetInfo(Label.create("//com/google/test:TestClass"), "kt_jvm_test");
-    // query sync: registerTargets(testTarget);
+    registerTargets(testTarget);
 
     ImmutableList<BlazeCommandRunConfiguration> configurations =
         getBlazeRunConfigurations(firstMethod);
@@ -238,7 +256,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
             TestSize.SMALL,
             /* testClass= */ null,
             /* syncTime= */ null);
-    // query sync: registerTargets(testLibraryTarget, mediumTestsTarget, smallTestsTarget);
+    registerTargets(testLibraryTarget, mediumTestsTarget, smallTestsTarget);
 
     List<BlazeCommandRunConfiguration> runConfigurations = getBlazeRunConfigurations(testClass);
 
@@ -246,17 +264,6 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
         .comparingElementsUsing(HAS_ONLY_TARGET)
         .containsExactly("//com/google/test:medium_tests");
   }
-
-  // private void registerTargets(TargetIdeInfo target, TargetIdeInfo... additionalTargets) {
-  //  MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-  //  builder.setTargetMap(
-  //      TargetMapBuilder.builder()
-  //          .addTarget(target)
-  //          .addTargets(ImmutableList.copyOf(additionalTargets))
-  //          .build());
-  //  registerProjectService(
-  //      BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
-  // }
 
   private static KtClass findClass(PsiFile kotlinFile) {
     KtClass kotlinClass = PsiUtils.findFirstChildOfClassRecursive(kotlinFile, KtClass.class);
@@ -294,7 +301,14 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
     // Request the run configurations from IntelliJ's API. This eventually calls into the extension
     // points we use to provide our custom run configurations.
     List<ConfigurationFromContext> configurationsFromContext =
-        Optional.ofNullable(context.getConfigurationsFromContext()).orElse(ImmutableList.of());
+        Optional.ofNullable(runWithProgress(context::getConfigurationsFromContext))
+            .orElse(ImmutableList.of());
+
+    for (ConfigurationFromContext fromContext : configurationsFromContext) {
+      if (fromContext.getConfiguration() instanceof BlazeCommandRunConfiguration) {
+        performFirstRun((BlazeCommandRunConfiguration) fromContext.getConfiguration(), context);
+      }
+    }
 
     // Extract the actually created run configurations from the response context (which provides
     // additional data) as we're only interested in the run configurations in the tests.
