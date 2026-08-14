@@ -74,10 +74,9 @@ public class DetailedCpuChart {
 
   @NotNull private final StudioProfilersView myProfilersView;
   @NotNull private final CpuUsageView myUsageView;
-  @NotNull private final StudioProfilers myStudioProfilers;
   private final AspectModel<CpuProfilerAspect> myAspect;
 
-  public DetailedCpuChart(StudioProfilersView profilersView,
+  public DetailedCpuChart(@NotNull StudioProfilersView profilersView,
                           LiveCpuUsageModel liveCpuUsageModel) {
     this(profilersView,
          liveCpuUsageModel.getCpuUsageAxis(),
@@ -97,7 +96,7 @@ public class DetailedCpuChart {
          liveCpuUsageModel.getStage());
   }
 
-  public DetailedCpuChart(StudioProfilersView profilersView,
+  public DetailedCpuChart(@NotNull StudioProfilersView profilersView,
                           CpuProfilerStage cpuProfilerStage) {
     this(profilersView,
          cpuProfilerStage.getCpuUsageAxis(),
@@ -117,7 +116,7 @@ public class DetailedCpuChart {
          cpuProfilerStage);
   }
 
-  private DetailedCpuChart(StudioProfilersView profilersView,
+  private DetailedCpuChart(@NotNull StudioProfilersView profilersView,
                           final AxisComponentModel cpuUsageAxis,
                           final AxisComponentModel threadCountAxis,
                           final DetailedCpuUsage detailedCpuUsage,
@@ -132,25 +131,24 @@ public class DetailedCpuChart {
                           final Supplier<Integer> getSelectedThread,
                           final Consumer<Integer> setSelectedThread,
                           final AspectModel<CpuProfilerAspect> aspect,
-                          final Stage stage) {
+                          final Stage<?> stage) {
     myProfilersView = profilersView;
-    myStudioProfilers = studioProfilers;
     myAspect = aspect;
     myUsageView =
       new CpuUsageView(cpuUsageAxis, threadCountAxis, detailedCpuUsage, traceDurations, cpuStageLegends, name, stageSetAndSelectCapture);
     myThreads =
-      new CpuThreadsView(threadStates, updatableManager, myStudioProfilers, timeAxisGuide, getSelectedThread, setSelectedThread, aspect,
+      new CpuThreadsView(threadStates, updatableManager, studioProfilers, timeAxisGuide, getSelectedThread, setSelectedThread, aspect,
                          stage);
   }
 
   JPanel createCpuDetailsPanel(final int toolTipRowSpan,
-                               RangeTooltipComponent myTooltipComponent) {
+                               RangeTooltipComponent tooltipComponent) {
 
     // "Fit" for the event profiler, "*" for everything else.
     final JPanel details = new JPanel(new TabularLayout("*", "Fit-,*"));
     details.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
     // Order matters as such our tooltip component should be first so it draws on top of all elements.
-    details.add(myTooltipComponent, new TabularLayout.Constraint(0, 0, toolTipRowSpan, 1));
+    details.add(tooltipComponent, new TabularLayout.Constraint(0, 0, toolTipRowSpan, 1));
 
     TabularLayout mainLayout = new TabularLayout("*");
     mainLayout.setRowSizing(MONITOR.getRow(), MONITOR.getRowRule());
@@ -159,7 +157,7 @@ public class DetailedCpuChart {
     mainPanel.setBackground(ProfilerColors.DEFAULT_STAGE_BACKGROUND);
 
     mainPanel.add(myUsageView, new TabularLayout.Constraint(MONITOR.getRow(), 0));
-    mainPanel.add(createCpuStatePanel(myTooltipComponent, mainLayout, details), new TabularLayout.Constraint(DETAILS.getRow(), 0));
+    mainPanel.add(createCpuStatePanel(tooltipComponent, mainLayout, details), new TabularLayout.Constraint(DETAILS.getRow(), 0));
 
     // Panel that represents all of L2
     details.add(mainPanel, new TabularLayout.Constraint(1, 0));
@@ -167,7 +165,7 @@ public class DetailedCpuChart {
   }
 
   @NotNull
-  JPanel createCpuStatePanel(RangeTooltipComponent myTooltipComponent, TabularLayout mainLayout, JPanel details) {
+  JPanel createCpuStatePanel(RangeTooltipComponent tooltipComponent, TabularLayout mainLayout, JPanel details) {
     TabularLayout cpuStateLayout = new TabularLayout("*");
     JPanel cpuStatePanel = new JBPanel<>(cpuStateLayout);
 
@@ -175,7 +173,7 @@ public class DetailedCpuChart {
     cpuStateLayout.setRowSizing(THREADS.getRow(), THREADS.getRowRule());
 
     //region CpuThreadsView
-    myTooltipComponent.registerListenersOn(myThreads.getThreadsList());
+    tooltipComponent.registerListenersOn(myThreads.getThreadsList());
     cpuStatePanel.add(myThreads.getComponent(), new TabularLayout.Constraint(THREADS.getRow(), 0));
     //endregion
 
@@ -197,11 +195,13 @@ public class DetailedCpuChart {
     return myProfilersView;
   }
 
+  @NotNull
   public CpuUsageView getUsageView() {
     return myUsageView;
   }
 
-  public CpuThreadsView getThreadsView() {
+  @NotNull
+  CpuThreadsView getThreadsView() {
     return myThreads;
   }
 
