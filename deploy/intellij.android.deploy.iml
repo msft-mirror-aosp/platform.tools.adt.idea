@@ -26,7 +26,6 @@
     <orderEntry type="module" module-name="intellij.android.adb" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.backend" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />

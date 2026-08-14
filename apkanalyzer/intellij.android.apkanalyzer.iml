@@ -36,7 +36,6 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.backend" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
