@@ -36,15 +36,7 @@
     <orderEntry type="module" module-name="android.sdktools.kexter" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="android.sdktools.zipflinger" />
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/r8/r8.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
+    <orderEntry type="library" name="r8" level="project" />
     <orderEntry type="module" module-name="android.sdktools.deployer" />
     <orderEntry type="library" name="studio-proto" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
