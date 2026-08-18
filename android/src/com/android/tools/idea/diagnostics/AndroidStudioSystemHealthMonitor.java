@@ -720,11 +720,13 @@ public final class AndroidStudioSystemHealthMonitor {
     if (reporter != null) {
       StackTrace stackTrace = ExceptionRegistry.INSTANCE.register(t);
       String signature = ExceptionDataCollection.Companion.calculateSignature(t);
+      String dynamicSignature = ExceptionDataCollection.Companion.calculateDynamicSignature(t);
       ExceptionRateLimiter.Permit permit = exceptionRateLimiter.tryAcquireForSignature(signature);
       if (permit.getPermissionType() == ExceptionRateLimiter.PermissionType.ALLOW) {
         IdeaLoggingEvent e = new AndroidStudioExceptionEvent(
           t.getMessage(), t, stackTrace,
           signature,
+          dynamicSignature,
           permit.getGlobalExceptionCounter(),
           permit.getLocalExceptionCounter(),
           permit.getDeniedSinceLastAllow());
@@ -1238,6 +1240,7 @@ public final class AndroidStudioSystemHealthMonitor {
     private final StackTrace myStackTrace;
 
     private final String signature;
+    private final String dynamicSignature;
     private final int exceptionIndex;
     private final int signatureIndex;
     private final int deniedSinceLastAllow;
@@ -1245,12 +1248,14 @@ public final class AndroidStudioSystemHealthMonitor {
     public AndroidStudioExceptionEvent(String message, Throwable throwable,
                                        @NotNull StackTrace stackTrace,
                                        @NotNull String signature,
+                                       @NotNull String dynamicSignature,
                                        int globalCount,
                                        int signatureIndex,
                                        int deniedSinceLastAllow) {
       super(message, throwable);
       myStackTrace = stackTrace;
       this.signature = signature;
+      this.dynamicSignature = dynamicSignature;
       this.exceptionIndex = globalCount;
       this.signatureIndex = signatureIndex;
       this.deniedSinceLastAllow = deniedSinceLastAllow;
@@ -1258,6 +1263,10 @@ public final class AndroidStudioSystemHealthMonitor {
 
     public String getSignature() {
       return signature;
+    }
+
+    public String getDynamicSignature() {
+      return dynamicSignature;
     }
 
     public int getExceptionIndex() {

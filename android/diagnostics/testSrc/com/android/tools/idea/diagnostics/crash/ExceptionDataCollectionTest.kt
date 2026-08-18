@@ -190,9 +190,43 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(sig5).isEqualTo(ex5Sig)
   }
 
+  fun testCalculateDynamicSignature() {
+    val sig1 = ExceptionDataCollection.calculateDynamicSignature(ex1)
+    assertThat(sig1).isEqualTo(ex1Sig)
+
+    val sig2 = ExceptionDataCollection.calculateDynamicSignature(ex2)
+    assertThat(sig2).isEqualTo(ex2DynamicSig)
+
+    val sig3 = ExceptionDataCollection.calculateDynamicSignature(ex3)
+    assertThat(sig3).isEqualTo(ex3Sig)
+
+    val sig4 = ExceptionDataCollection.calculateDynamicSignature(ex4)
+    assertThat(sig4).isEqualTo(ex4DynamicSig)
+
+    val sig5 = ExceptionDataCollection.calculateDynamicSignature(ex5)
+    assertThat(sig5).isEqualTo(ex5DynamicSig)
+
+    val sigStudioOwnedFirst = ExceptionDataCollection.calculateDynamicSignature(exStudioOwnedFirst)
+    assertThat(sigStudioOwnedFirst).isEqualTo(exStudioOwnedFirstSig)
+
+    val sigStudioOwnedDeep = ExceptionDataCollection.calculateDynamicSignature(exStudioOwnedDeep)
+    assertThat(sigStudioOwnedDeep).isEqualTo(exStudioOwnedDeepSig)
+
+    val sigNoStudioOwned = ExceptionDataCollection.calculateDynamicSignature(exNoStudioOwned)
+    assertThat(sigNoStudioOwned).isEqualTo(exNoStudioOwnedSig)
+
+    val sigStudioOwnedAtLine10 = ExceptionDataCollection.calculateDynamicSignature(exStudioOwnedAtLine10)
+    assertThat(sigStudioOwnedAtLine10).isEqualTo(exStudioOwnedAtLine10Sig)
+
+    val sig17FramesNoStudioOwned = ExceptionDataCollection.calculateDynamicSignature(ex17FramesNoStudioOwned)
+    assertThat(sig17FramesNoStudioOwned).isEqualTo(ex17FramesNoStudioOwnedSig)
+  }
+
   fun testCalculateSignatueMissingStack() {
     val sig3 = ExceptionDataCollection.calculateSignature(exNoStack)
     assertThat(sig3).isEqualTo(exNoStackSig)
+    val dynamicSig = ExceptionDataCollection.calculateDynamicSignature(exNoStack)
+    assertThat(dynamicSig).isEqualTo(exNoStackSig)
   }
 
   fun testGetDescription() {
@@ -208,7 +242,6 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
   }
 
   companion object {
-
     val exceptionDataCollectionTestLoggerName = "#" + ExceptionDataCollectionTest::class.java.name
 
     val exceptionDataCollectionTestLogger = Logger.getInstance(exceptionDataCollectionTestLoggerName)
@@ -233,6 +266,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
         "\tat java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)\n"
     val ex2 = ExceptionTestUtils.createExceptionFromDesc(ex2Description)
     const val ex2Sig = "java.lang.Exception at com.intellij.diagnostic.DropAnErrorAction.actionPerformed-2f166b9f"
+    const val ex2DynamicSig = "java.lang.Exception at com.intellij.diagnostic.DropAnErrorAction.actionPerformed-2f166b9f"
 
     const val exNoStackDescription = "java.lang.Exception: sample message\n"
     val exNoStack = ExceptionTestUtils.createExceptionFromDesc(exNoStackDescription)
@@ -251,6 +285,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
         "\tat java.base/java.lang.Thread.run(Unknown Source)\n"
     val ex4 = ExceptionTestUtils.createExceptionFromDesc(ex4Description)
     val ex4Sig = "java.lang.OutOfMemoryError at java.desktop/sun.java2d.metal.MTLSurfaceData.initSurfaceNow-8edba189"
+    val ex4DynamicSig = "java.lang.OutOfMemoryError at java.desktop/sun.java2d.metal.MTLSurfaceData.initSurfaceNow-8edba189"
 
     const val ex5Description =
       "java.lang.RuntimeException: AWT-EventQueue-0\" RUNNABLE Frozen for 12secs\n" +
@@ -263,5 +298,76 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
         "\tat app/jcef/org.cef.CefApp\$3\$\$Lambda\$5988/0x0000000101c23900.call(Unknown Source)\n"
     val ex5 = ExceptionTestUtils.createExceptionFromDesc(ex5Description)
     val ex5Sig = "java.lang.RuntimeException at app/jcef/org.cef.callback.CefSchemeRegistrar_N.N_AddCustomScheme-7b65b85f"
+    val ex5DynamicSig = "java.lang.RuntimeException at app/jcef/org.cef.callback.CefSchemeRegistrar_N.N_AddCustomScheme-7b65b85f"
+
+    const val exStudioOwnedFirstDescription =
+      "java.lang.Exception: Studio owned top frame\n" +
+        "\tat com.android.tools.idea.MyClass.myMethod(MyClass.kt:10)\n" +
+        "\tat com.intellij.openapi.Foo.bar(Foo.java:20)\n" +
+        "\tat com.intellij.openapi.Baz.qux(Baz.java:30)\n"
+    val exStudioOwnedFirst = ExceptionTestUtils.createExceptionFromDesc(exStudioOwnedFirstDescription)
+    const val exStudioOwnedFirstSig = "java.lang.Exception at com.android.tools.idea.MyClass.myMethod-a8ac5175"
+
+    const val exStudioOwnedDeepDescription =
+      "java.lang.Exception: Studio owned frame deep in stack\n" +
+        "\tat com.intellij.openapi.Action.perform(Action.java:10)\n" +
+        "\tat com.intellij.util.Slow.allow(Slow.java:20)\n" +
+        "\tat org.jetbrains.kotlin.psi.KtElement.getText(KtElement.kt:30)\n" +
+        "\tat com.android.tools.idea.res.ResourceRepository.getResources(ResourceRepository.java:40)\n" +
+        "\tat java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:50)\n" +
+        "\tat java.base/java.lang.Thread.run(Thread.java:60)\n"
+    val exStudioOwnedDeep = ExceptionTestUtils.createExceptionFromDesc(exStudioOwnedDeepDescription)
+    const val exStudioOwnedDeepSig = "java.lang.Exception at com.intellij.openapi.Action.perform-294e2da9"
+
+    const val exNoStudioOwnedDescription =
+      "java.lang.Exception: No studio owned frames\n" +
+        "\tat com.intellij.openapi.Action.perform(Action.java:10)\n" +
+        "\tat com.intellij.util.Slow.allow(Slow.java:20)\n" +
+        "\tat java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:30)\n" +
+        "\tat java.base/java.lang.Thread.run(Thread.java:40)\n"
+    val exNoStudioOwned = ExceptionTestUtils.createExceptionFromDesc(exNoStudioOwnedDescription)
+    const val exNoStudioOwnedSig = "java.lang.Exception at com.intellij.openapi.Action.perform-29c19fb5"
+
+    const val exStudioOwnedAtLine10Description =
+      "java.lang.Exception: Studio owned frame at 10th stack frame\n" +
+        "\tat com.intellij.openapi.Action1.step1(Action1.java:10)\n" +
+        "\tat com.intellij.openapi.Action2.step2(Action2.java:20)\n" +
+        "\tat com.intellij.openapi.Action3.step3(Action3.java:30)\n" +
+        "\tat com.intellij.openapi.Action4.step4(Action4.java:40)\n" +
+        "\tat com.intellij.openapi.Action5.step5(Action5.java:50)\n" +
+        "\tat com.intellij.openapi.Action6.step6(Action6.java:60)\n" +
+        "\tat com.intellij.openapi.Action7.step7(Action7.java:70)\n" +
+        "\tat com.intellij.openapi.Action8.step8(Action8.java:80)\n" +
+        "\tat com.intellij.openapi.Action9.step9(Action9.java:90)\n" +
+        "\tat com.android.tools.idea.DeepClass.androidMethod(DeepClass.java:100)\n" +
+        "\tat java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:110)\n" +
+        "\tat java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:120)\n" +
+        "\tat java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:130)\n" +
+        "\tat java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:140)\n" +
+        "\tat java.base/java.lang.Thread.run(Thread.java:150)\n"
+    val exStudioOwnedAtLine10 = ExceptionTestUtils.createExceptionFromDesc(exStudioOwnedAtLine10Description)
+    const val exStudioOwnedAtLine10Sig = "java.lang.Exception at com.intellij.openapi.Action1.step1-386e1d0e"
+
+    const val ex17FramesNoStudioOwnedDescription =
+      "java.lang.Exception: 17 frames without studio owned\n" +
+        "\tat com.intellij.openapi.Frame1.method1(Frame1.java:1)\n" +
+        "\tat com.intellij.openapi.Frame2.method2(Frame2.java:2)\n" +
+        "\tat com.intellij.openapi.Frame3.method3(Frame3.java:3)\n" +
+        "\tat com.intellij.openapi.Frame4.method4(Frame4.java:4)\n" +
+        "\tat com.intellij.openapi.Frame5.method5(Frame5.java:5)\n" +
+        "\tat com.intellij.openapi.Frame6.method6(Frame6.java:6)\n" +
+        "\tat com.intellij.openapi.Frame7.method7(Frame7.java:7)\n" +
+        "\tat com.intellij.openapi.Frame8.method8(Frame8.java:8)\n" +
+        "\tat com.intellij.openapi.Frame9.method9(Frame9.java:9)\n" +
+        "\tat com.intellij.openapi.Frame10.method10(Frame10.java:10)\n" +
+        "\tat com.intellij.openapi.Frame11.method11(Frame11.java:11)\n" +
+        "\tat com.intellij.openapi.Frame12.method12(Frame12.java:12)\n" +
+        "\tat com.intellij.openapi.Frame13.method13(Frame13.java:13)\n" +
+        "\tat com.intellij.openapi.Frame14.method14(Frame14.java:14)\n" +
+        "\tat com.intellij.openapi.Frame15.method15(Frame15.java:15)\n" +
+        "\tat com.intellij.openapi.Frame16.method16(Frame16.java:16)\n" +
+        "\tat com.intellij.openapi.Frame17.method17(Frame17.java:17)\n"
+    val ex17FramesNoStudioOwned = ExceptionTestUtils.createExceptionFromDesc(ex17FramesNoStudioOwnedDescription)
+    const val ex17FramesNoStudioOwnedSig = "java.lang.Exception at com.intellij.openapi.Frame1.method1-869be3d9"
   }
 }
