@@ -108,7 +108,7 @@ class AndroidWearWidgetConfigurationExecutor(
     val widgetIndex = setWearWidget(app, mode, indicator, console, device, connectedDevice)
     val showWidgetCommand = SHOW_WEAR_WIDGET_COMMAND + widgetIndex
     val showWidgetReceiver = CommandResultReceiverV1()
-    device.executeShellCommand(showWidgetCommand, console, showWidgetReceiver, indicator = indicator)
+    device.executeShellCommand(showWidgetCommand, console, showWidgetReceiver.asIShellOutputReceiver(), indicator = indicator)
     verifyResponse(showWidgetReceiver, console)
   }
 
@@ -127,7 +127,13 @@ class AndroidWearWidgetConfigurationExecutor(
     val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibService.getSession(environment.project))
     try {
       getActivator(app)
-        .activate(wearWidgetLaunchOptions.componentType, wearWidgetLaunchOptions.componentName!!, mode, receiver, deviceHolder)
+        .activate(
+          wearWidgetLaunchOptions.componentType,
+          wearWidgetLaunchOptions.componentName!!,
+          mode,
+          receiver.asDeployerReceiver(),
+          deviceHolder,
+        )
     } catch (ex: DeployerException) {
       throw ExecutionException("Error while setting the widget, message: ${outputReceiver.getOutput().ifEmpty { ex.details }}", ex)
     }
@@ -151,8 +157,9 @@ private class AddWidgetCommandResultReceiver(private val isCancelledCheck: () ->
 
   override fun isCancelled(): Boolean = isCancelledCheck()
 
-  override fun processNewLines(lines: Array<String>) =
-    lines.forEach { line -> extractPattern(line, indexPattern)?.let { index = it.toInt() } }
+  override fun processNewLines(lines: Array<String>) = lines.forEach { line ->
+    extractPattern(line, indexPattern)?.let { index = it.toInt() }
+  }
 }
 
 class WearWidgetLaunchOptions : WearSurfaceLaunchOptions {
@@ -171,7 +178,7 @@ class WearWidgetLaunchOptions : WearSurfaceLaunchOptions {
 private fun getStopWidgetCallback(widgetName: String, console: ConsoleView, isDebug: Boolean): (IDevice) -> Unit = { device: IDevice ->
   val receiver = CommandResultReceiverV1()
   val removeWidgetCommand = UNSET_WEAR_WIDGET + widgetName
-  device.executeShellCommand(removeWidgetCommand, console, receiver, indicator = null)
+  device.executeShellCommand(removeWidgetCommand, console, receiver.asIShellOutputReceiver(), indicator = null)
   if (receiver.resultCode != CommandResultReceiverV1.SUCCESS_CODE) {
     console.printlnError("Warning: Widget was not stopped.")
   }

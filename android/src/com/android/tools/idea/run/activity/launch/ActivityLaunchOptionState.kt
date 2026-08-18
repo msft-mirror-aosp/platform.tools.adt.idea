@@ -31,6 +31,7 @@ import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ValidationError
 import com.android.tools.idea.run.configuration.AndroidBackgroundTaskReceiver
+import com.android.tools.idea.run.configuration.execution.asDeployerReceiver
 import com.android.tools.idea.run.configuration.execution.println
 import com.android.utils.ILogger
 import com.intellij.execution.ExecutionException
@@ -96,7 +97,7 @@ abstract class ActivityLaunchOptionState : ComponentLaunchOptions, LaunchOptionS
     val receiver = AndroidBackgroundTaskReceiver(console)
     val activator = Activator(app, ConsoleLogger(logger, console))
     val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibApplicationService.instance.session)
-    activator.activate(componentType, activityQualifiedName, extraFlags, mode, receiver, deviceHolder)
+    activator.activate(componentType, activityQualifiedName, extraFlags, mode, receiver.asDeployerReceiver(), deviceHolder)
     val matcher = activityDoesNotExistPattern.matcher(receiver.output.joinToString())
     if (matcher.find()) {
       throw AndroidExecutionException(ACTIVITY_DOES_NOT_EXIST, matcher.group())
