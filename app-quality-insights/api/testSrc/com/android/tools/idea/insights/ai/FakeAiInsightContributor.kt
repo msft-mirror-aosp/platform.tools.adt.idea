@@ -29,6 +29,8 @@ class FakeAiInsightContributor : AiInsightContributor {
 
   override fun showOnboarding(project: Project) = Unit
 
+  override fun handleModelAssignment(project: Project) = Unit
+
   override suspend fun fetchInsight(event: Event): AiInsight {
     return generatedInsight
   }

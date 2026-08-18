@@ -30,6 +30,8 @@ interface AiInsightContributor {
 
   fun showOnboarding(project: Project)
 
+  fun handleModelAssignment(project: Project)
+
   companion object {
     val EP_NAME = ExtensionPointName<AiInsightContributor>("com.android.tools.idea.insights.ai.aiInsightContributor")
 
@@ -45,6 +47,8 @@ class StubAiInsightContributor : AiInsightContributor {
   override fun isModelAvailable() = false
 
   override fun showOnboarding(project: Project) = Unit
+
+  override fun handleModelAssignment(project: Project) = Unit
 
   override suspend fun fetchInsight(event: Event): AiInsight {
     delay(2000)

@@ -269,6 +269,18 @@ class AiInsightToolkitTest {
   }
 
   @Test
+  fun `handleModelAssignment calls first available contributor handleModelAssignment`() {
+    val contributor = mock<AiInsightContributor>()
+    whenever(contributor.canContribute()).thenReturn(true)
+    ExtensionTestUtil.maskExtensions(AiInsightContributor.EP_NAME, listOf(contributor), projectRule.disposable)
+
+    val toolkit = createToolkit()
+    toolkit.handleModelAssignment()
+
+    verify(contributor).handleModelAssignment(projectRule.project)
+  }
+
+  @Test
   fun `fetchInsight calls callback before fetching the insight`() = runBlocking {
     val mutex = Mutex(locked = true)
     val toolkit = createToolkit()
@@ -314,6 +326,8 @@ class AiInsightToolkitTest {
         override fun isModelAvailable() = true
 
         override fun showOnboarding(project: Project) = Unit
+
+        override fun handleModelAssignment(project: Project) = Unit
 
         override suspend fun fetchInsight(event: Event): AiInsight {
           return fetchInsight(event)
