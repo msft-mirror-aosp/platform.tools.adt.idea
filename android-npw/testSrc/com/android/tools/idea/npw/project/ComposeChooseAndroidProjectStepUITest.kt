@@ -52,6 +52,7 @@ class ComposeChooseAndroidProjectStepUITest {
   @Test
   fun showMobileFormFactorAsDefaultFocus() = runTest {
     StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(false)
+    StudioFlags.IMPORT_PROJECT_ENABLED.override(false)
     val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
     val model = ChooseAndroidProjectStepModel(formFactorSupplier)
     model.getAndroidProjectEntries()
@@ -313,6 +314,7 @@ class ComposeChooseAndroidProjectStepUITest {
   @Test
   fun selectingPluginPromotionTemplateUpdatesSelectedTemplate() = runTest {
     StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(false)
+    StudioFlags.IMPORT_PROJECT_ENABLED.override(false)
     registerPromotionTemplates(FakePluginPromotionTemplate(PROMOTION_NAME, PROMOTION_PLUGIN_ID, FormFactor.Mobile))
     val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
     val model = ChooseAndroidProjectStepModel(formFactorSupplier)
