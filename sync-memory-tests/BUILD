@@ -69,6 +69,7 @@ iml_module(
         },
         "Benchmark2000CpuLatestKotlinTest": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuLatestKotlinTest",
+            "timeout": "long",
             "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
@@ -102,6 +103,7 @@ iml_module(
         },
         "Benchmark2000CpuPhasedSyncOff": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuPhasedSyncOffTest",
+            "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
                 "noci:studio-win",
@@ -111,6 +113,7 @@ iml_module(
         },
         "Benchmark2000CpuWithDependencyResolutionPhase": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuWithDependencyResolutionPhaseTest",
+            "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
                 "noci:studio-win",
@@ -120,6 +123,7 @@ iml_module(
         },
         "Benchmark2000CpuAgp813": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuAgp813Test",
+            "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
                 "noci:studio-win",
@@ -136,6 +140,7 @@ iml_module(
         },
         "Benchmark2000CpuAgp813PhasedSyncOff": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuAgp813PhasedSyncOffTest",
+            "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
                 "noci:studio-win",
@@ -152,6 +157,7 @@ iml_module(
         },
         "Benchmark2000CpuAgp813WithDependencyResolutionPhase": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuAgp813WithDependencyResolutionPhaseTest",
+            "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
                 "noci:studio-win",
