@@ -46,32 +46,28 @@ class ListenerCollection<T : Any> private constructor(private val myExecutor: Ex
   @GuardedBy("myLock") private var myListenerSetCopy: ImmutableSet<T>? = null
 
   /** Adds a listener from the handler. If this method returns false, the listener was already in the handler */
-  fun add(listener: T): Boolean =
-    myLock.write {
-      myListenerSetCopy = null
-      myListenersSet.add(listener)
-    }
+  fun add(listener: T): Boolean = myLock.write {
+    myListenerSetCopy = null
+    myListenersSet.add(listener)
+  }
 
   /** Removes a listener from the handler and returns whether the passed listener existed or not. */
-  fun remove(listener: T): Boolean =
-    myLock.write {
-      myListenerSetCopy = null
-      myListenersSet.remove(listener)
-    }
+  fun remove(listener: T): Boolean = myLock.write {
+    myListenerSetCopy = null
+    myListenersSet.remove(listener)
+  }
 
   /** Removes all the listeners from the handler */
-  fun clear() =
-    myLock.write {
-      myListenerSetCopy = ImmutableSet.of()
-      myListenersSet.clear()
-    }
+  fun clear() = myLock.write {
+    myListenerSetCopy = ImmutableSet.of()
+    myListenersSet.clear()
+  }
 
   /** Returns the size of the collection. */
   @TestOnly
-  fun size(): Int =
-    myLock.read {
-      return getUpToDateListeners().size
-    }
+  fun size(): Int = myLock.read {
+    return getUpToDateListeners().size
+  }
 
   /**
    * Iterates over all the listeners in the given [Executor]. This method returns a [ListenableFuture] to know when the processing has
@@ -93,19 +89,18 @@ class ListenerCollection<T : Any> private constructor(private val myExecutor: Ex
     return future
   }
 
-  private fun getUpToDateListeners(): Set<T> =
-    myLock.read {
-      if (myListenerSetCopy == null) {
-        // The cache was out-of-date. Rebuild it. First upgrade the lock to write
-        myLock.write {
-          if (myListenerSetCopy == null) {
-            // Cache current list of listeners
-            myListenerSetCopy = ImmutableSet.copyOf(myListenersSet)
-          }
+  private fun getUpToDateListeners(): Set<T> = myLock.read {
+    if (myListenerSetCopy == null) {
+      // The cache was out-of-date. Rebuild it. First upgrade the lock to write
+      myLock.write {
+        if (myListenerSetCopy == null) {
+          // Cache current list of listeners
+          myListenerSetCopy = ImmutableSet.copyOf(myListenersSet)
         }
       }
-      myListenerSetCopy!!
     }
+    myListenerSetCopy!!
+  }
 
   companion object {
     /** Creates a ListenerCollection that will call listeners in the [.forEach] caller thread */
