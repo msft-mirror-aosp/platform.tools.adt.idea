@@ -81,12 +81,12 @@ internal constructor(private val mySdkSync: SdkSync, private val myTopLevelModul
             this.projectToClose = projectToClose
             isNewProject = false
             useDefaultProjectAsTemplate = false
-            beforeInit = {
+            beforeInitTasks += {
               if (TrustedProjects.isProjectTrusted(projectFolderPath.toPath())) {
                 setUpLocalProperties(projectFolderPath)
               }
             }
-            beforeOpen = {
+            beforeOpenTasks += {
               // The scope of this is rather large to mimic old behaviour, it could likely be improved
               withContext(Dispatchers.EDT) {
                 configureNewProject(it)
