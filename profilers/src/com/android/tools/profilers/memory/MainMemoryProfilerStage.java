@@ -707,16 +707,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         }
         profilers.getIdeServices().getPoolExecutor().execute(() -> {
           CaptureObject capture = durationData.getCaptureEntry().getCaptureObject();
-          String extension = "alloc";
-          if (capture instanceof HeapDumpCaptureObject) {
-            extension = "hprof";
-          }
-          else if (capture instanceof NativeAllocationSampleCaptureObject) {
-            extension = "heapprofd";
-          }
-          else if (capture instanceof LegacyAllocationCaptureObject) {
-            extension = "alloc";
-          }
+          String extension = capture.getExportableExtension() != null ? capture.getExportableExtension() : "alloc";
           String traceFileName = "capture_" + capture.getStartTimeNs() + "." + extension;
           File file = ProfilerCaptureFileUtils.getCaptureFile(traceFileName);
           if (!file.exists()) {
@@ -727,9 +718,14 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
             Transport.FileResponse response = profilers.getClient().getTransportClient().getFile(request);
             if (!response.getFilePath().isEmpty()) {
               File originalFile = new File(response.getFilePath());
-              file = ProfilerCaptureFileUtils.renameToTargetFile(originalFile, traceFileName);
+              File processedFile = originalFile;
+              if (capture instanceof NativeAllocationSampleCaptureObject &&
+                  profilers.getIdeServices().getFeatureConfig().isDeobfuscationForNativeAllocationsEnabled()) {
+                processedFile = deobfuscateNativeAllocationTrace(originalFile);
+              }
+              file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, traceFileName);
               if (file == null) {
-                file = originalFile;
+                file = processedFile;
               }
             }
           }
@@ -758,6 +754,16 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     else {
       doSelectCaptureDuration(durationData, joiner);
     }
+  }
+
+  @NotNull
+  private File deobfuscateNativeAllocationTrace(@NotNull File originalFile) {
+    List<String> symbolDirs = getStudioProfilers().getIdeServices().getNativeSymbolsDirectories();
+    if (symbolDirs.isEmpty()) {
+      return originalFile;
+    }
+    File bundledFile = getStudioProfilers().getIdeServices().symbolizeAndDeobfuscateTrace(originalFile, symbolDirs);
+    return bundledFile != null ? bundledFile : originalFile;
   }
 
   private void updateAllocationTrackingStatus() {

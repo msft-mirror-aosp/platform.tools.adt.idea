@@ -81,7 +81,13 @@
       "hit": "AI next edit prediction"
     },
     {
+      "hit": "Change Review"
+    },
+    {
       "hit": "Configure colors..."
+    },
+    {
+      "hit": "Dock thoughts to bottom"
     },
     {
       "hit": "Editor"
@@ -401,6 +407,18 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Migrate File to Compose",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate Layout XML to Jetpack Compose using AI.",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate to Compose",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Move or Accept Next Edit Prediction",
       "path": "ActionManager"
     },
@@ -478,6 +496,10 @@
     },
     {
       "hit": "Start a code review of your pending changes using the AI agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Starts the migration of the project to Compose using AI",
       "path": "ActionManager"
     },
     {

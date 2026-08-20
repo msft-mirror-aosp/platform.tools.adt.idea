@@ -56,6 +56,7 @@ _ConfigurationInfo = provider(
         "application_icon": "The application icon to use.",
         "mac_app_name": "The application name on Mac, e.g. 'Android Studio Preview'",
         "vm_options": "Custom vm options per configuration",
+        "properties": "Custom properties per configuration",
     },
 )
 
@@ -896,20 +897,22 @@ def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
 
     suffix = "64" if platform == LINUX else ("64.exe" if platform == WIN else "")
     vm_options_path = platform_prefix + platform.base_path + "bin/studio" + suffix + ".vmoptions"
-    vm_options = config.vm_options + ctx.attr.vm_options + {
+    platform_vm_options = {
         LINUX: ctx.attr.vm_options_linux,
         MAC: ctx.attr.vm_options_mac,
         MAC_ARM: ctx.attr.vm_options_mac_arm,
         WIN: ctx.attr.vm_options_win,
     }[platform]
+    vm_options = ctx.attr.vm_options + platform_vm_options + config.vm_options
     _append(ctx, platform, all_files, vm_options_path, vm_options)
 
-    properties = ctx.attr.properties + {
+    platform_properties = {
         LINUX: ctx.attr.properties_linux,
         MAC: ctx.attr.properties_mac,
         MAC_ARM: ctx.attr.properties_mac_arm,
         WIN: ctx.attr.properties_win,
     }[platform]
+    properties = ctx.attr.properties + platform_properties + config.properties
     _append(ctx, platform, all_files, platform_prefix + platform.base_path + "bin/idea.properties", properties)
 
     license_files = []
@@ -1334,6 +1337,7 @@ def _android_studio_configuration_impl(ctx):
         version_suffix = ctx.attr.version_suffix,
         mac_app_name = ctx.attr.mac_app_name,
         vm_options = ctx.attr.vm_options,
+        properties = ctx.attr.properties,
     )]
 
 def android_studio_configuration(
@@ -1341,6 +1345,7 @@ def android_studio_configuration(
         flag_level,
         enable_debug_flags = False,
         vm_options = [],
+        properties = [],
         **kwargs):
     _vm_options = vm_options + [
         "-Dintellij.platform.plugin.modules.check.visibility=warning",  # TODO(b/526687561): fix our usages of private platform modules.
@@ -1350,6 +1355,7 @@ def android_studio_configuration(
     _android_studio_configuration(
         name = name,
         vm_options = _vm_options,
+        properties = properties,
         **kwargs
     )
 
@@ -1360,6 +1366,7 @@ _android_studio_configuration = rule(
         "version_suffix": attr.string(),
         "mac_app_name": attr.string(mandatory = True),
         "vm_options": attr.string_list(),
+        "properties": attr.string_list(),
     },
     implementation = _android_studio_configuration_impl,
 )

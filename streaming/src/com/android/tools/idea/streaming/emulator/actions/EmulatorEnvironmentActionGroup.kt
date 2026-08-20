@@ -18,6 +18,8 @@ package com.android.tools.idea.streaming.emulator.actions
 import com.android.emulator.control.Camera
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.Environment
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is3dSceneFile
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.isVideoFile
 import com.android.tools.idea.avd.EnvironmentImage
 import com.android.tools.idea.avd.EnvironmentsUpdater
 import com.android.tools.idea.flags.StudioFlags
@@ -89,9 +91,9 @@ internal class EmulatorRecentEnvironmentsActionGroup : DefaultActionGroup(), Dum
     val currentEnvironmentPath = getCurrentCustomEnvironmentPath(event)
     val hasRecentFiles =
       EmulatorEnvironmentAction.getRecentFiles()
-        .map { Path.of(it) }
+        .map { Path.of(it.path) }
         .filter { Files.isRegularFile(it) }
-        .filter { StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.get() || !it.fileName.toString().endsWith(".obj", ignoreCase = true) }
+        .filter { StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.get() || !is3dSceneFile(it) }
         .filter { StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get() || !isVideoFile(it) }
         .any { currentEnvironmentPath == null || it.toAbsolutePath().normalize() != currentEnvironmentPath }
     presentation.isVisible = hasRecentFiles && EmulatorEnvironmentAction.isApplicable(event)
@@ -102,9 +104,9 @@ internal class EmulatorRecentEnvironmentsActionGroup : DefaultActionGroup(), Dum
     val currentEnvironmentPath = getCurrentCustomEnvironmentPath(event)
     val recentFiles =
       EmulatorEnvironmentAction.getRecentFiles()
-        .map { Path.of(it) }
+        .map { Path.of(it.path) }
         .filter { Files.isRegularFile(it) }
-        .filter { StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.get() || !it.fileName.toString().endsWith(".obj", ignoreCase = true) }
+        .filter { StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.get() || !is3dSceneFile(it) }
         .filter { StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get() || !isVideoFile(it) }
         .filter { currentEnvironmentPath == null || it.toAbsolutePath().normalize() != currentEnvironmentPath }
     return recentFiles.map { EmulatorEnvironmentAction.RecentCustom(it) }.toTypedArray()

@@ -7,10 +7,7 @@ iml_module(
     iml_files = ["intellij.android.common.iml"],
     lint_baseline = "lint_baseline.xml",
     # do not sort: must match IML order
-    resources = [
-        "resources",
-        "flags/resources",
-    ],
+    resources = ["resources"],
     tags = ["noci:studio-win"],
     # do not sort: must match IML order
     test_deps = [
@@ -22,20 +19,26 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
     ],
     visibility = ["//visibility:public"],
-    exports = ["//tools/adt/idea/android-concurrency:intellij.android.concurrency"],
+    # do not sort: must match IML order
+    exports = [
+        "//tools/adt/idea/studio-flags",
+        "//tools/adt/idea/android-concurrency:intellij.android.concurrency",
+    ],
     # do not sort: must match IML order
     deps = [
+        "//tools/adt/idea/studio-flags",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/common:studio.android.sdktools.common",
         "//tools/analytics-library/shared:analytics-shared",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api",
         "//tools/base/ninepatch:studio.android.sdktools.ninepatch",
         "//tools/base/sdklib:studio.android.sdktools.sdklib",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/artwork:intellij.android.artwork",
-        "//tools/adt/idea/server-flags:intellij.android.server-flags",
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
         "//tools/adt/idea/android-concurrency:intellij.android.concurrency",
@@ -69,6 +72,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:android-core-proto",
     ],
+    test_friends = ["//tools/adt/idea/android-common:intellij.android.common"],
     test_srcs = ["test"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

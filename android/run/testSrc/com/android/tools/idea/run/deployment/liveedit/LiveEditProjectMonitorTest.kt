@@ -23,7 +23,6 @@ import com.android.testutils.waitForCondition
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.deploy.proto.Deploy
-import com.android.tools.deployer.TestLogger
 import com.android.tools.deployer.common.AdbClient
 import com.android.tools.deployer.common.Installer
 import com.android.tools.deployer.tasks.LiveUpdateDeployer
@@ -204,8 +203,8 @@ class LiveEditProjectMonitorTest {
     val device: IDevice = mock()
     whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.R))
 
-    val installer: Installer = LiveEditProjectMonitor.newInstaller(device)
-    val adb = AdbClient(device, TestLogger())
+    val adbClient: AdbClient = mock()
+    val installer: Installer = LiveEditProjectMonitor.newInstaller(adbClient)
     val deployer: LiveUpdateDeployer = mock()
 
     whenever(deployer.retrieveComposeStatus(any(), any(), any())).then {
@@ -216,7 +215,7 @@ class LiveEditProjectMonitorTest {
     // Fake Deployment
     monitor.notifyAppDeploy(TestApplicationProjectContext("some.app"), device, LiveEditApp(emptySet(), 32), emptyList()) { true }
     monitor.liveEditDevices.update(LiveEditStatus.UpToDate)
-    monitor.scheduleErrorPolling(deployer, installer, adb, "some.app")
+    monitor.scheduleErrorPolling(deployer, installer, adbClient, "some.app")
     taskFinished.await()
 
     // scheduleErrorPolling() fire off the first check 2 seconds after and continue in 2 seconds intervals.
@@ -241,8 +240,8 @@ class LiveEditProjectMonitorTest {
     val device: IDevice = mock()
     whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.R))
 
-    val installer: Installer = LiveEditProjectMonitor.newInstaller(device)
-    val adb = AdbClient(device, TestLogger())
+    val adbClient: AdbClient = mock()
+    val installer: Installer = LiveEditProjectMonitor.newInstaller(adbClient)
     val deployer: LiveUpdateDeployer = mock()
 
     var totalStatusRetrieve = 0
@@ -258,7 +257,7 @@ class LiveEditProjectMonitorTest {
     monitor.liveEditDevices.update(LiveEditStatus.UpToDate)
 
     for (i in 1..numRecompositionRequested) {
-      monitor.scheduleErrorPolling(deployer, installer, adb, "some.app")
+      monitor.scheduleErrorPolling(deployer, installer, adbClient, "some.app")
       recompositionStatusRequestFinished.countDown()
     }
 
@@ -291,8 +290,8 @@ class LiveEditProjectMonitorTest {
     val device: IDevice = mock()
     whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.R))
 
-    val installer: Installer = LiveEditProjectMonitor.newInstaller(device)
-    val adb = AdbClient(device, TestLogger())
+    val adbClient: AdbClient = mock()
+    val installer: Installer = LiveEditProjectMonitor.newInstaller(adbClient)
     val deployer: LiveUpdateDeployer = mock()
 
     whenever(deployer.retrieveComposeStatus(any(), any(), any())).thenReturn(listOf(Deploy.ComposeException.newBuilder().build()))
@@ -301,7 +300,7 @@ class LiveEditProjectMonitorTest {
     monitor.liveEditDevices.update(LiveEditStatus.UpToDate)
 
     for (i in 1..numRecompositionRequested) {
-      monitor.scheduleErrorPolling(deployer, installer, adb, "some.app")
+      monitor.scheduleErrorPolling(deployer, installer, adbClient, "some.app")
       recompositionStatusRequestFinished.countDown()
     }
 

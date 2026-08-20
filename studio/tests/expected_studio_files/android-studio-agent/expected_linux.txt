@@ -881,6 +881,8 @@ android-studio/lib/jna/amd64/libjnidispatch.so
 android-studio/lib/jps-model.jar
 android-studio/lib/junit4.jar
 android-studio/lib/kotlinx-coroutines-guava.jar
+android-studio/lib/ktor-server-content-negotiation.jar
+android-studio/lib/ktor-server-sse-jvm.jar
 android-studio/lib/lib.jar
 android-studio/lib/native/linux-x86_64/libsqliteij.so
 android-studio/lib/nio-fs.jar
@@ -2584,9 +2586,9 @@ android-studio/plugins/android/lib/studio-proto.jar
 android-studio/plugins/android/lib/studio_cli_service_kt_proto.jar
 android-studio/plugins/android/lib/tensorflow-lite-metadata-0.1.0-rc2.jar
 android-studio/plugins/android/lib/traceprocessor_protos.jar
-android-studio/plugins/android/lib/tracing-desktop-2.0.0-alpha09.jar
+android-studio/plugins/android/lib/tracing-desktop-2.0.0.jar
 android-studio/plugins/android/lib/tracing-perfetto-handshake-1.0.0-beta02.jar
-android-studio/plugins/android/lib/tracing-wire-desktop-2.0.0-alpha09.jar
+android-studio/plugins/android/lib/tracing-wire-desktop-2.0.0.jar
 android-studio/plugins/android/lib/transport_java_proto.jar
 android-studio/plugins/android/lib/ui-animation-tooling-internal.jar
 android-studio/plugins/android/lib/utp.jar
@@ -3317,6 +3319,7 @@ android-studio/plugins/gemini/lib/aida_grpc.jar
 android-studio/plugins/gemini/lib/aida_proto.jar
 android-studio/plugins/gemini/lib/aida_protobuf.jar
 android-studio/plugins/gemini/lib/aiplugin.jar
+android-studio/plugins/gemini/lib/android_studio_model_service_proto.jar
 android-studio/plugins/gemini/lib/annotation-jvm-1.7.1.jar
 android-studio/plugins/gemini/lib/anthropic-java-client-okhttp-2.26.0.jar
 android-studio/plugins/gemini/lib/anthropic-java-core-2.26.0.jar

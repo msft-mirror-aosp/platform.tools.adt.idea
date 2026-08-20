@@ -18,12 +18,16 @@ package com.android.tools.idea.streaming.emulator.actions
 import com.android.emulator.control.Environment
 import com.android.repository.Revision
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.idea.avd.EnvironmentImageScanner.is360Image
-import com.android.tools.idea.avd.EnvironmentImageScanner.is360ImageCandidate
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is360Image
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is360ImageCandidate
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is3dSceneFile
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.isVideoFile
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.isWavefrontObjFile
 import com.android.tools.idea.avd.EnvironmentsUpdater
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.streaming.core.htmlEscaped
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.intellij.ide.util.PropertiesComponent
@@ -89,7 +93,7 @@ internal sealed class EmulatorEnvironmentAction :
     val pathStr = toSystemIndependentName(file.toString())
     val mode =
       when {
-        file.fileName.toString().endsWith(".obj", ignoreCase = true) -> "mesh3d:$pathStr"
+        is3dSceneFile(file) -> "mesh3d:$pathStr"
         StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get() && isVideoFile(file) -> "videofile:$pathStr"
         StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.get() && is360ImageWithConfirmation(file, project) -> "image360:$pathStr"
         else -> "imagefile:$pathStr"
@@ -100,6 +104,27 @@ internal sealed class EmulatorEnvironmentAction :
   private suspend fun is360ImageWithConfirmation(file: Path, project: Project?): Boolean {
     val isXmp360 = withContext(Dispatchers.IO) { is360Image(file) }
     if (isXmp360) return true
+
+    val recentFile = getRecentFile(file)
+
+    if (recentFile != null && recentFile.mode.isNotEmpty()) {
+      val currentTimestamp =
+        try {
+          withContext(Dispatchers.IO) { Files.getLastModifiedTime(file).toMillis() }
+        } catch (_: Exception) {
+          -1L
+        }
+      val currentSize =
+        try {
+          withContext(Dispatchers.IO) { Files.size(file) }
+        } catch (_: Exception) {
+          -1L
+        }
+
+      if (currentTimestamp != -1L && currentSize != -1L && currentTimestamp == recentFile.timestamp && currentSize == recentFile.size) {
+        return recentFile.mode == "image360"
+      }
+    }
 
     val isCandidate = withContext(Dispatchers.IO) { is360ImageCandidate(file) }
     if (!isCandidate) return false
@@ -159,7 +184,7 @@ internal sealed class EmulatorEnvironmentAction :
         } ?: return null
 
       val path = Path.of(virtualFile.path)
-      if (path.fileName.toString().endsWith(".obj", ignoreCase = true)) {
+      if (is3dSceneFile(path)) {
         val isValid = withContext(Dispatchers.IO) { isWavefrontObjFile(path) }
         if (!isValid) {
           withContext(Dispatchers.EDT) {
@@ -175,7 +200,7 @@ internal sealed class EmulatorEnvironmentAction :
 
     override fun onEnvironmentSet(emulator: EmulatorController, environment: Environment) {
       super.onEnvironmentSet(emulator, environment)
-      filePath?.let { addRecentFile(it) }
+      filePath?.let { addRecentFile(Path.of(it), environment) }
     }
 
     override fun doesMatchEnvironment(environment: Environment): Boolean {
@@ -189,7 +214,8 @@ internal sealed class EmulatorEnvironmentAction :
   class RecentCustom(val filePath: Path) : EmulatorEnvironmentAction() {
 
     init {
-      templatePresentation.setText(filePath.fileName.toString(), false)
+      val label = getEnvironmentTypeLabel(filePath)
+      templatePresentation.setText("<html>${filePath.fileName.toString().htmlEscaped()} <font color=\"gray\">$label</font></html>", false)
       templatePresentation.description = filePath.toString()
     }
 
@@ -197,7 +223,7 @@ internal sealed class EmulatorEnvironmentAction :
 
     override fun onEnvironmentSet(emulator: EmulatorController, environment: Environment) {
       super.onEnvironmentSet(emulator, environment)
-      addRecentFile(filePath.toString())
+      addRecentFile(filePath, environment)
     }
 
     override fun doesMatchEnvironment(environment: Environment): Boolean {
@@ -220,10 +246,11 @@ internal sealed class EmulatorEnvironmentAction :
     override fun doesMatchEnvironment(environment: Environment): Boolean = environment.environmentMap["scene.mode"] == "webcam:$cameraId"
   }
 
-  class BuiltInImage(val environmentPath: Path, title: String) : EmulatorEnvironmentAction() {
+  class BuiltInImage(val environmentPath: Path, val title: String) : EmulatorEnvironmentAction() {
 
     init {
-      templatePresentation.text = title
+      val label = getEnvironmentTypeLabel(environmentPath)
+      templatePresentation.setText("<html>${title.htmlEscaped()} <font color=\"gray\">$label</font></html>", false)
       templatePresentation.description = "Select $title environment"
     }
 
@@ -250,110 +277,107 @@ internal sealed class EmulatorEnvironmentAction :
 
     private const val RECENT_FILES_KEY = "EmulatorEnvironmentAction.recentFiles"
 
-    fun getRecentFiles(): List<String> {
+    fun getRecentFiles(): List<RecentFile> {
       val properties = PropertiesComponent.getInstance()
       val value = properties.getValue(RECENT_FILES_KEY) ?: return emptyList()
-      return value.split('\n').filter { it.isNotEmpty() }
+      return value.split('\n').filter { it.isNotEmpty() }.map { RecentFile.deserialize(it) }
+    }
+
+    fun getRecentFile(file: Path): RecentFile? {
+      val pathStr = toSystemIndependentName(file.toString())
+      return getRecentFiles().firstOrNull {
+        toSystemIndependentName(it.path) == pathStr ||
+          try {
+            Path.of(it.path).toAbsolutePath().normalize() == file.toAbsolutePath().normalize()
+          } catch (_: Exception) {
+            false
+          }
+      }
     }
 
     fun addRecentFile(path: String) {
+      addRecentFile(Path.of(path), null)
+    }
+
+    fun addRecentFile(file: Path, environment: Environment? = null) {
+      val pathStr = toSystemIndependentName(file.toString())
+      val existing = getRecentFile(file)
+      val extractedMode = environment?.environmentMap?.get("scene.mode")?.substringBefore(':')
+      val mode =
+        when {
+          !extractedMode.isNullOrEmpty() -> extractedMode
+          is3dSceneFile(file) -> "mesh3d"
+          isVideoFile(file) -> "videofile"
+          existing != null && existing.mode.isNotEmpty() -> existing.mode
+          else -> ""
+        }
+      val timestamp =
+        try {
+          Files.getLastModifiedTime(file).toMillis()
+        } catch (_: Exception) {
+          0L
+        }
+      val size =
+        try {
+          Files.size(file)
+        } catch (_: Exception) {
+          0L
+        }
+
+      addRecentFile(RecentFile(pathStr, timestamp, size, mode))
+    }
+
+    fun addRecentFile(recentFile: RecentFile) {
       val properties = PropertiesComponent.getInstance()
       val current = getRecentFiles().toMutableList()
-      current.remove(path)
-      current.add(0, path)
+      val targetPathStr = toSystemIndependentName(recentFile.path)
+      current.removeAll {
+        toSystemIndependentName(it.path) == targetPathStr ||
+          try {
+            Path.of(it.path).toAbsolutePath().normalize() == Path.of(recentFile.path).toAbsolutePath().normalize()
+          } catch (_: Exception) {
+            false
+          }
+      }
+      current.add(0, recentFile)
       while (current.size > 5) {
         current.removeLast()
       }
-      properties.setValue(RECENT_FILES_KEY, current.joinToString("\n"))
+      properties.setValue(RECENT_FILES_KEY, current.joinToString("\n") { it.serialize() })
     }
   }
 }
 
-internal fun isVideoFile(file: Path): Boolean {
-  val name = file.fileName.toString()
-  return name.endsWith(".mp4", ignoreCase = true) || name.endsWith(".webm", ignoreCase = true)
+internal data class RecentFile(val path: String, val timestamp: Long = 0L, val size: Long = 0L, val mode: String = "") {
+  fun serialize(): String = "$path\t$timestamp\t$size\t$mode"
+
+  companion object {
+    fun deserialize(line: String): RecentFile {
+      val parts = line.split('\t')
+      if (parts.size >= 4) {
+        return RecentFile(path = parts[0], timestamp = parts[1].toLongOrNull() ?: 0L, size = parts[2].toLongOrNull() ?: 0L, mode = parts[3])
+      }
+      return RecentFile(path = line)
+    }
+  }
 }
 
-private fun isWavefrontObjFile(path: Path): Boolean {
-  return try {
-    val maxBytes = 4096
-    val bytes =
-      Files.newInputStream(path).use { stream ->
-        val buffer = ByteArray(maxBytes)
-        val read = stream.read(buffer)
-        if (read <= 0) return false
-        buffer.copyOf(read)
-      }
-    if (bytes.contains(0.toByte())) {
-      return false
-    }
-    val text = String(bytes, Charsets.UTF_8)
-    val lines = text.lines()
-    val linesToCheck = if (bytes.size == maxBytes) lines.dropLast(1) else lines
+private fun getEnvironmentMode(path: Path): String {
+  return when {
+    is3dSceneFile(path) -> "mesh3d"
+    isVideoFile(path) -> "videofile"
+    is360Image(path) -> "image360"
+    else -> "imagefile"
+  }
+}
 
-    var hasVertices = false
-    var hasFaces = false
-    var hasComments = false
-    var hasOtherKeywords = false
+private fun getEnvironmentTypeLabel(path: Path): String {
+  val mode = EmulatorEnvironmentAction.getRecentFile(path)?.mode ?: getEnvironmentMode(path)
 
-    val knownKeywords =
-      setOf(
-        "v",
-        "vt",
-        "vn",
-        "vp",
-        "f",
-        "g",
-        "o",
-        "s",
-        "usemtl",
-        "mtllib",
-        "l",
-        "p",
-        "deg",
-        "bmt",
-        "step",
-        "cstype",
-        "parm",
-        "trim",
-        "hole",
-        "scrv",
-        "sp",
-        "end",
-        "con",
-        "bevel",
-        "c_tech",
-        "d_tech",
-        "lod",
-        "shadow_obj",
-        "trace_obj",
-        "ctech",
-        "dtech",
-      )
-
-    for (line in linesToCheck) {
-      val trimmed = line.trim()
-      if (trimmed.isEmpty()) continue
-      if (trimmed.startsWith("#")) {
-        hasComments = true
-        continue
-      }
-      val parts = trimmed.split(Regex("\\s+"), 2)
-      val keyword = parts[0]
-      if (keyword in knownKeywords) {
-        when (keyword) {
-          "v" -> hasVertices = true
-          "f" -> hasFaces = true
-          else -> hasOtherKeywords = true
-        }
-      } else {
-        if (!hasVertices && !hasFaces && !hasComments && !hasOtherKeywords) {
-          return false
-        }
-      }
-    }
-    hasVertices || hasFaces || hasComments
-  } catch (_: Exception) {
-    false
+  return when (mode) {
+    "mesh3d" -> "3D scene"
+    "videofile" -> "video"
+    "image360" -> "360° photo"
+    else -> "photo"
   }
 }

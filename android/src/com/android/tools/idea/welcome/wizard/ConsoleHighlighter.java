@@ -54,7 +54,7 @@ public final class ConsoleHighlighter implements EditorHighlighter, DocumentList
   private StringBuilder myPendingStrings = new StringBuilder(4096);
   private String myLastString = null;
   private HighlighterClient myEditor;
-  private ModalityState myModalityState = ModalityState.defaultModalityState();
+  private final ModalityState myModalityState = ModalityState.any();
 
   public synchronized void print(String string, @Nullable TextAttributes attributes) {
     // Don't display the same string multiple times. This happens, for example,
@@ -84,10 +84,6 @@ public final class ConsoleHighlighter implements EditorHighlighter, DocumentList
     assert lastRange != null;
     int start = lastRange.end;
     myRanges.add(new HighlightRange(start, start + string.length(), attributes));
-  }
-
-  public void setModalityState(ModalityState state) {
-    myModalityState = state;
   }
 
   /**

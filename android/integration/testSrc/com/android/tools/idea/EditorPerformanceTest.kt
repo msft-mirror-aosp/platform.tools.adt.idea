@@ -88,7 +88,7 @@ class EditorPerformanceTest {
       disableGradleDownloadSourcesAutomatically(system)
       // Create a maven repo and set it up in the installation and environment
       system.installRepo(MavenRepo("tools/adt/idea/android/integration/editor_performance_test_deps.manifest"))
-      project.setDistribution("tools/external/gradle/gradle-8.6-bin.zip")
+      project.setDistribution("tools/external/gradle/gradle-9.1.0-bin.zip")
 
       system.runStudio(project, watcher.dashboardName) { studio ->
         studio.waitForSync()
@@ -176,6 +176,7 @@ class EditorPerformanceTest {
           161,
           34,
           "completed_tasks_cleared",
+          false,
         ),
         CompletionPosition(
           "app/src/main/java/com/example/android/architecture/blueprints/todoapp/statistics/StatisticsViewModel.kt",

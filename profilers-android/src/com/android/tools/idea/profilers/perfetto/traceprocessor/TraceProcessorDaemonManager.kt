@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.profilers.perfetto.traceprocessor
 
-import com.android.tools.idea.transport.DeployableFile
+import com.android.tools.idea.profilers.perfetto.PerfettoPrebuiltLocator
 import com.android.tools.nativeSymbolizer.getLlvmSymbolizerPath
 import com.android.tools.profilers.analytics.FeatureTracker
 import com.google.common.annotations.VisibleForTesting
@@ -23,10 +23,7 @@ import com.google.common.base.Stopwatch
 import com.google.common.base.Ticker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.util.SystemInfo
-import com.intellij.util.system.CpuArch
 import java.io.BufferedReader
-import java.io.File
 import java.io.InputStreamReader
 import java.lang.RuntimeException
 import java.util.concurrent.ExecutorService
@@ -61,40 +58,12 @@ class TraceProcessorDaemonManager(
     // TPD write the following message to stdout when it cannot find a port to bind.
     private const val SERVER_PORT_BIND_FAILED = "Server failed to start. A port number wasn't bound."
 
-    private val TPD_DEV_PATH: String by lazy {
-      when {
-        SystemInfo.isWindows -> {
-          "prebuilts/tools/common/trace-processor-daemon/windows"
-        }
-        SystemInfo.isMac -> {
-          "prebuilts/tools/common/trace-processor-daemon/${if (CpuArch.isArm64()) "darwin-arm64" else "darwin-x86_64"}"
-        }
-        SystemInfo.isLinux -> {
-          "prebuilts/tools/common/trace-processor-daemon/linux"
-        }
-        else -> {
-          LOGGER.warn("Unsupported platform for TPD. Using linux binary.")
-          "prebuilts/tools/common/trace-processor-daemon/linux"
-        }
-      }
-    }
-    private val TPD_RELEASE_PATH = "plugins/android/resources/trace_processor_daemon"
-    private val TPD_EXECUTABLE: String by lazy {
-      when {
-        SystemInfo.isWindows -> {
-          "trace_processor_daemon.exe"
-        }
-        else -> {
-          "trace_processor_daemon"
-        }
-      }
-    }
-
-    private val TPD_BINARY =
-      DeployableFile.Builder(TPD_EXECUTABLE).setReleaseDir(TPD_RELEASE_PATH).setDevDir(TPD_DEV_PATH).setExecutable(true).build()
-
     private fun getExecutablePath(): String {
-      return File(TPD_BINARY.dir, TPD_BINARY.fileName).absolutePath
+      return PerfettoPrebuiltLocator.getExecutablePath(
+        binaryName = "trace_processor_daemon",
+        devDirName = "trace-processor-daemon",
+        releaseDirName = "trace_processor_daemon",
+      )
     }
   }
 

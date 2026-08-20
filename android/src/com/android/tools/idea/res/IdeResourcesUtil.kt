@@ -1466,6 +1466,7 @@ fun isManifestClass(psiClass: PsiClass): Boolean {
   return psiClass is ManifestClass
 }
 
+@Deprecated(message = "Use createValueResourceAsync instead to avoid calling @Slow operations on the UI thread.")
 fun createValueResource(
   project: Project,
   resDir: VirtualFile,
@@ -1490,6 +1491,7 @@ fun createValueResource(
   }
 }
 
+@Deprecated(message = "Use createValueResourceAsync instead to avoid calling @Slow operations on the UI thread.")
 @JvmOverloads
 fun createValueResource(
   project: Project,
@@ -1501,17 +1503,26 @@ fun createValueResource(
   value: String,
   outTags: MutableList<ResourceElement?>? = null,
 ): Boolean {
-  return createValueResource(project, resDir, resourceName, value, resourceType, fileName, dirNames) { element: ResourceElement ->
-    if (value.isNotEmpty()) {
-      val s = if (resourceType == ResourceType.STRING) normalizeXmlResourceValue(value) else value
-      element.stringValue = s
-    } else if (resourceType == ResourceType.STYLEABLE || resourceType == ResourceType.STYLE) {
-      element.stringValue = "value"
-      element.xmlTag!!.value.text = ""
-    }
-    outTags?.add(element)
-    true
-  }
+  return createValueResource(
+    project,
+    resDir,
+    resourceName,
+    value,
+    resourceType,
+    fileName,
+    dirNames,
+    Processor { element: ResourceElement ->
+      if (value.isNotEmpty()) {
+        val s = if (resourceType == ResourceType.STRING) normalizeXmlResourceValue(value) else value
+        element.stringValue = s
+      } else if (resourceType == ResourceType.STYLEABLE || resourceType == ResourceType.STYLE) {
+        element.stringValue = "value"
+        element.xmlTag!!.value.text = ""
+      }
+      outTags?.add(element)
+      true
+    },
+  )
 }
 
 private fun addValueResource(
@@ -1649,10 +1660,10 @@ fun changeValueResource(
   }
 }
 
-private fun findResourceFile(resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? =
+internal fun findResourceFile(resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? =
   resDir.findChild(dirName)?.findChild(fileName)
 
-private fun findOrCreateResourceFile(project: Project, resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? {
+internal fun findOrCreateResourceFile(project: Project, resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? {
   val dir = AndroidUtils.createChildDirectoryIfNotExist(project, resDir, dirName)
   val dirPath = FileUtil.toSystemDependentName(resDir.path + '/' + dirName)
   if (dir == null) {

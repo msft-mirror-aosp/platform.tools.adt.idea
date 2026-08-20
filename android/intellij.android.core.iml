@@ -129,13 +129,8 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.execution.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.backend" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.backend" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.frontend" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.platform.images.xdebugger" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.smRunner" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.testRunner" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.frontend" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.analysis" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.emmet" level="project" />

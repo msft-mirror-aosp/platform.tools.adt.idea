@@ -37,6 +37,7 @@ import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.ide.wizard.CommitStepException;
 import com.intellij.lang.java.JavaParserDefinition;
 import com.intellij.lexer.Lexer;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.ProgressManager;
@@ -313,7 +314,12 @@ public class AndroidUtils extends CommonAndroidUtil {
       throw new IncorrectOperationException(message);
     }
     else {
-      Messages.showErrorDialog(project, message, title);
+      if (getApplication().isDispatchThread()) {
+        Messages.showErrorDialog(project, message, title);
+      }
+      else {
+        getApplication().invokeLater(() -> Messages.showErrorDialog(project, message, title), ModalityState.any());
+      }
     }
   }
 

@@ -110,6 +110,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    * Whether long trace files should be parsed.
    */
   private boolean myShouldProceedYesNoDialog = false;
+  private boolean myShouldProceedOkCancelDialog = true;
 
   /**
    * Whether the task-based UX should be visible.
@@ -127,6 +128,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    * Whether the LeakCanary task should be visible.
    */
   private boolean myLeakCanaryEnabled = true;
+
+  private boolean myUseTraceProcessorForHprofEnabled = false;
 
   private boolean mySystemTraceInEditorEnabled = false;
 
@@ -165,6 +168,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   }
 
   private boolean myProfilerHomeTabV2Enabled = true;
+  private boolean myDeobfuscationForNativeAllocationsEnabled = false;
+
+  public void enableDeobfuscationForNativeAllocations(boolean enabled) {
+    myDeobfuscationForNativeAllocationsEnabled = enabled;
+  }
 
   private String myLastLeakRawTrace;
   private Leak myLastLeak;
@@ -296,6 +304,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isDeobfuscationForNativeAllocationsEnabled() {
+        return myDeobfuscationForNativeAllocationsEnabled;
+      }
+
+      @Override
       public boolean isTestingModeEnabled() {
         return false;
       }
@@ -323,6 +336,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isLeakCanaryStudioBotEnabled() {
         return myLeakCanaryStudioBotEnabled;
+      }
+
+      @Override
+      public boolean isUseTraceProcessorForHprofEnabled() {
+        return myUseTraceProcessorForHprofEnabled;
       }
 
       @Override
@@ -376,7 +394,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public boolean openOkCancelDialog(@NotNull String message, @NotNull String title, @NotNull Consumer<Boolean> okCallback) {
-    return true;
+    return myShouldProceedOkCancelDialog;
   }
 
 
@@ -421,6 +439,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void setShouldProceedYesNoDialog(boolean shouldProceedYesNoDialog) {
     myShouldProceedYesNoDialog = shouldProceedYesNoDialog;
+  }
+
+  public void setShouldProceedOkCancelDialog(boolean shouldProceedOkCancelDialog) {
+    myShouldProceedOkCancelDialog = shouldProceedOkCancelDialog;
   }
 
   public void addCustomProfilingConfiguration(String name, TraceType type) {
@@ -582,6 +604,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myProfilerHomeTabV2Enabled = enabled;
   }
 
+  public void setUseTraceProcessorForHprofEnabled(boolean enabled) {
+    myUseTraceProcessorForHprofEnabled = enabled;
+  }
+
   @Override
   public boolean openTraceFile(@NotNull File file) {
     myOpenedFile = file;
@@ -612,5 +638,18 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   @Override
   public kotlinx.coroutines.flow.Flow<String> fetchLeakInsight(@NotNull String rawTrace) {
     return kotlinx.coroutines.flow.FlowKt.emptyFlow();
+  }
+
+  private boolean myTraceSymbolizedAndDeobfuscated = false;
+
+  @Nullable
+  @Override
+  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile, @NotNull List<String> symbolDirs) {
+    myTraceSymbolizedAndDeobfuscated = true;
+    return traceFile;
+  }
+
+  public boolean isTraceSymbolizedAndDeobfuscated() {
+    return myTraceSymbolizedAndDeobfuscated;
   }
 }
