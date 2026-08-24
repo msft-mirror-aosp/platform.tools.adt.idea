@@ -106,7 +106,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
           WatchFaceLaunchOptions().apply { componentName = this@AndroidWatchFaceConfigurationExecutorTest.componentName }
       }
 
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     val executor =
       AndroidWatchFaceConfigurationExecutor(
@@ -180,7 +180,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
       }
 
     // Executor we test.
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     val executor =
       AndroidWatchFaceConfigurationExecutor(
@@ -326,7 +326,7 @@ class AndroidWatchFaceConfigurationExecutorTest : AndroidConfigurationExecutorBa
       }
 
     // Executor we test.
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     val executor =
       AndroidWatchFaceConfigurationExecutor(
