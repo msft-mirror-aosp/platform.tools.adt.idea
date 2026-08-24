@@ -167,7 +167,7 @@ class AndroidStudioWelcomeScreenServiceTest {
 
   @Test
   fun checkInternetConnection_showsIdeaMessageDialog_whenThereAreNetworkIssues() {
-    mockStatic(HttpConnectionUtils::class.java) {
+    mockStatic(HttpConnectionUtils::class.java).use {
       whenever(HttpConnectionUtils.openHttpConnection(any())).thenThrow(IOException::class.java)
 
       mockStatic(Messages::class.java).use { mockMessages ->
@@ -191,7 +191,7 @@ class AndroidStudioWelcomeScreenServiceTest {
   fun checkInternetConnection_doesNotCrash_whenUnknownErrorThrown() {
     val checkComplete = CompletableFuture<Boolean>()
     executeOnPooledThread {
-      mockStatic(HttpConnectionUtils::class.java) {
+      mockStatic(HttpConnectionUtils::class.java).use {
         whenever(HttpConnectionUtils.openHttpConnection(any())).thenThrow(NoClassDefFoundError::class.java)
 
         AndroidStudioWelcomeScreenService.instance.checkInternetConnection()
