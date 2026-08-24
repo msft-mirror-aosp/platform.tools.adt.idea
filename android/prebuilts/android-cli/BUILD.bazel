@@ -46,7 +46,11 @@ filegroup(
         ":android_cli_mac_x86_64_local",
         ":android_cli_win_local",
     ],
-    visibility = ["//tools/adt/idea/android:__pkg__"],
+    visibility = [
+        "//tools/adt/idea/android:__pkg__",
+        "//tools/vendor/google/ml/aiplugin/android:__pkg__",
+        "//tools/vendor/google/ml/aiplugin/android/journeys-evals:__pkg__",
+    ],
 )
 
 studio_data(
