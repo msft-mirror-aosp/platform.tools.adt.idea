@@ -29,6 +29,7 @@ import com.android.tools.idea.testing.AndroidProjectRule;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.testFramework.ProjectRule;
 import java.awt.Color;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import kotlin.Pair;
 import org.jetbrains.android.AndroidTestBase;
@@ -190,7 +191,7 @@ public class ResourceFileGeneratorTest {
   private static boolean hasJdk8364373Fix() {
     try {
       final Class<?> clazz = Class.forName("sun.awt.geom.AreaOp");
-      clazz.getDeclaredField("MAX_LINK_COUNT");
+      Field unused = clazz.getDeclaredField("MAX_LINK_COUNT");
       return true;
     } catch (ClassNotFoundException | NoSuchFieldException e) {
       return false;
