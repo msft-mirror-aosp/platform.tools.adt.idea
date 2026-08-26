@@ -44,14 +44,11 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectCloseListener;
-import com.intellij.openapi.project.ProjectManager;
 import com.intellij.util.concurrency.SequentialTaskExecutor;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.jetbrains.annotations.NotNull;
@@ -196,7 +193,10 @@ public final class AdbService implements Disposable {
     AdbOptionsService.getInstance().removeListener(myAdbOptionsListener);
     try {
       mySequentialExecutor.submit(() -> {
-        myImplementation.terminate();
+        // Cleanly shuts down `AndroidDebugBridge`.
+        // Note that we don't rely on `myImplementation.terminate()` here since it would
+        // also trigger `disconnectBridge()` / `stopAdb()` (which kills the ADB server process).
+        myImplementation.dispose();
         mySequentialExecutor.shutdownNow();
       }).get(ADB_TERMINATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     }
@@ -240,33 +240,6 @@ public final class AdbService implements Disposable {
       return StudioFlags.JDWP_TRACER.get() && !JDWP_SCACHE.get();
     });
     StudioAdbLibSCacheJdwpSessionPipelineFactory.install(AdbLibApplicationService.getInstance().getSession());
-
-    // Ensure ADB is terminated when there are no more open projects.
-    ApplicationManager.getApplication().getMessageBus().connect().subscribe(ProjectCloseListener.TOPIC, new ProjectCloseListener() {
-      @Override
-      public void projectClosed(@NotNull Project project) {
-        if (disabled) {
-          return;
-        }
-        // Ideally, android projects counts should be used here.
-        // However, such logic would introduce circular dependency(relying AndroidFacet.ID in intellij.android.core).
-        // So, we only check if all projects are closed. If yes, terminate adb.
-        if (ProjectManager.getInstance().getOpenProjects().length == 0) {
-          LOG.info("Ddmlib can be terminated as all projects have been closed");
-          Future<?> terminateAdb = mySequentialExecutor.submit(myImplementation::terminate);
-          if (ApplicationManager.getApplication().isUnitTestMode()) {
-            // In unit tests terminate ADB synchronously to ensures ADB won't be terminated when another test has started running.
-            try {
-              terminateAdb.get(30, TimeUnit.SECONDS);
-            }
-            catch (Throwable e) {
-              LOG.warn("Failed to terminate ddmlib.", e);
-              throw new RuntimeException(e);
-            }
-          }
-        }
-      }
-    });
   }
 
   private static @NotNull AdbInitOptions getAdbInitOptions() {
@@ -403,6 +376,16 @@ public final class AdbService implements Disposable {
       // able to call `AdbService.createBridge` in an attempt to recreate it.
       AndroidDebugBridge.terminate();
       LOG.info("ADB connection successfully terminated");
+    }
+
+    /**
+     * Cleanly shuts down {@link AndroidDebugBridge} without triggering {@link AndroidDebugBridge#disconnectBridge},
+     * so that the ADB server process is not stopped when Android Studio shuts down.
+     */
+    @WorkerThread
+    public void dispose() {
+      LOG.info("Disposing ADB bridge");
+      AndroidDebugBridge.terminate();
     }
 
     @WorkerThread
