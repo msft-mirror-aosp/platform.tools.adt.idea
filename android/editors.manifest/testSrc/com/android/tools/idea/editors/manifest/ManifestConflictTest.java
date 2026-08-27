@@ -23,6 +23,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.testing.AndroidGradleProjectRule;
 import com.google.common.collect.ImmutableList;
 
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import java.util.ArrayList;
@@ -114,7 +115,7 @@ public class ManifestConflictTest {
     String[] errors = new String[records.size()];
     for (int c = 0; c < records.size(); c++) {
       MergingReport.Record record = records.get(c);
-      errors[c] = ManifestPanel.getErrorHtml(AndroidFacet.getInstance(module), record.getMessage(), record.getSourceLocation(), myHtmlLinkManager, token, null, true);
+      errors[c] = ReadAction.computeBlocking(() -> ManifestPanel.getErrorHtml(AndroidFacet.getInstance(module), record.getMessage(), record.getSourceLocation(), myHtmlLinkManager, token, null, true));
     }
     return errors;
   }

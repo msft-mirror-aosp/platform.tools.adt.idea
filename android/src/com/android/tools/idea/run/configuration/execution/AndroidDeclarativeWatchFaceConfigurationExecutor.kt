@@ -161,7 +161,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutor(
     val outputReceiver = RecordOutputReceiver { indicator.isCanceled == true }
     try {
       val resultReceiver = CommandResultReceiverV1()
-      val multiReceiver = MultiReceiver(resultReceiver, outputReceiver)
+      val multiReceiver = MultiReceiver(resultReceiver.asIShellOutputReceiver(), outputReceiver)
 
       device.executeShellCommand("$SET_DECLARATIVE_WATCH_FACE ${app.appId}", multiReceiver, 15, TimeUnit.SECONDS)
 
@@ -178,7 +178,12 @@ class AndroidDeclarativeWatchFaceConfigurationExecutor(
     indicator.text = "Showing the watch face"
 
     val resultReceiver = CommandResultReceiverV1()
-    device.executeShellCommand(WatchFace.ShellCommand.SHOW_WATCH_FACE, console, resultReceiver, indicator = indicator)
+    device.executeShellCommand(
+      WatchFace.ShellCommand.SHOW_WATCH_FACE,
+      console,
+      resultReceiver.asIShellOutputReceiver(),
+      indicator = indicator,
+    )
     if (resultReceiver.resultCode != CommandResultReceiverV1.SUCCESS_CODE) {
       console.printlnError("Warning: Launch was successful, but you may need to bring up the watch face manually")
     }

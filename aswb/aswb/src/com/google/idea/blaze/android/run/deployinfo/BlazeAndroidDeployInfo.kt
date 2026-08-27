@@ -18,11 +18,13 @@ package com.google.idea.blaze.android.run.deployinfo
 import com.android.tools.idea.run.ApkFileUnit
 import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.ApkProvisionException
+import com.android.tools.ndk.run.SymbolDir
 import com.google.idea.blaze.android.manifest.ManifestParser.ParsedManifest
 import com.google.idea.blaze.android.run.BazelApkProvider
 import com.google.idea.blaze.android.run.BazelApplicationIdProvider
 import com.google.idea.blaze.android.run.NativeSymbolFinder.Companion.fetchNativeSymbols
 import com.google.idea.blaze.android.run.deployinfo.DeployData.Companion.fetchApks
+import com.google.idea.blaze.base.run.DeployedApplicationTargetStore
 import com.google.idea.blaze.base.run.RuntimeArtifactCache
 import com.google.idea.blaze.base.run.RuntimeArtifactKind
 import com.google.idea.blaze.base.scope.BlazeContext
@@ -76,7 +78,10 @@ private constructor(
   fun toAndroidBinaryApplicationIdProvider(): BazelApplicationIdProvider =
     BazelApplicationIdProvider(mainAppPackageName, testPackageName = null)
 
-  fun toApkProvider(): BazelApkProvider = BazelApkProvider(apkInfos, symbolFiles)
+  fun toApkProvider(): BazelApkProvider = BazelApkProvider(apkInfos)
+
+  val symbolDirs: List<SymbolDir>
+    get() = symbolFiles.map { SymbolDir.WithoutSubdirectories(it.parentFile) }.distinct()
 
   companion object {
 
@@ -88,15 +93,22 @@ private constructor(
       buildOutputs: BlazeBuildOutputs,
       mainApp: DeployData,
       appUnderTest: DeployData?,
-      nativeDebuggingEnabled: Boolean,
+      fetchNativeSymbols: Boolean,
       context: BlazeContext,
       cacheLocally: CacheLocallyFunction = ::cacheLocally,
     ): BlazeAndroidDeployInfo {
       val mainAppPackage = mainApp.fetchApks(project, context, cacheLocally)
       val testTargetAppPackage = appUnderTest?.fetchApks(project, context, cacheLocally)
 
-      val nativeSymbolTargets = if (nativeDebuggingEnabled) listOfNotNull(mainApp.targetLabel, appUnderTest?.targetLabel) else emptyList()
+      val nativeSymbolTargets = if (fetchNativeSymbols) listOfNotNull(mainApp.targetLabel, appUnderTest?.targetLabel) else emptyList()
       val nativeSymbols = nativeSymbolTargets.flatMap { fetchNativeSymbols(project, context, it, buildOutputs) }
+
+      val targetStore = DeployedApplicationTargetStore.getInstance(project)
+      targetStore.trackTargetForApplication(mainAppPackage.applicationId, mainApp.targetLabel)
+      if (testTargetAppPackage != null) {
+        targetStore.trackTargetForApplication(testTargetAppPackage.applicationId, appUnderTest.targetLabel)
+      }
+
       return BlazeAndroidDeployInfo(
         mainAppMergedManifest = mainApp.mergedManifest,
         appUnderTestMergedManifest = appUnderTest?.mergedManifest,

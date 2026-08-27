@@ -30,6 +30,7 @@ import com.google.idea.blaze.base.util.SaveUtil
 import com.google.idea.blaze.common.Interners
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.exception.BuildException
+import com.google.idea.common.experiments.BoolExperiment
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 
@@ -40,7 +41,7 @@ class BlazeApkBuildStep(
   private val blazeFlags: List<String>,
   private val exeFlags: List<String>,
   val useMobileInstall: Boolean,
-  val nativeDebuggingEnabled: Boolean,
+  val fetchNativeSymbols: Boolean,
   val liveEditDataExtractor: LiveEditDataExtractor?,
   private val launchId: String,
   private val buildInvoker: BuildInvoker,
@@ -64,7 +65,7 @@ class BlazeApkBuildStep(
       // standard build needs this to ensure deploy info is generated.
       command.addBlazeFlags("--output_groups=+android_deploy_info")
     }
-    if (nativeDebuggingEnabled) {
+    if (fetchNativeSymbols) {
       command.addBlazeFlags(NativeSymbolFinder.getInstances().map { it.additionalBuildFlags })
     }
 
@@ -85,10 +86,12 @@ class BlazeApkBuildStep(
         context.handleException("Failed to build APK", e)
         throw e
       }
+
     return buildOutputs
   }
 
   companion object {
     private val logger = Logger.getInstance(BlazeApkBuildStep::class.java)
+    val FETCH_NATIVE_SYMBOLS_ON_DEPLOY = BoolExperiment("aswb.fetch.native.symbols.on.deploy", true)
   }
 }

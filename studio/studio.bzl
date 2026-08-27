@@ -836,6 +836,7 @@ def _get_external_attributes(all_files):
         "plugins/android/resources/perfetto/*/traced_probes",
         "plugins/android/resources/perfetto/*/libperfetto.so",
         "plugins/android/resources/trace_processor_daemon/trace_processor_daemon",
+        "plugins/android/resources/traceconv/traceconv",
         "plugins/android/resources/trace_processor_server/trace-processor",
         "plugins/gemini/resources/llamacpp/llama-server",
         "plugins/gemini/resources/llamacpp/libggml*",
@@ -1348,7 +1349,6 @@ def android_studio_configuration(
         properties = [],
         **kwargs):
     _vm_options = vm_options + [
-        "-Dintellij.platform.plugin.modules.check.visibility=warning",  # TODO(b/526687561): fix our usages of private platform modules.
         "-Dflags.configuration.level=" + flag_level,
         "-Dflags.debug.enabled=" + ("true" if enable_debug_flags else "false"),
     ]

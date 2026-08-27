@@ -18,14 +18,19 @@ package com.google.idea.blaze.qsync
 import com.google.common.base.Suppliers
 import com.google.common.collect.ImmutableSet
 import com.google.common.truth.Truth
+import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.vcs.VcsState
 import com.google.idea.blaze.common.vcs.WorkspaceFileChange
+import com.google.idea.blaze.qsync.project.BuildPackage
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
+import com.google.idea.blaze.qsync.project.ProjectStructureData
+import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.google.idea.blaze.qsync.query.Query
 import com.google.idea.blaze.qsync.query.QuerySpec
 import com.google.idea.blaze.qsync.query.QuerySummary
+import com.google.idea.blaze.qsync.query.QuerySummaryImpl
 import com.google.idea.blaze.qsync.query.QuerySummaryImpl.Companion.create
 import com.google.idea.blaze.qsync.query.QuerySummaryTestUtil
 import java.nio.file.Path
@@ -68,9 +73,9 @@ class ProjectRefresherTest {
             ProjectDefinition.EMPTY,
             Optional.ofNullable(existingSnapshot.vcsState),
             vcsState,
-            Optional.empty(),
-            Optional.empty(),
             ProjectDefinition.EMPTY,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { true },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -91,9 +96,9 @@ class ProjectRefresherTest {
             ProjectDefinition.EMPTY,
             Optional.ofNullable(existingProject.vcsState),
             vcsState,
-            Optional.empty(),
-            Optional.empty(),
             ProjectDefinition.EMPTY,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -114,9 +119,9 @@ class ProjectRefresherTest {
             ProjectDefinition.EMPTY,
             vcsState,
             vcsState,
-            Optional.empty(),
-            Optional.empty(),
             ProjectDefinition.EMPTY,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -138,9 +143,9 @@ class ProjectRefresherTest {
             ProjectDefinition.EMPTY,
             Optional.ofNullable(existingSnapshot.vcsState),
             Optional.of(VcsState("workspace2", "1", ImmutableSet.of(), Optional.empty())),
-            Optional.empty(),
-            Optional.empty(),
             ProjectDefinition.EMPTY,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { true },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -162,9 +167,9 @@ class ProjectRefresherTest {
             ProjectDefinition.EMPTY,
             Optional.ofNullable(existingSnapshot.vcsState),
             Optional.of(VcsState("workspaceId", "2", ImmutableSet.of(), Optional.empty())),
-            Optional.empty(),
-            Optional.empty(),
             ProjectDefinition.EMPTY,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { true },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -207,9 +212,9 @@ class ProjectRefresherTest {
             projectDef,
             Optional.ofNullable(existingSnapshot.vcsState),
             vcsState,
-            Optional.ofNullable(existingSnapshot.bazelVersion),
-            Optional.of("2.0.0"),
             projectDef,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { true },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -252,9 +257,9 @@ class ProjectRefresherTest {
             projectDef,
             Optional.ofNullable(existingSnapshot.vcsState),
             Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())),
-            Optional.ofNullable(existingSnapshot.bazelVersion),
-            Optional.empty(),
             projectDef,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -300,9 +305,9 @@ class ProjectRefresherTest {
             projectDef,
             Optional.ofNullable(existingSnapshot.vcsState),
             Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())),
-            Optional.ofNullable(existingSnapshot.bazelVersion),
-            Optional.empty(),
             projectDef,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -341,9 +346,9 @@ class ProjectRefresherTest {
             projectDef,
             Optional.ofNullable(existingSnapshot.vcsState),
             Optional.of(VcsState("workspaceId", "1", workingSet, Optional.empty())),
-            Optional.ofNullable(existingSnapshot.bazelVersion),
-            Optional.empty(),
             projectDef,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -386,9 +391,9 @@ class ProjectRefresherTest {
             projectDef,
             Optional.ofNullable(existingSnapshot.vcsState),
             Optional.of(VcsState("workspaceId", "1", workingSet, Optional.empty())),
-            Optional.ofNullable(existingSnapshot.bazelVersion),
-            Optional.empty(),
             projectDef,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -430,9 +435,9 @@ class ProjectRefresherTest {
                 Optional.empty(),
               )
             ),
-            Optional.ofNullable(existingSnapshot.bazelVersion),
-            Optional.empty(),
             projectDef,
+            ProjectStructureData.EMPTY,
+            requireFullSync = { false },
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -441,5 +446,38 @@ class ProjectRefresherTest {
     val partialQuery = update as PartialProjectRefresh
     Truth.assertThat(partialQuery.deletedPackages).isEmpty()
     Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/path"))
+  }
+
+  @Test
+  fun testFullProjectUpdate_preservesAndUpdatesPackageStamps() {
+    val projectDef =
+      ProjectDefinition(
+        projectIncludes = setOf(Path.of("package")),
+        projectExcludes = emptySet(),
+        deriveTargetsFromDirectories = false,
+        targetPatterns = emptyList(),
+        isAndroidWorkspace = false,
+        languageClasses = setOf(QuerySyncLanguage.JVM),
+        testSources = emptySet(),
+        systemExcludes = emptySet(),
+      )
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/path") to BuildPackage(Path.of("package/path"), emptyList(), stamp = 12345L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val update = createRefresher().startFullUpdate(QuerySyncTestUtils.LOGGING_CONTEXT, projectDef, projectStructureData)
+    Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
+
+    val querySummary = QuerySummaryTestUtil.createProtoForPackages("//package/path:rule")
+    val postQuerySyncData = update.createPostQuerySyncData(QuerySummaryImpl.create(querySummary))
+    val pkg = postQuerySyncData.querySummary().getBuildPackage(Label.of("//package/path:path"))
+    Truth.assertThat(pkg?.stamp).isEqualTo(12345L)
   }
 }

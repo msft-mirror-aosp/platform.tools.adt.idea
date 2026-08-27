@@ -74,11 +74,11 @@ class MaterialVdIconsProvider {
      *   download finishes, this method will be called if the metadata does not match the local copy and a UI update is needed.
      */
     fun loadMaterialVdIcons(
-      refreshUiCallback: @UiThread (MaterialVdIcons, Status) -> Unit,
+      @UiThread refreshUiCallback: (MaterialVdIcons, Status) -> Unit,
       parentDisposable: Disposable,
       metadataUrlProvider: MaterialIconsMetadataUrlProvider? = null,
       iconsUrlProvider: MaterialIconsUrlProvider? = null,
-      onNewIconsAvailable: @UiThread () -> Unit = {},
+      @UiThread onNewIconsAvailable: () -> Unit = {},
     ) {
       val metadataUrl = (metadataUrlProvider ?: getMetadataUrlProvider()).getMetadataUrl()
       val metadataParseResult = metadataUrl?.let { MaterialIconsMetadata.parse(it) } ?: Result.success(MaterialIconsMetadata.EMPTY)
@@ -107,8 +107,8 @@ class MaterialVdIconsProvider {
 private fun loadMaterialVdIcons(
   metadata: MaterialIconsMetadata,
   iconsUrlProvider: MaterialIconsUrlProvider,
-  refreshUiCallback: @UiThread (MaterialVdIcons, Status) -> Unit,
-  onNewIconsAvailable: @UiThread () -> Unit,
+  @UiThread refreshUiCallback: (MaterialVdIcons, Status) -> Unit,
+  @UiThread onNewIconsAvailable: () -> Unit,
   parentDisposable: Disposable,
 ) {
   val iconsLoader = MaterialVdIconsLoader(metadata, iconsUrlProvider)

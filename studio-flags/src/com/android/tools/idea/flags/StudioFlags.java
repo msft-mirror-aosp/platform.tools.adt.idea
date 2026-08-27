@@ -404,6 +404,18 @@ public final class StudioFlags {
     PROFILER, "java.kotlin.allocations.legacy.trace.in.editor", "Open Java/Kotlin Allocations (Legacy) in Editor",
     "Opens Java/Kotlin Allocations (Legacy) files in a new editor tab");
 
+  public static final Flag<Boolean> PROFILER_JAVA_KOTLIN_ALLOCATIONS_IN_EDITOR = new BooleanFlag(
+    PROFILER, "java.kotlin.allocations.in.editor", "Open Java/Kotlin Allocations in Editor",
+    "Opens Java/Kotlin Allocations tasks in a new editor tab");
+
+  public static final Flag<Boolean> PROFILER_LIVE_TELEMETRY_IN_EDITOR = new BooleanFlag(
+    PROFILER, "live.telemetry.in.editor", "Open Live Telemetry in Editor",
+    "Opens Live Telemetry tasks in a new editor tab");
+
+  public static final Flag<Boolean> PROFILER_LEAKCANARY_IN_EDITOR = new BooleanFlag(
+    PROFILER, "leakcanary.in.editor", "Open LeakCanary in Editor",
+    "Opens LeakCanary tasks in a new editor tab");
+
   public static final Flag<Boolean> PROFILER_PERFETTO_QUERY_GENERATION = new BooleanFlag(
     PROFILER, "perfetto.query.generation", "Generate Perfetto SQL queries",
     "Uses AI to generate Perfetto SQL queries");
@@ -1300,6 +1312,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "video.environment", "Enable Video Environment",
     "Enables video (.mp4, .webm) support for AI Glasses environments");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR = new BooleanFlag(
+    EMBEDDED_EMULATOR, "display.off.indicator", "Enable Display Off Indicator",
+    "Enables displaying \"Display off\" indicator for AI Glasses when display is turned off");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs");
@@ -2015,6 +2030,14 @@ public final class StudioFlags {
       "direct.access.quota.switch",
       "Migrate Device Streaming quota metrics from FTL to DDP",
       "Activate migration of device streaming quota metrics from FTL to DDP"
+    );
+
+  public static final Flag<Boolean> DIRECT_ACCESS_MIGRATE_TO_DDP =
+    new BooleanFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.migrate.to.ddp",
+      "Migrate Device Streaming from FTL to DDP",
+      "Activate migration of device streaming from FTL to DDP"
     );
 
   // endregion Firebase Test Lab
@@ -2763,10 +2786,10 @@ public final class StudioFlags {
                     "Enable project-wide symbol linkification and navigation",
                     "Enables one-click navigation to code symbols mentioned in Studio Bot responses");
 
-  public static final Flag<Boolean> STUDIOBOT_TASK_ROADMAP_ENABLED =
-    new BooleanFlag(STUDIOBOT, "task.roadmap.enabled",
-                    "Enable Task Roadmap progress panels",
-                    "When enabled, long-running agent tasks will display a multi-step roadmap status-bar and sidebar.");
+  public static final Flag<Boolean> STUDIOBOT_TASK_PROGRESS_UI_ENABLED =
+    new BooleanFlag(STUDIOBOT, "task.progressui.enabled",
+                    "Enable Task Progress UI panels",
+                    "When enabled, long-running agent tasks will display a multi-step progress UI status-bar and sidebar.");
 
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_IN_QUERY_BOX =
     new BooleanFlag(STUDIOBOT, "ask.user.in.query.box",

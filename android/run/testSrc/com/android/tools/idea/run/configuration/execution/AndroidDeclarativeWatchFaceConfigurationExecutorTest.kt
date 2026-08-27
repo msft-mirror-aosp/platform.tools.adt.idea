@@ -84,7 +84,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutorTest : AndroidConfiguratio
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
     val deviceFutures = FakeAndroidDevice.forDevices(listOf(device))
-    val app = createApp(device, appId, servicesName = emptyList(), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = emptyList(), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     val executor =
       AndroidDeclarativeWatchFaceConfigurationExecutor(
@@ -140,7 +140,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutorTest : AndroidConfiguratio
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
     val deviceFutures = FakeAndroidDevice.forDevices(listOf(device))
-    val app = createApp(device, appId, servicesName = emptyList(), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = emptyList(), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(appId, app)
     val executor =
       AndroidDeclarativeWatchFaceConfigurationExecutor(

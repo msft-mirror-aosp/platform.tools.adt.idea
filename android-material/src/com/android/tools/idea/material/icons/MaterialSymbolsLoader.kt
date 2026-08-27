@@ -54,7 +54,7 @@ class MaterialSymbolsLoader {
       materialIconsMetadataUrlProvider: MaterialIconsMetadataUrlProvider,
       scope: CoroutineScope,
       forceDownload: Boolean,
-      callback: @UiThread (MaterialIconsMetadata) -> Unit,
+      @UiThread callback: (MaterialIconsMetadata) -> Unit,
     ) {
       val symbolDownloadsToStart =
         Symbols.entries.filter {

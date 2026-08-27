@@ -1097,7 +1097,9 @@ void Controller::SendPendingDisplayEvents() {
             it->second.rotation != display_info.rotation || it->second.type != display_info.type;
         current_displays_.insert_or_assign(display_id, display_info);
         if (significant_change) {
-          DisplayAddedOrChangedNotification notification(display_id, display_info.logical_size, display_info.rotation, display_info.type);
+          Size environment_size(0, 0);
+          DisplayAddedOrChangedNotification notification(
+              display_id, display_info.logical_size, display_info.rotation, display_info.type, environment_size);
           SendControlMessage(notification);
           if (Log::IsEnabled(Log::Level::DEBUG)) {
             Log::D("Sent %s", notification.ToDebugString().c_str());
@@ -1129,7 +1131,7 @@ void Controller::PollDisplays() {
       DisplayManager::OnDisplayAdded(jni_, d1->first);
       DisplayManager::OnDisplayChanged(jni_, d1->first);
       d1++;
-    } else if (d1 == current_displays_.end()) {
+    } else if (d1 == current_displays_.end() || d1->first > d2->first) {
       DisplayManager::OnDisplayRemoved(jni_, d2->first);
       d2++;
     } else if (d1->first < d2->first) {
@@ -1137,9 +1139,6 @@ void Controller::PollDisplays() {
       DisplayManager::OnDisplayAdded(jni_, d1->first);
       DisplayManager::OnDisplayChanged(jni_, d1->first);
       d1++;
-    } else if (d1->first > d2->first) {
-      DisplayManager::OnDisplayRemoved(jni_, d2->first);
-      d2++;
     } else {
       if (d1->second != d2->second) {
         DisplayManager::OnDisplayChanged(jni_, d1->first);

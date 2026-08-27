@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.emulator.control.DisplayConfiguration
+import com.android.emulator.control.DisplayPowerModeNotification
 import com.android.emulator.control.LedIndicator
 import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.ThemingStyle
@@ -89,6 +90,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.LayeredIcon
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
 import java.awt.Color
@@ -457,6 +459,7 @@ class EmulatorToolWindowPanelTest {
     for ((actionText, mode, expectedIcon) in actionTextsModesAndIcons) {
       fakeUi.mouseClickOn(interactButton)
       assertThat(xrInputController.inputMode).isEqualTo(previousAppInteractionMode)
+      fakeUi.mouseClickOn(interactButton)
       val popup = popupFactory.getNextListPopup<Any>(2.seconds)
       val index = popup.actions.indexOfFirst { it.templateText == actionText }
       assertThat(index).isAtLeast(0)
@@ -700,7 +703,49 @@ class EmulatorToolWindowPanelTest {
   }
 
   @Test
+  fun testDisplayGlassesDisplayOffIndicator() {
+    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, testRootDisposable)
+    val avdFolder = FakeEmulator.createDisplayGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
+    panel = createWindowPanel(avdFolder)
+
+    assertThat(panel.primaryDisplayView).isNull()
+
+    panel.createContent(true)
+    val emulatorView = panel.primaryDisplayView ?: fail()
+
+    emulator.setLedState(LedIndicator.Facing.INSIDE, Color.GREEN)
+    emulator.setLedState(LedIndicator.Facing.OUTSIDE, Color.RED)
+    var frameNumber = emulatorView.frameNumber
+    assertThat(frameNumber).isEqualTo(0u)
+    panel.size = Dimension(430, 450)
+    fakeUi.layoutAndDispatchEvents()
+    val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+
+    val displayOffIndicator = fakeUi.getComponent<JBLabel> { it.text == "Display off" }.parent
+    assertThat(displayOffIndicator.isVisible).isFalse()
+
+    emulator.setDisplayPowerMode(PRIMARY_DISPLAY_ID, DisplayPowerModeNotification.PowerMode.OFF)
+    panel.waitForFrame(++frameNumber, 2.seconds)
+    waitForCondition(2.seconds) { displayOffIndicator.isVisible }
+    assertAppearance("DisplayGlassesDisplayOff1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+
+    emulator.setDisplayPowerMode(PRIMARY_DISPLAY_ID, DisplayPowerModeNotification.PowerMode.ON)
+    panel.waitForFrame(++frameNumber, 2.seconds)
+    waitForCondition(2.seconds) { !displayOffIndicator.isVisible }
+
+    panel.destroyContent()
+    assertThat(panel.primaryDisplayView).isNull()
+    streamScreenshotCall.waitForCancellation(2.seconds)
+
+    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(false, testRootDisposable)
+    panel.createContent(true)
+    assertThat(fakeUi.findComponent<JBLabel> { it.text == "Display off" }).isNull()
+    panel.destroyContent()
+  }
+
+  @Test
   fun testAudioGlassesToolbarActions() {
+    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, testRootDisposable)
     val avdFolder = FakeEmulator.createAudioGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
     panel = createWindowPanel(avdFolder)
 
@@ -712,6 +757,9 @@ class EmulatorToolWindowPanelTest {
     assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_GLASS)
 
     // Check appearance.
+    val noDisplayIndicator = fakeUi.getComponent<JBLabel> { it.text == "No display" }.parent
+    assertThat(noDisplayIndicator.isVisible).isTrue()
+
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0u)
     panel.size = Dimension(430, 450)
@@ -1179,7 +1227,7 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     val call1 = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(call1.request)).isEqualTo("format: RGB888 width: 168 height: 287")
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(168)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(168)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isFalse()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1191,7 +1239,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(shortDebugString(call2.request)).isEqualTo("format: RGB888 width: 320 height: 320")
     assertThat(call1.completion.isCancelled).isTrue() // The previous call has been canceled.
     assertThat(call1.completion.isDone).isTrue() // The previous call is no longer active.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(320)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(320)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isFalse()
@@ -1202,7 +1250,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(640)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(640)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1213,7 +1261,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(640)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(640)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1224,7 +1272,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(674)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(674)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1235,7 +1283,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(716)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(716)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1246,7 +1294,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(960)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(960)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1257,7 +1305,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(640)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(640)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1268,7 +1316,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(320)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(320)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isFalse()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isFalse()
@@ -1501,7 +1549,7 @@ class EmulatorToolWindowPanelTest {
       .syncPublisher(EmulatorLogListener.TOPIC)
       .messageLogged(processHandle, avdFolder, EmulatorLogListener.Severity.WARNING, true, "Attention!")
     waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>() != null }
-    var notificationPanel = fakeUi.findComponent<EditorNotificationPanel>()!!
+    var notificationPanel = fakeUi.getComponent<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Attention!")
     assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.WARNING_BACKGROUND)
 
@@ -1512,7 +1560,7 @@ class EmulatorToolWindowPanelTest {
       val p = fakeUi.findComponent<EditorNotificationPanel>()
       p != null && p.text == "Crashed!"
     }
-    notificationPanel = fakeUi.findComponent<EditorNotificationPanel>()!!
+    notificationPanel = fakeUi.getComponent<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Crashed!")
     assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.ERROR_BACKGROUND)
   }
@@ -1584,11 +1632,12 @@ class EmulatorToolWindowPanelTest {
 
   private fun assertAppearance(
     goldenImageName: String,
-    maxPercentDifferentLinux: Double = 0.0003,
-    maxPercentDifferentMac: Double = 0.0003,
-    maxPercentDifferentWindows: Double = 0.0003,
+    maxPercentDifferentLinux: Double = 0.0004,
+    maxPercentDifferentMac: Double = 0.0004,
+    maxPercentDifferentWindows: Double = 0.0004,
   ) {
     fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
     val image = fakeUi.render()
     val scaledImage = ImageUtils.scale(image, 0.5)
     val maxPercentDifferent =

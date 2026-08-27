@@ -26,10 +26,10 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.TruthJUnit
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import java.io.File
 import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.settings.GradleSettings
-import java.io.File
 
 data class GradleModuleHierarchyProviderTest(
   override val name: String,
@@ -47,7 +47,8 @@ data class GradleModuleHierarchyProviderTest(
             GradleSettings.getInstance(project)
               .linkedProjectsSettings
               .single()
-              .let { GradleInstallationManager.guessGradleVersion(it) ?: GradleVersion.current() }.majorVersion >= 8
+              .let { GradleInstallationManager.guessGradleVersion(it) ?: GradleVersion.current() }
+              .majorVersion >= 8
           val expectedModuleNames =
             listOf("project.app", "project.lib", "TestCompositeLib3") +
               if (isPhasedSyncEnabled) {

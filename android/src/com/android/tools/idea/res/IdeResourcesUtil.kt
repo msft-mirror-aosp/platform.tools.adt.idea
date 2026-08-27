@@ -1926,8 +1926,7 @@ fun getViewTag(item: ResourceItem): String? {
         //    <Button a:alignLeft="@+id/target" a:id="@+id/something ...>
         // and this should *not* return "Button" as the view tag for
         // @+id/target!
-        &&
-        id == stripIdPrefix(tag.getAttributeValue(ATTR_ID, SdkConstants.ANDROID_URI))
+        && id == stripIdPrefix(tag.getAttributeValue(ATTR_ID, SdkConstants.ANDROID_URI))
     ) {
       return tag.name
     }

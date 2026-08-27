@@ -99,7 +99,8 @@ public class MobileInstallDeployAndLaunchStrategy implements BlazeAndroidDeployA
     var apkProvider = deployInfo.toApkProvider();
     var applicationId = applicationIds.getPackageName();
     var applicationProjectContext =
-        new BazelApplicationProjectContext(project, applicationId, liveEditDataExtractor);
+        BazelApplicationProjectContext.forDeployedApplication(
+            project, applicationId, liveEditDataExtractor, deployInfo.getSymbolDirs());
 
     var consoleProvider = new BlazeAndroidBinaryConsoleProvider(project);
 

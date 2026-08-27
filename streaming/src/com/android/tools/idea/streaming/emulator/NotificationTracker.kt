@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.emulator
 
 import com.android.emulator.control.DisplayConfiguration
+import com.android.emulator.control.DisplayPowerModeNotification
 import com.android.emulator.control.LedIndicator
 import com.android.emulator.control.Notification as EmulatorNotification
 import com.android.emulator.control.Posture.PostureValue
@@ -35,11 +36,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Receives notifications from the emulator and updates relevant properties. */
-internal class NotificationReceiver private constructor(private val emulator: EmulatorController) : Disposable, ConnectionStateListener {
+internal class NotificationTracker private constructor(private val emulator: EmulatorController) : Disposable, ConnectionStateListener {
 
   private val _currentPosture = MutableStateFlow<EmulatorConfiguration.PostureDescriptor?>(null)
   val currentPosture: StateFlow<EmulatorConfiguration.PostureDescriptor?> = _currentPosture.asStateFlow()
@@ -59,7 +61,10 @@ internal class NotificationReceiver private constructor(private val emulator: Em
   private val _ledStates = MutableStateFlow<Map<LedIndicator.Facing, Color?>>(emptyMap())
   val ledStates: StateFlow<Map<LedIndicator.Facing, Color?>> = _ledStates.asStateFlow()
 
-  private val log = Logger.getInstance(NotificationReceiver::class.java)
+  private val _displayPowerModes = MutableStateFlow<Map<Int, DisplayPowerModeNotification.PowerMode>>(emptyMap())
+  val displayPowerModes: StateFlow<Map<Int, DisplayPowerModeNotification.PowerMode>> = _displayPowerModes.asStateFlow()
+
+  private val log = Logger.getInstance(NotificationTracker::class.java)
   private val emulatorConfig
     get() = emulator.emulatorConfig
 
@@ -85,16 +90,21 @@ internal class NotificationReceiver private constructor(private val emulator: Em
       message.hasXrOptions() -> _xrOptions.value = message.xrOptions
       message.hasMicrophoneState() -> _microphoneInput.value = message.microphoneState.realAudioEnabled
       message.hasLedIndicator() -> updateLedIndicators(message.ledIndicator)
+      message.hasDisplayPowerMode() -> updateDisplayPowerMode(message.displayPowerMode)
       else -> {}
+    }
+  }
+
+  private fun updateDisplayPowerMode(notification: DisplayPowerModeNotification) {
+    _displayPowerModes.update { map ->
+      if (map[notification.display] == notification.powerMode) map else map + (notification.display to notification.powerMode)
     }
   }
 
   private fun updateCurrentPosture(posture: PostureValue) {
     val descriptor = emulatorConfig.postures.find { it.posture == posture }
     if (descriptor != null) {
-      if (_currentPosture.value != descriptor) {
-        _currentPosture.value = descriptor
-      }
+      _currentPosture.value = descriptor
     } else {
       log.error("Unexpected posture: $posture")
     }
@@ -107,8 +117,8 @@ internal class NotificationReceiver private constructor(private val emulator: Em
         LedIndicator.State.ON -> Color(indicator.color)
         else -> null
       }
-    if (_ledStates.value[indicator.facing] != color) {
-      _ledStates.value += (indicator.facing to color)
+    _ledStates.update { map ->
+      if (map[indicator.facing] == color) map else map + (indicator.facing to color)
     }
   }
 
@@ -120,19 +130,18 @@ internal class NotificationReceiver private constructor(private val emulator: Em
   @Synchronized
   private fun startNotificationReaderIfConnected() {
     if (emulator.connectionState == ConnectionState.CONNECTED && notificationReader == null) {
-      notificationReader =
-        coroutineScope.launch {
-          while (isActive) {
-            try {
-              emulator.streamNotification().collect { message -> handleNotification(message) }
-            } catch (_: EmulatorController.RetryException) {
-              continue
-            } catch (t: Throwable) {
-              t.throwIfCancellation()
-            }
-            break
+      notificationReader = coroutineScope.launch {
+        while (isActive) {
+          try {
+            emulator.streamNotification().collect { message -> handleNotification(message) }
+          } catch (_: EmulatorController.RetryException) {
+            continue
+          } catch (t: Throwable) {
+            t.throwIfCancellation()
           }
+          break
         }
+      }
     }
   }
 
@@ -147,13 +156,13 @@ internal class NotificationReceiver private constructor(private val emulator: Em
   }
 
   companion object {
-    private val key = Key<NotificationReceiver>(NotificationReceiver::class.java.simpleName)
+    private val key = Key<NotificationTracker>(NotificationTracker::class.java.simpleName)
 
-    fun forEmulator(emulator: EmulatorController): NotificationReceiver {
+    fun forEmulator(emulator: EmulatorController): NotificationTracker {
       return emulator.computeUserDataIfAbsent(key) {
-        val receiver = NotificationReceiver(emulator)
-        Disposer.register(emulator, receiver)
-        receiver
+        val tracker = NotificationTracker(emulator)
+        Disposer.register(emulator, tracker)
+        tracker
       }
     }
   }

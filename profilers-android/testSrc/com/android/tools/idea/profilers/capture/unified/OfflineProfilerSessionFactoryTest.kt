@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.profilers.capture.unified
 
+import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.idea.profilers.IntellijProfilerServices
 import com.android.tools.idea.run.profiler.CpuProfilerConfigsState
 import com.android.tools.profilers.IdeProfilerComponents
@@ -33,9 +34,11 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import java.awt.BorderLayout
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import javax.swing.JLayeredPane
 import javax.swing.JPanel
 import org.junit.Before
 import org.junit.Rule
@@ -130,6 +133,21 @@ class OfflineProfilerSessionFactoryTest {
 
     assertThat(session).isNotNull()
     assertThat(session!!.stageView).isInstanceOf(CpuCaptureStageView::class.java)
+    assertThat(session.profilersView.component).isInstanceOf(TooltipLayeredPane::class.java)
+    val layeredPane = session.profilersView.component as JLayeredPane
+    assertThat(layeredPane.getLayer(session.profilersView.stageComponent)).isEqualTo(JLayeredPane.DEFAULT_LAYER)
+    val stageLayout = session.profilersView.stageComponent.layout as BorderLayout
+    assertThat(stageLayout.getConstraints(session.stageView!!.component)).isEqualTo(BorderLayout.CENTER)
+
+    val northComponent = session.profilersView.stageComponent.components.find { stageLayout.getConstraints(it) == BorderLayout.NORTH }
+    assertThat(northComponent).isNotNull()
+    assertThat(northComponent).isInstanceOf(JPanel::class.java)
+    val toolbarPanel = northComponent as JPanel
+    val toolbarLayout = toolbarPanel.layout as BorderLayout
+    val centerComponent = toolbarPanel.components.find { toolbarLayout.getConstraints(it) == BorderLayout.CENTER }
+    assertThat(centerComponent).isNotNull()
+    val eastComponent = toolbarPanel.components.find { toolbarLayout.getConstraints(it) == BorderLayout.EAST }
+    assertThat(eastComponent).isNotNull()
   }
 
   @Test
@@ -147,6 +165,11 @@ class OfflineProfilerSessionFactoryTest {
 
     assertThat(session).isNotNull()
     assertThat(session!!.stageView).isInstanceOf(MemoryCaptureStageView::class.java)
+    assertThat(session.profilersView.component).isInstanceOf(TooltipLayeredPane::class.java)
+    val layeredPane = session.profilersView.component as JLayeredPane
+    assertThat(layeredPane.getLayer(session.profilersView.stageComponent)).isEqualTo(JLayeredPane.DEFAULT_LAYER)
+    val stageLayout = session.profilersView.stageComponent.layout as BorderLayout
+    assertThat(stageLayout.getConstraints(session.stageView!!.component)).isEqualTo(BorderLayout.CENTER)
   }
 
   private fun buildSessionAndWait(): OfflineProfilerSession? {
