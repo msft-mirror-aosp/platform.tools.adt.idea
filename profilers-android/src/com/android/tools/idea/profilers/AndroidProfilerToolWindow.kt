@@ -211,7 +211,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
   }
 
   @VisibleForTesting
-  fun createNewTab(component: JComponent, tabName: String, isCloseable: Boolean, icon: Icon? = null) {
+  fun createNewTab(component: JComponent, tabName: String, isCloseable: Boolean, icon: Icon? = null): Content {
     val contentManager = window.getContentManager()
     val content =
       contentManager.factory.createContent(component, tabName, false).also { content ->
@@ -223,6 +223,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
       }
     contentManager.addContent(content)
     contentManager.setSelectedContent(content)
+    return content
   }
 
   private fun findHomeTab(): Content? {
@@ -286,19 +287,6 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
       ProfilerInEditorUtils.isLiveTaskInEditorEnabled(profilers.ideServices.featureConfig, taskType, isLegacyAllocations)
 
     isTaskTabClosing = false
-    if (!isLiveTaskInEditor) {
-      val taskTab = findTaskTab()
-      val taskTabTitle = StringUtils.getTaskTabTitle(taskType, profilers.ideServices.featureConfig.isProfilerHomeTabV2Enabled)
-
-      val taskIcon = TaskIconUtils.getTaskIcon(taskType)
-      if (taskTab != null) {
-        taskTab.displayName = taskTabTitle
-        taskTab.icon = taskIcon
-        window.getContentManager().setSelectedContent(taskTab)
-      } else {
-        createNewTab(profilersPanel, taskTabTitle, true, taskIcon)
-      }
-    }
 
     currentTaskHandler?.exit()
     currentTaskHandler = taskHandlers[taskType]
@@ -326,7 +314,20 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     }
 
     if (!isLiveTaskInEditor) {
-      val createdTaskTab = window.getContentManager().selectedContent!!
+      val taskTab = findTaskTab()
+      val taskTabTitle = StringUtils.getTaskTabTitle(taskType, profilers.ideServices.featureConfig.isProfilerHomeTabV2Enabled)
+
+      val taskIcon = TaskIconUtils.getTaskIcon(taskType)
+      val createdTaskTab =
+        if (taskTab != null) {
+          taskTab.displayName = taskTabTitle
+          taskTab.icon = taskIcon
+          window.getContentManager().setSelectedContent(taskTab)
+          taskTab
+        } else {
+          createNewTab(profilersPanel, taskTabTitle, true, taskIcon)
+        }
+
       val sessionIdAtCreation = profilers.sessionsManager.selectedSession.sessionId
       createdTaskTab.setDisposer { onTaskTabClose(sessionIdAtCreation) }
     }
