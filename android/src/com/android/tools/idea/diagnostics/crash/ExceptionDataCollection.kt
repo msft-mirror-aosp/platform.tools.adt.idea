@@ -293,7 +293,7 @@ class ExceptionDataCollection {
       val includeMessage =
         configs.values.any { it.action.includeExceptionMessage } ||
           forceExceptionMessage ||
-          THROWABLE_CLASSES_TO_TRACK_MESSAGES.stream().anyMatch { it.isInstance(t) }
+          THROWABLE_CLASSES_TO_TRACK_MESSAGES.any { it.isInstance(cause) }
       val includeFullStack = configs.values.any { it.action.includeFullStack }
       val logs =
         if (includeLogs) configs.mapValues { logCache.getLogAndClearFor(it.key) }.filterValues { it.isNotEmpty() }.toSortedMap()
