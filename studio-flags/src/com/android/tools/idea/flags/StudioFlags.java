@@ -2015,6 +2015,14 @@ public final class StudioFlags {
       "Update the Device Streaming branding from Firebase to Google Cloud"
     );
 
+  public static final Flag<Boolean> DIRECT_ACCESS_LIST_GCP_PROJECTS =
+    new BooleanFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.list.gcp.projects",
+      "Device Streaming list GCP projects",
+      "List Google Cloud projects instead of Firebase projects in Direct Access."
+    );
+
   // endregion Firebase Test Lab
 
   // region App Insights
