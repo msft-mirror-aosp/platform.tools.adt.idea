@@ -198,6 +198,26 @@ fun modelCacheV2Impl(
         if (modelVersions[ModelFeature.HAS_AAR_KEEP_RULES_SOURCES])
           provider.aarKeepRulesDirectories?.makeRelativeAndDeduplicate() ?: mutableListOf()
         else mutableListOf(),
+      apiConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.apiConfigurationName?.deduplicate() else null,
+      compileOnlyConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.compileOnlyConfigurationName?.deduplicate()
+        else null,
+      compileOnlyApiConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.compileOnlyApiConfigurationName?.deduplicate()
+        else null,
+      implementationConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.implementationConfigurationName?.deduplicate()
+        else null,
+      runtimeOnlyConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.runtimeOnlyConfigurationName?.deduplicate()
+        else null,
+      annotationProcessorConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES])
+          provider.annotationProcessorConfigurationName?.deduplicate()
+        else null,
+      kaptConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.kaptConfigurationName?.deduplicate() else null,
     )
   }
 

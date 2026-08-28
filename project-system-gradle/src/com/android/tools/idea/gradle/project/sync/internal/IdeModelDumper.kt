@@ -689,6 +689,13 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
         ideSourceProvider.baselineProfileDirectories.forEach { prop("BaselineProfileDirectories") { it.path.toPrintablePath() } }
         ideSourceProvider.keepRulesDirectories.forEach { prop("KeepRulesDirectories") { it.path.toPrintablePath() } }
         ideSourceProvider.aarKeepRulesDirectories.forEach { prop("AarKeepRulesDirectories") { it.path.toPrintablePath() } }
+        ideSourceProvider.apiConfigurationName?.let { prop("ApiConfigurationName") { it } }
+        ideSourceProvider.compileOnlyConfigurationName?.let { prop("CompileOnlyConfigurationName") { it } }
+        ideSourceProvider.compileOnlyApiConfigurationName?.let { prop("CompileOnlyApiConfigurationName") { it } }
+        ideSourceProvider.implementationConfigurationName?.let { prop("ImplementationConfigurationName") { it } }
+        ideSourceProvider.runtimeOnlyConfigurationName?.let { prop("RuntimeOnlyConfigurationName") { it } }
+        ideSourceProvider.annotationProcessorConfigurationName?.let { prop("AnnotationProcessorConfigurationName") { it } }
+        ideSourceProvider.kaptConfigurationName?.let { prop("KaptConfigurationName") { it } }
       }
 
       private fun dump(extraSourceProvider: IdeExtraSourceProvider) {

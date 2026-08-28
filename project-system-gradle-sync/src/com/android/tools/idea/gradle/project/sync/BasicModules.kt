@@ -107,7 +107,8 @@ enum class ModelFeature(
   HAS_MISSING_DIMENSION_STRATEGY(ModelVersion(21, 0)),
   HAS_TEST_SUITES_SOURCES(ModelVersion(21, 1)),
   HAS_KEEP_RULES_SOURCES(ModelVersion(22, 0)),
-  HAS_AAR_KEEP_RULES_SOURCES(ModelVersion(23, 0));
+  HAS_AAR_KEEP_RULES_SOURCES(ModelVersion(23, 0)),
+  HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES(ModelVersion(24, 0));
 
   init {
     check(!enabledForModelVersions.isEmpty) { "All features should be enabled for some model versions" }
