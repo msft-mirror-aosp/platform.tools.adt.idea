@@ -280,7 +280,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
             context,
             lastQuery = result?.existingPostQuerySyncData,
             lastProjectStructureData = lastProjectStructureData,
-            paths = null,
+            paths = emptyList(),
             onQueryDuration = ::setStartupBazelQueryTime,
           )
         }
