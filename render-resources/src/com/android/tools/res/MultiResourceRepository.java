@@ -43,6 +43,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -61,7 +62,7 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   private static final Logger LOG = Logger.getInstance(MultiResourceRepository.class);
 
   @GuardedBy("ITEM_MAP_LOCK")
-  @NotNull private ImmutableList<LocalResourceRepository<T>> myLocalResources = ImmutableList.of();
+  @NotNull private volatile ImmutableList<LocalResourceRepository<T>> myLocalResources = ImmutableList.of();
   /** A concatenation of {@link #myLocalResources} and library resources. */
   @GuardedBy("ITEM_MAP_LOCK")
   @NotNull private ImmutableList<ResourceRepository> myChildren = ImmutableList.of();
@@ -78,8 +79,8 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   @NotNull private PerConfigResourceMap.ResourceItemComparator myResourceComparator =
       new PerConfigResourceMap.ResourceItemComparator(ImmutableList.of());
 
-  @GuardedBy("ITEM_MAP_LOCK")
-  private long[] myModificationCounts;
+  private final AtomicReference<ModificationState> myModificationState =
+      new AtomicReference<>(new ModificationState(new long[0], 0));
 
   @GuardedBy("ITEM_MAP_LOCK")
   private final ResourceTable myCachedMaps = new ResourceTable();
@@ -103,7 +104,6 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
                              @NotNull Collection<? extends ResourceRepository> otherResources) {
     synchronized (ITEM_MAP_LOCK) {
       release();
-      setModificationCount(ourModificationCounter.incrementAndGet());
       myLocalResources = ImmutableList.copyOf(localResources);
       int size = myLocalResources.size() + libraryResources.size() + otherResources.size();
       myChildren = ImmutableList.<ResourceRepository>builderWithExpectedSize(size)
@@ -119,18 +119,13 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
 
       myResourceComparator = new PerConfigResourceMap.ResourceItemComparator(myLeafsByNamespace.values());
 
-      myModificationCounts = new long[localResources.size()];
-      if (localResources.size() == 1) {
-        // Make sure that the modification count of the child and the parent are same. This is
-        // done so that we can return child's modification count, instead of ours.
-        LocalResourceRepository<T> child = localResources.get(0);
-        child.setModificationCount(getModificationCount());
-      }
-      int i = 0;
-      for (LocalResourceRepository<T> child : myLocalResources) {
+      long[] modificationCounts = new long[myLocalResources.size()];
+      for (int i = 0; i < myLocalResources.size(); i++) {
+        LocalResourceRepository<T> child = myLocalResources.get(i);
+        modificationCounts[i] = child.getModificationCount();
         child.addParent(this);
-        myModificationCounts[i++] = child.getModificationCount();
       }
+      myModificationState.updateAndGet(state -> new ModificationState(modificationCounts, ourModificationCounter.incrementAndGet()));
       myCachedMaps.clear();
 
       invalidateParentCaches();
@@ -203,27 +198,30 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
 
   @Override
   public long getModificationCount() {
-    synchronized (ITEM_MAP_LOCK) {
-      if (myLocalResources.size() == 1) {
-        return myLocalResources.get(0).getModificationCount();
+    while (true) {
+      // Accessing myLocalResources outside a lock is safe because the collection is immutable and we're calculating the modification
+      // count based on this single moment in time.
+      ImmutableList<LocalResourceRepository<T>> repositories = myLocalResources;
+
+      ModificationState state = myModificationState.get();
+      if (state.matchesRepositories(repositories)) {
+        return state.generation;
       }
 
-      // See if any of the delegates have changed.
-      boolean changed = false;
-      for (int i = 0; i < myLocalResources.size(); i++) {
-        LocalResourceRepository<T> child = myLocalResources.get(i);
-        long rev = child.getModificationCount();
-        if (rev != myModificationCounts[i]) {
-          myModificationCounts[i] = rev;
-          changed = true;
-        }
+      int size = repositories.size();
+      long[] currentCounts = new long[size];
+      for (int i = 0; i < size; i++) {
+        currentCounts[i] = repositories.get(i).getModificationCount();
       }
 
-      if (changed) {
-        setModificationCount(ourModificationCounter.incrementAndGet());
+      // Counts are not the same and need to be updated.
+      long newGeneration = ourModificationCounter.incrementAndGet();
+      ModificationState newState = new ModificationState(currentCounts, newGeneration);
+      if (myModificationState.compareAndSet(state, newState)) {
+        return newGeneration;
       }
 
-      return super.getModificationCount();
+      // Update failed because the counts were updated concurrently. Loop and try again.
     }
   }
 
@@ -377,7 +375,7 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   @GuardedBy("ITEM_MAP_LOCK")
   public void invalidateCache() {
     clearCachedData();
-    setModificationCount(ourModificationCounter.incrementAndGet());
+    myModificationState.updateAndGet(state -> new ModificationState(state.modificationCounts, ourModificationCounter.incrementAndGet()));
 
     invalidateParentCaches();
   }
@@ -421,10 +419,9 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
             repositories.add(repository);
           }
         }
-
-        setModificationCount(ourModificationCounter.incrementAndGet());
       }
 
+      myModificationState.updateAndGet(state -> new ModificationState(state.modificationCounts, ourModificationCounter.incrementAndGet()));
       invalidateParentCaches(repository, types);
     }
   }
@@ -471,6 +468,20 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
         count += resourceRepository.getFileRescans();
       }
       return count;
+    }
+  }
+
+  private record ModificationState(long[] modificationCounts, long generation) {
+    boolean matchesRepositories(@NotNull List<? extends LocalResourceRepository<?>> repositories) {
+      if (modificationCounts.length != repositories.size()) {
+        return false;
+      }
+      for (int i = 0; i < modificationCounts.length; i++) {
+        if (repositories.get(i).getModificationCount() != modificationCounts[i]) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 }
