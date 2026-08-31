@@ -43,10 +43,8 @@ import com.android.repository.testframework.FakeSettingsController;
 import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.testutils.file.InMemoryFileSystems;
 import com.android.tools.idea.concurrency.FutureUtils;
-import com.android.tools.idea.progress.StudioProgressIndicatorAdapter;
 import com.android.tools.idea.wizard.model.ModelWizard;
 import com.google.common.collect.ImmutableList;
-import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.util.ui.JBUI;
 import java.nio.file.Path;
@@ -119,7 +117,7 @@ public class InstallTaskTest extends AndroidTestCase {
 
   public void testPrepare() {
     List<RepoPackage> failures = new ArrayList<>();
-    myInstallTask.preparePackages(myOperations, failures, new EmptyProgressIndicator());
+    myInstallTask.preparePackages(myOperations, failures, new FakeProgressIndicator());
 
     verify(myInstaller).prepare(any());
     verify(myInstaller2).prepare(any());
@@ -135,7 +133,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(myInstaller2.getFallbackOperation()).thenReturn(fallback);
 
     List<RepoPackage> failures = new ArrayList<>();
-    myInstallTask.preparePackages(myOperations, failures, new EmptyProgressIndicator());
+    myInstallTask.preparePackages(myOperations, failures, new FakeProgressIndicator());
 
     verify(myInstaller).prepare(any());
     verify(myInstaller2).prepare(any());
@@ -157,7 +155,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(fallback.getFallbackOperation()).thenReturn(fallback2);
 
     List<RepoPackage> failures = new ArrayList<>();
-    myInstallTask.preparePackages(myOperations, failures, new EmptyProgressIndicator());
+    myInstallTask.preparePackages(myOperations, failures, new FakeProgressIndicator());
 
     verify(myInstaller).prepare(any());
     verify(myInstaller2).prepare(any());
@@ -173,7 +171,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(myInstaller2.prepare(any())).thenReturn(false);
 
     List<RepoPackage> failures = new ArrayList<>();
-    myInstallTask.preparePackages(myOperations, failures, new EmptyProgressIndicator());
+    myInstallTask.preparePackages(myOperations, failures, new FakeProgressIndicator());
 
     verify(myInstaller).prepare(any());
     verify(myInstaller2).prepare(any());
@@ -186,7 +184,7 @@ public class InstallTaskTest extends AndroidTestCase {
   public void testComplete() {
     List<RepoPackage> failures = new ArrayList<>();
     myInstallTask.completePackages(myOperations, failures, new FakeProgressIndicator(true),
-                                   new EmptyProgressIndicator());
+                                   new FakeProgressIndicator());
 
     verify(myInstaller).complete(any());
     verify(myInstaller2).complete(any());
@@ -203,7 +201,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(myInstaller.complete(any())).thenReturn(false);
     List<RepoPackage> failures = new ArrayList<>();
     myInstallTask.completePackages(myOperations, failures, new FakeProgressIndicator(true),
-                                   new EmptyProgressIndicator());
+                                   new FakeProgressIndicator());
 
     verify(myInstaller).complete(any());
     verify(myInstaller2).complete(any());
@@ -218,7 +216,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(myInstaller.complete(any())).thenReturn(false);
     List<RepoPackage> failures = new ArrayList<>();
     myInstallTask.completePackages(myOperations, failures, new FakeProgressIndicator(true),
-                                   new EmptyProgressIndicator());
+                                   new FakeProgressIndicator());
 
     verify(myInstaller).complete(any());
     verify(myInstaller2).complete(any());
@@ -230,7 +228,7 @@ public class InstallTaskTest extends AndroidTestCase {
   }
 
   public void testRunBasic() {
-    myInstallTask.run(new StudioProgressIndicatorAdapter(myProgressIndicator));
+    myInstallTask.run(myProgressIndicator);
     InOrder installer1Calls = inOrder(myInstaller);
     installer1Calls.verify(myInstaller).prepare(any());
     installer1Calls.verify(myInstaller).complete(any());
@@ -248,7 +246,7 @@ public class InstallTaskTest extends AndroidTestCase {
     Function<List<RepoPackage>, Void> complete = (Function<List<RepoPackage>, Void>)mock(Function.class);
     myInstallTask.setCompleteCallback(complete);
 
-    myInstallTask.run(new StudioProgressIndicatorAdapter(myProgressIndicator));
+    myInstallTask.run(myProgressIndicator);
 
     InOrder callbackCalls = inOrder(myInstaller, prepareComplete, complete);
     callbackCalls.verify(myInstaller).prepare(any());
@@ -263,7 +261,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(myInstaller2.prepare(any())).thenReturn(false);
     when(myInstaller2.getFallbackOperation()).thenReturn(fallback);
 
-    myInstallTask.run(new StudioProgressIndicatorAdapter(myProgressIndicator));
+    myInstallTask.run(myProgressIndicator);
 
     verify(myInstaller).prepare(any());
     verify(myInstaller2).prepare(any());
@@ -282,7 +280,7 @@ public class InstallTaskTest extends AndroidTestCase {
     when(myInstaller2.complete(any())).thenReturn(false);
     when(myInstaller2.getFallbackOperation()).thenReturn(fallback);
 
-    myInstallTask.run(new StudioProgressIndicatorAdapter(myProgressIndicator));
+    myInstallTask.run(myProgressIndicator);
 
     verify(myInstaller).prepare(any());
     verify(myInstaller2).prepare(any());

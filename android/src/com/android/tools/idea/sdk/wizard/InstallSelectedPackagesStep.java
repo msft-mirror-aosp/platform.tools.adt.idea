@@ -43,10 +43,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.EmptyProgressIndicator;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
-import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.ui.JBColor;
@@ -267,19 +263,7 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
     task.setPrepareCompleteCallback(() -> myBackgroundAction.setEnabled(false));
     myBackgroundAction.setTask(task);
 
-    ProgressIndicator indicator;
-    boolean hasOpenProjects = ProjectManager.getInstance().getOpenProjects().length > 0;
-    if (hasOpenProjects) {
-      indicator = new BackgroundableProcessIndicator(task);
-    }
-    else {
-      // If we don't have any open projects runProcessWithProgressAsynchronously will show a modal popup no matter what.
-      // Instead use an empty progress indicator to suppress that.
-      indicator = new EmptyProgressIndicator();
-    }
-    customLogger.setIndicator(indicator);
-    indicator.setIndeterminate(false);
-    ProgressManager.getInstance().runProcessWithProgressAsynchronously(task, indicator);
+    task.runAsync();
   }
 
   private void setupUI() {
@@ -325,7 +309,6 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
 
   private final class CustomLogger implements com.android.repository.api.ProgressIndicator {
 
-    private ProgressIndicator myIndicator;
     private boolean myCancelled;
     private Logger myLogger = Logger.getInstance(getClass());
     // Maintain separately since JProgressBar has low resolution
@@ -334,25 +317,16 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
     @Override
     public void setText(@Nullable final String s) {
       UIUtil.invokeLaterIfNeeded(() -> myProgressOverallLabel.setText(s));
-      if (myIndicator != null) {
-        myIndicator.setText(s);
-      }
     }
 
     @Override
     public boolean isCanceled() {
-      if (myIndicator != null) {
-        myCancelled = myCancelled || myIndicator.isCanceled();
-      }
       return myCancelled;
     }
 
     @Override
     public void cancel() {
       myCancelled = true;
-      if (myIndicator != null) {
-        myIndicator.cancel();
-      }
     }
 
     @Override
@@ -368,9 +342,6 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
     @Override
     public void setIndeterminate(final boolean indeterminate) {
       UIUtil.invokeLaterIfNeeded(() -> myProgressBar.setIndeterminate(indeterminate));
-      if (myIndicator != null) {
-        myIndicator.setIndeterminate(indeterminate);
-      }
     }
 
     @Override
@@ -385,9 +356,6 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
         myProgressBar.setIndeterminate(false);
         myProgressBar.setValue((int)(v * (double)(myProgressBar.getMaximum() - myProgressBar.getMinimum())));
       });
-      if (myIndicator != null) {
-        myIndicator.setFraction(v);
-      }
     }
 
     @Override
@@ -398,9 +366,6 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
     @Override
     public void setSecondaryText(@Nullable String label) {
       UIUtil.invokeLaterIfNeeded(() -> myProgressDetailLabel.setText(label));
-      if (myIndicator != null) {
-        myIndicator.setText2(label);
-      }
     }
 
     @Override
@@ -467,9 +432,10 @@ public class InstallSelectedPackagesStep extends ModelWizardStep.WithoutModel {
       });
     }
 
-    public void setIndicator(ProgressIndicator indicator) {
-      myIndicator = indicator;
-    }
+  }
+
+  public boolean isBackgrounded() {
+    return myBackgroundAction.isBackgrounded();
   }
 
   /**
