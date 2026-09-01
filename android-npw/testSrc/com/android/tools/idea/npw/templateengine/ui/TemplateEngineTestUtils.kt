@@ -103,7 +103,9 @@ object TemplateEngineTestUtils {
   }
 
   fun patchProjectSourceFiles(projectRoot: File) {
-    val srcDir = File(projectRoot, "app/src/main/java/com/example/mynewproject")
+    val srcDir =
+      File(projectRoot, "app/src/main/kotlin/com/example/mynewproject").takeIf { it.exists() }
+        ?: File(projectRoot, "app/src/main/java/com/example/mynewproject")
     if (srcDir.exists()) {
       srcDir.listFiles()?.forEach { file ->
         if (file.name != "MainActivity.kt") {
