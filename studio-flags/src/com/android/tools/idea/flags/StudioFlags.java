@@ -2175,7 +2175,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP =
     new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters");
   public static final Flag<Integer> TSDKVUA_API_NEXT =
-    new IntFlag(TSDKVUA, "api.next", "The version of the next API", "The version of the next API", 36);
+    new IntFlag(TSDKVUA, "api.next", "The version of the next API", "The version of the next API", 37);
   public static final Flag<Boolean> TSDKVUA_API_NEXT_ENABLE =
     new BooleanFlag(TSDKVUA, "api.next.enable", "Enable support for the next API", "Enable support for the next API");
   public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(
