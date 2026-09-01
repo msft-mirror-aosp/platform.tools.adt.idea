@@ -74,6 +74,9 @@ interface BuildSystem {
 
       /** Capability to debug Android local test */
       ATTACH_JAVA_DEBUGGER,
+
+      /** Capability to invoke Blaze via the blaze-for-agents CLI wrapper */
+      SUPPORT_BLAZE_FOR_AGENTS,
     }
 
     val capabilities: Set<Capability>
