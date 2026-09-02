@@ -2818,6 +2818,11 @@ public final class StudioFlags {
                     "Enable Task Progress UI panels",
                     "When enabled, long-running agent tasks will display a multi-step progress UI status-bar and sidebar.");
 
+  public static final Flag<Boolean> STUDIOBOT_GUIDED_PLANNING_PROGRESS_UI_ENABLED =
+    new BooleanFlag(STUDIOBOT, "guided.planning.progress.ui.enabled",
+                    "Enable Progress UI in Guided Planning Mode",
+                    "When enabled, Guided Planning Mode will display a new UI to track the progress of the plan.");
+
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_IN_QUERY_BOX =
     new BooleanFlag(STUDIOBOT, "ask.user.in.query.box",
                     "Replace the query box with the pending ask user tool call.",
