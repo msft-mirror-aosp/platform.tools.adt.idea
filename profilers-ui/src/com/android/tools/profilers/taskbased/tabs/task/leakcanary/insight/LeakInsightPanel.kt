@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -62,10 +63,15 @@ import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBas
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizontalDivider
 import icons.StudioIconsCompose
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.markdown.Markdown
 import org.jetbrains.jewel.ui.component.CheckboxRow
+import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Link
@@ -88,6 +94,10 @@ fun LeakInsightPanel(
   onCopy: () -> Unit,
   onRefresh: () -> Unit,
   modifier: Modifier = Modifier,
+  onEnableInsights: () -> Unit = {},
+  checkAiAvailable: () -> Boolean = { false },
+  onAiAvailable: () -> Unit = onRefresh,
+  markdownDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
   val clipboardManager = LocalClipboardManager.current
   val currentInsight = (insightState as? LoadingState.Ready)?.value
@@ -102,6 +112,34 @@ fun LeakInsightPanel(
     lastFailureMessage = failureMessage
   }
 
+  // When unauthorized, check for AI availability upon window focus (e.g. after user completes
+  // the onboarding/sign-in flow in the browser) and periodically check for up to 1 minute to
+  // seamlessly detect completion of in-IDE onboarding steps (e.g. Terms of Service, project selection).
+  if (insightState is LoadingState.Unauthorized) {
+    val windowInfo = LocalWindowInfo.current
+    LaunchedEffect(windowInfo.isWindowFocused) {
+      if (windowInfo.isWindowFocused) {
+        repeat(6) {
+          if (checkAiAvailable()) {
+            onAiAvailable()
+            return@LaunchedEffect
+          }
+          delay(500)
+        }
+      }
+    }
+
+    LaunchedEffect(insightState) {
+      repeat(60) {
+        delay(1.seconds)
+        if (checkAiAvailable()) {
+          onAiAvailable()
+          return@LaunchedEffect
+        }
+      }
+    }
+  }
+
   Column(modifier = modifier.fillMaxWidth().fillMaxHeight()) {
     InsightHeader(onClose = onClose, modifier = Modifier.fillMaxWidth())
     ToolWindowHorizontalDivider()
@@ -109,6 +147,7 @@ fun LeakInsightPanel(
     val screenState =
       when (insightState) {
         is LoadingState.Loading -> InsightScreenState.LOADING
+        is LoadingState.Unauthorized -> InsightScreenState.ONBOARDING_REQUIRED
         is LoadingState.Failure -> InsightScreenState.FAILURE
         is LoadingState.Ready -> if (insightState.value == null) InsightScreenState.EMPTY else InsightScreenState.CONTENT
       }
@@ -117,6 +156,12 @@ fun LeakInsightPanel(
       Box(modifier = Modifier.fillMaxSize()) {
         when (state) {
           InsightScreenState.LOADING -> InsightLoadingState(modifier = Modifier.fillMaxSize())
+          InsightScreenState.ONBOARDING_REQUIRED -> {
+            InsightOnboardingState(
+              onEnableInsights = onEnableInsights,
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
           InsightScreenState.CONTENT -> {
             val insight = currentInsight ?: lastInsight
             if (insight != null) {
@@ -129,6 +174,7 @@ fun LeakInsightPanel(
                 },
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
+                markdownDispatcher = markdownDispatcher,
               )
             }
           }
@@ -167,14 +213,14 @@ private fun InsightHeader(onClose: () -> Unit, modifier: Modifier = Modifier) {
     modifier = modifier.padding(horizontal = 8.dp).height(TaskBasedUxDimensions.LEAKCANARY_PANE_HEADER_HEIGHT_DP),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(text = "Insights", modifier = Modifier.weight(1f))
-    IconButton(onClick = onClose) { Icon(key = AllIconsKeys.General.HideToolWindow, contentDescription = "Minimize Insights") }
+    Text(text = TaskBasedUxStrings.LEAKCANARY_INSIGHTS_TITLE, modifier = Modifier.weight(1f))
+    IconButton(onClick = onClose) { Icon(key = AllIconsKeys.General.HideToolWindow, contentDescription = TaskBasedUxStrings.LEAKCANARY_MINIMIZE_INSIGHTS_DESC) }
   }
 }
 
 @Composable
 private fun InsightLoadingState(modifier: Modifier = Modifier) {
-  Box(modifier = modifier, contentAlignment = Alignment.Center) { Text("Generating insight...") }
+  Box(modifier = modifier, contentAlignment = Alignment.Center) { Text(TaskBasedUxStrings.LEAKCANARY_GENERATING_INSIGHT) }
 }
 
 @Composable
@@ -187,34 +233,34 @@ private fun InsightEmptyState(
 ) {
   if (isLeakSelected) {
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-      Text(text = "From AI Assistant", color = JewelTheme.globalColors.text.info, fontWeight = FontWeight.Medium)
+      Text(text = TaskBasedUxStrings.LEAKCANARY_FROM_AI_ASSISTANT, color = JewelTheme.globalColors.text.info, fontWeight = FontWeight.Medium)
       Spacer(modifier = Modifier.height(8.dp))
       ToolWindowHorizontalDivider()
       Spacer(modifier = Modifier.height(8.dp))
 
       if (!autoGenerateEnabled) {
         Text(
-          text = "Insight auto-generation is disabled.",
+          text = TaskBasedUxStrings.LEAKCANARY_INSIGHT_AUTO_GEN_DISABLED,
           fontStyle = FontStyle.Italic,
           color = JewelTheme.globalColors.text.normal.copy(alpha = 0.6f),
         )
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-          Link(text = "Generate insight", onClick = onRefresh)
-          Link(text = "Enable auto-generation", onClick = { onAutoGenerateChange(true) })
+          Link(text = TaskBasedUxStrings.LEAKCANARY_GENERATE_INSIGHT_LINK, onClick = onRefresh)
+          Link(text = TaskBasedUxStrings.LEAKCANARY_ENABLE_AUTO_GEN_LINK, onClick = { onAutoGenerateChange(true) })
         }
       } else {
         Text(
-          text = "No insight generated yet.",
+          text = TaskBasedUxStrings.LEAKCANARY_NO_INSIGHT_GENERATED_YET,
           fontStyle = FontStyle.Italic,
           color = JewelTheme.globalColors.text.normal.copy(alpha = 0.6f),
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Link(text = "Generate insight", onClick = onRefresh)
+        Link(text = TaskBasedUxStrings.LEAKCANARY_GENERATE_INSIGHT_LINK, onClick = onRefresh)
       }
     }
   } else {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) { Text("Select a leak to see AI insight.") }
+    Box(modifier = modifier, contentAlignment = Alignment.Center) { Text(TaskBasedUxStrings.LEAKCANARY_SELECT_LEAK_FOR_INSIGHT) }
   }
 }
 
@@ -222,9 +268,21 @@ private fun InsightEmptyState(
 private fun InsightFailureState(errorMessage: String, onRefresh: () -> Unit, modifier: Modifier = Modifier) {
   Box(modifier = modifier, contentAlignment = Alignment.Center) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-      Text(text = "Failed to generate insight: $errorMessage", textAlign = TextAlign.Center)
+      Text(
+        text = TaskBasedUxStrings.LEAKCANARY_FAILED_TO_GENERATE_INSIGHT_TITLE,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        color = JewelTheme.globalColors.text.normal,
+        textAlign = TextAlign.Center,
+      )
       Spacer(modifier = Modifier.height(8.dp))
-      IconButton(onClick = onRefresh) { Icon(key = AllIconsKeys.Actions.Refresh, contentDescription = "Retry Analysis") }
+      Text(
+        text = errorMessage,
+        textAlign = TextAlign.Center,
+        color = JewelTheme.globalColors.text.normal.copy(alpha = 0.7f),
+      )
+      Spacer(modifier = Modifier.height(16.dp))
+      IconButton(onClick = onRefresh) { Icon(key = AllIconsKeys.Actions.Refresh, contentDescription = TaskBasedUxStrings.LEAKCANARY_RETRY_ANALYSIS_DESC) }
     }
   }
 }
@@ -236,16 +294,17 @@ private fun InsightContent(
   onCopyClick: () -> Unit,
   onRefresh: () -> Unit,
   modifier: Modifier = Modifier,
+  markdownDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
   val scrollState = rememberScrollState()
   LaunchedEffect(insight.rawInsight) { scrollState.scrollTo(0) }
   Box(modifier = modifier) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 16.dp, vertical = 12.dp)) {
-      Text(text = "From ${insight.modelName}", color = JewelTheme.globalColors.text.info, fontWeight = FontWeight.Medium)
+      Text(text = TaskBasedUxStrings.LEAKCANARY_FROM_MODEL_NAME_FORMAT.format(insight.modelName), color = JewelTheme.globalColors.text.info, fontWeight = FontWeight.Medium)
       Spacer(modifier = Modifier.height(8.dp))
       ToolWindowHorizontalDivider()
       Spacer(modifier = Modifier.height(8.dp))
-      Markdown(markdown = insight.rawInsight, selectable = true, modifier = Modifier.fillMaxWidth())
+      Markdown(markdown = insight.rawInsight, selectable = true, modifier = Modifier.fillMaxWidth(), processingDispatcher = markdownDispatcher)
       Spacer(modifier = Modifier.height(16.dp))
       Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
         InsightFeedbackToolbar(feedback = insight.feedback, onFeedback = onFeedback, onCopyClick = onCopyClick, onRefresh = onRefresh)
@@ -329,12 +388,12 @@ private fun InsightFooter(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {
-    Link(text = "Fix with AI", onClick = onGenerateFix, enabled = isFixEnabled)
+    Link(text = TaskBasedUxStrings.LEAKCANARY_FIX_WITH_AI, onClick = onGenerateFix, enabled = isFixEnabled)
 
     var isSettingsPopupVisible by remember { mutableStateOf(false) }
     Box {
       IconButton(onClick = { isSettingsPopupVisible = !isSettingsPopupVisible }) {
-        Icon(key = StudioIconsCompose.Common.Settings, contentDescription = "AI Insights Settings")
+        Icon(key = StudioIconsCompose.Common.Settings, contentDescription = TaskBasedUxStrings.LEAKCANARY_INSIGHTS_SETTINGS)
       }
 
       if (isSettingsPopupVisible) {
@@ -362,16 +421,39 @@ private fun InsightFooter(
                 .widthIn(min = 250.dp)
           ) {
             Text(
-              text = "AI Insights Settings",
+              text = TaskBasedUxStrings.LEAKCANARY_INSIGHTS_SETTINGS,
               color = JewelTheme.globalColors.text.info,
               fontWeight = FontWeight.SemiBold,
               fontSize = 12.sp,
               modifier = Modifier.padding(bottom = 8.dp),
             )
-            CheckboxRow(text = "Auto-generate insight summaries", checked = autoGenerateEnabled, onCheckedChange = onAutoGenerateChange)
+            CheckboxRow(text = TaskBasedUxStrings.LEAKCANARY_AUTO_GENERATE_INSIGHT_SUMMARIES, checked = autoGenerateEnabled, onCheckedChange = onAutoGenerateChange)
           }
         }
       }
+    }
+  }
+}
+
+@Composable
+private fun InsightOnboardingState(onEnableInsights: () -> Unit, modifier: Modifier = Modifier) {
+  Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+      Text(
+        text = TaskBasedUxStrings.LEAKCANARY_INSIGHTS_REQUIRE_GEMINI,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        color = JewelTheme.globalColors.text.normal,
+        textAlign = TextAlign.Center,
+      )
+      Spacer(modifier = Modifier.height(8.dp))
+      Text(
+        text = TaskBasedUxStrings.LEAKCANARY_ENABLE_INSIGHTS_DESCRIPTION,
+        textAlign = TextAlign.Center,
+        color = JewelTheme.globalColors.text.normal.copy(alpha = 0.7f),
+      )
+      Spacer(modifier = Modifier.height(16.dp))
+      DefaultButton(onClick = onEnableInsights) { Text(TaskBasedUxStrings.LEAKCANARY_ENABLE_INSIGHTS_BUTTON) }
     }
   }
 }
@@ -381,4 +463,5 @@ private enum class InsightScreenState {
   FAILURE,
   EMPTY,
   CONTENT,
+  ONBOARDING_REQUIRED,
 }

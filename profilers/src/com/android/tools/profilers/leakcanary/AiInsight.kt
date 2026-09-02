@@ -25,6 +25,6 @@ enum class InsightFeedback {
 data class AiInsight(
   val rawInsight: String,
   val feedback: InsightFeedback? = null,
-  // Retrieve the active model name officially from GeminiPluginApi once it is exposed,
+  // Retrieve the active model name officially from GeminiPluginApiV2 once it is exposed,
   val modelName: String = "AI Assistant",
 )

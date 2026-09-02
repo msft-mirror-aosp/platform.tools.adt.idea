@@ -257,6 +257,13 @@ interface IdeProfilerServices {
   /** Maps package names (or empty string) to Proguard/R8 mapping file paths. */
   fun getProguardMappings(): Map<String, String> = emptyMap()
 
+  /** Shows the onboarding dialog for AI / Gemini features. */
+  fun showAiOnboarding() {}
+
+  /** Checks if AI features (Gemini) are available (signed in and onboarded). */
+  val isAiAvailable: Boolean
+    get() = false
+
   /**
    * Symbolizes and deobfuscates a trace file using traceconv.
    *

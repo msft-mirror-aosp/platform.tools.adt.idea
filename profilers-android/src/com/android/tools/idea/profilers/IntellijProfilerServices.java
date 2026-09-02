@@ -843,6 +843,16 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     return myMappingLocator.getMappings();
   }
 
+  @Override
+  public void showAiOnboarding() {
+    ProfilerAiUtils.showAiOnboarding(myProject);
+  }
+
+  @Override
+  public boolean isAiAvailable() {
+    return ProfilerAiUtils.isAiAvailable();
+  }
+
   @Nullable
   @Override
   public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,

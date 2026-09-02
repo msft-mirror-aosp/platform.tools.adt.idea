@@ -24,6 +24,9 @@ sealed class LoadingState<out T> {
   /** The value is ready to be used. */
   data class Ready<out T>(val value: T) : LoadingState<T>()
 
+  /** The user is unauthorized or onboarding is required (e.g. Gemini not enabled/signed in). */
+  data class Unauthorized(val message: String = "") : LoadingState<Nothing>()
+
   /** Loading the value failed. */
   data class Failure(val message: String) : LoadingState<Nothing>()
 }
