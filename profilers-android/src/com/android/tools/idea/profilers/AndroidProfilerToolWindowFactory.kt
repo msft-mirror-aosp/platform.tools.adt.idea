@@ -92,8 +92,9 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
           OpenProfilerTaskTabListener {
             AndroidCoroutineScope(toolWindow.disposable).launch {
               withContext(Dispatchers.EDT) {
-                profilerToolWindow.openTaskTab()
-                toolWindow.activate(null)
+                if (profilerToolWindow.openTaskTab()) {
+                  toolWindow.activate(null)
+                }
               }
             }
           },
