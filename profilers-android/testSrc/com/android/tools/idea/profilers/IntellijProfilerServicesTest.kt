@@ -17,6 +17,8 @@ package com.android.tools.idea.profilers
 
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.project.AndroidNotification
+import com.android.tools.idea.project.hyperlink.NotificationHyperlink
 import com.android.tools.idea.projectsystem.AndroidModuleSystem
 import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.DependencyType
@@ -34,19 +36,25 @@ import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.mock.MockProjectEx
 import com.intellij.mock.MockPsiManager
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.EmptyModuleManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.PlatformTestUtil
+import java.io.File
+import java.io.IOException
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.After
@@ -62,6 +70,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 class IntellijProfilerServicesTest {
@@ -350,9 +359,114 @@ class IntellijProfilerServicesTest {
     val moduleManager = EmptyModuleManager(project)
     val psiManger = MockPsiManager(project)
     val cpuProfilerStateSpy = Mockito.spy(CpuProfilerConfigsState())
+    val androidNotification = mock<AndroidNotification>()
     whenever(project.getService(CpuProfilerConfigsState::class.java)).thenReturn(cpuProfilerStateSpy)
     whenever(project.getService(ModuleManager::class.java)).thenReturn(moduleManager)
     whenever(project.getService(PsiManager::class.java)).thenReturn(psiManger)
+    whenever(project.getService(AndroidNotification::class.java)).thenReturn(androidNotification)
+  }
+
+  @Test
+  fun saveFileShowsSuccessNotification() {
+    val androidNotification = project.getService(AndroidNotification::class.java)
+    val tempFile = File.createTempFile("test_recording", ".trace")
+    tempFile.deleteOnExit()
+
+    intellijProfilerServices.saveFile(
+      tempFile,
+      { fos -> fos.write("test_data".toByteArray()) },
+      null,
+    )
+
+    assertTrue(tempFile.exists())
+    assertEquals("test_data", tempFile.readText())
+    if (RevealFileAction.isSupported()) {
+      verify(androidNotification)
+        .showBalloon(
+          eq("Export Successful"),
+          eq("Exported recording to ${tempFile.name}"),
+          eq(NotificationType.INFORMATION),
+          eq(AndroidNotification.BALLOON_GROUP),
+          eq(true),
+          any<NotificationHyperlink>(),
+        )
+    } else {
+      verify(androidNotification)
+        .showBalloon(
+          eq("Export Successful"),
+          eq("Exported recording to ${tempFile.name}"),
+          eq(NotificationType.INFORMATION),
+          eq(AndroidNotification.BALLOON_GROUP),
+        )
+    }
+  }
+
+  @Test
+  fun saveFileShowsErrorNotificationOnFailure() {
+    val androidNotification = project.getService(AndroidNotification::class.java)
+    val parentAsFile = File.createTempFile("fake_dir", ".tmp")
+    parentAsFile.deleteOnExit()
+    val uncreatableDir = File(parentAsFile, "uncreatable_dir")
+    val nonExistentDirFile = File(uncreatableDir, "test.trace")
+
+    intellijProfilerServices.saveFile(
+      nonExistentDirFile,
+      { fos -> fos.write("data".toByteArray()) },
+      null,
+    )
+
+    verify(androidNotification)
+      .showBalloon(
+        eq("Export Failed"),
+        eq("Could not create directory: ${uncreatableDir.path}"),
+        eq(NotificationType.ERROR),
+        eq(AndroidNotification.BALLOON_GROUP),
+      )
+  }
+
+  @Test
+  fun revealHyperlinkUsesStableIdentifier() {
+    val tempFile = File.createTempFile("test recording & more", ".trace")
+    tempFile.deleteOnExit()
+
+    val hyperlink = intellijProfilerServices.createRevealHyperlink(tempFile)
+
+    // The id is embedded into an HTML href and compared back verbatim, so it must not depend on the file path.
+    assertEquals(IntellijProfilerServices.REVEAL_FILE_HYPERLINK_ID, hyperlink.url)
+    assertThat(hyperlink.toHtml()).contains(RevealFileAction.getActionName())
+  }
+
+  @Test
+  fun saveFileShowsErrorNotificationOnWriteFailure() {
+    val androidNotification = project.getService(AndroidNotification::class.java)
+    val tempFile = File.createTempFile("test_recording", ".trace")
+    tempFile.deleteOnExit()
+
+    intellijProfilerServices.saveFile(tempFile, { throw IOException("disk full") }, null)
+
+    // Opening the stream truncates the file, so a failed write must not leave an empty one behind.
+    assertFalse(tempFile.exists())
+    verify(androidNotification)
+      .showBalloon(
+        eq("Export Failed"),
+        eq("Failed to export recording to ${tempFile.name}: disk full"),
+        eq(NotificationType.ERROR),
+        eq(AndroidNotification.BALLOON_GROUP),
+      )
+  }
+
+  @Test
+  fun saveFileRethrowsCancellationWithoutNotification() {
+    val androidNotification = project.getService(AndroidNotification::class.java)
+    val tempFile = File.createTempFile("test_recording", ".trace")
+    tempFile.deleteOnExit()
+
+    assertFailsWith<ProcessCanceledException> {
+      intellijProfilerServices.saveFile(tempFile, { throw ProcessCanceledException() }, null)
+    }
+
+    // A cancelled export is not a failure, so no balloon should be shown.
+    verifyNoInteractions(androidNotification)
   }
 
   @Test

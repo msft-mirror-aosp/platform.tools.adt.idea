@@ -70,6 +70,7 @@ import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.impl.EditConfigurationsDialog;
 import com.intellij.ide.BrowserUtil;
+import com.intellij.ide.actions.RevealFileAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
@@ -92,6 +93,7 @@ import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -103,13 +105,13 @@ import com.intellij.util.Query;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -126,6 +128,9 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 public class IntellijProfilerServices implements IdeProfilerServices, Disposable {
+
+  /** Stable identifier for the "reveal in file manager" hyperlink shown in the export success notification. */
+  @VisibleForTesting static final String REVEAL_FILE_HYPERLINK_ID = "reveal.file";
 
   private static Logger getLogger() {
     return Logger.getInstance(IntellijProfilerServices.class);
@@ -192,33 +197,76 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @Override
   public void saveFile(@NotNull File file, @NotNull Consumer<FileOutputStream> fileOutputStreamConsumer, @Nullable Runnable postRunnable) {
     File parentDir = file.getParentFile();
-    if (!parentDir.exists()) {
-      //noinspection ResultOfMethodCallIgnored
-      parentDir.mkdirs();
-    }
-    if (!file.exists()) {
-      try {
-        if (!file.createNewFile()) {
-          getLogger().error("Could not create new file at: " + file.getPath());
-          return;
-        }
-      }
-      catch (IOException e) {
-        getLogger().error(e);
-      }
+    // Re-check isDirectory() after mkdirs() so that a directory created concurrently by another thread is not treated as a failure.
+    if (parentDir != null && !parentDir.isDirectory() && !parentDir.mkdirs() && !parentDir.isDirectory()) {
+      getLogger().warn("Could not create parent directory at: " + parentDir.getPath());
+      showExportErrorNotification("Could not create directory: " + StringUtil.escapeXmlEntities(parentDir.getPath()));
+      return;
     }
 
     try (FileOutputStream fos = new FileOutputStream(file)) {
       fileOutputStreamConsumer.accept(fos);
     }
-    catch (IOException e) {
-      getLogger().error(e);
+    catch (ProcessCanceledException pce) {
+      throw pce;
+    }
+    catch (Exception e) {
+      if (e instanceof CancellationException || e.getCause() instanceof ProcessCanceledException) {
+        getLogger().info("Export cancelled for: " + file.getPath());
+        return;
+      }
+      getLogger().warn("Failed to export recording to: " + file.getPath(), e);
+      // Opening the stream already truncated any previous content, so remove the empty or partially written file.
+      FileUtil.delete(file);
+      String errorMsg = e.getLocalizedMessage();
+      String suffix = StringUtil.isNotEmpty(errorMsg) ? ": " + StringUtil.escapeXmlEntities(errorMsg) : "";
+      showExportErrorNotification("Failed to export recording to " + StringUtil.escapeXmlEntities(file.getName()) + suffix);
+      return;
     }
 
     VirtualFile virtualFile = VfsUtil.findFileByIoFile(file, true);
     if (virtualFile != null) {
       virtualFile.refresh(true, false, postRunnable);
     }
+
+    getLogger().info("Successfully exported recording to: " + file.getPath());
+    showExportSuccessNotification(file);
+  }
+
+  private void showExportSuccessNotification(@NotNull File file) {
+    // The balloon content is rendered as HTML, so any dynamic text has to be escaped.
+    String message = "Exported recording to " + StringUtil.escapeXmlEntities(file.getName());
+    if (RevealFileAction.isSupported()) {
+      AndroidNotification.getInstance(myProject)
+        .showBalloon("Export Successful", message, NotificationType.INFORMATION, AndroidNotification.BALLOON_GROUP, true,
+                     createRevealHyperlink(file));
+    }
+    else {
+      AndroidNotification.getInstance(myProject)
+        .showBalloon("Export Successful", message, NotificationType.INFORMATION, AndroidNotification.BALLOON_GROUP);
+    }
+  }
+
+  /**
+   * Creates the hyperlink that reveals {@code file} in the platform file manager.
+   *
+   * <p>The hyperlink is identified by a stable id rather than the file path, because the id is embedded into an HTML href and compared
+   * back verbatim by {@link com.android.tools.idea.ui.CustomNotificationListener}.
+   */
+  @VisibleForTesting
+  @NotNull
+  NotificationHyperlink createRevealHyperlink(@NotNull File file) {
+    return new NotificationHyperlink(REVEAL_FILE_HYPERLINK_ID, RevealFileAction.getActionName()) {
+      @Override
+      protected void execute(@NotNull Project project) {
+        RevealFileAction.openFile(file);
+      }
+    };
+  }
+
+  private void showExportErrorNotification(@NotNull String message) {
+    AndroidNotification.getInstance(myProject)
+      .showBalloon("Export Failed", message, NotificationType.ERROR, AndroidNotification.BALLOON_GROUP);
   }
 
   /**
