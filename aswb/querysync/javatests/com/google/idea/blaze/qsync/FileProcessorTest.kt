@@ -77,4 +77,20 @@ class FileProcessorTest {
   fun testProtoSourceFiles() {
     assertThat(process("proto/my_service.proto")).isEqualTo(FileProcessResult.SourceFile(Path.of("proto/my_service.proto"), null))
   }
+
+  @Test
+  fun testDetectLanguage() {
+    assertThat(processor.detectLanguage(Path.of("App.java"))).isEqualTo(QuerySyncLanguage.JVM)
+    assertThat(processor.detectLanguage(Path.of("Module.kt"))).isEqualTo(QuerySyncLanguage.JVM)
+    assertThat(processor.detectLanguage(Path.of("native.cc"))).isEqualTo(QuerySyncLanguage.CC)
+    assertThat(processor.detectLanguage(Path.of("header.h"))).isEqualTo(QuerySyncLanguage.CC)
+    assertThat(processor.detectLanguage(Path.of("data.proto"))).isNull()
+    assertThat(processor.detectLanguage(Path.of("README.md"))).isNull()
+
+    assertThat(processor.detectLanguage("java")).isEqualTo(QuerySyncLanguage.JVM)
+    assertThat(processor.detectLanguage("kt")).isEqualTo(QuerySyncLanguage.JVM)
+    assertThat(processor.detectLanguage("cc")).isEqualTo(QuerySyncLanguage.CC)
+    assertThat(processor.detectLanguage("proto")).isNull()
+    assertThat(processor.detectLanguage("md")).isNull()
+  }
 }
