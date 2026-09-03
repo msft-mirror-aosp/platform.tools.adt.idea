@@ -38,6 +38,7 @@ import com.android.tools.adtui.device.SkinDefinition
 import com.android.tools.adtui.device.SkinLayout
 import com.android.tools.adtui.util.rotatedByQuadrants
 import com.android.tools.adtui.util.scaled
+import com.android.tools.adtui.util.toWxH
 import com.android.tools.analytics.toProto
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.createCoroutineScope
@@ -1398,7 +1399,7 @@ internal class EmulatorView(
           }
         log.error(
           "Inconsistent ImageMessage for display ${imageFormat.display}: the $imageDimensions display image has different aspect" +
-            " ratio than the ${displayMode.width}x${displayMode.height} display in the ${displayMode.displayModeId} mode$foldedState"
+            " ratio than the ${displayMode.displaySize.toWxH()} display in the ${displayMode.displayModeId} mode$foldedState"
         )
         return false
       }

@@ -395,7 +395,7 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
       throw LiveEditUpdateException.internalErrorVibeEdit("Vibe Edit target '$path' is outside the project content root.")
     }
 
-    val file = PsiManager.getInstance(project).findFile(virtualFile)
+    val file = ReadAction.compute<PsiFile?, RuntimeException> { PsiManager.getInstance(project).findFile(virtualFile) }
 
     // TODO: Add LiveEditEvent.Mode.AGENT_TOOL_VIBE
     while (!processChanges(project, listOf(file!!), LiveEditEvent.Mode.MANUAL, vibe)) {

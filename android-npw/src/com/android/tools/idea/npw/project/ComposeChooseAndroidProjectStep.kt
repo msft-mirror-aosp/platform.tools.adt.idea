@@ -57,10 +57,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.tools.idea.wizard.template.Template
+import com.android.tools.idea.wizard.template.Thumb
 import com.intellij.openapi.diagnostic.fileLogger
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.UIUtil
@@ -104,7 +103,7 @@ fun ChooseAndroidProjectStepUI(model: ChooseAndroidProjectStepModel) {
 }
 
 @Composable
-private fun LeftSidePanel(
+internal fun LeftSidePanel(
   entries: List<ChooseAndroidProjectEntry>,
   selectedEntry: ChooseAndroidProjectEntry?,
   updateEntrySelected: (ChooseAndroidProjectEntry?) -> Unit,
@@ -203,44 +202,42 @@ internal fun ItemGrid(
             .focusable()
             .onKeyEvent { event ->
               if (!hasFocus || selectedGridItem == null) return@onKeyEvent false
-              val currentTemplateIndex = gridItems.indexOf(selectedGridItem)
+              val currentItemIndex = gridItems.indexOf(selectedGridItem)
 
               return@onKeyEvent when {
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentTemplateIndex > columnCount - 1 -> {
-                  onGridItemClick(gridItems[currentTemplateIndex - columnCount])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentItemIndex > columnCount - 1 -> {
+                  onGridItemClick(gridItems[currentItemIndex - columnCount])
                   true
                 }
-                event.type == KeyEventType.KeyUp &&
-                  event.key == Key.DirectionDown &&
-                  currentTemplateIndex < gridItems.size - columnCount -> {
-                  onGridItemClick(gridItems[currentTemplateIndex + columnCount])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionDown && currentItemIndex < gridItems.size - columnCount -> {
+                  onGridItemClick(gridItems[currentItemIndex + columnCount])
                   true
                 }
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentTemplateIndex > 0 -> {
-                  onGridItemClick(gridItems[currentTemplateIndex - 1])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentItemIndex > 0 -> {
+                  onGridItemClick(gridItems[currentItemIndex - 1])
                   true
                 }
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentTemplateIndex < gridItems.size - 1 -> {
-                  onGridItemClick(gridItems[currentTemplateIndex + 1])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentItemIndex < gridItems.size - 1 -> {
+                  onGridItemClick(gridItems[currentItemIndex + 1])
                   true
                 }
                 else -> false
               }
             },
       ) {
-        itemsIndexed(items = gridItems) { _, gridItem ->
-          val isSelected = gridItem == selectedGridItem
+        itemsIndexed(items = gridItems) { _, item ->
+          val isSelected = item == selectedGridItem
           val isFocused = hasFocus && isSelected
 
           GridItemCell(
-            gridItem = gridItem,
+            item = item,
             isSelected = isSelected,
             isFocused = isFocused,
-            onGridItemClick = {
-              onGridItemClick(gridItem)
+            onItemClick = {
+              onGridItemClick(item)
               if (!hasFocus) gridFocusRequester.requestFocus()
             },
-            onGridItemDoubleClick = { onGridItemDoubleClick(gridItem) },
+            onItemDoubleClick = { onGridItemDoubleClick(item) },
           )
         }
       }
@@ -250,24 +247,18 @@ internal fun ItemGrid(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun GridItemCell(
-  gridItem: GridItem,
-  isSelected: Boolean,
-  isFocused: Boolean,
-  onGridItemClick: () -> Unit,
-  onGridItemDoubleClick: () -> Unit,
-) {
+private fun GridItemCell(item: GridItem, isSelected: Boolean, isFocused: Boolean, onItemClick: () -> Unit, onItemDoubleClick: () -> Unit) {
   Column(
     modifier =
-      Modifier.fillMaxSize()
+      Modifier.size(templateCellSize)
         .focusProperties { canFocus = false }
         .border(1.dp, UIUtil.getListBackground(isSelected, isFocused).toComposeColor())
-        .handleClick(onClick = onGridItemClick, onDoubleClick = onGridItemDoubleClick),
-    verticalArrangement = Arrangement.Center,
+        .handleClick(onClick = onItemClick, onDoubleClick = onItemDoubleClick),
+    verticalArrangement = Arrangement.SpaceBetween,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    GridItemImage(gridItem)
-    GridItemText(gridItem, isSelected, isFocused)
+    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { item.Icon() }
+    GridItemText(item, isSelected, isFocused)
   }
 }
 
@@ -290,42 +281,38 @@ private fun Modifier.handleClick(onClick: () -> Unit, onDoubleClick: () -> Unit)
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun GridItemImage(gridItem: GridItem) {
-  if (gridItem is TemplateGridItem && gridItem.template == Template.NoActivity) {
+internal fun GridItemImage(thumb: Thumb) {
+  val imageBitmap by
+    produceState<ImageBitmap?>(initialValue = null, thumb) {
+      value =
+        withContext(Dispatchers.Default) {
+          val iconUrl = thumb.path()
+          try {
+            val bytes = withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
+            bytes.decodeToImageBitmap()
+          } catch (e: Exception) {
+            fileLogger().warn("Failed to load icon: $iconUrl", e)
+            null
+          }
+        }
+    }
+
+  if (imageBitmap == null) {
     Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
   } else {
-    val imageBitmap by
-      produceState<ImageBitmap?>(initialValue = null, gridItem) {
-        value =
-          withContext(Dispatchers.Default) {
-            val iconUrl = gridItem.thumb().path()
-            try {
-              val bytes = withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
-              bytes.decodeToImageBitmap()
-            } catch (e: Exception) {
-              fileLogger().error("Failed to load icon: $iconUrl", e)
-              null
-            }
-          }
-      }
-
-    if (imageBitmap == null) {
-      Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
-    } else {
-      Image(bitmap = imageBitmap!!, contentDescription = "")
-    }
+    Image(bitmap = imageBitmap!!, contentDescription = "")
   }
 }
 
 @Composable
-private fun GridItemText(gridItem: GridItem, isSelected: Boolean, isFocused: Boolean) {
+private fun GridItemText(item: GridItem, isSelected: Boolean, isFocused: Boolean) {
   Box(
     modifier = Modifier.fillMaxWidth().background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
     contentAlignment = Alignment.Center,
   ) {
     Text(
       modifier = Modifier.padding(vertical = 4.dp),
-      text = gridItem.getTitle(),
+      text = item.title,
       color = UIUtil.getListForeground(isSelected, isFocused).toComposeColor(),
       textAlign = TextAlign.Center,
     )

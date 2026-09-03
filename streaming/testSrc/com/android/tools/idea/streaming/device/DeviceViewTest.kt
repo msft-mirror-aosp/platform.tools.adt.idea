@@ -194,6 +194,7 @@ internal class DeviceViewTest {
   fun setUp() {
     BitRateManager.getInstance().clear()
     device = agentRule.connectDevice("Pixel 5", 32, Dimension(1080, 2340))
+    @Suppress("UnstableApiUsage")
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
     focusManager = FakeKeyboardFocusManager(testRootDisposable)
     ActionManager.getInstance() // Instantiate ActionManager to trigger loading of keyboard shortcuts.
@@ -1276,9 +1277,9 @@ internal class DeviceViewTest {
 
   private fun assertAppearance(goldenImageName: String) {
     // First rendering may be low quality.
-    goldenImageRule.assertImageSimilar(goldenImageName, fakeUi.render(), 0.5, ignoreMissingGoldenFile = true)
+    goldenImageRule.assertImageSimilar(goldenImageName, ImageUtils.scale(fakeUi.render(), 0.5), 0.5, ignoreMissingGoldenFile = true)
     // Second rendering is guaranteed to be high quality.
-    goldenImageRule.assertImageSimilar(goldenImageName, fakeUi.render())
+    goldenImageRule.assertImageSimilar(goldenImageName, ImageUtils.scale(fakeUi.render(), 0.5))
   }
 
   private fun getNextControlMessageAndWaitForFrame(displayId: Int = PRIMARY_DISPLAY_ID): ControlMessage {

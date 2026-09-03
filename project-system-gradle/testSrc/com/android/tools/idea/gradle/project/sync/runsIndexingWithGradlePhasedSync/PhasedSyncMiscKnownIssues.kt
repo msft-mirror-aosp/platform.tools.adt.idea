@@ -48,13 +48,6 @@ internal object MiscConsistencyIssues {
 }
 
 internal object MiscResyncIssues {
-  val filteredProjects =
-    setOf(
-      // TODO(b/384022658): There is an issue regarding the full sync regarding this project, it seems to create duplicate
-      //  library dependencies for some modules. Probably has to do with module libraries.
-      TestProject.KOTLIN_MULTIPLATFORM_WITHJS
-    )
-
   internal fun projectStructure(testProject: TestProject) =
     when (testProject) {
       TestProject.TEST_SUITES ->
@@ -77,6 +70,11 @@ internal object MiscResyncIssues {
       TestProject.SIMPLE_APPLICATION_NOT_AT_ROOT -> setOf("MODULE (gradle_project)/*isInherited")
       TestProject.SIMPLE_APPLICATION_MULTIPLE_ROOTS ->
         setOf("MODULE (gradle_project_name)/*isInherited", "MODULE (gradle_project_1)/*isInherited")
+      TestProject.KOTLIN_MULTIPLATFORM_WITHJS ->
+        setOf(
+          "/LIBRARY (Gradle: org.jetbrains.kotlin:kotlin-dom-api-compat",
+          "/LIBRARY (Gradle: org.jetbrains.kotlin:kotlin-stdlib-js",
+        )
       else -> emptySet()
     }
 }

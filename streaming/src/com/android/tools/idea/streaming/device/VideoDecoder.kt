@@ -24,6 +24,7 @@ import com.android.tools.adtui.ImageUtils.ALPHA_MASK
 import com.android.tools.adtui.ImageUtils.ellipticalClip
 import com.android.tools.adtui.util.rotatedByQuadrants
 import com.android.tools.adtui.util.scaled
+import com.android.tools.adtui.util.toWxH
 import com.android.tools.idea.streaming.core.getUInt
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.debug
@@ -657,7 +658,7 @@ internal constructor(
     override fun toString(): String {
       return "PacketHeader(" +
         "displayId=$displayId, " +
-        "displaySize=${displaySize.width}x${displaySize.height}, " +
+        "displaySize=${displaySize.toWxH()}, " +
         "displayOrientation=$displayOrientation, " +
         "displayOrientationCorrection=$displayOrientationCorrection, " +
         "flags=$flags, " +

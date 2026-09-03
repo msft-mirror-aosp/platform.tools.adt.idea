@@ -180,6 +180,26 @@ class InteractivePreviewNavigationControllerTest {
   }
 
   @Test
+  fun testBackToStateFromViewAdapterObj() {
+    val composeViewAdapterObjFake =
+      TestComposeViewAdapterViewObj(backStack = listOf("Preview Three", "Preview Two", "Preview One", "Preview Zero"))
+    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
+
+    // Verify navigating back to an existing state succeeds and pops the back stack down to and including that state.
+    val state = "Preview One"
+    val result = controller.backToState(state)
+    assertThat(result).isTrue()
+    assertThat(composeViewAdapterObjFake.backStack).containsExactly("Preview Zero")
+
+    // Verify back navigation to a non-existing state fails and leaves the back stack unchanged.
+    val nonExistingState = "Non Existing Preview"
+    val resultWithNonExistingState = controller.backToState(nonExistingState)
+    assertThat(resultWithNonExistingState).isFalse()
+    assertThat(composeViewAdapterObjFake.backStack).containsExactly("Preview Zero")
+  }
+
+  @Test
   fun testShowAndHideNavigationControls() {
     var panelUpdated = false
     val controller =
@@ -226,5 +246,21 @@ class InteractivePreviewNavigationControllerTest {
     assertThat(BackNavigationEdge.EDGE_LEFT.visibleName).isEqualTo("Swipe Left")
     assertThat(BackNavigationEdge.EDGE_RIGHT.visibleName).isEqualTo("Swipe Right")
     assertThat(BackNavigationEdge.EDGE_NONE.visibleName).isEqualTo("None")
+  }
+
+  @Test
+  fun testGetNavigationHistoryFromDispatcherOwner() {
+    val localNavigationEventDispatcherObj = TestNavigationEventDispatcherObj(canBackPress = true, history = listOf("Screen1", "Screen2"))
+    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    controller.updateObjects(localNavigationEventDispatcherObj, TestComposeViewAdapterViewObj(), hasNavDisplay = false)
+    assertThat(controller.getNavigationHistory()).containsExactly("Screen1", "Screen2").inOrder()
+  }
+
+  @Test
+  fun testGetNavigationHistoryFromComposeViewAdapterObj() {
+    val composeViewAdapterObj = TestComposeViewAdapterViewObj(history = listOf("ScreenA", "ScreenB"))
+    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    controller.updateObjects(null, composeViewAdapterObj, hasNavDisplay = false)
+    assertThat(controller.getNavigationHistory()).containsExactly("ScreenA", "ScreenB").inOrder()
   }
 }

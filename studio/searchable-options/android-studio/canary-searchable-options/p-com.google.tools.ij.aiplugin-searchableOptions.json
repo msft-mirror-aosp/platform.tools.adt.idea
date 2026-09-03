@@ -90,9 +90,6 @@
       "hit": "Configure colors..."
     },
     {
-      "hit": "Dock thoughts to bottom"
-    },
-    {
       "hit": "Don't Collapse"
     },
     {
@@ -118,6 +115,9 @@
     },
     {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Show reviewed diff chunks in navigation"
     },
     {
       "hit": "Smart Rename"
@@ -452,6 +452,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Predict Now",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Previous Chat",
       "path": "ActionManager"
     },
@@ -492,11 +496,11 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Start a code review of the selected commit(s) using the AI agent",
+      "hit": "Start a review of the selected commit(s) using the AI agent",
       "path": "ActionManager"
     },
     {
-      "hit": "Start a code review of your pending changes using the AI agent",
+      "hit": "Start a review of your pending changes using the AI agent",
       "path": "ActionManager"
     },
     {
@@ -513,6 +517,10 @@
     },
     {
       "hit": "Suggest commit message by summarizing changes",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Triggers Next Edit Prediction manually at the current caret position.",
       "path": "ActionManager"
     },
     {

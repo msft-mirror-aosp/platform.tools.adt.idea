@@ -78,7 +78,9 @@ class InteractivePreviewNavigationController(
   private var onBackPressProgressMethod: Method? = null
   private var onBackPressCompletedMethod: Method? = null
   private var onBackPressCancelledMethod: Method? = null
+  private var backToStateMethod: Method? = null
   private var hasNavDisplayInViewTree: Boolean = false
+  private var navigationHistory: Method? = null
 
   private val logger = Logger.getInstance(InteractivePreviewNavigationController::class.java)
 
@@ -106,6 +108,8 @@ class InteractivePreviewNavigationController(
     onBackPressProgressMethod = null
     onBackPressCompletedMethod = null
     onBackPressCancelledMethod = null
+    navigationHistory = null
+    backToStateMethod = null
   }
 
   /** Loads the dispatcher owner field used to perform back navigation when using androidx.navigation3. */
@@ -124,12 +128,12 @@ class InteractivePreviewNavigationController(
       }
   }
 
-  private fun Any?.findMethod(methodName: String): Method? =
+  private fun Any?.findMethod(methodName: String, parameterCount: Int? = null): Method? =
     this?.let {
       it::class
         .java
         .declaredMethods
-        .singleOrNull { method -> method.name == methodName }
+        .singleOrNull { method -> method.name == methodName && (parameterCount == null || method.parameterCount == parameterCount) }
         .also { method ->
           if (method == null) {
             logger.debug("Could not find method $methodName via reflection.")
@@ -209,6 +213,29 @@ class InteractivePreviewNavigationController(
     (onBackPressCompletedMethod ?: backPressDispatcherOwner.findMethod(ON_BACK_PRESS_COMPLETED).also { onBackPressCompletedMethod = it }) !=
       null
 
+  /** Retrieves the current navigation history from the back press dispatcher owner via reflection. */
+  fun getNavigationHistory(): List<Any> {
+    val resolvedMethod = navigationHistory ?: backPressDispatcherOwner.findMethod(GET_BACK_HISTORY).also { navigationHistory = it }
+    return resolvedMethod?.invoke(backPressDispatcherOwner) as? List<Any> ?: emptyList()
+  }
+
+  /**
+   * Pops the back stack until reaching the specified [navigationState] in history.
+   *
+   * @param navigationState the target state in history to navigate back to
+   * @return `true` if navigation was performed to reach [navigationState], `false` otherwise
+   */
+  fun backToState(navigationState: Any): Boolean {
+    val resolvedMethod =
+      backToStateMethod ?: backPressDispatcherOwner.findMethod(BACK_TO_STATE, parameterCount = 1).also { backToStateMethod = it }
+    val result = resolvedMethod?.invoke(backPressDispatcherOwner, navigationState) as? Boolean ?: false
+    if (result) {
+      _backPressCompletedFlow.tryEmit(Unit)
+      isBackGestureInProgress = false
+    }
+    return result
+  }
+
   /**
    * Checks, via reflection, if it is possible to show the navigation panel.
    *
@@ -282,6 +309,8 @@ class InteractivePreviewNavigationController(
     private const val ON_BACK_PRESS_PROGRESS = "onBackPressProgress"
     private const val ON_BACK_PRESS_COMPLETED = "onBackPressCompleted"
     private const val ON_BACK_PRESS_CANCELLED = "onBackPressCancelled"
+    private const val GET_BACK_HISTORY = "getHistory"
+    private const val BACK_TO_STATE = "backToState"
 
     /**
      * The [DataKey] used to access the [InteractivePreviewNavigationController] from the [com.intellij.openapi.actionSystem.DataContext].

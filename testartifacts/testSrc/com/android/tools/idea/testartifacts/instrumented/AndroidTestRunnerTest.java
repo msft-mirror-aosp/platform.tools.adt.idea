@@ -31,6 +31,8 @@ import com.android.tools.idea.run.ApkProvisionException;
 import com.android.tools.idea.run.ApplicationIdProvider;
 import com.android.tools.idea.run.DefaultStudioProgramRunner;
 import com.android.tools.idea.run.FakeAndroidDevice;
+import com.android.tools.idea.model.TestOptions;
+import com.android.tools.idea.model.TestExecutionOption;
 import com.android.tools.idea.testing.AndroidGradleProjectRule;
 import com.android.tools.idea.testing.EdtAndroidGradleProjectRule;
 import com.android.tools.idea.testing.TestProjectPaths;
@@ -98,6 +100,27 @@ public class AndroidTestRunnerTest {
   }
 
   @Test
+  public void testTestOptionsProperty() {
+    TestOptions testOptions = new TestOptions(
+      TestExecutionOption.ANDROID_TEST_ORCHESTRATOR,
+      true,
+      true,
+      "runner",
+      java.util.Collections.emptyMap()
+    );
+    assertThat(testOptions.getInstrumentInPrivateComputeCore()).isTrue();
+
+    TestOptions testOptionsDefault = new TestOptions(
+      TestExecutionOption.ANDROID_TEST_ORCHESTRATOR,
+      true,
+      false,
+      "runner",
+      java.util.Collections.emptyMap()
+    );
+    assertThat(testOptionsDefault.getInstrumentInPrivateComputeCore()).isFalse();
+  }
+
+  @Test
   public void testRunnerAtoNotUsed() throws Exception {
     projectRule.loadProject(TestProjectPaths.INSTRUMENTATION_RUNNER);
     AndroidFacet facet = projectRule.androidTestAndroidFacet(":app");
@@ -116,7 +139,7 @@ public class AndroidTestRunnerTest {
         throw new RuntimeException(e);
       }
       StringBuilder sb = new StringBuilder(text);
-      sb.append("\nandroid.testOptions.execution \"android_test_orchestrator\"");
+      sb.append("\nandroid.testOptions.execution = \"android_test_orchestrator\"");
       try {
         Files.writeString(appBuildFile.toPath(), sb.toString());
       }

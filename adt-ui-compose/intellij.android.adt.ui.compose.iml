@@ -41,5 +41,6 @@
     <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.extensions.gfmTables" level="project" />
     <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.extensions.gfmAlerts" level="project" />
     <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.extensions.autolink" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.compose" level="project" />
   </component>
 </module>

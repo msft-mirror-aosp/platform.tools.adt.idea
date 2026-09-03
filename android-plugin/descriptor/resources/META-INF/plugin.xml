@@ -40,6 +40,7 @@
     <module name="intellij.libraries.skiko"/>
     <module name="intellij.libraries.compose.foundation.desktop"/>
     <module name="intellij.libraries.compose.runtime.desktop"/>
+    <module name="intellij.platform.compose"/>
     <module name="intellij.platform.uast"/>
     <module name="intellij.java.analysis.impl"/>
     <module name="intellij.gradle.java.groovy"/>

@@ -270,6 +270,10 @@ public final class StudioFlags {
     NPW, "emptycalapp.template", "Enable Empty CAL App Template",
     "Enable Empty Car App Library App template in the New Project Wizard.");
 
+  public static final Flag<Boolean> NPW_NEW_TEMPLATE_ENGINE = new BooleanFlag(
+    NPW, "new.template.engine", "Enable New Template Engine",
+    "Enable the new declarative Template Engine in the New Project Wizard.");
+
   static class AndroidApiFlag extends CustomTypeFlag<AndroidApiLevel> {
     public AndroidApiFlag(FlagGroup group, String name, String displayName, String description, AndroidApiLevel defaultValue) {
       super(AndroidApiLevel.class, group, name, displayName, description, defaultValue, ApiFlagConverter, examples);
@@ -1693,6 +1697,9 @@ public final class StudioFlags {
     COMPOSE, "interactive.preview.predictive.back", "Enable predictive back navigation in Interactive Preview",
     "When using navigation3, enables a bottom panel to interact with the predictive back feature.");
 
+  public static final Flag<Boolean> COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL = new BooleanFlag(
+    COMPOSE, "interactive.preview.predictive.back.stack.visual", "Show the back stack in Interactive Preview",
+    "When using navigation3, shows and interacts the back stack in Interactive Preview");
   //endregion
 
   // region Wear surfaces
@@ -2419,6 +2426,16 @@ public final class StudioFlags {
                     "Enable Agent Context Protocol (ACP) Support",
                     "Allows using ACP-compatible agent harnesses");
 
+  public static final Flag<Boolean> STUDIOBOT_ACP_CODEX_OVERRIDE =
+    new BooleanFlag(STUDIOBOT, "acp.codex.override",
+                    "Enable config overrides for the Codex ACP agent",
+                    "Injects overrides such as disabling conflicting tools and adding developer instructions into the CODEX_CONFIG environment variable");
+
+  public static final Flag<Boolean> STUDIOBOT_ACP_PLAN_CAPABILITIES_ENABLED =
+    new BooleanFlag(STUDIOBOT, "acp.plan.capabilities.enabled",
+                    "Enable ACP Plan Capabilities",
+                    "Injects PlanCapabilities during handshaking");
+
   public static final Flag<Boolean> STUDIOBOT_CHAT_QUERY_STATUS_BANNER_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.query.status.banner.enabled",
                     "Enable thinking banner in Chat Timeline",
@@ -2665,6 +2682,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "agent.v2.telemetry.enabled",
                     "Enable agent V2 telemetry",
                     "When enabled, telemetry for agent V2 events will be reported.");
+
+  public static final Flag<Boolean> STUDIOBOT_THINKING_LEVEL_PICKER_ENABLED =
+    new BooleanFlag(STUDIOBOT, "thinking.level.picker.enabled",
+                    "Enable Thinking Level Picker",
+                    "When enabled, users can select thinking level along with model.");
 
   public static final Flag<Boolean> STUDIOBOT_PERSONALIZED_GREETING_DISABLED =
     new BooleanFlag(STUDIOBOT, "personalized.greeting.disabled",
