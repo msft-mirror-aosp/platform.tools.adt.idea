@@ -59,6 +59,7 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.inspectors.
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.view.ViewLayoutInspectorClient
 import com.android.tools.idea.layoutinspector.runningdevices.withEmbeddedLayoutInspector
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanel
+import com.android.tools.idea.layoutinspector.tree.RootPanel
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
@@ -75,11 +76,13 @@ import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.Att
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
 import java.net.UnknownHostException
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.JTable
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
@@ -87,7 +90,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -207,10 +209,13 @@ class AppInspectionInspectorClientTest {
     }
   }
 
-  @Ignore("b/244336884")
   @Test
   fun treeRecompositionVisibilitySetAtConnectTime() {
-    val panel = LayoutInspectorTreePanel(projectRule.testRootDisposable)
+    inspectorRule.processes.selectedProcess = null
+    val inspectorState = FakeInspectorState(inspectionRule.viewInspector, inspectionRule.composeInspector)
+    inspectorState.createAllResponses()
+
+    val panel = runInEdtAndGet { LayoutInspectorTreePanel(projectRule.testRootDisposable) }
     var updateActionsCalled = 0
     var enabledActions = 0
     panel.registerCallbacks(
@@ -230,38 +235,53 @@ class AppInspectionInspectorClientTest {
         }
       }
     )
-    panel.setToolContext(inspectorRule.inspector)
-    FakeUi(panel.component, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+    val rootPanel = panel.component as RootPanel
+    runInEdtAndWait {
+      rootPanel.size = java.awt.Dimension(800, 1000)
+      panel.setToolContext(inspectorRule.inspector)
+    }
     inspectorRule.inspector.treeSettings.showRecompositions = true
     inspectorRule.inspector.treeSettings.hideSystemNodes = false
 
+    val modelUpdates = AtomicInteger()
+    inspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdates.incrementAndGet() }
+
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
 
-    // Wait for client to be connected
+    // Wait for client to be connected and tree to be shown
     waitForCondition(TIMEOUT, TIMEOUT_UNIT) { inspectorRule.inspectorClient.isConnected }
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { modelUpdates.get() >= 2 }
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { inspectorRule.inspectorModel.windows.isNotEmpty() }
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { rootPanel.uiState == RootPanel.UiState.SHOW_TREE }
 
-    // Wait for the tool window to update its actions.
-    // There is nothing we directly can rely on to be sure of the table column visibility update.
-    // The code below is a hack since the check relies on toolWindowCallback.updateActions is
-    // called (delayed) to the UI thread. Because of that we ensure that
-    // LayoutInspector.updateConnection
-    // will have finished processing after the state is set to CONNECTED.
-    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { updateActionsCalled > 0 }
+    // Make sure all UI events are done and update actions
+    runInEdtAndWait {
+      FakeUi(rootPanel, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+      UIUtil.dispatchAllInvocationEvents()
+      enabledActions = 0
+      panel.additionalActions.forEach {
+        val event: AnActionEvent = mock()
+        val presentation = it.templatePresentation.clone()
+        `when`(event.presentation).thenReturn(presentation)
+        it.update(event)
+        if (event.presentation.isEnabled) {
+          enabledActions++
+        }
+      }
 
-    // Make sure all UI events are done
-    runInEdtAndWait { UIUtil.dispatchAllInvocationEvents() }
+      // Check that the table header for showing recompositions are shown initially:
+      val header = panel.component.flatten(false).filterIsInstance<TreeTableHeader>().single()
+      val table = panel.focusComponent as JTable
+      assertThat(header.isVisible).isTrue()
+      assertThat(table.columnCount).isEqualTo(4)
+      assertThat(table.getColumn(table.getColumnName(1)).maxWidth).isGreaterThan(0)
+      assertThat(table.getColumn(table.getColumnName(2)).maxWidth).isGreaterThan(0)
+      assertThat(table.getColumn(table.getColumnName(3)).maxWidth).isGreaterThan(0)
 
-    // Check that the table header for showing recompositions are shown initially:
-    val header = panel.component.flatten(false).filterIsInstance<TreeTableHeader>().single()
-    val table = panel.focusComponent as JTable
-    assertThat(header.isVisible).isTrue()
-    assertThat(table.columnCount).isEqualTo(3)
-    assertThat(table.getColumn(table.getColumnName(1)).maxWidth).isGreaterThan(0)
-    assertThat(table.getColumn(table.getColumnName(2)).maxWidth).isGreaterThan(0)
-
-    // Check that all 3 actions were enabled initially:
-    assertThat(updateActionsCalled).isEqualTo(1)
-    assertThat(enabledActions).isEqualTo(3)
+      // Check that actions were enabled:
+      assertThat(updateActionsCalled).isGreaterThan(0)
+      assertThat(enabledActions).isEqualTo(3)
+    }
   }
 
   @Test
