@@ -1634,6 +1634,12 @@ def intellij_platform_import(name, spec):
         visibility = ["//visibility:public"],
     )
 
+    jvm_import(
+        name = name + "-nio-fs",
+        jars = ["lib/nio-fs.jar"],
+        visibility = ["//visibility:public"],
+    )
+
 def intellij_platform(
         name,
         src,
@@ -1840,6 +1846,19 @@ def intellij_platform(
             "//tools/base/bazel/platforms:macos-x86_64": [sdk_dirs.darwin + "/Contents/lib/testFramework.jar"],
             "//tools/base/bazel/platforms:macos-arm64": [sdk_dirs.darwin_aarch64 + "/Contents/lib/testFramework.jar"],
             "//conditions:default": [sdk_dirs.linux + "/lib/testFramework.jar"],
+        }),
+        srcjar = src + "/android-studio-sources.zip",
+        visibility = ["@intellij//:__subpackages__"],
+    )
+
+    # Expose nio-fs.jar separately for bootclasspath and NIO FS dependencies.
+    jvm_import(
+        name = name + "-nio-fs",
+        jars = select({
+            "@platforms//os:windows": [sdk_dirs.windows + "/lib/nio-fs.jar"],
+            "//tools/base/bazel/platforms:macos-x86_64": [sdk_dirs.darwin + "/Contents/lib/nio-fs.jar"],
+            "//tools/base/bazel/platforms:macos-arm64": [sdk_dirs.darwin_aarch64 + "/Contents/lib/nio-fs.jar"],
+            "//conditions:default": [sdk_dirs.linux + "/lib/nio-fs.jar"],
         }),
         srcjar = src + "/android-studio-sources.zip",
         visibility = ["@intellij//:__subpackages__"],
