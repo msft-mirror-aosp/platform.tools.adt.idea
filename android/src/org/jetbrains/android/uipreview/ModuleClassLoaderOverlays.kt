@@ -127,6 +127,10 @@ class ModuleClassLoaderOverlays private constructor(module: Module, private val 
       logger.warn("Skipping pushOverlayPath for ModuleClassLoaderOverlays because project is not trusted")
       return
     }
+    if (overlays.any { it.path == path }) {
+      logger.debug("Overlay $path is already registered")
+      return
+    }
     val currentTypeCount = overlays.count { it.isPersistent == isPersistent }
     if (currentTypeCount == maxNumOverlays) {
       val toRemove = overlays.lastOrNull { it.isPersistent == isPersistent }

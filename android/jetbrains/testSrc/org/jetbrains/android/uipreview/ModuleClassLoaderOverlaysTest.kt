@@ -215,4 +215,34 @@ internal class ModuleClassLoaderOverlaysTest {
     assertEquals(initialProjectModCount, projectOverlayModificationCount)
     assertEquals(initialModuleModCount, moduleOverlayModificationCount)
   }
+
+  @Test
+  fun `pushing duplicate overlay path is a no-op`() {
+    val tempOverlayPath = Files.createTempDirectory("duplicateOverlayTest")
+    val packageDirPath = Files.createDirectories(tempOverlayPath.resolve(TestClass::class.java.packageName.replace(".", "/")))
+    val classFilePath = packageDirPath.resolve(TestClass::class.java.simpleName + ".class")
+    Files.write(classFilePath, loadClassBytes(TestClass::class.java))
+
+    val moduleClassLoaderOverlay = ModuleClassLoaderOverlays.getInstance(buildTargetReference)
+
+    // First push
+    moduleClassLoaderOverlay.pushOverlayPath(tempOverlayPath)
+    assertEquals(1, moduleClassLoaderOverlay.state.paths.size)
+    val projectModCount = projectOverlayModificationCount
+    val moduleModCount = moduleOverlayModificationCount
+
+    // Duplicate push of the same path
+    moduleClassLoaderOverlay.pushOverlayPath(tempOverlayPath)
+    assertEquals(1, moduleClassLoaderOverlay.state.paths.size)
+    assertEquals(projectModCount, projectOverlayModificationCount)
+    assertEquals(moduleModCount, moduleOverlayModificationCount)
+    assertTrue(moduleClassLoaderOverlay.containsClass(testClassName))
+    assertNotNull(moduleClassLoaderOverlay.classLoaderLoader.loadClass(testClassName))
+
+    // Pushing non-persistent for the same path is also a no-op
+    moduleClassLoaderOverlay.pushNonPersistentOverlayPath(tempOverlayPath)
+    assertEquals(1, moduleClassLoaderOverlay.state.paths.size)
+    assertEquals(projectModCount, projectOverlayModificationCount)
+    assertEquals(moduleModCount, moduleOverlayModificationCount)
+  }
 }
