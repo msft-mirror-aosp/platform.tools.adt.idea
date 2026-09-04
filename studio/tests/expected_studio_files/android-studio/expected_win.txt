@@ -994,6 +994,7 @@ android-studio/license/libandroid_runtime.dll.txt
 android-studio/license/libandroid_runtime.dylib.txt
 android-studio/license/libandroid_runtime.so.txt
 android-studio/license/mockito-all-1.9.5-NOTICE
+android-studio/license/ots-NOTICE
 android-studio/license/r8_license.txt
 android-studio/license/saxon-conditions.html
 android-studio/license/swt.jar-NOTICE
@@ -2196,6 +2197,7 @@ android-studio/plugins/android/resources/installer/x86/installer
 android-studio/plugins/android/resources/installer/x86_64/installer
 android-studio/plugins/android/resources/native/image_converter.dll
 android-studio/plugins/android/resources/native/jni_object_tagger.dll
+android-studio/plugins/android/resources/native/ots_jni.dll
 android-studio/plugins/android/resources/native/video_decoder.dll
 android-studio/plugins/android/resources/perfa.jar
 android-studio/plugins/android/resources/perfetto/arm64-v8a/libperfetto.so

@@ -170,6 +170,7 @@ studio_plugin(
     license_files = [
         "//prebuilts/r8:license",
         "//prebuilts/tools/common/m2:ffmpeg-licenses",
+        "//prebuilts/tools/common/ots:ots-license",
         "//tools/adt/idea/android/lib:licenses",
     ],
     modules = {
@@ -466,6 +467,7 @@ studio_plugin(
             "//tools/base/tracer:trace_agent.jar",  # TODO(b/149320690): remove in 4.1 final release.
             "//tools/base/transport:transport-bundle",
             "//prebuilts/tools:simpleperf-bundle",
+            "//prebuilts/tools/common/ots:ots-bundle",
             "//prebuilts/tools/common/perfetto:perfetto-bundle",
             "//prebuilts/tools/common/app-inspection/androidx/sqlite:sqlite-inspection-bundle",
             "//tools/base/deploy/installer:android-installer-bundle",

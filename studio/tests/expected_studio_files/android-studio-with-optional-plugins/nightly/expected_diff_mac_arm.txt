@@ -929,6 +929,7 @@
 +++Android Studio Nightly.app/Contents/license/libandroid_runtime.dylib.txt
 +++Android Studio Nightly.app/Contents/license/libandroid_runtime.so.txt
 +++Android Studio Nightly.app/Contents/license/mockito-all-1.9.5-NOTICE
++++Android Studio Nightly.app/Contents/license/ots-NOTICE
 +++Android Studio Nightly.app/Contents/license/r8_license.txt
 +++Android Studio Nightly.app/Contents/license/saxon-conditions.html
 +++Android Studio Nightly.app/Contents/license/swt.jar-NOTICE
@@ -2670,6 +2671,7 @@
 +++Android Studio Nightly.app/Contents/plugins/android/resources/installer/x86_64/installer
 +++Android Studio Nightly.app/Contents/plugins/android/resources/native/libimage_converter.dylib
 +++Android Studio Nightly.app/Contents/plugins/android/resources/native/libjni_object_tagger.dylib
++++Android Studio Nightly.app/Contents/plugins/android/resources/native/libots_jni.dylib
 +++Android Studio Nightly.app/Contents/plugins/android/resources/native/libvideo_decoder.dylib
 +++Android Studio Nightly.app/Contents/plugins/android/resources/perfa.jar
 +++Android Studio Nightly.app/Contents/plugins/android/resources/perfetto/arm64-v8a/libperfetto.so
@@ -4753,6 +4755,7 @@
 ---Android Studio Preview.app/Contents/license/libandroid_runtime.dylib.txt
 ---Android Studio Preview.app/Contents/license/libandroid_runtime.so.txt
 ---Android Studio Preview.app/Contents/license/mockito-all-1.9.5-NOTICE
+---Android Studio Preview.app/Contents/license/ots-NOTICE
 ---Android Studio Preview.app/Contents/license/r8_license.txt
 ---Android Studio Preview.app/Contents/license/saxon-conditions.html
 ---Android Studio Preview.app/Contents/license/swt.jar-NOTICE
@@ -6494,6 +6497,7 @@
 ---Android Studio Preview.app/Contents/plugins/android/resources/installer/x86_64/installer
 ---Android Studio Preview.app/Contents/plugins/android/resources/native/libimage_converter.dylib
 ---Android Studio Preview.app/Contents/plugins/android/resources/native/libjni_object_tagger.dylib
+---Android Studio Preview.app/Contents/plugins/android/resources/native/libots_jni.dylib
 ---Android Studio Preview.app/Contents/plugins/android/resources/native/libvideo_decoder.dylib
 ---Android Studio Preview.app/Contents/plugins/android/resources/perfa.jar
 ---Android Studio Preview.app/Contents/plugins/android/resources/perfetto/arm64-v8a/libperfetto.so
