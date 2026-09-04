@@ -27,6 +27,7 @@ import com.intellij.credentialStore.PasswordSafeSettings
 import com.intellij.credentialStore.ProviderType
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.ide.passwordSafe.impl.TestPasswordSafeImpl
+import com.intellij.ide.wizard.CommitStepException
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.LightPlatformTestCase
@@ -48,6 +49,7 @@ import org.jetbrains.android.exportSignedPackage.KeystoreStep.KEY_STORE_PASSWORD
 import org.jetbrains.android.exportSignedPackage.KeystoreStep.trySavePasswords
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.AndroidFacetConfiguration
+import org.junit.Assert.assertThrows
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
 
@@ -498,6 +500,70 @@ class KeystoreStepTest : LightPlatformTestCase() {
     val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
     Truth.assertThat(keystoreStep.helpId).startsWith(AndroidWebHelpProvider.HELP_PREFIX + "studio/publish/app-signing")
+  }
+
+  fun testCommitWithIncorrectKeystorePasswordThrowsCommitStepException() {
+    val wizard = setupWizardHelper()
+    whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+    keystoreStep.myFileSystem = fileSystem
+    keystoreStep.keyStorePasswordField.text = "wrong_password"
+    keystoreStep.keyPasswordField.text = KEY_PASSWORD
+    keystoreStep.keyStorePathField.text = testKeyStorePath
+    keystoreStep.keyAliasField.text = KEY_ALIAS
+    keystoreStep._init()
+    assertThrows(CommitStepException::class.java) {
+      keystoreStep.commitForNext()
+    }
+  }
+
+  fun testCommitWithIncorrectKeyPasswordThrowsCommitStepException() {
+    val wizard = setupWizardHelper()
+    whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+    keystoreStep.myFileSystem = fileSystem
+    keystoreStep.keyStorePasswordField.text = KEY_STORE_PASSWORD
+    keystoreStep.keyPasswordField.text = "wrong_key_password"
+    keystoreStep.keyStorePathField.text = testKeyStorePath
+    keystoreStep.keyAliasField.text = KEY_ALIAS
+    keystoreStep._init()
+    assertThrows(CommitStepException::class.java) {
+      keystoreStep.commitForNext()
+    }
+  }
+
+  fun testCommitWithNonExistentKeystoreFileThrowsCommitStepException() {
+    val wizard = setupWizardHelper()
+    whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+    keystoreStep.myFileSystem = fileSystem
+    keystoreStep.keyStorePasswordField.text = KEY_STORE_PASSWORD
+    keystoreStep.keyPasswordField.text = KEY_PASSWORD
+    keystoreStep.keyStorePathField.text = fileSystem.someRoot.resolve("non/existent/keystore").toString()
+    keystoreStep.keyAliasField.text = KEY_ALIAS
+    keystoreStep._init()
+    assertThrows(CommitStepException::class.java) {
+      keystoreStep.commitForNext()
+    }
+  }
+
+  fun testCommitWithUnknownKeyAliasThrowsCommitStepException() {
+    val wizard = setupWizardHelper()
+    whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+    keystoreStep.myFileSystem = fileSystem
+    keystoreStep.keyStorePasswordField.text = KEY_STORE_PASSWORD
+    keystoreStep.keyPasswordField.text = KEY_PASSWORD
+    keystoreStep.keyStorePathField.text = testKeyStorePath
+    keystoreStep.keyAliasField.text = "unknown_alias"
+    keystoreStep._init()
+    assertThrows(CommitStepException::class.java) {
+      keystoreStep.commitForNext()
+    }
   }
 
   private class FakeAndroidFacet(module: Module) : AndroidFacet(module, NAME, AndroidFacetConfiguration())

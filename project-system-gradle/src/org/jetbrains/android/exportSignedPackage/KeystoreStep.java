@@ -23,6 +23,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleType;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.components.JBCheckBox;
@@ -530,14 +531,24 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
       throw new CommitStepException(AndroidBundle.message("android.export.package.specify.key.password.error"));
     }
 
-    myWizard.setGradleSigningInfo(new GradleSigningInfo(keyStoreLocation, keyStorePassword, keyAlias, keyPassword));
+    Path keystorePath = myFileSystem.getPath(keyStoreLocation);
 
-    // Validate the keystore information
-    KeyStore keyStore = loadKeyStore(myFileSystem.getPath(keyStoreLocation));
-    if (keyStore == null) {
-      throw new CommitStepException(AndroidBundle.message("android.export.package.keystore.error.title"));
-    }
-    loadKeyAndSaveToWizard(keyStore, keyAlias, keyPassword);
+    // Validate the keystore information with progress
+    ValidatedKeyEntry validatedEntry = ProgressManager.getInstance().runProcessWithProgressSynchronously(
+        () -> {
+          KeyStore keyStore = loadKeyStore(keystorePath, keyStorePassword);
+          if (keyStore == null) {
+            throw new CommitStepException(AndroidBundle.message("android.export.package.keystore.error.title"));
+          }
+          return loadKeyEntry(keyStore, keyAlias, keyPassword);
+        },
+        AndroidBundle.message("android.export.package.loading.keystore.title"),
+        true,
+        myWizard.getProject());
+
+    myWizard.setGradleSigningInfo(new GradleSigningInfo(keyStoreLocation, keyStorePassword, keyAlias, keyPassword));
+    myWizard.setPrivateKey(validatedEntry.privateKey);
+    myWizard.setCertificate(validatedEntry.certificate);
 
     Project project = myWizard.getProject();
     GenerateSignedApkSettings settings = GenerateSignedApkSettings.getInstance(project);
@@ -553,8 +564,17 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     myWizard.setFacet(getSelectedFacet());
   }
 
-  private KeyStore loadKeyStore(Path keystoreFile) throws CommitStepException {
-    char[] password = myKeyStorePasswordField.getPassword();
+  private static class ValidatedKeyEntry {
+    final PrivateKey privateKey;
+    final X509Certificate certificate;
+
+    ValidatedKeyEntry(@NotNull PrivateKey privateKey, @NotNull X509Certificate certificate) {
+      this.privateKey = privateKey;
+      this.certificate = certificate;
+    }
+  }
+
+  private static KeyStore loadKeyStore(Path keystoreFile, char[] password) throws CommitStepException {
     InputStream fis = null;
     AndroidUtils.checkPassword(password);
     if (!Files.isRegularFile(keystoreFile)) {
@@ -578,12 +598,11 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
         catch (IOException ignored) {
         }
       }
-      Arrays.fill(password, '\0');
     }
     return keyStore;
   }
 
-  private void loadKeyAndSaveToWizard(KeyStore keyStore, String alias, char[] keyPassword) throws CommitStepException {
+  private static ValidatedKeyEntry loadKeyEntry(KeyStore keyStore, String alias, char[] keyPassword) throws CommitStepException {
     KeyStore.PrivateKeyEntry entry;
     try {
       assert keyStore != null;
@@ -600,8 +619,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     if (privateKey == null || certificate == null) {
       throw new CommitStepException(AndroidBundle.message("android.extract.package.cannot.find.key.error", alias));
     }
-    myWizard.setPrivateKey(privateKey);
-    myWizard.setCertificate((X509Certificate)certificate);
+    return new ValidatedKeyEntry(privateKey, (X509Certificate)certificate);
   }
 
   private AndroidFacet getSelectedFacet() {

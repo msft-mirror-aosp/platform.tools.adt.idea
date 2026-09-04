@@ -61,6 +61,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils;
@@ -227,12 +228,16 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
     super.doNextAction();
   }
 
-  private boolean commitCurrentStep() {
+  @VisibleForTesting
+  boolean commitCurrentStep() {
     try {
       mySteps.get(myCurrentStep).commitForNext();
     }
     catch (CommitStepException e) {
       Messages.showErrorDialog(getContentPane(), e.getMessage());
+      return false;
+    }
+    catch (ProcessCanceledException ignored) {
       return false;
     }
     return true;
