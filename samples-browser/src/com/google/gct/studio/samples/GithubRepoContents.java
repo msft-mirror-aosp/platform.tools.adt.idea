@@ -16,6 +16,7 @@
 package com.google.gct.studio.samples;
 
 import com.google.common.collect.Lists;
+import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.util.io.FileUtil;
@@ -50,7 +51,7 @@ public final class GithubRepoContents {
    * @param url            The github URL to retrieve
    * @param branch         The name of the branch to retrieve. If not specified, it is assumed to be "master"
    * @param cacheDirectory An optional location to cache the downloaded repository. If not specified it will default to a working
-   *                       directory inside the operating system's temporary folder (e.g. /tmp)
+   *                       directory inside the IDE system cache directory
    * @return A GithubRepoContents instance. If the download failed, then the errorMessage member will be set. If the errorMessage
    * is null, then both templateFolders and sampleRoots will NOT be null, but MAY be empty.
    */
@@ -60,7 +61,7 @@ public final class GithubRepoContents {
                                             @Nullable File cacheDirectory) {
     GithubRepoContents returnValue = new GithubRepoContents();
     if (cacheDirectory == null) {
-      cacheDirectory = new File(FileUtil.getTempDirectory(), "github_cache");
+      cacheDirectory = PathManager.getSystemDir().resolve("caches").resolve("github_cache").toFile();
     }
     if (branch == null || branch.trim().isEmpty()) {
       branch = "HEAD";

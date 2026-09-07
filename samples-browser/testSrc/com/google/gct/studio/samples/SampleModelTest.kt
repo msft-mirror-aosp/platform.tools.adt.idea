@@ -25,6 +25,7 @@ import com.android.tools.idea.testing.executeCapturingLoggedErrors
 import com.appspot.gsamplesindex.samplesindex.model.Sample
 import com.google.common.truth.Truth
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.util.SystemInfo
@@ -43,6 +44,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import kotlin.io.path.div
 
 private const val TEST_PROJECT_ID = "my/test/sample/project/id"
 private const val LOCALHOST = "127.0.0.1"
@@ -70,12 +72,13 @@ class SampleModelTest {
     }
     UsageTracker.setWriterForTest(tracker)
     projectFolder = tempFolder.newFolder()
+    FileUtil.delete((PathManager.getSystemDir() / "caches" / "github_cache").toFile())
   }
 
   @After
   fun tearDown() {
     server.stop(0)
-    FileUtil.deleteRecursively(File(FileUtil.getTempDirectory(), "github_cache").toPath())
+    FileUtil.delete((PathManager.getSystemDir() / "caches" / "github_cache").toFile())
     UsageTracker.cleanAfterTesting()
   }
 
