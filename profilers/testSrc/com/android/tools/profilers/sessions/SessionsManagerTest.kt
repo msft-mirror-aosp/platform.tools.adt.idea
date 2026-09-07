@@ -27,6 +27,7 @@ import com.android.tools.profiler.proto.Memory.HeapDumpInfo
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.LiveViewSessionArtifact
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.StudioProfilers
@@ -40,6 +41,7 @@ import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandler
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
+import com.android.tools.profilers.tasks.taskhandlers.singleartifact.LiveTaskHandler
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.cpu.SystemTraceTaskHandler
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory.NativeAllocationsTaskHandler
 import com.google.common.annotations.VisibleForTesting
@@ -731,6 +733,51 @@ class SessionsManagerTest {
     assertThat(myManager.selectedSession.sessionId).isEqualTo(0)
     // Aspect should not have been triggered at all with imported session.
     assertThat(myObserver.ongoingSessionEndedCount).isEqualTo(0)
+  }
+
+  @Test
+  fun testCompletedSessionNotAutoSelectedWhenNotCurrentlySelectedWithTaskBasedUx() {
+    ideProfilerServices.enableTaskBasedUx(true)
+    val streamId = 1L
+    val pid = 10
+    val onlineDevice = Common.Device.newBuilder().setDeviceId(streamId).setState(Common.Device.State.ONLINE).build()
+    val onlineProcess = Common.Process.newBuilder().setPid(pid).setState(Common.Process.State.ALIVE).build()
+    myProfilers.addTaskHandler(ProfilerTaskType.SYSTEM_TRACE, SystemTraceTaskHandler(myManager, false))
+    myProfilers.addTaskHandler(ProfilerTaskType.LIVE_VIEW, LiveTaskHandler(myManager))
+    beginSessionWithTaskHelper(onlineDevice, onlineProcess, Common.ProfilerTaskType.SYSTEM_TRACE)
+
+    val liveSession = myManager.selectedSession
+    assertThat(liveSession.pid).isEqualTo(pid)
+    assertThat(myManager.isSessionAlive).isTrue()
+
+    // Request session termination in background
+    myManager.endCurrentSession()
+
+    // Simulate user switching to an imported recording while the live session is still terminating
+    val importedSession = Common.Session.newBuilder().setSessionId(999L).setPid(0).build()
+    val importedMetadata =
+      Common.SessionMetaData.newBuilder()
+        .setSessionId(999L)
+        .setType(Common.SessionMetaData.SessionType.FULL)
+        .setTaskType(Common.ProfilerTaskType.LIVE_VIEW)
+        .build()
+    val liveViewArtifact = LiveViewSessionArtifact(myProfilers, importedSession, importedMetadata)
+    val sessionItem =
+      SessionItem(myProfilers, importedSession, importedMetadata).apply {
+        setChildArtifacts(listOf(liveViewArtifact))
+      }
+    myManager.sessionIdToSessionItems[999L] = sessionItem
+    myManager.mySessionMetaDatas[999L] = importedMetadata
+    myManager.currentTaskType = ProfilerTaskType.LIVE_VIEW
+    myManager.setSession(importedSession)
+    assertThat(myManager.selectedSession).isEqualTo(importedSession)
+
+    // Now process the background session end event
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    // Verify that the ended live session did not hijack the selected session
+    assertThat(myManager.selectedSession).isEqualTo(importedSession)
+    assertThat(myManager.currentTaskType).isEqualTo(ProfilerTaskType.LIVE_VIEW)
   }
 
   @Test

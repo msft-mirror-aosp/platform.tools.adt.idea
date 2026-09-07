@@ -57,6 +57,7 @@ object ProfilerTaskLauncher {
       // Open the task tab with the selected task and constructed task arguments.
       openTaskTab.accept(selectedTaskType, args)
     } catch (e: Exception) {
+      getLogger().warn("Failed to launch profiler task for type $selectedTaskType", e)
       ideProfilerServices.showNotification(TaskNotifications.LAUNCH_TASK_FAILURE)
     }
   }

@@ -368,16 +368,22 @@ public class SessionsManager extends AspectModel<SessionAspect> {
 
     // If Task-Based UX is enabled, then there are two specific instances where selection of the session should be made:
     // (1) A new session was found, and it is ongoing.
-    // (2) An existing session was found, and it has completed.
+    // (2) An existing session was found, it has completed, and it is the currently selected session with a matching task type.
     // Both cases (1) and (2) require that there be a non-UNSPECIFIED `currentTaskType` set and that the session was not imported.
     //
     // Note: A newly found and complete session is not auto-selected to prevent Studio from auto-selecting a task recording after soft
-    // restarting Studio.
+    // restarting Studio. Also, an ending session that is no longer the selected session should not hijack selection.
     boolean isTaskBasedUXEnabled = myProfilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
     if (isTaskBasedUXEnabled) {
+      Common.SessionMetaData metaData = getSessionMetaData(session.getSessionId());
+      boolean taskTypeMatches = metaData != null &&
+                                TaskTypeMappingUtils.convertTaskType(metaData.getTaskType()) == myCurrentTaskType;
+      boolean isCurrentSessionEnding = !newSessionFound && sessionNewlyEnded &&
+                                       mySelectedSession.getSessionId() == session.getSessionId() &&
+                                       taskTypeMatches;
       shouldSetSession = !isSessionImported(session) &&
                          myCurrentTaskType != ProfilerTaskType.UNSPECIFIED &&
-                         ((newSessionFound && !sessionNewlyEnded) || (!newSessionFound && sessionNewlyEnded));
+                         ((newSessionFound && !sessionNewlyEnded) || isCurrentSessionEnding);
     }
     return shouldSetSession;
   }
