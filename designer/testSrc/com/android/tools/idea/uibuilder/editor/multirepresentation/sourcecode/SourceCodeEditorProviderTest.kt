@@ -29,6 +29,8 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.components.serviceAsync
@@ -37,6 +39,7 @@ import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -293,6 +296,35 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
     val editor = buildEditor(provider, file.project, file.virtualFile)
     TestCase.assertNotNull(editor)
     withContext(Dispatchers.EDT) { provider.disposeEditor(editor) }
+  }
+
+  // Regression test for b/553120510
+  @Test
+  fun testCreateFileEditorWithUncommittedDocumentUnderModalProgress(): Unit = runBlocking {
+    if (asyncMode != EditorCreationMode.ASYNC) return@runBlocking
+
+    val file = fixture.addFileToProject("src/Preview.kt", "")
+    val document = readAction { FileDocumentManager.getInstance().getDocument(file.virtualFile) }
+
+    withContext(Dispatchers.EDT) {
+      runWriteActionAndWait { document!!.setText("class Foo") }
+      ProgressManager.getInstance()
+        .runProcessWithProgressSynchronously(
+          {
+            val modalContext = ModalityState.defaultModalityState().asContextElement()
+            runBlocking(modalContext) {
+              val editor = provider.createFileEditor(file.project, file.virtualFile, document, editorScope)
+              TestCase.assertNotNull(editor)
+              withContext(Dispatchers.EDT + modalContext) {
+                provider.disposeEditor(editor)
+              }
+            }
+          },
+          "Opening file",
+          false,
+          file.project,
+        )
+    }
   }
 
   companion object {
