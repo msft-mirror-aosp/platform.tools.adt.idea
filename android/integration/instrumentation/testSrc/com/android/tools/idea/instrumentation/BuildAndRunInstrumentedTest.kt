@@ -53,7 +53,7 @@ class BuildAndRunInstrumentedTest {
           studio.executeActionWhenSmart("Run")
 
           studio.waitForEmulatorStart(system.installation.ideaLog, emulator, "com\\.example\\.instrumentedtestapp", 1, TimeUnit.MINUTES)
-          adb.runCommand("logcat").waitForLog(".*Instrumented Test Success!!.*", 5.minutes)
+          adb.runCommand("logcat").waitForLog(".*Instrumented Test Success!!.*", 10.minutes)
         }
       }
     }

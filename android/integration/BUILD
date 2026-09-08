@@ -1,4 +1,4 @@
-load("//tools/adt/idea/android/integration:build_defs.bzl", "AGP_9_4_ARTIFACTS_FOR_TESTS", "AGP_ARTIFACTS_FOR_TESTS", "INTEGRATION_TEST_BUILD_TOOLS", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE", "KOTLIN_ARTIFACTS_FOR_TESTS")
+load("//tools/adt/idea/android/integration:build_defs.bzl", "AGP_ARTIFACTS_FOR_TESTS", "INTEGRATION_TEST_BUILD_TOOLS", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE", "KOTLIN_ARTIFACTS_FOR_TESTS")
 load("//tools/adt/idea/emulator-snapshots:emulator_test_env.bzl", "emulator_snapshot_data", "emulator_snapshot_jvm_flags", "emulator_test_jvm_flags")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test", "studio_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
@@ -137,7 +137,7 @@ maven_repository(
         "@maven//:androidx.test.espresso.espresso-intents_3.5.0",
         "@maven//:androidx.test.espresso.idling.idling-concurrent_3.5.0",
         "@maven//:androidx.test.ext.junit-ktx_1.1.4",
-        "@maven//:com.android.tools.lint.lint-gradle_32.0.0",
+        "@maven//:com.android.tools.lint.lint-gradle_32.4.0",
         "@maven//:com.google.accompanist.accompanist-appcompat-theme_0.28.0",
         "@maven//:com.google.accompanist.accompanist-swiperefresh_0.28.0",
         "@maven//:com.google.dagger.hilt.android.com.google.dagger.hilt.android.gradle.plugin_2.59",
@@ -661,7 +661,7 @@ maven_repository(
         "@maven//:org.junit.junit-bom_5.11.0-M2",
         "@maven//:org.junit.junit-bom_5.9.2",
         "@maven//:org.junit.junit-bom_5.9.3",
-    ] + AGP_ARTIFACTS_FOR_TESTS + KOTLIN_ARTIFACTS_FOR_TESTS + AGP_9_4_ARTIFACTS_FOR_TESTS,
+    ] + AGP_ARTIFACTS_FOR_TESTS + KOTLIN_ARTIFACTS_FOR_TESTS,
 )
 
 maven_repository(
@@ -948,7 +948,7 @@ maven_repository(
         "@maven//:androidx.lifecycle.lifecycle-viewmodel_2.8.7",
         "@maven//:androidx.test.espresso.espresso-core_3.5.1",
         "@maven//:androidx.test.ext.junit_1.1.5",
-        "@maven//:com.android.tools.lint.lint-gradle_32.0.0",
+        "@maven//:com.android.tools.lint.lint-gradle_32.4.0",
         "@maven//:commons-io.commons-io_2.13.0",
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.2.10",
@@ -979,8 +979,8 @@ maven_repository(
         "@maven//:com.android.tools.utp.android-test-plugin-host-emulator-control_32.0.0",
         "@maven//:com.android.tools.utp.android-test-plugin-host-logcat_32.0.0",
         "@maven//:com.android.tools.utp.android-test-plugin-result-listener-gradle_32.0.0",
-        "@maven//:com.android.tools.utp.gradle-work-action-api_32.0.0",
-        "@maven//:com.android.tools.utp.gradle-work-action_32.0.0",
+        "@maven//:com.android.tools.utp.gradle-work-action-api_32.4.0",
+        "@maven//:com.android.tools.utp.gradle-work-action_32.4.0",
         "@maven//:com.google.android.material.material_1.5.0",
         "@maven//:com.google.testing.platform.android-device-provider-local_0.0.9-alpha03",
         "@maven//:com.google.testing.platform.android-driver-instrumentation_0.0.9-alpha03",
@@ -1066,8 +1066,8 @@ maven_repository(
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-compose_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-ktx_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-viewmodel-savedstate_2.6.1",
-        "@maven//:com.android.kotlin.multiplatform.library.com.android.kotlin.multiplatform.library.gradle.plugin_9.0.0",
-        "@maven//:com.android.tools.lint.lint-gradle_32.0.0",
+        "@maven//:com.android.kotlin.multiplatform.library.com.android.kotlin.multiplatform.library.gradle.plugin_9.4.0",
+        "@maven//:com.android.tools.lint.lint-gradle_32.4.0",
         "@maven//:com.google.devtools.ksp.com.google.devtools.ksp.gradle.plugin_2.2.10-2.0.2",
         "@maven//:com.google.devtools.ksp.symbol-processing-aa-embeddable_2.2.10-2.0.2",
         "@maven//:com.google.devtools.ksp.symbol-processing_2.2.10-2.0.2",

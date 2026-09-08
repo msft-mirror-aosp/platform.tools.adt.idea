@@ -1,4 +1,4 @@
-load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "KOTLIN_ARTIFACTS_FOR_TESTS")
+load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
@@ -205,11 +205,11 @@ maven_repository(
     name = "ktsprojectapp_deps",
     # keep sorted: for buildifier
     artifacts = [
-        "@maven//:com.android.application.com.android.application.gradle.plugin_9.0.0",
-        "@maven//:com.android.tools.build.aapt2_9.0.0-14304508",
-        "@maven//:com.android.tools.build.gradle_9.0.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-reflect_2.2.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib_2.2.0",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_9.4.0",
+        "@maven//:com.android.tools.build.aapt2_9.4.0-15978811",
+        "@maven//:com.android.tools.build.gradle_9.4.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_2.3.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib_2.3.21",
     ],
 )
 

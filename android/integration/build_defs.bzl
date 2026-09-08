@@ -5,7 +5,7 @@ This module contains common constants used in builds/tests.
 # The version of Gradle to use for integration tests. This must be kept
 # in-sync with code (search the codebase for
 # "INTEGRATION_TEST_GRADLE_VERSION").
-INTEGRATION_TEST_GRADLE_VERSION = "//tools/base/build-system:gradle-distrib-9.1.0"
+INTEGRATION_TEST_GRADLE_VERSION = "//tools/base/build-system:gradle-distrib-9.6.0"
 
 # The emulator to use for integration tests. This must be kept in-sync with
 # code (search the codebase for "INTEGRATION_TEST_SYSTEM_IMAGE").
@@ -42,13 +42,6 @@ KOTLIN_ARTIFACTS_FOR_TESTS = [
 
 # AGP artifacts required for building test projects
 AGP_ARTIFACTS_FOR_TESTS = [
-    "@maven//:com.android.application.com.android.application.gradle.plugin_9.0.0",
-    "@maven//:com.android.library.com.android.library.gradle.plugin_9.0.0",
-    "@maven//:com.android.tools.build.aapt2_9.0.0-14304508",
-    "@maven//:com.android.tools.build.gradle_9.0.0",
-]
-
-AGP_9_4_ARTIFACTS_FOR_TESTS = [
     "@maven//:com.android.application.com.android.application.gradle.plugin_9.4.0",
     "@maven//:com.android.library.com.android.library.gradle.plugin_9.4.0",
     "@maven//:com.android.tools.build.aapt2_9.4.0-15978811",
