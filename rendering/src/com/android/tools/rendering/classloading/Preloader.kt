@@ -23,18 +23,24 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** This is a wrapper around a class preloading [CompletableFuture] that allows for the proper disposal of the resources used. */
 open class Preloader<T : ModuleClassLoader>(moduleClassLoader: T, executor: Executor, classesToPreload: Collection<String> = emptyList()) {
   private val classLoader = SoftReference(moduleClassLoader)
-  private var isActive = AtomicBoolean(true)
+  private val active = AtomicBoolean(true)
+
+  val isActive: Boolean
+    get() = active.get()
 
   init {
     if (classesToPreload.isNotEmpty()) {
-      preload(moduleClassLoader, { isActive.get() && !(classLoader.get()?.isDisposed ?: true) }, classesToPreload, executor)
+      preload(moduleClassLoader, { isActive && !(classLoader.get()?.isDisposed ?: true) }, classesToPreload, executor)
     }
   }
 
   /** Cancels the on-going preloading. */
   fun cancel() {
-    isActive.set(false)
+    active.set(false)
   }
+
+  /** Returns whether the underlying class loader is still reachable, without cancelling preloading. */
+  fun isAlive(): Boolean = classLoader.get() != null
 
   fun dispose() {
     cancel()
