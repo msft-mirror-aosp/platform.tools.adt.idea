@@ -574,6 +574,48 @@ public final class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
+  public void captureStageTransitionTest_javaKotlinMethodRecording_inEditorEnabled_failure() throws Exception {
+    myServices.setShouldProceedYesNoDialog(true);
+    myServices.setMethodTraceInEditorEnabled(true);
+    ProfilingConfiguration config = ArtInstrumentedConfiguration.create("My Config", true);
+    myStage.getProfilerConfigModel().setProfilingConfiguration(config);
+    CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
+    CpuProfilerTestUtils.stopCapturing(myStage, myTransportService, true, ByteString.EMPTY);
+
+    assertThat(myServices.getNotification()).isEqualTo(CpuProfilerNotifications.PARSING_FAILURE);
+    assertThat(myServices.getOpenedFile()).isNull();
+    assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING);
+  }
+
+  @Test
+  public void captureStageTransitionTest_callstackSample_inEditorEnabled_failure() throws Exception {
+    myServices.setShouldProceedYesNoDialog(true);
+    myServices.setCallstackSampleTraceInEditorEnabled(true);
+    ProfilingConfiguration config = new SimpleperfConfiguration("My Config");
+    myStage.getProfilerConfigModel().setProfilingConfiguration(config);
+    CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
+    CpuProfilerTestUtils.stopCapturing(myStage, myTransportService, true, TracePreProcessor.FAILURE);
+
+    assertThat(myServices.getNotification()).isEqualTo(CpuProfilerNotifications.PARSING_FAILURE);
+    assertThat(myServices.getOpenedFile()).isNull();
+    assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.CALLSTACK_SAMPLE);
+  }
+
+  @Test
+  public void captureStageTransitionTest_systemTrace_inEditorEnabled_failure() throws Exception {
+    myServices.setShouldProceedYesNoDialog(true);
+    myServices.setSystemTraceInEditorEnabled(true);
+    ProfilingConfiguration config = new PerfettoSystemTraceConfiguration("My Config", false);
+    myStage.getProfilerConfigModel().setProfilingConfiguration(config);
+    CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
+    CpuProfilerTestUtils.stopCapturing(myStage, myTransportService, true, ByteString.EMPTY);
+
+    assertThat(myServices.getNotification()).isEqualTo(CpuProfilerNotifications.PARSING_FAILURE);
+    assertThat(myServices.getOpenedFile()).isNull();
+    assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.SYSTEM_TRACE);
+  }
+
+  @Test
   public void implicitSelectionOfCpuCaptureSessionArtifactProtoIsMadePostRecording() throws Exception {
     // Capture a CPU Trace, generating a CpuSessionArtifact
     CpuProfilerTestUtils.captureSuccessfully(myStage, myTransportService, CpuProfilerTestUtils.readValidTrace());

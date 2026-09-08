@@ -15,11 +15,13 @@
  */
 package com.android.tools.profilers
 
+import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.ProfilerTaskMetadataProto
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.cpu.CpuCaptureParserUtil
 import com.android.tools.profilers.cpu.TraceMerger
+import com.android.tools.profilers.cpu.TracePreProcessor
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.tasks.ProfilerTaskType
@@ -27,6 +29,7 @@ import com.android.tools.profilers.utils.ProfilerHashUtils
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.io.FileUtil
 import java.io.File
+import java.io.IOException
 
 object ProfilerCaptureFileUtils {
   /**
@@ -41,12 +44,24 @@ object ProfilerCaptureFileUtils {
    */
   @JvmStatic
   fun renameToTargetFile(captureFile: File, targetFileName: String): File? {
+    if (!captureFile.exists() || captureFile.length() == 0L) {
+      return null
+    }
+
     // Use the system temp directory as the destination folder for the permanent file.
     val outputDir = File(FileUtil.getTempDirectory())
     val traceFile = File(outputDir, targetFileName)
 
+    if (captureFile.absolutePath == traceFile.absolutePath) {
+      return traceFile
+    }
+
     if (traceFile.exists() && traceFile.length() > 0L) {
       return traceFile
+    }
+
+    if (traceFile.exists()) {
+      traceFile.delete()
     }
 
     // Try to rename the capture file to the target file.
@@ -67,12 +82,28 @@ object ProfilerCaptureFileUtils {
   }
 
   @JvmStatic
+  fun isPreprocessFailure(file: File): Boolean {
+    val failureSize = TracePreProcessor.FAILURE.size()
+    if (file.length() == failureSize.toLong()) {
+      try {
+        file.inputStream().use { isStream ->
+          val bytes = isStream.readNBytes(failureSize)
+          return isStream.read() == -1 && TracePreProcessor.FAILURE == ByteString.copyFrom(bytes)
+        }
+      } catch (_: IOException) {
+        return false
+      }
+    }
+    return false
+  }
+
+  @JvmStatic
   fun getCaptureAsFile(profilers: StudioProfilers, traceId: Long): File? {
     val traceRequest = Transport.BytesRequest.newBuilder().setStreamId(profilers.session.streamId).setId(traceId.toString()).build()
     val traceResponse = profilers.client.transportClient.getFile(traceRequest)
     if (traceResponse.filePath.isEmpty()) return null
     val captureFile = File(traceResponse.filePath)
-    if (!captureFile.exists() || captureFile.length() == 0L) return null
+    if (!captureFile.exists() || captureFile.length() == 0L || isPreprocessFailure(captureFile)) return null
     return captureFile
   }
 

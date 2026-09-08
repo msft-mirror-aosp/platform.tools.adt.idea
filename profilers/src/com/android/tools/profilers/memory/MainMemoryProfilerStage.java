@@ -733,18 +733,14 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
           ProfilerCaptureFileUtils.writeMetadataToFile(profilers, profilers.getSession(), file);
           final File traceFile = file;
           profilers.getIdeServices().getMainExecutor().execute(() -> {
-            if (traceFile.exists()) {
+            if (traceFile != null && traceFile.exists() && traceFile.length() > 0) {
               profilers.getIdeServices().openTraceFile(traceFile);
-              if (capture instanceof HeapDumpCaptureObject) {
-                profilers.getIdeServices().closeTaskTab(ProfilerTaskType.HEAP_DUMP);
-              }
-              else if (capture instanceof NativeAllocationSampleCaptureObject) {
-                profilers.getIdeServices().closeTaskTab(ProfilerTaskType.NATIVE_ALLOCATIONS);
-              }
-              else if (capture instanceof LegacyAllocationCaptureObject) {
-                profilers.getIdeServices().closeTaskTab(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
-              }
             }
+            else {
+              profilers.getIdeServices().showNotification(MemoryProfilerNotifications.getCaptureFailure(capture));
+              cleanupFailedCapture();
+            }
+            closeMemoryTaskTab(capture);
           });
         });
       }
@@ -754,6 +750,18 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     }
     else {
       doSelectCaptureDuration(durationData, joiner);
+    }
+  }
+
+  private void closeMemoryTaskTab(@NotNull CaptureObject capture) {
+    if (capture instanceof HeapDumpCaptureObject) {
+      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.HEAP_DUMP);
+    }
+    else if (capture instanceof NativeAllocationSampleCaptureObject) {
+      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.NATIVE_ALLOCATIONS);
+    }
+    else if (capture instanceof LegacyAllocationCaptureObject) {
+      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
     }
   }
 
