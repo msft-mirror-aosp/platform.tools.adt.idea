@@ -16,7 +16,9 @@
 package com.android.tools.rendering.classloading
 
 import com.google.common.util.concurrent.MoreExecutors
+import com.intellij.openapi.diagnostic.ControlFlowException
 import java.lang.ref.WeakReference
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executor
 
 /**
@@ -36,12 +38,20 @@ fun preload(
   executor.execute {
     val theClassLoader = classLoaderRef.get() ?: return@execute
     for (classToPreload in classesToPreload) {
+      if (!isActive()) {
+        break
+      }
       try {
-        if (!isActive()) {
-          break
-        }
         theClassLoader.loadClass(classToPreload)
-      } catch (_: NoClassDefFoundError) {} catch (_: ClassNotFoundException) {}
+      } catch (_: LinkageError) {
+        // Ignored
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        if (e is ControlFlowException) {
+          throw e
+        }
+      }
     }
   }
 }
