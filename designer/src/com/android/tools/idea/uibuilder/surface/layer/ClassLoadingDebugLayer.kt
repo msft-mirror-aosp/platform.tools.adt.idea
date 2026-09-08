@@ -58,7 +58,13 @@ class ClassLoadingDebugLayer(val module: Module) : Layer() {
           it.states.forEach { stat ->
             g.setColorAndAlpha(Color.GREEN)
             g.drawRect(startX + horShift, startY + vertShift, PROGRESS_WIDTH, PROGRESS_HEIGHT)
-            g.fillRect(startX + horShift, startY + vertShift, PROGRESS_WIDTH * stat.progress / stat.toDo, PROGRESS_HEIGHT)
+            val fillWidth =
+              if (stat.toDo > 0) {
+                (PROGRESS_WIDTH * stat.progress / stat.toDo).coerceIn(0, PROGRESS_WIDTH)
+              } else {
+                0
+              }
+            g.fillRect(startX + horShift, startY + vertShift, fillWidth, PROGRESS_HEIGHT)
             vertShift += 2 * PROGRESS_HEIGHT
           }
           horShift += PROGRESS_WIDTH + PROGRESS_WIDTH / 2
