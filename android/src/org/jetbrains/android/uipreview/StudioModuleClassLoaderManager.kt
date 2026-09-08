@@ -338,8 +338,12 @@ class StudioModuleClassLoaderManager : ModuleClassLoaderManager<StudioModuleClas
   fun release(moduleClassLoaderReference: ModuleClassLoaderManager.Reference<*>) {
     LOG.debug { "release reference $moduleClassLoaderReference" }
     val classLoader = moduleClassLoaderReference.classLoader as StudioModuleClassLoader
-    unHold(moduleClassLoaderReference)
-    if (stopManagingIfNotHeld(classLoader)) {
+    val shouldDispose =
+      synchronized(this) {
+        unHold(moduleClassLoaderReference)
+        stopManagingIfNotHeld(classLoader)
+      }
+    if (shouldDispose) {
       classLoader.dispose()
     }
   }
