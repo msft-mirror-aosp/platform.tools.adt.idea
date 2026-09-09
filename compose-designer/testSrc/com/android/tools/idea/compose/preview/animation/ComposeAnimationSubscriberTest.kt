@@ -116,8 +116,8 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
   fun classLoaderRedirectsSubscriptionToAnimationManager() = runTest {
     val animationPreview = createAnimationPreview(scope = backgroundScope).apply { this.component.size = Dimension(400, 400) }
     val ui =
-      FakeUi(animationPreview.component).apply {
-        withContext(Dispatchers.EDT) {
+      withContext(Dispatchers.EDT) {
+        FakeUi(animationPreview.component).apply {
           layoutAndDispatchEvents()
           updateToolbarsIfNecessary()
         }

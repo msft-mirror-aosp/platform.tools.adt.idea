@@ -533,8 +533,10 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       }
 
     val animationPreview =
-      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
-        it.animationClock = AnimationClock(TestClock())
+      com.intellij.testFramework.runInEdtAndGet {
+        ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+          it.animationClock = AnimationClock(TestClock())
+        }
       }
 
     animationPreview.addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)).join()

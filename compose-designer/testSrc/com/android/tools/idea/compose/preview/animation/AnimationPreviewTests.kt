@@ -48,7 +48,9 @@ open class AnimationPreviewTests {
     val model = runInEdtAndGet {
       NlModelBuilderUtil.model(projectRule, "layout", "layout.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
     }
-    surface = NlSurfaceBuilder.builder(projectRule.project, parentDisposable).build()
+    surface = runInEdtAndGet {
+      NlSurfaceBuilder.builder(projectRule.project, parentDisposable).build()
+    }
     surface.addModelsWithoutRender(listOf(model))
 
     val psiFile =
@@ -60,10 +62,12 @@ open class AnimationPreviewTests {
           .trimIndent(),
       )
 
-    animationPreview = createAnimationPreview(projectRule.testRootDisposable.createCoroutineScope())
+    animationPreview = runInEdtAndGet {
+      createAnimationPreview(projectRule.testRootDisposable.createCoroutineScope())
+    }
   }
 
-  protected fun createAnimationPreview(scope: CoroutineScope) =
+  protected fun createAnimationPreview(scope: CoroutineScope): ComposeAnimationPreview = runInEdtAndGet {
     ComposeAnimationPreview(
         scope,
         surface.project,
@@ -72,4 +76,5 @@ open class AnimationPreviewTests {
         surface,
       )
       .also { it.animationClock = AnimationClock(TestClock()) }
+  }
 }

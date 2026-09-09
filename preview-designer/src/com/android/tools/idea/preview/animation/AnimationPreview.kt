@@ -101,10 +101,6 @@ abstract class AnimationPreview<T : AnimationManager>(
       parentDisposable = parentScope.scopeDisposable(),
     )
 
-  init {
-    scope.coroutineContext.job.invokeOnCompletion { timeline.sliderUI.elements.forEach { Disposer.dispose(it) } }
-  }
-
   fun cancelScope() {
     scope.cancel()
   }
@@ -164,6 +160,10 @@ abstract class AnimationPreview<T : AnimationManager>(
       addChangeListener { scope.launch(Dispatchers.EDT) { bottomPanel.clockTimeMs = value } }
     }
   val clockControl = SliderClockControl(timeline)
+
+  init {
+    scope.coroutineContext.job.invokeOnCompletion { timeline.sliderUI.elements.forEach { Disposer.dispose(it) } }
+  }
 
   /** Provides buttons and controls for playing, pausing, and adjusting the playback speed of the animation. */
   protected val playbackControls =
