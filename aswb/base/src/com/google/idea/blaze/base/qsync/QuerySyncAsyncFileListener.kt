@@ -60,8 +60,7 @@ open class QuerySyncAsyncFileListener @VisibleForTesting constructor(private val
     return object : ChangeApplier {
       override fun afterVfsChange() {
         ApplicationManager.getApplication().invokeLater {
-          val notifyOnChange = UnsyncedFileEditorNotificationProvider.NOTIFY_ON_BUILD_FILE_CHANGES.value
-          if (notifyOnChange && buildFileModified) {
+          if (buildFileModified) {
             changeCounter.incrementAndGet()
           }
 
