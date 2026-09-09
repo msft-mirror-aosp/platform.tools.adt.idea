@@ -15,38 +15,43 @@
  */
 package com.android.tools.idea.device.explorer.files.fs
 
+import kotlin.time.Duration
+
 /**
  * Utility class used to ensure that progress report from a long running activity is throttled to the given interval.
  *
  * <p>Usage:
  * <pre>
- *   myThrottledProgress = new ThrottledProgress(100); // 100 millis interval
+ *   myThrottledProgress = ThrottledProgress(100.milliseconds)
  *   (...)
- *   void reportProgress() {
+ *   fun reportProgress() {
  *     if (myThrottledProgress.check()) {
  *       // Code to report progress here...
  *     }
  *   }
  * </pre>
  */
-class ThrottledProgress(private val intervalNano: Long) {
-  private var lastNotifyNanoTime: Long = 0
-
-  @SuppressWarnings("unused")
-  fun getIntervalMillis(): Long {
-    return intervalNano / 1000000
-  }
+class ThrottledProgress(
+  interval: Duration,
+  private val nanoTimeSupplier: () -> Long = System::nanoTime,
+) {
+  private var lastNotifyNanoTime: Long? = null
+  private val intervalNanos = interval.inWholeNanoseconds
 
   /**
-   * Returns `true` if caller should report progress, i.e. if the time elapsed since the last time we returned `true` exceeds
-   * [.getIntervalMillis].
+   * Returns `true` if caller should report progress, i.e. if the time elapsed since the last time we returned `true` exceeds the specified
+   * interval.
    */
   fun check(): Boolean {
-    val currentNanoTime = System.nanoTime()
-    if (currentNanoTime - lastNotifyNanoTime < intervalNano) {
-      return false
+    val currentNanoTime = nanoTimeSupplier()
+    val lastNotifiedNanos = lastNotifyNanoTime
+
+    // If first time or enough time has passed, return `true`
+    if (lastNotifiedNanos == null || currentNanoTime - lastNotifiedNanos >= intervalNanos) {
+      lastNotifyNanoTime = currentNanoTime
+      return true
     }
-    lastNotifyNanoTime = currentNanoTime
-    return true
+
+    return false
   }
 }

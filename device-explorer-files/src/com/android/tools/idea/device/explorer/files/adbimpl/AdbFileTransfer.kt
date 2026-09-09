@@ -28,7 +28,7 @@ import com.google.common.base.Stopwatch
 import com.intellij.openapi.diagnostic.logger
 import java.nio.file.Path
 import java.util.concurrent.Executor
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -142,7 +142,7 @@ private class SingleFileProgressMonitor(
   private val progress: FileTransferProgress,
   private val totalBytes: Long,
 ) : SyncProgress {
-  private val throttledProgress = ThrottledProgress(TimeUnit.MILLISECONDS.toNanos(PROGRESS_REPORT_INTERVAL_MILLIS))
+  private val throttledProgress = ThrottledProgress(PROGRESS_REPORT_INTERVAL)
 
   override suspend fun transferStarted(remotePath: String) {
     callbackExecutor.execute { progress.progress(0, totalBytes) }
@@ -162,4 +162,4 @@ private class SingleFileProgressMonitor(
   }
 }
 
-private const val PROGRESS_REPORT_INTERVAL_MILLIS = 50L
+private val PROGRESS_REPORT_INTERVAL = 50.milliseconds
