@@ -252,6 +252,14 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       }
     multiplePreviewsPanel.add(scrollPane, BorderLayout.CENTER)
 
+    // Link scrollbars for a synchronized experience across side-by-side panels.
+    val horizontalModels = multiViewPanels.map { it.scrollPane.horizontalScrollBar.model }
+    val verticalModels = multiViewPanels.map { it.scrollPane.verticalScrollBar.model }
+    val horizontalSyncListener = SyncListener(horizontalModels)
+    val verticalSyncListener = SyncListener(verticalModels)
+    horizontalModels.forEach { it.addChangeListener(horizontalSyncListener) }
+    verticalModels.forEach { it.addChangeListener(verticalSyncListener) }
+
     add(multiplePreviewsPanel, MULTIPLE_PREVIEWS_PANEL)
     add(singlePreviewPanel, SINGLE_PREVIEW_PANEL)
   }
@@ -270,6 +278,8 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     viewType: ScreenshotViewType,
     previewToolbar: JComponent?,
   ) {
+    loadingFutures.values.forEach { it.cancel(true) }
+    loadingFutures.clear()
     val cardLayout = layout as CardLayout
     if (previewsToShow.size == 1 && previewToolbar != null) {
       displaySinglePreviewDetails(previewsToShow.first(), viewType, previewToolbar)
@@ -364,24 +374,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         secondComponent = rightSplit
       }
 
-    // Link scrollbars for a synchronized experience.
-    val horizontalModels = multiViewPanels.map { it.scrollPane.horizontalScrollBar.model }
-    val verticalModels = multiViewPanels.map { it.scrollPane.verticalScrollBar.model }
-    val horizontalSyncListener = SyncListener(horizontalModels)
-    val verticalSyncListener = SyncListener(verticalModels)
-    horizontalModels.forEach { it.addChangeListener(horizontalSyncListener) }
-    verticalModels.forEach { it.addChangeListener(verticalSyncListener) }
-
-    val diffPlaceholder =
-      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
-        NO_DIFFERENCE_TEXT
-      } else if (previewData.isSizeMismatch) {
-        previewData.sizeMismatchMessage?.let { msg ->
-          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
-        } ?: SIZE_MISMATCH_TEXT
-      } else {
-        NO_DIFF_IMAGE_TEXT
-      }
+    val diffPlaceholder = getDiffPlaceholderText(previewData)
     loadImageAsync(previewData.srcImagePath, newImagePanel, NO_NEW_IMAGE_TEXT)
     loadImageAsync(previewData.diffImagePath, diffImagePanel, diffPlaceholder)
     loadImageAsync(previewData.destImagePath, refImagePanel, NO_REF_IMAGE_TEXT)
@@ -395,6 +388,19 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     return allImagesPanel
   }
 
+  /** Computes the placeholder text for diff images based on result status and size mismatch info. */
+  private fun getDiffPlaceholderText(previewData: PreviewDetails): String {
+    return if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+      NO_DIFFERENCE_TEXT
+    } else if (previewData.isSizeMismatch) {
+      previewData.sizeMismatchMessage?.let { msg ->
+        "<html><div style='text-align: center;'>${msg.split(". ").joinToString("<br>")}</div></html>"
+      } ?: SIZE_MISMATCH_TEXT
+    } else {
+      NO_DIFF_IMAGE_TEXT
+    }
+  }
+
   /** Sets up a single image view that can be switched via a [CardLayout]. Each view has its own dedicated toolbar. */
   private fun setupSingleImageView(
     previewData: PreviewDetails,
@@ -406,16 +412,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     imageContainer.add(refImagePanelSingle, ScreenshotViewType.REFERENCE.displayText)
 
     val cardLayout = imageContainer.layout as CardLayout
-    val diffPlaceholder =
-      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
-        NO_DIFFERENCE_TEXT
-      } else if (previewData.isSizeMismatch) {
-        previewData.sizeMismatchMessage?.let { msg ->
-          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
-        } ?: SIZE_MISMATCH_TEXT
-      } else {
-        NO_DIFF_IMAGE_TEXT
-      }
+    val diffPlaceholder = getDiffPlaceholderText(previewData)
 
     when (viewType) {
       ScreenshotViewType.NEW -> loadImageAsync(previewData.srcImagePath, newImagePanelSingle, NO_NEW_IMAGE_TEXT)
@@ -508,7 +505,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         previewData.methodName
       }
 
-    val refImagePath = previewData.destImagePath?.let { if (File(it).exists()) it else null }
+    val refImagePath = previewData.destImagePath?.takeIf { File(it).exists() }
 
     screenshotAttributesView.updateData(
       refImagePath = refImagePath,
