@@ -107,6 +107,9 @@ interface RenderSandbox {
   /** Guards access to print jobs. */
   fun checkPrintJob()
 
+  /** Guards access to ImageIO SPI registries and plugin scanning. */
+  fun checkImageIo()
+
   /** Guards access to read individual system properties. */
   fun checkPropertyRead(propertyName: String)
 
@@ -220,6 +223,8 @@ open class RenderSandboxDelegate(private val delegate: RenderSandbox) : RenderSa
 
   override fun checkPrintJob() = delegate.checkPrintJob()
 
+  override fun checkImageIo() = delegate.checkImageIo()
+
   override fun checkPropertyRead(propertyName: String) = delegate.checkPropertyRead(propertyName)
 
   override fun checkPropertyWrite(propertyName: String) = delegate.checkPropertyWrite(propertyName)
@@ -297,6 +302,10 @@ object DenyAllRenderSandbox : RenderSandbox {
     throw SecurityException("checkPrintJob")
   }
 
+  override fun checkImageIo() {
+    throw SecurityException("checkImageIo")
+  }
+
   override fun checkPropertyRead(propertyName: String) {
     throw SecurityException("checkPropertyRead $propertyName")
   }
@@ -362,6 +371,8 @@ object AllowAllRenderSandbox : RenderSandbox {
   override fun checkEventQueue() {}
 
   override fun checkPrintJob() {}
+
+  override fun checkImageIo() {}
 
   override fun checkPropertyRead(propertyName: String) {}
 

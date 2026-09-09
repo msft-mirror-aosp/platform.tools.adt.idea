@@ -23,6 +23,7 @@ import com.intellij.openapi.extensions.ExtensionPoint
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.registerExtension
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import org.junit.Ignore
 import org.junit.Test
@@ -104,7 +105,40 @@ class StudioRenderSandboxTest {
       sandbox.checkConcurrency()
       fail("Expected SecurityException")
     } catch (e: SecurityException) {
-      org.junit.Assert.assertEquals("Concurrency is not allowed during rendering", e.message)
+      assertEquals("Concurrency is not allowed during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check image io denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkImageIo()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Access to ImageIO SPI registry is denied during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check print job denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkPrintJob()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Print job access is denied during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check event queue denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkEventQueue()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Event queue and AWT dispatch access is denied during rendering", e.message)
     }
   }
 }

@@ -83,6 +83,18 @@ class StudioRenderSandbox(val sdkPath: String?, val projectPath: String?, val ap
     throw SecurityException("ObjectInputStream.readObject is denied")
   }
 
+  override fun checkImageIo() {
+    throw SecurityException("Access to ImageIO SPI registry is denied during rendering")
+  }
+
+  override fun checkPrintJob() {
+    throw SecurityException("Print job access is denied during rendering")
+  }
+
+  override fun checkEventQueue() {
+    throw SecurityException("Event queue and AWT dispatch access is denied during rendering")
+  }
+
   override fun checkConcurrency() {
     // Many applications use concurrency so we can not simply disable it at the moment until we can restrict in a more targeted way.
     // throw SecurityException("Concurrency is not allowed during rendering")

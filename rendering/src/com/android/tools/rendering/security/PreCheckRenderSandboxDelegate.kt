@@ -96,6 +96,11 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
     delegate.checkPrintJob()
   }
 
+  override fun checkImageIo() {
+    if (!check()) return
+    delegate.checkImageIo()
+  }
+
   override fun checkPropertyRead(propertyName: String) {
     if (!check()) return
     delegate.checkPropertyRead(propertyName)

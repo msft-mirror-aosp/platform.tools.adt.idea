@@ -38,6 +38,12 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 import java.util.zip.ZipFile
+import javax.imageio.ImageIO
+import javax.imageio.spi.IIORegistry
+import javax.imageio.spi.ImageReaderSpi
+import javax.imageio.spi.ServiceRegistry
+import javax.print.PrintServiceLookup
+import javax.swing.JEditorPane
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -161,6 +167,24 @@ interface ClassToCheck {
 
   fun checkPrintJob()
 
+  fun checkPrinterJobLookup()
+
+  fun checkPrintServiceLookupRegister()
+
+  fun checkPrintServiceLookup()
+
+  fun checkIIORegistryGetDefault()
+
+  fun checkIIORegistryDeregisterAll()
+
+  fun checkServiceRegistry()
+
+  fun checkServiceRegistryLookupProviders()
+
+  fun checkImageIOScanForPlugins()
+
+  fun checkJEditorPaneRegisterEditorKit()
+
   fun checkFileChannelOpen(path: Path)
 
   fun checkZipFile()
@@ -168,6 +192,10 @@ interface ClassToCheck {
   fun checkURLOpenStream()
 
   fun checkReflectionInvoke()
+
+  fun checkReflectionInvokePrintServiceLookup()
+
+  fun checkReflectionInvokeIIORegistry()
 
   fun checkUnsafe()
 
@@ -362,6 +390,44 @@ class ClassToCheckImpl : ClassToCheck {
     PrinterJob.getPrinterJob()
   }
 
+  override fun checkPrinterJobLookup() {
+    PrinterJob.lookupPrintServices()
+  }
+
+  override fun checkPrintServiceLookupRegister() {
+    PrintServiceLookup.registerServiceProvider(null)
+  }
+
+  override fun checkPrintServiceLookup() {
+    PrintServiceLookup.lookupDefaultPrintService()
+  }
+
+  override fun checkIIORegistryGetDefault() {
+    IIORegistry.getDefaultInstance()
+  }
+
+  override fun checkIIORegistryDeregisterAll() {
+    val reg = ServiceRegistry(listOf<Class<*>>(ImageReaderSpi::class.java).iterator())
+    reg.deregisterAll()
+  }
+
+  override fun checkServiceRegistry() {
+    val reg = ServiceRegistry(listOf<Class<*>>(ImageReaderSpi::class.java).iterator())
+    reg.registerServiceProvider(Any())
+  }
+
+  override fun checkServiceRegistryLookupProviders() {
+    ServiceRegistry.lookupProviders(ImageReaderSpi::class.java)
+  }
+
+  override fun checkImageIOScanForPlugins() {
+    ImageIO.scanForPlugins()
+  }
+
+  override fun checkJEditorPaneRegisterEditorKit() {
+    JEditorPane.registerEditorKitForContentType("text/html", "EvilKit")
+  }
+
   override fun checkFileChannelOpen(path: Path) {
     FileChannel.open(path)
   }
@@ -377,6 +443,16 @@ class ClassToCheckImpl : ClassToCheck {
   override fun checkReflectionInvoke() {
     val method = System::class.java.getMethod("exit", Int::class.javaPrimitiveType)
     method.invoke(null, 0)
+  }
+
+  override fun checkReflectionInvokePrintServiceLookup() {
+    val method = PrintServiceLookup::class.java.getMethod("lookupDefaultPrintService")
+    method.invoke(null)
+  }
+
+  override fun checkReflectionInvokeIIORegistry() {
+    val method = IIORegistry::class.java.getMethod("getDefaultInstance")
+    method.invoke(null)
   }
 
   override fun checkUnsafe() {
@@ -822,5 +898,75 @@ class RenderSandboxTest {
   fun `check ThreadPoolExecutor creation fails`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     verifyThrowsSecurityException("checkConcurrency") { methodIntercept.checkThreadPoolExecutor() }
+  }
+
+  @Test
+  fun `check PrintServiceLookup register fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkPrintJob") { methodIntercept.checkPrintServiceLookupRegister() }
+  }
+
+  @Test
+  fun `check PrintServiceLookup lookup fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkPrintJob") { methodIntercept.checkPrintServiceLookup() }
+  }
+
+  @Test
+  fun `check PrinterJob lookupPrintServices fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkPrintJob") { methodIntercept.checkPrinterJobLookup() }
+  }
+
+  @Test
+  fun `check IIORegistry getDefaultInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkIIORegistryGetDefault() }
+  }
+
+  @Test
+  fun `check ServiceRegistry registerServiceProvider fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkServiceRegistry() }
+  }
+
+  @Test
+  fun `check ServiceRegistry deregisterAll fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkIIORegistryDeregisterAll() }
+  }
+
+  @Test
+  fun `check ServiceRegistry lookupProviders fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkServiceRegistryLookupProviders() }
+  }
+
+  @Test
+  fun `check ImageIO scanForPlugins fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkImageIOScanForPlugins() }
+  }
+
+  @Test
+  fun `check JEditorPane registerEditorKitForContentType fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkJEditorPaneRegisterEditorKit() }
+  }
+
+  @Test
+  fun `check reflection invoke on PrintServiceLookup fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: javax/print/PrintServiceLookup#lookupDefaultPrintService") {
+      methodIntercept.checkReflectionInvokePrintServiceLookup()
+    }
+  }
+
+  @Test
+  fun `check reflection invoke on IIORegistry fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: javax/imageio/spi/IIORegistry#getDefaultInstance") {
+      methodIntercept.checkReflectionInvokeIIORegistry()
+    }
   }
 }

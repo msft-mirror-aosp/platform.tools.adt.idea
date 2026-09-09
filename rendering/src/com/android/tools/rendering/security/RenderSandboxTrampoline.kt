@@ -44,9 +44,14 @@ import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.zip.ZipFile
+import javax.imageio.ImageIO
+import javax.imageio.spi.IIORegistry
+import javax.imageio.spi.ServiceRegistry
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
+import javax.print.PrintServiceLookup
+import javax.swing.JEditorPane
 import kotlin.reflect.KFunction
 import kotlin.reflect.jvm.javaMethod
 import org.jetbrains.annotations.TestOnly
@@ -124,6 +129,8 @@ private fun checkClipboard() = RenderSandbox.getRenderSandbox().checkClipboard()
 private fun checkEventQueue() = RenderSandbox.getRenderSandbox().checkEventQueue()
 
 private fun checkPrintJob() = RenderSandbox.getRenderSandbox().checkPrintJob()
+
+private fun checkImageIo() = RenderSandbox.getRenderSandbox().checkImageIo()
 
 private fun checkMethodInvoke(method: Method, args: Array<Any>?) {
   val owner = method.declaringClass.name.replace(".", "/")
@@ -602,9 +609,37 @@ object RenderSandboxTransformTrampoline {
       // AWT operations
       Intercept.instance<Toolkit>("getSystemClipboard", checkInstanceCallIgnoreArgs(::checkClipboard)),
       Intercept.instance<Toolkit>("getSystemEventQueue", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<JEditorPane>("registerEditorKitForContentType", checkStaticNoArgsCall(::checkEventQueue)),
 
       // Print operations
       Intercept.static<PrinterJob>("getPrinterJob", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrinterJob>("lookupPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrinterJob>("lookupStreamPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("registerServiceProvider", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("registerService", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("lookupPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("lookupDefaultPrintService", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("lookupMultiDocPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+
+      // ImageIO SPI operations
+      Intercept.static<IIORegistry>("getDefaultInstance", checkStaticNoArgsCall(::checkImageIo)),
+      Intercept.instance<IIORegistry>("registerApplicationClasspathSpis", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("registerServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("registerServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("deregisterServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("deregisterServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("deregisterAll", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("setOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("unsetOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.static<ServiceRegistry>("lookupProviders", checkStaticNoArgsCall(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("registerServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("registerServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("deregisterServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("deregisterServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("deregisterAll", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("setOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("unsetOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.static<ImageIO>("scanForPlugins", checkStaticNoArgsCall(::checkImageIo)),
 
       // FileChannel
       Intercept.static<FileChannel>("open", ::checkFileChannelOpen),
