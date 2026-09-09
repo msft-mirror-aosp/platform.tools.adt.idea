@@ -131,4 +131,31 @@ public class TagSnapshotTest {
       "[]\n" +
       "}");
   }
+
+  @Test
+  public void testRenderAttributeAndRawAttribute() {
+    @Language("XML") final String imageString = "<ImageView xmlns:tools=\"http://schemas.android.com/tools\"\n" +
+                                                "  tools:srcCompat=\"@tools:sample/avatars\" />";
+
+    RenderXmlTag image = XmlParser.parseRootTag(imageString);
+    TagSnapshot snapshot = TagSnapshot.createTagSnapshot(image, null);
+
+    // Initially, both raw and render attributes match
+    assertThat(snapshot.getAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars");
+    assertThat(snapshot.getRenderAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars");
+
+    // When decorating for rendering (e.g. Sample Data resolution)
+    snapshot.setRenderAttribute("srcCompat", "http://schemas.android.com/tools", "tools", "@tools:sample/avatars[0]");
+
+    // Raw attribute for property panel remains unmodified
+    assertThat(snapshot.getAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars");
+    // Render attribute for Layoutlib reflects the decorated value
+    assertThat(snapshot.getRenderAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars[0]");
+
+    // toString contains renderValue if set
+    assertThat(snapshot.toString()).isEqualTo(
+      "TagSnapshot{ImageView, attributes=[AttributeSnapshot{srcCompat=\"@tools:sample/avatars\", renderValue=\"@tools:sample/avatars[0]\"}], children=\n" +
+      "[]\n" +
+      "}");
+  }
 }

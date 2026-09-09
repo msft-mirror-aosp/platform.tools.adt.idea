@@ -202,7 +202,7 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
           position = new AtomicInteger(mySampleDataCounter);
           mySampleDataCounterMap.put(resourceName, position);
         }
-        attributeSnapshot.value = getSampleDataResourceUrl(resourceUrl, position);
+        attributeSnapshot.renderValue = getSampleDataResourceUrl(resourceUrl, position);
       }
     }
   };
@@ -642,7 +642,7 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
   public String getAttributeValue(int i) {
     AttributeSnapshot attribute = getAttribute(i);
     if (attribute != null) {
-      return attribute.value;
+      return attribute.getRenderValue();
     }
 
     return null;
@@ -661,11 +661,11 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
     }
 
     if (ATTR_LAYOUT.equals(localName) && isFragmentTag(tag.tagName)) {
-      String layout = tag.getAttribute(LayoutMetadata.KEY_FRAGMENT_LAYOUT, TOOLS_URI);
+      String layout = tag.getRenderAttribute(LayoutMetadata.KEY_FRAGMENT_LAYOUT, TOOLS_URI);
       if (layout != null) {
         return layout;
       }
-      String navGraph = tag.getAttribute(ATTR_NAV_GRAPH, AUTO_URI);
+      String navGraph = tag.getRenderAttribute(ATTR_NAV_GRAPH, AUTO_URI);
       if (navGraph != null && myNavGraphResolver != null) {
         return myNavGraphResolver.resolve(navGraph);
       }
@@ -691,7 +691,7 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
 
     String value = null;
     if (namespace == null) {
-      value = tag.getAttribute(localName);
+      value = tag.getRenderAttribute(localName);
     }
     else if (!myUseToolsPositionAndVisibility && namespace.equals(TOOLS_URI)) {
       value = null;
@@ -700,7 +700,7 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
       // tools attributes can override both android and app namespace attributes
       if (!myHasToolsNamespace || (!myUseToolsPositionAndVisibility && myToolsPositionAndVisibilityAttributes.contains(localName))) {
         // tools namespace is not declared
-        value = tag.getAttribute(localName, namespace);
+        value = tag.getRenderAttribute(localName, namespace);
       }
       else {
         //noinspection ForLoopReplaceableByForEach
@@ -712,15 +712,15 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
                          ? myNamespacePrefixToUri.computeIfAbsent(attrPrefix, prefix -> computeUriFromPrefix(myRoot, prefix))
                          : null;
             if (TOOLS_URI.equals(uri)) {
-              value = attribute.value;
+              value = attribute.getRenderValue();
               if (value != null && value.isEmpty()) {
                 // Empty when there is a runtime attribute set means unset the runtime attribute
-                value = tag.getAttribute(localName, ANDROID_URI) != null ? null : value;
+                value = tag.getRenderAttribute(localName, ANDROID_URI) != null ? null : value;
               }
               break;
             }
             else if (namespace.equals(attribute.namespace)) {
-              value = attribute.value;
+              value = attribute.getRenderValue();
               // Don't break: continue searching in case we find a tools design time attribute
             }
           }
@@ -739,14 +739,14 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
           AttributeSnapshot attribute = tag.attributes.get(i);
           if (localName.equals(attribute.name) && (namespace.equals(attribute.namespace) ||
                                                    AUTO_URI.equals(attribute.namespace))) {
-            value = attribute.value;
+            value = attribute.getRenderValue();
             break;
           }
         }
       }
       else {
         // We are asked specifically to return a tools attribute
-        value = tag.getAttribute(localName, namespace);
+        value = tag.getRenderAttribute(localName, namespace);
       }
     }
 
@@ -788,7 +788,7 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
       assert currentNode != null; // Should only be called when START_TAG
       String name = currentNode.tagName;
 
-      String viewHandlerTag = currentNode.getAttribute(ATTR_USE_HANDLER, TOOLS_URI);
+      String viewHandlerTag = currentNode.getRenderAttribute(ATTR_USE_HANDLER, TOOLS_URI);
       if (StringUtil.isNotEmpty(viewHandlerTag)) {
         name = viewHandlerTag;
       }
@@ -797,9 +797,9 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
         // Temporarily translate <fragment>/FragmentContainerView to <include> (and in getAttribute
         // we will also provide a layout-attribute for the corresponding
         // fragment name attribute)
-        String layout = currentNode.getAttribute(LayoutMetadata.KEY_FRAGMENT_LAYOUT, TOOLS_URI);
+        String layout = currentNode.getRenderAttribute(LayoutMetadata.KEY_FRAGMENT_LAYOUT, TOOLS_URI);
         if (layout == null) {
-          String navGraph = currentNode.getAttribute(ATTR_NAV_GRAPH, AUTO_URI);
+          String navGraph = currentNode.getRenderAttribute(ATTR_NAV_GRAPH, AUTO_URI);
           if (navGraph != null && myNavGraphResolver != null) {
             layout = myNavGraphResolver.resolve(navGraph);
           }
@@ -807,11 +807,11 @@ public class LayoutRenderPullParser extends LayoutPullParser implements AaptAttr
         if (layout != null) {
           return VIEW_INCLUDE;
         } else {
-          String fragmentId = currentNode.getAttribute(ATTR_CLASS);
+          String fragmentId = currentNode.getRenderAttribute(ATTR_CLASS);
           if (fragmentId == null || fragmentId.isEmpty()) {
-            fragmentId = currentNode.getAttribute(ATTR_NAME, ANDROID_URI);
+            fragmentId = currentNode.getRenderAttribute(ATTR_NAME, ANDROID_URI);
             if (fragmentId == null || fragmentId.isEmpty()) {
-              fragmentId = currentNode.getAttribute(ATTR_ID, ANDROID_URI);
+              fragmentId = currentNode.getRenderAttribute(ATTR_ID, ANDROID_URI);
             }
           }
           myLogger.warning(RenderLogger.TAG_MISSING_FRAGMENT, "Missing fragment association", null, fragmentId);

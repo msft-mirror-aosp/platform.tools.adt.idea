@@ -432,16 +432,22 @@ public class LayoutRenderPullParserTest extends AndroidTestCase {
     assertEquals(START_TAG, parser.nextTag()); // 1st TextView
     assertEquals("TextView", parser.getName());
     assertEquals("@tools:sample/city[3]", parser.getAttributeValue(TOOLS_URI, "text"));
+    assertEquals("@tools:sample/city", parser.myRoot.children.get(0).getAttribute("text", TOOLS_URI));
+    assertEquals("@tools:sample/city[3]", parser.myRoot.children.get(0).getRenderAttribute("text", TOOLS_URI));
     assertEquals(END_TAG, parser.nextTag());
 
     assertEquals(START_TAG, parser.nextTag()); // 2nd TextView
     assertEquals("TextView", parser.getName());
     assertEquals("@tools:sample/city[4]", parser.getAttributeValue(TOOLS_URI, "text"));
+    assertEquals("@tools:sample/city", parser.myRoot.children.get(1).getAttribute("text", TOOLS_URI));
+    assertEquals("@tools:sample/city[4]", parser.myRoot.children.get(1).getRenderAttribute("text", TOOLS_URI));
     assertEquals(END_TAG, parser.nextTag());
 
     assertEquals(START_TAG, parser.nextTag()); // 3rd TextView
     assertEquals("TextView", parser.getName());
     assertEquals("@tools:sample/city[5]", parser.getAttributeValue(TOOLS_URI, "text"));
+    assertEquals("@tools:sample/city", parser.myRoot.children.get(2).getAttribute("text", TOOLS_URI));
+    assertEquals("@tools:sample/city[5]", parser.myRoot.children.get(2).getRenderAttribute("text", TOOLS_URI));
     assertEquals(END_TAG, parser.nextTag());
   }
 

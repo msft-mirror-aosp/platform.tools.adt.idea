@@ -195,6 +195,23 @@ public class TagSnapshot {
     return null;
   }
 
+  @Nullable
+  public String getRenderAttribute(@NotNull String name) {
+    return getRenderAttribute(name, null);
+  }
+
+  @Nullable
+  public String getRenderAttribute(@NotNull String name, @Nullable String namespace) {
+    for (int i = 0, n = attributes.size(); i < n; i++) {
+      AttributeSnapshot attribute = attributes.get(i);
+      if (name.equals(attribute.name) && (namespace == null || namespace.equals(attribute.namespace))) {
+        return attribute.getRenderValue();
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Sets the given attribute in the snapshot; this should <b>only</b> be done during snapshot hierarchy
    * construction, not later, with the sole exception of the property sheet: In the case of the property sheet,
@@ -235,6 +252,28 @@ public class TagSnapshot {
    */
   public void setAttribute(@NotNull String name, @Nullable String namespace, @Nullable String prefix, @Nullable String value) {
     setAttribute(name, namespace, prefix, value, true);
+  }
+
+  /**
+   * Sets or updates the render-specific value of an attribute without modifying the raw XML value.
+   */
+  public void setRenderAttribute(@NotNull String name,
+                                 @Nullable String namespace,
+                                 @Nullable String prefix,
+                                 @Nullable String renderValue) {
+    for (int i = 0, n = attributes.size(); i < n; i++) {
+      AttributeSnapshot attribute = attributes.get(i);
+      if (name.equals(attribute.name) && (namespace == null || namespace.equals(attribute.namespace))) {
+        attribute.renderValue = renderValue;
+        return;
+      }
+    }
+    if (renderValue != null) {
+      if (attributes.isEmpty()) {
+        attributes = new ArrayList<>();
+      }
+      attributes.add(new AttributeSnapshot(namespace, prefix, name, null, renderValue));
+    }
   }
 
   @Nullable
