@@ -20,6 +20,7 @@ import com.android.tools.idea.actions.DesignerActions
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.naveditor.analytics.NavUsageTracker
 import com.android.tools.idea.naveditor.dialogs.AddDeeplinkDialog
+import com.android.tools.idea.naveditor.dialogs.DeeplinkDialogData
 import com.android.tools.idea.naveditor.surface.NavDesignSurface
 import com.google.wireless.android.sdk.stats.NavEditorEvent
 import com.google.wireless.android.sdk.stats.NavEditorEvent.NavEditorEventType.CREATE_DEEP_LINK
@@ -27,6 +28,13 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.application.readAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.android.dom.AndroidDomElement
 import org.jetbrains.android.dom.navigation.DeeplinkElement
 import org.jetbrains.android.dom.navigation.NavigationSchema
@@ -50,18 +58,29 @@ class DeepLinkToolbarAction private constructor() : AnAction() {
   }
 
   private fun supportsSubtag(component: NlComponent, subtag: Class<out AndroidDomElement>): Boolean {
-    val model = component.model ?: return false
+    val model = component.model
     val schema = NavigationSchema.get(model.module)
     return schema.getDestinationSubtags(component.tagName).containsKey(subtag)
   }
 
   override fun actionPerformed(e: AnActionEvent) {
     val surface = e.getData(DESIGN_SURFACE) as? NavDesignSurface ?: return
-    surface.selectionModel.selection.firstOrNull()?.let {
-      val dialog = AddDeeplinkDialog(null, it)
-      if (dialog.showAndGet()) {
-        dialog.save()
-        NavUsageTracker.getInstance(surface.model).createEvent(CREATE_DEEP_LINK).withSource(NavEditorEvent.Source.TOOLBAR).log()
+    val component = surface.selectionModel.selection.firstOrNull() ?: return
+    val module = component.model.module
+    val modality = ModalityState.current().asContextElement()
+    e.coroutineScope.launch {
+      val data =
+        readAction {
+          if (module.isDisposed) return@readAction null
+          DeeplinkDialogData.load(component)
+        } ?: return@launch
+      withContext(Dispatchers.EDT + modality) {
+        if (module.isDisposed || surface.isDisposed() || surface.models.isEmpty()) return@withContext
+        val dialog = AddDeeplinkDialog(null, component, data)
+        if (dialog.showAndGet()) {
+          dialog.save()
+          NavUsageTracker.getInstance(surface.model).createEvent(CREATE_DEEP_LINK).withSource(NavEditorEvent.Source.TOOLBAR).log()
+        }
       }
     }
   }

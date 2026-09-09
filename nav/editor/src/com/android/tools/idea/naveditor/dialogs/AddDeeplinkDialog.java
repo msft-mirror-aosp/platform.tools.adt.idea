@@ -82,12 +82,21 @@ public class AddDeeplinkDialog extends DialogWrapper {
   private final boolean myIsExtended;
 
   public AddDeeplinkDialog(@Nullable NlComponent existing, @NotNull NlComponent parent) {
+    this(existing, parent, null);
+  }
+
+  public AddDeeplinkDialog(@Nullable NlComponent existing, @NotNull NlComponent parent, @Nullable DeeplinkDialogData data) {
     super(false);
 
     setupUI();
     List<String> argumentNames = NavComponentHelperKt.getArgumentNames(parent);
     myUriField.getEditorModel().setArgumentNames(argumentNames);
-    myActionField.getEditorModel().populateCompletions(parent.getModel().getModule());
+    if (data != null) {
+      myActionField.getEditorModel().setActions(data.getActions());
+    }
+    else {
+      myActionField.getEditorModel().populateCompletions(parent.getModel().getModule());
+    }
 
     if (existing != null) {
       myUriField.setText(NavComponentHelperKt.getUri(existing));
@@ -107,7 +116,7 @@ public class AddDeeplinkDialog extends DialogWrapper {
     myExistingComponent = existing;
     myParent = parent;
 
-    myIsExtended = isExtended(parent);
+    myIsExtended = (data != null) ? data.isExtended() : isExtended(parent);
 
     if (myIsExtended) {
       // Only enable the auto verify field if the uri is not empty
@@ -291,7 +300,7 @@ public class AddDeeplinkDialog extends DialogWrapper {
     boolean isExtended(@NotNull P projectSystem, @NotNull NlComponent parent);
   }
 
-  private static boolean isExtended(@NotNull NlComponent parent) {
+  public static boolean isExtended(@NotNull NlComponent parent) {
     Project project = parent.getModel().getProject();
     AndroidProjectSystem projectSystem = ProjectSystemUtil.getProjectSystem(project);
     Optional<AddDeeplinkDialogToken<AndroidProjectSystem>> token = EP_NAME.getExtensionList().stream()
