@@ -133,6 +133,8 @@ class LeakCanaryModel(
   val leaks = _leaks.asStateFlow()
   private val _selectedLeak = MutableStateFlow<Leak?>(null)
   val selectedLeak = _selectedLeak.asStateFlow()
+  private val _selectedLeakOccurrenceIndex = MutableStateFlow(0)
+  val selectedLeakOccurrenceIndex = _selectedLeakOccurrenceIndex.asStateFlow()
   private val _isRecording = MutableStateFlow(false)
   val isRecording = _isRecording.asStateFlow()
   private val _elapsedNs = MutableStateFlow(0L)
@@ -154,6 +156,9 @@ class LeakCanaryModel(
 
   private val _isBannerVisible = MutableStateFlow(false)
   val isBannerVisible = _isBannerVisible.asStateFlow()
+
+  val isOccurrencesEnabled: Boolean
+    get() = studioProfilers.ideServices.featureConfig.isLeakCanaryOccurrencesEnabled
 
   private val _filterScope = MutableStateFlow(LeakFilterScope.ALL)
   val filterScope = _filterScope.asStateFlow()
@@ -492,8 +497,31 @@ class LeakCanaryModel(
     if (newLeak != null && _selectedLeak.value != newLeak) {
       myTaskTracker.trackLeakCanaryUiAction(LeakCanaryUiAction.NEW_LEAK_SELECTED)
     }
+    _selectedLeakOccurrenceIndex.value = 0 // Reset occurrence index on new leak selection
     _selectedLeak.value = newLeak
     insightModel.onLeakSelection(newLeak)
+  }
+
+  /** Navigates to the next occurrence of the currently selected leak, if available. */
+  fun selectNextOccurrence() {
+    val leak = _selectedLeak.value ?: return
+    if (_selectedLeakOccurrenceIndex.value < leak.displayedLeakTrace.size - 1) {
+      _selectedLeakOccurrenceIndex.value += 1
+      logger.info("Navigated to next leak occurrence: index " + _selectedLeakOccurrenceIndex.value)
+    } else {
+      logger.debug("Cannot navigate to next leak occurrence; already at the last index.")
+    }
+  }
+
+  /** Navigates to the previous occurrence of the currently selected leak, if available. */
+  fun selectPreviousOccurrence() {
+    val leak = _selectedLeak.value ?: return
+    if (_selectedLeakOccurrenceIndex.value > 0) {
+      _selectedLeakOccurrenceIndex.value -= 1
+      logger.info("Navigated to previous leak occurrence: index " + _selectedLeakOccurrenceIndex.value)
+    } else {
+      logger.debug("Cannot navigate to previous leak occurrence; already at the first index.")
+    }
   }
 
   private fun checkPresenceAndFetchThreshold() {
@@ -654,7 +682,7 @@ class LeakCanaryModel(
    * @param event: The LeakCanary logcat event.
    */
   private fun leakDetected(event: Common.Event) {
-    val analysis = Analysis.fromString(event.leakcanaryAnalysis.data) ?: return
+    val analysis = deserializeAnalysisEvent(event) ?: return
     saveDeviceSharkVersion(analysis)
     if (handleRetainedObject(analysis)) return
     if (handleAnalysisProgress(analysis)) return
@@ -873,7 +901,31 @@ class LeakCanaryModel(
 
   private fun getAllLeakCanaryEvents(session: Common.Session, startTimestamp: Long, endTimeStamp: Long): List<Analysis> {
     val eventList = getLeaksFromRange(profilers.client, session, Range(startTimestamp.toDouble(), endTimeStamp.toDouble()))
-    return eventList.mapNotNull { event -> Analysis.fromString(event.leakcanaryAnalysis.data) }
+    return eventList.mapNotNull { event -> deserializeAnalysisEvent(event) }
+  }
+
+  /**
+   * Deserializes a [Common.Event] containing a LeakCanaryAnalysisData payload.
+   *
+   * If the event contains a structured Protobuf payload (`hasSuccess()` or `hasFailure()`), it uses [LeakCanaryProtoAdapter.fromProto] to
+   * reconstruct the [Analysis] directly without string parsing, and clamps `displayedLeakTrace` to a single occurrence if
+   * `isOccurrencesEnabled` is currently false. Otherwise (for sessions recorded when the feature flag was off, imported legacy `.asdb`
+   * files, or legacy Logcat-based `ON_DEVICE` events), it falls back to [Analysis.fromString].
+   */
+  private fun deserializeAnalysisEvent(event: Common.Event): Analysis? {
+    val proto = event.leakcanaryAnalysis
+    return if (proto.hasSuccess() || proto.hasFailure()) {
+      logger.debug("Deserializing LeakCanary event using structured Protobuf payload.")
+      val analysis = LeakCanaryProtoAdapter.fromProto(proto)
+      if (!isOccurrencesEnabled && analysis is AnalysisSuccess) {
+        analysis.copy(leaks = analysis.leaks.map { it.copy(displayedLeakTrace = it.displayedLeakTrace.take(1)) })
+      } else {
+        analysis
+      }
+    } else {
+      logger.debug("Deserializing LeakCanary event using legacy string parser.")
+      Analysis.fromString(proto.data)
+    }
   }
 
   private fun trackLeakAnalysisTelemetry(
@@ -1045,11 +1097,12 @@ class LeakCanaryModel(
      * @return The extracted class name or an empty string if no leak or class name is found.
      */
     @JvmStatic
-    fun getLeakClassName(leak: Leak?): String {
+    @JvmOverloads
+    fun getLeakClassName(leak: Leak?, occurrenceIndex: Int = 0): String {
       if (leak?.displayedLeakTrace == null || leak.displayedLeakTrace.isEmpty()) {
         return ""
       }
-      val leakTrace = leak.displayedLeakTrace.first()
+      val leakTrace = leak.displayedLeakTrace.getOrNull(occurrenceIndex) ?: leak.displayedLeakTrace.first()
       val suspectNodeList =
         leakTrace.nodes.filterIndexed { index, node ->
           when (node.leakingStatus) {

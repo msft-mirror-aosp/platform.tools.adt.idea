@@ -131,6 +131,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private boolean myLeakCanaryEnabled = true;
 
+  private boolean myLeakCanaryOccurrencesEnabled = false;
+
   private boolean myUseTraceProcessorForHprofEnabled = false;
 
   private boolean mySystemTraceInEditorEnabled = false;
@@ -351,6 +353,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isLeakCanaryEnabled() {
         return myLeakCanaryEnabled;
+      }
+
+      @Override
+      public boolean isLeakCanaryOccurrencesEnabled() {
+        return myLeakCanaryOccurrencesEnabled;
       }
 
       @Override
@@ -638,6 +645,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void enableLeakCanary(boolean enabled) {
     myLeakCanaryEnabled = enabled;
+  }
+
+  public void enableLeakCanaryOccurrences(boolean enabled) {
+    myLeakCanaryOccurrencesEnabled = enabled;
   }
 
   public void enableSystemTraceInEditor(boolean enabled) {

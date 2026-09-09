@@ -20,10 +20,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
+import com.intellij.testFramework.ApplicationRule
 import org.junit.Rule
 import org.junit.Test
 
 class BulletListTest {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
   @get:Rule val composeTestRule = StudioComposeTestRule.createStudioComposeTestRule()
 
   @Test

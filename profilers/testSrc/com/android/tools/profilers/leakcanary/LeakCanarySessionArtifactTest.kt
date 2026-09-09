@@ -29,6 +29,7 @@ import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.WithFakeTimer
 import com.android.tools.profilers.sessions.SessionItem
 import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.intellij.testFramework.ApplicationRule
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -38,6 +39,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class LeakCanarySessionArtifactTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
   @Rule @JvmField val grpcChannel = FakeGrpcChannel("LeakCanarySessionArtifactTestChannel", transportService)
@@ -53,9 +55,9 @@ class LeakCanarySessionArtifactTest : WithFakeTimer {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
-    stage = LeakCanaryModel(profilers)
+    stage = LeakCanaryModel(profilers, coroutineContext = kotlinx.coroutines.Dispatchers.Unconfined)
     profilers.stage = stage
     val mockSession = Common.Session.newBuilder().setStartTimestamp(timeStamp1).build()
     val mockSessionMetadata = SessionMetaData.newBuilder().build()

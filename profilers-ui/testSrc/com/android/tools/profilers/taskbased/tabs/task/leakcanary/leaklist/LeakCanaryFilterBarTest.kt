@@ -32,6 +32,7 @@ import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.WithFakeTimer
 import com.android.tools.profilers.leakcanary.LeakCanaryModel
 import com.android.tools.profilers.leakcanary.LeakFilterScope
+import com.intellij.testFramework.ApplicationRule
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -39,6 +40,8 @@ import org.junit.Rule
 import org.junit.Test
 
 class LeakCanaryFilterBarTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
+
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
   @Rule @JvmField val grpcChannel = FakeGrpcChannel("LeakCanaryFilterBarTestChannel", transportService)
@@ -50,7 +53,7 @@ class LeakCanaryFilterBarTest : WithFakeTimer {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
     leakCanaryModel = LeakCanaryModel(profilers, null, Dispatchers.Unconfined)
   }

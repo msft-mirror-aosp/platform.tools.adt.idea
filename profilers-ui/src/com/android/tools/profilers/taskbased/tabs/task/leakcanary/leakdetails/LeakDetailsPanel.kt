@@ -89,6 +89,10 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 @Composable
 fun LeakDetailsPanel(
   selectedLeak: Leak?,
+  selectedLeakOccurrenceIndex: Int = 0,
+  isOccurrencesEnabled: Boolean = false,
+  onPreviousOccurrence: () -> Unit = {},
+  onNextOccurrence: () -> Unit = {},
   gotoDeclaration: (Node) -> Unit,
   isRecording: Boolean,
   hasActiveFilter: Boolean = false,
@@ -98,7 +102,7 @@ fun LeakDetailsPanel(
   onCopy: () -> Unit,
   trackUiAction: (LeakCanaryUiAction) -> Unit = {},
 ) {
-  val traceNodes = selectedLeak?.displayedLeakTrace?.firstOrNull()?.nodes ?: emptyList()
+  val traceNodes = selectedLeak?.displayedLeakTrace?.getOrNull(selectedLeakOccurrenceIndex)?.nodes ?: emptyList()
   val onExpandAll = {
     trackUiAction(LeakCanaryUiAction.EXPAND_ALL_NODES_CLICKED)
     onOpenStatesChange(List(traceNodes.size) { true })
@@ -119,14 +123,22 @@ fun LeakDetailsPanel(
   } else {
     val scrollState = rememberScrollState()
     Column(modifier = Modifier.fillMaxSize()) {
-      LeakActionToolbar(selectedLeak = selectedLeak, onExpandAll = onExpandAll, onCollapseAll = onCollapseAll, onCopy = onCopy)
+      LeakActionToolbar(
+        selectedLeak = selectedLeak,
+        selectedLeakOccurrenceIndex = selectedLeakOccurrenceIndex,
+        isOccurrencesEnabled = isOccurrencesEnabled,
+        onPreviousOccurrence = onPreviousOccurrence,
+        onNextOccurrence = onNextOccurrence,
+        onExpandAll = onExpandAll,
+        onCollapseAll = onCollapseAll,
+        onCopy = onCopy,
+      )
       ToolWindowHorizontalDivider()
       Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(10.dp)) {
           // If displayedLeakTrace is empty, use empty list for the leak nodes.
-          val traceNodes = if (selectedLeak.displayedLeakTrace.isNotEmpty()) selectedLeak.displayedLeakTrace[0].nodes else listOf()
           if (traceNodes.isNotEmpty()) {
-            GcRootNodeView(selectedLeak.displayedLeakTrace[0])
+            selectedLeak.displayedLeakTrace.getOrNull(selectedLeakOccurrenceIndex)?.let { GcRootNodeView(it) }
           }
           traceNodes.forEachIndexed { index, currNode ->
             LeakTraceNodeView(

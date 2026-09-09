@@ -24,6 +24,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,6 +35,7 @@ import com.android.tools.idea.codenavigation.CodeNavigator.Listener
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.leakcanarylib.data.Leak
+import com.android.tools.leakcanarylib.data.LeakTrace
 import com.android.tools.leakcanarylib.data.LeakType
 import com.android.tools.leakcanarylib.data.LeakingStatus
 import com.android.tools.profilers.FakeIdeProfilerServices
@@ -45,6 +47,7 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.intellij.mock.MockApplication
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +61,8 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.`when`
 
 class LeakDetailsPanelTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
+
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
 
@@ -413,5 +418,63 @@ class LeakDetailsPanelTest : WithFakeTimer {
         .trimIndent()
 
     return Leak.fromString(applicationLeakText, LeakType.APPLICATION_LEAKS)
+  }
+
+  @Test
+  fun `test occurrence stepper updates displayed trace nodes`() {
+    val trace1 =
+      LeakTrace.fromString(
+        """
+        ┬───
+        │ GC Root: Input or output parameters in native code
+        │
+        ╰→ class1 instance
+        ​     Leaking: YES
+        """
+          .trimIndent()
+      )
+    val trace2 =
+      LeakTrace.fromString(
+        """
+        ┬───
+        │ GC Root: Input or output parameters in native code
+        │
+        ╰→ class2 instance
+        ​     Leaking: YES
+        """
+          .trimIndent()
+      )
+    val selectedLeak =
+      Leak(
+        type = LeakType.APPLICATION_LEAKS,
+        retainedByteSize = 2200,
+        signature = "41c3c2258578581a1b0c9f78b59966266ed118b9",
+        leakTraceCount = 2,
+        displayedLeakTrace = listOf(trace1, trace2),
+      )
+
+    var selectedIndex by mutableStateOf(0)
+
+    composeTestRule.setContent {
+      LeakDetailsPanel(
+        selectedLeak = selectedLeak,
+        selectedLeakOccurrenceIndex = selectedIndex,
+        isOccurrencesEnabled = true,
+        onPreviousOccurrence = { selectedIndex-- },
+        onNextOccurrence = { selectedIndex++ },
+        gotoDeclaration = leakCanaryModel::goToDeclaration,
+        isRecording = true,
+        isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
+        openStates = emptyList(),
+        onOpenStatesChange = {},
+        onCopy = {},
+      )
+    }
+
+    composeTestRule.onNodeWithTag("class1").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE).performClick()
+    composeTestRule.onNodeWithTag("class2").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE).performClick()
+    composeTestRule.onNodeWithTag("class1").assertIsDisplayed()
   }
 }

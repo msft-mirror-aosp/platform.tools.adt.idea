@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -74,15 +75,35 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 @Composable
 fun LeakCanaryScreen(leakCanaryModel: LeakCanaryModel, ideProfilerComponents: IdeProfilerComponents) {
   val selectedLeak by leakCanaryModel.selectedLeak.collectAsState()
+  val selectedLeakOccurrenceIndex by leakCanaryModel.selectedLeakOccurrenceIndex.collectAsState()
+  val isOccurrencesEnabled = leakCanaryModel.isOccurrencesEnabled
   val isBannerVisible by leakCanaryModel.isBannerVisible.collectAsState()
-  val traceNodes = selectedLeak?.displayedLeakTrace?.firstOrNull()?.nodes ?: emptyList()
-  var openStates by remember(selectedLeak) { mutableStateOf(List(traceNodes.size) { false }) }
+  val traceNodes = selectedLeak?.displayedLeakTrace?.getOrNull(selectedLeakOccurrenceIndex)?.nodes ?: emptyList()
+  var openStates by remember(selectedLeak, selectedLeakOccurrenceIndex) { mutableStateOf(List(traceNodes.size) { false }) }
 
   val focusRequester = remember { FocusRequester() }
 
   Column(
     modifier =
       Modifier.fillMaxSize().focusRequester(focusRequester).focusable().onKeyEvent { keyEvent ->
+        if (
+          keyEvent.type == KeyEventType.KeyDown &&
+            keyEvent.isAltPressed &&
+            isOccurrencesEnabled &&
+            (selectedLeak?.displayedLeakTrace?.size ?: 0) > 1
+        ) {
+          when (keyEvent.key) {
+            Key.DirectionLeft -> {
+              leakCanaryModel.selectPreviousOccurrence()
+              return@onKeyEvent true
+            }
+            Key.DirectionRight -> {
+              leakCanaryModel.selectNextOccurrence()
+              return@onKeyEvent true
+            }
+            else -> {}
+          }
+        }
         if (keyEvent.type == KeyEventType.KeyDown && keyEvent.isCtrlPressed) {
           when (keyEvent.key) {
             Key.Plus,
@@ -152,6 +173,10 @@ fun LeakCanaryScreen(leakCanaryModel: LeakCanaryModel, ideProfilerComponents: Id
           @Composable {
             LeakDetailsPanel(
               selectedLeak = selectedLeak,
+              selectedLeakOccurrenceIndex = selectedLeakOccurrenceIndex,
+              isOccurrencesEnabled = isOccurrencesEnabled,
+              onPreviousOccurrence = leakCanaryModel::selectPreviousOccurrence,
+              onNextOccurrence = leakCanaryModel::selectNextOccurrence,
               gotoDeclaration = leakCanaryModel::goToDeclaration,
               isRecording = isRecording,
               hasActiveFilter = hasLeaks && filteredLeaks.size != leaks.size,

@@ -369,6 +369,10 @@ public final class StudioFlags {
     PROFILER, "leakcanary", "LeakCanary",
     "Enables the integration of leakCanary and display of leaks");
 
+  public static final Flag<Boolean> PROFILER_LEAKCANARY_OCCURRENCES = new BooleanFlag(
+    PROFILER, "leakcanary.occurrences", "LeakCanary Occurrences & Direct Integration",
+    "Enables tracking of multiple identical memory leaks, and upgrades the integration to use direct object mapping (bypassing the legacy Logcat text parser for both on-host and on-device flows).");
+
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android");
 

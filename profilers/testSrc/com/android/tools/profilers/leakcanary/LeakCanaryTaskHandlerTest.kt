@@ -36,6 +36,7 @@ import com.android.tools.profilers.tasks.args.singleartifact.leakcanary.LeakCana
 import com.android.tools.profilers.tasks.taskhandlers.TaskHandlerTestUtils
 import com.google.common.truth.Truth
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.ApplicationRule
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -47,6 +48,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class LeakCanaryTaskHandlerTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
 
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
@@ -75,7 +77,7 @@ class LeakCanaryTaskHandlerTest : WithFakeTimer {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
 
     // Spy on profilers to mock the current process, required by the

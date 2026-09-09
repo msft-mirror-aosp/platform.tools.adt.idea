@@ -47,6 +47,7 @@ import com.android.tools.profilers.leakcanary.LeakCanaryModel
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails.copyLeakToClipboard
 import com.google.common.truth.Truth
+import com.intellij.testFramework.ApplicationRule
 import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Before
@@ -55,6 +56,8 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 
 class LeakCanaryScreenTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
+
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
 
@@ -68,7 +71,7 @@ class LeakCanaryScreenTest : WithFakeTimer {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
     leakCanaryModel = LeakCanaryModel(profilers, null, Dispatchers.Unconfined)
   }

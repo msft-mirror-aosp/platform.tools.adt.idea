@@ -44,7 +44,9 @@ import com.android.tools.profilers.cpu.config.LeakCanaryConfiguration
 import com.android.tools.profilers.cpu.config.LeakCanaryMode
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration
 import com.android.tools.profilers.tasks.analytics.LeakCanaryUiAction
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.UsefulTestCase.assertEmpty
+import java.io.File
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -67,6 +69,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 
 class LeakCanaryModelTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
 
@@ -194,6 +197,96 @@ class LeakCanaryModelTest : WithFakeTimer {
     assertEquals(4, stage.leaks.value.size)
     // First leak is selected by default
     assertEquals(stage.leaks.value[0], stage.selectedLeak.value)
+  }
+
+  @Test
+  fun `loadFromPastSession deserializes structured LeakCanaryAnalysisData proto with multiple occurrences`() {
+    ideProfilerServices.enableLeakCanaryOccurrences(true)
+    val trace1 =
+      LeakTrace(
+        gcRootType = GcRootType.JAVA_FRAME,
+        nodes =
+          listOf(
+            Node(
+              nodeType = LeakTraceNodeType.INSTANCE,
+              className = "com.example.OccurrenceOneActivity",
+              leakingStatus = LeakingStatus.YES,
+              leakingStatusReason = "Destroyed",
+              retainedHeapSize = "1.5 kB",
+              retainedObjectCount = 12,
+              notes = emptyList(),
+              referencingField = null,
+            )
+          ),
+      )
+    val trace2 =
+      LeakTrace(
+        gcRootType = GcRootType.JNI_GLOBAL,
+        nodes =
+          listOf(
+            Node(
+              nodeType = LeakTraceNodeType.INSTANCE,
+              className = "com.example.OccurrenceTwoActivity",
+              leakingStatus = LeakingStatus.YES,
+              leakingStatusReason = "Destroyed",
+              retainedHeapSize = "2.5 kB",
+              retainedObjectCount = 24,
+              notes = emptyList(),
+              referencingField = null,
+            )
+          ),
+      )
+    val multiOccurrenceLeak =
+      Leak(
+        type = LeakType.APPLICATION_LEAKS,
+        retainedByteSize = 4000,
+        signature = "proto_sig_123",
+        leakTraceCount = 2,
+        displayedLeakTrace = listOf(trace1, trace2),
+      )
+    val analysisSuccess =
+      AnalysisSuccess(
+        heapDumpFile = File("/tmp/proto_test.hprof"),
+        createdAtTimeMillis = 1000L,
+        dumpDurationMillis = 50L,
+        analysisDurationMillis = 150L,
+        metadata = mapOf("LeakCanary version" to "2.14"),
+        leaks = listOf(multiOccurrenceLeak),
+      )
+
+    val eventTimestamp = 5000L
+    val structuredProto = LeakCanaryProtoAdapter.toProto(analysisSuccess)
+    val event =
+      Common.Event.newBuilder()
+        .setGroupId(profilers.session.pid.toLong())
+        .setPid(profilers.session.pid)
+        .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS)
+        .setLeakcanaryAnalysis(structuredProto)
+        .setTimestamp(eventTimestamp)
+        .build()
+    transportService.addEventToStream(profilers.session.streamId, event)
+
+    stage.loadFromPastSession(1000L, 10000L, profilers.session)
+
+    assertEquals(1, stage.leaks.value.size)
+    val loadedLeak = stage.leaks.value.first()
+    assertEquals("proto_sig_123", loadedLeak.signature)
+    assertEquals(2, loadedLeak.leakTraceCount)
+    assertEquals(2, loadedLeak.displayedLeakTrace.size)
+    assertEquals("com.example.OccurrenceOneActivity", loadedLeak.displayedLeakTrace[0].nodes.first().className)
+    assertEquals("com.example.OccurrenceTwoActivity", loadedLeak.displayedLeakTrace[1].nodes.first().className)
+
+    // Verify that if the same structured Protobuf session is loaded while the feature flag is OFF,
+    // it still deserializes without data loss and clamps displayedLeakTrace to 1 occurrence.
+    stage.clearLeaks()
+    ideProfilerServices.enableLeakCanaryOccurrences(false)
+    stage.loadFromPastSession(1000L, 10000L, profilers.session)
+
+    assertEquals(1, stage.leaks.value.size)
+    val clampedLeak = stage.leaks.value.first()
+    assertEquals("proto_sig_123", clampedLeak.signature)
+    assertEquals(1, clampedLeak.displayedLeakTrace.size)
+    assertEquals("com.example.OccurrenceOneActivity", clampedLeak.displayedLeakTrace.first().nodes.first().className)
   }
 
   @Test
@@ -910,15 +1003,14 @@ class LeakCanaryModelTest : WithFakeTimer {
     referenceName: String? = null,
     isLikelyCause: Boolean = false,
   ): Node {
-    val referencingField =
-      referenceName?.let {
-        ReferencingField(
-          className = className,
-          type = ReferencingField.ReferencingFieldType.STATIC_FIELD,
-          isLikelyCause = isLikelyCause,
-          referenceName = it,
-        )
-      }
+    val referencingField = referenceName?.let {
+      ReferencingField(
+        className = className,
+        type = ReferencingField.ReferencingFieldType.STATIC_FIELD,
+        isLikelyCause = isLikelyCause,
+        referenceName = it,
+      )
+    }
     return Node(
       nodeType = LeakTraceNodeType.INSTANCE,
       className = className,
@@ -1110,6 +1202,59 @@ class LeakCanaryModelTest : WithFakeTimer {
     stage.setSearchQuery("")
     delay(300)
     assertEquals(1, stage.filteredLeaks.value.size)
+  }
+
+  @Test
+  fun testLeakOccurrenceIndexResetsOnNewSelection() {
+    val mockLeak1 = mock(Leak::class.java)
+    val mockLeak2 = mock(Leak::class.java)
+    val mockTrace = mock(LeakTrace::class.java)
+    `when`(mockLeak1.signature).thenReturn("leak1")
+    `when`(mockLeak1.displayedLeakTrace).thenReturn(listOf(mockTrace, mockTrace, mockTrace))
+    `when`(mockLeak2.signature).thenReturn("leak2")
+    `when`(mockLeak2.displayedLeakTrace).thenReturn(listOf(mockTrace))
+
+    stage.onLeakSelection(mockLeak1)
+    stage.selectNextOccurrence()
+    assertEquals(1, stage.selectedLeakOccurrenceIndex.value)
+
+    stage.onLeakSelection(mockLeak2)
+    assertEquals(0, stage.selectedLeakOccurrenceIndex.value)
+  }
+
+  @Test
+  fun testSelectNextOccurrenceBounds() {
+    val mockLeak = mock(Leak::class.java)
+    val mockTrace = mock(LeakTrace::class.java)
+
+    `when`(mockLeak.signature).thenReturn("leak")
+    `when`(mockLeak.displayedLeakTrace).thenReturn(listOf(mockTrace, mockTrace, mockTrace))
+
+    stage.onLeakSelection(mockLeak)
+    assertEquals(0, stage.selectedLeakOccurrenceIndex.value)
+
+    stage.selectNextOccurrence()
+    assertEquals(1, stage.selectedLeakOccurrenceIndex.value)
+
+    stage.selectNextOccurrence()
+    assertEquals(2, stage.selectedLeakOccurrenceIndex.value)
+
+    stage.selectNextOccurrence()
+    assertEquals(2, stage.selectedLeakOccurrenceIndex.value)
+  }
+
+  @Test
+  fun testSelectPreviousOccurrenceBounds() {
+    val mockLeak = mock(Leak::class.java)
+    val mockTrace = mock(LeakTrace::class.java)
+    `when`(mockLeak.signature).thenReturn("leak")
+    `when`(mockLeak.displayedLeakTrace).thenReturn(listOf(mockTrace, mockTrace))
+
+    stage.onLeakSelection(mockLeak)
+    assertEquals(0, stage.selectedLeakOccurrenceIndex.value)
+
+    stage.selectPreviousOccurrence()
+    assertEquals(0, stage.selectedLeakOccurrenceIndex.value)
   }
 }
 

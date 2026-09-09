@@ -22,11 +22,13 @@ import androidx.compose.ui.test.performClick
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
+import com.intellij.testFramework.ApplicationRule
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 class LeakCanaryBannerTest {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
 
   private lateinit var ideProfilerServices: FakeIdeProfilerServices
 
@@ -34,7 +36,7 @@ class LeakCanaryBannerTest {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
   }
 
   @Test
