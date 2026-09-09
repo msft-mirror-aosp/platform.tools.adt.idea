@@ -26,7 +26,7 @@ import com.android.tools.idea.run.deployment.liveedit.readActionPrebuildChecks
 import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.android.tools.idea.util.findAndroidModule
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -63,7 +63,7 @@ internal class LiveEditCompilerForK2(private val project: Project, private val m
     inputs: Collection<LiveEditCompilerInput>,
   ) = runWithCompileLock {
     LOGGER.info("Using Live Edit K2 CodeGen")
-    runReadActionBlocking { readActionPrebuildChecks(project, file) }
+    ReadAction.computeCancellable<Unit, Throwable> { readActionPrebuildChecks(project, file) }
     val result = backendCodeGenForK2(file, module) { with(applicationLiveEditServices) { configureKotlinCompilerOptions(file) } }
     return@runWithCompileLock result.output.map { OutputFileForKtCompiledFile(it) }
   }
@@ -94,7 +94,7 @@ fun backendCodeGenForK2(file: KtFile, module: Module, configurator: KaCompilatio
   //                  Add/remove ProgressManager.checkCanceled() based on the performance and the responsiveness.
   ProgressManager.checkCanceled()
 
-  return runReadActionBlocking {
+  return ReadAction.computeCancellable<KaCompilationResult.Success, Throwable> {
     if (!file.isValid) {
       throw LiveEditUpdateException.fileNotValid(file)
     }
@@ -110,7 +110,9 @@ fun backendCodeGenForK2(file: KtFile, module: Module, configurator: KaCompilatio
     // K2 compile AA covers all cases.
     listOf(file).checkPsiErrorElement()
 
+    ProgressManager.checkCanceled()
     val substituteFile = getCompileTargetFile(file, module)
+    ProgressManager.checkCanceled()
     analyze(substituteFile) {
       val options = createCompilationOptions {
         target(KaCompilationTarget.JVM)

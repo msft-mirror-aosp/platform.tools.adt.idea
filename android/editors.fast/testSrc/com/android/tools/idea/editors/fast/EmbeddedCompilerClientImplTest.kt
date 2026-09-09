@@ -19,6 +19,8 @@ import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
 import com.android.tools.idea.run.deployment.liveedit.composeRuntimePath
+import com.android.tools.idea.run.deployment.liveedit.configureCompilerOptions
+import com.android.tools.idea.run.deployment.liveedit.k2.backendCodeGenForK2
 import com.android.tools.idea.run.deployment.liveedit.registerComposeCompilerPlugin
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.android.tools.idea.testing.AndroidModuleDependency
@@ -28,7 +30,11 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaLibraryDependency
 import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.tests.AdtTestKotlinArtifacts
+import com.intellij.openapi.application.ApplicationListener
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -47,11 +53,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -548,5 +556,45 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
       outputDirectory.toFileNameSet().sorted().joinToString("\n"),
     )
+  }
+
+  @Test
+  fun `backendCodeGenForK2 uses cancellable read action and throws CannotReadException when write action is pending`() {
+    runBlocking {
+      val file =
+        projectRule.fixture.addFileToProject(
+          "app/src/main/java/src/com/test/Source.kt",
+          """
+          package com.test
+
+          fun testMethod() {
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+
+      val module = readAction { file.module!! }
+      val finishWrite = CountDownLatch(1)
+      val pendingWrite = CountDownLatch(1)
+      ApplicationManager.getApplication()
+        .addApplicationListener(
+          object : ApplicationListener {
+            override fun beforeWriteActionStart(action: Any) {
+              pendingWrite.countDown()
+              assertTrue("Timeout waiting for finishWrite", finishWrite.await(5, TimeUnit.SECONDS))
+            }
+          },
+          projectRule.testRootDisposable,
+        )
+
+      ApplicationManager.getApplication().invokeLater {
+        runWriteAction {}
+      }
+
+      assertTrue("Timeout waiting for pendingWrite", pendingWrite.await(5, TimeUnit.SECONDS))
+      assertThrows(ReadAction.CannotReadException::class.java) {
+        @OptIn(KaExperimentalApi::class) backendCodeGenForK2(file, module) { configureCompilerOptions(module, file) }
+      }
+    }
   }
 }

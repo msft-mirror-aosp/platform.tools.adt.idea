@@ -24,8 +24,8 @@ import com.android.tools.idea.run.deployment.liveedit.k2.OutputFileForKtCompiled
 import com.android.tools.idea.run.deployment.liveedit.k2.backendCodeGenForK2
 import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
-import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -133,7 +133,7 @@ private constructor(
           log.debug("backCodeGen for ${inputFile.virtualFilePath} completed")
           @OptIn(KaExperimentalApi::class) addIfNotDuplicated(pathToCompileOutput, result.output.map { OutputFileForKtCompiledFile(it) })
 
-          val sourceVirtualFiles = runReadActionBlocking { result.output.getSourceVirtualFiles() }
+          val sourceVirtualFiles = ReadAction.computeCancellable<List<VirtualFile>, Throwable> { result.output.getSourceVirtualFiles() }
           filesAlreadyCompiled.addAll(sourceVirtualFiles)
         }
       }
