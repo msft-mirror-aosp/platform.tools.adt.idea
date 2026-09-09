@@ -6,13 +6,13 @@ plugins {
 android {
     namespace 'template.test.in'
     compileSdk {
-        version = release(35)
+        version = release(36)
     }
 
     defaultConfig {
         applicationId "template.test.in"
         minSdk 30
-        targetSdk 35
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 

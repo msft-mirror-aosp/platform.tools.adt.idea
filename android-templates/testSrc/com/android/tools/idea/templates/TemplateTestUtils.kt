@@ -43,7 +43,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import junit.framework.TestCase.assertTrue
 
-internal val SDK_VERSION_FOR_TEMPLATE_TESTS = AndroidApiLevel(35)
+internal val SDK_VERSION_FOR_TEMPLATE_TESTS = AndroidApiLevel(36)
 
 internal fun verifyLanguageFiles(projectDir: Path, language: Language) {
   // Note: Files.walk() stream needs to be closed (or consumed completely), otherwise it will leave

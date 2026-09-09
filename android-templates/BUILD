@@ -73,6 +73,7 @@ iml_module(
         ":test_deps",
         "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/sdk:platforms/android-35",
+        "//prebuilts/studio/sdk:platforms/android-36",
         "//prebuilts/studio/sdk:platforms/android-37",
         "//tools/adt/idea/android/annotations",
         "//tools/adt/idea/android/testData:projects",
