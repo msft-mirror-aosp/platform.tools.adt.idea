@@ -524,6 +524,41 @@ class PreviewItemPanelTest {
     assertEquals("No Difference", label?.text)
   }
 
+  @Test
+  fun verifyOnImageLoadedInvokedWhenPanelReused() = runInEdtAndWait {
+    var callbackCount = 0
+    val path1 = temporaryFolder.newFile("image1.png").absolutePath
+    val path2 = temporaryFolder.newFile("image2.png").absolutePath
+
+    val details1 =
+      PreviewDetails(
+        testId = "id1",
+        className = "TestClass",
+        methodName = "testMethod1",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = path1,
+      )
+
+    val panel =
+      PreviewItemPanel(
+        previewData = details1,
+        project = projectRule.project,
+        appExecutorService = MoreExecutors.newDirectExecutorService(),
+        createImageIcon = { mock() },
+      )
+
+    // First request initiates loading
+    panel.loadImage(path1, "id1") { callbackCount++ }
+
+    // Simulate panel reuse before EDT invokeLater runs for path1:
+    // Calling loadImage with path2 updates currentImagePath and currentTestId
+    panel.loadImage(path2, "id2") { callbackCount++ }
+
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Callbacks should be invoked for both requests to allow parent repaint", 2, callbackCount)
+  }
+
   private fun findLabel(container: Container): JBLabel? {
     for (component in container.components) {
       if (component is JBLabel) {

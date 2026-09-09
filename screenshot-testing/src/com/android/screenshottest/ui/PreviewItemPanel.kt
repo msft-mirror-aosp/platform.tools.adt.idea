@@ -37,7 +37,6 @@ import java.awt.Graphics
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.io.File
-import java.io.IOException
 import java.util.concurrent.ExecutorService
 import javax.swing.BorderFactory
 import javax.swing.BoxLayout
@@ -224,8 +223,6 @@ class PreviewItemPanel(
   }
 
   fun loadImage(newPath: String, testId: String, onImageLoaded: (() -> Unit)? = null) {
-    val simpleClassName = testId.split('.', limit = 2).first()
-
     if (currentImagePath == newPath && currentTestId == testId) {
       if (isLoadedSuccessfully) {
         onImageLoaded?.invoke()
@@ -279,6 +276,11 @@ class PreviewItemPanel(
             showError(COULD_NOT_LOAD_IMAGE_TEXT)
             onImageLoaded?.invoke() // To trigger a list repaint
           }
+        } else {
+          // If the panel was reused for another item before this image finished decoding,
+          // still notify onImageLoaded so that the parent container repaints and can retrieve
+          // the decoded thumbnail from thumbnailCache.
+          onImageLoaded?.invoke()
         }
       }
     }
@@ -326,8 +328,8 @@ class PreviewItemPanel(
 
       val scaledImage = ImageUtil.scaleImage(image, finalW, finalH)
       JBImageIcon(scaledImage)
-    } catch (e: IOException) {
-      logger.error("IOException occurred while loading image from path: $path", e)
+    } catch (e: Exception) {
+      logger.error("Exception occurred while loading image from path: $path", e)
       null
     }
   }
@@ -348,6 +350,7 @@ class PreviewItemPanel(
     }
 
     fun setImage(newImage: JBImageIcon) {
+      loadingIcon.suspend()
       this.image = newImage
       removeAll() // Remove loading icon or text labels
 
@@ -361,6 +364,7 @@ class PreviewItemPanel(
     }
 
     fun showLoading() {
+      loadingIcon.resume()
       this.image = null
       removeAll()
       add(loadingIcon)
@@ -371,6 +375,7 @@ class PreviewItemPanel(
     }
 
     fun showText(message: String, color: JBColor = JBColor.RED) {
+      loadingIcon.suspend()
       this.image = null
       removeAll()
       add(JBLabel(message).apply { foreground = color })
