@@ -26,12 +26,15 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.base.util.isUnderKotlinSourceRootTypes
 import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElement
+
+private const val UPDATE_REFERENCE_IMAGES_ACTION_ID = "com.android.screenshottest.action.UpdateReferenceImagesAction"
+private const val PREVIEW_TEST_QUALIFIED_NAME = "com.android.tools.screenshot.PreviewTest"
+private const val PREVIEW_TEST_SHORT_NAME = "PreviewTest"
 
 class ScreenshotTestRunLineMarkerContributor : RunLineMarkerContributor() {
   override fun getInfo(element: PsiElement): Info? {
@@ -39,8 +42,8 @@ class ScreenshotTestRunLineMarkerContributor : RunLineMarkerContributor() {
   }
 
   override fun getSlowInfo(element: PsiElement): Info? {
-    if (!StudioFlags.ENABLE_SCREENSHOT_TESTING.get() || !isScreenshotTestFile(element.project, element.containingFile.virtualFile))
-      return null
+    val virtualFile = element.containingFile?.virtualFile ?: return null
+    if (!StudioFlags.ENABLE_SCREENSHOT_TESTING.get() || !isScreenshotTestFile(element.project, virtualFile)) return null
 
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
     // TODO: Enable screenshot tests for release variants as well.
@@ -51,19 +54,22 @@ class ScreenshotTestRunLineMarkerContributor : RunLineMarkerContributor() {
     if (isClass || isValidKtMethodIdentifier(declaration)) {
       val icon = if (isClass) AllIcons.RunConfigurations.TestState.Run_run else AllIcons.RunConfigurations.TestState.Run
       val actions =
-        arrayOf(
-          *ExecutorAction.getActions(),
-          ActionManager.getInstance().getAction("com.android.screenshottest.action.UpdateReferenceImagesAction"),
-        )
+        listOfNotNull(
+            *ExecutorAction.getActions(),
+            ActionManager.getInstance().getAction(UPDATE_REFERENCE_IMAGES_ACTION_ID),
+          )
+          .toTypedArray()
       return Info(icon, actions) { "Run screenshot tests" }
     }
     return null
   }
 
   private fun isValidKtTestClassIdentifier(declaration: KtNamedDeclaration): Boolean {
-    return declaration is KtClassOrObject &&
+    return declaration is KtClass &&
+      !declaration.isInterface() &&
+      !declaration.isEnum() &&
+      !declaration.isAnnotation() &&
       declaration.isUnderKotlinSourceRootTypes() &&
-      declaration is KtClass &&
       declaration.declarations.any { it is KtNamedFunction && isPreviewTestMethod(it) }
   }
 
@@ -73,8 +79,9 @@ class ScreenshotTestRunLineMarkerContributor : RunLineMarkerContributor() {
 
   private fun isPreviewTestMethod(declaration: KtNamedFunction): Boolean {
     return declaration.annotationEntries.any { annotation ->
+      if (annotation.shortName?.asString() != PREVIEW_TEST_SHORT_NAME) return@any false
       (annotation.toUElement() as? UAnnotation)?.javaPsi?.let {
-        it.qualifiedName == "com.android.tools.screenshot.PreviewTest"
+        it.qualifiedName == PREVIEW_TEST_QUALIFIED_NAME
       } ?: false
     }
   }
