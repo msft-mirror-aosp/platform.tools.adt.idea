@@ -111,6 +111,7 @@ class DeviceMenuActionTest {
         getReferenceDevicesExpected() +
           """
           Phones
+                  Pixel 11 Pro Fold (852 × 883 dp, 390dpi)
                   Pixel 10 (411 × 923 dp, 420dpi)
                   Pixel 10 Pro XL (448 × 997 dp, xxhdpi)
                   Pixel 10 Pro Fold (852 × 883 dp, 390dpi)
@@ -273,12 +274,11 @@ class DeviceMenuActionTest {
     assertThat(allDeviceActions[1].device).isEqualTo(device)
 
     // Check that only one device is selected
-    val selectedActions =
-      allDeviceActions.filter {
-        val event = TestActionEvent.createTestEvent()
-        it.update(event)
-        Toggleable.isSelected(event.presentation)
-      }
+    val selectedActions = allDeviceActions.filter {
+      val event = TestActionEvent.createTestEvent()
+      it.update(event)
+      Toggleable.isSelected(event.presentation)
+    }
     assertThat(selectedActions.size).isEqualTo(1)
   }
 
