@@ -50,28 +50,25 @@ class AlwaysRunTask extends DefaultTask {
 
 class AlwaysRunTasksPlugin implements Plugin<Project> {
   void apply(Project project) {
-    project.android.applicationVariants.all { variant ->
-      if (variant.name == "debug") {
-        AlwaysRunTask sample = project.tasks.create("alwaysRunningTask", AlwaysRunTask)
-
-        AlwaysRunTask sample2 = project.tasks.create("alwaysRunningTask2", AlwaysRunTask)
-        variant.mergeResourcesProvider.configure {
-          dependsOn(sample2)
-        }
-        sample2.dependsOn sample
-        sample2.outputs.upToDateWhen { false }
-      }
+    AlwaysRunTask sample = project.tasks.create("alwaysRunningTask", AlwaysRunTask)
+    AlwaysRunTask sample2 = project.tasks.create("alwaysRunningTask2", AlwaysRunTask)
+    project.tasks.matching { it.name == "mergeDebugResources" }.configureEach {
+      dependsOn(sample2)
     }
+    sample2.dependsOn sample
+    sample2.outputs.upToDateWhen { false }
   }
 }
 
 apply plugin: AlwaysRunTasksPlugin
 apply plugin: 'AlwaysRunningBuildSrcPlugin'
 
-afterEvaluate { project ->
-  android.applicationVariants.all { variant ->
-    def mergeResourcesTask = tasks.getByPath("merge${variant.name.capitalize()}Resources")
-    mergeResourcesTask.dependsOn 'alwaysRunningBuildSrcTask'
+androidComponents {
+  onVariants(selector().all()) { variant ->
+    def taskName = variant.computeTaskName("merge", "Resources")
+    tasks.matching { it.name == taskName }.configureEach {
+      dependsOn 'alwaysRunningBuildSrcTask'
+    }
   }
 }
 
@@ -95,11 +92,8 @@ task overlappingOutputTask2(type: OverlappingOutputTask) {
   outputDir = file("$buildDir/outputs/shared_output")
 }
 
-afterEvaluate { project ->
-  android.applicationVariants.all { variant ->
-    def prebuildTask = tasks.getByPath("preBuild")
-    prebuildTask.dependsOn overlappingOutputTask1
-    prebuildTask.dependsOn overlappingOutputTask2
-  }
-  overlappingOutputTask2.dependsOn overlappingOutputTask1
+tasks.named("preBuild").configure {
+  dependsOn overlappingOutputTask1
+  dependsOn overlappingOutputTask2
 }
+overlappingOutputTask2.dependsOn overlappingOutputTask1
