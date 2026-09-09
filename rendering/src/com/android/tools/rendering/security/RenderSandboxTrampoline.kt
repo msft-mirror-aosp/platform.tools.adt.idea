@@ -15,6 +15,7 @@
  */
 package com.android.tools.rendering.security
 
+import com.android.tools.rendering.RenderService
 import java.awt.DefaultKeyboardFocusManager
 import java.awt.Frame
 import java.awt.KeyboardFocusManager
@@ -32,6 +33,7 @@ import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.RandomAccessFile
 import java.lang.invoke.MethodHandles
+import java.lang.ref.Cleaner
 import java.lang.reflect.AccessibleObject
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
@@ -71,14 +73,17 @@ import javax.swing.LayoutStyle
 import javax.swing.MenuSelectionManager
 import javax.swing.PopupFactory
 import javax.swing.RepaintManager
+import javax.swing.Timer as SwingTimer
 import javax.swing.UIDefaults
 import javax.swing.UIManager
 import javax.swing.text.Keymap
+import javax.swing.text.LayoutQueue
 import kotlin.reflect.KFunction
 import kotlin.reflect.jvm.javaMethod
 import org.jetbrains.annotations.TestOnly
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.Type
+import sun.misc.Signal
 import sun.misc.Unsafe
 
 private val tmpDir = File(System.getProperty("java.io.tmpdir"))
@@ -146,6 +151,14 @@ private fun checkResourceLoad(owner: Class<*>, args: Array<Any>?): Unit {
   RenderSandbox.getRenderSandbox().checkResourceLoad(resourceName)
 }
 
+private fun checkGetClassLoader(clazz: Class<*>, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
+  RenderSandbox.getRenderSandbox().checkGetClassLoader(clazz)
+}
+
+private fun checkClassLoaderAccess() {
+  RenderSandbox.getRenderSandbox().checkClassLoaderAccess()
+}
+
 private fun checkCreateClassLoader() = RenderSandbox.getRenderSandbox().checkCreateClassLoader()
 
 private fun checkClipboard() = RenderSandbox.getRenderSandbox().checkClipboard()
@@ -156,12 +169,38 @@ private fun checkPrintJob() = RenderSandbox.getRenderSandbox().checkPrintJob()
 
 private fun checkImageIo() = RenderSandbox.getRenderSandbox().checkImageIo()
 
+private fun checkCleaner() = RenderSandbox.getRenderSandbox().checkCleaner()
+
+private fun checkSignal() = RenderSandbox.getRenderSandbox().checkSignal()
+
+private fun checkRenderExecutor() = RenderSandbox.getRenderSandbox().checkRenderExecutor()
+
+private fun checkThreadConstruct(owner: String, args: Array<Any>?) {
+  if (args != null && args.size == 5 && args[4] == false) {
+    RenderSandbox.getRenderSandbox().checkProcessExec()
+  }
+}
+
 private fun checkMethodInvoke(method: Method, args: Array<Any>?) {
   val target = args?.getOrNull(0)
   if (target != null) {
     RenderSandbox.getRenderSandbox().checkReflectionInvoke(target.javaClass, method.name)
   }
   RenderSandbox.getRenderSandbox().checkReflectionInvoke(method.declaringClass, method.name)
+}
+
+private fun checkConstructorNewInstance(ctor: Constructor<*>, args: Array<Any>?) {
+  if (ctor.declaringClass == Thread::class.java) {
+    val initArgs = args?.getOrNull(0) as? Array<*>
+    if (initArgs != null && initArgs.size == 5 && initArgs[4] == false) {
+      RenderSandbox.getRenderSandbox().checkProcessExec()
+    }
+  }
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(ctor.declaringClass, "<init>")
+}
+
+private fun checkClassNewInstance(clazz: Class<*>, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(clazz, "<init>")
 }
 
 private fun checkFieldAccess(field: Field, args: Array<Any>?) {
@@ -260,14 +299,6 @@ private fun checkServiceLoader() {
 
 private fun checkXmlDecoder() {
   RenderSandbox.getRenderSandbox().checkXmlDecoder()
-}
-
-private fun checkConstructorNewInstance(ctor: Constructor<*>, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
-  RenderSandbox.getRenderSandbox().checkReflectionInvoke(ctor.declaringClass, "<init>")
-}
-
-private fun checkClassNewInstance(clazz: Class<*>, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
-  RenderSandbox.getRenderSandbox().checkReflectionInvoke(clazz, "<init>")
 }
 
 private fun checkReadObject(owner: Any, args: Array<Any>?) {
@@ -728,6 +759,11 @@ object RenderSandboxTransformTrampoline {
       // Class loading
       Intercept.instance<ClassLoader>(ClassLoader::loadClass, checkFirstStringArgument(::checkClassLoad)),
       Intercept.static<Class<*>>("forName", ::checkForNameCalls),
+      Intercept.instance<Class<*>>("getClassLoader", ::checkGetClassLoader),
+      Intercept.instance<ClassLoader>("getParent", checkInstanceCallIgnoreArgs(::checkClassLoaderAccess)),
+      Intercept.instance<Thread>("getContextClassLoader", checkInstanceCallIgnoreArgs(::checkClassLoaderAccess)),
+      Intercept.static<ClassLoader>("getSystemClassLoader", checkStaticNoArgsCall(::checkClassLoaderAccess)),
+      Intercept.static<ClassLoader>("getPlatformClassLoader", checkStaticNoArgsCall(::checkClassLoaderAccess)),
       Intercept.instance<Class<*>>(Class<*>::getResource, ::checkResourceLoad),
       Intercept.instance<Class<*>>(Class<*>::getResourceAsStream, ::checkResourceLoad),
 
@@ -844,6 +880,34 @@ object RenderSandboxTransformTrampoline {
       Intercept.static<ThreadPoolExecutor>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
       Intercept.static<ScheduledThreadPoolExecutor>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
       Intercept.static<ForkJoinPool>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
+
+      // Cleaner operations
+      Intercept.static<Cleaner>("create", checkStaticNoArgsCall(::checkCleaner)),
+      Intercept.instance<Cleaner>("register", checkInstanceCallIgnoreArgs(::checkCleaner)),
+
+      // Signal operations
+      Intercept.static<Signal>("handle", checkStaticNoArgsCall(::checkSignal)),
+      Intercept.static<Signal>("raise", checkStaticNoArgsCall(::checkSignal)),
+
+      // Timer operations
+      Intercept.instance<SwingTimer>("start", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<SwingTimer>("restart", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<java.util.Timer>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.instance<java.util.Timer>("schedule", checkInstanceCallIgnoreArgs(::checkConcurrency)),
+      Intercept.instance<java.util.Timer>("scheduleAtFixedRate", checkInstanceCallIgnoreArgs(::checkConcurrency)),
+
+      // LayoutQueue operations
+      Intercept.static<LayoutQueue>("getDefaultQueue", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<LayoutQueue>("setDefaultQueue", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<LayoutQueue>("<init>", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<LayoutQueue>("addTask", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+
+      // RenderService internal operations
+      Intercept.static<RenderService>("initializeRenderExecutor", checkStaticNoArgsCall(::checkRenderExecutor)),
+      Intercept.static<RenderService>("shutdownRenderExecutor", checkStaticNoArgsCall(::checkRenderExecutor)),
+
+      // Thread operations
+      Intercept.static<Thread>("<init>", ::checkThreadConstruct),
 
       // Reflection
       Intercept.instance<Method>("invoke", ::checkMethodInvoke),

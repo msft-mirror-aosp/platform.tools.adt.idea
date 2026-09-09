@@ -18,6 +18,7 @@ package org.jetbrains.android.uipreview
 import com.android.tools.rendering.security.AllowAllRenderSandbox
 import com.android.tools.rendering.security.EP_NAME
 import com.android.tools.rendering.security.RenderSandbox
+import com.android.tools.rendering.security.RenderSandboxTransformTrampoline
 import com.android.tools.rendering.security.RenderSecurityException
 import com.android.tools.rendering.security.RenderSecurityManager
 import com.android.tools.rendering.security.RenderSecurityManagerOverrides
@@ -119,6 +120,17 @@ class StudioRenderSandboxTest {
   }
 
   @Test
+  fun `check cleaner denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkCleaner()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Cleaner registration is denied during rendering", e.message)
+    }
+  }
+
+  @Test
   fun `check image io denied`() {
     val sandbox = StudioRenderSandbox(null, null, null)
     try {
@@ -137,6 +149,17 @@ class StudioRenderSandboxTest {
       fail("Expected SecurityException")
     } catch (e: SecurityException) {
       assertEquals("Print job access is denied during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check signal denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkSignal()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Signal handling is denied during rendering", e.message)
     }
   }
 
@@ -269,6 +292,65 @@ class StudioRenderSandboxTest {
     } catch (e: SecurityException) {
       assertEquals("Access to ServiceLoader is denied", e.message)
     }
+  }
+
+  @Test
+  fun `check render executor denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkRenderExecutor()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("RenderExecutor modification is denied during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check class loader access denied for plugin classes`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkGetClassLoader(RenderSandboxTransformTrampoline::class.java)
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals(
+        "Access to class loader via com.android.tools.rendering.security.RenderSandboxTransformTrampoline is denied during rendering",
+        e.message,
+      )
+    }
+  }
+
+  @Test
+  fun `check getClassLoader allowed for bootstrap classes`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    sandbox.checkGetClassLoader(String::class.java)
+  }
+
+  @Test
+  fun `check class loader navigation denied`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkClassLoaderAccess()
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Class loader navigation is denied during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check class load denied for restricted classes`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    try {
+      sandbox.checkClassLoad("com.android.tools.rendering.security.RenderSandbox")
+      fail("Expected SecurityException")
+    } catch (e: SecurityException) {
+      assertEquals("Loading restricted class is denied: com.android.tools.rendering.security.RenderSandbox", e.message)
+    }
+  }
+
+  @Test
+  fun `check class load allowed for RenderSandboxTransformTrampoline`() {
+    val sandbox = StudioRenderSandbox(null, null, null)
+    sandbox.checkClassLoad("com.android.tools.rendering.security.RenderSandboxTransformTrampoline")
   }
 
   @Test

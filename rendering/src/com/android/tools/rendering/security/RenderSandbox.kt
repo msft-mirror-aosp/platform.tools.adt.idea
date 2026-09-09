@@ -160,6 +160,24 @@ interface RenderSandbox {
   /** Guards access to java.beans.XMLDecoder deserialization. */
   fun checkXmlDecoder()
 
+  /** Guards registration of Cleaner actions. */
+  fun checkCleaner()
+
+  /** Guards registration and raising of OS/JVM signals. */
+  fun checkSignal()
+
+  /** Guards against modification of internal rendering service and executor state. */
+  fun checkRenderExecutor()
+
+  /** Guards access to a class's class loader via [Class.getClassLoader]. */
+  fun checkGetClassLoader(clazz: Class<*>)
+
+  /**
+   * Guards against navigating class loaders (e.g. [ClassLoader.getParent], [Thread.getContextClassLoader],
+   * [ClassLoader.getSystemClassLoader]).
+   */
+  fun checkClassLoaderAccess()
+
   companion object {
     /**
      * Currently active [RenderSandbox]. Uses [InheritableThreadLocal] so that each render thread has its own sandbox state, and any child
@@ -281,6 +299,16 @@ open class RenderSandboxDelegate(private val delegate: RenderSandbox) : RenderSa
   override fun checkServiceLoader() = delegate.checkServiceLoader()
 
   override fun checkXmlDecoder() = delegate.checkXmlDecoder()
+
+  override fun checkCleaner() = delegate.checkCleaner()
+
+  override fun checkSignal() = delegate.checkSignal()
+
+  override fun checkRenderExecutor() = delegate.checkRenderExecutor()
+
+  override fun checkGetClassLoader(clazz: Class<*>) = delegate.checkGetClassLoader(clazz)
+
+  override fun checkClassLoaderAccess() = delegate.checkClassLoaderAccess()
 }
 
 /** A [RenderSandbox] implementation that denies everything by default. */
@@ -412,6 +440,26 @@ object DenyAllRenderSandbox : RenderSandbox {
   override fun checkXmlDecoder() {
     throw SecurityException("checkXmlDecoder")
   }
+
+  override fun checkCleaner() {
+    throw SecurityException("checkCleaner")
+  }
+
+  override fun checkSignal() {
+    throw SecurityException("checkSignal")
+  }
+
+  override fun checkRenderExecutor() {
+    throw SecurityException("checkRenderExecutor")
+  }
+
+  override fun checkGetClassLoader(clazz: Class<*>) {
+    throw SecurityException("checkGetClassLoader")
+  }
+
+  override fun checkClassLoaderAccess() {
+    throw SecurityException("checkClassLoaderAccess")
+  }
 }
 
 /** A default [RenderSandbox] does not do anything. */
@@ -475,4 +523,14 @@ object AllowAllRenderSandbox : RenderSandbox {
   override fun checkServiceLoader() {}
 
   override fun checkXmlDecoder() {}
+
+  override fun checkCleaner() {}
+
+  override fun checkSignal() {}
+
+  override fun checkRenderExecutor() {}
+
+  override fun checkGetClassLoader(clazz: Class<*>) {}
+
+  override fun checkClassLoaderAccess() {}
 }

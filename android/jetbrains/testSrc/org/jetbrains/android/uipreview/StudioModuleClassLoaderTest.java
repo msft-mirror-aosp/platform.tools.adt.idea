@@ -451,6 +451,52 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
       ));
   }
 
+  public void testDisallowedPackagesFromPlugin() {
+    Module module = myFixture.getModule();
+    ApplicationManager.getApplication().runReadAction(() -> {
+      try (ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference = StudioModuleClassLoaderManager.get()
+        .getShared(StudioModuleClassLoaderTest.class.getClassLoader(), StudioModuleRenderContext.forModule(module))) {
+        StudioModuleClassLoader classLoader = loaderReference.getClassLoader();
+        try {
+          classLoader.loadClass("com.android.tools.rendering.RenderService");
+          fail("ClassNotFoundException expected for com.android.tools.rendering.RenderService");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("org.jetbrains.android.uipreview.StudioRenderSandbox");
+          fail("ClassNotFoundException expected for org.jetbrains.android.uipreview.StudioRenderSandbox");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("org.jetbrains.android.uipreview.StudioRenderSecurity");
+          fail("ClassNotFoundException expected for org.jetbrains.android.uipreview.StudioRenderSecurity");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("sun.misc.Signal");
+          fail("ClassNotFoundException expected for sun.misc.Signal");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("com.android.tools.rendering.security.RenderSandbox");
+          fail("ClassNotFoundException expected for com.android.tools.rendering.security.RenderSandbox");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          assertNotNull(classLoader.loadClass("com.android.tools.rendering.security.RenderSandboxTransformTrampoline"));
+        }
+        catch (ClassNotFoundException e) {
+          fail("RenderSandboxTransformTrampoline should be loadable from plugin: " + e.getMessage());
+        }
+      }
+    });
+  }
+
   /**
    * Builds the given file using javac.
    */

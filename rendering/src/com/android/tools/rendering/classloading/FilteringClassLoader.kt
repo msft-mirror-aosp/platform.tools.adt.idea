@@ -34,10 +34,21 @@ class FilteringClassLoader(parent: ClassLoader?, private val allow: (String) -> 
   companion object {
     /** Utility method that creates a [FilteringClassLoader] that allows only the classes from the given prefixes. */
     @JvmStatic
-    fun allowedPrefixes(parent: ClassLoader?, prefixes: Collection<String>): FilteringClassLoader {
+    @JvmOverloads
+    fun allowedPrefixes(
+      parent: ClassLoader?,
+      prefixes: Collection<String>,
+      disallowedPrefixes: Collection<String> = emptyList(),
+      exemptPrefixes: Collection<String> = emptyList(),
+    ): FilteringClassLoader {
       // Sort by increasing length to make the shorter (more generic) prefixes first
       val prefixesArray = prefixes.distinct().sortedBy { it.length }.toTypedArray()
-      return FilteringClassLoader(parent) { fqcn -> prefixesArray.any { fqcn.startsWith(it) } }
+      val disallowedArray = disallowedPrefixes.distinct().sortedBy { it.length }.toTypedArray()
+      val exemptArray = exemptPrefixes.distinct().sortedBy { it.length }.toTypedArray()
+      return FilteringClassLoader(parent) { fqcn ->
+        prefixesArray.any { fqcn.startsWith(it) } &&
+          (exemptArray.any { fqcn.startsWith(it) } || !disallowedArray.any { fqcn.startsWith(it) })
+      }
     }
   }
 }

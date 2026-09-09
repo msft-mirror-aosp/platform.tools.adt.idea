@@ -15,6 +15,7 @@
  */
 package org.jetbrains.android.uipreview
 
+import com.android.tools.rendering.classloading.ModuleClassLoader
 import com.android.tools.rendering.security.DenyAllRenderSandbox
 import com.android.tools.rendering.security.RenderSandboxDelegate
 import com.android.tools.rendering.security.RenderSandboxTransformTrampoline
@@ -125,8 +126,20 @@ class StudioRenderSandbox(val sdkPath: String?, val projectPath: String?, val ap
     throw SecurityException("Print job access is denied during rendering")
   }
 
+  override fun checkCleaner() {
+    throw SecurityException("Cleaner registration is denied during rendering")
+  }
+
+  override fun checkSignal() {
+    throw SecurityException("Signal handling is denied during rendering")
+  }
+
   override fun checkEventQueue() {
     throw SecurityException("Event queue and AWT dispatch access is denied during rendering")
+  }
+
+  override fun checkRenderExecutor() {
+    throw SecurityException("RenderExecutor modification is denied during rendering")
   }
 
   override fun checkConcurrency() {
@@ -140,7 +153,31 @@ class StudioRenderSandbox(val sdkPath: String?, val projectPath: String?, val ap
     // knows how to reset the security manager
   }
 
-  override fun checkClassLoad(classFqn: String) {}
+  override fun checkGetClassLoader(clazz: Class<*>) {
+    val cl = clazz.classLoader ?: return
+    if (cl is ModuleClassLoader) {
+      return
+    }
+    throw SecurityException("Access to class loader via ${clazz.name} is denied during rendering")
+  }
+
+  override fun checkClassLoaderAccess() {
+    throw SecurityException("Class loader navigation is denied during rendering")
+  }
+
+  override fun checkClassLoad(classFqn: String) {
+    if (
+      classFqn.startsWith("com.android.tools.rendering.security.") ||
+        classFqn.startsWith("com.android.tools.rendering.RenderService") ||
+        classFqn.startsWith("org.jetbrains.android.uipreview.StudioRenderSandbox") ||
+        classFqn.startsWith("org.jetbrains.android.uipreview.StudioRenderSecurity") ||
+        classFqn == "sun.misc.Signal"
+    ) {
+      if (classFqn != "com.android.tools.rendering.security.RenderSandboxTransformTrampoline") {
+        throw SecurityException("Loading restricted class is denied: $classFqn")
+      }
+    }
+  }
 
   private fun isTempDirPath(path: String): Boolean =
     path.startsWith(tempDir) ||

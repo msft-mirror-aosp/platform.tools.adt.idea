@@ -15,6 +15,7 @@
  */
 package com.android.tools.rendering.security
 
+import com.android.tools.rendering.RenderService
 import com.android.tools.rendering.classloading.TestClassLoader
 import com.android.tools.rendering.classloading.fromBinaryNameToPackageName
 import com.android.tools.rendering.classloading.setupTestClassLoaderWithTransformation
@@ -40,6 +41,7 @@ import java.io.RandomAccessFile
 import java.io.Serializable
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
+import java.lang.ref.Cleaner
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier
 import java.net.DatagramSocket
@@ -74,9 +76,11 @@ import javax.swing.LayoutStyle
 import javax.swing.MenuSelectionManager
 import javax.swing.PopupFactory
 import javax.swing.RepaintManager
+import javax.swing.Timer as SwingTimer
 import javax.swing.UIDefaults
 import javax.swing.UIManager
 import javax.swing.text.JTextComponent
+import javax.swing.text.LayoutQueue
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -89,6 +93,8 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import sun.misc.Signal
+import sun.misc.SignalHandler
 import sun.misc.Unsafe
 
 private val testingDirectory = Files.createTempDirectory("renderSandbox")
@@ -142,6 +148,22 @@ open class MaliciousToctouStatement(private val realTarget: Any, private val rea
   override fun getTarget(): Any = if (accessCount++ == 0) "benign" else realTarget
 
   override fun getMethodName(): String = if (accessCount++ <= 1) "toString" else realMethod
+}
+
+class TestTimerTask : java.util.TimerTask() {
+  override fun run() {}
+}
+
+class UnmanagedWorkerRunnable : Runnable {
+  var error: Throwable? = null
+
+  override fun run() {
+    try {
+      Runtime.getRuntime().exec("echo pwned")
+    } catch (t: Throwable) {
+      error = t
+    }
+  }
 }
 
 interface ClassToCheck {
@@ -275,6 +297,28 @@ interface ClassToCheck {
 
   fun checkJEditorPaneRegisterEditorKit()
 
+  fun checkCleanerCreate()
+
+  fun checkCleanerRegister(cleaner: Cleaner)
+
+  fun checkSignalHandle()
+
+  fun checkSignalRaise()
+
+  fun checkSwingTimerStart()
+
+  fun checkJavaUtilTimer()
+
+  fun checkJavaUtilTimerSchedule(timer: java.util.Timer)
+
+  fun checkLayoutQueue()
+
+  fun checkLayoutQueueAddTask(queue: LayoutQueue)
+
+  fun checkRenderServiceInitialize()
+
+  fun checkUnmanagedThreadExec()
+
   fun checkFileChannelOpen(path: Path)
 
   fun checkZipFile()
@@ -294,6 +338,18 @@ interface ClassToCheck {
   fun tryInvokeMethodHandle()
 
   fun checkFindStatic()
+
+  fun checkFindVirtual()
+
+  fun checkFindConstructor()
+
+  fun checkConstructorNewInstanceThread()
+
+  fun checkGetClassLoader()
+
+  fun checkGetParent(cl: ClassLoader)
+
+  fun checkGetContextClassLoader()
 
   fun checkUnreflect()
 
@@ -357,9 +413,9 @@ interface ClassToCheck {
 
   fun checkFilesNewInputStreamDeleteOnClose()
 
-  fun checkMethodHandlesDummyClassLoader(dummyLoader: ClassLoader)
+  fun checkMethodHandlesDummyClassLoader()
 
-  fun checkMethodHandlesFindGetterDummyClassLoader(dummyLoader: ClassLoader)
+  fun checkMethodHandlesFindGetterDummyClassLoader()
 
   fun checkXmlDecoderDirect()
 
@@ -649,6 +705,54 @@ class ClassToCheckImpl : ClassToCheck {
     JEditorPane.registerEditorKitForContentType("text/html", "EvilKit")
   }
 
+  override fun checkCleanerCreate() {
+    Cleaner.create()
+  }
+
+  override fun checkCleanerRegister(cleaner: Cleaner) {
+    cleaner.register(Any(), TestRunnable())
+  }
+
+  override fun checkSignalHandle() {
+    Signal.handle(Signal("INT"), SignalHandler.SIG_DFL)
+  }
+
+  override fun checkSignalRaise() {
+    Signal.raise(Signal("INT"))
+  }
+
+  override fun checkSwingTimerStart() {
+    SwingTimer(100, null).start()
+  }
+
+  override fun checkJavaUtilTimer() {
+    java.util.Timer()
+  }
+
+  override fun checkJavaUtilTimerSchedule(timer: java.util.Timer) {
+    timer.schedule(TestTimerTask(), 1000)
+  }
+
+  override fun checkLayoutQueue() {
+    LayoutQueue.getDefaultQueue()
+  }
+
+  override fun checkLayoutQueueAddTask(queue: LayoutQueue) {
+    queue.addTask(TestRunnable())
+  }
+
+  override fun checkRenderServiceInitialize() {
+    RenderService.initializeRenderExecutor()
+  }
+
+  override fun checkUnmanagedThreadExec() {
+    val worker = UnmanagedWorkerRunnable()
+    val thread = Thread(null, worker, "unmanaged-worker", 0, false)
+    thread.start()
+    thread.join()
+    if (worker.error != null) throw worker.error!!
+  }
+
   override fun checkFileChannelOpen(path: Path) {
     FileChannel.open(path)
   }
@@ -713,6 +817,52 @@ class ClassToCheckImpl : ClassToCheck {
     val lookup = MethodHandles.lookup()
     val type = MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
     lookup.findStatic(System::class.java, "exit", type)
+  }
+
+  override fun checkFindVirtual() {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Cleaner.Cleanable::class.java, Any::class.java, Runnable::class.java)
+    lookup.findVirtual(Cleaner::class.java, "register", type)
+  }
+
+  override fun checkFindConstructor() {
+    val lookup = MethodHandles.lookup()
+    val type =
+      MethodType.methodType(
+        Void.TYPE,
+        ThreadGroup::class.java,
+        Runnable::class.java,
+        String::class.java,
+        java.lang.Long.TYPE,
+        java.lang.Boolean.TYPE,
+      )
+    lookup.findConstructor(Thread::class.java, type)
+  }
+
+  override fun checkConstructorNewInstanceThread() {
+    val constructor =
+      Thread::class
+        .java
+        .getConstructor(
+          ThreadGroup::class.java,
+          Runnable::class.java,
+          String::class.java,
+          java.lang.Long.TYPE,
+          java.lang.Boolean.TYPE,
+        )
+    constructor.newInstance(null, UnmanagedWorkerRunnable(), "unmanaged-worker", 0L, false)
+  }
+
+  override fun checkGetClassLoader() {
+    RenderSandboxTransformTrampoline::class.java.classLoader
+  }
+
+  override fun checkGetParent(cl: ClassLoader) {
+    cl.parent
+  }
+
+  override fun checkGetContextClassLoader() {
+    Thread.currentThread().contextClassLoader
   }
 
   override fun checkUnreflect() {
@@ -870,27 +1020,15 @@ class ClassToCheckImpl : ClassToCheck {
     Files.newInputStream(Path.of(disallowedFilePath), StandardOpenOption.DELETE_ON_CLOSE)
   }
 
-  override fun checkMethodHandlesDummyClassLoader(dummyLoader: ClassLoader) {
-    val oldLoader = Thread.currentThread().contextClassLoader
-    try {
-      Thread.currentThread().contextClassLoader = dummyLoader
-      val lookup = MethodHandles.lookup()
-      val type = MethodType.methodType(Process::class.java)
-      lookup.findVirtual(ProcessBuilder::class.java, "start", type)
-    } finally {
-      Thread.currentThread().contextClassLoader = oldLoader
-    }
+  override fun checkMethodHandlesDummyClassLoader() {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Process::class.java)
+    lookup.findVirtual(ProcessBuilder::class.java, "start", type)
   }
 
-  override fun checkMethodHandlesFindGetterDummyClassLoader(dummyLoader: ClassLoader) {
-    val oldLoader = Thread.currentThread().contextClassLoader
-    try {
-      Thread.currentThread().contextClassLoader = dummyLoader
-      val lookup = MethodHandles.lookup()
-      lookup.findGetter(File::class.java, "path", String::class.java)
-    } finally {
-      Thread.currentThread().contextClassLoader = oldLoader
-    }
+  override fun checkMethodHandlesFindGetterDummyClassLoader() {
+    val lookup = MethodHandles.lookup()
+    lookup.findGetter(File::class.java, "path", String::class.java)
   }
 
   override fun checkXmlDecoderDirect() {
@@ -1486,11 +1624,100 @@ class RenderSandboxTest {
   }
 
   @Test
+  fun `check Cleaner create fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkCleaner") { methodIntercept.checkCleanerCreate() }
+  }
+
+  @Test
+  fun `check Cleaner register fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val cleaner = Cleaner.create()
+    verifyThrowsSecurityException("checkCleaner") { methodIntercept.checkCleanerRegister(cleaner) }
+  }
+
+  @Test
+  fun `check Signal handle fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkSignal") { methodIntercept.checkSignalHandle() }
+  }
+
+  @Test
+  fun `check Signal raise fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkSignal") { methodIntercept.checkSignalRaise() }
+  }
+
+  @Test
+  fun `check Swing Timer start fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkSwingTimerStart() }
+  }
+
+  @Test
+  fun `check java util Timer fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkConcurrency") { methodIntercept.checkJavaUtilTimer() }
+  }
+
+  @Test
+  fun `check java util Timer schedule fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val timer = java.util.Timer()
+    try {
+      verifyThrowsSecurityException("checkConcurrency") { methodIntercept.checkJavaUtilTimerSchedule(timer) }
+    } finally {
+      timer.cancel()
+    }
+  }
+
+  @Test
   fun `check FileSystemProvider delete fails`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     val path = Paths.get(disallowedFilePath)
     verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
       methodIntercept.checkFileSystemProviderDelete(path)
+    }
+  }
+
+  @Test
+  fun `check LayoutQueue fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkLayoutQueue() }
+  }
+
+  @Test
+  fun `check LayoutQueue addTask fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val queue = LayoutQueue.getDefaultQueue()
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkLayoutQueueAddTask(queue) }
+  }
+
+  @Test
+  fun `check RenderService initializeRenderExecutor fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkRenderExecutor") { methodIntercept.checkRenderServiceInitialize() }
+  }
+
+  @Test
+  fun `check unmanaged thread exec fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkProcessExec") { methodIntercept.checkUnmanagedThreadExec() }
+  }
+
+  @Test
+  fun `check findVirtual Cleaner register fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ref/Cleaner#register") {
+      methodIntercept.checkFindVirtual()
+    }
+  }
+
+  @Test
+  fun `check findConstructor Thread fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/Thread#<init>") {
+      methodIntercept.checkFindConstructor()
     }
   }
 
@@ -1788,8 +2015,14 @@ class RenderSandboxTest {
   fun `check MethodHandles findVirtual with dummy classloader fails`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     val dummyLoader = URLClassLoader(emptyArray())
-    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#start") {
-      methodIntercept.checkMethodHandlesDummyClassLoader(dummyLoader)
+    val oldLoader = Thread.currentThread().contextClassLoader
+    try {
+      Thread.currentThread().contextClassLoader = dummyLoader
+      verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#start") {
+        methodIntercept.checkMethodHandlesDummyClassLoader()
+      }
+    } finally {
+      Thread.currentThread().contextClassLoader = oldLoader
     }
   }
 
@@ -1797,8 +2030,14 @@ class RenderSandboxTest {
   fun `check MethodHandles findGetter with dummy classloader fails`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     val dummyLoader = URLClassLoader(emptyArray())
-    verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
-      methodIntercept.checkMethodHandlesFindGetterDummyClassLoader(dummyLoader)
+    val oldLoader = Thread.currentThread().contextClassLoader
+    try {
+      Thread.currentThread().contextClassLoader = dummyLoader
+      verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
+        methodIntercept.checkMethodHandlesFindGetterDummyClassLoader()
+      }
+    } finally {
+      Thread.currentThread().contextClassLoader = oldLoader
     }
   }
 
@@ -1870,6 +2109,14 @@ class RenderSandboxTest {
   }
 
   @Test
+  fun `check Constructor newInstance Thread with unmanaged worker fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkProcessExec") {
+      methodIntercept.checkConstructorNewInstanceThread()
+    }
+  }
+
+  @Test
   fun `check Files createLink checks write on link and read on existing`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     val link = Paths.get(disallowedFilePath)
@@ -1895,6 +2142,14 @@ class RenderSandboxTest {
   }
 
   @Test
+  fun `check getClassLoader fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkGetClassLoader") {
+      methodIntercept.checkGetClassLoader()
+    }
+  }
+
+  @Test
   fun `check FileSystemProvider createLink checks write on link and read on existing`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     val link = Paths.get(disallowedFilePath)
@@ -1916,6 +2171,14 @@ class RenderSandboxTest {
       }
     } finally {
       RenderSandbox.setRenderSandbox(baseSandbox)
+    }
+  }
+
+  @Test
+  fun `check getParent fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkClassLoaderAccess") {
+      methodIntercept.checkGetParent(javaClass.classLoader)
     }
   }
 
@@ -2005,6 +2268,14 @@ class RenderSandboxTest {
       } catch (e: InvocationTargetException) {
         throw e.cause ?: e
       }
+    }
+  }
+
+  @Test
+  fun `check getContextClassLoader fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkClassLoaderAccess") {
+      methodIntercept.checkGetContextClassLoader()
     }
   }
 }

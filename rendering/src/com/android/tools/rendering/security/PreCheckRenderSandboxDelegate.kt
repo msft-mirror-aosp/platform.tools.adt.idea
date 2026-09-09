@@ -170,4 +170,29 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
     if (!check()) return
     delegate.checkXmlDecoder()
   }
+
+  override fun checkCleaner() {
+    if (!check()) return
+    delegate.checkCleaner()
+  }
+
+  override fun checkSignal() {
+    if (!check()) return
+    delegate.checkSignal()
+  }
+
+  override fun checkRenderExecutor() {
+    if (!check()) return
+    delegate.checkRenderExecutor()
+  }
+
+  override fun checkGetClassLoader(clazz: Class<*>) {
+    if (!check()) return
+    delegate.checkGetClassLoader(clazz)
+  }
+
+  override fun checkClassLoaderAccess() {
+    if (!check()) return
+    delegate.checkClassLoaderAccess()
+  }
 }
