@@ -15,7 +15,12 @@
  */
 package com.android.tools.rendering.security
 
+import java.awt.DefaultKeyboardFocusManager
+import java.awt.Frame
+import java.awt.KeyboardFocusManager
 import java.awt.Toolkit
+import java.awt.Window
+import java.awt.dnd.DragSource
 import java.awt.print.PrinterJob
 import java.io.File
 import java.io.FileInputStream
@@ -52,6 +57,13 @@ import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
 import javax.print.PrintServiceLookup
 import javax.swing.JEditorPane
+import javax.swing.LayoutStyle
+import javax.swing.MenuSelectionManager
+import javax.swing.PopupFactory
+import javax.swing.RepaintManager
+import javax.swing.UIDefaults
+import javax.swing.UIManager
+import javax.swing.text.Keymap
 import kotlin.reflect.KFunction
 import kotlin.reflect.jvm.javaMethod
 import org.jetbrains.annotations.TestOnly
@@ -610,6 +622,33 @@ object RenderSandboxTransformTrampoline {
       Intercept.instance<Toolkit>("getSystemClipboard", checkInstanceCallIgnoreArgs(::checkClipboard)),
       Intercept.instance<Toolkit>("getSystemEventQueue", checkInstanceCallIgnoreArgs(::checkEventQueue)),
       Intercept.static<JEditorPane>("registerEditorKitForContentType", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("addKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("removeKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("addKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("removeKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<KeyboardFocusManager>("setCurrentKeyboardFocusManager", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("addKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("removeKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("addKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("removeKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<Keymap>("setDefaultAction", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<Keymap>("addActionForKeyStroke", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<PopupFactory>("setSharedInstance", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<LayoutStyle>("setInstance", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<UIManager>("put", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<UIManager>("setLookAndFeel", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<UIDefaults>("put", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<RepaintManager>("setCurrentManager", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<Window>("getWindows", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<Window>("getOwnerlessWindows", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<Frame>("getFrames", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<DragSource>("getDefaultDragSource", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<DragSource>("addDragSourceListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DragSource>("removeDragSourceListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DragSource>("addDragSourceMotionListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DragSource>("removeDragSourceMotionListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<MenuSelectionManager>("addChangeListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<MenuSelectionManager>("removeChangeListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
 
       // Print operations
       Intercept.static<PrinterJob>("getPrinterJob", checkStaticNoArgsCall(::checkPrintJob)),

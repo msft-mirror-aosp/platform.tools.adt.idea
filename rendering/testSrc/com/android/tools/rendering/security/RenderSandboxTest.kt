@@ -19,15 +19,30 @@ import com.android.tools.rendering.classloading.TestClassLoader
 import com.android.tools.rendering.classloading.fromBinaryNameToPackageName
 import com.android.tools.rendering.classloading.setupTestClassLoaderWithTransformation
 import com.intellij.openapi.util.io.FileUtil
+import java.awt.Frame
+import java.awt.KeyboardFocusManager
 import java.awt.Toolkit
+import java.awt.Window
+import java.awt.dnd.DragSource
 import java.awt.print.PrinterJob
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.io.PrintStream
+import java.io.RandomAccessFile
+import java.io.Serializable
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
 import java.lang.reflect.Modifier
+import java.net.DatagramSocket
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
+import java.net.URLClassLoader
 import java.nio.channels.FileChannel
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -44,13 +59,23 @@ import javax.imageio.spi.ImageReaderSpi
 import javax.imageio.spi.ServiceRegistry
 import javax.print.PrintServiceLookup
 import javax.swing.JEditorPane
+import javax.swing.LayoutStyle
+import javax.swing.MenuSelectionManager
+import javax.swing.PopupFactory
+import javax.swing.RepaintManager
+import javax.swing.UIDefaults
+import javax.swing.UIManager
+import javax.swing.text.JTextComponent
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import sun.misc.Unsafe
 
 private val testingDirectory = Files.createTempDirectory("renderSandbox")
 private val allowedDirectory = Files.createDirectory(testingDirectory.resolve("allowed"))
@@ -67,8 +92,8 @@ private val commonMethods = setOf("toString", "equals", "hashCode", "getClass", 
 private fun removeTestingDirPrefix(path: String): String =
   FileUtil.toSystemIndependentName(path).replace(FileUtil.toSystemIndependentName(testingDirectoryPath), "")
 
-class MaliciousSerializable : java.io.Serializable {
-  private fun readObject(stream: java.io.ObjectInputStream) {
+class MaliciousSerializable : Serializable {
+  private fun readObject(stream: ObjectInputStream) {
     stream.defaultReadObject()
     System.exit(0)
   }
@@ -165,6 +190,34 @@ interface ClassToCheck {
 
   fun checkEventQueue()
 
+  fun checkKeyboardFocusManager()
+
+  fun checkKeymapDefaultAction()
+
+  fun checkPopupFactory()
+
+  fun checkLayoutStyle()
+
+  fun checkUIManagerPut()
+
+  fun checkRepaintManager()
+
+  fun checkWindowGetWindows()
+
+  fun checkFrameGetFrames()
+
+  fun checkKeyboardFocusManagerSetCurrent()
+
+  fun checkUIManagerSetLookAndFeel()
+
+  fun checkUIDefaultsPut()
+
+  fun checkDragSourceGetDefault()
+
+  fun checkDragSourceAddListener(dragSource: DragSource)
+
+  fun checkMenuSelectionManager()
+
   fun checkPrintJob()
 
   fun checkPrinterJobLookup()
@@ -247,7 +300,7 @@ class ClassToCheckImpl : ClassToCheck {
   }
 
   override fun checkReadTextWithCharset() {
-    disallowedFile.readText(java.nio.charset.Charset.defaultCharset())
+    disallowedFile.readText(Charset.defaultCharset())
   }
 
   override fun checkReadBytes() {
@@ -363,15 +416,15 @@ class ClassToCheckImpl : ClassToCheck {
   }
 
   override fun checkRandomAccessFile() {
-    java.io.RandomAccessFile(disallowedFilePath, "r")
+    RandomAccessFile(disallowedFilePath, "r")
   }
 
   override fun checkDatagramSocket() {
-    java.net.DatagramSocket()
+    DatagramSocket()
   }
 
   override fun checkClassLoaderCreation() {
-    java.net.URLClassLoader(arrayOf())
+    URLClassLoader(arrayOf())
   }
 
   override fun checkAllowlistedPropertyWrite() {
@@ -384,6 +437,63 @@ class ClassToCheckImpl : ClassToCheck {
 
   override fun checkEventQueue() {
     Toolkit.getDefaultToolkit().systemEventQueue
+  }
+
+  override fun checkKeyboardFocusManager() {
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(null)
+  }
+
+  override fun checkKeymapDefaultAction() {
+    val keymap = JTextComponent.addKeymap("testKeymap", null)
+    keymap.defaultAction = null
+  }
+
+  override fun checkPopupFactory() {
+    PopupFactory.setSharedInstance(PopupFactory())
+  }
+
+  override fun checkLayoutStyle() {
+    LayoutStyle.setInstance(null)
+  }
+
+  override fun checkUIManagerPut() {
+    UIManager.put("Test.key", "Test.value")
+  }
+
+  override fun checkRepaintManager() {
+    RepaintManager.setCurrentManager(RepaintManager())
+  }
+
+  override fun checkWindowGetWindows() {
+    Window.getWindows()
+  }
+
+  override fun checkFrameGetFrames() {
+    Frame.getFrames()
+  }
+
+  override fun checkKeyboardFocusManagerSetCurrent() {
+    KeyboardFocusManager.setCurrentKeyboardFocusManager(null)
+  }
+
+  override fun checkUIManagerSetLookAndFeel() {
+    UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName())
+  }
+
+  override fun checkUIDefaultsPut() {
+    UIDefaults().put("test.key", "test.value")
+  }
+
+  override fun checkDragSourceGetDefault() {
+    DragSource.getDefaultDragSource()
+  }
+
+  override fun checkDragSourceAddListener(dragSource: DragSource) {
+    dragSource.addDragSourceListener(null)
+  }
+
+  override fun checkMenuSelectionManager() {
+    MenuSelectionManager.defaultManager().addChangeListener(null)
   }
 
   override fun checkPrintJob() {
@@ -456,58 +566,58 @@ class ClassToCheckImpl : ClassToCheck {
   }
 
   override fun checkUnsafe() {
-    sun.misc.Unsafe.getUnsafe()
+    Unsafe.getUnsafe()
   }
 
   override fun tryDefineClass(): Class<*> {
-    val cw = org.objectweb.asm.ClassWriter(0)
+    val cw = ClassWriter(0)
     cw.visit(
-      org.objectweb.asm.Opcodes.V1_7,
-      org.objectweb.asm.Opcodes.ACC_PUBLIC + org.objectweb.asm.Opcodes.ACC_SUPER,
+      Opcodes.V1_7,
+      Opcodes.ACC_PUBLIC + Opcodes.ACC_SUPER,
       "Malicious",
       null,
       "java/lang/Object",
       null,
     )
-    val mv = cw.visitMethod(org.objectweb.asm.Opcodes.ACC_PUBLIC + org.objectweb.asm.Opcodes.ACC_STATIC, "run", "()V", null, null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "run", "()V", null, null)
     mv.visitCode()
-    mv.visitInsn(org.objectweb.asm.Opcodes.ICONST_0)
-    mv.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
-    mv.visitInsn(org.objectweb.asm.Opcodes.RETURN)
+    mv.visitInsn(Opcodes.ICONST_0)
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
+    mv.visitInsn(Opcodes.RETURN)
     mv.visitMaxs(1, 1)
     mv.visitEnd()
     cw.visitEnd()
     val bytes = cw.toByteArray()
-    return java.lang.invoke.MethodHandles.lookup().defineClass(bytes)
+    return MethodHandles.lookup().defineClass(bytes)
   }
 
   override fun tryInvokeMethodHandle() {
-    val lookup = java.lang.invoke.MethodHandles.lookup()
-    val type = java.lang.invoke.MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
     val handle = lookup.findStatic(System::class.java, "exit", type)
     handle.invoke(0)
   }
 
   override fun checkFindStatic() {
-    val lookup = java.lang.invoke.MethodHandles.lookup()
-    val type = java.lang.invoke.MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
     lookup.findStatic(System::class.java, "exit", type)
   }
 
   override fun checkUnreflect() {
-    val lookup = java.lang.invoke.MethodHandles.lookup()
+    val lookup = MethodHandles.lookup()
     val method = System::class.java.getMethod("exit", Int::class.javaPrimitiveType)
     lookup.unreflect(method)
   }
 
   override fun tryDeserialization(bytes: ByteArray) {
-    val ois = java.io.ObjectInputStream(java.io.ByteArrayInputStream(bytes))
+    val ois = ObjectInputStream(ByteArrayInputStream(bytes))
     ois.readObject()
   }
 
   override fun tryConnect() {
-    val socket = java.net.Socket()
-    socket.connect(java.net.InetSocketAddress("localhost", 8080), 100)
+    val socket = Socket()
+    socket.connect(InetSocketAddress("localhost", 8080), 100)
   }
 
   // Suppressed because we want to test that the sandbox intercepts implicit executors.
@@ -863,8 +973,8 @@ class RenderSandboxTest {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
 
     val obj = MaliciousSerializable()
-    val baos = java.io.ByteArrayOutputStream()
-    val oos = java.io.ObjectOutputStream(baos)
+    val baos = ByteArrayOutputStream()
+    val oos = ObjectOutputStream(baos)
     oos.writeObject(obj)
     val bytes = baos.toByteArray()
 
@@ -968,5 +1078,92 @@ class RenderSandboxTest {
     verifyThrowsSecurityException("Reflection access to restricted method: javax/imageio/spi/IIORegistry#getDefaultInstance") {
       methodIntercept.checkReflectionInvokeIIORegistry()
     }
+  }
+
+  @Test
+  fun `check KeyboardFocusManager addKeyEventDispatcher fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkKeyboardFocusManager() }
+  }
+
+  @Test
+  fun `check Keymap setDefaultAction fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkKeymapDefaultAction() }
+  }
+
+  @Test
+  fun `check PopupFactory setSharedInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkPopupFactory() }
+  }
+
+  @Test
+  fun `check LayoutStyle setInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkLayoutStyle() }
+  }
+
+  @Test
+  fun `check UIManager put fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkUIManagerPut() }
+  }
+
+  @Test
+  fun `check RepaintManager setCurrentManager fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkRepaintManager() }
+  }
+
+  @Test
+  fun `check Window getWindows fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkWindowGetWindows() }
+  }
+
+  @Test
+  fun `check Frame getFrames fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkFrameGetFrames() }
+  }
+
+  @Test
+  fun `check KeyboardFocusManager setCurrentKeyboardFocusManager fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkKeyboardFocusManagerSetCurrent() }
+  }
+
+  @Test
+  fun `check UIManager setLookAndFeel fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkUIManagerSetLookAndFeel() }
+  }
+
+  @Test
+  fun `check UIDefaults put fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkUIDefaultsPut() }
+  }
+
+  @Test
+  fun `check DragSource getDefaultDragSource fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkDragSourceGetDefault() }
+  }
+
+  @Test
+  fun `check DragSource addDragSourceListener fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val unsafeField = Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }
+    val unsafe = unsafeField.get(null) as Unsafe
+    val dragSource = unsafe.allocateInstance(DragSource::class.java) as DragSource
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkDragSourceAddListener(dragSource) }
+  }
+
+  @Test
+  fun `check MenuSelectionManager addChangeListener fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkMenuSelectionManager() }
   }
 }
