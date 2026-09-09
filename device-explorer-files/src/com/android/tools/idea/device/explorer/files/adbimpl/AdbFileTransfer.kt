@@ -26,11 +26,11 @@ import com.android.tools.idea.device.explorer.files.fs.FileTransferProgress
 import com.android.tools.idea.device.explorer.files.fs.ThrottledProgress
 import com.google.common.base.Stopwatch
 import com.intellij.openapi.diagnostic.logger
-import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.Executor
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 private val LOGGER = logger<AdbFileTransfer>()
@@ -87,28 +87,30 @@ class AdbFileTransfer(
   }
 
   private suspend fun downloadFileWorker(remotePath: String, remotePathSize: Long, localPath: Path, progress: FileTransferProgress) {
-    try {
-      val monitor = SingleFileProgressMonitor(progressExecutor.asCoroutineDispatcher(), progress, remotePathSize)
-      withContext(dispatcher) {
+    withContext(dispatcher) {
+      val monitor = SingleFileProgressMonitor(progressExecutor, progress, remotePathSize)
+      try {
         val stopwatch = Stopwatch.createStarted()
         device.session.channelFactory.createFile(localPath).use { fileChannel ->
           device.session.deviceServices.syncRecv(device.selector, remotePath, fileChannel, monitor)
         }
         LOGGER.info("Pull file took $stopwatch to execute: \"$remotePath\" -> \"$localPath\"")
+      } catch (c: CancellationException) {
+        LOGGER.info("Pull file cancelled: \"$remotePath\" -> \"$localPath\"")
+        throw c
+      } catch (t: Throwable) {
+        LOGGER.info("Error pulling file from \"$remotePath\" to \"$localPath\"", t)
+        throw t
       }
-    } catch (e: IOException) {
-      LOGGER.info("Error pulling file from \"$remotePath\" to \"$localPath\"", e)
-      throw e
     }
   }
 
   private suspend fun uploadFileWorker(localPath: Path, remotePath: String, progress: FileTransferProgress) {
-    try {
-      withContext(dispatcher) {
-        val fileLength = localPath.toFile().length()
+    withContext(dispatcher) {
+      val fileLength = localPath.toFile().length()
+      val monitor = SingleFileProgressMonitor(progressExecutor, progress, fileLength)
+      try {
         val stopwatch = Stopwatch.createStarted()
-        val monitor = SingleFileProgressMonitor(progressExecutor.asCoroutineDispatcher(), progress, fileLength)
-
         device.session.channelFactory.openFile(localPath).use { fileChannel ->
           device.session.deviceServices.syncSend(
             device.selector,
@@ -119,44 +121,44 @@ class AdbFileTransfer(
             monitor,
           )
         }
-
         LOGGER.info("Push file took $stopwatch to execute: \"$localPath\" -> \"$remotePath\"")
+      } catch (c: CancellationException) {
+        LOGGER.info("Push file cancelled: \"$localPath\" -> \"$remotePath\"")
+        throw c
+      } catch (t: Throwable) {
+        LOGGER.info("Error pushing file from \"$localPath\" to \"$remotePath\"", t)
+        throw t
       }
-    } catch (e: IOException) {
-      LOGGER.info("Error pushing file from \"$localPath\" to \"$remotePath\"", e)
-      throw e
     }
   }
 }
 
 /**
- * Forward callbacks from a [SyncProgress], running on a pooled thread, to a [FileTransferProgress], using the provided
- * [CoroutineDispatcher], typically the UI dispatcher.
+ * Forward callbacks from a [SyncProgress], running on a pooled thread, to a [FileTransferProgress], using the provided [Executor],
+ * typically the UI executor.
  */
 private class SingleFileProgressMonitor(
-  private val callbackDispatcher: CoroutineDispatcher,
+  private val callbackExecutor: Executor,
   private val progress: FileTransferProgress,
   private val totalBytes: Long,
 ) : SyncProgress {
-  private val throttledProgress = ThrottledProgress(PROGRESS_REPORT_INTERVAL_MILLIS)
-  private var currentBytes: Long = 0
+  private val throttledProgress = ThrottledProgress(TimeUnit.MILLISECONDS.toNanos(PROGRESS_REPORT_INTERVAL_MILLIS))
 
   override suspend fun transferStarted(remotePath: String) {
-    withContext(callbackDispatcher) { progress.progress(0, totalBytes) }
+    callbackExecutor.execute { progress.progress(0, totalBytes) }
   }
 
   override suspend fun transferProgress(remotePath: String, totalBytesSoFar: Long) {
     if (progress.isCancelled) {
       cancelAndThrow()
     }
-    currentBytes = totalBytesSoFar
     if (throttledProgress.check()) {
-      withContext(callbackDispatcher) { progress.progress(totalBytesSoFar, totalBytes) }
+      callbackExecutor.execute { progress.progress(totalBytesSoFar, totalBytes) }
     }
   }
 
   override suspend fun transferDone(remotePath: String, totalBytes: Long) {
-    withContext(callbackDispatcher) { progress.progress(totalBytes, totalBytes) }
+    callbackExecutor.execute { progress.progress(totalBytes, totalBytes) }
   }
 }
 
