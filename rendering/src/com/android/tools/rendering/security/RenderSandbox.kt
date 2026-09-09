@@ -33,8 +33,12 @@ private class RenderSandboxTransform(delegate: ClassVisitor) :
       delegate,
       RenderSandboxTransformTrampoline::invoke.javaMethod!!,
       RenderSandboxTransformTrampoline::invokeStatic.javaMethod!!,
+      RenderSandboxTransformTrampoline::checkMemberAccess.javaMethod!!,
+      RenderSandboxTransformTrampoline::checkFieldAccessTrampoline.javaMethod!!,
       shouldInstrument = { _, _ -> true },
-      shouldIntercept = RenderSandboxTransformTrampoline::shouldIntercept,
+      shouldInterceptWithOpcode = RenderSandboxTransformTrampoline::shouldIntercept,
+      shouldInterceptField = RenderSandboxTransformTrampoline::shouldInterceptField,
+      shouldInterceptMember = RenderSandboxTransformTrampoline::shouldInterceptPolymorphic,
     ),
   ),
   ClassVisitorUniqueIdProvider {
@@ -119,6 +123,19 @@ interface RenderSandbox {
   /** Guards reflective access to restricted methods. */
   fun checkReflectionInvoke(owner: String, name: String)
 
+  /** Guards reflective access to restricted methods. */
+  fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    checkReflectionInvoke(clazz.name.replace('.', '/'), name)
+  }
+
+  /** Guards reflective access to restricted fields. */
+  fun checkFieldAccess(owner: String, name: String)
+
+  /** Guards reflective access to restricted fields. */
+  fun checkFieldAccess(clazz: Class<*>, name: String) {
+    checkFieldAccess(clazz.name.replace('.', '/'), name)
+  }
+
   /** Guards access to sun.misc.Unsafe. */
   fun checkUnsafeAccess()
 
@@ -130,6 +147,18 @@ interface RenderSandbox {
 
   /** Guards against concurrent/async execution (e.g. CompletableFuture, ForkJoinPool, Executors). */
   fun checkConcurrency()
+
+  /** Guards setting JVM-wide URLStreamHandlerFactory or similar factories. */
+  fun checkSetFactory()
+
+  /** Guards ScriptEngineManager instantiation and classloader access. */
+  fun checkScriptEngine()
+
+  /** Guards ServiceLoader service loading. */
+  fun checkServiceLoader()
+
+  /** Guards access to java.beans.XMLDecoder deserialization. */
+  fun checkXmlDecoder()
 
   companion object {
     /**
@@ -231,6 +260,12 @@ open class RenderSandboxDelegate(private val delegate: RenderSandbox) : RenderSa
 
   override fun checkReflectionInvoke(owner: String, name: String) = delegate.checkReflectionInvoke(owner, name)
 
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) = delegate.checkReflectionInvoke(clazz, name)
+
+  override fun checkFieldAccess(owner: String, name: String) = delegate.checkFieldAccess(owner, name)
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) = delegate.checkFieldAccess(clazz, name)
+
   override fun checkUnsafeAccess() = delegate.checkUnsafeAccess()
 
   override fun checkDefineClass() = delegate.checkDefineClass()
@@ -238,6 +273,14 @@ open class RenderSandboxDelegate(private val delegate: RenderSandbox) : RenderSa
   override fun checkObjectInputStream(ois: java.io.ObjectInputStream) = delegate.checkObjectInputStream(ois)
 
   override fun checkConcurrency() = delegate.checkConcurrency()
+
+  override fun checkSetFactory() = delegate.checkSetFactory()
+
+  override fun checkScriptEngine() = delegate.checkScriptEngine()
+
+  override fun checkServiceLoader() = delegate.checkServiceLoader()
+
+  override fun checkXmlDecoder() = delegate.checkXmlDecoder()
 }
 
 /** A [RenderSandbox] implementation that denies everything by default. */
@@ -315,11 +358,26 @@ object DenyAllRenderSandbox : RenderSandbox {
   }
 
   override fun checkReflectionInvoke(owner: String, name: String) {
-    // By default we simply block any reflection access to any "suspicious" methods.
-    // In general it should be safe to do this since we do not expect reflection calls to things
-    // like File.
-    if (RenderSandboxTransformTrampoline.shouldIntercept(owner, name)) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptPolymorphic(owner, name)) {
       throw SecurityException("Reflection access to restricted method: $owner#$name")
+    }
+  }
+
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptPolymorphic(clazz, name)) {
+      throw SecurityException("Reflection access to restricted method: ${clazz.name.replace('.', '/')}#$name")
+    }
+  }
+
+  override fun checkFieldAccess(owner: String, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptField(owner, name)) {
+      throw SecurityException("Reflection access to restricted field: $owner#$name")
+    }
+  }
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptField(clazz, name)) {
+      throw SecurityException("Reflection access to restricted field: ${clazz.name.replace('.', '/')}#$name")
     }
   }
 
@@ -337,6 +395,22 @@ object DenyAllRenderSandbox : RenderSandbox {
 
   override fun checkConcurrency() {
     throw SecurityException("checkConcurrency")
+  }
+
+  override fun checkSetFactory() {
+    throw SecurityException("checkSetFactory")
+  }
+
+  override fun checkScriptEngine() {
+    throw SecurityException("checkScriptEngine")
+  }
+
+  override fun checkServiceLoader() {
+    throw SecurityException("checkServiceLoader")
+  }
+
+  override fun checkXmlDecoder() {
+    throw SecurityException("checkXmlDecoder")
   }
 }
 
@@ -380,6 +454,12 @@ object AllowAllRenderSandbox : RenderSandbox {
 
   override fun checkReflectionInvoke(owner: String, name: String) {}
 
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {}
+
+  override fun checkFieldAccess(owner: String, name: String) {}
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {}
+
   override fun checkUnsafeAccess() {}
 
   override fun checkDefineClass() {}
@@ -387,4 +467,12 @@ object AllowAllRenderSandbox : RenderSandbox {
   override fun checkObjectInputStream(ois: java.io.ObjectInputStream) {}
 
   override fun checkConcurrency() {}
+
+  override fun checkSetFactory() {}
+
+  override fun checkScriptEngine() {}
+
+  override fun checkServiceLoader() {}
+
+  override fun checkXmlDecoder() {}
 }

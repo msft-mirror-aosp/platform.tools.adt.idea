@@ -116,6 +116,21 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
     delegate.checkReflectionInvoke(owner, name)
   }
 
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    if (!check()) return
+    delegate.checkReflectionInvoke(clazz, name)
+  }
+
+  override fun checkFieldAccess(owner: String, name: String) {
+    if (!check()) return
+    delegate.checkFieldAccess(owner, name)
+  }
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {
+    if (!check()) return
+    delegate.checkFieldAccess(clazz, name)
+  }
+
   override fun checkUnsafeAccess() {
     if (!check()) return
     delegate.checkUnsafeAccess()
@@ -134,5 +149,25 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
   override fun checkConcurrency() {
     if (!check()) return
     delegate.checkConcurrency()
+  }
+
+  override fun checkSetFactory() {
+    if (!check()) return
+    delegate.checkSetFactory()
+  }
+
+  override fun checkScriptEngine() {
+    if (!check()) return
+    delegate.checkScriptEngine()
+  }
+
+  override fun checkServiceLoader() {
+    if (!check()) return
+    delegate.checkServiceLoader()
+  }
+
+  override fun checkXmlDecoder() {
+    if (!check()) return
+    delegate.checkXmlDecoder()
   }
 }
