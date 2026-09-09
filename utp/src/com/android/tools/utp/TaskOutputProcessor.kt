@@ -19,6 +19,8 @@ import com.android.tools.androidtest.listener.proto.TestResultEventProto.TestRes
 import com.google.testing.platform.proto.api.core.TestCaseProto
 import com.google.testing.platform.proto.api.core.TestResultProto
 import com.google.testing.platform.proto.api.core.TestSuiteResultProto
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 /**
@@ -47,7 +49,7 @@ class TaskOutputProcessor(val listener: GlobalTaskOutputProcessorListener) {
   private fun processLine(line: String): Boolean {
     val trimmedLine = line.trim()
     return when {
-      trimmedLine.startsWith(ON_RESULT_OPENING_TAG) && line.endsWith(ON_RESULT_CLOSING_TAG) -> {
+      trimmedLine.startsWith(ON_RESULT_OPENING_TAG) && trimmedLine.endsWith(ON_RESULT_CLOSING_TAG) -> {
         val base64EncodedProto = trimmedLine.removeSurrounding(ON_RESULT_OPENING_TAG, ON_RESULT_CLOSING_TAG)
         val eventProto = decodeBase64EncodedProto(base64EncodedProto)
         processEvent(eventProto)
@@ -121,19 +123,29 @@ interface GlobalTaskOutputProcessorListener {
 
 private class TaskOutputProcessorListenerDispatcher(val listeners: Map<String, TaskOutputProcessorListener>) :
   GlobalTaskOutputProcessorListener {
+
+  private fun getListener(deviceId: String): TaskOutputProcessorListener? {
+    return listeners[deviceId]
+      ?: runCatching {
+        URLDecoder.decode(deviceId, StandardCharsets.UTF_8.name())
+      }
+        .getOrNull()
+        ?.let { listeners[it] }
+  }
+
   override fun onTestSuiteStarted(deviceId: String, testSuite: TestSuiteResultProto.TestSuiteMetaData) {
-    listeners[deviceId]?.onTestSuiteStarted(testSuite)
+    getListener(deviceId)?.onTestSuiteStarted(testSuite)
   }
 
   override fun onTestCaseStarted(deviceId: String, testCase: TestCaseProto.TestCase) {
-    listeners[deviceId]?.onTestCaseStarted(testCase)
+    getListener(deviceId)?.onTestCaseStarted(testCase)
   }
 
   override fun onTestCaseFinished(deviceId: String, testCaseResult: TestResultProto.TestResult) {
-    listeners[deviceId]?.onTestCaseFinished(testCaseResult)
+    getListener(deviceId)?.onTestCaseFinished(testCaseResult)
   }
 
   override fun onTestSuiteFinished(deviceId: String, testSuiteResult: TestSuiteResultProto.TestSuiteResult) {
-    listeners[deviceId]?.onTestSuiteFinished(testSuiteResult)
+    getListener(deviceId)?.onTestSuiteFinished(testSuiteResult)
   }
 }

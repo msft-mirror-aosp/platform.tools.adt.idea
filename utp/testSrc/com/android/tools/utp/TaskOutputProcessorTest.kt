@@ -26,9 +26,11 @@ import java.util.Base64
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
+import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 
 /** Unit tests for [TaskOutputProcessor]. */
@@ -85,6 +87,35 @@ class TaskOutputProcessorTest {
       verify(mockListener).onTestSuiteFinished(eq(TestSuiteResultProto.TestSuiteResult.getDefaultInstance()))
       verifyNoMoreInteractions()
     }
+  }
+
+  @Test
+  fun processWithTrailingWhitespace() {
+    val input = "  ${testSuiteStartedEvent()}  \r\n"
+    val processor = TaskOutputProcessor(mapOf("" to mockListener))
+    val processed = processor.process(input)
+    assertThat(processed).isEmpty()
+    verify(mockListener).onTestSuiteStarted(any())
+  }
+
+  @Test
+  fun processEventWithPercentEncodedDeviceId() {
+    val serial = "192.168.0.7:5555"
+    val processor = TaskOutputProcessor(mapOf(serial to mockListener))
+    val event =
+      GradleAndroidTestResultListenerProto.TestResultEvent.newBuilder()
+        .setDeviceId("192.168.0.7%3A5555")
+        .apply {
+          testSuiteStartedBuilder.apply {
+            testSuiteMetadata = Any.pack(TestSuiteResultProto.TestSuiteMetaData.newBuilder().apply { scheduledTestCaseCount = 1 }.build())
+          }
+        }
+        .build()
+        .toXml()
+
+    val processed = processor.process(event)
+    assertThat(processed).isEmpty()
+    verify(mockListener).onTestSuiteStarted(any())
   }
 
   private fun testSuiteStartedEvent(): String {
