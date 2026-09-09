@@ -24,6 +24,12 @@ object WizardConstants {
     const val EMPTY_ACTIVITY = "empty-activity"
   }
 
+  object ConfigureStepConstants {
+    val LabelColumnWidth = 240.dp
+    val ValueColumnWidth = 450.dp
+    val RowSpace = 15.dp
+  }
+
   // UI Titles & Buttons
   const val DIALOG_TITLE = "New Project Wizard (New Engine)"
   const val FINISH_BUTTON_TEXT = "Finish"

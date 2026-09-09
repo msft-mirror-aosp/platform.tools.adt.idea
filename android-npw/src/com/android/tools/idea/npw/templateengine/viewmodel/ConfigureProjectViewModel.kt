@@ -29,6 +29,7 @@ import com.android.tools.idea.npw.templateengine.WizardConstants
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.runReadActionBlocking
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -97,6 +98,14 @@ class ConfigureProjectViewModel(
     selectedMinSdk = item
     minSdk = item.minApiLevel.toString()
     PropertiesComponent.getInstance().setValue(formFactor.name + "minApi", item.minSdk.apiStringWithExtension)
+  }
+
+  fun updateSelectedMinSdk(apiLevel: Int) {
+    availableMinSdks
+      .find { it.minApiLevel == apiLevel }
+      ?.let {
+        updateSelectedMinSdk(it)
+      }
   }
 
   var templateName by mutableStateOf("")
@@ -224,19 +233,7 @@ class ConfigureProjectViewModel(
   }
 
   private fun validate() {
-    val error = validateProjectParameters(name, packageName, location)
-    if (error != null) {
-      validationMessage = ValidationMessage.Error(error)
-      return
-    }
-
-    val path = Path.of(location)
-    if (path.exists() && path.isDirectory() && isDirectoryNotEmpty(path)) {
-      validationMessage =
-        ValidationMessage.Warning(AndroidBundle.message("android.wizard.validate.project.location.exists.not.empty", path.name))
-    } else {
-      validationMessage = null
-    }
+    validationMessage = validateProjectParameters(name, packageName, location)
   }
 
   private fun getUniqueProjectLocation(baseName: String): String {
@@ -252,25 +249,37 @@ class ConfigureProjectViewModel(
 
   private fun isDirectoryNotEmpty(dir: Path): Boolean {
     if (!dir.exists() || !dir.isDirectory()) return false
-    return Files.newDirectoryStream(dir).use { it.iterator().hasNext() }
+    return try {
+      Files.newDirectoryStream(dir).use { it.iterator().hasNext() }
+    } catch (_: Exception) {
+      false
+    }
   }
 
-  private fun validateProjectParameters(name: String, packageName: String, location: String): String? {
+  private fun validateProjectParameters(name: String, packageName: String, location: String): ValidationMessage? {
     if (name.isBlank()) {
-      return AndroidBundle.message("android.wizard.validate.empty.application.name")
+      return ValidationMessage.Error(AndroidBundle.message("android.wizard.validate.empty.application.name"))
     }
 
     val packageError = runReadActionBlocking { AndroidUtils.validatePackageName(packageName) }
     if (packageError != null) {
-      return packageError
+      return ValidationMessage.Error(packageError)
     }
 
     if (location.isBlank()) {
-      return AndroidBundle.message("android.wizard.validate.empty.project.location")
+      return ValidationMessage.Error(AndroidBundle.message("android.wizard.validate.empty.project.location"))
     }
-    val path = Path.of(location)
+    val path =
+      try {
+        Path.of(location)
+      } catch (_: InvalidPathException) {
+        return ValidationMessage.Error(AndroidBundle.message("android.wizard.validate.project.location.not.directory"))
+      }
     if (path.exists() && !path.isDirectory()) {
-      return AndroidBundle.message("android.wizard.validate.project.location.not.directory")
+      return ValidationMessage.Error(AndroidBundle.message("android.wizard.validate.project.location.not.directory"))
+    }
+    if (path.exists() && path.isDirectory() && isDirectoryNotEmpty(path)) {
+      return ValidationMessage.Warning(AndroidBundle.message("android.wizard.validate.project.location.exists.not.empty", path.name))
     }
     return null
   }

@@ -366,6 +366,7 @@ filegroup(
         ":jps_artifacts",
         ":profiler-artifacts",
         ":transport-artifacts",
+        "//tools/adt/idea/android-npw:android-project-templates-bundle",
         "//tools/adt/idea/android/prebuilts/android-cli:android_cli_binaries",
         "//tools/adt/idea/as-driver:asdriver.plugin",
         "//tools/adt/idea/streaming/screen-sharing-agent:bundle",
@@ -380,7 +381,6 @@ filegroup(
         "//tools/base/third_party/kotlin:kotlin-m2repository",
         "//tools/base/threading-agent:threading_agent.jar",
         "//tools/base/tracer:trace_agent",
-        "//tools/vendor/google/android-cli/create/templates:android-project-templates",
         "//tools/vendor/google/ml/aiplugin/ij-platform/atlas:atlas_artifacts",
     ] + select({
         "@platforms//os:windows": [],

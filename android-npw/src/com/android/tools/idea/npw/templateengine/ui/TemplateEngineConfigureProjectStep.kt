@@ -27,21 +27,35 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.ide.common.sdk.LoadStatus
+import com.android.tools.adtui.device.FormFactor
+import com.android.tools.idea.npw.templateengine.WizardConstants
 import com.android.tools.idea.npw.templateengine.viewmodel.ConfigureProjectViewModel
 import com.android.tools.idea.npw.templateengine.viewmodel.ValidationMessage
+import com.android.tools.idea.stats.Distribution
+import com.android.tools.idea.stats.DistributionService
+import com.android.tools.idea.ui.ChooseApiLevelDialog
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.vfs.LocalFileSystem
 import java.nio.file.Path
+import java.util.Locale
 import kotlin.io.path.exists
+import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -53,30 +67,31 @@ fun TemplateEngineConfigureProjectStep(viewModel: ConfigureProjectViewModel) {
   Column(modifier = Modifier.fillMaxSize().padding(horizontal = 36.dp, vertical = 30.dp)) {
     if (viewModel.templateName.isNotEmpty()) {
       Text(text = viewModel.templateName, fontWeight = FontWeight.Bold)
-      Spacer(modifier = Modifier.height(4.dp))
+      Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
     }
     if (viewModel.templateDescription.isNotEmpty()) {
       Text(text = viewModel.templateDescription)
-      Spacer(modifier = Modifier.height(28.dp))
+      Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
     }
+    Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Text(text = "Name", modifier = Modifier.width(180.dp))
-      TextField(state = viewModel.nameState, modifier = Modifier.width(450.dp))
+      Text(text = "Name", modifier = Modifier.width(WizardConstants.ConfigureStepConstants.LabelColumnWidth))
+      TextField(state = viewModel.nameState, modifier = Modifier.width(WizardConstants.ConfigureStepConstants.ValueColumnWidth))
     }
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Text(text = "Package name", modifier = Modifier.width(180.dp))
-      TextField(state = viewModel.packageNameState, modifier = Modifier.width(450.dp))
+      Text(text = "Package name", modifier = Modifier.width(WizardConstants.ConfigureStepConstants.LabelColumnWidth))
+      TextField(state = viewModel.packageNameState, modifier = Modifier.width(WizardConstants.ConfigureStepConstants.ValueColumnWidth))
     }
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Text(text = "Save location", modifier = Modifier.width(180.dp))
+      Text(text = "Save location", modifier = Modifier.width(WizardConstants.ConfigureStepConstants.LabelColumnWidth))
       TextField(
         state = viewModel.locationState,
-        modifier = Modifier.width(450.dp),
+        modifier = Modifier.width(WizardConstants.ConfigureStepConstants.ValueColumnWidth),
         trailingIcon = {
           Icon(
             key = AllIconsKeys.Nodes.Folder,
@@ -100,15 +115,15 @@ fun TemplateEngineConfigureProjectStep(viewModel: ConfigureProjectViewModel) {
                     viewModel.locationState.setTextAndPlaceCursorAtEnd(selected.path)
                   }
                 }
-                .padding(horizontal = 8.dp),
+                .padding(start = 8.dp),
           )
         },
       )
     }
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Text(text = "Minimum SDK", modifier = Modifier.width(180.dp))
+      Text(text = "Minimum SDK", modifier = Modifier.width(WizardConstants.ConfigureStepConstants.LabelColumnWidth))
 
       Dropdown(
         menuContent = {
@@ -118,12 +133,19 @@ fun TemplateEngineConfigureProjectStep(viewModel: ConfigureProjectViewModel) {
             }
           }
         },
-        modifier = Modifier.width(450.dp),
+        modifier = Modifier.width(WizardConstants.ConfigureStepConstants.ValueColumnWidth),
       ) {
         Text(viewModel.selectedMinSdk.label)
       }
     }
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
+
+    if (viewModel.formFactor == FormFactor.MOBILE) {
+      ApiCompatibilityInfo(
+        minApiLevel = viewModel.selectedMinSdk.minApiLevel,
+        onApiLevelSelected = { viewModel.updateSelectedMinSdk(it) },
+      )
+    }
 
     viewModel.validationMessage?.let { validation ->
       when (validation) {
@@ -145,4 +167,100 @@ fun TemplateEngineConfigureProjectStep(viewModel: ConfigureProjectViewModel) {
       }
     }
   }
+}
+
+private data class DistributionLoadState(
+  val status: LoadStatus,
+  val distributions: List<Distribution>?,
+)
+
+@Composable
+private fun ApiCompatibilityInfo(
+  minApiLevel: Int,
+  onApiLevelSelected: (Int) -> Unit,
+) {
+  val loadState by
+    produceState(initialValue = DistributionLoadState(LoadStatus.LOADING, DistributionService.getInstance().distributions)) {
+      DistributionService.getInstance()
+        .refresh(
+          {
+            ApplicationManager.getApplication()
+              .invokeLater(
+                { value = DistributionLoadState(LoadStatus.LOADED, DistributionService.getInstance().distributions) },
+                ModalityState.any(),
+              )
+          },
+          {
+            ApplicationManager.getApplication()
+              .invokeLater(
+                { value = DistributionLoadState(LoadStatus.FAILED, DistributionService.getInstance().distributions) },
+                ModalityState.any(),
+              )
+          },
+          false,
+        )
+    }
+
+  if (loadState.status != LoadStatus.LOADED) {
+    Row(
+      modifier = Modifier.padding(start = WizardConstants.ConfigureStepConstants.LabelColumnWidth),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (loadState.status == LoadStatus.LOADING) {
+        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = AndroidBundle.message("android.wizard.module.help.refreshing"),
+          color = JewelTheme.globalColors.text.info,
+        )
+      } else if (loadState.status == LoadStatus.FAILED) {
+        Text(
+          text = AndroidBundle.message("android.wizard.project.loading.stats.fail"),
+          color = JewelTheme.globalColors.text.info,
+        )
+      }
+    }
+    Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
+  }
+
+  val percentage = DistributionService.getSupportedDistributionForApiLevel(minApiLevel, loadState.distributions) * 100.0
+  val compatibilityText =
+    when {
+      percentage < 0.0 -> ""
+      percentage < 1.0 -> AndroidBundle.message("android.wizard.project.help.api.distribution.less.than.one")
+      else -> {
+        val percentageStr = String.format(Locale.US, if (percentage >= 10.0) "%.3g%%" else "%.2g%%", percentage)
+        AndroidBundle.message("android.wizard.project.help.api.distribution.approximate", percentageStr)
+      }
+    }
+
+  Row(
+    modifier = Modifier.padding(start = WizardConstants.ConfigureStepConstants.LabelColumnWidth),
+    verticalAlignment = Alignment.Top,
+  ) {
+    if (compatibilityText.isNotEmpty()) {
+      Icon(
+        key = AllIconsKeys.General.BalloonInformation,
+        contentDescription = "Information",
+        modifier = Modifier.size(16.dp).padding(top = 2.dp),
+      )
+      Spacer(modifier = Modifier.width(8.dp))
+    }
+    Column {
+      if (compatibilityText.isNotEmpty()) {
+        Text(text = compatibilityText)
+        Spacer(modifier = Modifier.height(4.dp))
+      }
+      Link(
+        text = AndroidBundle.message("android.wizard.module.help.choose"),
+        onClick = {
+          val dialog = ChooseApiLevelDialog(null, minApiLevel)
+          if (dialog.showAndGet()) {
+            onApiLevelSelected(dialog.selectedApiLevel)
+          }
+        },
+      )
+    }
+  }
+  Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
 }

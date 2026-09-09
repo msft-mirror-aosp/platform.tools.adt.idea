@@ -78,8 +78,18 @@ public class DistributionService extends DownloadService {
       return 0;
     }
     refreshSynchronously();
-    List<Distribution> distributions = getDistributions();
-    if (distributions == null) {
+    return getSupportedDistributionForApiLevel(apiLevel, getDistributions());
+  }
+
+  /**
+   * Gets the percentage of devices on {@code apiLevel} or newer from the given {@code distributions}
+   * without triggering a refresh.
+   */
+  public static double getSupportedDistributionForApiLevel(int apiLevel, @Nullable List<Distribution> distributions) {
+    if (apiLevel <= 0) {
+      return 0;
+    }
+    if (distributions == null || distributions.isEmpty()) {
       return -1;
     }
     double unsupportedSum = 0;
@@ -89,7 +99,7 @@ public class DistributionService extends DownloadService {
       }
       unsupportedSum += d.getDistributionPercentage();
     }
-    return 1 - unsupportedSum;
+    return Math.max(0, 1 - unsupportedSum);
   }
 
   /**

@@ -120,6 +120,7 @@ class TemplateEngineWizardUITest {
     // 2. Configure Step
     composeTestRule.onNodeWithText("Name").assertIsDisplayed()
     composeTestRule.onNodeWithText("Package name").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Help me choose").assertIsDisplayed()
 
     // Check initial values
     composeTestRule.onNodeWithText("My Application").assertIsDisplayed()

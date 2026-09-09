@@ -34,6 +34,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.net.URL;
+import java.util.Collections;
 
 /**
  * Tests for {@link DistributionService}
@@ -92,5 +93,18 @@ public class DistributionServiceTest {
     service.getSupportedDistributionForApiLevel(19);
     service.getDistributionForApiLevel(21);
     Mockito.verify(downloader).download(ArgumentMatchers.any(File.class));
+  }
+
+  @Test
+  public void testSupportedDistributionFromListWithoutRefresh() throws Exception {
+    FileDownloader downloader = Mockito.mock(FileDownloader.class);
+    DistributionService service = new DistributionService(downloader, CACHE_PATH, myDistributionFileUrl);
+    service.loadFromFile(myDistributionFileUrl);
+
+    assertEquals(0.7, DistributionService.getSupportedDistributionForApiLevel(16, service.getDistributions()), 0.0001);
+    assertEquals(0.0, DistributionService.getSupportedDistributionForApiLevel(0, service.getDistributions()), 0.0001);
+    assertEquals(-1.0, DistributionService.getSupportedDistributionForApiLevel(16, null), 0.0001);
+    assertEquals(-1.0, DistributionService.getSupportedDistributionForApiLevel(16, Collections.emptyList()), 0.0001);
+    Mockito.verifyNoInteractions(downloader);
   }
 }
