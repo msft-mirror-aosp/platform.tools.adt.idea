@@ -474,6 +474,7 @@ studio_plugin(
             "//prebuilts/tools/common/traceconv:traceconv-bundle",
             "//prebuilts/tools/sherlock:trace-processor-wrapper-bundle",
             "//tools/adt/idea/android-lint:bundled-policy-checks",
+            "//tools/adt/idea/android-npw:android-project-templates-bundle",
         ],
     },
     visibility = ["//visibility:public"],

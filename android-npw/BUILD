@@ -1,6 +1,16 @@
+load("//tools/adt/idea/studio:studio.bzl", "studio_data")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 load("//tools/base/build-system/integration-test:common-dependencies.bzl", "BUILT_IN_KOTLIN_VERSION", "KGP_VERSION_FOR_TESTS")
+
+studio_data(
+    name = "android-project-templates-bundle",
+    files = ["//tools/vendor/google/android-cli/create/templates:android-project-templates"],
+    mappings = {
+        "tools/vendor/google/android-cli/create/templates/android-project-templates.zip": "templates/android-project-templates.zip",
+    },
+    visibility = ["//visibility:public"],
+)
 
 # managed by go/iml_to_build
 iml_module(

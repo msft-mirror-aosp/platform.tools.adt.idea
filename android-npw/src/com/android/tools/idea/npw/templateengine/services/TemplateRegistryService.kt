@@ -31,9 +31,9 @@ import com.android.tools.idea.npw.templateengine.api.PromotionCardSpec
 import com.android.tools.idea.npw.templateengine.api.TemplateEngineProjectWizardContributor
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.IdeSdks
+import com.android.tools.idea.util.StudioPathManager
 import com.android.tools.sdk.AndroidSdkData
 import com.intellij.ide.plugins.PluginManagerCore
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.ControlFlowException
@@ -44,6 +44,7 @@ import com.intellij.openapi.project.Project
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.zip.ZipException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,7 @@ import org.jetbrains.annotations.TestOnly
 @Service(Service.Level.APP)
 class TemplateRegistryService
 @JvmOverloads
-constructor(private val coroutineScope: CoroutineScope, private val zipPathProvider: (Path?) -> Path = ::getDefaultZipPath) : Disposable {
+constructor(private val coroutineScope: CoroutineScope, private val zipPathProvider: (Path?) -> Path = ::getDefaultZipPath) {
 
   private val logger = logger<TemplateRegistryService>()
   private val lock = Any()
@@ -90,6 +91,8 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
       if (initialSdkPath != null) {
         synchronized(lock) { currentSdkPath = initialSdkPath }
         sdkPathFlow.emit(initialSdkPath)
+      } else {
+        withContext(Dispatchers.IO) { loadTemplatesAndResources() }
       }
       sdkPathFlow.distinctUntilChanged().collect { path ->
         synchronized(lock) {
@@ -146,6 +149,7 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
         templateList = TemplateList(emptyList())
       }
     } catch (e: Exception) {
+      if (e is ControlFlowException || e is CancellationException) throw e
       val error = "Templates unavailable: ${e.message ?: e.javaClass.simpleName}"
       logger.warn(error)
       synchronized(lock) {
@@ -201,13 +205,6 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
     return builder.toTemplateList().copyAndLoadExtraFiles()
   }
 
-  override fun dispose() {
-    synchronized(lock) {
-      currentRepoManager?.removeLocalChangeListener(localChangeListener)
-      currentRepoManager = null
-    }
-  }
-
   companion object {
     val messageSink = createMessageSink(reportErrorsAsWarnings = false)
 
@@ -246,10 +243,39 @@ class TemplateRegistrySdkEventListener : IdeSdks.AndroidSdkEventListener {
 data class ExternalTemplate(val definition: TemplateDefinition, val contributorId: String, val contributorPriority: Int)
 
 private fun getDefaultZipPath(sdkPath: Path?): Path {
-  val path = sdkPath ?: throw IllegalStateException("Android SDK path is not configured")
-  val zipPath = path.resolve(WizardConstants.RELATIVE_PATH_TEMPLATES_ZIP)
-  if (!Files.exists(zipPath)) {
-    throw IllegalStateException("Templates package not found at $zipPath")
+  // 1. Check bundled plugin resources first
+  val plugin = PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.android"))
+  val pluginPath = plugin?.pluginPath
+  if (pluginPath != null) {
+    val bundledZip = pluginPath.resolve("resources/templates/android-project-templates.zip")
+    if (Files.exists(bundledZip)) {
+      return bundledZip
+    }
   }
-  return zipPath
+
+  // 2. Check Bazel output when running from sources (IntelliJ dev run or Bazel tests)
+  if (StudioPathManager.isRunningFromSources()) {
+    val devZip =
+      Paths.get(StudioPathManager.getBinariesRoot())
+        .resolve("tools/vendor/google/android-cli/create/templates/android-project-templates.zip")
+    if (Files.exists(devZip)) {
+      return devZip
+    }
+  }
+
+  // 3. Fall back to SDK path if configured
+  if (sdkPath != null) {
+    val sdkZip = sdkPath.resolve(WizardConstants.RELATIVE_PATH_TEMPLATES_ZIP)
+    if (Files.exists(sdkZip)) {
+      return sdkZip
+    }
+  }
+
+  val message =
+    if (sdkPath == null) {
+      "Bundled templates were not found and Android SDK path is not configured."
+    } else {
+      "Templates package not found in bundled plugin resources or at ${sdkPath.resolve(WizardConstants.RELATIVE_PATH_TEMPLATES_ZIP)}."
+    }
+  throw IllegalStateException(message)
 }
