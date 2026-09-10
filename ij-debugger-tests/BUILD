@@ -38,10 +38,20 @@ debugger_test(
 debugger_test(
     name = "art-k2-tests",
     expected_results = "art-k2-expected-results.txt",
-    # Coroutines tests are too flaky and sometimes deadlock and fail the entire shard
     filters = [
+        # Coroutines tests are too flaky and sometimes deadlock and fail the entire shard
         "exclude-classname=.*InlineScopesAndK2IdeK2CodeEvaluateExpressionTestGenerated.*\\$Coroutines\\$.*",
         "exclude-classname=.*K2IdeK2CodeKotlinEvaluateExpressionTestGenerated.*\\$Coroutines\\$.*",
+        # The following classes contain tests that do not extend KotlinDescriptorTestCase and do not launch an actual VM so they are not relevant to ART
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.K2DfaAssistTest",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.K2FileApplicabilityCheckerTest",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2BreakpointApplicabilityTestGenerated",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2ClassNameCalculatorTestGenerated",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeFileRankingTestGenerated",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2KotlinExceptionFilterTestGenerated",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2PositionManagerTestGenerated\\$.*",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2SelectExpressionForDebuggerTestGenerated\\$.*",
+        "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2SmartStepIntoTestGenerated",
     ],
     run_on_art = True,
     shard_count = 50,
