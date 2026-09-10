@@ -122,6 +122,30 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import kotlin.collections.emptyMap
 
+fun filterDataFrom(data: FilterData): IdeFilterDataImpl {
+  return IdeFilterDataImpl(identifier = data.identifier, filterType = data.filterType)
+}
+
+fun copyFilters(output: VariantOutput): Collection<IdeFilterDataImpl> {
+  return copy(
+    fun(): Collection<FilterData> =
+      try {
+        output.filters
+      } catch (ignored: UnsupportedOperationException) {
+        output.outputs.flatMap(OutputFile::getFilters)
+      },
+    ::filterDataFrom,
+  )
+}
+
+fun androidArtifactOutputFrom(output: OutputFile): IdeAndroidArtifactOutputImpl {
+  return IdeAndroidArtifactOutputImpl(
+    filters = copyFilters(output).toList(),
+    versionCode = output.versionCode,
+    outputFile = copyNewProperty({ output.outputFile }, output.mainOutputFile.outputFile),
+  )
+}
+
 internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: BuildFolderPaths): ModelCache.V1 {
 
   fun deduplicateString(s: String): String = internedModels.intern(s)
@@ -714,30 +738,6 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     return createFromDependencies(artifact.dependencies, variantName, androidModuleId, bootClasspath)
   }
 
-  fun filterDataFrom(data: FilterData): IdeFilterDataImpl {
-    return IdeFilterDataImpl(identifier = data.identifier, filterType = data.filterType)
-  }
-
-  fun copyFilters(output: VariantOutput): Collection<IdeFilterDataImpl> {
-    return copy(
-      fun(): Collection<FilterData> =
-        try {
-          output.filters
-        } catch (ignored: UnsupportedOperationException) {
-          output.outputs.flatMap(OutputFile::getFilters)
-        },
-      ::filterDataFrom,
-    )
-  }
-
-  fun androidArtifactOutputFrom(output: OutputFile): IdeAndroidArtifactOutputImpl {
-    return IdeAndroidArtifactOutputImpl(
-      filters = copyFilters(output).toList(),
-      versionCode = output.versionCode,
-      outputFile = copyNewProperty({ output.outputFile }, output.mainOutputFile.outputFile),
-    )
-  }
-
   fun convertExecution(execution: TestOptions.Execution?): IdeTestOptions.Execution? {
     return if (execution == null) null
     else
@@ -1322,8 +1322,6 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         gradlePropertiesModel,
         defaultVariantName,
       )
-
-    override fun androidArtifactOutputFrom(output: OutputFile): IdeAndroidArtifactOutputImpl = androidArtifactOutputFrom(output)
 
     override fun nativeModuleFrom(nativeModule: NativeModule): IdeNativeModuleImpl = nativeModuleFrom(nativeModule)
   }

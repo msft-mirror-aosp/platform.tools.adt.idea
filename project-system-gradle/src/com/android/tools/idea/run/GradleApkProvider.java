@@ -16,6 +16,7 @@
 package com.android.tools.idea.run;
 
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_DYNAMIC_FEATURE;
+import static com.android.tools.idea.gradle.project.sync.ModelCacheV1ImplKt.androidArtifactOutputFrom;
 import static com.android.tools.idea.gradle.util.BuildOutputUtil.getOutputFilesFromListingFile;
 import static com.android.tools.idea.gradle.util.BuildOutputUtil.getOutputListingFile;
 import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getModuleSystem;
@@ -51,6 +52,7 @@ import com.android.tools.idea.gradle.model.IdeTestedTargetVariant;
 import com.android.tools.idea.gradle.model.IdeVariantCore;
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.project.sync.ModelCache;
+import com.android.tools.idea.gradle.project.sync.ModelCacheV1ImplKt;
 import com.android.tools.idea.gradle.run.PostBuildModel;
 import com.android.tools.idea.gradle.run.PostBuildModelProvider;
 import com.android.tools.idea.gradle.util.BuildOutputUtil;
@@ -466,7 +468,6 @@ public final class GradleApkProvider implements ApkProvider {
         String.format("Couldn't get post build model. Module: %s Variant: %s", facet.getModule().getName(), variantName));
     }
 
-    ModelCache.V1 modelCache = ModelCache.createForPostBuildModels();
     @SuppressWarnings("deprecation")
     ProjectBuildOutput outputModel =
       outputModels.findProjectBuildOutput(getGradlePathAsStringForPostBuildModels(facet.getModule()));
@@ -490,13 +491,13 @@ public final class GradleApkProvider implements ApkProvider {
                 throw new ApkProvisionException(
                   "Running Instrumented Tests for Dynamic Features is currently not supported on API < 21.");
               }
-              outputs.addAll(ContainerUtil.map(testVariantBuildOutput.getOutputs(), modelCache::androidArtifactOutputFrom));
+              outputs.addAll(ContainerUtil.map(testVariantBuildOutput.getOutputs(), ModelCacheV1ImplKt::androidArtifactOutputFrom));
             }
           }
         }
         else {
           // Get the output from the main artifact
-          outputs.addAll(ContainerUtil.map(variantBuildOutput.getOutputs(), modelCache::androidArtifactOutputFrom));
+          outputs.addAll(ContainerUtil.map(variantBuildOutput.getOutputs(), ModelCacheV1ImplKt::androidArtifactOutputFrom));
         }
       }
     }
