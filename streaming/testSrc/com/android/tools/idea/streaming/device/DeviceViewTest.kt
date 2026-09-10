@@ -1253,7 +1253,7 @@ internal class DeviceViewTest {
   fun testDisplayGlasses() {
     val displayId = 48
     val displaySize = Dimension(450, 450)
-    agent.addDisplay(displayId, displaySize, DisplayType.VIRTUAL, hasAssociatedCamera = true)
+    agent.addDisplay(displayId, displaySize, DisplayType.GLASSES_PROJECTION)
     createDeviceView(200, 300, displayId, displaySize, retinaMode = true)
     assertThat(getNextControlMessageAndWaitForFrame(displayId)).isEqualTo(StartVideoStreamMessage(displayId, Dimension(400, 600)))
     assertThat(getNextControlMessageAndWaitForFrame(displayId)).isEqualTo(SetMaxVideoResolutionMessage(displayId, Dimension(400, 450)))

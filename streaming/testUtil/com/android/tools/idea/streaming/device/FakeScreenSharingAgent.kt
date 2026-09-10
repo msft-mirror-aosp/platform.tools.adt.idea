@@ -360,10 +360,10 @@ class FakeScreenSharingAgent(
   }
 
   /** Adds a device display. */
-  fun addDisplay(displayId: Int, displaySize: Dimension, displayType: DisplayType, hasAssociatedCamera: Boolean = false) {
+  fun addDisplay(displayId: Int, displaySize: Dimension, displayType: DisplayType) {
     executor.execute {
       if (displays.find { it.displayId == displayId } == null) {
-        displays = (displays + Display(displayId, displaySize, 0, displayType, hasAssociatedCamera)).sortedBy { it.displayId }
+        displays = (displays + Display(displayId, displaySize, 0, displayType)).sortedBy { it.displayId }
         sendNotificationOrResponse(DisplayAddedOrChangedNotification(displayId, displaySize, 0, displayType.ordinal))
       } else {
         thisLogger().error("Display $displayId already exists")
@@ -396,7 +396,7 @@ class FakeScreenSharingAgent(
   }
 
   fun hasAssociatedCamera(displayId: Int): Boolean {
-    return displays.find { it.displayId == displayId }?.hasAssociatedCamera ?: false
+    return displays.find { it.displayId == displayId }?.type == DisplayType.GLASSES_PROJECTION
   }
 
   private fun parseArgs(command: String) {
@@ -534,9 +534,7 @@ class FakeScreenSharingAgent(
     val m = 10
     val w = size.width.toDouble() / n
     val h = size.height.toDouble() / m
-    val colorScheme =
-      if (displays.find { it.displayId == displayId }?.hasAssociatedCamera == true) COLOR_SCHEMES[0]
-      else COLOR_SCHEMES[displayId % COLOR_SCHEMES.size]
+    val colorScheme = if (hasAssociatedCamera(displayId)) COLOR_SCHEMES[0] else COLOR_SCHEMES[displayId % COLOR_SCHEMES.size]
     val startColor1 = colorScheme.start1
     val endColor1 = colorScheme.end1
     val startColor2 = colorScheme.start2
@@ -667,7 +665,7 @@ class FakeScreenSharingAgent(
           DisplayStreamer(dispId, message.maxVideoSize, rotatedWithDevice = display.type == DisplayType.INTERNAL, bitRate, videoChannel!!)
         },
       )
-    if ((agentFlags and MIRROR_GLASSES_DISPLAY) != 0 && display.hasAssociatedCamera) {
+    if ((agentFlags and MIRROR_GLASSES_DISPLAY) != 0 && display.type == DisplayType.GLASSES_PROJECTION) {
       displayStreamer.accompaniedByCamera = true
       val cameraStreamer =
         cameraStreamers.computeIfAbsent(
@@ -1500,13 +1498,7 @@ class FakeScreenSharingAgent(
   }
 }
 
-private class Display(
-  val displayId: Int,
-  val size: Dimension,
-  val orientation: Int,
-  val type: DisplayType,
-  val hasAssociatedCamera: Boolean = false,
-) {
+private class Display(val displayId: Int, val size: Dimension, val orientation: Int, val type: DisplayType) {
   val descriptor: DisplayDescriptor
     get() = DisplayDescriptor(displayId, size, orientation, type)
 }

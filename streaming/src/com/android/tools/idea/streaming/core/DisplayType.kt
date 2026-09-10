@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.streaming.core
 
-/** Values correspond to the TYPE_* constants in android.view.Display */
+/** Values correspond to the TYPE_* constants in android.view.Display. */
 enum class DisplayType {
   UNKNOWN,
   INTERNAL,
@@ -23,4 +23,6 @@ enum class DisplayType {
   WIFI,
   OVERLAY,
   VIRTUAL,
+  /** The display is a projection of the Glasses display on the phone. Doesn't have an equivalent in android.view.Display. */
+  GLASSES_PROJECTION,
 }
