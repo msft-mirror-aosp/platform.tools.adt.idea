@@ -154,9 +154,14 @@ class ComposeWizard(
 internal fun WizardPageScope.WizardPageScaffold(wizardDialogScope: WizardDialogScope, content: @Composable WizardPageScope.() -> Unit) {
   Column(
     Modifier.onKeyEvent { event ->
-      when {
-        event.type == KeyEventType.KeyUp && event.key == Key.Enter -> {
+      if (event.type != KeyEventType.KeyUp) return@onKeyEvent false
+      when (event.key) {
+        Key.Enter -> {
           nextAction.action?.let { with(wizardDialogScope) { it() } }
+          true
+        }
+        Key.Escape if cancelButtonEnabled -> {
+          wizardDialogScope.cancel()
           true
         }
         else -> false
