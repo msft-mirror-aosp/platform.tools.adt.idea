@@ -45,9 +45,12 @@ class TemplateGridProjectEntryProvider : AndroidProjectEntryProvider {
     val groupedItems = mutableMapOf<FormFactor, MutableList<TemplateGalleryItem>>()
 
     // 1. Group standard templates
-    templateDefinitions.forEach { template ->
-      groupedItems.getOrPut(template.formFactor()) { mutableListOf() }.add(TemplateGalleryItem.Standard(template))
-    }
+    templateDefinitions
+      .groupBy { it.formFactor() to it.name }
+      .forEach { (key, templates) ->
+        val (formFactor, _) = key
+        groupedItems.getOrPut(formFactor) { mutableListOf() }.add(TemplateGalleryItem.Standard(templates))
+      }
 
     // 2. Group promotion cards
     promotionCards.forEach { card ->

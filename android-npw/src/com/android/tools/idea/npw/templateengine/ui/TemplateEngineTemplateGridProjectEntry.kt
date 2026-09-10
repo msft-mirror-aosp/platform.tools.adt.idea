@@ -34,6 +34,7 @@ import com.android.tools.idea.npw.project.ItemGrid
 import com.android.tools.idea.npw.template.PromotedPluginInstallTracker
 import com.android.tools.idea.npw.templateengine.api.PromotionCardSpec
 import com.android.tools.idea.npw.templateengine.services.ExternalTemplate
+import com.android.tools.idea.npw.templateengine.services.isGradle
 import icons.StudioIllustrationsCompose
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -44,9 +45,12 @@ sealed interface TemplateGalleryItem : GridItem {
   override val title: String
   override val description: String
 
-  /** A gallery item backed by a declarative [TemplateDefinition], rendered by the template engine. */
+  /** A gallery item backed by one or more declarative [TemplateDefinition] variants, rendered by the template engine. */
   sealed class Renderable : TemplateGalleryItem {
-    abstract val definition: TemplateDefinition
+    abstract val definitions: List<TemplateDefinition>
+
+    val definition: TemplateDefinition
+      get() = definitions.find { it.isGradle } ?: definitions.first()
 
     override val title: String
       get() = definition.name
@@ -70,13 +74,15 @@ sealed interface TemplateGalleryItem : GridItem {
     }
   }
 
-  /** A built-in SDK template. */
-  data class Standard(override val definition: TemplateDefinition) : Renderable()
+  /** A built-in SDK template (may contain multiple build system variants). */
+  data class Standard(override val definitions: List<TemplateDefinition>) : Renderable() {
+    constructor(definition: TemplateDefinition) : this(listOf(definition))
+  }
 
   /** A template contributed by a plugin. */
   data class External(val template: ExternalTemplate) : Renderable() {
-    override val definition: TemplateDefinition
-      get() = template.definition
+    override val definitions: List<TemplateDefinition>
+      get() = listOf(template.definition)
   }
 
   data class Promotion(val spec: PromotionCardSpec) : TemplateGalleryItem {

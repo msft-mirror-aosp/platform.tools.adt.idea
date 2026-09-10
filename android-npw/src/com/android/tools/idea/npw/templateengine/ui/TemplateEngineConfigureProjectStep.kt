@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.npw.templateengine.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.ide.common.sdk.LoadStatus
+import com.android.tools.adtui.compose.LingeringTooltip
 import com.android.tools.adtui.device.FormFactor
 import com.android.tools.idea.npw.templateengine.WizardConstants
 import com.android.tools.idea.npw.templateengine.viewmodel.ConfigureProjectViewModel
@@ -41,6 +44,7 @@ import com.android.tools.idea.npw.templateengine.viewmodel.ValidationMessage
 import com.android.tools.idea.stats.Distribution
 import com.android.tools.idea.stats.DistributionService
 import com.android.tools.idea.ui.ChooseApiLevelDialog
+import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileChooser.FileChooser
@@ -60,7 +64,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
-@OptIn(ExperimentalJewelApi::class)
+@OptIn(ExperimentalJewelApi::class, ExperimentalFoundationApi::class)
 @Composable
 @Suppress("UnstableApiUsage")
 fun TemplateEngineConfigureProjectStep(viewModel: ConfigureProjectViewModel) {
@@ -145,6 +149,52 @@ fun TemplateEngineConfigureProjectStep(viewModel: ConfigureProjectViewModel) {
         minApiLevel = viewModel.selectedMinSdk.minApiLevel,
         onApiLevelSelected = { viewModel.updateSelectedMinSdk(it) },
       )
+    }
+
+    if (viewModel.isBuildConfigurationVisible) {
+      Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+          modifier = Modifier.width(WizardConstants.ConfigureStepConstants.LabelColumnWidth),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(text = "Build configuration language", modifier = Modifier.weight(1f, fill = false))
+          Spacer(modifier = Modifier.width(4.dp))
+          LingeringTooltip(
+            tooltip = {
+              Column(modifier = Modifier.widthIn(max = 300.dp)) {
+                Text(text = viewModel.buildConfigurationHelpDescription)
+                Spacer(modifier = Modifier.height(4.dp))
+                Link(
+                  text = "Learn more",
+                  onClick = { BrowserUtil.browse(viewModel.buildConfigurationHelpUrl) },
+                )
+              }
+            }
+          ) {
+            Icon(
+              key = AllIconsKeys.General.ContextHelp,
+              contentDescription = "Help",
+              modifier = Modifier.size(16.dp),
+            )
+          }
+        }
+        Dropdown(
+          menuContent = {
+            viewModel.availableTemplateVariants.forEach { item ->
+              selectableItem(
+                selected = item == viewModel.selectedTemplateVariant,
+                onClick = { viewModel.updateTemplateVariant(item) },
+              ) {
+                Text(item.buildSystem.displayName)
+              }
+            }
+          },
+          modifier = Modifier.width(WizardConstants.ConfigureStepConstants.ValueColumnWidth),
+        ) {
+          Text(viewModel.selectedTemplateVariant.buildSystem.displayName)
+        }
+      }
+      Spacer(modifier = Modifier.height(WizardConstants.ConfigureStepConstants.RowSpace))
     }
 
     viewModel.validationMessage?.let { validation ->

@@ -17,6 +17,8 @@ package com.android.tools.idea.npw.templateengine.importer
 
 import com.android.template.engine.TemplateMetadata
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
+import com.android.tools.idea.npw.templateengine.services.isGradle
+import com.android.tools.idea.npw.templateengine.services.isLightbuild
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.project.Project
@@ -29,8 +31,8 @@ interface ProjectImporter {
   companion object {
     fun createImporter(metadata: TemplateMetadata): ProjectImporter {
       return when {
-        metadata.tags.any { it.startsWith("agp") || it.startsWith("gradle") } -> GradleImporter()
-        metadata.tags.any { it.startsWith("lightbuild") || it.startsWith("lume") } -> LightbuildImporter()
+        metadata.isGradle -> GradleImporter()
+        metadata.isLightbuild -> LightbuildImporter()
         else -> throw IllegalArgumentException("No ProjectImporter found for template tags: ${metadata.tags}")
       }
     }

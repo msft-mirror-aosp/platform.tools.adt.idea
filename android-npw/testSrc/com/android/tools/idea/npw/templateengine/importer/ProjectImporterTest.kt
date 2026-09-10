@@ -45,14 +45,6 @@ class ProjectImporterTest {
     assertThat(importer.javaClass.simpleName).isEqualTo("LightbuildImporter")
   }
 
-  @Test
-  fun testCreateImporter_lumeTag() {
-    val metadata = createTestTemplateMetadata(tags = listOf("lume"))
-
-    val importer = ProjectImporter.createImporter(metadata)
-    assertThat(importer.javaClass.simpleName).isEqualTo("LightbuildImporter")
-  }
-
   @Test(expected = IllegalArgumentException::class)
   fun testCreateImporter_noMatchingTag() {
     val metadata = createTestTemplateMetadata(tags = listOf("unknown"))

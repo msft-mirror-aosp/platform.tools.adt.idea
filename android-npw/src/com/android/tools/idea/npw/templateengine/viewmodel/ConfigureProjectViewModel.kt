@@ -22,10 +22,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
+import com.android.template.engine.TemplateDefinition
 import com.android.tools.adtui.device.FormFactor
 import com.android.tools.idea.npw.model.NewProjectModel
+import com.android.tools.idea.npw.model.TemplateRendererStrategy
 import com.android.tools.idea.npw.platform.AndroidVersionsInfo
 import com.android.tools.idea.npw.templateengine.WizardConstants
+import com.android.tools.idea.wizard.template.BuildConfigurationLanguageForNewProject
+import com.android.tools.idea.wizard.template.KOTLIN_DSL_LINK
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.runReadActionBlocking
 import java.nio.file.Files
@@ -41,6 +45,33 @@ import kotlinx.coroutines.launch
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.android.util.AndroidUtils
 
+data class BuildSystem(
+  val displayName: String,
+  val helpDescription: String? = null,
+  val helpUrl: String? = null,
+) {
+  companion object {
+    val GRADLE =
+      BuildSystem(
+        displayName = BuildConfigurationLanguageForNewProject.KTS.description,
+        helpDescription = AndroidBundle.message("android.wizard.project.help.buildconfigurationlanguage.description"),
+        helpUrl = KOTLIN_DSL_LINK,
+      )
+
+    fun fromStrategy(strategy: TemplateRendererStrategy<*>) =
+      BuildSystem(
+        displayName = strategy.displayName,
+        helpDescription = strategy.helpDescription,
+        helpUrl = strategy.helpUrl,
+      )
+  }
+}
+
+data class TemplateVariant(
+  val template: TemplateDefinition,
+  val buildSystem: BuildSystem = BuildSystem.GRADLE,
+)
+
 sealed interface ValidationMessage {
   val message: String
 
@@ -51,6 +82,8 @@ sealed interface ValidationMessage {
 
 class ConfigureProjectViewModel(
   private val defaultParentDir: Path,
+  templates: List<TemplateDefinition>,
+  initialFormFactor: FormFactor = FormFactor.MOBILE,
   private val versionsInfo: AndroidVersionsInfo = AndroidVersionsInfo(),
   private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ) {
@@ -69,7 +102,7 @@ class ConfigureProjectViewModel(
 
   var minSdk by mutableStateOf(WizardConstants.DEFAULT_MIN_SDK)
 
-  var formFactor by mutableStateOf(FormFactor.MOBILE)
+  var formFactor by mutableStateOf(initialFormFactor)
     private set
 
   val availableMinSdks: List<AndroidVersionsInfo.VersionItem>
@@ -108,19 +141,46 @@ class ConfigureProjectViewModel(
       }
   }
 
-  var templateName by mutableStateOf("")
+  var availableTemplateVariants by mutableStateOf<List<TemplateVariant>>(emptyList())
     private set
 
-  var templateDescription by mutableStateOf("")
+  var selectedTemplateVariant by mutableStateOf(TemplateVariant(templates.first()))
     private set
 
-  fun updateTemplate(name: String, shortName: String, newFormFactor: FormFactor, minSdkDefault: String? = null) {
-    templateName = name
-    templateDescription = getTemplateDescription(shortName)
+  val isBuildConfigurationVisible: Boolean
+    get() = availableTemplateVariants.size > 1
+
+  var buildConfigurationHelpDescription by
+    mutableStateOf(AndroidBundle.message("android.wizard.project.help.buildconfigurationlanguage.description"))
+    private set
+
+  var buildConfigurationHelpUrl by mutableStateOf(KOTLIN_DSL_LINK)
+    private set
+
+  val effectiveTemplate: TemplateDefinition
+    get() = selectedTemplateVariant.template
+
+  fun updateTemplateVariant(variant: TemplateVariant) {
+    selectedTemplateVariant = variant
+  }
+
+  val templateName: String
+    get() = selectedTemplateVariant.template.name
+
+  val templateDescription: String
+    get() = getTemplateDescription(selectedTemplateVariant.template.metadata.shortName)
+
+  fun updateTemplate(template: TemplateDefinition, newFormFactor: FormFactor) {
+    updateTemplate(listOf(template), newFormFactor)
+  }
+
+  fun updateTemplate(templates: List<TemplateDefinition>, newFormFactor: FormFactor) {
+    updateTemplateVariants(templates)
     if (formFactor != newFormFactor) {
       formFactor = newFormFactor
     }
-    val found = minSdkDefault?.let { sdk ->
+    val effectiveMinSdkDefault = selectedTemplateVariant.template.metadata.arguments.find { it.id == "minSdk" }?.defaultValue
+    val found = effectiveMinSdkDefault?.let { sdk ->
       availableMinSdks.find { it.minSdk.apiStringWithExtension == sdk || it.minApiLevel.toString() == sdk }
     }
     if (found != null) {
@@ -130,6 +190,31 @@ class ConfigureProjectViewModel(
       selectedMinSdk = initSelectedMinSdk()
       minSdk = selectedMinSdk.minApiLevel.toString()
     }
+  }
+
+  private fun updateTemplateVariants(templates: List<TemplateDefinition>) {
+    require(templates.isNotEmpty()) { "At least one template must be provided." }
+    val strategies = TemplateRendererStrategy.EP_NAME.extensionList
+    var applicableStrategy: TemplateRendererStrategy<*>? = null
+
+    val variants = templates.map { template ->
+      val strategy = strategies.find { template.metadata.tags.contains(it.id) }
+      if (strategy != null) {
+        if (applicableStrategy == null && strategy.helpDescription != null && strategy.helpUrl != null) {
+          applicableStrategy = strategy
+        }
+        TemplateVariant(template = template, buildSystem = BuildSystem.fromStrategy(strategy))
+      } else {
+        TemplateVariant(template = template, buildSystem = BuildSystem.GRADLE)
+      }
+    }
+
+    // TODO: This should be refactored to either a static message or strategy specific messages
+    buildConfigurationHelpDescription = applicableStrategy?.helpDescription ?: BuildSystem.GRADLE.helpDescription!!
+    buildConfigurationHelpUrl = applicableStrategy?.helpUrl ?: BuildSystem.GRADLE.helpUrl!!
+
+    availableTemplateVariants = variants
+    selectedTemplateVariant = variants.find { it.buildSystem == BuildSystem.GRADLE } ?: variants.first()
   }
 
   private fun getTemplateDescription(shortName: String): String {
@@ -153,8 +238,8 @@ class ConfigureProjectViewModel(
   private var userEditedLocation = false
 
   init {
+    updateTemplate(templates, initialFormFactor)
     locationState.setTextAndPlaceCursorAtEnd(getUniqueProjectLocation(name))
-    minSdk = selectedMinSdk.minApiLevel.toString()
     validate()
 
     scope.launch(Dispatchers.Main) {

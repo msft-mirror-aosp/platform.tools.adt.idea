@@ -21,7 +21,9 @@ import com.android.template.engine.TemplateDefinition
 import com.android.template.engine.TemplateEngineFactory
 import com.android.template.engine.TemplateList
 import com.android.template.engine.TemplateMessageSink
+import com.android.template.engine.TemplateMetadata
 import com.android.template.engine.copyAndLoadExtraFiles
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.template.WizardPluginPromotionTemplateProvider
 import com.android.tools.idea.npw.template.toPromotionCardSpec
 import com.android.tools.idea.npw.templateengine.api.ExternalTemplateSpec
@@ -144,8 +146,7 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
 
   private fun loadTemplatesFromZip(zipPath: Path, messageSink: TemplateMessageSink = TemplateRegistryService.messageSink): TemplateList {
     val factory = TemplateEngineFactory.createDefault { template ->
-      // Currently loading only Gradle templates
-      template.metadata.tags.any { it.startsWith("agp") || it.startsWith("gradle") }
+      (template.isLightbuild && StudioFlags.LIGHTBUILD_ENABLE.get()) || template.isGradle
     }
     val builder = factory.createTemplateListBuilder(messageSink)
     builder.loadFromZipFile(zipPath)
@@ -206,3 +207,15 @@ private fun getDefaultZipPath(): Path {
 
   throw IllegalStateException("Bundled templates package not found.")
 }
+
+val TemplateMetadata.isGradle: Boolean
+  get() = tags.any { it.startsWith("agp") || it.startsWith("gradle") }
+
+val TemplateMetadata.isLightbuild: Boolean
+  get() = tags.any { it.startsWith("lightbuild") }
+
+val TemplateDefinition.isGradle: Boolean
+  get() = metadata.isGradle
+
+val TemplateDefinition.isLightbuild: Boolean
+  get() = metadata.isLightbuild

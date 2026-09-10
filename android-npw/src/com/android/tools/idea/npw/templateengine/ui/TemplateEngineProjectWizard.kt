@@ -114,17 +114,16 @@ fun WizardPageScope.TemplateEngineChooseProjectPage(project: Project?) {
         if (selectedEntry is TemplateEngineTemplateGridProjectEntry) {
           when (val selectedItem = selectedEntry.selectedItem) {
             is TemplateGalleryItem.Renderable ->
-              createConfigurePageAction(project, selectedItem.definition, selectedEntry.formFactor, selectedEntry)
+              createConfigurePageAction(project, selectedItem.definitions, selectedEntry.formFactor, selectedEntry)
             is TemplateGalleryItem.Promotion -> WizardAction { selectedItem.spec.onClickAction(emptyMap()) }
             else -> WizardAction.Disabled
           }
         } else {
           val aiTemplateName = StudioFlags.NPW_AI_STARTER_TEMPLATE.get()
-          val templateToUse =
-            registry.getTemplateDefinitions().firstOrNull { it.name == aiTemplateName || it.metadata.shortName == aiTemplateName }
-              ?: registry.getTemplateDefinitions().firstOrNull()
-          if (templateToUse != null) {
-            createConfigurePageAction(project, templateToUse, FormFactor.MOBILE, selectedEntry)
+          val matchingTemplates =
+            registry.getTemplateDefinitions().filter { it.name == aiTemplateName || it.metadata.shortName == aiTemplateName }
+          if (matchingTemplates.isNotEmpty()) {
+            createConfigurePageAction(project, matchingTemplates, FormFactor.MOBILE, selectedEntry)
           } else {
             WizardAction.Disabled
           }
@@ -146,23 +145,26 @@ fun WizardPageScope.TemplateEngineChooseProjectPage(project: Project?) {
 
 private fun WizardPageScope.createConfigurePageAction(
   project: Project?,
-  templateToUse: TemplateDefinition,
+  templates: List<TemplateDefinition>,
   formFactor: FormFactor,
   selectedEntry: ChooseAndroidProjectEntry,
 ): WizardAction = WizardAction {
-  val defaultMinSdk = templateToUse.metadata.arguments.find { it.id == "minSdk" }?.defaultValue
   val configureProjectViewModel = getOrCreateState {
-    ConfigureProjectViewModel(WizardUtils.getProjectLocationParent().toPath(), scope = coroutineScope)
+    ConfigureProjectViewModel(
+      defaultParentDir = WizardUtils.getProjectLocationParent().toPath(),
+      templates = templates,
+      initialFormFactor = formFactor,
+      scope = coroutineScope,
+    )
   }
-  configureProjectViewModel.updateTemplate(templateToUse.name, templateToUse.metadata.shortName, formFactor, defaultMinSdk)
+  configureProjectViewModel.updateTemplate(templates, formFactor)
 
-  pushPage { TemplateEngineConfigureProjectPage(project, templateToUse, selectedEntry, configureProjectViewModel) }
+  pushPage { TemplateEngineConfigureProjectPage(project, selectedEntry, configureProjectViewModel) }
 }
 
 @Composable
 fun WizardPageScope.TemplateEngineConfigureProjectPage(
   project: Project?,
-  template: TemplateDefinition,
   entry: ChooseAndroidProjectEntry,
   configureProjectViewModel: ConfigureProjectViewModel,
 ) {
@@ -187,9 +189,10 @@ fun WizardPageScope.TemplateEngineConfigureProjectPage(
             location = configureProjectViewModel.location,
             minSdk = configureProjectViewModel.minSdk,
           )
-        val importer = ProjectImporter.createImporter(template.metadata)
+        val templateToGenerate = configureProjectViewModel.effectiveTemplate
+        val importer = ProjectImporter.createImporter(templateToGenerate.metadata)
         close()
-        ProjectGenerationService.getInstance().generateProject(project, params, template, importer) { createdProject ->
+        ProjectGenerationService.getInstance().generateProject(project, params, templateToGenerate, importer) { createdProject ->
           if (createdProject != null && StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && prompt.isNotBlank()) {
             ToolWindowManager.getInstance(createdProject).invokeLater {
               GeminiPluginApi.getInstance().launchNewProjectAgent(createdProject, prompt, attachments, modelId)

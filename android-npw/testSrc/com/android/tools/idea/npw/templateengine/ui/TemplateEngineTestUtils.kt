@@ -31,13 +31,20 @@ object TemplateEngineTestUtils {
     name: String = "Test Template",
     shortName: String = "test-template",
     tags: List<String> = emptyList(),
+    minSdkDefault: String? = null,
   ): TemplateMetadata {
+    val argumentsJson =
+      if (minSdkDefault != null) {
+        """, "arguments": [{"id": "minSdk", "description": "minSdk", "default-value": "$minSdkDefault"}]"""
+      } else {
+        ""
+      }
     val json =
       """
       {
         "name": "$name",
         "short-name": "$shortName",
-        "tags": [${tags.joinToString(",") { "\"$it\"" }}]
+        "tags": [${tags.joinToString(",") { "\"$it\"" }}]$argumentsJson
       }
       """
         .trimIndent()
@@ -50,10 +57,11 @@ object TemplateEngineTestUtils {
     name: String = "Test Template",
     shortName: String = "test-template",
     tags: List<String> = emptyList(),
+    minSdkDefault: String? = null,
     files: List<TemplateFileEntry> = emptyList(),
     extraFiles: List<TemplateFileEntry> = emptyList(),
   ): TemplateDefinition {
-    val metadata = createTestTemplateMetadata(name, shortName, tags)
+    val metadata = createTestTemplateMetadata(name, shortName, tags, minSdkDefault)
     val dummyLoader =
       object : TemplateFileLoader {
         override val storage: TemplateDefinitionStorage =

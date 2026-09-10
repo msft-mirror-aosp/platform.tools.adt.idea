@@ -18,8 +18,10 @@ package com.android.tools.idea.npw.templateengine.services
 import com.android.template.engine.DependencyInstaller
 import com.android.template.engine.TemplateEngineFactory
 import com.android.testutils.TestUtils
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.templateengine.api.ExternalTemplateSpec
 import com.android.tools.idea.npw.templateengine.api.TemplateEngineProjectWizardContributor
+import com.android.tools.idea.npw.templateengine.ui.TemplateEngineTestUtils
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
@@ -35,7 +37,9 @@ import kotlin.io.path.readText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import org.junit.After
 import org.junit.Assert.assertThrows
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -45,6 +49,16 @@ class TemplateRegistryServiceTest {
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   @get:Rule val tempFolder = TemporaryFolder()
+
+  @Before
+  fun setUp() {
+    StudioFlags.LIGHTBUILD_ENABLE.override(false)
+  }
+
+  @After
+  fun tearDown() {
+    StudioFlags.LIGHTBUILD_ENABLE.clearOverride()
+  }
 
   @Test
   fun testTemplatesLoaded() {
@@ -67,7 +81,7 @@ class TemplateRegistryServiceTest {
       val jsonContent1 = """{"name": "Template 1", "short-name": "template-1", "tags": ["agp-9"]}"""
       val jsonContent2 = """{"name": "Template 2", "short-name": "template-2", "tags": ["gradle"]}"""
       val jsonContent3 = """{"name": "Template 3", "short-name": "template-3", "tags": ["agp-9", "other"]}"""
-      val jsonContent4 = """{"name": "Template 4", "short-name": "template-4", "tags": ["lume"]}"""
+      val jsonContent4 = """{"name": "Template 4", "short-name": "template-4", "tags": ["lightbuild"]}"""
 
       val zipBytes =
         createZipBytes(
@@ -288,5 +302,20 @@ class TemplateRegistryServiceTest {
       }
     }
     return out.toByteArray()
+  }
+
+  @Test
+  fun testTemplateBuildSystemExtensions() {
+    val agpTemplate = TemplateEngineTestUtils.createTestTemplateDefinition(tags = listOf("compose", "agp-9"))
+    assertThat(agpTemplate.isGradle).isTrue()
+    assertThat(agpTemplate.isLightbuild).isFalse()
+
+    val gradleTemplate = TemplateEngineTestUtils.createTestTemplateDefinition(tags = listOf("gradle"))
+    assertThat(gradleTemplate.isGradle).isTrue()
+    assertThat(gradleTemplate.isLightbuild).isFalse()
+
+    val lightbuildTemplate = TemplateEngineTestUtils.createTestTemplateDefinition(tags = listOf("compose", "lightbuild"))
+    assertThat(lightbuildTemplate.isGradle).isFalse()
+    assertThat(lightbuildTemplate.isLightbuild).isTrue()
   }
 }

@@ -97,7 +97,7 @@ class TemplateEngineWizardUITest {
         whenever(this.versionName).thenReturn("Android 14")
       }
     val stubVersionsInfo = AndroidVersionsInfo { arrayOf(mockTarget) }
-    val configureVM = ConfigureProjectViewModel(testFolder, stubVersionsInfo)
+    val configureVM = ConfigureProjectViewModel(testFolder, listOf(dummyTemplate), versionsInfo = stubVersionsInfo)
 
     val wizard = TestComposeWizard {
       getOrCreateState { chooseVM }
@@ -156,7 +156,7 @@ class TemplateEngineWizardUITest {
         whenever(this.versionName).thenReturn("Android 14")
       }
     val stubVersionsInfo = AndroidVersionsInfo { arrayOf(mockTarget) }
-    val configureVM = ConfigureProjectViewModel(testFolder, stubVersionsInfo)
+    val configureVM = ConfigureProjectViewModel(testFolder, listOf(dummyTemplate), versionsInfo = stubVersionsInfo)
 
     val wizard = TestComposeWizard {
       getOrCreateState { chooseVM }
