@@ -56,8 +56,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
 import java.util.function.Consumer
 import javax.swing.JPanel
 import org.jetbrains.android.uipreview.AndroidEditorSettings
@@ -97,15 +95,6 @@ class DesignFilesPreviewEditor(file: VirtualFile, project: Project, fileType: De
               else -> NlScreenViewProvider.RENDER
             }
           setScreenViewProvider(screenViewProvider, false)
-          // Make DesignSurface be focused when mouse clicked. This make the DataContext is provided
-          // from it while user clicks it.
-          interactionPane.addMouseListener(
-            object : MouseAdapter() {
-              override fun mousePressed(e: MouseEvent) {
-                interactionPane.requestFocus()
-              }
-            }
-          )
         }
     }
 

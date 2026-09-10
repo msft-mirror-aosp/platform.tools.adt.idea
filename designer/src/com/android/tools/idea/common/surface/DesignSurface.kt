@@ -792,15 +792,6 @@ abstract class DesignSurface<T : SceneManager>(
   override val configurations: List<Configuration>
     get() = models.map { it.configuration }
 
-  /** Update the status of [GuiInputHandler]. It will start or stop listening depending on the current layout type. */
-  private fun reactivateGuiInputHandler() {
-    if (isEditable) {
-      guiInputHandler.startListening()
-    } else {
-      guiInputHandler.stopListening()
-    }
-  }
-
   /** Support for panning actions. */
   val pannable =
     object : Pannable {
@@ -1084,7 +1075,6 @@ abstract class DesignSurface<T : SceneManager>(
       if (!isDisposed()) {
         // Mark the scene view panel as invalid to force the scene views to be updated
         UIUtil.invokeLaterIfNeeded { this@DesignSurface.revalidateScrollArea() }
-        reactivateGuiInputHandler()
         notifyModelsChanged(models)
       }
     }

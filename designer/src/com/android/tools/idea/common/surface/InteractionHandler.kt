@@ -284,7 +284,7 @@ abstract class InteractionHandlerBase(private val surface: DesignSurface<*>) : I
       return null
     }
 
-    if (keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_BACK_SPACE) {
+    if (surface.isEditable && (keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_BACK_SPACE)) {
       // Try to delete selected Constraints first.
       if (!ConstraintComponentUtilities.clearSelectedConstraint(surface)) {
         // If there is no Constraint to delete, delete the selected NlComponent(s).

@@ -16,6 +16,7 @@
 package com.android.tools.idea.common.surface
 
 import com.android.AndroidXConstants.CONSTRAINT_LAYOUT
+import com.android.SdkConstants
 import com.android.SdkConstants.RELATIVE_LAYOUT
 import com.android.tools.adtui.ZoomController
 import com.android.tools.idea.common.fixtures.ModelBuilder
@@ -27,20 +28,27 @@ import com.android.tools.idea.common.model.ItemTransferable
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.scene.SceneManager
+import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.uibuilder.LayoutTestCase
 import com.android.tools.idea.uibuilder.getRoot
 import com.android.tools.idea.uibuilder.scene.TestSceneManager
+import com.android.tools.idea.uibuilder.type.ZoomableDrawableFileType
 import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.client.ClientSystemInfo
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.datatransfer.DataFlavor
 import java.awt.event.ComponentEvent
+import java.awt.event.InputEvent
+import java.awt.event.KeyEvent
+import java.awt.event.MouseEvent
+import java.awt.event.MouseWheelEvent
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -542,6 +550,82 @@ class DesignSurfaceTest : LayoutTestCase() {
     // 1.0 [initial scale] - 5 [magnification] * 0.25 [sensitivity] = -0.25 -> should be capped at 0.01
     surface.magnify(-5.0)
     assertEquals(0.01, surface.zoomController.scale, 0.01)
+  }
+
+  fun testGuiInputHandlerListensForNonEditableModel() {
+    DesignerTypeRegistrar.register(ZoomableDrawableFileType)
+    try {
+      val model = model("my_vector.xml", component(SdkConstants.TAG_VECTOR)).buildWithoutSurface()
+      val surface = TestDesignSurface(project, testRootDisposable)
+      assertFalse(model.type.isEditable())
+
+      surface.addModelsWithoutRender(listOf(model))
+      assertFalse(surface.isEditable)
+
+      // Verify that GuiInputHandler continues listening on the interaction pane even for non-editable models
+      assertTrue(surface.interactionPane.mouseWheelListeners.isNotEmpty())
+    } finally {
+      DesignerTypeRegistrar.clearRegisteredTypes()
+    }
+  }
+
+  fun testMouseWheelZoomOnNonEditableModel() {
+    DesignerTypeRegistrar.register(ZoomableDrawableFileType)
+    try {
+      val model = model("my_vector.xml", component(SdkConstants.TAG_VECTOR)).buildWithoutSurface()
+      val surface = TestDesignSurface(project, testRootDisposable)
+      surface.addModelsWithoutRender(listOf(model))
+      surface.zoomController.setScale(1.0)
+
+      val mask = if (ClientSystemInfo.isMac()) InputEvent.META_DOWN_MASK else InputEvent.CTRL_DOWN_MASK
+      val zoomInEvent =
+        MouseWheelEvent(
+          surface.interactionPane,
+          MouseEvent.MOUSE_WHEEL,
+          System.currentTimeMillis(),
+          mask,
+          50,
+          50,
+          1,
+          false,
+          MouseWheelEvent.WHEEL_UNIT_SCROLL,
+          3,
+          -1,
+        )
+      surface.interactionPane.mouseWheelListeners.forEach { it.mouseWheelMoved(zoomInEvent) }
+      assertTrue("Zoom in should increase scale", surface.zoomController.scale > 1.0)
+    } finally {
+      DesignerTypeRegistrar.clearRegisteredTypes()
+    }
+  }
+
+  fun testDeleteKeyDoesNotDeleteOnNonEditableModel() {
+    DesignerTypeRegistrar.register(ZoomableDrawableFileType)
+    try {
+      val builder =
+        model(
+          "my_vector.xml",
+          component(SdkConstants.TAG_VECTOR).children(component(SdkConstants.TAG_PATH).id("@+id/path1")),
+        )
+      val model = builder.buildWithoutSurface()
+      builder.updateModel(model)
+      val surface = TestDesignSurface(project, testRootDisposable)
+      surface.addModelsWithoutRender(listOf(model))
+      assertFalse(surface.isEditable)
+
+      val root = model.treeReader.components.first()
+      val pathComponent = root.children.first()
+      surface.selectionModel.setSelection(listOf(pathComponent))
+
+      val deleteKeyEvent =
+        KeyEvent(surface.interactionPane, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_DELETE, KeyEvent.CHAR_UNDEFINED)
+      surface.interactionPane.keyListeners.forEach { it.keyPressed(deleteKeyEvent) }
+
+      // Component should not be deleted on a non-editable surface
+      assertEquals(1, model.treeReader.components.first().children.size)
+    } finally {
+      DesignerTypeRegistrar.clearRegisteredTypes()
+    }
   }
 }
 
