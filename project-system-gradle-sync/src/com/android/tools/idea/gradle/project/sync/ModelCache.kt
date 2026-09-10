@@ -27,7 +27,6 @@ import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.BasicTestSuite
 import com.android.builder.model.v2.models.VariantDependencies
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_ANDROID_TEST
@@ -120,24 +119,6 @@ interface ModelCache {
   companion object {
     const val LOCAL_AARS = "__local_aars__"
     const val LOCAL_JARS = "__local_jars__"
-
-    @JvmStatic
-    fun createForTests(useV2BuilderModels: Boolean, agpVersion: AgpVersion): ModelCache {
-      val internedModels = InternedModels(null)
-      return if (useV2BuilderModels) {
-        modelCacheV2Impl(
-          internedModels,
-          ModelVersions(
-            agp = agpVersion,
-            modelVersion = ModelVersion(Int.MAX_VALUE, Int.MAX_VALUE, "Fake model for tests"),
-            minimumModelConsumer = null,
-          ),
-          syncTestMode = SyncTestMode.PRODUCTION,
-        )
-      } else {
-        modelCacheV1Impl(internedModels, BuildFolderPaths())
-      }
-    }
 
     @JvmStatic
     fun createForPostBuildModels(): V1 {
