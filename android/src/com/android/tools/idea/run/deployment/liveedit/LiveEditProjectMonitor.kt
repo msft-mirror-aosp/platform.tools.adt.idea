@@ -56,7 +56,7 @@ import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.progress.runBlockingCancellable
+import com.intellij.openapi.progress.runBlockingMaybeCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -623,9 +623,10 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
   }
 
   @WorkerThread
-  private fun createAdbClient(device: IDevice): AdbClient {
+  @VisibleForTesting
+  internal fun createAdbClient(device: IDevice): AdbClient {
     val session = AdbLibService.getSession(project)
-    val connectedDevice = runBlockingCancellable { device.toConnectedDevice(project) }
+    val connectedDevice = runBlockingMaybeCancellable { device.toConnectedDevice(project) }
     val deviceHolder = DeviceHolder(device, connectedDevice, session)
     return AdbClient(deviceHolder, logger, session)
   }

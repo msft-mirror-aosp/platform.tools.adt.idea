@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.VirtualTimeScheduler
 import com.android.testutils.waitForCondition
+import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.deploy.proto.Deploy
@@ -37,6 +38,7 @@ import com.google.wireless.android.sdk.stats.LiveEditEvent
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import junit.framework.Assert
@@ -51,6 +53,7 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.kotlin.any
@@ -65,7 +68,10 @@ class LiveEditProjectMonitorTest {
 
   private fun hasMetricStatus(status: LiveEditEvent.Status) = usageTracker.usages.any() { it.studioEvent.liveEditEvent.status == status }
 
-  @get:Rule var projectRule = AndroidProjectRule.inMemory().withKotlin()
+  private val projectRule = AndroidProjectRule.inMemory().withKotlin()
+  private val fakeAdbRule = FakeAdbServerAdbLibRule()
+
+  @get:Rule val chain: RuleChain = RuleChain.outerRule(projectRule).around(fakeAdbRule)
 
   @Before
   fun setUp() {
@@ -117,6 +123,17 @@ class LiveEditProjectMonitorTest {
     val hasPhysicalDevice = usageTracker.usages.any() { it.studioEvent.liveEditEvent.targetDevice == LiveEditEvent.Device.PHYSICAL }
 
     Assert.assertTrue(hasPhysicalDevice)
+  }
+
+  @Test
+  fun createAdbClientOnWorkerThread() {
+    val monitor = LiveEditProjectMonitor(LiveEditService.getInstance(myProject), myProject)
+    val device: IDevice = mock()
+    whenever(device.serialNumber).thenReturn("test_serial_123")
+
+    val adbClient = CompletableFuture.supplyAsync { monitor.createAdbClient(device) }.get(5, TimeUnit.SECONDS)
+
+    Assert.assertNotNull(adbClient)
   }
 
   @Test
