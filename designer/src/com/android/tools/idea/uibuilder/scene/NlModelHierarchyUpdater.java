@@ -27,9 +27,12 @@ import com.android.tools.idea.rendering.parsers.PsiXmlTag;
 import com.android.tools.rendering.RenderResult;
 import com.android.tools.rendering.RenderService;
 import com.android.tools.rendering.parsers.TagSnapshot;
+import com.android.tools.rendering.security.DenyAllRenderSandbox;
+import com.android.tools.rendering.security.RenderSandbox;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
 import com.android.tools.idea.uibuilder.type.MenuFileType;
 import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.containers.ContainerUtil;
@@ -47,6 +50,8 @@ import org.jetbrains.annotations.Nullable;
  * Utility class for updating NlModel hierarchy from various sources
  */
 public class NlModelHierarchyUpdater {
+
+  private static final Logger LOG = Logger.getInstance(NlModelHierarchyUpdater.class);
 
   @AndroidCoordinate private static final int VISUAL_EMPTY_COMPONENT_SIZE = 1;
 
@@ -296,18 +301,25 @@ public class NlModelHierarchyUpdater {
    * or its children are scrolled by a non-zero amount.
    */
   private static boolean handleScroll(@NotNull NlComponent component) {
-    boolean hasNonZeroScroll = false;
-    ViewInfo viewInfo = NlComponentHelperKt.getViewInfo(component);
-    Object viewObject = viewInfo != null ? viewInfo.getViewObject() : null;
+    int savedScrollX = NlComponentHelperKt.getScrollX(component);
+    int savedScrollY = NlComponentHelperKt.getScrollY(component);
+    boolean hasNonZeroScroll = savedScrollX != 0 || savedScrollY != 0;
 
-    if (viewObject instanceof ViewGroup) {
-      ViewGroup viewGroup = (ViewGroup)viewObject;
-      int savedScrollX = NlComponentHelperKt.getScrollX(component);
-      int savedScrollY = NlComponentHelperKt.getScrollY(component);
-      hasNonZeroScroll = savedScrollX != 0 || savedScrollY != 0;
-      if (savedScrollX != viewGroup.getScrollX() || savedScrollY != viewGroup.getScrollY()) {
-        viewGroup.setScrollX(savedScrollX);
-        viewGroup.setScrollY(savedScrollY);
+    if (hasNonZeroScroll) {
+      ViewInfo viewInfo = NlComponentHelperKt.getViewInfo(component);
+      Object viewObject = viewInfo != null ? viewInfo.getViewObject() : null;
+
+      if (viewObject instanceof ViewGroup viewGroup) {
+        try {
+          RenderSandbox.computeWithSandbox(DenyAllRenderSandbox.INSTANCE, () -> {
+            viewGroup.setScrollX(savedScrollX);
+            viewGroup.setScrollY(savedScrollY);
+            return null;
+          });
+        }
+        catch (Throwable t) {
+          LOG.warn("Failed to set scroll position on " + viewGroup.getClass().getName(), t);
+        }
       }
     }
 

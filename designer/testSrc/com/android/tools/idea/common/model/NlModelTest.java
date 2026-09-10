@@ -32,9 +32,13 @@ import static com.android.tools.idea.projectsystem.TestRepositories.PLATFORM_SUP
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,6 +46,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import android.view.ViewGroup;
 import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.MergeCookie;
 import com.android.ide.common.rendering.api.ResourceReference;
@@ -67,6 +72,9 @@ import com.android.tools.idea.uibuilder.model.NlComponentRegistrar;
 import com.android.tools.idea.uibuilder.scene.NlModelHierarchyUpdater;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.rendering.parsers.TagSnapshot;
+import com.android.tools.rendering.security.AllowAllRenderSandbox;
+import com.android.tools.rendering.security.DenyAllRenderSandbox;
+import com.android.tools.rendering.security.RenderSandbox;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
@@ -1096,6 +1104,77 @@ public class NlModelTest extends LayoutTestCase {
     model.activate();
     // Check that the model was not activated
     assertEquals(0, modelActivations.get());
+  }
+
+  public void testHierarchyUpdaterDoesNotCallGetScrollOnViewsWhenUnscrolled() {
+    SyncNlModel model = createDefaultModelBuilder(true).build(false);
+    XmlTag rootTag = model.getFile().getRootTag();
+    assertNotNull(rootTag);
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(rootTag), null);
+
+    ViewGroup mockViewGroup = mock(ViewGroup.class);
+    when(mockViewGroup.getScrollX()).thenThrow(new AssertionError("getScrollX should not be called"));
+    when(mockViewGroup.getScrollY()).thenThrow(new AssertionError("getScrollY should not be called"));
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 1000, 1000, mockViewGroup, null, null);
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), model);
+
+    verify(mockViewGroup, never()).setScrollX(anyInt());
+    verify(mockViewGroup, never()).setScrollY(anyInt());
+  }
+
+  public void testHierarchyUpdaterSetsScrollUnderSandboxWhenScrolled() {
+    SyncNlModel model = createDefaultModelBuilder(true).build(false);
+    NlComponent rootComponent = model.getTreeReader().getComponents().getFirst();
+    NlComponentHelperKt.setScrollX(rootComponent, 10);
+    NlComponentHelperKt.setScrollY(rootComponent, 20);
+
+    XmlTag rootTag = model.getFile().getRootTag();
+    assertNotNull(rootTag);
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(rootTag), null);
+
+    AtomicInteger sandboxChecks = new AtomicInteger(0);
+    ViewGroup mockViewGroup = mock(ViewGroup.class);
+    doAnswer(ignored -> {
+      if (RenderSandbox.getRenderSandbox() == DenyAllRenderSandbox.INSTANCE) {
+        sandboxChecks.incrementAndGet();
+      }
+      return null;
+    }).when(mockViewGroup).setScrollX(anyInt());
+    doAnswer(ignored -> {
+      if (RenderSandbox.getRenderSandbox() == DenyAllRenderSandbox.INSTANCE) {
+        sandboxChecks.incrementAndGet();
+      }
+      return null;
+    }).when(mockViewGroup).setScrollY(anyInt());
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 1000, 1000, mockViewGroup, null, null);
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), model);
+
+    verify(mockViewGroup).setScrollX(10);
+    verify(mockViewGroup).setScrollY(20);
+    assertEquals(2, sandboxChecks.get());
+    assertEquals(AllowAllRenderSandbox.INSTANCE, RenderSandbox.getRenderSandbox());
+  }
+
+  public void testHierarchyUpdaterHandlesSecurityExceptionInSetScroll() {
+    SyncNlModel model = createDefaultModelBuilder(true).build(false);
+    NlComponent rootComponent = model.getTreeReader().getComponents().getFirst();
+    NlComponentHelperKt.setScrollY(rootComponent, 50);
+
+    XmlTag rootTag = model.getFile().getRootTag();
+    assertNotNull(rootTag);
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(rootTag), null);
+
+    ViewGroup mockViewGroup = mock(ViewGroup.class);
+    doThrow(new SecurityException("Blocked by sandbox")).when(mockViewGroup).setScrollY(anyInt());
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 1000, 1000, mockViewGroup, null, null);
+    // Should not throw or crash
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), model);
+
+    verify(mockViewGroup).setScrollY(50);
+    assertEquals(AllowAllRenderSandbox.INSTANCE, RenderSandbox.getRenderSandbox());
   }
 
   /**
