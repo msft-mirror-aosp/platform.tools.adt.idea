@@ -21,7 +21,7 @@ def debugger_test(
         run_on_art: Specifies whether to run on ART or JVM
         **kwargs: Additional arguments for java_test
     """
-    jvm_flags = JAVA_TEST_FLAGS + ADD_OPENS_FLAGS
+    jvm_flags = JAVA_TEST_FLAGS + ADD_OPENS_FLAGS + ["-Didea.include.performance.tests=true"]
 
     runtime_deps = [
         test_dep,

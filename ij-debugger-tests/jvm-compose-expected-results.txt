@@ -1,0 +1,9 @@
+# Failure
+org.jetbrains.kotlin.idea.compose.k2.debugger.test.cases.K2ComposeDebuggerEvaluationTestGenerated.testComposableLambda
+org.jetbrains.kotlin.idea.compose.k2.debugger.test.cases.K2IdeK2CodeComposeSteppingTestGenerated.testComposableLambda
+org.jetbrains.kotlin.idea.compose.k2.debugger.test.cases.K2IdeK2CodeComposeSteppingTestGenerated.testComposeCompositionLocal
+org.jetbrains.kotlin.idea.compose.k2.debugger.test.cases.K2IdeK2CodeComposeSteppingTestGenerated.testComposeStatefulComponent
+
+# Error
+
+# Flaky
