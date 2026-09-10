@@ -534,7 +534,7 @@ class FakeScreenSharingAgent(
     val m = 10
     val w = size.width.toDouble() / n
     val h = size.height.toDouble() / m
-    val colorScheme = if (hasAssociatedCamera(displayId)) COLOR_SCHEMES[0] else COLOR_SCHEMES[displayId % COLOR_SCHEMES.size]
+    val colorScheme = COLOR_SCHEMES[displayId % COLOR_SCHEMES.size]
     val startColor1 = colorScheme.start1
     val endColor1 = colorScheme.end1
     val startColor2 = colorScheme.start2
