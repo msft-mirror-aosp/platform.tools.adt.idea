@@ -31,6 +31,7 @@ import com.android.tools.idea.uibuilder.type.TEMP_ANIMATED_SELECTOR_FOLDER
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
@@ -185,6 +186,8 @@ private object EmptyModelUpdater : NlModelUpdaterInterface {
 private const val ID_ANIMATED_SELECTOR_MODEL = "Select Transition..."
 private const val XMLNS_ANDROID_NAMESPACE = "${SdkConstants.XMLNS_ANDROID}=\"${SdkConstants.ANDROID_URI}\""
 
+private data class AnimationOptionInfo(val tagName: String, val content: String)
+
 /**
  * For creating and saving the data of animated selector file. It creates a temp file and replacing the content of animated selector file
  * when switching between transitions.
@@ -198,7 +201,7 @@ class AnimatedSelectorModel(
   config: Configuration,
 ) {
 
-  private var animationTags: Map<String, XmlTag>
+  private var animationOptions: Map<String, AnimationOptionInfo>
   private val tempModelFile: VirtualFile
   private val nlModelOfTempFile: NlModel
   private var currentOption: String? = null
@@ -209,41 +212,45 @@ class AnimatedSelectorModel(
     tempModelFile = createTempAnimatedSelectorFile()
     nlModelOfTempFile = createModelWithFile(parentDisposable, project, buildTarget, componentRegistrar, config, tempModelFile)
 
-    animationTags = createIdAnimationMap(xmlFile)
+    animationOptions = createIdAnimationMap(xmlFile)
 
-    // Update (id, XmlTag) maps when the animated-selector file is edited.
+    // Update (id, AnimationOptionInfo) maps when the animated-selector file is edited.
     VirtualFileManager.getInstance()
       .addVirtualFileListener(
         object : VirtualFileListener {
           override fun contentsChanged(event: VirtualFileEvent) {
             if (event.file == originalFile) {
-              animationTags = createIdAnimationMap(xmlFile)
+              val file = runReadAction { originalFile.toPsiFile(project) as? XmlFile } ?: return
+              animationOptions = createIdAnimationMap(file)
               setPreviewOption(currentOption ?: ID_ANIMATED_SELECTOR_MODEL)
             }
           }
-        }
+        },
+        parentDisposable,
       )
     setPreviewOption(ID_ANIMATED_SELECTOR_MODEL)
   }
 
-  /** Create the (id, XmlTag) pairs as an index map. It is used to find the target XmlTag by animation id. */
-  private fun createIdAnimationMap(xmlFile: XmlFile): Map<String, XmlTag> {
-    val rootTag = xmlFile.rootTag!!
-    val transitions = rootTag.subTags.asSequence().filter { it.name == SdkConstants.TAG_TRANSITION }.toList()
+  /** Create the (id, AnimationOptionInfo) pairs as an index map. It is used to find the target option content by animation id. */
+  private fun createIdAnimationMap(xmlFile: XmlFile): Map<String, AnimationOptionInfo> {
+    return runReadAction {
+      val rootTag = xmlFile.rootTag ?: return@runReadAction emptyMap()
+      val transitions = rootTag.subTags.asSequence().filter { it.name == SdkConstants.TAG_TRANSITION }.toList()
 
-    val maps = mutableMapOf(ID_ANIMATED_SELECTOR_MODEL to rootTag)
-    for (transition in transitions) {
-      val fromIdAttribute = transition.getAttribute(SdkConstants.ATTR_FROM_ID, SdkConstants.ANDROID_URI)?.value ?: continue
-      val toIdAttribute = transition.getAttribute(SdkConstants.ATTR_TO_ID, SdkConstants.ANDROID_URI)?.value ?: continue
-      val fromId = ResourceUrl.parse(fromIdAttribute)?.name ?: continue
-      val toId = ResourceUrl.parse(toIdAttribute)?.name ?: continue
-      val animationTag =
-        transition.subTags.firstOrNull { it.name == SdkConstants.TAG_ANIMATED_VECTOR || it.name == SdkConstants.TAG_ANIMATION_LIST }
-          ?: continue
-      val transitionId = "$fromId to $toId"
-      maps[transitionId] = animationTag
+      val maps = mutableMapOf(ID_ANIMATED_SELECTOR_MODEL to AnimationOptionInfo(rootTag.name, getTransitionContent(rootTag)))
+      for (transition in transitions) {
+        val fromIdAttribute = transition.getAttribute(SdkConstants.ATTR_FROM_ID, SdkConstants.ANDROID_URI)?.value ?: continue
+        val toIdAttribute = transition.getAttribute(SdkConstants.ATTR_TO_ID, SdkConstants.ANDROID_URI)?.value ?: continue
+        val fromId = ResourceUrl.parse(fromIdAttribute)?.name ?: continue
+        val toId = ResourceUrl.parse(toIdAttribute)?.name ?: continue
+        val animationTag =
+          transition.subTags.firstOrNull { it.name == SdkConstants.TAG_ANIMATED_VECTOR || it.name == SdkConstants.TAG_ANIMATION_LIST }
+            ?: continue
+        val transitionId = "$fromId to $toId"
+        maps[transitionId] = AnimationOptionInfo(animationTag.name, getTransitionContent(animationTag))
+      }
+      maps
     }
-    return maps
   }
 
   private fun createModelWithFile(
@@ -299,8 +306,8 @@ class AnimatedSelectorModel(
       return
     }
     currentOption = option
-    val tag = animationTags[option] ?: return
-    val content = getTransitionContent(tag)
+    val optionInfo = animationOptions[option] ?: return
+    val content = optionInfo.content
     ApplicationManager.getApplication()
       .invokeLater({
         WriteCommandAction.runWriteCommandAction(nlModelOfTempFile.project) {
@@ -314,9 +321,9 @@ class AnimatedSelectorModel(
   }
 
   fun getPreviewOptionTagName(option: String): String? {
-    return animationTags[option]?.name
+    return animationOptions[option]?.tagName
   }
 
   /** Get the id of preview options. It must have [ID_ANIMATED_SELECTOR_MODEL] in it. */
-  fun getPreviewOption(): Set<String> = animationTags.keys
+  fun getPreviewOption(): Set<String> = animationOptions.keys
 }

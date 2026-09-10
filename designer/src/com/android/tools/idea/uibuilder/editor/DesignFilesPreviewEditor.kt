@@ -49,6 +49,7 @@ import com.android.tools.idea.uibuilder.type.DrawableFileType
 import com.android.tools.idea.uibuilder.type.getPreviewConfig
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -56,6 +57,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
+import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import javax.swing.JPanel
 import org.jetbrains.android.uipreview.AndroidEditorSettings
@@ -240,8 +242,11 @@ private class AnimationListListener(val surface: DesignSurface<*>) : AnimationLi
       }
 
       val targetImageIndex = findTargetDuration(animationDrawable, framePositionMs)
-      animationDrawable.currentIndex = targetImageIndex
-      sceneManager.requestRender()
+      sceneManager.executeInRenderSessionAsync({ animationDrawable.currentIndex = targetImageIndex }, 0, TimeUnit.SECONDS).whenComplete {
+        _,
+        _ ->
+        sceneManager.requestRender()
+      }
     }
   }
 
@@ -293,7 +298,8 @@ private class AnimatedSelectorListener(val surface: DesignSurface<*>) : Animatio
 
   override fun animateTo(controller: AnimationController, framePositionMs: Long) {
     (surface.model?.let { surface.getSceneManager(it) } as? LayoutlibSceneManager)?.let {
-      when (it.model.file.rootTag?.name) {
+      val rootTagName = runReadAction { it.model.file.rootTag?.name }
+      when (rootTagName) {
         SdkConstants.TAG_ANIMATED_VECTOR -> {
           animatedVectorDelegate.animateTo(controller, framePositionMs)
         }
