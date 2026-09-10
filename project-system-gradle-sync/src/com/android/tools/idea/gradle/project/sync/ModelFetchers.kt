@@ -114,7 +114,6 @@ internal fun BuildController.findVariantDependenciesV2Model(
 }
 
 internal fun BuildController.findNativeVariantAbiModel(
-  modelCache: ModelCache.V1,
   module: AndroidModule,
   variantName: String,
   abiToRequest: String,

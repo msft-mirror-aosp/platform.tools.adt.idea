@@ -248,7 +248,6 @@ internal class VariantDiscovery(
               val nativeVariantAbi: NativeVariantAbiResult =
                 abiToRequest?.let {
                   controller.findNativeVariantAbiModel(
-                    modelCacheV1Impl(internedModels, buildInfo.buildFolderPaths),
                     module,
                     variantName,
                     it,
