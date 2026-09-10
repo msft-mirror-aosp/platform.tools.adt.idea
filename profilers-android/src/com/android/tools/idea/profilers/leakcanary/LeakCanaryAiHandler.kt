@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.profilers.leakcanary
 
-import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.GeminiPluginApiV2
 import com.android.tools.idea.gemini.LlmChatInToolWindowResult
+import com.android.tools.idea.gemini.LlmModelSlot
 import com.android.tools.idea.gemini.LlmPrompt
 import com.android.tools.idea.gemini.buildLlmPrompt
 import com.android.tools.idea.project.AndroidNotification
@@ -33,7 +33,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
@@ -83,9 +82,12 @@ class LeakCanaryAiHandler(private val project: Project, private val scope: Corou
     @JvmStatic
     fun fetchLeakInsight(project: Project, rawTrace: String): Flow<String> = flow {
       val prompt = buildInsightPrompt(project, rawTrace)
-      val api = GeminiPluginApi.getInstance()
+      val api = GeminiPluginApiV2.getInstance()
       if (api.isAvailable()) {
-        emitAll(api.generate(project, prompt))
+        val response = api.generate(project, prompt, LlmModelSlot.THINKING)
+        if (!response.isNullOrEmpty()) {
+          emit(response)
+        }
       } else {
         throw IllegalStateException("AI Assistant is not available.")
       }

@@ -16,17 +16,22 @@
 package com.android.tools.idea.profilers.leakcanary
 
 import com.android.tools.idea.gemini.GeminiPluginApiV2
+import com.android.tools.idea.gemini.LlmModelSlot
 import com.android.tools.leakcanarylib.data.Leak
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when` as whenever
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
@@ -42,8 +47,7 @@ class LeakCanaryAiHandlerTest {
   @Test
   fun `test analyzeLeakWithStudioBot sends query to Gemini`() = runBlocking {
     val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
-    val epV2 = GeminiPluginApiV2.EP_NAME.getPoint(null)
-    epV2.registerExtension(mockGeminiApiV2, projectRule.project)
+    ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
 
     val rawTrace = "Test Trace"
     val leak = mock(Leak::class.java)
@@ -66,5 +70,18 @@ class LeakCanaryAiHandlerTest {
     val submittedQuery = queryCaptor.firstValue
     assertTrue(submittedQuery.contains("Fix this memory leak and summarize the outcome:"))
     assertTrue(submittedQuery.contains(rawTrace))
+  }
+
+  @Test
+  fun `test fetchLeakInsight calls GeminiPluginApiV2 generate`() = runBlocking {
+    val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
+    ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
+
+    whenever(mockGeminiApiV2.isAvailable()).thenReturn(true)
+    whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.THINKING)))
+      .thenReturn("Insight chunk 1 chunk 2")
+
+    val result = LeakCanaryAiHandler.fetchLeakInsight(project, "raw trace").toList()
+    assertEquals(listOf("Insight chunk 1 chunk 2"), result)
   }
 }

@@ -78,6 +78,13 @@ sealed interface LlmChatInToolWindowResult {
   data class RequestNotSubmitted(val reason: LlmFailureReason) : LlmChatInToolWindowResult
 }
 
+/** Model slot preference for text generation requests. */
+enum class LlmModelSlot {
+  CHAT,
+  THINKING,
+  FAST,
+}
+
 /** A gateway to the V2 chat and conversation API, wrapping `ChatInteractionService`. */
 interface GeminiPluginApiV2 {
   /** Returns whether Gemini V2 APIs are available (if any model provider is ready and has available models.). */
@@ -107,6 +114,18 @@ interface GeminiPluginApiV2 {
     fileReferences: List<Path> = emptyList(),
     conversationTarget: LlmConversationTarget = LlmConversationTarget.NewConversation,
   ): LlmChatInToolWindowResult
+
+  /**
+   * Generates a text response for the given [prompt].
+   *
+   * @param modelSlot Preferred model slot for generation. If not specified, defaults to the fast model.
+   * @return The generated text response, or null if generation failed or no model is available.
+   */
+  suspend fun generate(
+    project: Project,
+    prompt: LlmPrompt,
+    modelSlot: LlmModelSlot? = null,
+  ): String? = null
 
   companion object {
     val EP_NAME = ExtensionPointName.create<GeminiPluginApiV2>("com.android.tools.idea.gemini.geminiPluginApiV2")
