@@ -18,7 +18,6 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.Processor
-import org.jetbrains.kotlin.idea.core.script.v1.KotlinScriptSearchScope
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtPsiFactory
@@ -44,12 +43,7 @@ class GradleKtsVersionCatalogReferencesSearcher : QueryExecutorBase<PsiReference
         val name = element.name ?: return@runReadAction null
         val project = element.project
         val ktsScope = queryParameters.effectiveSearchScope.intersectWith(GradleKtsBuildscriptSearchScope(project))
-        val scope =
-          when (ktsScope) {
-            is GlobalSearchScope -> KotlinScriptSearchScope(project, ktsScope)
-            else -> ktsScope
-          }
-        Triple(keyValue, name, scope)
+        Triple(keyValue, name, ktsScope)
       } ?: return
     val nameParts = name.getVersionCatalogParts()
     val identifier = nameParts.lastOrNull() ?: return
