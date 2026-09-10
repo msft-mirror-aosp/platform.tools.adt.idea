@@ -1,5 +1,6 @@
 """Version information for Android Studio."""
 visibility([
+    "//tools/adt/idea/native/installer",
     "//tools/adt/idea/studio",
     "//tools/vendor/google/asfp/studio",
     "//tools/vendor/google/aswb",
