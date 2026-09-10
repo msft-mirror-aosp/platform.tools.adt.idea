@@ -23,10 +23,9 @@ import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiTypes
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.io.IOUtil
 import java.io.DataInput
 import java.io.DataOutput
-import org.jetbrains.kotlin.idea.core.script.v1.readString
-import org.jetbrains.kotlin.idea.core.script.v1.writeString
 import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 import org.jetbrains.kotlin.name.ClassId
 
@@ -145,7 +144,7 @@ private fun PsiPrimitiveType.getKotlinPrimitiveArrayName(): String? {
 }
 
 internal fun DataOutput.writeClassId(classId: ClassId) {
-  writeString(classId.asString())
+  IOUtil.writeUTF(this, classId.asString())
 }
 
-internal fun DataInput.readClassId(): ClassId = ClassId.fromString(this.readString())
+internal fun DataInput.readClassId(): ClassId = ClassId.fromString(IOUtil.readUTF(this))
