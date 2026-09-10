@@ -185,6 +185,7 @@ public class RenderTask {
   @Nullable private RenderSession myRenderSession;
   private final RenderSizeProvider mySizeProvider;
   private final boolean isSecurityManagerEnabled;
+  @Nullable private RenderSecurity myRenderSecurity;
   @NotNull private CrashReporter myCrashReporter;
   private final List<CompletableFuture<?>> myRunningFutures = new LinkedList<>();
   @NotNull private final AtomicBoolean isDisposed = new AtomicBoolean(false);
@@ -385,6 +386,9 @@ public class RenderTask {
     myLayoutlibCallback.setLogger(IRenderLogger.NULL_LOGGER);
     RenderSession renderSessionToDispose = myRenderSession;
     myRenderSession = null;
+    synchronized (this) {
+      myRenderSecurity = null;
+    }
 
     if (renderSessionToDispose != null) {
       renderSessionToDispose.releaseRender();
@@ -741,43 +745,24 @@ public class RenderTask {
     try {
       myLayoutlibCallback.setLogger(myLogger);
 
-      RenderSecurity security = null;
-      if (isSecurityManagerEnabled) {
-        security = myContext.getModule().getEnvironment().createRenderSecurity(
-          module.getProject().getBasePath(),
-          context.getModule().getAndroidPlatform()
-        );
+      RenderSession session = myLayoutLib.createSession(params);
+
+      if (session.getResult().isSuccess()) {
+        session.setSystemBootTimeNanos(0);
+        session.setSystemTimeNanos(0);
+        // Advance the frame time to display the material progress bars
+        session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
       }
 
-      if (security != null) {
-        security.activate(myCredential);
+      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
+      RenderSession oldRenderSession = myRenderSession;
+      myRenderSession = session;
+      RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
+      if (oldRenderSession != null) {
+        disposeRenderSession(oldRenderSession);
       }
-
-      try {
-        RenderSession session = myLayoutLib.createSession(params);
-
-        if (session.getResult().isSuccess()) {
-          session.setSystemBootTimeNanos(0);
-          session.setSystemTimeNanos(0);
-          // Advance the frame time to display the material progress bars
-          session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
-        }
-
-        RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
-        RenderSession oldRenderSession = myRenderSession;
-        myRenderSession = session;
-        RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
-        if (oldRenderSession != null) {
-          disposeRenderSession(oldRenderSession);
-        }
-        addDiagnostics(result.getRenderResult());
-        return result;
-      }
-      finally {
-        if (security != null) {
-          security.deactivate(myCredential);
-        }
-      }
+      addDiagnostics(result.getRenderResult());
+      return result;
     }
     catch (RuntimeException t) {
       // Exceptions from the bridge
@@ -845,6 +830,20 @@ public class RenderTask {
    * @param unit     the {@link TimeUnit} for the timeout.
    *                 See {@link RenderService#getRenderAsyncActionExecutor()}.
    */
+  @Nullable
+  private synchronized RenderSecurity getRenderSecurity() {
+    if (isDisposed.get()) {
+      return null;
+    }
+    if (myRenderSecurity == null && isSecurityManagerEnabled) {
+      myRenderSecurity = myContext.getModule().getEnvironment().createRenderSecurity(
+        myContext.getModule().getProject().getBasePath(),
+        myContext.getModule().getAndroidPlatform()
+      );
+    }
+    return myRenderSecurity;
+  }
+
   @VisibleForTesting
   @NotNull
   private <V> CompletableFuture<V> runAsyncRenderAction(@NotNull Callable<V> callable, long timeout, @NotNull TimeUnit unit) {
@@ -852,11 +851,36 @@ public class RenderTask {
       return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
     }
 
+    RenderSecurity security = getRenderSecurity();
+    if (security == null && isSecurityManagerEnabled) {
+      return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+    }
+
+    Callable<V> sandboxedCallable = () -> {
+      if (security != null) {
+        security.activate(myCredential);
+      }
+      else if (isSecurityManagerEnabled) {
+        throw new IllegalStateException("Cannot execute render action without active security sandbox");
+      }
+      try {
+        return callable.call();
+      }
+      finally {
+        if (security != null) {
+          security.deactivate(myCredential);
+        }
+      }
+    };
+
     synchronized (myRunningFutures) {
+      if (isDisposed.get()) {
+        return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+      }
       CompletableFuture<V> newFuture = timeout < 1 ?
-                                       RenderService.getRenderAsyncActionExecutor().runAsyncAction(myTopic, callable) :
+                                       RenderService.getRenderAsyncActionExecutor().runAsyncAction(myTopic, sandboxedCallable) :
                                        RenderService.getRenderAsyncActionExecutor().runAsyncActionWithTimeout(timeout, unit, myTopic,
-                                                                                                              callable);
+                                                                                                              sandboxedCallable);
       myRunningFutures.add(newFuture);
       newFuture
         .whenCompleteAsync((result, ex) -> {
@@ -1289,7 +1313,7 @@ public class RenderTask {
                                                                   myLogger,
                                                                   myContext.getModule().getResourceRepositoryManager());
     Map<RenderXmlTag, ViewInfo> map = new HashMap<>();
-    return RenderService.getRenderAsyncActionExecutor().runAsyncAction(myTopic, () -> measure(modelParser))
+    return runAsyncRenderAction(() -> measure(modelParser))
       .thenComposeAsync(session -> {
         if (session != null) {
           try {

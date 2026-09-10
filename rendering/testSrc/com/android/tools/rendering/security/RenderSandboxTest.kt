@@ -904,23 +904,29 @@ class RenderSandboxTest {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
 
     val baseSandbox = RenderSandbox.getRenderSandbox()
-    val testSandbox = PreCheckRenderSandboxDelegate(DenyAllRenderSandbox, { RenderSecurityManager.sEnabled })
+    val testSandbox = PreCheckRenderSandboxDelegate(DenyAllRenderSandbox, { RenderSecurityManager.isEnabled() })
+
+    val credential = Any()
+    val rsm = RenderSecurityManager.createForTests(null, null, false) { true }
+    rsm.setUseSandbox(true)
+    rsm.setActive(true, credential)
 
     RenderSandbox.setRenderSandbox(testSandbox)
     try {
-      // By default sEnabled is true, so it should fail in DenyAll
+      // By default isEnabled is true, so it should fail in DenyAll
       verifyThrowsSecurityException("checkPropertyRead property.test") { methodIntercept.checkPropertyRead() }
 
-      // Enter safe region (disables sEnabled)
-      val token = RenderSecurityManager.enterSafeRegion(null)
+      // Enter safe region (disables isEnabled)
+      val token = RenderSecurityManager.enterSafeRegion(credential)
       try {
-        // Now it should succeed because sEnabled is false!
+        // Now it should succeed because isEnabled is false!
         methodIntercept.checkPropertyRead()
       } finally {
         RenderSecurityManager.exitSafeRegion(token)
       }
     } finally {
       RenderSandbox.setRenderSandbox(baseSandbox)
+      rsm.dispose(credential)
     }
   }
 

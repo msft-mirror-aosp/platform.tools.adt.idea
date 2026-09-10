@@ -877,7 +877,7 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     if (answer != Messages.YES) {
       return;
     }
-    RenderSecurityManager.sEnabled = false;
+    RenderSecurityManager.disableSandbox();
     if (surface != null) {
       surface.requestRender();
     }

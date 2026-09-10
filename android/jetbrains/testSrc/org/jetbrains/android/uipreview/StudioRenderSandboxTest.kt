@@ -15,7 +15,11 @@
  */
 package org.jetbrains.android.uipreview
 
+import com.android.tools.rendering.security.AllowAllRenderSandbox
 import com.android.tools.rendering.security.EP_NAME
+import com.android.tools.rendering.security.RenderSandbox
+import com.android.tools.rendering.security.RenderSecurityException
+import com.android.tools.rendering.security.RenderSecurityManager
 import com.android.tools.rendering.security.RenderSecurityManagerOverrides
 import com.intellij.mock.MockApplication
 import com.intellij.openapi.application.ApplicationManager
@@ -23,7 +27,11 @@ import com.intellij.openapi.extensions.ExtensionPoint
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.registerExtension
 import java.io.File
+import java.util.concurrent.Callable
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.fail
 import org.junit.Ignore
 import org.junit.Test
@@ -139,6 +147,93 @@ class StudioRenderSandboxTest {
       fail("Expected SecurityException")
     } catch (e: SecurityException) {
       assertEquals("Event queue and AWT dispatch access is denied during rendering", e.message)
+    }
+  }
+
+  @Test
+  fun `check studio render security credential and nesting lifecycle`() {
+    val security = StudioRenderSecurity(null, null, null)
+    val credential = Any()
+    val wrongCredential = Any()
+
+    // Activating with credential installs the sandbox
+    security.activate(credential)
+    assertNotEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+
+    // Nested activation with same credential succeeds
+    security.activate(credential)
+
+    // Activating with wrong credential throws RenderSecurityException
+    try {
+      security.activate(wrongCredential)
+      fail("Expected RenderSecurityException")
+    } catch (_: RenderSecurityException) {}
+
+    // Deactivating with wrong credential throws RenderSecurityException
+    try {
+      security.deactivate(wrongCredential)
+      fail("Expected RenderSecurityException")
+    } catch (_: RenderSecurityException) {}
+
+    // First deactivate decrements count; sandbox remains active
+    security.deactivate(credential)
+    assertNotEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+
+    // Second deactivate resets sandbox
+    security.deactivate(credential)
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+
+    // Further deactivate throws RenderSecurityException
+    try {
+      security.deactivate(credential)
+      fail("Expected RenderSecurityException")
+    } catch (_: RenderSecurityException) {}
+  }
+
+  @Test
+  fun `check concurrent activation across threads applies sandbox on all threads`() {
+    val security = StudioRenderSecurity(null, null, null)
+    val executor = Executors.newFixedThreadPool(4)
+    val barrier = CyclicBarrier(4)
+    try {
+      val futures =
+        (1..4).map {
+          executor.submit(
+            Callable {
+              val threadCred = Any()
+              assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+              security.activate(threadCred)
+              try {
+                barrier.await()
+                assertNotEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+                barrier.await()
+              } finally {
+                security.deactivate(threadCred)
+              }
+              assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+            }
+          )
+        }
+      for (f in futures) {
+        f.get()
+      }
+    } finally {
+      executor.shutdown()
+    }
+  }
+
+  @Test
+  fun `check disable sandbox blocked while studio render security is active`() {
+    val security = StudioRenderSecurity(null, null, null)
+    val credential = Any()
+    security.activate(credential)
+    try {
+      try {
+        RenderSecurityManager.disableSandbox()
+        fail("Expected RenderSecurityException")
+      } catch (_: RenderSecurityException) {}
+    } finally {
+      security.deactivate(credential)
     }
   }
 }

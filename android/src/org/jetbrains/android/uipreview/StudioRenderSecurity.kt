@@ -20,6 +20,7 @@ import com.android.tools.rendering.security.AllowAllRenderSandbox
 import com.android.tools.rendering.security.PreCheckRenderSandboxDelegate
 import com.android.tools.rendering.security.RenderSandbox
 import com.android.tools.rendering.security.RenderSecurity
+import com.android.tools.rendering.security.RenderSecurityException
 import com.android.tools.rendering.security.RenderSecurityManager
 
 /** Android Studio specific implementation of [RenderSecurity] that supports [RenderSandbox]. */
@@ -28,22 +29,46 @@ class StudioRenderSecurity(val sdkPath: String?, val projectPath: String?, val a
 
   private val sandbox: RenderSandbox?
   private val useSandbox = StudioFlags.RENDER_SANDBOX.get()
-  private var previousSandbox: RenderSandbox? = null
+  private val activeCredential = ThreadLocal<Any?>()
+  private val activationCount = ThreadLocal.withInitial { 0 }
+  private val previousSandbox = ThreadLocal<RenderSandbox?>()
 
   init {
     val baseSandbox = StudioRenderSandbox(sdkPath, projectPath, appTempDir)
-    sandbox = PreCheckRenderSandboxDelegate(baseSandbox, { RenderSecurityManager.sEnabled })
+    sandbox = PreCheckRenderSandboxDelegate(baseSandbox, { RenderSecurityManager.isEnabled() })
   }
 
   override fun activate(credential: Any) {
-    if (useSandbox && sandbox != null) {
-      previousSandbox = RenderSandbox.setRenderSandbox(sandbox)
+    if (!useSandbox || sandbox == null) return
+    val count = activationCount.get()
+    if (count == 0) {
+      activeCredential.set(credential)
+      previousSandbox.set(RenderSandbox.setRenderSandbox(sandbox))
+      activationCount.set(1)
+      RenderSecurityManager.enterActiveSession(credential)
+    } else {
+      if (credential !== activeCredential.get()) {
+        throw RenderSecurityException.create("Invalid credential")
+      }
+      activationCount.set(count + 1)
     }
   }
 
   override fun deactivate(credential: Any) {
-    if (useSandbox && sandbox != null) {
-      RenderSandbox.setRenderSandbox(previousSandbox ?: AllowAllRenderSandbox)
+    if (!useSandbox || sandbox == null) return
+    val count = activationCount.get()
+    if (count == 0 || credential !== activeCredential.get()) {
+      throw RenderSecurityException.create("Invalid credential")
+    }
+    if (count > 1) {
+      activationCount.set(count - 1)
+    } else {
+      activationCount.remove()
+      activeCredential.remove()
+      val prev = previousSandbox.get() ?: AllowAllRenderSandbox
+      previousSandbox.remove()
+      RenderSandbox.setRenderSandbox(prev)
+      RenderSecurityManager.exitActiveSession(credential)
     }
   }
 }
