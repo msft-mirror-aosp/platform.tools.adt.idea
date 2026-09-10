@@ -31,6 +31,18 @@ sealed interface AppFinding {
   val findingData: FindingData
   val affectedScopes: List<AffectedScope>
 
+  /** The user-facing display name describing the finding type. */
+  val displayName: String
+    get() = getFindingDisplayName(type, findingData)
+
+  /** The high-level [FindingCategory] this finding belongs to. */
+  val category: FindingCategory
+    get() = type.toFindingCategory()
+
+  /** Detailed description or explanation for the finding and its associated data. */
+  val details: String
+    get() = getFindingDetails(type, findingData) ?: "" // TODO(b/517599039): display "No extra details available for this finding."?
+
   /** Represents any recognized, supported finding from the Play Console. */
   data class Supported(
     override val name: String,

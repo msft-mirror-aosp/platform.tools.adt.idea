@@ -63,7 +63,9 @@ class FilterSelectorPopup(
   private val searchTextField = SearchTextField(false)
 
   private val iconMap =
-    AppInsightsTabProvider.EP_NAME.extensionList.associate { tabProvider -> tabProvider.insightsProvider.source to tabProvider.icon }
+    AppInsightsTabProvider.getApplicableExtensions().associate { tabProvider ->
+      tabProvider.insightsProvider.source to tabProvider.icon
+    }
 
   init {
     val contentPanel = JPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS) }

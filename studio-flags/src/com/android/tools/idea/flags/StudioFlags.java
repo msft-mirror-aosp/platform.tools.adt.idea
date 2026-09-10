@@ -2074,6 +2074,15 @@ public final class StudioFlags {
       PlayFindingsEndpoint.STAGING
     );
 
+  // TODO(b/517599039): Temporary flag for development/testing; remove once the Play Findings API is publicly available.
+  public static final Flag<Boolean> PLAY_FINDINGS_USE_FAKE =
+    new BooleanFlag(
+      APP_INSIGHTS,
+      "play.findings.use.fake",
+      "Use Fake Play Findings Client",
+      "Use fake client that returns static mock data for Play Findings."
+    );
+
   // endregion App Insights
 
   // region App Links Assistant

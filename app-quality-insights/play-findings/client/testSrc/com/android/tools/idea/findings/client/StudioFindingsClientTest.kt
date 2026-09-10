@@ -20,6 +20,7 @@ import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.insights.LoadingState
 import com.google.common.truth.Truth.assertThat
 import com.google.play.androidpublisher.v3.ComputeFindingsResponse
@@ -199,11 +200,11 @@ class StudioFindingsClientTest {
 
     assertThat(findings[0].type).isEqualTo(FindingType.VITALS_ANOMALY)
     assertThat(findings[0].findingData)
-      .isEqualTo(FindingData.VitalsAnomaly(metric = "userPerceivedCrashRate", metricValue = 0.045, isHourly = true))
+      .isEqualTo(FindingData.VitalsAnomaly(metric = VitalsMetric.UserPerceivedCrashRate, metricValue = 0.045, isHourly = true))
 
     assertThat(findings[1].type).isEqualTo(FindingType.VITALS_ANOMALY)
     assertThat(findings[1].findingData)
-      .isEqualTo(FindingData.VitalsAnomaly(metric = "userPerceivedAnrRate", metricValue = 0.012, isHourly = false))
+      .isEqualTo(FindingData.VitalsAnomaly(metric = VitalsMetric.UserPerceivedAnrRate, metricValue = 0.012, isHourly = false))
   }
 
   @Test
@@ -237,7 +238,7 @@ class StudioFindingsClientTest {
     assertThat(findings[0].type).isEqualTo(FindingType.VITALS_BAD_BEHAVIOR)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.SEVERE)
     assertThat(findings[0].findingData)
-      .isEqualTo(FindingData.VitalsBadBehavior(metric = "userPerceivedCrashRate", threshold = 0.0109, metricValue = 0.032))
+      .isEqualTo(FindingData.VitalsBadBehavior(metric = VitalsMetric.UserPerceivedCrashRate, threshold = 0.0109, metricValue = 0.032))
   }
 
   @Test
@@ -275,7 +276,7 @@ class StudioFindingsClientTest {
     assertThat(findings[0].findingData)
       .isEqualTo(
         FindingData.VitalsDeviceBadBehavior(
-          metric = "userPerceivedCrashRate",
+          metric = VitalsMetric.UserPerceivedCrashRate,
           threshold = 0.02,
           affectedDeviceModelsCount = 4,
           isEmerging = true,

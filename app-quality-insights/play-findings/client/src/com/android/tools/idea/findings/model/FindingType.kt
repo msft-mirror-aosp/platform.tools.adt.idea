@@ -41,20 +41,20 @@ enum class FindingType {
   SDK_HAS_CRASH_ANNOTATION,
 
   /** Fallback for unrecognized finding types to ensure forward compatibility. */
-  UNKNOWN;
-
-  /** Converts this domain [FindingType] to its Protobuf [ProtoFinding.Type] counterpart, or null if [UNKNOWN]. */
-  fun toProto(): ProtoFinding.Type? =
-    when (this) {
-      DRM_APP_COMPAT -> ProtoFinding.Type.DRM_APP_COMPAT
-      EDGE_TO_EDGE_COMPAT -> ProtoFinding.Type.EDGE_TO_EDGE_COMPAT
-      VITALS_ANOMALY -> ProtoFinding.Type.VITALS_ANOMALY
-      VITALS_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_BAD_BEHAVIOR
-      VITALS_DEVICE_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR
-      SDK_HAS_CRASH_ANNOTATION -> ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION
-      UNKNOWN -> null
-    }
+  UNKNOWN,
 }
+
+/** Converts this domain [FindingType] to its Protobuf [ProtoFinding.Type] counterpart, or null if [FindingType.UNKNOWN]. */
+fun FindingType.toProto(): ProtoFinding.Type? =
+  when (this) {
+    FindingType.DRM_APP_COMPAT -> ProtoFinding.Type.DRM_APP_COMPAT
+    FindingType.EDGE_TO_EDGE_COMPAT -> ProtoFinding.Type.EDGE_TO_EDGE_COMPAT
+    FindingType.VITALS_ANOMALY -> ProtoFinding.Type.VITALS_ANOMALY
+    FindingType.VITALS_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_BAD_BEHAVIOR
+    FindingType.VITALS_DEVICE_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR
+    FindingType.SDK_HAS_CRASH_ANNOTATION -> ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION
+    FindingType.UNKNOWN -> null
+  }
 
 /** Extension to convert a Protobuf [ProtoFinding.Type] to its domain [FindingType] counterpart. */
 fun ProtoFinding.Type.toDomain(): FindingType =

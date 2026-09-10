@@ -89,9 +89,10 @@ class FindingsProjectLevelControllerImpl(
   client: FindingsClient,
   scope: CoroutineScope,
   packageNameFlow: Flow<String?> = playConnectedPackageNameFlow(project.service<AppInsightsFilterSelector>()),
+  connections: Selection<Connection> = Selection.emptySelection(),
 ) : FindingsProjectLevelController {
   override val provider: InsightsProvider = PlayFindingsInsightsProvider
-  override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(Selection.emptySelection<Connection>()).asStateFlow()
+  override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(connections).asStateFlow()
 
   private val _state = MutableStateFlow(FindingsState(packageName = null))
   override val state: StateFlow<FindingsState> = _state.asStateFlow()

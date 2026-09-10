@@ -21,6 +21,7 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/ide:intellij.android.app-quality-insights.ide",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "//tools/vendor/google/login:google-login",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
     ],
 )
 
@@ -34,6 +35,7 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/play-findings/client:intellij.android.app-quality-insights.play-findings.client",
         "//tools/adt/idea/app-quality-insights/play-findings/ide:intellij.android.app-quality-insights.play-findings.ide",
         "@intellij//:intellij-sdk",
+        "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
         "//tools/adt/idea/app-quality-insights/ide:intellij.android.app-quality-insights.ide",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
@@ -45,6 +47,9 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "//tools/adt/idea/app-quality-insights/ui:intellij.android.app-quality-insights.ui",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/play-findings/ide:intellij.android.app-quality-insights.play-findings.ide"],
     test_srcs = ["testSrc"],

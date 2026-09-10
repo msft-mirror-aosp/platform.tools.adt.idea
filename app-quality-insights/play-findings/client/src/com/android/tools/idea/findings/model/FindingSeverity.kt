@@ -21,11 +21,11 @@ import com.intellij.openapi.diagnostic.Logger
 private val LOG = Logger.getInstance(FindingSeverity::class.java)
 
 /** Represents the severity level of a Play Finding. */
-enum class FindingSeverity {
-  INFO,
-  WARNING,
-  SEVERE,
-  BLOCKING;
+enum class FindingSeverity(val displayName: String) {
+  INFO("Info"),
+  WARNING("Warning"),
+  SEVERE("Severe"),
+  BLOCKING("Blocking");
 
   /** Converts this domain [FindingSeverity] to its Protobuf [ProtoFinding.Severity] counterpart. */
   fun toProto(): ProtoFinding.Severity =

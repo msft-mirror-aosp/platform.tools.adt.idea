@@ -21,6 +21,7 @@ import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.findings.model.toDomain
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.LoadingState
@@ -126,7 +127,7 @@ private fun ProtoFindingData.toDomain(): FindingData =
     ProtoFindingData.DataTypeCase.VITALS_ANOMALY ->
       vitalsAnomaly.run {
         FindingData.VitalsAnomaly(
-          metric = metric,
+          metric = VitalsMetric.fromProto(metric),
           metricValue = metricValue,
           isHourly = hasHourlyTime(),
         )
@@ -134,7 +135,7 @@ private fun ProtoFindingData.toDomain(): FindingData =
     ProtoFindingData.DataTypeCase.VITALS_BAD_BEHAVIOR ->
       vitalsBadBehavior.run {
         FindingData.VitalsBadBehavior(
-          metric = metric,
+          metric = VitalsMetric.fromProto(metric),
           threshold = threshold,
           metricValue = metricValue,
         )
@@ -142,7 +143,7 @@ private fun ProtoFindingData.toDomain(): FindingData =
     ProtoFindingData.DataTypeCase.VITALS_DEVICE_BAD_BEHAVIOR ->
       vitalsDeviceBadBehavior.run {
         FindingData.VitalsDeviceBadBehavior(
-          metric = metric,
+          metric = VitalsMetric.fromProto(metric),
           threshold = threshold,
           affectedDeviceModelsCount = affectedDeviceModelCount.toInt(),
           isEmerging = badBehaviorType == ProtoVitalsDeviceBadBehaviorFindingData.Type.EMERGING_BAD_BEHAVIOR,

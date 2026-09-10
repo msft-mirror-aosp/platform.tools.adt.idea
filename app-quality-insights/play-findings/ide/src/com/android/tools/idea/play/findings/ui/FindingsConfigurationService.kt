@@ -16,9 +16,12 @@
 package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.idea.findings.client.StudioFindingsClient
+import com.android.tools.idea.findings.client.utils.FakeFindingsClient
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsConfigurationManager
 import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.OfflineStatusManagerImpl
+import com.android.tools.idea.insights.Selection
 import com.google.gct.login2.GoogleLoginService
 import com.google.gct.login2.fstLoginFeature
 import com.intellij.openapi.Disposable
@@ -36,11 +39,19 @@ import kotlinx.coroutines.flow.stateIn
 @Service(Service.Level.PROJECT)
 class FindingsConfigurationService(project: Project, scope: CoroutineScope) : Disposable {
 
+  /**
+   * Temporary flag to use [FakeFindingsClient] and [FakeFindingsClient.FAKE_CONNECTIONS] for local development and UI testing.
+   *
+   * TODO(b/517599039): Remove once the Play Findings API is publicly available.
+   */
+  private val useFake = StudioFlags.PLAY_FINDINGS_USE_FAKE.get()
+
   private val controller: FindingsProjectLevelController =
     FindingsProjectLevelControllerImpl(
       project = project,
-      client = StudioFindingsClient.create(this),
+      client = if (useFake) FakeFindingsClient() else StudioFindingsClient.create(this),
       scope = scope,
+      connections = if (useFake) FakeFindingsClient.FAKE_CONNECTIONS else Selection.emptySelection(),
     )
 
   /** The [AppInsightsConfigurationManager] instance managing authentication and configuration state. */

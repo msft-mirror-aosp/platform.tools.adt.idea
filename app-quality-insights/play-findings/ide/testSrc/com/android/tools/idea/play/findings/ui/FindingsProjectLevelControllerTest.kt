@@ -31,7 +31,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -59,18 +58,16 @@ class FindingsProjectLevelControllerTest {
 
   @get:Rule val projectRule = ProjectRule()
 
-  private val testDispatcher = UnconfinedTestDispatcher()
+  private lateinit var fakeClient: FindingsClient
   private lateinit var controllerScope: CoroutineScope
   private lateinit var packageNameFlow: MutableSharedFlow<String?>
-
-  private lateinit var fakeClient: FakeFindingsClient
-  private lateinit var controller: FindingsProjectLevelControllerImpl
+  private lateinit var controller: FindingsProjectLevelController
 
   @Before
   fun setUp() {
-    controllerScope = CoroutineScope(testDispatcher + Job())
+    fakeClient = FakeFindingsClient(delayMs = 0L)
+    controllerScope = CoroutineScope(UnconfinedTestDispatcher() + Job())
     packageNameFlow = MutableSharedFlow(replay = 1)
-    fakeClient = FakeFindingsClient()
     controller =
       FindingsProjectLevelControllerImpl(
         projectRule.project,
@@ -102,7 +99,7 @@ class FindingsProjectLevelControllerTest {
       val state = controller.state.value
       assertThat(state.packageName).isEqualTo(FakeFindingsClient.TEST_PACKAGE_NAME)
       @Suppress("UNCHECKED_CAST") val findings = (state.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-      assertThat(findings).hasSize(3)
+      assertThat(findings).hasSize(8)
     }
   }
 
@@ -149,7 +146,7 @@ class FindingsProjectLevelControllerTest {
       val stateAfter = controller.state.value
       assertThat(stateAfter.packageName).isEqualTo(FakeFindingsClient.OTHER_PACKAGE_NAME)
       @Suppress("UNCHECKED_CAST") val findingsAfter = (stateAfter.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-      assertThat(findingsAfter).hasSize(2)
+      assertThat(findingsAfter).hasSize(3)
     }
   }
 
@@ -196,13 +193,7 @@ class FindingsProjectLevelControllerTest {
 
   @Test
   fun testSetPackageName_cancelsInFlightRefresh() = runTest {
-    val delayedClient =
-      object : FindingsClient {
-        override suspend fun fetchFindings(request: FetchFindingsRequest): LoadingState.Done<List<AppFinding>> {
-          delay(1000L)
-          return FakeFindingsClient().fetchFindings(request)
-        }
-      }
+    val delayedClient = FakeFindingsClient(delayMs = 1000L)
     val testController =
       FindingsProjectLevelControllerImpl(
         projectRule.project,
@@ -231,19 +222,13 @@ class FindingsProjectLevelControllerTest {
     assertThat(testController.state.value.packageName).isEqualTo(FakeFindingsClient.OTHER_PACKAGE_NAME)
     @Suppress("UNCHECKED_CAST")
     val findingsAfter = (testController.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-    assertThat(findingsAfter).hasSize(2)
+    assertThat(findingsAfter).hasSize(3)
     assertThat(findingsAfter.all { it.name.contains(FakeFindingsClient.OTHER_PACKAGE_NAME) }).isTrue()
   }
 
   @Test
   fun testRefresh_cancelsPreviousInFlightRefresh() = runTest {
-    val delayedClient =
-      object : FindingsClient {
-        override suspend fun fetchFindings(request: FetchFindingsRequest): LoadingState.Done<List<AppFinding>> {
-          delay(1000L)
-          return FakeFindingsClient().fetchFindings(request)
-        }
-      }
+    val delayedClient = FakeFindingsClient(delayMs = 1000L)
     val testController =
       FindingsProjectLevelControllerImpl(
         projectRule.project,
@@ -270,7 +255,7 @@ class FindingsProjectLevelControllerTest {
     testScheduler.advanceTimeBy(100)
     assertThat(testController.state.value.currentFindings).isInstanceOf(LoadingState.Ready::class.java)
     @Suppress("UNCHECKED_CAST") val findings = (testController.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-    assertThat(findings).hasSize(2)
+    assertThat(findings).hasSize(3)
   }
 
   @Test

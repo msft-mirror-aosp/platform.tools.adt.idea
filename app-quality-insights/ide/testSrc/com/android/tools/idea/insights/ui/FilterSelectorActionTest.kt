@@ -70,15 +70,20 @@ private class TabProvider(
   private val connectionsFlow: StateFlow<Selection<Connection>>,
   override val insightsProvider: FakeInsightsProvider,
   override val icon: Icon,
+  private val applicable: Boolean = true,
 ) : TestTabProvider(insightsProvider.displayName) {
 
   constructor(
     connections: List<Connection>,
     insightsProvider: FakeInsightsProvider,
     icon: Icon,
-  ) : this(MutableStateFlow(Selection(null, connections)), insightsProvider, icon)
+    applicable: Boolean = true,
+  ) : this(MutableStateFlow(Selection(null, connections)), insightsProvider, icon, applicable)
+
+  override fun isApplicable(): Boolean = applicable
 
   override fun getConfigurationManager(project: Project): AppInsightsConfigurationManager {
+    check(applicable) { "getConfigurationManager should not be called when isApplicable() is false" }
     return object : AppInsightsConfigurationManager {
       override val project: Project = project
 
@@ -106,7 +111,13 @@ class FilterSelectorActionTest {
     val scope = projectRule.disposable.createCoroutineScope(Dispatchers.IO)
     val firebaseProvider = TabProvider(connections1, FakeInsightsProvider("firebase", true, Source.FIREBASE), PlatformIcons.ADD_ICON)
     val playProvider = TabProvider(connections2, FakeInsightsProvider("play", true, Source.PLAY), PlatformIcons.DELETE_ICON)
-    ExtensionTestUtil.maskExtensions(AppInsightsTabProvider.EP_NAME, listOf(firebaseProvider, playProvider), projectRule.disposable)
+    val disabledProvider =
+      TabProvider(connections3, FakeInsightsProvider("disabled", true, Source.PLAY), PlatformIcons.DELETE_ICON, applicable = false)
+    ExtensionTestUtil.maskExtensions(
+      AppInsightsTabProvider.EP_NAME,
+      listOf(firebaseProvider, playProvider, disabledProvider),
+      projectRule.disposable,
+    )
 
     val selector = AppInsightsFilterSelector(projectRule.project, scope)
     selector.startCollection()

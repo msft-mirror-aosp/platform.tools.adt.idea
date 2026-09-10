@@ -81,10 +81,12 @@ class AppInsightsFilterSelector(val project: Project, val scope: CoroutineScope)
    */
   fun startCollection() {
     scope.launch {
-      // Collect controllers from all tab providers with authenticated [AppInsightsModel].
+      // Collect controllers from all applicable tab providers with authenticated [AppInsightsModel].
       val combinedControllers =
         combine(
-          AppInsightsTabProvider.EP_NAME.extensionList.map { tabProvider -> tabProvider.getConfigurationManager(project).configuration }
+          AppInsightsTabProvider.getApplicableExtensions().map { tabProvider ->
+            tabProvider.getConfigurationManager(project).configuration
+          }
         ) { configurations ->
           configurations.filterIsInstance<AppInsightsModel.Authenticated>().map { it.controller }
         }

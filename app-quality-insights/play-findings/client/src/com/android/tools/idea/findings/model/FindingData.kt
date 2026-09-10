@@ -16,9 +16,10 @@
 package com.android.tools.idea.findings.model
 
 /**
- * Base sealed class for structured data associated with a finding.
+ * Base sealed interface for structured data associated with a finding.
  *
- * Each subclass represents a specific payload structure for a particular finding type.
+ * Each [FindingType] maps to at most one [FindingData] subtype: some finding types have no extra payload ([Empty]), and multiple
+ * [FindingType]s may share the same [FindingData] subtype. If the server omits the expected payload, it falls back to [Empty].
  */
 sealed interface FindingData {
   /**
@@ -57,21 +58,21 @@ sealed interface FindingData {
 
   /** Payload for Vitals Anomaly findings. */
   data class VitalsAnomaly(
-    val metric: String,
+    val metric: VitalsMetric,
     val metricValue: Double,
     val isHourly: Boolean = false,
   ) : FindingData
 
   /** Payload for Vitals Bad Behavior findings. */
   data class VitalsBadBehavior(
-    val metric: String,
+    val metric: VitalsMetric,
     val threshold: Double,
     val metricValue: Double,
   ) : FindingData
 
   /** Payload for Vitals Device Bad Behavior findings. */
   data class VitalsDeviceBadBehavior(
-    val metric: String,
+    val metric: VitalsMetric,
     val threshold: Double,
     val affectedDeviceModelsCount: Int,
     val isEmerging: Boolean = false,
@@ -89,4 +90,34 @@ sealed interface FindingData {
    * @property rawData The raw string representation of the unparsed finding data.
    */
   data class Unknown(val rawData: String) : FindingData
+}
+
+/** Vitals metric associated with a Vitals finding. */
+sealed interface VitalsMetric {
+  val raw: String
+  val displayName: String
+
+  data object UserPerceivedCrashRate : VitalsMetric {
+    override val raw: String = "userPerceivedCrashRate"
+    override val displayName: String = "User-perceived crash rate"
+  }
+
+  data object UserPerceivedAnrRate : VitalsMetric {
+    override val raw: String = "userPerceivedAnrRate"
+    override val displayName: String = "User-perceived ANR rate"
+  }
+
+  data class Unknown(override val raw: String) : VitalsMetric {
+    override val displayName: String
+      get() = raw
+  }
+
+  companion object {
+    fun fromProto(metric: String): VitalsMetric =
+      when (metric) {
+        UserPerceivedCrashRate.raw -> UserPerceivedCrashRate
+        UserPerceivedAnrRate.raw -> UserPerceivedAnrRate
+        else -> Unknown(metric)
+      }
+  }
 }

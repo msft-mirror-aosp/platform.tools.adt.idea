@@ -17,6 +17,7 @@ package com.android.tools.idea.findings.client
 
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.toProto
 
 /**
  * Structured filters for querying findings.

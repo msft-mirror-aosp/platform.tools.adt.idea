@@ -22,7 +22,31 @@ import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.insights.LoadingState
+import com.android.tools.idea.insights.Selection
+import com.android.tools.idea.insights.model.connection.Connection
+import kotlinx.coroutines.delay
+
+/**
+ * Fake [Connection] for testing purposes while the backend is not ready.
+ *
+ * TODO(b/517599039): Remove [FakeFindingsConnection] and move [FakeFindingsClient] to `testSrc` once the Play Findings API is ready.
+ */
+private data class FakeFindingsConnection(
+  override val appId: String,
+  override val displayName: String,
+) : Connection {
+  override val mobileSdkAppId: String? = null
+  override val projectId: String? = null
+  override val projectNumber: String? = null
+  override val clientId: String = "play-findings:$appId"
+  override val isConfigured: Boolean = true
+
+  override fun isPreferredConnection(): Boolean = false
+
+  override fun isMatchingProject(): Boolean = false
+}
 
 /**
  * Fake implementation of [com.android.tools.idea.findings.client.FindingsClient] returning hardcoded mock data.
@@ -32,14 +56,31 @@ import com.android.tools.idea.insights.LoadingState
  *
  * This is mainly to test UI and integration layers: Allows verifying UI components without requiring a real network connection or a running
  * backend server.
+ *
+ * @param delayMs Milliseconds to delay [fetchFindings] to mimic network latency.
+ *
+ * TODO(b/517599039): Move [FakeFindingsClient] to `testSrc` once the Play Findings API is ready.
  */
-class FakeFindingsClient : FindingsClient {
+class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : FindingsClient {
   companion object {
     /** Standard test package name used in mock data. */
     const val TEST_PACKAGE_NAME = "com.example.app"
 
     /** Alternative test package name used in mock data. */
     const val OTHER_PACKAGE_NAME = "com.other.app"
+
+    /** Default network delay to simulate real network latency. */
+    const val DEFAULT_DELAY_MS = 1000L
+
+    /** Fake Play Console connections exposed to the global app selector when using [FakeFindingsClient]. */
+    val FAKE_CONNECTIONS: Selection<Connection> =
+      Selection(
+        null,
+        listOf(
+          FakeFindingsConnection(TEST_PACKAGE_NAME, "[Fake] Example App"),
+          FakeFindingsConnection(OTHER_PACKAGE_NAME, "[Fake] Other App"),
+        ),
+      )
   }
 
   private val database =
@@ -87,6 +128,64 @@ class FakeFindingsClient : FindingsClient {
           ),
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/4",
+        type = FindingType.EDGE_TO_EDGE_COMPAT,
+        severity = FindingSeverity.WARNING,
+        findingData =
+          FindingData.EdgeToEdge(
+            manualReviewMessage = "Your app does not draw content edge-to-edge.",
+            versionCode = "101",
+            xmlFiles = listOf("res/layout/activity_main.xml"),
+            invocations = listOf("com.example.app.MainActivity.onCreate"),
+          ),
+        affectedScopes = listOf(AffectedScope.Artifact("101")),
+      ),
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/7",
+        type = FindingType.VITALS_BAD_BEHAVIOR,
+        severity = FindingSeverity.SEVERE,
+        findingData =
+          FindingData.VitalsBadBehavior(
+            metric = VitalsMetric.UserPerceivedCrashRate,
+            threshold = 0.0109,
+            metricValue = 0.035,
+          ),
+        affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
+      ),
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/8",
+        type = FindingType.VITALS_ANOMALY,
+        severity = FindingSeverity.INFO,
+        findingData =
+          FindingData.VitalsAnomaly(
+            metric = VitalsMetric.UserPerceivedAnrRate,
+            metricValue = 0.042,
+            isHourly = true,
+          ),
+        affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
+      ),
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/9",
+        type = FindingType.VITALS_DEVICE_BAD_BEHAVIOR,
+        severity = FindingSeverity.SEVERE,
+        findingData =
+          FindingData.VitalsDeviceBadBehavior(
+            metric = VitalsMetric.Unknown("Excessive background wakelocks"),
+            threshold = 0.02,
+            affectedDeviceModelsCount = 3,
+            isEmerging = false,
+            affectedInstallsRatio = 0.08,
+          ),
+        affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
+      ),
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/19",
+        type = FindingType.SDK_HAS_CRASH_ANNOTATION,
+        severity = FindingSeverity.INFO,
+        findingData = FindingData.Empty,
+        affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
+      ),
       // Findings for com.other.app
       AppFinding.Supported(
         name = "applications/$OTHER_PACKAGE_NAME/findings/4",
@@ -102,6 +201,18 @@ class FakeFindingsClient : FindingsClient {
           ),
         affectedScopes = emptyList(),
       ),
+      AppFinding.Supported(
+        name = "applications/$OTHER_PACKAGE_NAME/findings/7",
+        type = FindingType.VITALS_BAD_BEHAVIOR,
+        severity = FindingSeverity.SEVERE,
+        findingData =
+          FindingData.VitalsBadBehavior(
+            metric = VitalsMetric.UserPerceivedCrashRate,
+            threshold = 0.0109,
+            metricValue = 0.025,
+          ),
+        affectedScopes = listOf(AffectedScope.Release("release-v2.0")),
+      ),
       AppFinding.Unknown(
         name = "applications/$OTHER_PACKAGE_NAME/findings/5",
         severity = FindingSeverity.INFO,
@@ -112,6 +223,9 @@ class FakeFindingsClient : FindingsClient {
 
   /** Returns findings from the local mock database, filtered by the package name and request criteria. */
   override suspend fun fetchFindings(request: FetchFindingsRequest): LoadingState.Done<List<AppFinding>> {
+    if (delayMs > 0) {
+      delay(delayMs)
+    }
     val filtered = database.filter { finding ->
       val matchesPackage = finding.name.startsWith("applications/${request.packageName}/findings/")
       val matchesType = request.filters.findingTypes.isEmpty() || request.filters.findingTypes.contains(finding.type)
