@@ -12,15 +12,4 @@
             column="16"/>
     </issue>
 
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
-        errorLine1="    val nameForNewPreview = createNewName(configuration)"
-        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/compose/preview/actions/SavePreviewInNewSizeAction.kt"
-            line="80"
-            column="29"/>
-    </issue>
-
 </issues>
