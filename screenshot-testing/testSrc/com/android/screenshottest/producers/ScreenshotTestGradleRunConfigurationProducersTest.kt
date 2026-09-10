@@ -100,7 +100,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -128,7 +128,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
 
     val taskNames = runConfiguration.settings.taskNames
-    assertThat(taskNames).contains(":app:testScreenshotTestDefaultDebugTestSuite")
+    assertThat(taskNames).contains(":app:testDebugScreenshotTestDefaultTestSuite")
 
     // Check that we have the correct number of task arguments.
     // 1 for the task, plus 2 for each "--tests" filter (2 filters total) = 5.
@@ -167,7 +167,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
 
     val taskNames = runConfiguration.settings.taskNames
-    assertThat(taskNames).contains(":app:testScreenshotTestDefaultDebugTestSuite")
+    assertThat(taskNames).contains(":app:testDebugScreenshotTestDefaultTestSuite")
     assertThat(taskNames).hasSize(5)
 
     val testFilters = taskNames.drop(1).chunked(2).filter { it.size == 2 && it[0] == "--tests" }.map { it[1] }
@@ -203,7 +203,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration!!.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -248,7 +248,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -283,7 +283,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration!!.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -310,7 +310,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -337,7 +337,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -363,7 +363,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -400,7 +400,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(3, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertEquals("--tests", runConfiguration.settings.taskNames[1])
@@ -440,7 +440,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(1, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertThat(contextConfiguration.configurationProducer).isInstanceOf(ScreenshotTestAllInDirectoryGradleConfigurationProducer::class.java)
@@ -464,7 +464,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(1, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertThat(contextConfiguration.configurationProducer).isInstanceOf(ScreenshotTestAllInDirectoryGradleConfigurationProducer::class.java)
@@ -501,7 +501,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     assertEquals(true, runConfiguration.isRunAsTest)
     assertEquals(1, runConfiguration.settings.taskNames.size)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
     assertThat(contextConfiguration.configurationProducer).isInstanceOf(ScreenshotTestAllInDirectoryGradleConfigurationProducer::class.java)
@@ -894,7 +894,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
   @Test
   fun testTestSuiteTaskResolution() {
     setModuleTasks(
-      listOf("testScreenshotTestDefaultDebugTestSuite"),
+      listOf("testDebugScreenshotTestDefaultTestSuite"),
       hasComposeScreenshotPlugin = false,
     )
     val project = projectRule.project
@@ -905,7 +905,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
       )
     requireNotNull(runConfiguration)
     assertEquals(
-      ":app:testScreenshotTestDefaultDebugTestSuite",
+      ":app:testDebugScreenshotTestDefaultTestSuite",
       runConfiguration.settings.taskNames[0],
     )
   }
@@ -972,7 +972,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
   @Test
   fun testConfigurationFromCustomTestSuite() {
     setModuleTasks(
-      listOf("testCustomScreenshotSuiteDefaultDebugTestSuite"),
+      listOf("testDebugCustomScreenshotSuiteDefaultTestSuite"),
       hasComposeScreenshotPlugin = false,
     )
     val project = projectRule.project
@@ -991,7 +991,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
         )
       requireNotNull(runConfiguration)
       assertEquals(
-        ":app:testCustomScreenshotSuiteDefaultDebugTestSuite",
+        ":app:testDebugCustomScreenshotSuiteDefaultTestSuite",
         runConfiguration.settings.taskNames[0],
       )
     }
@@ -1001,8 +1001,8 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
   fun testConfigurationFromMultiSuiteModuleDirectory() {
     setModuleTasks(
       listOf(
-        "testUiScreenshotSuiteDefaultDebugTestSuite",
-        "testFeatureScreenshotSuiteDefaultDebugTestSuite",
+        "testDebugUiScreenshotSuiteDefaultTestSuite",
+        "testDebugFeatureScreenshotSuiteDefaultTestSuite",
       ),
       hasComposeScreenshotPlugin = false,
     )
@@ -1032,11 +1032,11 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
       requireNotNull(runConfiguration)
       assertEquals(2, runConfiguration.settings.taskNames.size)
       assertEquals(
-        ":app:testUiScreenshotSuiteDefaultDebugTestSuite",
+        ":app:testDebugUiScreenshotSuiteDefaultTestSuite",
         runConfiguration.settings.taskNames[0],
       )
       assertEquals(
-        ":app:testFeatureScreenshotSuiteDefaultDebugTestSuite",
+        ":app:testDebugFeatureScreenshotSuiteDefaultTestSuite",
         runConfiguration.settings.taskNames[1],
       )
     }

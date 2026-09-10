@@ -685,25 +685,25 @@ MODULE                        : project
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
+                        testDebugFirstT1TestSuite     : testDebugFirstT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testDebugFirstT1TestSuite
+                        testDebugSecondT1TestSuite    : testDebugSecondT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testDebugSecondT1TestSuite
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
-                        testFirstT1DebugTestSuite     : testFirstT1DebugTestSuite (DefaultExternalTask)
-                            qName                         : :app:testFirstT1DebugTestSuite
-                        testSecondT1DebugTestSuite    : testSecondT1DebugTestSuite (DefaultExternalTask)
-                            qName                         : :app:testSecondT1DebugTestSuite
-                        testThirdT1ReleaseTestSuite   : testThirdT1ReleaseTestSuite (DefaultExternalTask)
-                            qName                         : :app:testThirdT1ReleaseTestSuite
+                        testReleaseThirdT1TestSuite   : testReleaseThirdT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testReleaseThirdT1TestSuite
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
+                testDebugFirstT1TestSuite     : testDebugFirstT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testDebugFirstT1TestSuite
+                testDebugSecondT1TestSuite    : testDebugSecondT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testDebugSecondT1TestSuite
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
-                testFirstT1DebugTestSuite     : testFirstT1DebugTestSuite (DefaultExternalTask)
-                    qName                         : :app:testFirstT1DebugTestSuite
-                testSecondT1DebugTestSuite    : testSecondT1DebugTestSuite (DefaultExternalTask)
-                    qName                         : :app:testSecondT1DebugTestSuite
-                testThirdT1ReleaseTestSuite   : testThirdT1ReleaseTestSuite (DefaultExternalTask)
-                    qName                         : :app:testThirdT1ReleaseTestSuite
+                testReleaseThirdT1TestSuite   : testReleaseThirdT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testReleaseThirdT1TestSuite
 MODULE                        : project.app
     GradleModuleModel
         agpVersion                    : <AGP_VERSION>
@@ -714,10 +714,10 @@ MODULE                        : project.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugFirstT1TestSuite
+        - taskNames                   : testDebugSecondT1TestSuite
         - taskNames                   : testDebugUnitTest
-        - taskNames                   : testFirstT1DebugTestSuite
-        - taskNames                   : testSecondT1DebugTestSuite
-        - taskNames                   : testThirdT1ReleaseTestSuite
+        - taskNames                   : testReleaseThirdT1TestSuite
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 19
@@ -1806,13 +1806,13 @@ MODULE                        : project.app
                 Targets
                     TestSuiteTarget
                         TargetName                    : t1
-                        TestTaskName                  : testFirstT1DebugTestSuite
+                        TestTaskName                  : testDebugFirstT1TestSuite
             secondTestSuiteArtifact
                 TargetedVariantName           : debug
                 Targets
                     TestSuiteTarget
                         TargetName                    : t1
-                        TestTaskName                  : testSecondT1DebugTestSuite
+                        TestTaskName                  : testDebugSecondT1TestSuite
     kotlinGradleModel             : KotlinGradleModelImpl
         additionalVisibleSourceSets
             debug                         : <empty>

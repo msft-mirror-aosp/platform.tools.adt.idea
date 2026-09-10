@@ -144,7 +144,7 @@ fun getScreenshotTestTaskNames(context: ConfigurationContext): List<String>? {
     // while filtering out recording targets.
     return suiteNames.map { suiteName ->
       val capitalizedSuiteName = suiteName.capitalize()
-      "$modulePath:test$capitalizedSuiteName$DEFAULT_VERIFICATION_TARGET_NAME${variantName}TestSuite"
+      "$modulePath:test$variantName$capitalizedSuiteName${DEFAULT_VERIFICATION_TARGET_NAME}TestSuite"
     }
   }
 }
