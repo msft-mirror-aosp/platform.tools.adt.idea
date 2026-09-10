@@ -6,7 +6,7 @@ iml_module(
     name = "intellij.android.projectSystem.gradle.sync",
     srcs = ["src"],
     iml_files = ["intellij.android.projectSystem.gradle.sync.iml"],
-    jvm_target = "8",
+    jvm_target = "11",
     lint_baseline = "lint_baseline.xml",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
