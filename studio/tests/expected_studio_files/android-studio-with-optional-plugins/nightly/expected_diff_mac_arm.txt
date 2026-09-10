@@ -2740,6 +2740,7 @@
 +++Android Studio Nightly.app/Contents/plugins/android/resources/simpleperf/darwin-x86_64/simpleperf
 +++Android Studio Nightly.app/Contents/plugins/android/resources/simpleperf/x86/simpleperf
 +++Android Studio Nightly.app/Contents/plugins/android/resources/simpleperf/x86_64/simpleperf
++++Android Studio Nightly.app/Contents/plugins/android/resources/templates/android-project-templates.zip
 +++Android Studio Nightly.app/Contents/plugins/android/resources/threading_agent.jar
 +++Android Studio Nightly.app/Contents/plugins/android/resources/trace_agent.jar
 +++Android Studio Nightly.app/Contents/plugins/android/resources/trace_processor_daemon/trace_processor_daemon
@@ -6557,6 +6558,7 @@
 ---Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/darwin-x86_64/simpleperf
 ---Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/x86/simpleperf
 ---Android Studio Preview.app/Contents/plugins/android/resources/simpleperf/x86_64/simpleperf
+---Android Studio Preview.app/Contents/plugins/android/resources/templates/android-project-templates.zip
 ---Android Studio Preview.app/Contents/plugins/android/resources/threading_agent.jar
 ---Android Studio Preview.app/Contents/plugins/android/resources/trace_agent.jar
 ---Android Studio Preview.app/Contents/plugins/android/resources/trace_processor_daemon/trace_processor_daemon
