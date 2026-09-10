@@ -116,7 +116,7 @@ class ComposeCreateComposableFunctionQuickFix(
       unresolvedName: String,
       container: KtElement,
     ): KtNamedFunction =
-      KtPsiFactory(container)
+      KtPsiFactory(container.project)
         .createFunction(
           KtPsiFactory.CallableBuilder(KtPsiFactory.CallableBuilder.Target.FUNCTION)
             .apply {
