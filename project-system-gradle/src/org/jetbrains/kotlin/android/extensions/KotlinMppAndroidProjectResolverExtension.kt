@@ -201,31 +201,62 @@ class KotlinMppAndroidProjectResolverExtension : KotlinMppGradleProjectResolverE
         return@forEach
       }
       val node = sourceSetDataNode.findLibraryDependencyNode(ideaKotlinDependency) ?: return@forEach
+      val libraryData = node.data.target
 
       fun String.toFile(): File? {
         return File(this).takeIf { it.exists() }
       }
 
-      // Discard what the kotlin IDE plugin has added.
-      node.data.target.forgetAllPaths()
+      // Only the BINARY paths need replacing: the kotlin IDE plugin points them at the .aar itself, whereas the IDE needs the extracted
+      // manifest / res folder / compile jars. Everything else it resolved (sources, documentation, external annotations) must survive.
+      // LibraryData only offers an all-or-nothing forgetAllPaths(), so snapshot the non-binary paths and re-attach them afterwards.
+      // Note: getPaths() hands back the live backing set, so these must be defensive copies.
+      val preservedPaths =
+        LibraryPathType.values()
+          .filter { it != LibraryPathType.BINARY }
+          .associateWith { pathType -> libraryData.getPaths(pathType).toList() }
+
+      libraryData.forgetAllPaths()
+
+      preservedPaths.forEach { (pathType, paths) -> paths.forEach { libraryData.addPath(pathType, it) } }
 
       androidLibInfo.library.androidLibraryData
         .takeIf { it.hasManifest() }
         ?.manifest
         ?.absolutePath
         ?.toFile()
-        ?.let { node.data.target.addPath(LibraryPathType.BINARY, it.path) }
+        ?.let { libraryData.addPath(LibraryPathType.BINARY, it.path) }
 
       androidLibInfo.library.androidLibraryData
         .takeIf { it.hasResFolder() }
         ?.resFolder
         ?.absolutePath
         ?.toFile()
-        ?.let { node.data.target.addPath(LibraryPathType.BINARY, it.path) }
+        ?.let { libraryData.addPath(LibraryPathType.BINARY, it.path) }
 
       androidLibInfo.library.androidLibraryData.compileJarFilesList
         .mapNotNull { it.absolutePath.toFile() }
-        .forEach { node.data.target.addPath(LibraryPathType.BINARY, it.path) }
+        .forEach { libraryData.addPath(LibraryPathType.BINARY, it.path) }
+
+      androidLibInfo.library.srcJarsList
+        .mapNotNull { it.absolutePath.toFile() }
+        .forEach { libraryData.addPath(LibraryPathType.SOURCE, it.path) }
+
+      // Fallback for models produced by older AGPs that populated the (now deprecated) single `srcJar` field instead of `srcJars`.
+      // Re-adding an already known jar is harmless: paths are stored in a set and canonicalised on the way in.
+      androidLibInfo.library
+        .takeIf { it.hasSrcJar() }
+        ?.srcJar
+        ?.absolutePath
+        ?.toFile()
+        ?.let { libraryData.addPath(LibraryPathType.SOURCE, it.path) }
+
+      androidLibInfo.library
+        .takeIf { it.hasDocJar() }
+        ?.docJar
+        ?.absolutePath
+        ?.toFile()
+        ?.let { libraryData.addPath(LibraryPathType.DOC, it.path) }
     }
   }
 
