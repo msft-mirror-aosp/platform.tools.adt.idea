@@ -371,6 +371,7 @@ class ForegroundProcessDetectionImpl(
   override fun dispose() {
     processModel.removeSelectedProcessListener(selectedProcessListener)
     stop()
+    transportClient.shutdown()
   }
 
   override fun addForegroundProcessListener(foregroundProcessListener: ForegroundProcessListener) {
