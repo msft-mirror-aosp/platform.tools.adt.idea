@@ -646,10 +646,18 @@ void Controller::ProcessTextInput(const TextInputMessage& message) {
 
 void Controller::InjectUnicodeCharacter(uint16_t c) {
   Log::D("InjectUnicodeCharacter('\\u%04X')", c);
-  // Activate unicode composition.
+  // Activate Unicode composition.
   InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON);
   InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON);
-  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+  if (Agent::feature_level() >= 32) {
+    // Use silent Unicode composition.
+    InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON);
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON);
+    InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+  } else {
+    // Cannot use silent Unicode composition due to b/531563251.
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+  }
   InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON);
   InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_CTRL_LEFT, 0);
   // Enter hexadecimal code of the character.
@@ -1097,9 +1105,8 @@ void Controller::SendPendingDisplayEvents() {
             it->second.rotation != display_info.rotation || it->second.type != display_info.type;
         current_displays_.insert_or_assign(display_id, display_info);
         if (significant_change) {
-          Size environment_size(0, 0);
           DisplayAddedOrChangedNotification notification(
-              display_id, display_info.logical_size, display_info.rotation, display_info.type, environment_size);
+              display_id, display_info.logical_size, display_info.rotation, display_info.type);
           SendControlMessage(notification);
           if (Log::IsEnabled(Log::Level::DEBUG)) {
             Log::D("Sent %s", notification.ToDebugString().c_str());

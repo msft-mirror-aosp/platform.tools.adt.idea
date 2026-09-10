@@ -33,6 +33,9 @@
     <androidProjectEntryProvider implementation="com.android.tools.idea.npw.templateengine.ui.TemplateGridProjectEntryProvider" />
     <sdkEventListener implementation="com.android.tools.idea.npw.templateengine.services.TemplateRegistrySdkEventListener" />
   </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.npw.template">
+    <wizardPluginPromotionTemplateProvider implementation="com.android.tools.idea.npw.template.KmpPluginPlaceholderProvider"/>
+  </extensions>
   <actions>
     <action id="NewAndroidImageAsset" class="com.android.tools.idea.npw.actions.NewImageAssetAction">
       <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewDir"/>

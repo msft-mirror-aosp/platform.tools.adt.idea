@@ -209,6 +209,12 @@ private class CapturePanelUi(
       minimumSize = Dimension(0, minimumSize.height)
     }
 
+  /**
+   * Builds the summary panel bar displaying high-level metrics (classes, leaks, duplicates, count, native/shallow/retained sizes).
+   *
+   * Note: This summary bar is only displayed for static [HeapDumpCaptureObject]s with an active heap selection. For non-heap dump captures
+   * (such as live allocation tracking), this panel remains hidden and skips computations.
+   */
   private fun buildSummaryPanel() =
     JPanel(FlowLayout(FlowLayout.LEFT)).apply {
       border = AdtUiUtils.DEFAULT_TOP_BORDER
@@ -223,53 +229,54 @@ private class CapturePanelUi(
       val totalShallowSizeLabel = mkLabel("Shallow Size")
       val totalRetainedSizeLabel = mkLabel("Retained Size")
 
-      // Compute total classes asynchronously because it can take multiple seconds
+      // Compute total classes asynchronously to avoid locking on the UI thread
       fun refreshTotalClassesAsync(heap: HeapSet) =
         profilersView.studioProfilers.ideServices.poolExecutor.execute {
-          // Handle "no filter" case specially, because it recomputes from the current instance stream,
-          // and `ClassifierSet` only considers instances as "matched" if the filter is not empty.
-          // This is analogous to how `MemoryClassifierView` is checking if filter is empty to treat it specially
-          val filterMatches = if (selection.filterHandler.filter.isEmpty) heap.instancesStream else heap.filterMatches
-          // Totals other than class count don't need this, because they are direct fields initialized correctly
-          val count = filterMatches.mapToLong { it.classEntry.classId }.distinct().count()
-          profilersView.studioProfilers.ideServices.mainExecutor.execute { totalClassLabel.numValue = count }
+          val classCount = heap.classSetCount
+          profilersView.studioProfilers.ideServices.mainExecutor.execute {
+            if (selection.selectedHeapSet == heap) {
+              totalClassLabel.numValue = classCount
+            }
+          }
         }
 
       // Compute total retained size asynchronously because it can take multiple seconds
       fun refreshTotalRetainedSizeAsync(heap: HeapSet) =
         profilersView.studioProfilers.ideServices.poolExecutor.execute {
           val retainedSize = heap.totalRetainedSize
-          profilersView.studioProfilers.ideServices.mainExecutor.execute { totalRetainedSizeLabel.numValue = retainedSize }
+          profilersView.studioProfilers.ideServices.mainExecutor.execute {
+            if (selection.selectedHeapSet == heap) {
+              totalRetainedSizeLabel.numValue = retainedSize
+            }
+          }
         }
 
       fun refreshSummaries() {
-        selection.selectedHeapSet?.let { heap ->
-          refreshTotalClassesAsync(heap)
-          totalCountLabel.numValue = heap.totalObjectCount.toLong()
-          totalNativeSizeLabel.numValue = heap.totalNativeSize
-          totalShallowSizeLabel.numValue = heap.totalShallowSize
-          refreshTotalRetainedSizeAsync(heap)
-
-          val capture = selection.selectedCapture
-          isVisible = capture is HeapDumpCaptureObject
-          if (capture !is HeapDumpCaptureObject) {
-            totalLeakLabel.isVisible = false
-            totalBitmapDuplicatesLabel.isVisible = false
-            return@let
-          }
-
-          fun updateLabel(label: StatLabel, filter: CaptureObjectInstanceFilter) {
-            // A local val is required for functionality because StatLabel.numValue doesn't store
-            // the value, it just updates the label and can't be used for any other purpose.
-            val count = getFilteredInstanceCount(heap, selection.selectedClassTypeFilter, filter)
-            label.numValue = count
-            label.isVisible = true
-            label.icon = if (count > 0) StudioIcons.Common.WARNING else null
-          }
-
-          updateLabel(totalLeakLabel, capture.activityFragmentLeakFilter)
-          updateLabel(totalBitmapDuplicatesLabel, capture.bitmapDuplicationFilter)
+        val capture = selection.selectedCapture
+        val heap = selection.selectedHeapSet
+        if (capture !is HeapDumpCaptureObject || heap == null) {
+          isVisible = false
+          return
         }
+
+        refreshTotalClassesAsync(heap)
+        totalCountLabel.numValue = heap.totalObjectCount.toLong()
+        totalNativeSizeLabel.numValue = heap.totalNativeSize
+        totalShallowSizeLabel.numValue = heap.totalShallowSize
+        refreshTotalRetainedSizeAsync(heap)
+
+        fun updateLabel(label: StatLabel, filter: CaptureObjectInstanceFilter) {
+          // A local val is required for functionality because StatLabel.numValue doesn't store
+          // the value, it just updates the label and can't be used for any other purpose.
+          val count = getFilteredInstanceCount(heap, selection.selectedClassTypeFilter, filter)
+          label.numValue = count
+          label.isVisible = true
+          label.icon = if (count > 0) StudioIcons.Common.WARNING else null
+        }
+
+        updateLabel(totalLeakLabel, capture.activityFragmentLeakFilter)
+        updateLabel(totalBitmapDuplicatesLabel, capture.bitmapDuplicationFilter)
+        isVisible = true
       }
 
       selection.aspect
@@ -277,10 +284,12 @@ private class CapturePanelUi(
         .onChange(CaptureSelectionAspect.CURRENT_HEAP_CONTENTS, ::refreshSummaries)
         .onChange(CaptureSelectionAspect.CURRENT_FILTER, ::refreshSummaries)
 
-      add(totalClassLabel)
+      refreshSummaries()
+
       add(totalLeakLabel)
       add(totalBitmapDuplicatesLabel)
       add(FlatSeparator(6, 36))
+      add(totalClassLabel)
       add(totalCountLabel)
       add(totalNativeSizeLabel)
       add(totalShallowSizeLabel)

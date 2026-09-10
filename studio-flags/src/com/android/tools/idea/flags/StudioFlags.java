@@ -1365,6 +1365,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_USE_UINPUT = new BooleanFlag(
     DEVICE_MIRRORING, "use.uinput", "Use uinput module (https://kernel.org/doc/html/v4.12/input/uinput.html)",
     "Use uinput module ((https://kernel.org/doc/html/v4.12/input/uinput.html) for injecting input events");
+  public static final Flag<Boolean> DEVICE_MIRRORING_GLASSES_DISPLAY = new BooleanFlag(
+    DEVICE_MIRRORING, "glasses.display", "Mirror Glasses Display",
+    "Enable mirroring of glasses display");
   public static final Flag<Boolean> DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH = new BooleanFlag(
     DEVICE_MIRRORING, "xr.simulated.passthrough", "Enable Simulated Passthrough for XR Headsets",
     "Enable simulated passthrough for XR headsets");
@@ -1892,8 +1895,15 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMULATOR_PREVIEW_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "emulator.preview.enabled",
-    "Enable Emulator Preview",
+    "Enable Emulator Preview (qemu-next)",
     "Enables launching AVDs with the preview version of the emulator, if installed."
+  );
+
+  public static final Flag<Boolean> EMULATOR_PREVIEW_REQUIRED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "emulator.preview.required",
+    "Require Emulator Preview (qemu-next)",
+    "Requires launching AVDs with the preview version of the emulator."
   );
   // endregion
 
@@ -2740,11 +2750,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "verify.user.tier.in.aida.rpcs",
                     "Verify user tier in all API requests to the AIDA endpoint",
                     "Verify user tier in all API requests to the AIDA endpoint");
-
-  public static final Flag<Boolean> GEMINI_NEXT_PREDICTION =
-    new BooleanFlag(STUDIOBOT, "gemini.next.prediction",
-                    "Enable next edit/action prediction in the IDE",
-                    "Enable next edit/action prediction in the IDE");
 
   public static final Flag<Boolean> GEMINI_NEXT_PREDICTION_LITE =
     new BooleanFlag(STUDIOBOT, "gemini.next.prediction.lite",

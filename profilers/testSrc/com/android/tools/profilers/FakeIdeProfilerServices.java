@@ -26,7 +26,6 @@ import com.android.tools.profilers.cpu.FakeTracePreProcessor;
 import com.android.tools.profilers.cpu.TracePreProcessor;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfigurationLegacy;
-import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfigurationLegacy;
 import com.android.tools.profilers.cpu.config.AtraceConfiguration;
 import com.android.tools.profilers.cpu.config.PerfettoNativeAllocationsConfiguration;
@@ -46,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -480,7 +480,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   public void addCustomProfilingConfiguration(String name, TraceType type) {
     ProfilingConfiguration config;
     if (type == TraceType.ART) {
-      config = ArtSampledConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
+      config = ArtInstrumentedConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
     }
     else if (type == TraceType.SIMPLEPERF) {
       config = new SimpleperfConfiguration(name);
@@ -558,10 +558,27 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myNotification = notification;
   }
 
+  private List<String> myNativeSymbolsDirectories = Collections.singletonList(FAKE_SYMBOL_DIR);
+  private Map<String, String> myProguardMappings = Collections.emptyMap();
+
   @NotNull
   @Override
   public List<String> getNativeSymbolsDirectories() {
-    return Collections.singletonList(FAKE_SYMBOL_DIR);
+    return myNativeSymbolsDirectories;
+  }
+
+  public void setNativeSymbolsDirectories(@NotNull List<String> dirs) {
+    myNativeSymbolsDirectories = dirs;
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getProguardMappings() {
+    return myProguardMappings;
+  }
+
+  public void setProguardMappings(@NotNull Map<String, String> mappings) {
+    myProguardMappings = mappings;
   }
 
   @NotNull
@@ -676,7 +693,9 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Nullable
   @Override
-  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile, @NotNull List<String> symbolDirs) {
+  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,
+                                          @NotNull List<String> symbolDirs,
+                                          @NotNull Map<String, String> proguardMaps) {
     myTraceSymbolizedAndDeobfuscated = true;
     return traceFile;
   }

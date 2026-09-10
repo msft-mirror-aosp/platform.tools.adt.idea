@@ -216,7 +216,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myBindings.bindTwoWay(new SelectedProperty(myLaunchFirebaseCheckbox), myProjectModel.getLaunchFirebaseWizard());
 
       myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.KTS);
-      myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.Groovy);
 
       if (StudioFlags.NPW_SHOW_DCL.get()) {
         myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.DCL);
@@ -228,8 +227,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
         myBuildConfigurationLanguageCombo.addItem(initialSelection);
       } else {
         initialSelection = switch (myProjectModel.getDslLanguage().get()) {
-          case KTS -> BuildConfigurationLanguageForNewProject.KTS;
-          case GROOVY -> BuildConfigurationLanguageForNewProject.Groovy;
+          case KTS, GROOVY -> BuildConfigurationLanguageForNewProject.KTS;
           case DCL -> BuildConfigurationLanguageForNewProject.DCL;
         };
       }
@@ -252,7 +250,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
           if (value instanceof BuildConfigurationLanguageForNewProject) {
             return switch ((BuildConfigurationLanguageForNewProject) value) {
               case KTS -> DslLanguage.KTS;
-              case Groovy -> DslLanguage.GROOVY;
               case DCL -> DslLanguage.DCL;
             };
           }
