@@ -222,6 +222,7 @@ internal data class KeyEventMessage(
   val action: AndroidKeyEventActionType,
   val keyCode: Int, // One of the values defined in AndroidKeyCodes.kt
   val metaState: Int,
+  val displayId: Int = UNSPECIFIED_DISPLAY,
 ) : ControlMessage(TYPE) {
 
   override fun serialize(stream: Base128OutputStream) {
@@ -229,19 +230,25 @@ internal data class KeyEventMessage(
     stream.writeInt(action.value)
     stream.writeInt(keyCode)
     stream.writeInt(metaState)
+    stream.writeInt(displayId - UNSPECIFIED_DISPLAY)
   }
 
-  override fun toString(): String = "KeyEventMessage(action=$action, keyCode=$keyCode, metaState=0x${metaState.toString(16)})"
+  override fun toString(): String =
+    "KeyEventMessage(action=$action, keyCode=$keyCode, metaState=0x${metaState.toString(16)}, displayId=$displayId)"
 
   companion object : Deserializer {
     const val TYPE = 2
+
+    /** Similar to INVALID_DISPLAY in android.view.Display. */
+    const val UNSPECIFIED_DISPLAY = -1
 
     override fun deserialize(stream: Base128InputStream): KeyEventMessage {
       val actionValue = stream.readInt()
       val action = AndroidKeyEventActionType.fromValue(actionValue) ?: throw StreamFormatException("Unrecognized action: $actionValue")
       val keyCode = stream.readInt()
       val metaState = stream.readInt()
-      return KeyEventMessage(action, keyCode, metaState)
+      val displayId = stream.readInt() + UNSPECIFIED_DISPLAY
+      return KeyEventMessage(action, keyCode, metaState, displayId)
     }
   }
 }

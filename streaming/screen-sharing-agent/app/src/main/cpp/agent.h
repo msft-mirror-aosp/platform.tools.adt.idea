@@ -31,6 +31,7 @@
 namespace screensharing {
 
 extern const char ATTRIBUTION_TAG[];  // The tag used in system logs.
+constexpr int32_t UNSPECIFIED_DISPLAY_ID = -1;
 constexpr int32_t PRIMARY_DISPLAY_ID = 0;
 
 // Device manufacturers.

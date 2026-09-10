@@ -88,7 +88,7 @@ private:
   // Injects an event that cancels the current gesture.
   void InjectCancelMotionEvent();
   void InjectUnicodeCharacter(uint16_t c);
-  void InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state);
+  void InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state, int32_t display_id);
   void InjectKeyEvent(const KeyEvent& input_event);
   bool UseUInputForKeyEvents() const;
 

@@ -195,9 +195,9 @@ class DeviceToolWindowPanelTest {
     for (case in pushButtonCases) {
       val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
       fakeUi.mousePressOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0, PRIMARY_DISPLAY_ID))
       fakeUi.mouseRelease()
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check DevicePowerButtonAction invoked by a keyboard shortcut.
@@ -205,15 +205,15 @@ class DeviceToolWindowPanelTest {
     var keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
     val dataContext = DataManager.getInstance().getDataContext(panel.primaryDisplayView)
     executeAction(action, createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0, PRIMARY_DISPLAY_ID))
 
     // Check DevicePowerAndVolumeUpButtonAction invoked by a keyboard shortcut.
     action = ActionManager.getInstance().getAction("android.device.power.and.volume.up.button")
     keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK or SHIFT_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
     executeAction(action, createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_VOLUME_UP, 0))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_VOLUME_UP, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_VOLUME_UP, 0, PRIMARY_DISPLAY_ID))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0, PRIMARY_DISPLAY_ID))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_VOLUME_UP, 0, PRIMARY_DISPLAY_ID))
 
     // Check that the Wear OS-specific buttons are hidden.
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Button 1" }).isNull()
@@ -245,9 +245,9 @@ class DeviceToolWindowPanelTest {
     for (case in pushButtonCases) {
       val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
       fakeUi.mousePressOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0, PRIMARY_DISPLAY_ID))
       fakeUi.mouseRelease()
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check keypress actions.
@@ -255,7 +255,7 @@ class DeviceToolWindowPanelTest {
     for (case in keypressCases) {
       val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
       fakeUi.mouseClickOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, case.second, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check that the buttons not applicable to Wear OS 3 are hidden.
@@ -327,9 +327,9 @@ class DeviceToolWindowPanelTest {
 
     val button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Home" }
     fakeUi.mousePressOn(button)
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_ALL_APPS, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_ALL_APPS, 0, PRIMARY_DISPLAY_ID))
     fakeUi.mouseRelease()
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_ALL_APPS, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_ALL_APPS, 0, PRIMARY_DISPLAY_ID))
 
     fakeUi.mouseClickOn(fakeUi.getComponent<ActionButton> { it.action.templateText == "Reset View" })
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(XrRecenterMessage())

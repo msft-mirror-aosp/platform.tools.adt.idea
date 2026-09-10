@@ -151,11 +151,12 @@ private:
 // Represents a key being pressed or released on a keyboard.
 class KeyEventMessage : ControlMessage {
 public:
-  KeyEventMessage(int32_t action, int32_t keycode, uint32_t meta_state)
+  KeyEventMessage(int32_t action, int32_t keycode, uint32_t meta_state, int32_t display_id)
       : ControlMessage(TYPE),
         action_(action),
         keycode_(keycode),
-        meta_state_(meta_state) {
+        meta_state_(meta_state),
+        display_id_(display_id) {
   }
   ~KeyEventMessage() override = default;
 
@@ -166,6 +167,8 @@ public:
   [[nodiscard]] int32_t keycode() const { return keycode_; }
 
   [[nodiscard]] int32_t meta_state() const { return meta_state_; }
+
+  [[nodiscard]] int32_t display_id() const { return display_id_; }
 
   static constexpr int TYPE = 2;
 
@@ -179,6 +182,7 @@ private:
   int32_t action_;
   int32_t keycode_;
   uint32_t meta_state_;
+  int32_t display_id_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyEventMessage);
 };

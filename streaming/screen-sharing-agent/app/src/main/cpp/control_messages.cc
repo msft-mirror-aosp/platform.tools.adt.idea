@@ -16,6 +16,7 @@
 
 #include "control_messages.h"
 
+#include "agent.h"
 #include "log.h"
 #include "string_printf.h"
 
@@ -144,7 +145,8 @@ KeyEventMessage* KeyEventMessage::Deserialize(Base128InputStream& stream) {
   int32_t action = stream.ReadInt32();
   int32_t keycode = stream.ReadInt32();
   uint32_t meta_state = stream.ReadUInt32();
-  return new KeyEventMessage(action, keycode, meta_state);
+  int32_t display_id = stream.ReadInt32() + UNSPECIFIED_DISPLAY_ID;
+  return new KeyEventMessage(action, keycode, meta_state, display_id);
 }
 
 TextInputMessage* TextInputMessage::Deserialize(Base128InputStream& stream) {

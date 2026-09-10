@@ -603,7 +603,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
 }
 
 void Controller::ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message) {
-  InjectKeyEvent(message.action(), message.keycode(), message.meta_state());
+  InjectKeyEvent(message.action(), message.keycode(), message.meta_state(), message.display_id());
 }
 
 void Controller::ProcessTextInput(const TextInputMessage& message) {
@@ -639,19 +639,19 @@ void Controller::ProcessTextInput(const TextInputMessage& message) {
 void Controller::InjectUnicodeCharacter(uint16_t c) {
   Log::D("InjectUnicodeCharacter('\\u%04X')", c);
   // Activate Unicode composition.
-  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON);
-  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON, UNSPECIFIED_DISPLAY_ID);
+  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON, UNSPECIFIED_DISPLAY_ID);
   if (Agent::feature_level() >= 32) {
     // Use silent Unicode composition.
-    InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON);
-    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON);
-    InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+    InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON, UNSPECIFIED_DISPLAY_ID);
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON, UNSPECIFIED_DISPLAY_ID);
+    InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON, UNSPECIFIED_DISPLAY_ID);
   } else {
     // Cannot use silent Unicode composition due to b/531563251.
-    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON);
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON, UNSPECIFIED_DISPLAY_ID);
   }
-  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON);
-  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_CTRL_LEFT, 0);
+  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON, UNSPECIFIED_DISPLAY_ID);
+  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_CTRL_LEFT, 0, UNSPECIFIED_DISPLAY_ID);
   // Enter hexadecimal code of the character.
   bool significant = false;
   for (int i = 12; i >= 0; i -= 4) {
@@ -661,13 +661,13 @@ void Controller::InjectUnicodeCharacter(uint16_t c) {
     }
     significant = true;
     int keycode = d < 10 ? AKEYCODE_0 + d : AKEYCODE_A + d - 10;
-    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, keycode, 0);
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, keycode, 0, UNSPECIFIED_DISPLAY_ID);
   }
   // Finish unicode composition.
-  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_ENTER, 0);
+  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_ENTER, 0, UNSPECIFIED_DISPLAY_ID);
 }
 
-void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state) {
+void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state, int32_t display_id) {
   if (UseUInputForKeyEvents()) {
     InitializeVirtualKeyboard();
     nanoseconds event_time = UptimeNanos();
@@ -683,6 +683,7 @@ void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_st
     event.code = keycode;
     event.meta_state = meta_state;
     event.source = KeyCharacterMap::VIRTUAL_KEYBOARD;
+    event.display_id = display_id;
     InjectKeyEvent(event);
     if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
       event.action = AKEY_EVENT_ACTION_UP;
@@ -784,7 +785,7 @@ void Controller::StopAudioStream([[maybe_unused]] const StopAudioStreamMessage& 
 }
 
 void Controller::WakeUpDevice() {
-  ProcessKeyboardEvent(Jvm::GetJni(), KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0));
+  ProcessKeyboardEvent(Jvm::GetJni(), KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0, UNSPECIFIED_DISPLAY_ID));
 }
 
 bool Controller::ControlDisplayPower(Jni jni, int state) {

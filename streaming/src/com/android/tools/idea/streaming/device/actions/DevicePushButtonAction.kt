@@ -22,6 +22,7 @@ import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
 import com.android.tools.idea.streaming.device.DeviceConfiguration
 import com.android.tools.idea.streaming.device.KeyEventMessage
+import com.android.tools.idea.ui.DISPLAY_ID_KEY
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import java.util.function.Predicate
@@ -41,28 +42,31 @@ internal open class DevicePushButtonAction(
 
   final override fun buttonPressed(event: AnActionEvent) {
     val deviceController = getDeviceController(event) ?: return
+    val displayId = getDisplayId(event)
     if (modifierKeyCode != AKEYCODE_UNKNOWN) {
-      deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN, modifierKeyCode, metaState = 0))
+      deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN, modifierKeyCode, metaState = 0, displayId))
     }
-    deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN, keyCode, metaState = 0))
+    deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN, keyCode, metaState = 0, displayId))
   }
 
   final override fun buttonReleased(event: AnActionEvent) {
     val deviceController = getDeviceController(event) ?: return
-    getDeviceController(event)?.sendControlMessage(KeyEventMessage(ACTION_UP, keyCode, metaState = 0))
+    val displayId = getDisplayId(event)
+    deviceController.sendControlMessage(KeyEventMessage(ACTION_UP, keyCode, metaState = 0, displayId))
     if (modifierKeyCode != AKEYCODE_UNKNOWN) {
-      deviceController.sendControlMessage(KeyEventMessage(ACTION_UP, modifierKeyCode, metaState = 0))
+      deviceController.sendControlMessage(KeyEventMessage(ACTION_UP, modifierKeyCode, metaState = 0, displayId))
     }
   }
 
   final override fun buttonPressedAndReleased(event: AnActionEvent) {
     val deviceController = getDeviceController(event) ?: return
+    val displayId = getDisplayId(event)
     if (modifierKeyCode != AKEYCODE_UNKNOWN) {
-      deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN, modifierKeyCode, metaState = 0))
+      deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN, modifierKeyCode, metaState = 0, displayId))
     }
-    deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN_AND_UP, keyCode, metaState = 0))
+    deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN_AND_UP, keyCode, metaState = 0, displayId))
     if (modifierKeyCode != AKEYCODE_UNKNOWN) {
-      deviceController.sendControlMessage(KeyEventMessage(ACTION_UP, modifierKeyCode, metaState = 0))
+      deviceController.sendControlMessage(KeyEventMessage(ACTION_UP, modifierKeyCode, metaState = 0, displayId))
     }
   }
 
@@ -73,4 +77,6 @@ internal open class DevicePushButtonAction(
   override fun getActionUpdateThread(): ActionUpdateThread {
     return ActionUpdateThread.BGT
   }
+
+  private fun getDisplayId(event: AnActionEvent): Int = event.getData(DISPLAY_ID_KEY) ?: KeyEventMessage.UNSPECIFIED_DISPLAY
 }
