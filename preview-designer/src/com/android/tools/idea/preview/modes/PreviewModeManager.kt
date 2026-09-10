@@ -145,10 +145,10 @@ sealed class PreviewMode {
 
   class Default(override val layoutOption: SurfaceLayoutOption = DEFAULT_LAYOUT_OPTION) : RestorePreviewMode() {
 
-    // Resize is expected in Default PreviewMode if the previous Preview was Animation Inspection or
-    // Focus mode.
+    // Resize is expected in Default PreviewMode if the previous Preview was Animation Inspection,
+    // Focus mode, or UI Check mode.
     override fun expectResizeOnEnter(previousMode: PreviewMode?, project: Project): Boolean {
-      return previousMode is Focus || previousMode is AnimationInspection
+      return previousMode is Focus || previousMode is AnimationInspection || previousMode is UiCheck
     }
 
     override fun deriveWithLayout(layoutOption: SurfaceLayoutOption): PreviewMode {
