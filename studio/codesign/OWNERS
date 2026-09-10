@@ -1,4 +1,4 @@
 # Bug component: 175941
-include tools/vendor/adt_infra_internal:/OWNERS
+include platform/tools/adt_infra_internal:/OWNERS
 
 vsiva@google.com
