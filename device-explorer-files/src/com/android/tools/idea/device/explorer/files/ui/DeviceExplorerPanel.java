@@ -307,7 +307,7 @@ public class DeviceExplorerPanel {
         }
         String linkTarget = node.getEntry().getSymbolicLinkTarget();
         if (!StringUtil.isEmpty(linkTarget)) {
-          setToolTipText("Link target: " + linkTarget);
+          setToolTipText("Link target: " + StringUtil.escapeXmlEntities(linkTarget));
         }
       }
       else if (value instanceof ErrorNode) {

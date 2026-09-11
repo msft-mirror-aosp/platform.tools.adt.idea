@@ -41,6 +41,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.treeStructure.Tree
 import icons.StudioIllustrations
@@ -188,7 +189,7 @@ class DeviceFileExplorerViewImpl(project: Project, model: DeviceFileExplorerMode
   @TestOnly fun getDeviceExplorerPanel(): DeviceExplorerPanel = panel
 
   private fun reportMessage(message: String, toolWindowID: String) {
-    val notification = Notification(toolWindowID, toolWindowID, message, NotificationType.INFORMATION)
+    val notification = Notification(toolWindowID, toolWindowID, escapeXmlEntities(message), NotificationType.INFORMATION)
     ApplicationManager.getApplication().invokeLater { Notifications.Bus.notify(notification) }
   }
 
@@ -198,7 +199,7 @@ class DeviceFileExplorerViewImpl(project: Project, model: DeviceFileExplorerMode
     }
 
     val messageToReport = if (t.message != null) "$message: ${t.message}" else message
-    val notification = Notification(toolWindowID, toolWindowID, messageToReport, NotificationType.WARNING)
+    val notification = Notification(toolWindowID, toolWindowID, escapeXmlEntities(messageToReport), NotificationType.WARNING)
     ApplicationManager.getApplication().invokeLater { Notifications.Bus.notify(notification) }
   }
 

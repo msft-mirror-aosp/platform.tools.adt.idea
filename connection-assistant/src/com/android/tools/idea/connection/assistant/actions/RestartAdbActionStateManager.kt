@@ -38,6 +38,7 @@ import com.google.wireless.android.sdk.stats.ConnectionAssistantEvent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import com.intellij.util.concurrency.EdtExecutorService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -230,7 +231,7 @@ class RestartAdbActionStateManager : AssistActionStateManager() {
         val deviceInfo = deviceInfos[device]
         val deviceVersion = deviceInfo?.version?.takeIf { it != AndroidVersion.DEFAULT }
         val deviceName = deviceInfo?.name ?: device.serialNumber
-        htmlBodyBuilder.addHtml("<p><span>$deviceName</span>").newline().apply {
+        htmlBodyBuilder.addHtml("<p><span>${escapeXmlEntities(deviceName)}</span>").newline().apply {
           if (deviceVersion != null) {
             addHtml("<span style=\"font-size: 80%; font-weight: lighter;\">$deviceVersion</span></p>").newline()
           }
