@@ -21,6 +21,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScree
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
 import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
@@ -37,6 +38,7 @@ import java.awt.Graphics
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.io.File
+import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import javax.swing.BorderFactory
 import javax.swing.BoxLayout
@@ -267,7 +269,7 @@ class PreviewItemPanel(
             isLoadedSuccessfully = true
             onImageLoaded?.invoke()
           } else {
-            logger.error("Couldn't load image from path: $newPath")
+            logger.warn("Couldn't load image from path: $newPath")
             // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event
             logScreenshotTestEvent(
               ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
@@ -328,8 +330,9 @@ class PreviewItemPanel(
 
       val scaledImage = ImageUtil.scaleImage(image, finalW, finalH)
       JBImageIcon(scaledImage)
-    } catch (e: Exception) {
-      logger.error("Exception occurred while loading image from path: $path", e)
+    } catch (t: Throwable) {
+      if (t is ControlFlowException || t is CancellationException) throw t
+      logger.warn("Exception occurred while loading image from path: $path", t)
       null
     }
   }

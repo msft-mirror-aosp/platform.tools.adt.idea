@@ -25,6 +25,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import java.awt.Container
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -557,6 +558,38 @@ class PreviewItemPanelTest {
 
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     assertEquals("Callbacks should be invoked for both requests to allow parent repaint", 2, callbackCount)
+  }
+
+  @Test
+  fun verifyCorruptedImageFailsSafelyAndShowsError() = runInEdtAndWait {
+    val corruptFile = temporaryFolder.newFile("corrupt.png")
+    corruptFile.writeText("not a valid image content")
+
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "TestClass",
+        methodName = "testMethod",
+        previewName = "preview",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = corruptFile.absolutePath,
+      )
+    val panel =
+      PreviewItemPanel(
+        previewData = details,
+        project = projectRule.project,
+        showDetails = false,
+        appExecutorService = MoreExecutors.newDirectExecutorService(),
+      )
+
+    var callbackInvoked = false
+    panel.loadImage(corruptFile.absolutePath, "id") { callbackInvoked = true }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertTrue("Callback should be invoked on failure to allow repaint", callbackInvoked)
+    assertFalse("Corrupted image should fail to load", panel.isLoadedSuccessfully)
+    val label = findLabel(panel)
+    assertEquals("Couldn't load image", label?.text)
   }
 
   private fun findLabel(container: Container): JBLabel? {
