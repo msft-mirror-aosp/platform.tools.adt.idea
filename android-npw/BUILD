@@ -160,7 +160,7 @@ iml_module(
         "//tools/base/build-system:gradle-distrib-8.0",
         "//tools/base/build-system:gradle-runtime-maven",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
-        "//tools/vendor/google/android/create/templates:android-project-templates",
+        "//tools/vendor/google/android-cli/create/templates:android-project-templates",
     ],
     # do not sort: must match IML order
     test_deps = [

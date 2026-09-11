@@ -32,7 +32,7 @@ class TemplateRegistryServiceTest {
 
   @Test
   fun testTemplatesLoaded() {
-    val zipFile = TestUtils.resolveWorkspacePath("tools/vendor/google/android/create/templates/android-project-templates.zip")
+    val zipFile = TestUtils.resolveWorkspacePath("tools/vendor/google/android-cli/create/templates/android-project-templates.zip")
     val service = TemplateRegistryService.createForTest(zipPathProvider = { zipFile })
     assertThat(service).isNotNull()
     service.loadTemplatesAndResources()
@@ -81,7 +81,7 @@ class TemplateRegistryServiceTest {
   @Test
   fun testFailedInitialLoadAndSubsequentSuccessfulReload() {
     var shouldFail = true
-    val zipFile = TestUtils.resolveWorkspacePath("tools/vendor/google/android/create/templates/android-project-templates.zip")
+    val zipFile = TestUtils.resolveWorkspacePath("tools/vendor/google/android-cli/create/templates/android-project-templates.zip")
     val service =
       TemplateRegistryService.createForTest(
         zipPathProvider = {
