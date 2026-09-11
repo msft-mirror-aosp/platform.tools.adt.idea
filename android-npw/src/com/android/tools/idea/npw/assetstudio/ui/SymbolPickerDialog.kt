@@ -38,6 +38,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.HyperlinkLabel
@@ -56,6 +57,7 @@ import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
+import java.awt.KeyboardFocusManager
 import java.awt.event.ItemEvent
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
@@ -493,14 +495,25 @@ constructor(
 
     // Add listeners for the refresh button and the search field
     refreshButton.addActionListener {
+      val hadFocus = refreshButton.hasFocus()
+      if (hadFocus) {
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().clearFocusOwner()
+      }
       coroutineScope.launch {
         // Disable the refresh button while download is in progress
-        withContext(Dispatchers.Main) { refreshButton.isEnabled = false }
+        withContext(Dispatchers.Main) {
+          refreshButton.isEnabled = false
+        }
         try {
           ensureFontsAndMetadataAreDownloaded(true)
         } finally {
           // Re-enable the button when refresh finishes or fails
-          withContext(Dispatchers.Main) { refreshButton.isEnabled = true }
+          withContext(Dispatchers.Main) {
+            refreshButton.isEnabled = true
+            if (hadFocus) {
+              refreshButton.requestFocusInWindow()
+            }
+          }
         }
       }
     }
@@ -556,6 +569,7 @@ constructor(
     // sliderPanel
     filledCheckBox.text = SymbolsBundle.message("label.filled")
     refreshButton.toolTipText = SymbolsBundle.message("tooltip.refresh")
+    refreshButton.disabledIcon = IconLoader.getDisabledIcon(AllIcons.General.Refresh)
     resetButton.toolTipText = SymbolsBundle.message("tooltip.reset")
     slidersPanel.add(
       filledCheckBox,

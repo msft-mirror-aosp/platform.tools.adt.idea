@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.npw.assetstudio.ui
 
+import com.android.tools.adtui.swing.FakeKeyboardFocusManager
+import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.material.icons.common.MaterialIconsMetadataUrlProvider
 import com.android.tools.idea.material.icons.common.MaterialSymbolsUrlProvider
 import com.android.tools.idea.material.icons.common.SymbolConfiguration
@@ -43,6 +45,7 @@ import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JSlider
 import javax.swing.JTable
+import javax.swing.SwingUtilities
 import junit.framework.TestCase
 import kotlin.io.path.createFile
 import kotlin.io.path.createTempDirectory
@@ -325,6 +328,44 @@ class SymbolPickerDialogTest {
           }
         }
       assertTrue(finishWait.isConditionRealized, "Button should be enabled")
+    }
+
+  @Test
+  // Regression test for b/500932758
+  fun testRefreshButtonFocusRestoredAfterRefresh() =
+    runBlocking(Dispatchers.Main) {
+      val testDirectory = createTempDirectory()
+      val symbolsPicker =
+        getInitializedIconPickerDialog(
+          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+        )
+
+      val centerPanel = symbolsPicker.createCenterPanel()
+      centerPanel.parent?.remove(centerPanel)
+      FakeUi(centerPanel, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
+      val focusManager = FakeKeyboardFocusManager(projectRule.fixture.testRootDisposable)
+      focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(centerPanel))
+
+      val refreshButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Refresh }!!
+      val resetButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Reset }!!
+
+      refreshButton.requestFocusInWindow()
+      assertThat(refreshButton.hasFocus()).isTrue()
+
+      // Click the button to trigger refresh
+      withContext(Dispatchers.EDT) { refreshButton.doClick() }
+      assertThat(resetButton.hasFocus()).isFalse()
+
+      val finishWait: WaitFor =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return symbolsPicker.isRefreshButtonEnabled()
+          }
+        }
+      assertTrue(finishWait.isConditionRealized, "Button should be enabled")
+      assertThat(refreshButton.hasFocus()).isTrue()
+      assertThat(resetButton.hasFocus()).isFalse()
     }
 
   @Test
