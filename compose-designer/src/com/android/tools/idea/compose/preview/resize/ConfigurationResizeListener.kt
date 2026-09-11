@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.preview.resize
 
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
+import com.android.tools.configurations.DeviceSize
 import com.android.tools.configurations.deviceSizePx
 import com.android.tools.idea.common.util.updateLayoutParams
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
@@ -32,9 +33,9 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -60,12 +61,12 @@ class ConfigurationResizeListener(
 
   private val scope = CoroutineScope(defaultDispatcher + CoroutineName(javaClass.simpleName))
 
-  private val deviceSizeChangedFlow = MutableStateFlow(configuration.deviceSizePx())
+  private val deviceSizeChangedFlow = MutableSharedFlow<DeviceSize>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
   init {
     if (Disposer.tryRegister(sceneManager, this)) {
       scope.launch {
-        deviceSizeChangedFlow.drop(1).collectLatest { (width, height) ->
+        deviceSizeChangedFlow.collectLatest { (width, height) ->
           try {
             requestRender(Dimension(width, height))
           } catch (e: CancellationException) {
@@ -80,7 +81,7 @@ class ConfigurationResizeListener(
 
   override fun changed(changeType: Int): Boolean {
     if (changeType and ConfigurationListener.CFG_DEVICE != 0) {
-      deviceSizeChangedFlow.value = configuration.deviceSizePx()
+      deviceSizeChangedFlow.tryEmit(configuration.deviceSizePx())
     }
     return true
   }

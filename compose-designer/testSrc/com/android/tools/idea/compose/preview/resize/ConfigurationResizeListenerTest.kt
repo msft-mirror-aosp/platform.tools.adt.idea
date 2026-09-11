@@ -143,6 +143,23 @@ class ConfigurationResizeListenerTest {
   }
 
   @Test
+  fun `listener triggers render when device changes even if dimensions are identical`() = runTest {
+    val sceneManager = createSceneManager(true)
+    val configuration = createConfiguration(500, 600)
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    val newDeviceWithSameSize = device(500, 600)
+    configuration.setEffectiveDevice(newDeviceWithSameSize, newDeviceWithSameSize.defaultState)
+    advanceUntilIdle()
+
+    verify(sceneManager, times(1)).requestRenderWithNewSize(500, 600)
+    Disposer.dispose(sceneManager)
+  }
+
+  @Test
   fun `listener modifies LayoutParams and triggers render with showDecoration false`() = runTest {
     val sceneManager = createSceneManager(false)
     val configuration = createConfiguration(500, 600)
