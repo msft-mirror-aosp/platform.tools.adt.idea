@@ -92,8 +92,8 @@ import org.mockito.kotlin.whenever
 
 @RunsInEdt
 class UpgradeAssistantContentManagerTest {
-  val deprecatedAgpVersion = AgpVersion.parse("7.2.0")
-  val supportedAgpVersion = AgpVersion.parse("7.4.0")
+  val deprecatedAgpVersion = AgpVersion.parse("7.3.0")
+  val supportedAgpVersion = AgpVersion.parse("8.0.0")
   val latestAgpVersion = AgpVersion.parse("8.12.0")
 
   @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
@@ -205,7 +205,7 @@ class UpgradeAssistantContentManagerTest {
   fun testToolWindowDisplaysUpgradeWithNoFiles() {
     val contentManager = ContentManagerImpl(project)
     val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)!!
-    val model = UpgradeAssistantWindowModel(project, { supportedAgpVersion }, latestKnownVersion = latestAgpVersion)
+    val model = UpgradeAssistantWindowModel(project, { deprecatedAgpVersion }, latestKnownVersion = latestAgpVersion)
     val view = UpgradeAssistantView(model, toolWindow.contentManager)
     assertThat(treeString(view.tree))
       .isEqualTo(
@@ -215,7 +215,7 @@ class UpgradeAssistantContentManagerTest {
           Enable buildConfig build feature
           Preserve transitive R classes
           Preserve constant R class values
-          Upgrade AGP dependency from $supportedAgpVersion to $latestAgpVersion
+          Upgrade AGP dependency from $deprecatedAgpVersion to $latestAgpVersion
       """
           .trimIndent()
       )
@@ -466,7 +466,7 @@ class UpgradeAssistantContentManagerTest {
       UpgradeAssistantWindowModel(
         project,
         { supportedAgpVersion },
-        AgpVersion.parse("8.0.0-alpha01"),
+        AgpVersion.parse("8.1.0-alpha01"),
         latestKnownVersion = latestAgpVersion,
       )
     val view = UpgradeAssistantView(model, toolWindow.contentManager)
@@ -1160,7 +1160,8 @@ class UpgradeAssistantContentManagerTest {
   @Test
   fun testSuggestedVersionsIncludesNewProjectVersion() {
     val newerPatch = latestAgpVersion.run { AgpVersion.parse("$major.$minor.${micro+1}") }
-    val toolWindowManager = UpgradeAssistantWindowModel(project, { supportedAgpVersion }, latestKnownVersion = latestAgpVersion, newProjectVersion = newerPatch)
+    val toolWindowManager =
+      UpgradeAssistantWindowModel(project, { supportedAgpVersion }, latestKnownVersion = latestAgpVersion, newProjectVersion = newerPatch)
     val knownVersions = setOf(latestAgpVersion)
     val suggestedVersions = toolWindowManager.suggestedVersionsList(knownVersions)
     assertThat(suggestedVersions).isEqualTo(setOf(newerPatch, latestAgpVersion, supportedAgpVersion).toList().sortedDescending())
