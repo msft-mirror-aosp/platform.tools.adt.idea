@@ -163,6 +163,13 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
     jdkVersion = JDK_17,
     compileSdk = "36.1",
   ),
+  AGP_9_3(
+    agpVersion = "9.3.0",
+    gradleVersion = "9.5.0",
+    kotlinVersion = "2.2.10",
+    jdkVersion = JDK_17,
+    compileSdk = "36.1",
+  ),
   AGP_LATEST_KOTLIN_SNAPSHOT(agpVersion = null, gradleVersion = null, kotlinVersion = KOTLIN_SNAPSHOT_VERSION, compileSdk = "34"),
   AGP_LATEST_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_SNAPSHOT_VERSION, compileSdk = "34"),
   AGP_DECLARATIVE_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_DECLARATIVE_SNAPSHOT_VERSION, compileSdk = "34"),
@@ -253,6 +260,7 @@ private fun AgpVersionSoftwareEnvironmentDescriptor.agpSuffix(): String =
     AgpVersionSoftwareEnvironmentDescriptor.AGP_DECLARATIVE_GRADLE_SNAPSHOT,
     AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST_GRADLE_SNAPSHOT,
     AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST_KOTLIN_SNAPSHOT -> "_"
+    AgpVersionSoftwareEnvironmentDescriptor.AGP_9_3 -> "_Agp_9.3_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_9_2 -> "_Agp_9.2_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_9_1 -> "_Agp_9.1_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_9_0 -> "_Agp_9.0_"
