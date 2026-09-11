@@ -19,4 +19,7 @@ import com.android.tools.idea.lint.common.LintBundle.Companion.message
 import com.android.tools.lint.checks.ImplicitUriGrantDetector
 
 class AndroidLintMissingExplicitUriGrantInspection :
-  AndroidLintInspectionBase(message("android.lint.inspections.missing.explicit.uri.grant"), ImplicitUriGrantDetector.ISSUE)
+  AndroidLintInspectionBase(
+    message("android.lint.inspections.missing.explicit.uri.grant"),
+    ImplicitUriGrantDetector.ISSUE,
+  )
