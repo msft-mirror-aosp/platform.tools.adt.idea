@@ -21,6 +21,7 @@ import com.android.tools.idea.compose.preview.animation.ComposeAnimationTracker
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
 import com.android.tools.idea.compose.preview.animation.picker.AnimatedPropertiesModel
 import com.android.tools.idea.preview.animation.AnimationUnit
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -32,6 +33,7 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.ui.popup.Balloon
 import java.awt.Component
+import java.lang.ref.WeakReference
 import javax.swing.JButton
 import javax.swing.JComponent
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,7 +48,7 @@ class PickerButtonAction(val tracker: ComposeAnimationTracker) : CustomComponent
   val state: MutableStateFlow<Pair<AnimationUnit.Unit<*>, AnimationUnit.Unit<*>>> =
     MutableStateFlow(AnimationUnit.UnitUnknown(null) to AnimationUnit.UnitUnknown(null))
 
-  private val stateListeners: MutableList<() -> Unit> = mutableListOf()
+  @VisibleForTesting internal val buttons: MutableList<WeakReference<JButton>> = mutableListOf()
 
   override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
     return object : JButton(stateText, AllIcons.Actions.Edit) {
@@ -56,7 +58,8 @@ class PickerButtonAction(val tracker: ComposeAnimationTracker) : CustomComponent
           val event = AnActionEvent.createEvent(this@PickerButtonAction, ctx, null, ActionPlaces.TOOLBAR, ActionUiKind.TOOLBAR, null)
           ActionUtil.performDumbAwareWithCallbacks(this@PickerButtonAction, event) { this@PickerButtonAction.actionPerformed(event) }
         }
-        stateListeners.add { text = stateText }
+        buttons.removeAll { it.get() == null }
+        buttons.add(WeakReference(this))
       }
     }
   }
@@ -89,6 +92,7 @@ class PickerButtonAction(val tracker: ComposeAnimationTracker) : CustomComponent
   // Private helper function to update the state and notify observers
   private fun updateState(initial: AnimationUnit.Unit<*>, target: AnimationUnit.Unit<*>) {
     state.value = initial to target
-    stateListeners.forEach { it() } // Notify listeners (needed for backward compatibility)
+    buttons.removeAll { it.get() == null }
+    buttons.forEach { it.get()?.text = stateText }
   }
 }
