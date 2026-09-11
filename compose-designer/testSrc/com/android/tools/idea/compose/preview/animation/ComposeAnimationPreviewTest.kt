@@ -56,6 +56,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -63,7 +64,6 @@ import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Ignore
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.any
@@ -433,22 +433,23 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
     assertEquals(0, animationPreview.animationPreviewCardsCount())
   }
 
-  @Ignore("b/463308626")
   @OptIn(ExperimentalCoroutinesApi::class)
   @Test
   fun addAndRemoveAllAnimations() = runTest {
     val scope = backgroundScope.createChildScope()
     val animationPreview = createAnimationPreview(scope)
 
-    animationPreview.addAnimation(createComposeAnimation("1"))
-    animationPreview.addAnimation(createComposeAnimation("2"))
+    val job1 = animationPreview.addAnimation(createComposeAnimation("1"))
+    val job2 = animationPreview.addAnimation(createComposeAnimation("2"))
+    joinAll(job1, job2)
     animationPreview.removeAllAnimations().join()
     runCurrent()
     advanceUntilIdle()
     assertEquals(0, animationPreview.animations.size)
 
-    animationPreview.addAnimation(createComposeAnimation("3"))
-    animationPreview.addAnimation(createComposeAnimation("4")).join()
+    val job3 = animationPreview.addAnimation(createComposeAnimation("3"))
+    val job4 = animationPreview.addAnimation(createComposeAnimation("4"))
+    joinAll(job3, job4)
     runCurrent()
     advanceUntilIdle()
     assertEquals(2, animationPreview.animations.size)
