@@ -28,9 +28,14 @@ import com.android.tools.idea.preview.animation.actions.FreezeAction
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TestActionEvent
 import java.awt.Dimension
 import javax.swing.JPanel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
@@ -86,5 +91,18 @@ class FromToStateTest {
 
     assertEquals("Two", initial1)
     assertEquals("One", target1)
+  }
+
+  @RunsInEdt
+  @Test
+  fun swapDoesNotEmitIntermediateState() = runBlocking {
+    val state = FromToStateComboBox(NoopComposeAnimationTracker, setOf("A", "B"), "A")
+    val emitted = mutableListOf<Pair<String, String>>()
+    val job = CoroutineScope(Dispatchers.Unconfined).launch {
+      state.state.collect { emitted.add(it) }
+    }
+    state.changeStateActions[0].actionPerformed(TestActionEvent.createTestEvent())
+    job.cancel()
+    assertEquals(listOf("A" to "B", "B" to "A"), emitted)
   }
 }

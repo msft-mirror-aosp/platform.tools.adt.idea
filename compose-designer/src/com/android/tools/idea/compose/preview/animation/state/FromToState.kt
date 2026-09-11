@@ -64,8 +64,12 @@ open class FromToStateComboBox<T>(tracker: ComposeAnimationTracker, states: Set<
     listOf(
       SwapAction(tracker) {
         val start = fromState.currentState
-        fromState.currentState = toState.currentState
-        toState.currentState = start
+        val end = toState.currentState
+        if (start != null && end != null) {
+          state.value = end to start
+          fromState.setCurrentState(end, notify = false)
+          toState.setCurrentState(start, notify = false)
+        }
       },
       fromState,
       ToolbarLabel("to"),
