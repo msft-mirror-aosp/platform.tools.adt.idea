@@ -25,6 +25,7 @@ import com.android.tools.idea.rendering.classloading.LocalNavigationEventTransfo
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.intellij.openapi.diagnostic.thisLogger
+import java.util.concurrent.TimeUnit
 
 private const val NAV_DISPLAY_NAME = "NavDisplay"
 
@@ -87,6 +88,11 @@ object InteractivePreviewBackNavigationUpdater {
         //  Check in the viewInfo if we have a navigation3 NavDisplay.
         composeViewInfos.flatMap { it.allChildren() }.any { it.name == NAV_DISPLAY_NAME }
       } ?: false
+
+    interactivePreviewNavigationController.executeInRenderSessionAsync = { runnable ->
+      // Execute in the render session where RenderSecurityManager/RenderSandbox is active
+      layoutlibSceneManager.executeInRenderSessionAsync(runnable, 0, TimeUnit.SECONDS)
+    }
 
     interactivePreviewNavigationController.updateObjects(
       currentNavigationEventDispatcherOwnerObj = currentNavigationEventDispatcherOwner,

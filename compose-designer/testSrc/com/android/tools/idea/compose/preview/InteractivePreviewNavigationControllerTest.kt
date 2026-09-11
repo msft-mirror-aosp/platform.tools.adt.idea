@@ -30,12 +30,25 @@ class InteractivePreviewNavigationControllerTest {
 
   @get:Rule val projectRule = ProjectRule()
 
+  private fun createController(
+    onAfterPanelUpdate: () -> Unit = {},
+    executeInRenderSessionAsync: (Runnable) -> Unit = { it.run() },
+  ) =
+    InteractivePreviewNavigationController(
+        usageTrackerProvider = { InteractiveNopTracker() },
+        onAfterPanelUpdate = onAfterPanelUpdate,
+        fpsUpdater = MutableSharedFlow(),
+        executeInRenderSessionAsync = executeInRenderSessionAsync,
+      )
+      .apply {
+        setIsTrustedNavigationEventDispatcherOwnerForTestOnly { it is NavigationEventDispatcherOwner }
+      }
+
   @Test
   fun testBackPressCompletedFromViewAdapterObj() {
     var backPress = false
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressCompletedCallback = { backPress = true })
-    val controller =
-      InteractivePreviewNavigationController(usageTrackerProvider = { InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressCompleted()
     assertThat(backPress).isTrue()
@@ -45,7 +58,7 @@ class InteractivePreviewNavigationControllerTest {
   fun testBackPressStartedFromViewAdapterObj() {
     var startedEdge: String? = null
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressStartedCallback = { startedEdge = it })
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressStart(BackNavigationEdge.EDGE_LEFT)
     assertThat(startedEdge).isEqualTo(BackNavigationEdge.EDGE_LEFT.name)
@@ -62,7 +75,7 @@ class InteractivePreviewNavigationControllerTest {
           progressEdge = edge
         }
       )
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressProgress(0.5f, BackNavigationEdge.EDGE_RIGHT)
     assertThat(progressValue).isEqualTo(0.5f)
@@ -73,7 +86,7 @@ class InteractivePreviewNavigationControllerTest {
   fun testBackPressCancelledFromViewAdapterObj() {
     var cancelled = false
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressCancelledCallback = { cancelled = true })
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressCancelled()
     assertThat(cancelled).isTrue()
@@ -82,7 +95,7 @@ class InteractivePreviewNavigationControllerTest {
   @Test
   fun testCanBackPressFromViewAdapterObj() {
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(canBackPress = true)
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     assertThat(controller.canBackPress()).isTrue()
   }
@@ -93,7 +106,7 @@ class InteractivePreviewNavigationControllerTest {
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(canBackPress = false)
     val localNavigationEventDispatcherObj =
       TestNavigationEventDispatcherObj(canBackPress = true, onBackPressCompletedCallback = { backPress = true })
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(localNavigationEventDispatcherObj, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressCompleted()
     assertThat(backPress).isTrue()
@@ -105,7 +118,7 @@ class InteractivePreviewNavigationControllerTest {
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(canBackPress = false)
     val localNavigationEventDispatcherObj =
       TestNavigationEventDispatcherObj(canBackPress = true, onBackPressStartedCallback = { startedEdge = it })
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(localNavigationEventDispatcherObj, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressStart(BackNavigationEdge.EDGE_LEFT)
     assertThat(controller.canBackPress()).isTrue()
@@ -118,7 +131,7 @@ class InteractivePreviewNavigationControllerTest {
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(canBackPress = false)
     val localNavigationEventDispatcherObj =
       TestNavigationEventDispatcherObj(canBackPress = true, onBackPressCancelledCallback = { cancelled = true })
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(localNavigationEventDispatcherObj, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressCancelled()
     assertThat(cancelled).isTrue()
@@ -128,7 +141,7 @@ class InteractivePreviewNavigationControllerTest {
   fun testCanBackPressFromLocalNavigationDispatcher() {
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(canBackPress = false)
     val localNavigationEventDispatcherObj = TestNavigationEventDispatcherObj(canBackPress = true)
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(localNavigationEventDispatcherObj, composeViewAdapterObjFake, hasNavDisplay = false)
     assertThat(controller.canBackPress()).isTrue()
   }
@@ -147,7 +160,7 @@ class InteractivePreviewNavigationControllerTest {
           progressEdge = edge
         },
       )
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(localNavigationEventDispatcherObj, composeViewAdapterObjFake, hasNavDisplay = false)
     controller.backPressProgress(0.5f, BackNavigationEdge.EDGE_RIGHT)
     assertThat(controller.canBackPress()).isTrue()
@@ -157,7 +170,7 @@ class InteractivePreviewNavigationControllerTest {
 
   @Test
   fun testCanPerformBackNavigation() {
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressCompletedCallback = {})
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     assertThat(controller.canPerformBackNavigation()).isTrue()
@@ -165,7 +178,7 @@ class InteractivePreviewNavigationControllerTest {
 
   @Test
   fun testCanShowNavigationPanel_hasNavDisplayTrue() {
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressProgressCallback = { _, _ -> })
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = true)
     assertThat(controller.canShowNavigationPanel()).isTrue()
@@ -173,7 +186,7 @@ class InteractivePreviewNavigationControllerTest {
 
   @Test
   fun testCanShowNavigationPanel_hasNavDisplayFalse() {
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressProgressCallback = { _, _ -> })
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
     assertThat(controller.canShowNavigationPanel()).isFalse()
@@ -183,7 +196,7 @@ class InteractivePreviewNavigationControllerTest {
   fun testBackToStateFromViewAdapterObj() {
     val composeViewAdapterObjFake =
       TestComposeViewAdapterViewObj(backStack = listOf("Preview Three", "Preview Two", "Preview One", "Preview Zero"))
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
 
     // Verify navigating back to an existing state succeeds and pops the back stack down to and including that state.
@@ -202,12 +215,7 @@ class InteractivePreviewNavigationControllerTest {
   @Test
   fun testShowAndHideNavigationControls() {
     var panelUpdated = false
-    val controller =
-      InteractivePreviewNavigationController(
-        onAfterPanelUpdate = { panelUpdated = true },
-        usageTrackerProvider = { InteractiveNopTracker() },
-        fpsUpdater = MutableSharedFlow(),
-      )
+    val controller = createController(onAfterPanelUpdate = { panelUpdated = true })
     val instance =
       SingleComposePreviewElementInstance(
         "composableMethodName",
@@ -251,7 +259,7 @@ class InteractivePreviewNavigationControllerTest {
   @Test
   fun testGetNavigationHistoryFromDispatcherOwner() {
     val localNavigationEventDispatcherObj = TestNavigationEventDispatcherObj(canBackPress = true, history = listOf("Screen1", "Screen2"))
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(localNavigationEventDispatcherObj, TestComposeViewAdapterViewObj(), hasNavDisplay = false)
     assertThat(controller.getNavigationHistory()).containsExactly("Screen1", "Screen2").inOrder()
   }
@@ -259,8 +267,58 @@ class InteractivePreviewNavigationControllerTest {
   @Test
   fun testGetNavigationHistoryFromComposeViewAdapterObj() {
     val composeViewAdapterObj = TestComposeViewAdapterViewObj(history = listOf("ScreenA", "ScreenB"))
-    val controller = InteractivePreviewNavigationController({ InteractiveNopTracker() }, fpsUpdater = MutableSharedFlow())
+    val controller = createController()
     controller.updateObjects(null, composeViewAdapterObj, hasNavDisplay = false)
     assertThat(controller.getNavigationHistory()).containsExactly("ScreenA", "ScreenB").inOrder()
+  }
+
+  @Test
+  fun testActionsDispatchedViaExecuteInRenderSessionAsync() {
+    var renderSessionActionCount = 0
+    val controller =
+      createController(
+        executeInRenderSessionAsync = { runnable ->
+          renderSessionActionCount++
+          runnable.run()
+        }
+      )
+    val composeViewAdapterObj = TestComposeViewAdapterViewObj(canBackPress = true, history = listOf("State1", "State0"))
+    controller.updateObjects(null, composeViewAdapterObj, hasNavDisplay = false)
+    assertThat(controller.canBackPress()).isTrue()
+    assertThat(controller.getNavigationHistory()).containsExactly("State1", "State0").inOrder()
+
+    controller.backPressStart(BackNavigationEdge.EDGE_LEFT)
+    assertThat(renderSessionActionCount).isEqualTo(1)
+
+    controller.backPressCompleted()
+    assertThat(renderSessionActionCount).isEqualTo(2)
+
+    controller.backPressCancelled()
+    assertThat(renderSessionActionCount).isEqualTo(3)
+  }
+
+  @Test
+  fun testUntrustedNavigationEventDispatcherOwnerIsRejected() {
+    // Malicious attacker-supplied class from an untrusted origin
+    class EvilOwner {
+      var cancelledCalled = false
+
+      fun onBackPressCancelled() {
+        cancelledCalled = true
+      }
+    }
+
+    val evilOwner = EvilOwner()
+    val controller =
+      InteractivePreviewNavigationController(
+        usageTrackerProvider = { InteractiveNopTracker() },
+        fpsUpdater = MutableSharedFlow(),
+      )
+    val composeViewAdapterObjFake = TestComposeViewAdapterViewObj()
+    controller.updateObjects(evilOwner, composeViewAdapterObjFake, hasNavDisplay = false)
+
+    // EvilOwner is rejected because it is untrusted, falling back to composeViewAdapterObjFake
+    controller.backPressCancelled()
+    assertThat(evilOwner.cancelledCalled).isFalse()
   }
 }

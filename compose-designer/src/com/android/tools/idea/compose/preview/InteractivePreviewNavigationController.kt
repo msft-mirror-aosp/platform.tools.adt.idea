@@ -22,6 +22,7 @@ import com.android.tools.idea.compose.preview.interactive.NavigationControlsCont
 import com.android.tools.idea.compose.preview.util.isEdgeNavigationImplemented
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.preview.ComposePreviewElementInstance
+import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.intellij.openapi.actionSystem.DataKey
 import java.lang.reflect.Method
 import javax.swing.JComponent
@@ -29,6 +30,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import org.jetbrains.annotations.TestOnly
 
 /** Enum representing the edge from which a back navigation gesture can be initiated. */
 enum class BackNavigationEdge(val visibleName: String) {
@@ -46,11 +48,13 @@ enum class BackNavigationEdge(val visibleName: String) {
  * Controller for showing and hiding the navigation panel when [Interactive] mode is enabled.
  *
  * @param onAfterPanelUpdate A callback invoked immediately after the controller's visibility state changes (i.e., after a show/hide call).
+ * @param executeInRenderSessionAsync A function to dispatch reflection invocations to a sandboxed render session.
  */
 class InteractivePreviewNavigationController(
   private val usageTrackerProvider: () -> InteractivePreviewUsageTracker,
   private val onAfterPanelUpdate: () -> Unit = {},
   fpsUpdater: SharedFlow<Unit>,
+  var executeInRenderSessionAsync: (Runnable) -> Unit = { it.run() },
 ) {
 
   private val _backPressCompletedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -72,6 +76,16 @@ class InteractivePreviewNavigationController(
   /** The currently active [JComponent] for back navigation controls, or null if controls are hidden. */
   private var activeBackNavigationPanelInInteractiveMode: JComponent? = null
   private var backPressDispatcherOwner: Any? = null
+
+  /** A lambda to validate that the navigation event dispatcher owner object is trusted. */
+  private var isTrustedNavigationEventDispatcherOwner: (Any) -> Boolean = {
+    val isTrusted =
+      it.javaClass.name == EXPECTED_NAVIGATION_EVENT_DISPATCHER_OWNER_CLASS_NAME && it.javaClass.classLoader is DelegatingClassLoader
+    if (!isTrusted) {
+      logger.warn("Untrusted navigation event dispatcher owner provided: $it")
+    }
+    isTrusted
+  }
 
   private var canBackPressMethod: Method? = null
   private var onBackPressStartedMethod: Method? = null
@@ -114,10 +128,9 @@ class InteractivePreviewNavigationController(
 
   /** Loads the dispatcher owner field used to perform back navigation when using androidx.navigation3. */
   private fun getBackPressDispatcherOwner(navigationEventDispatcherOwnerObj: Any?, composeViewAdapterObj: Any?): Any? {
-    // When [navigationEventDispatcherOwnerObj] is null it means we haven't loaded any object from
-    // [FakeNavigationEventDispatcherOwnerLoader].
-    // This means that we should find a FakeOnBackPressedDispatcherOwner within the ComposeViewAdapter object.
-    return navigationEventDispatcherOwnerObj
+    val trustedNavigationEventDispatcherOwner = navigationEventDispatcherOwnerObj?.takeIf { isTrustedNavigationEventDispatcherOwner(it) }
+
+    return trustedNavigationEventDispatcherOwner
       ?: composeViewAdapterObj?.let { obj ->
         obj::class
           .java
@@ -160,7 +173,9 @@ class InteractivePreviewNavigationController(
     isBackGestureInProgress = true
     val resolvedMethod =
       onBackPressStartedMethod ?: backPressDispatcherOwner.findMethod(ON_BACK_PRESS_STARTED).also { onBackPressStartedMethod = it }
-    resolvedMethod?.invoke(backPressDispatcherOwner, edge.name)
+    executeSandboxedAction {
+      resolvedMethod?.invoke(backPressDispatcherOwner, edge.name)
+    }
   }
 
   /**
@@ -176,7 +191,9 @@ class InteractivePreviewNavigationController(
     } else {
       val resolvedMethod =
         onBackPressProgressMethod ?: backPressDispatcherOwner.findMethod(ON_BACK_PRESS_PROGRESS).also { onBackPressProgressMethod = it }
-      resolvedMethod?.invoke(backPressDispatcherOwner, progress.coerceIn(0.0f, 1.0f), edge.name)
+      executeSandboxedAction {
+        resolvedMethod?.invoke(backPressDispatcherOwner, progress.coerceIn(0.0f, 1.0f), edge.name)
+      }
     }
   }
 
@@ -189,8 +206,10 @@ class InteractivePreviewNavigationController(
     isBackGestureInProgress = false
     val resolvedMethod =
       onBackPressCompletedMethod ?: backPressDispatcherOwner.findMethod(ON_BACK_PRESS_COMPLETED).also { onBackPressCompletedMethod = it }
-    resolvedMethod?.invoke(backPressDispatcherOwner)
-      ?: logger.debug("Can't perform back press, reflected method invocation should not be null")
+    executeSandboxedAction {
+      resolvedMethod?.invoke(backPressDispatcherOwner)
+        ?: logger.debug("Can't perform back press, reflected method invocation should not be null")
+    }
     _backPressCompletedFlow.tryEmit(Unit)
   }
 
@@ -199,8 +218,10 @@ class InteractivePreviewNavigationController(
     isBackGestureInProgress = false
     val resolvedMethod =
       onBackPressCancelledMethod ?: backPressDispatcherOwner.findMethod(ON_BACK_PRESS_CANCELLED).also { onBackPressCancelledMethod = it }
-    resolvedMethod?.invoke(backPressDispatcherOwner)
-      ?: logger.debug("Can't call back press cancelled, reflected method invocation should not be null")
+    executeSandboxedAction {
+      resolvedMethod?.invoke(backPressDispatcherOwner)
+        ?: logger.debug("Can't call back press cancelled, reflected method invocation should not be null")
+    }
     _backPressCompletedFlow.tryEmit(Unit)
   }
 
@@ -303,6 +324,21 @@ class InteractivePreviewNavigationController(
 
   fun trackEdgeDropdownPress() = usageTrackerProvider().trackNavigationPanelEdgeDropdownPress()
 
+  @TestOnly
+  fun setIsTrustedNavigationEventDispatcherOwnerForTestOnly(isTrusted: (Any) -> Boolean) {
+    isTrustedNavigationEventDispatcherOwner = isTrusted
+  }
+
+  /**
+   * Executes the given [action] in the active render session asynchronously to guarantee execution within a sandboxed context where
+   * [com.android.tools.rendering.security.RenderSecurityManager] or the render sandbox is enforced.
+   *
+   * @param action The block containing the reflection invocation to execute on the render thread.
+   */
+  private fun executeSandboxedAction(action: () -> Unit) {
+    executeInRenderSessionAsync(Runnable { action() })
+  }
+
   companion object {
     private const val CAN_BACK_PRESS = "canBackPress"
     private const val ON_BACK_PRESS_STARTED = "onBackPressStarted"
@@ -311,6 +347,8 @@ class InteractivePreviewNavigationController(
     private const val ON_BACK_PRESS_CANCELLED = "onBackPressCancelled"
     private const val GET_BACK_HISTORY = "getHistory"
     private const val BACK_TO_STATE = "backToState"
+    private const val EXPECTED_NAVIGATION_EVENT_DISPATCHER_OWNER_CLASS_NAME =
+      "androidx.navigationevent.compose.FakeNavigationEventDispatcherOwner"
 
     /**
      * The [DataKey] used to access the [InteractivePreviewNavigationController] from the [com.intellij.openapi.actionSystem.DataContext].

@@ -146,6 +146,7 @@ import com.intellij.util.messages.Topic
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JComponent
@@ -606,6 +607,10 @@ constructor(
       usageTrackerProvider = usageTrackerProvider,
       onAfterPanelUpdate = { updateBottomPanelVisibility() },
       fpsUpdater = interactiveManager.fpsUpdater,
+      executeInRenderSessionAsync = { runnable ->
+        surface.sceneManagers.singleOrNull()?.executeInRenderSessionAsync(runnable, 0, TimeUnit.SECONDS)
+          ?: log.warn("Scene manager is missing, dropping execution")
+      },
     )
   }
 
