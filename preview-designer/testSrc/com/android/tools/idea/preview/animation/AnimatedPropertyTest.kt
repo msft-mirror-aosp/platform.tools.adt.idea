@@ -207,20 +207,63 @@ class AnimatedPropertyTest {
     assertNull(result)
   }
 
+  @Test
+  fun buildReturnsNullWhenOnlyOneOfMaxOrMinValuesFailsDimensionValidation() {
+    val builder = AnimatedProperty.Builder()
+    var returnEmpty = false
+    var maxValuesComplete = false
+
+    val unit =
+      TriggerUnit(1f, 2f) { componentId ->
+        if (componentId == 1 && !maxValuesComplete) {
+          maxValuesComplete = true
+        } else if (maxValuesComplete && componentId == 0) {
+          returnEmpty = true
+        }
+      }
+
+    val customMap =
+      object : LinkedHashMap<Int, AnimationUnit.NumberUnit<*>>() {
+        override val values: MutableCollection<AnimationUnit.NumberUnit<*>>
+          get() {
+            if (returnEmpty) return mutableListOf()
+            return super.values
+          }
+      }
+
+    val unitsField = AnimatedProperty.Builder::class.java.getDeclaredField("units").apply { isAccessible = true }
+    unitsField.set(builder, customMap)
+
+    builder.add(0, unit)
+    val result = builder.build()
+    assertNull(result)
+  }
+
+  class TriggerUnit(
+    value1: Float,
+    value2: Float,
+    private val onComponentAsDouble: (Int) -> Unit,
+  ) : AnimationUnit.BaseUnit<Float>(value1, value2), AnimationUnit.NumberUnit<Float> {
+    override fun componentAsDouble(componentId: Int): Double {
+      onComponentAsDouble(componentId)
+      return super.componentAsDouble(componentId)
+    }
+
+    override fun parseUnit(getValue: (Int) -> String?): AnimationUnit.Unit<*>? = null
+
+    override fun getPickerTitle(): String = "trigger"
+  }
+
   class TestMultiUnitFloat(value1: Float, value2: Float, value3: Float, value4: Float) :
     AnimationUnit.BaseUnit<Float>(value1, value2, value3, value4), AnimationUnit.NumberUnit<Float> {
-    override fun parseUnit(getValue: (Int) -> String?): AnimationUnit.Unit<*>? {
-      return null
-    }
+    override fun parseUnit(getValue: (Int) -> String?): AnimationUnit.Unit<*>? = null
 
     override fun getPickerTitle(): String = "testFloat"
   }
 
   class TestMultiUnitInt(value1: Int, value2: Int, value3: Int, value4: Int) :
     AnimationUnit.BaseUnit<Int>(value1, value2, value3, value4), AnimationUnit.NumberUnit<Int> {
-    override fun parseUnit(getValue: (Int) -> String?): AnimationUnit.Unit<*>? {
-      return null
-    }
+    override fun parseUnit(getValue: (Int) -> String?): AnimationUnit.Unit<*>? = null
 
     override fun getPickerTitle(): String = "testInt"
   }
