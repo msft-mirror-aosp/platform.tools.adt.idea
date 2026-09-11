@@ -261,7 +261,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   /**
    * This method exists only for historical reasons. Tests should use [updateToolbarsIfNecessary] instead. If a test fails after replacing
-   * [updateToolbars] with [updateToolbarsIfNecessary], most likely there a missing `ActivityTracker.getInstance().inc()` call in the
+   * [updateToolbars] with [updateToolbarsIfNecessary], most likely there is a missing `ActivityTracker.getInstance().inc()` call in the
    * production code.
    */
   @Deprecated("Use updateToolbarsIfNecessary", replaceWith = ReplaceWith("updateToolbarsIfNecessary"))
