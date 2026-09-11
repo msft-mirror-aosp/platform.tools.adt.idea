@@ -384,11 +384,17 @@ private fun clearStaticFields(clazz: Class<*>) {
     if (Modifier.isStatic(field.modifiers)) {
       runCatching {
         field.isAccessible = true
-        val value = field[null]
+        val value = field[null] ?: return@runCatching
         if (value is MutableCollection<*>) {
           value.clear()
         } else if (value is MutableMap<*, *>) {
           value.clear()
+        } else if (value.javaClass.name.startsWith("androidx.collection.Mutable")) {
+          val clearMethod = value.javaClass.methods.firstOrNull { it.name == "clear" && it.parameterTypes.isEmpty() }
+          clearMethod?.let {
+            it.isAccessible = true
+            it.invoke(value)
+          }
         }
         if (!Modifier.isFinal(field.modifiers)) {
           field.set(null, null)

@@ -33,6 +33,12 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.commons.SimpleRemapper
 
+class FakeMutableObjectList(val items: MutableList<String> = mutableListOf("composeView1", "composeView2")) {
+  fun clear() {
+    items.clear()
+  }
+}
+
 @Suppress("unused")
 class FakeAndroidComposeView {
   companion object {
@@ -43,6 +49,8 @@ class FakeAndroidComposeView {
     @JvmField val cacheList: MutableList<String> = mutableListOf("item1", "item2")
 
     @JvmField val cacheMap: MutableMap<String, String> = mutableMapOf("key" to "value")
+
+    @JvmField val composeViews: FakeMutableObjectList = FakeMutableObjectList()
   }
 }
 
@@ -103,27 +111,38 @@ class RenderSessionCleanerTest {
   fun testDisposeClearsAndroidComposeViewStaticFields() {
     val fqn = "androidx.compose.ui.platform.AndroidComposeView"
     val companionFqn = "androidx.compose.ui.platform.AndroidComposeView" + '$' + "Companion"
+    val mutableObjectListFqn = "androidx.collection.MutableObjectList"
 
     val definedClasses =
       createTestDefinedClasses(
-        mapOf(fqn to FakeAndroidComposeView::class.java, companionFqn to FakeAndroidComposeView.Companion::class.java)
+        mapOf(
+          fqn to FakeAndroidComposeView::class.java,
+          companionFqn to FakeAndroidComposeView.Companion::class.java,
+          mutableObjectListFqn to FakeMutableObjectList::class.java,
+        )
       )
 
     val moduleClassLoader = TestModuleClassLoader(FakeAndroidComposeView::class.java.classLoader, definedClasses)
 
     val composeViewClass = moduleClassLoader.loadClass(fqn)
     moduleClassLoader.loadClass(companionFqn)
+    moduleClassLoader.loadClass(mutableObjectListFqn)
 
     // Verify initial values before dispose
     val sysPropField = composeViewClass.getDeclaredField("systemPropertiesClass").apply { isAccessible = true }
     val boolMethodField = composeViewClass.getDeclaredField("getBooleanMethod").apply { isAccessible = true }
     val cacheListField = composeViewClass.getDeclaredField("cacheList").apply { isAccessible = true }
     val cacheMapField = composeViewClass.getDeclaredField("cacheMap").apply { isAccessible = true }
+    val composeViewsField = composeViewClass.getDeclaredField("composeViews").apply { isAccessible = true }
 
     assertEquals(String::class.java, sysPropField.get(null))
     assertEquals("dummyMethod", boolMethodField.get(null))
     assertEquals(listOf("item1", "item2"), cacheListField.get(null) as List<*>)
     assertEquals(mapOf("key" to "value"), cacheMapField.get(null) as Map<*, *>)
+    val composeViewsObj = composeViewsField.get(null)!!
+    val itemsField = composeViewsObj.javaClass.getDeclaredField("items").apply { isAccessible = true }
+    val items = itemsField.get(composeViewsObj) as List<*>
+    assertEquals(listOf("composeView1", "composeView2"), items)
 
     // Execute RenderSession.dispose
     val dummySession = object : RenderSession() {}
@@ -134,6 +153,7 @@ class RenderSessionCleanerTest {
     assertNull(boolMethodField.get(null))
     assertTrue((cacheListField.get(null) as List<*>).isEmpty())
     assertTrue((cacheMapField.get(null) as Map<*, *>).isEmpty())
+    assertTrue(items.isEmpty())
   }
 
   @Test
