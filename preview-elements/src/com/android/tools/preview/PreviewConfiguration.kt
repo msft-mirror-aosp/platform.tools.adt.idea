@@ -21,9 +21,11 @@ import com.android.resources.ScreenOrientation
 import com.android.resources.UiMode
 import com.android.sdklib.AndroidDpCoordinate
 import com.android.sdklib.IAndroidTarget
+import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConversionUtil
+import com.android.tools.configurations.UiModeState
 import com.android.tools.configurations.Wallpaper
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.preview.config.DEVICE_BY_SPEC_PREFIX
@@ -191,7 +193,15 @@ private fun PreviewConfiguration.applyTo(
   renderConfiguration.isGestureNav = deviceConfig == null || deviceConfig.navigation == Navigation.gesture
 
   val deviceFromSpec = deviceConfig?.createDeviceInstance() ?: allDevices.findByIdOrName(deviceSpec)
-  val device = deviceFromSpec ?: defaultDeviceProvider(renderConfiguration)
+  val device =
+    (deviceFromSpec ?: defaultDeviceProvider(renderConfiguration))?.let {
+      // If the ui mode is set to WATCH, override device tag ID to wear to ensure proper rendering.
+      if ((uiMode and Configuration.UI_MODE_TYPE_MASK) == UiModeState.UI_MODE_TYPE_WATCH) {
+        Device.Builder(it).apply { setTagId(SystemImageTags.WEAR_TAG.id) }.build()
+      } else {
+        it
+      }
+    }
   if (device != null) {
     // Ensure the device is reset
     renderConfiguration.setEffectiveDevice(null, null)
