@@ -16,6 +16,7 @@
 package com.android.tools.idea.layoutinspector.recompositions
 
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.VirtualFile
 
 /** The key to indicate which composable is currently being inspected for state reads */
 val LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY = Key.create<ComposableDefinition>("ComposableDefinition")
@@ -24,6 +25,6 @@ val LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY = Key.create<ComposableDefinition>
 data class ComposableDefinition(
   // The name of the composable.
   val composable: String,
-  // The name of the file where the composable appears.
-  val fileName: String,
+  // The file where the composable appears.
+  val file: VirtualFile,
 )

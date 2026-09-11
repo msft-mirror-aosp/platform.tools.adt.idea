@@ -22,6 +22,7 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.SearchScopeProvidingRunProfile
 import com.intellij.ide.util.PsiNavigationSupport
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.PsiManager
@@ -33,10 +34,20 @@ import org.jetbrains.kotlin.psi.KtFile
 open class ComposeResolver(val project: Project) {
 
   @Slow
+  fun findComposableFile(node: ComposeViewNode): VirtualFile? {
+    return findKotlinFile(node)?.virtualFile
+  }
+
+  @Slow
   fun findComposableNavigatable(node: ComposeViewNode): Navigatable? {
-    val ktFile = findKotlinFile(node.composeFilename) { packageNameHash(it) == node.composePackageHash } ?: return null
+    val ktFile = findKotlinFile(node) ?: return null
     val vFile = ktFile.virtualFile ?: return null
     return PsiNavigationSupport.getInstance().createNavigatable(project, vFile, node.composeOffset)
+  }
+
+  @Slow
+  fun findKotlinFile(node: ComposeViewNode): KtFile? {
+    return findKotlinFile(node.composeFilename) { packageNameHash(it) == node.composePackageHash }
   }
 
   /**

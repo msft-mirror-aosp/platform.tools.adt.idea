@@ -190,7 +190,8 @@ class RecompositionUiPanelTest {
       val editor = panel.getUserData(STATE_READ_EDITOR_KEY)!!
       assertThat(editor.getUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY)).isNull()
 
-      val data = ComposableDefinition("composable", "MyFile.kt")
+      val file = projectRule.fixture.addFileToProject("MyFile.kt", "").virtualFile
+      val data = ComposableDefinition("composable", file)
       model.content.value = RecompositionContent(composableInspected = data)
       advanceUntilIdle()
       assertThat(editor.getUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY)).isEqualTo(data)

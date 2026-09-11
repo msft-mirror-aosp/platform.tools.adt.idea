@@ -197,9 +197,9 @@ internal class RecompositionUiModelImpl(
   }
 
   private fun showRecompositionDetailsResult(result: RecompositionDetailsData) {
+    val node = result.key.composable
     synchronized(lock) {
       currentKey = result.key
-      val node = result.key.composable
       hasStateReadsForPreviousRecomposition = result.hasDataForPreviousRecomposition
       _show.value = true
       _recompositions.value = model.selection?.recompositions?.count ?: 0
@@ -215,12 +215,20 @@ internal class RecompositionUiModelImpl(
           recompositionText = generateRecompositionText(result.key),
           stateReadsText = generateStateReadsText(result.details.reads.size),
           detailsText = generateDetailsText(result.details),
-          composableInspected = ComposableDefinition(node.qualifiedName, node.composeFilename),
+          composableInspected = null,
           emptyStateText = emptyText,
           updates = _content.value.updates + 1,
         )
     }
     resultShown()
+    scope.launch {
+      val file = model.resourceLookup.findComposableFile(node)
+      synchronized(lock) {
+        if (currentKey == result.key) {
+          _content.value = _content.value.copy(composableInspected = file?.let { ComposableDefinition(node.qualifiedName, it) })
+        }
+      }
+    }
   }
 
   private fun loadRecompositionDetails(composable: ComposeViewNode, recomposition: Int = composable.recompositions.count) {

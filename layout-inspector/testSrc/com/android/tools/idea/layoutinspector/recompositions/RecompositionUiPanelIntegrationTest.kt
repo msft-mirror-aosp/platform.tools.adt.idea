@@ -34,6 +34,7 @@ import com.android.tools.idea.layoutinspector.model.COMPOSE3
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.ROOT
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
+import com.android.tools.idea.layoutinspector.model.packageNameHash
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorRule
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.FakeInspectorStateReads
 import com.android.tools.idea.layoutinspector.window
@@ -94,7 +95,7 @@ class RecompositionUiPanelIntegrationTest {
     assertThat(inspectorRule.inspectorClient.isConnected).isTrue()
     installFakeExtensionPoints(projectRule.testRootDisposable)
     projectRule.fixture.addFileToProject("src/java/androidx/compose/material3/Text.kt", "")
-    projectRule.fixture.addFileToProject("src/java/com/example/recompositiontest/MainActivity.kt", "")
+    projectRule.fixture.addFileToProject("src/java/com/example/recompositiontest/MainActivity.kt", "package com.example.recompositiontest")
   }
 
   @After
@@ -166,7 +167,13 @@ class RecompositionUiPanelIntegrationTest {
     // Expect the next action to become enabled.
     val updatedRecompositionCounts =
       window(ROOT, ROOT, 2, 4, 6, 8, rootViewQualifiedName = "rootType") {
-        compose(COMPOSE1, "Column", composeCount = 104, composeFilename = "MainActivity.kt") {
+        compose(
+          COMPOSE1,
+          "Column",
+          composeCount = 104,
+          composeFilename = "MainActivity.kt",
+          composePackageHash = packageNameHash("com.example.recompositiontest"),
+        ) {
           compose(COMPOSE2, "Button", composeCount = 2) { compose(COMPOSE3, "Text", composeCount = 0) }
         }
       }
@@ -252,7 +259,7 @@ class RecompositionUiPanelIntegrationTest {
     val editor = getUserData(STATE_READ_EDITOR_KEY)
     waitForCondition(10.seconds) {
       val data = editor!!.getUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY)
-      data?.composable == "Column" && data.fileName == "MainActivity.kt"
+      data?.composable == "Column" && data.file.name == "MainActivity.kt"
     }
   }
 
@@ -275,7 +282,13 @@ class RecompositionUiPanelIntegrationTest {
     val model = inspectorRule.inspectorModel
     val window =
       window(ROOT, ROOT, 2, 4, 6, 8, rootViewQualifiedName = "rootType") {
-        compose(COMPOSE1, "Column", composeCount = 4, composeFilename = "MainActivity.kt") {
+        compose(
+          COMPOSE1,
+          "Column",
+          composeCount = 4,
+          composeFilename = "MainActivity.kt",
+          composePackageHash = packageNameHash("com.example.recompositiontest"),
+        ) {
           compose(COMPOSE2, "Button", composeCount = 2) { compose(COMPOSE3, "Text", composeCount = 0) }
         }
       }

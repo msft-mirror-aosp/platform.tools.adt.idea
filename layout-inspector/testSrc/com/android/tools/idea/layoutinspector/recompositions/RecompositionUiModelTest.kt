@@ -26,6 +26,7 @@ import com.android.tools.idea.layoutinspector.model.ROOT
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.VIEW1
 import com.android.tools.idea.layoutinspector.model.ViewNode
+import com.android.tools.idea.layoutinspector.model.packageNameHash
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.RecompositionDetails
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.RecompositionDetailsResult
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.convertRecompositionResponse
@@ -33,6 +34,7 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.dsl.Recompo
 import com.android.tools.idea.layoutinspector.properties.DimensionUnits
 import com.android.tools.idea.layoutinspector.properties.PropertiesSettings
 import com.android.tools.idea.layoutinspector.window
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
@@ -43,10 +45,10 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.DisposableRule
-import com.intellij.testFramework.ProjectRule
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.runInEdtAndWait
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetRecompositionStateReadResponse
@@ -59,10 +61,10 @@ private const val ANCHOR1 = 101
 private const val ANCHOR2 = 102
 
 class RecompositionUiModelTest {
-  private val disposableRule = DisposableRule()
-  private val projectRule = ProjectRule()
-  @get:Rule val chain = RuleChain(TestScopeRule(), projectRule, disposableRule)
+  private val projectRule = AndroidProjectRule.onDisk()
+  @get:Rule val chain = RuleChain(TestScopeRule(), projectRule)
 
+  private lateinit var mainActivityFile: VirtualFile
   private lateinit var inspectorModel: InspectorModel
   private lateinit var view1: ViewNode
   private lateinit var compose1: ComposeViewNode
@@ -105,12 +107,28 @@ class RecompositionUiModelTest {
 
   @Before
   fun before() {
+    val psiFile = projectRule.fixture.addFileToProject("src/com/example/MainActivity.kt", "package com.example")
+    mainActivityFile = psiFile.virtualFile
     inspectorModel =
-      model(disposableRule.disposable, projectRule.project) {
+      model(projectRule.testRootDisposable, projectRule.project) {
         view(ROOT, 2, 4, 6, 8, qualifiedName = "rootType") {
           view(VIEW1, 0, 0, 100, 200) {
-            compose(COMPOSE1, "Item", anchorHash = ANCHOR1, composeCount = 2, composeFilename = "MainActivity.kt")
-            compose(COMPOSE2, "Text", anchorHash = ANCHOR2, composeCount = 3, composeFilename = "MainActivity.kt")
+            compose(
+              COMPOSE1,
+              "Item",
+              anchorHash = ANCHOR1,
+              composeCount = 2,
+              composeFilename = "MainActivity.kt",
+              composePackageHash = packageNameHash("com.example"),
+            )
+            compose(
+              COMPOSE2,
+              "Text",
+              anchorHash = ANCHOR2,
+              composeCount = 3,
+              composeFilename = "MainActivity.kt",
+              composePackageHash = packageNameHash("com.example"),
+            )
           }
         }
       }
@@ -163,8 +181,8 @@ class RecompositionUiModelTest {
     // The result is received from the agent:
     inspectorModel.recompositionModel.recompositionDetails.emit(read2Anchor1.convert(compose1, 2))
     testScheduler.advanceUntilIdle()
+    content = model.content.first { it.composableInspected != null }
     assertThat(model.show.value).isTrue()
-    content = model.content.value
     assertThat(content.updates).isEqualTo(3)
     assertThat(content.recompositionText).isEqualTo("Recomposition 2")
     assertThat(content.emptyStateText).isEmpty()
@@ -180,7 +198,7 @@ class RecompositionUiModelTest {
         """
           .trimIndent()
       )
-    assertThat(content.composableInspected).isEqualTo(ComposableDefinition("Item", "MainActivity.kt"))
+    assertThat(content.composableInspected).isEqualTo(ComposableDefinition("Item", mainActivityFile))
     assertThat(model.prevAction.isEnabled()).isTrue()
     assertThat(model.nextAction.isEnabled()).isFalse()
     assertThat(model.minimizeAction.isEnabled()).isTrue()
@@ -228,7 +246,7 @@ class RecompositionUiModelTest {
     // Selecting an observed composable:
     inspectorModel.setSelection(compose1, SelectionOrigin.INTERNAL)
     testScheduler.advanceUntilIdle()
-    content = model.content.value
+    content = model.content.first { it.composableInspected != null }
 
     // Now the previously shown state reads are shown again:
     assertThat(model.show.value).isTrue()
@@ -247,7 +265,7 @@ class RecompositionUiModelTest {
         """
           .trimIndent()
       )
-    assertThat(content.composableInspected).isEqualTo(ComposableDefinition("Item", "MainActivity.kt"))
+    assertThat(content.composableInspected).isEqualTo(ComposableDefinition("Item", mainActivityFile))
     assertThat(model.prevAction.isEnabled()).isTrue()
     assertThat(model.nextAction.isEnabled()).isFalse()
     assertThat(model.minimizeAction.isEnabled()).isTrue()
@@ -321,8 +339,22 @@ class RecompositionUiModelTest {
     val updatedRecompositionCounts =
       window(ROOT, ROOT, 2, 4, 6, 8, rootViewQualifiedName = "rootType") {
         view(VIEW1, 0, 0, 100, 200) {
-          compose(COMPOSE1, "Item", anchorHash = ANCHOR1, composeCount = 3, composeFilename = "MainActivity.kt")
-          compose(COMPOSE2, "Text", anchorHash = ANCHOR2, composeCount = 3, composeFilename = "MainActivity.kt")
+          compose(
+            COMPOSE1,
+            "Item",
+            anchorHash = ANCHOR1,
+            composeCount = 3,
+            composeFilename = "MainActivity.kt",
+            composePackageHash = packageNameHash("com.example"),
+          )
+          compose(
+            COMPOSE2,
+            "Text",
+            anchorHash = ANCHOR2,
+            composeCount = 3,
+            composeFilename = "MainActivity.kt",
+            composePackageHash = packageNameHash("com.example"),
+          )
         }
       }
     inspectorModel.update(updatedRecompositionCounts, listOf(ROOT), 0)
@@ -408,7 +440,7 @@ class RecompositionUiModelTest {
         RecompositionDetails(emptyList(), emptyList()),
         hasDataForPreviousRecomposition = false,
       )
-    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(false, disposableRule.disposable)
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(false, projectRule.testRootDisposable)
     inspectorModel.recompositionModel.recompositionDetails.emit(emptyResult)
     testScheduler.advanceUntilIdle()
 
@@ -439,7 +471,7 @@ class RecompositionUiModelTest {
     assertThat(results).isEqualTo(2)
 
     // Emulate empty state reads for recomposition 2 again. This time with parameter changes turned on:
-    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(true, disposableRule.disposable)
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(true, projectRule.testRootDisposable)
     inspectorModel.recompositionModel.recompositionDetails.emit(emptyResult)
     testScheduler.advanceUntilIdle()
 
@@ -517,7 +549,7 @@ class RecompositionUiModelTest {
 
     // Create a new model, mimicking a UI reconstruction
     val disposable2 = Disposer.newDisposable()
-    Disposer.register(disposableRule.disposable, disposable2)
+    Disposer.register(projectRule.testRootDisposable, disposable2)
     val model2 = RecompositionUiModelImpl(inspectorModel, this, disposable2) { results++ }
     testScheduler.advanceUntilIdle()
 
@@ -556,7 +588,7 @@ class RecompositionUiModelTest {
 
   private fun runTestWithDisposable(testBody: suspend TestScope.(disposable: Disposable) -> Unit) {
     val disposable = Disposer.newDisposable()
-    Disposer.register(disposableRule.disposable, disposable)
+    Disposer.register(projectRule.testRootDisposable, disposable)
     runTest {
       testBody(disposable)
       Disposer.dispose(disposable)
