@@ -87,6 +87,7 @@ import com.android.tools.idea.preview.modes.CommonPreviewModeManager
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
+import com.android.tools.idea.preview.navigation.AbstractPreviewNavigationHandler
 import com.android.tools.idea.preview.pagination.PreviewPaginationManager
 import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.representation.CommonPreviewStateManager
@@ -317,9 +318,21 @@ fun configureLayoutlibSceneManager(
  *
  * @param psiFile [PsiFile] pointing to the Kotlin source containing the code to preview.
  * @param composePreviewViewProvider [ComposePreviewView] provider.
+ * @param navigationHandler [AbstractPreviewNavigationHandler] to handle navigation from the preview to the code. Overridable for testing
+ *   purposes and defaults to [ComposePreviewNavigationHandler].
  */
-class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider: ComposePreviewViewProvider) :
-  PreviewRepresentation, ComposePreviewManagerEx, UserDataHolderEx by UserDataHolderBase(), AndroidCoroutinesAware, FastPreviewSurface {
+class ComposePreviewRepresentation
+@VisibleForTesting
+constructor(
+  psiFile: PsiFile,
+  composePreviewViewProvider: ComposePreviewViewProvider,
+  @VisibleForTesting val navigationHandler: AbstractPreviewNavigationHandler,
+) : PreviewRepresentation, ComposePreviewManagerEx, UserDataHolderEx by UserDataHolderBase(), AndroidCoroutinesAware, FastPreviewSurface {
+
+  constructor(
+    psiFile: PsiFile,
+    composePreviewViewProvider: ComposePreviewViewProvider,
+  ) : this(psiFile, composePreviewViewProvider, ComposePreviewNavigationHandler())
 
   private val log = Logger.getInstance(ComposePreviewRepresentation::class.java)
   private val isDisposed = AtomicBoolean(false)
@@ -415,9 +428,6 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
    */
   val uiCheckFilterFlow
     @VisibleForTesting get() = composePreviewFlowManager.uiCheckFilterFlow
-
-  @VisibleForTesting
-  val navigationHandler = ComposePreviewNavigationHandler().apply { Disposer.register(this@ComposePreviewRepresentation, this) }
 
   // TODO(b/445947658): remove variable and TestOnly setter method below
   // Preview should never rely on fallback mechanisms in production, so it should not rely on them
@@ -848,6 +858,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
   private var activeResizePanelInFocusMode: ResizePanel? = null
 
   init {
+    Disposer.register(this, navigationHandler)
     launch {
       // Keep track of the last mode that was set to ensure it is correctly disposed
       var lastMode: PreviewMode? = null

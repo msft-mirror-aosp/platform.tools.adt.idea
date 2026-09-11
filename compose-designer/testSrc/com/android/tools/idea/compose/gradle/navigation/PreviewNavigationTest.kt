@@ -32,9 +32,9 @@ import com.android.tools.idea.compose.preview.navigation.findNavigatableComponen
 import com.android.tools.idea.compose.preview.parseViewInfo
 import com.android.tools.idea.compose.preview.util.getRootComponent
 import com.android.tools.idea.compose.renderer.renderPreviewElementForResult
+import com.android.tools.idea.preview.navigation.AbstractPreviewNavigationHandler
 import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.testing.virtualFile
-import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.android.tools.idea.uibuilder.surface.PreviewNavigatableWrapper
 import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.intellij.openapi.application.ReadAction
@@ -59,11 +59,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
-private class TestNavigationHandler(expectedInvocations: Int) : NavigationHandler {
+private class TestNavigationHandler(expectedInvocations: Int) : AbstractPreviewNavigationHandler() {
   /** [CountDownLatch] useful to verify that the suspendable [handleNavigate] methods are invoked as many times as expected. */
   var expectedInvocationsCountDownLatch = CountDownLatch(expectedInvocations)
 
@@ -71,6 +70,17 @@ private class TestNavigationHandler(expectedInvocations: Int) : NavigationHandle
     assertEquals(0, expectedInvocationsCountDownLatch.count)
     expectedInvocationsCountDownLatch = CountDownLatch(newExpectedInvocations)
   }
+
+  override fun findNavigatableComponents(
+    sceneView: SceneView,
+    hitX: Int,
+    hitY: Int,
+    requestFocus: Boolean,
+    fileName: String,
+    shouldFindAllNavigatables: Boolean,
+  ): List<PreviewNavigatableWrapper> = listOf()
+
+  override fun findBoundsOfComponentsInFile(sceneView: SceneView, fileName: String, lineNumber: Int): List<Rectangle> = listOf()
 
   override suspend fun findNavigatablesWithCoordinates(
     sceneView: SceneView,
@@ -100,7 +110,9 @@ private class TestNavigationHandler(expectedInvocations: Int) : NavigationHandle
     return true
   }
 
-  override fun dispose() {}
+  override fun dispose() {
+    super.dispose()
+  }
 }
 
 /** Calculates the line for the [OpenFileDescriptor] from the information contained. */
@@ -278,7 +290,7 @@ class PreviewNavigationTest {
     // Create a preview representation with an associated fakeUi
     val myNavigationHandler = TestNavigationHandler(1)
     val previewView = TestComposePreviewView(fixture.testRootDisposable, project, myNavigationHandler)
-    val composePreviewRepresentation = ComposePreviewRepresentation(psiMainFile) { _, _, _, _, _, _ -> previewView }
+    val composePreviewRepresentation = ComposePreviewRepresentation(psiMainFile, { _, _, _, _, _, _ -> previewView }, myNavigationHandler)
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
     lateinit var fakeUi: FakeUi
     runInEdtAndWait {
@@ -307,7 +319,6 @@ class PreviewNavigationTest {
     assertEquals(0, sceneViewPanel.sceneView.surface.selectionModel.selection.size)
   }
 
-  @Ignore("b/279732135")
   @Test
   fun testPreviewNavigation_imageInteraction() {
     val mainFile = project.guessProjectDir()!!.findFileByRelativePath(SimpleComposeAppPaths.APP_MAIN_ACTIVITY.path)!!
@@ -316,7 +327,7 @@ class PreviewNavigationTest {
     // Create a preview representation with an associated fakeUi
     val myNavigationHandler = TestNavigationHandler(1)
     val previewView = TestComposePreviewView(fixture.testRootDisposable, project, myNavigationHandler)
-    val composePreviewRepresentation = ComposePreviewRepresentation(psiMainFile) { _, _, _, _, _, _ -> previewView }
+    val composePreviewRepresentation = ComposePreviewRepresentation(psiMainFile, { _, _, _, _, _, _ -> previewView }, myNavigationHandler)
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
 
     lateinit var fakeUi: FakeUi
