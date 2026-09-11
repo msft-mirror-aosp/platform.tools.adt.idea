@@ -104,6 +104,7 @@ import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper.AUTO_JAVA_HOME
+import org.jetbrains.plugins.gradle.service.task.GradleTaskExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
 
 internal class GradleTasksExecutorImpl : GradleTasksExecutor {
@@ -242,12 +243,14 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
               }
             }
           }
+        val context = GradleTaskExecutionContextImpl(gradleRootProjectPath, id, listener)
         var buildEnvironment: BuildEnvironment? = null
         val invocationResult =
           try {
-            val context =
-              GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
-            buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context).also { context.buildEnvironment = it }
+            val executionContext = GradleExecutionContextImpl(context.projectPath, context.taskId, executionSettings, context.listener, cancellationTokenSource.token())
+              .also { context.executionContext = it }
+            buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, executionContext)
+              .also { executionContext.buildEnvironment = it }
             val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
             val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
             if (
@@ -301,7 +304,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
                 .notifyConnectionAboutChangedPaths(connection)
             }
             val operation = connection.newBuild()
-            val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
+            val gradleVersion = executionContext.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
             // Mirrors GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which
             // enables built-in (Tooling API) test events for Gradle 7.6+. That method is only called
             // from GradleTaskManager.executeTasks, which Studio bypasses by routing tasks through
@@ -317,8 +320,8 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             ) {
               executionSettings.isBuiltInTestEventsUsed = true
             }
-            GradleTaskManager.configureTasks(myRequest.rootProjectPath.path, myRequest.taskId, executionSettings, gradleVersion)
-            GradleExecutionHelper.prepareForExecution(operation, context)
+            GradleTaskManager.configureTasks(executionSettings, context)
+            GradleExecutionHelper.prepareForExecution(operation, executionContext)
             if (enableBuildAttribution) {
               buildAttributionManager = project.getService(BuildAttributionManager::class.java)
               setUpBuildAttributionManager(
