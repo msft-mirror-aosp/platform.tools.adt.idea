@@ -165,7 +165,7 @@ class GlassesPairingWizardTest {
       pairingFlow.value = PairingState.Launching("Pixel 9", Booting, "Audio glasses", Booting)
 
       composeTestRule.onNodeWithText("Starting Pixel 9 and Audio glasses...").assertIsDisplayed()
-      composeTestRule.onNodeWithText("Waiting for Audio glasses to boot").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Booting Audio glasses system image...").assertIsDisplayed()
 
       pairingFlow.value = PairingState.Pairing("Initiating pairing with Pixel 9 and Audio glasses...")
       composeTestRule.waitForIdle()
@@ -175,10 +175,12 @@ class GlassesPairingWizardTest {
       pairingFlow.value = PairingState.AwaitingAuthorization("Pixel 9")
       composeTestRule.waitForIdle()
       composeTestRule.onNodeWithText("Accept Companion app Permissions on Pixel 9").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Grant Companion app permissions on Google Pixel 9 to continue...").assertIsDisplayed()
 
       pairingFlow.value = PairingState.GlassesCoreConnecting("Pixel 9")
       composeTestRule.waitForIdle()
       composeTestRule.onNodeWithText("Accept XR Services Permissions on Pixel 9").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Allow XR Services permissions on Google Pixel 9 to complete pairing").assertIsDisplayed()
 
       pairingFlow.value = PairingState.GlassesCoreConnected("Pixel 9")
       composeTestRule.waitForIdle()

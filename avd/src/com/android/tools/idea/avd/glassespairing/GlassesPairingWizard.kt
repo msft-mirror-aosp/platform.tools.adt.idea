@@ -650,7 +650,7 @@ private fun PairingState(pairingState: PairingState, phone: DeviceRow) {
             Row(Modifier.padding(40.dp)) {
               CircularProgressIndicator()
               Spacer(Modifier.size(5.dp))
-              Text(pairingState.detailText ?: "Waiting for user to accept Companion app permissions on ${phone.name}...")
+              Text(pairingState.detailText ?: "Grant Companion app permissions on ${phone.name} to continue...")
             }
           }
 
@@ -673,7 +673,7 @@ private fun PairingState(pairingState: PairingState, phone: DeviceRow) {
             Row(Modifier.padding(40.dp)) {
               CircularProgressIndicator()
               Spacer(Modifier.size(5.dp))
-              Text(pairingState.detailText ?: "Waiting for user to accept XR Services permissions on ${phone.name}...")
+              Text(pairingState.detailText ?: "Allow XR Services permissions on ${phone.name} to complete pairing")
             }
           }
 
@@ -754,7 +754,7 @@ internal sealed class PairingState {
       when (deviceState) {
         LaunchState.Waiting -> "Preparing to launch $deviceName"
         LaunchState.Launching -> "Starting $deviceName"
-        LaunchState.Booting -> "Waiting for $deviceName to boot"
+        LaunchState.Booting -> "Booting $deviceName system image..."
         LaunchState.Ready -> "$deviceName is ready"
       }
   }
