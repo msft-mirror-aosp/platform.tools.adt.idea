@@ -358,7 +358,7 @@ abstract class AnimationPreview<T : AnimationManager>(
         // There are no more tabs. Replace the TabbedPane with the placeholder panel.
         showNoAnimationsPanel()
       } else if (tabbedPane.tabCount != 0) {
-        tabbedPane.select(tabbedPane.getTabAt(0), true)
+        tabbedPane.select(tabbedPane.getTabAt(0), false)
       }
     }
     updateMaxDuration()

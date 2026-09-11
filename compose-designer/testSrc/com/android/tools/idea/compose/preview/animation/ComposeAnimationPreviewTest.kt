@@ -163,6 +163,23 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
   }
 
   @Test
+  fun removingAnimationDoesNotRequestFocusOnCoordinationTab() = runTest {
+    val animation1 = createComposeAnimation("1")
+    val animation2 = createComposeAnimation("2")
+    animationPreview.addAnimation(animation1).join()
+    animationPreview.addAnimation(animation2).join()
+
+    var requestedFocusOnSelect: Boolean? = null
+    animationPreview.tabbedPane.setSelectionChangeHandler { _, requestFocus, doChangeSelection ->
+      requestedFocusOnSelect = requestFocus
+      doChangeSelection.run()
+    }
+
+    animationPreview.removeAnimation(animation1).join()
+    assertEquals(false, requestedFocusOnSelect)
+  }
+
+  @Test
   fun comboBoxesDisplayComposeAnimationStates() = runTest {
     val animationStates = setOf(AnimationState.State1, AnimationState.State2, AnimationState.State3)
     val transitionAnimation = createTransitionAnimation(animationStates)
