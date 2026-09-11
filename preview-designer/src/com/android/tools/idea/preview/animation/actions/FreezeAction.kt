@@ -36,10 +36,8 @@ class FreezeAction(
     frozenState.value = FrozenState(frozen, getCurrentTime())
     if (frozen) {
       tracker.lockAnimation()
-      e.presentation.text = message("animation.inspector.action.unfreeze")
     } else {
       tracker.unlockAnimation()
-      e.presentation.text = message("animation.inspector.action.freeze")
     }
   }
 
@@ -50,7 +48,8 @@ class FreezeAction(
   override fun update(e: AnActionEvent) {
     super.update(e)
     e.presentation.isEnabled = true
-    e.presentation.text = message("animation.inspector.action.freeze")
+    e.presentation.text =
+      if (isSelected(e)) message("animation.inspector.action.unfreeze") else message("animation.inspector.action.freeze")
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread {
