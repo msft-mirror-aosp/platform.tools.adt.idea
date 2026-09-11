@@ -203,33 +203,6 @@ class AdbDeviceCapabilities(coroutineScope: CoroutineScope, private val deviceNa
     }
   }
 
-  suspend fun supportsMkTempCommand() = supportsMkTempCommand.await()
-
-  private val supportsMkTempCommand =
-    coroutineScope.async(start = CoroutineStart.LAZY) {
-      assertNotDispatchThread()
-      // Copy source file to destination file
-      val command = AdbShellCommandBuilder().withText("mktemp -p ").withEscapedPath(AdbPathUtil.DEVICE_TEMP_DIRECTORY).build()
-      val commandResult = shellCommandsUtil.executeCommand(command)
-      try {
-        commandResult.throwIfError()
-        if (commandResult.isEmpty()) {
-          throw AdbShellCommandException("Unexpected output from mktemp, assuming not supported")
-        }
-
-        // If "mktemp" succeeded, we need to delete the destination file
-        val remotePath = commandResult.output[0]
-        ScopedRemoteFile(remotePath).use { tempFile -> tempFile.deleteOnClose = true }
-        true
-      } catch (e: AdbShellCommandException) {
-        logger.debug(
-          """Device "$deviceName" does not seem to support the "cp" command: ${
-              commandResult.outputSummary()}"""
-        )
-        false
-      }
-    }
-
   /**
    * An [AutoCloseable] wrapper around a temporary file on a remote device.f The [close] method attempts to delete the file from the remote
    * device unless [deleteOnClose] is set to false.
