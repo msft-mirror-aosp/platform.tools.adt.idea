@@ -22,6 +22,7 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.res.AppLanguageInfo
 import com.android.tools.idea.res.AppLanguageService
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.device.DeviceClient
 import com.android.tools.idea.streaming.device.DeviceView
 import com.android.tools.idea.streaming.device.FakeScreenSharingAgent
@@ -298,7 +299,8 @@ class DeviceUiSettingsControllerTest {
   private fun createDeviceView(device: FakeDevice): DeviceView {
     val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
-    val view = DeviceView(deviceClient, deviceClient, project, PRIMARY_DISPLAY_ID, device.displaySize, UNKNOWN_ORIENTATION)
+    val view =
+      DeviceView(deviceClient, deviceClient, project, PRIMARY_DISPLAY_ID, DisplayType.INTERNAL, device.displaySize, UNKNOWN_ORIENTATION)
     view.size = Dimension(600, 800)
     waitForFrame(view)
     return view

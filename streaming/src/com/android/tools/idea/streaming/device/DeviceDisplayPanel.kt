@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.device
 import com.android.annotations.concurrency.UiThread
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.streaming.core.AbstractDisplayPanel
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.device.DeviceView.ConnectionState
 import com.android.tools.idea.streaming.device.DeviceView.ConnectionStateListener
 import com.intellij.openapi.Disposable
@@ -30,6 +31,7 @@ internal class DeviceDisplayPanel(
   disposableParent: Disposable,
   deviceClient: DeviceClient,
   displayId: Int,
+  displayType: DisplayType,
   displaySize: Dimension,
   initialDisplayOrientation: Int,
   project: Project,
@@ -40,7 +42,7 @@ internal class DeviceDisplayPanel(
     get() = displayView.deviceClient.deviceConfig.deviceType
 
   init {
-    displayView = DeviceView(this, deviceClient, project, displayId, displaySize, initialDisplayOrientation)
+    displayView = DeviceView(this, deviceClient, project, displayId, displayType, displaySize, initialDisplayOrientation)
 
     loadingPanel.setLoadingText("Connecting to the device")
     loadingPanel.startLoading() // The stopLoading method is called by DeviceView after a connection to the device is established.

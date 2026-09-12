@@ -26,6 +26,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.asdriver.tests.AndroidSystem
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.ANDROID_SCROLL_ADJUSTMENT_FACTOR
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.testlib.Adb
 import com.android.tools.testlib.Emulator
@@ -448,7 +449,7 @@ class ScreenSharingAgentTest {
           "x86_64",
         )
       Disposer.register(testRootDisposable, deviceClient)
-      deviceView = DeviceView(testRootDisposable, deviceClient, project, PRIMARY_DISPLAY_ID, Dimension(), 0)
+      deviceView = DeviceView(testRootDisposable, deviceClient, project, PRIMARY_DISPLAY_ID, DisplayType.INTERNAL, Dimension(), 0)
 
       fakeUi = FakeUi(deviceView.wrapInScrollPane(200, 300))
       fakeUi.render()

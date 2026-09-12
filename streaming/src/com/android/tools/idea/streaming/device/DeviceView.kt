@@ -26,6 +26,7 @@ import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.BUTTON_MASK
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.buttonToMask
@@ -137,6 +138,7 @@ import org.jetbrains.annotations.VisibleForTesting
  * @param deviceClient the client for communicating with the device agent
  * @param project the project associated with the view
  * @param displayId the ID of the device display
+ * @param displayType the type of the device display
  * @param displaySize the size of the device display
  * @param initialDisplayOrientation initial orientation of the device display in quadrants counterclockwise
  */
@@ -145,6 +147,7 @@ internal class DeviceView(
   val deviceClient: DeviceClient,
   override val project: Project,
   displayId: Int,
+  val displayType: DisplayType,
   displaySize: Dimension,
   private val initialDisplayOrientation: Int,
 ) : AbstractDisplayView(project, displayId, "StreamingContextMenuPhysicalDevice"), DeviceMirroringSettingsListener {
@@ -308,13 +311,15 @@ internal class DeviceView(
     )
 
     // Forward mouse & keyboard events.
-    val mouseListener = MyMouseListener()
-    addMouseListener(mouseListener)
-    addMouseMotionListener(mouseListener)
-    addMouseWheelListener(mouseListener)
+    if (displayType != DisplayType.GLASSES_PROJECTION) {
+      val mouseListener = MyMouseListener()
+      addMouseListener(mouseListener)
+      addMouseMotionListener(mouseListener)
+      addMouseWheelListener(mouseListener)
 
-    addKeyListener(MyKeyListener())
-    enableInputMethods(true)
+      addKeyListener(MyKeyListener())
+      enableInputMethods(true)
+    }
 
     project.messageBus.connect(this).subscribe(DeviceMirroringSettingsListener.TOPIC, this)
   }

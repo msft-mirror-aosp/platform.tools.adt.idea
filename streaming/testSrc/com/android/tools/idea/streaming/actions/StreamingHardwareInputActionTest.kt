@@ -23,6 +23,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findAllDescendants
 import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.extractText
 import com.android.tools.idea.streaming.device.DeviceClient
@@ -224,7 +225,16 @@ class StreamingHardwareInputActionTest {
     val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
     val panel =
-      DeviceDisplayPanel(testRootDisposable, deviceClient, PRIMARY_DISPLAY_ID, device.displaySize, UNKNOWN_ORIENTATION, project, false)
+      DeviceDisplayPanel(
+        testRootDisposable,
+        deviceClient,
+        PRIMARY_DISPLAY_ID,
+        DisplayType.INTERNAL,
+        displaySize = device.displaySize,
+        initialDisplayOrientation = UNKNOWN_ORIENTATION,
+        project = project,
+        zoomToolbarVisible = false,
+      )
     return panel.displayView
   }
 

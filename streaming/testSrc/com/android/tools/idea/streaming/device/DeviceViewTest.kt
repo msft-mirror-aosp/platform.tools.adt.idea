@@ -1254,7 +1254,7 @@ internal class DeviceViewTest {
     val displayId = 48
     val displaySize = Dimension(450, 450)
     agent.addDisplay(displayId, displaySize, DisplayType.GLASSES_PROJECTION)
-    createDeviceView(200, 300, displayId, displaySize, retinaMode = true)
+    createDeviceView(200, 300, displayId, displaySize, displayType = DisplayType.GLASSES_PROJECTION, retinaMode = true)
     assertThat(getNextControlMessageAndWaitForFrame(displayId)).isEqualTo(StartVideoStreamMessage(displayId, Dimension(400, 600)))
     assertThat(getNextControlMessageAndWaitForFrame(displayId)).isEqualTo(SetMaxVideoResolutionMessage(displayId, Dimension(400, 450)))
     assertAppearance("DisplayGlasses1")
@@ -1305,12 +1305,13 @@ internal class DeviceViewTest {
     height: Int,
     displayId: Int = PRIMARY_DISPLAY_ID,
     displaySize: Dimension = device.displaySize,
+    displayType: DisplayType = DisplayType.INTERNAL,
     retinaMode: Boolean = false,
   ) {
     if (retinaMode) {
       hiDpiRule.setRetinaMode()
     }
-    createDeviceViewWithoutWaitingForAgent(width, height, displayId, displaySize)
+    createDeviceViewWithoutWaitingForAgent(width, height, displayId, displaySize, displayType)
     waitForCondition(15, SECONDS) { agent.isRunning }
   }
 
@@ -1319,6 +1320,7 @@ internal class DeviceViewTest {
     height: Int,
     displayId: Int = PRIMARY_DISPLAY_ID,
     displaySize: Dimension = device.displaySize,
+    displayType: DisplayType = DisplayType.INTERNAL,
   ) {
     val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
@@ -1328,7 +1330,17 @@ internal class DeviceViewTest {
     if (displayId != PRIMARY_DISPLAY_ID) {
       deviceClient.establishAgentConnectionWithoutVideoStreamAsync(project)
     }
-    val displayPanel = DeviceDisplayPanel(disposable, deviceClient, displayId, displaySize, UNKNOWN_ORIENTATION, project, false)
+    val displayPanel =
+      DeviceDisplayPanel(
+        disposable,
+        deviceClient,
+        displayId,
+        displayType,
+        displaySize = displaySize,
+        initialDisplayOrientation = UNKNOWN_ORIENTATION,
+        project = project,
+        zoomToolbarVisible = false,
+      )
     displayPanel.size = Dimension(width, height)
     view = displayPanel.displayView
     fakeUi = FakeUi(displayPanel, createFakeWindow = true, parentDisposable = testRootDisposable)
