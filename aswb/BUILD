@@ -86,6 +86,7 @@ studio_plugin(
         "@maven//:com.google.auto.value.auto-value-annotations",
         "//prebuilts/tools/common/m2:jspecify-0.2.0",
         "@maven//:com.google.errorprone.error_prone_annotations",
+        "//tools/adt/idea/aswb/plugin_api:nio_fs_neverlink_wrapper",
     ],
     modules = {
         "aswb_core.jar": [

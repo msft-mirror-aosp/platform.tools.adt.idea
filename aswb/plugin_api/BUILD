@@ -5,6 +5,7 @@ java_library(
     name = "plugin_api",
     visibility = ["//visibility:public"],
     exports = [
+        ":nio_fs_neverlink_wrapper",
         "//prebuilts/tools/common/m2:jsr305-2.0.1",
         "//tools/adt/idea/.idea/libraries:libbinary-resources",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
@@ -92,9 +93,17 @@ java_library(
     ],
 )
 
+java_library(
+    name = "nio_fs_neverlink_wrapper",
+    neverlink = 1,
+    visibility = ["//tools/adt/idea/aswb:__pkg__"],
+    exports = ["@intellij//:nio-fs"],
+)
+
 aswb_module(
     name = "plugin_api_module",
     lib_deps = [
+        ":nio_fs_neverlink_wrapper",
         "//prebuilts/tools/common/m2:jspecify-0.2.0",
         "//prebuilts/tools/common/m2:jsr305-2.0.1",
         "//tools/adt/idea/.idea/libraries:libbinary-resources",

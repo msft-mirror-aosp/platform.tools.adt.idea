@@ -15,6 +15,7 @@
  */
 package com.google.idea.switcher
 
+import com.intellij.platform.core.nio.fs.RoutingAwareFileSystemProvider
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -272,14 +273,23 @@ class VirtualSymlinkPath(private val fileSystem: VirtualSymlinkFileSystem, val v
   }
 }
 
-class VirtualSymlinkFileSystemProvider(private val fileSystem: VirtualSymlinkFileSystem) : FileSystemProvider() {
+class VirtualSymlinkFileSystemProvider(private val fileSystem: VirtualSymlinkFileSystem) :
+  FileSystemProvider(), RoutingAwareFileSystemProvider {
 
   private val delegate: FileSystemProvider
     get() = fileSystem.delegate.provider()
 
+  override fun canHandleRouting(path: Path): Boolean {
+    val pathProvider = path.fileSystem.provider()
+    val currentDelegate = delegate
+    return pathProvider == this ||
+      pathProvider == currentDelegate ||
+      (currentDelegate is RoutingAwareFileSystemProvider && currentDelegate.canHandleRouting(path))
+  }
+
   internal fun unwrapPhysical(path: Path): Path {
-    val path = path as VirtualSymlinkPath
-    val strPath = path.toString()
+    val virtualPath = (path as? VirtualSymlinkPath)?.virtualPath ?: path
+    val strPath = virtualPath.toString()
     return when {
       strPath == fileSystem.basePath -> fileSystem.source
       strPath.startsWith(fileSystem.basePathSlash) -> {
@@ -293,7 +303,7 @@ class VirtualSymlinkFileSystemProvider(private val fileSystem: VirtualSymlinkFil
           else -> fileSystem.delegate.getPath(fileSystem.dest.toString(), rest)
         }
       }
-      else -> path.virtualPath
+      else -> virtualPath
     }
   }
 
@@ -483,7 +493,8 @@ class VirtualSymlinkFileStore(
 
   override fun <V : FileStoreAttributeView> getFileStoreAttributeView(type: Class<V>): V? = runCatching {
     physicalStoreSupplier()?.getFileStoreAttributeView(type)
-  }.getOrNull()
+  }
+    .getOrNull()
 
   override fun getAttribute(attribute: String): Any? = physicalStoreSupplier()?.getAttribute(attribute)
 
