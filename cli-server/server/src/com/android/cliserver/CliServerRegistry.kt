@@ -87,7 +87,7 @@ class CliServerRegistry(androidHome: Path, @TestOnly private val processService:
         }
 
         val processStartInstant = process?.info()?.startInstant()?.getOrNull()?.epochSecond
-        val fileStartInstant = file.readLines().getOrNull(2)?.toLongOrNull()
+        val fileStartInstant = file.readLines().getOrNull(0)?.split(' ')?.getOrNull(2)?.toLongOrNull()
         val diff = if (processStartInstant != null && fileStartInstant != null) abs(processStartInstant - fileStartInstant) else null
 
         if (process?.isAlive != true || (diff != null && diff > 5) || ((fileStartInstant == null) xor (processStartInstant == null))) {
