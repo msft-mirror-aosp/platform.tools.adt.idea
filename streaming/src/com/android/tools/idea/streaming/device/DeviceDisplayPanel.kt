@@ -44,6 +44,10 @@ internal class DeviceDisplayPanel(
   init {
     displayView = DeviceView(this, deviceClient, project, displayId, displayType, displaySize, initialDisplayOrientation)
 
+    if (displayType == DisplayType.GLASSES_PROJECTION) {
+      addToTop(DeviceGlassesInputPanel(deviceClient, displayId, displaySize))
+    }
+
     loadingPanel.setLoadingText("Connecting to the device")
     loadingPanel.startLoading() // The stopLoading method is called by DeviceView after a connection to the device is established.
 

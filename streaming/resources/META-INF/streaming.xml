@@ -122,13 +122,13 @@
         <keyboard-shortcut first-keystroke="meta shift L" keymap="Mac OS X"/>
         <keyboard-shortcut first-keystroke="meta shift L" keymap="Mac OS X 10.5+"/>
       </action>
-      <action id="android.emulator.glasses.display.button" class="com.android.tools.idea.streaming.emulator.actions.EmulatorGlassesDisplayButtonAction"
+      <action id="android.streaming.glasses.display.button" class="com.android.tools.idea.streaming.actions.StreamingGlassesDisplayButtonAction"
           icon="StudioIcons.Emulator.XR.GLASSES_DISPLAY" text="Display" description="Press the Display button of the device">
         <keyboard-shortcut first-keystroke="control shift 2" keymap="$default"/>
         <keyboard-shortcut first-keystroke="meta shift 2" keymap="Mac OS X"/>
         <keyboard-shortcut first-keystroke="meta shift 2" keymap="Mac OS X 10.5+"/>
       </action>
-      <action id="android.emulator.glasses.camera.button" class="com.android.tools.idea.streaming.emulator.actions.EmulatorGlassesCameraButtonAction"
+      <action id="android.streaming.glasses.camera.button" class="com.android.tools.idea.streaming.actions.StreamingGlassesCameraButtonAction"
               icon="StudioIcons.Emulator.XR.GLASSES_CAMERA" text="Camera" description="Press the Camera button of the device">
         <keyboard-shortcut first-keystroke="control shift 1" keymap="$default"/>
         <keyboard-shortcut first-keystroke="meta shift 1" keymap="Mac OS X"/>
@@ -379,8 +379,8 @@
     </group>
 
     <group id="StreamingToolbarGlasses">
-      <reference ref="android.emulator.glasses.display.button"/>
-      <reference ref="android.emulator.glasses.camera.button"/>
+      <reference ref="android.streaming.glasses.display.button"/>
+      <reference ref="android.streaming.glasses.camera.button"/>
     </group>
 
     <group id="ContextMenuOnlyVirtualDevice">
