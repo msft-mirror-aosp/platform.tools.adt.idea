@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.streaming.emulator
+package com.android.tools.idea.streaming.core
 
-import com.android.emulator.control.InputEvent as InputEventMessage
-import com.android.emulator.control.Touch
-import com.android.emulator.control.Touch.EventExpiration.NEVER_EXPIRE
 import com.android.tools.adtui.util.scaled
-import com.android.tools.idea.streaming.core.drawCircle
-import com.android.tools.idea.streaming.core.fillCircle
-import com.android.tools.idea.streaming.core.scaledUnbiased
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
@@ -44,8 +38,10 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.BUTTON1
 import javax.swing.SwingConstants
 
-/** Represents the touchpad of an AVD, e.g. AI glasses. */
-internal class TouchpadPanel(private val emulator: EmulatorController, private val touchpadSize: Dimension) : BorderLayoutPanel() {
+/** Represents the touchpad of an Android device or AVD, e.g. AI glasses. */
+abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : BorderLayoutPanel() {
+
+  data class Touch(val id: Int, var x: Int = 0, var y: Int = 0, var pressure: Int = 0)
 
   private var multiTouchMode: Boolean = false
     set(value) {
@@ -74,10 +70,7 @@ internal class TouchpadPanel(private val emulator: EmulatorController, private v
     }
 
   private val mouseListener = MyMouseListener()
-  private val touches = Array(2) { id -> Touch.newBuilder().setIdentifier(id).setExpiration(NEVER_EXPIRE) }
-  private val inputEvent = InputEventMessage.newBuilder()
-  private val touchpadEvent = inputEvent.touchpadEventBuilder
-  private var lastSentInputEvent: InputEventMessage? = null
+  protected val touches: Array<Touch> = Array(2) { id -> Touch(id) }
 
   init {
     border = JBUI.Borders.customLine(JBColor.border())
@@ -157,14 +150,16 @@ internal class TouchpadPanel(private val emulator: EmulatorController, private v
 
   // Terminates ongoing dragging if any.
   private fun terminateDragging() {
-    touchpadEvent.clearTouches()
+    val touchesToSend = mutableListOf<Touch>()
     for (touch in touches) {
       if (touch.pressure != 0) {
         touch.pressure = 0
-        touchpadEvent.addTouches(touch)
+        touchesToSend.add(touch.copy())
       }
     }
-    sendTouchpadEventIfNotEmpty()
+    if (touchesToSend.isNotEmpty()) {
+      sendTouches(touchesToSend)
+    }
   }
 
   private fun sendMouseEvent(x: Int, y: Int, withPressure: Boolean) {
@@ -176,46 +171,38 @@ internal class TouchpadPanel(private val emulator: EmulatorController, private v
     val touchpadX = (x - insets.left).scaledUnbiased(w, touchpadSize.width)
     // Touchpad's Y axis points in opposite direction compared to the computer screen.
     val touchpadY = (h - 1 - (y - insets.top)).scaledUnbiased(h, touchpadSize.height)
-    touchpadEvent.clearTouches()
+    val touchesToSend = mutableListOf<Touch>()
     if (multiTouchMode) {
-      addTouchWithAdjustments(0, touchpadX - FINGER_HALF_DISTANCE, touchpadY, pressure)
-      addTouchWithAdjustments(1, touchpadX + FINGER_HALF_DISTANCE, touchpadY, pressure)
+      addTouchWithAdjustments(0, touchpadX - FINGER_HALF_DISTANCE, touchpadY, pressure, touchesToSend)
+      addTouchWithAdjustments(1, touchpadX + FINGER_HALF_DISTANCE, touchpadY, pressure, touchesToSend)
     } else {
-      addTouchWithAdjustments(0, touchpadX, touchpadY, pressure)
+      addTouchWithAdjustments(0, touchpadX, touchpadY, pressure, touchesToSend)
     }
-    sendTouchpadEventIfNotEmpty()
+    if (touchesToSend.isNotEmpty()) {
+      sendTouches(touchesToSend)
+    }
   }
 
-  private fun addTouchWithAdjustments(id: Int, x: Int, y: Int, pressure: Int) {
+  private fun addTouchWithAdjustments(id: Int, x: Int, y: Int, pressure: Int, touchesToSend: MutableList<Touch>) {
     if (isInsideTouchpad(x, y)) {
-      addTouch(id, x, y, pressure)
+      addTouch(id, x, y, pressure, touchesToSend)
     } else if (touches[id].pressure != 0) {
       // The pointer crosses the touchpad boundary while dragging.
-      addTouch(id, x.coerceIn(0, touchpadSize.width - 1), y.coerceIn(0, touchpadSize.height - 1), 0)
+      addTouch(id, x.coerceIn(0, touchpadSize.width - 1), y.coerceIn(0, touchpadSize.height - 1), 0, touchesToSend)
     }
   }
 
-  private fun addTouch(id: Int, x: Int, y: Int, pressure: Int) {
+  private fun addTouch(id: Int, x: Int, y: Int, pressure: Int, touchesToSend: MutableList<Touch>) {
     val touch = touches[id]
     touch.x = x
     touch.y = y
     touch.pressure = pressure
-    touchpadEvent.addTouches(touch)
+    touchesToSend.add(touch.copy())
   }
 
-  private fun sendTouchpadEventIfNotEmpty() {
-    if (touchpadEvent.touchesCount > 0) {
-      val inputEvent = this@TouchpadPanel.inputEvent.build()
-      if (inputEvent != lastSentInputEvent) {
-        emulator.getOrCreateInputEventSender().onNext(inputEvent)
-        lastSentInputEvent = inputEvent
-      }
-    }
-  }
+  protected abstract fun sendTouches(touches: List<Touch>)
 
   private fun isInsideTouchpad(x: Int, y: Int): Boolean = 0 <= x && x < touchpadSize.width && 0 <= y && y < touchpadSize.height
-
-  private fun createTouch(identifier: Int): Touch.Builder = Touch.newBuilder().setIdentifier(identifier).setExpiration(NEVER_EXPIRE)
 
   private inner class MyMouseListener : MouseAdapter() {
 
@@ -271,7 +258,9 @@ internal class TouchpadPanel(private val emulator: EmulatorController, private v
   }
 }
 
-private const val PREFERRED_HEIGHT = 40
+val DEFAULT_TOUCHPAD_SIZE: Dimension = Dimension(1543, 297)
 
+private const val PREFERRED_HEIGHT = 40
 private const val TOUCH_FEEDBACK_RADIUS: Int = 100
 private const val FINGER_HALF_DISTANCE: Int = 260
+const val PRESSURE_RANGE_MAX = 0x400

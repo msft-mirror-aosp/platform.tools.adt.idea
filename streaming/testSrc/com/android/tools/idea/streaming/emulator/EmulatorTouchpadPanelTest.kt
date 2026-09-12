@@ -40,9 +40,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 
-/** Tests for [TouchpadPanel]. */
+/** Tests for [EmulatorTouchpadPanel]. */
 @RunsInEdt
-class TouchpadPanelTest {
+class EmulatorTouchpadPanelTest {
 
   private val applicationRule = ApplicationRule()
   private val emulatorRule = FakeEmulatorRule()
@@ -155,15 +155,15 @@ class TouchpadPanelTest {
       .isEqualTo("touchpad_event { touches { x: 1479 y: 152 expiration: NEVER_EXPIRE } }")
   }
 
-  private fun createTouchpadPanel(): TouchpadPanel {
+  private fun createTouchpadPanel(): EmulatorTouchpadPanel {
     val glassesPort = glasses.grpcPort
     val emulators = runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
     val emulatorController = emulators.find { it.emulatorId.grpcPort == glassesPort }!!
     waitForCondition(2.seconds) { emulatorController.connectionState == CONNECTED }
-    return TouchpadPanel(emulatorController, emulatorController.emulatorConfig.touchpadSize!!)
+    return EmulatorTouchpadPanel(emulatorController, emulatorController.emulatorConfig.touchpadSize!!)
   }
 
-  private fun createFakeUi(touchpadPanel: TouchpadPanel): FakeUi {
+  private fun createFakeUi(touchpadPanel: EmulatorTouchpadPanel): FakeUi {
     val container =
       JBBox(BoxLayout.X_AXIS).apply {
         isOpaque = true
