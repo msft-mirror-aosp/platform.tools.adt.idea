@@ -195,10 +195,10 @@ object FeatureSurveys {
     fun featureSurveyInvoked(name: String, generalInterval: Int, specificInterval: Int) {
       val now = AnalyticsSettings.dateProvider.now()
 
-      AnalyticsSettings.nextFeatureSurveyDate = AndroidStudioUsageTracker.daysFromNow(now, generalInterval)
+      AnalyticsSettings.nextFeatureSurveyDate = SentimentChecker.daysFromNow(now, generalInterval)
 
       val map = AnalyticsSettings.nextFeatureSurveyDateMap ?: mutableMapOf()
-      map[name] = AndroidStudioUsageTracker.daysFromNow(now, specificInterval)
+      map[name] = SentimentChecker.daysFromNow(now, specificInterval)
       AnalyticsSettings.nextFeatureSurveyDateMap = map
 
       AnalyticsSettings.saveSettings()

@@ -32,8 +32,6 @@ import com.android.tools.idea.serverflags.SATISFACTION_SURVEY
 import com.android.tools.idea.serverflags.ServerFlagService
 import com.android.tools.idea.stats.ConsentDialog.Companion.showConsentDialogIfNeeded
 import com.google.common.annotations.VisibleForTesting
-import com.google.common.base.Charsets
-import com.google.common.hash.Hashing
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind
 import com.google.wireless.android.sdk.stats.DisplayDetails
@@ -63,17 +61,11 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.NewUI
 import com.intellij.ui.scale.JBUIScale
 import java.io.File
-import java.time.ZoneOffset
-import java.time.temporal.ChronoUnit
-import java.util.Calendar
 import java.util.Date
-import java.util.GregorianCalendar
 import java.util.Locale
-import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -357,37 +349,25 @@ object AndroidStudioUsageTracker {
       return false
     }
 
-    val lastSentimentAnswerDate = AnalyticsSettings.lastSentimentAnswerDate
-    val now = AnalyticsSettings.dateProvider.now()
-    val popupSentimentQuestionFrequency = getPopupQuestionFrequency()
+    val surveyAnsweredWaitInterval =
+      if (isASwB()) {
+        DAYS_TO_WAIT_FOR_REQUESTING_SENTIMENT_AGAIN_ASWB
+      } else {
+        ServerFlagService.instance.getInt(SENTIMENT_SURVEY_RETRY_FLAG_NAME, DAYS_TO_WAIT_FOR_REQUESTING_SENTIMENT_AGAIN_STUDIO)
+      }
 
-    if (!exceedRefreshDeadline(now, lastSentimentAnswerDate, popupSentimentQuestionFrequency)) {
-      return false
-    }
+    val surveyDeclinedWaitInterval =
+      AnalyticsSettings.popSentimentQuestionFrequency.takeIf { it > 0 }
+        ?: ServerFlagService.instance.getInt(SENTIMENT_SURVEY_INTERVAL_FLAG_NAME, AnalyticsSettings.daysInYear())
 
-    // If we should ask the question based on dates, and asked but not answered then we should always prompt, even if this is
-    // not the magic date for that user.
-    val lastSentimentQuestionDate = AnalyticsSettings.lastSentimentQuestionDate
-    if (lastSentimentQuestionDate != null) {
-      val daysToWaitForRequestingSentimentAgain =
-        if (isASwB()) {
-          DAYS_TO_WAIT_FOR_REQUESTING_SENTIMENT_AGAIN_ASWB
-        } else {
-          ServerFlagService.instance.getInt(SENTIMENT_SURVEY_RETRY_FLAG_NAME, DAYS_TO_WAIT_FOR_REQUESTING_SENTIMENT_AGAIN_STUDIO)
-        }
-
-      val startOfWaitForRequest = daysFromNow(now, -daysToWaitForRequestingSentimentAgain)
-      return !lastSentimentQuestionDate.after(startOfWaitForRequest)
-    }
-
-    val startOfYear = GregorianCalendar(now.year + 1900, 0, 1)
-    startOfYear.timeZone = TimeZone.getTimeZone(ZoneOffset.UTC)
-
-    // Otherwise, only request on the magic date for the user, to spread user sentiment data throughout the year.
-    val daysSinceJanFirst = ChronoUnit.DAYS.between(startOfYear.toInstant(), now.toInstant())
-    val offset =
-      abs(Hashing.farmHashFingerprint64().hashString(AnalyticsSettings.userId, Charsets.UTF_8).asLong()) % popupSentimentQuestionFrequency
-    return daysSinceJanFirst == offset
+    return SentimentChecker.shouldRequest(
+      AnalyticsSettings.dateProvider.now(),
+      AnalyticsSettings.lastSentimentAnswerDate,
+      AnalyticsSettings.lastSentimentQuestionDate,
+      surveyDeclinedWaitInterval,
+      surveyAnsweredWaitInterval,
+      AnalyticsSettings.userId,
+    )
   }
 
   /** returning UNKNOWN_SATISFACTION_LEVEL means that the user hit the Cancel button in the dialog. */
@@ -472,15 +452,6 @@ object AndroidStudioUsageTracker {
     )
   }
 
-  private fun getPopupQuestionFrequency(): Int {
-    val settingsValue = AnalyticsSettings.popSentimentQuestionFrequency
-    return if (settingsValue > 0) {
-      settingsValue
-    } else {
-      ServerFlagService.instance.getInt(SENTIMENT_SURVEY_INTERVAL_FLAG_NAME, AnalyticsSettings.daysInYear())
-    }
-  }
-
   private fun runHourlyReports() {
     UsageTracker.log(
       AndroidStudioEvent.newBuilder()
@@ -534,23 +505,6 @@ object AndroidStudioUsageTracker {
         DefaultMetricsLogFileProvider.processEvent(it)
       }
     }
-  }
-
-  private fun exceedRefreshDeadline(now: Date, date: Date?, days: Int): Boolean {
-    return !isBeforeDayCount(now, date, -days)
-  }
-
-  private fun isBeforeDayCount(now: Date, date: Date?, days: Int): Boolean {
-    date ?: return false
-    val newDate = daysFromNow(now, days)
-    return date.after(newDate)
-  }
-
-  fun daysFromNow(now: Date, days: Int): Date {
-    val calendar = Calendar.getInstance()
-    calendar.time = now
-    calendar.add(Calendar.DATE, days)
-    return calendar.time
   }
 
   // Do not show the browser-based benchmark survey for ASwB
