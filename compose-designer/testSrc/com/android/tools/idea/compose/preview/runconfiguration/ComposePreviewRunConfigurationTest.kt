@@ -15,11 +15,14 @@
  */
 package com.android.tools.idea.compose.preview.runconfiguration
 
+import com.android.AndroidProjectTypes
 import com.android.tools.idea.compose.ComposeProjectRule
 import com.google.wireless.android.sdk.stats.ComposeDeployEvent
 import com.intellij.openapi.util.JDOMUtil
 import org.jdom.Element
+import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -106,5 +109,18 @@ class ComposePreviewRunConfigurationTest {
           "parameter-provider-index=\"1\" />"
       )
     )
+  }
+
+  @Test
+  fun testIsTestConfiguration() {
+    assertFalse(runConfiguration.isTestConfiguration)
+
+    runConfiguration.setModule(projectRule.module)
+    val facet = AndroidFacet.getInstance(projectRule.module)!!
+    facet.configuration.setProjectType(AndroidProjectTypes.PROJECT_TYPE_APP)
+    assertFalse(runConfiguration.isTestConfiguration)
+
+    facet.configuration.setProjectType(AndroidProjectTypes.PROJECT_TYPE_LIBRARY)
+    assertTrue(runConfiguration.isTestConfiguration)
   }
 }
