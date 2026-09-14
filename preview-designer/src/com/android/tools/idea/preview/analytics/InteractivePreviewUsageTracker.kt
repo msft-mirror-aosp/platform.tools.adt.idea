@@ -54,6 +54,9 @@ interface InteractivePreviewUsageTracker {
   /** Logs the type of the preferred Edge when Performing Back Navigation */
   fun trackNavigationPanelEdgeDropdownPress()
 
+  /** Logs the Press on the "Navigation" button in the back stack */
+  fun trackNavigateButtonClick()
+
   companion object {
     private val NOP_TRACKER = InteractiveNopTracker()
     private val MANAGER =
@@ -78,6 +81,8 @@ class InteractiveNopTracker : InteractivePreviewUsageTracker {
   override fun trackNavigationPanelVisibilityChange(isShown: Boolean) {}
 
   override fun trackNavigationPanelEdgeDropdownPress() {}
+
+  override fun trackNavigateButtonClick() {}
 }
 
 private val LOG: Logger
@@ -120,6 +125,10 @@ class InteractivePreviewUsageTrackerImpl(
 
   override fun trackNavigationPanelEdgeDropdownPress() {
     logInteractiveEvent(InteractivePreviewEvent.InteractivePreviewEventType.NAVIGATION_PANEL_EDGE_DROPDOWN_PRESS)
+  }
+
+  override fun trackNavigateButtonClick() {
+    logInteractiveEvent(InteractivePreviewEvent.InteractivePreviewEventType.NAVIGATION_PANEL_NAVIGATE_PRESS)
   }
 
   /**

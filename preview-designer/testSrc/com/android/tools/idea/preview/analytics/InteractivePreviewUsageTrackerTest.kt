@@ -114,6 +114,20 @@ class InteractivePreviewUsageTrackerTest {
   }
 
   @Test
+  fun testTrackNavigateButtonClick() {
+    myInteractivePreviewUsageTracker.trackNavigateButtonClick()
+
+    assertNotNull(myLastEventBuilder)
+
+    val event = myLastEventBuilder!!.build()
+
+    assertEquals(event.kind, AndroidStudioEvent.EventKind.INTERACTIVE_PREVIEW_EVENT)
+
+    val interactiveEvent = event.interactivePreviewEvent
+    assertEquals(interactiveEvent.type, InteractivePreviewEvent.InteractivePreviewEventType.NAVIGATION_PANEL_NAVIGATE_PRESS)
+  }
+
+  @Test
   fun testTrackNavigationPanelVisibilityChange() {
     myInteractivePreviewUsageTracker.trackNavigationPanelVisibilityChange(isShown = true)
 

@@ -324,6 +324,8 @@ class InteractivePreviewNavigationController(
 
   fun trackEdgeDropdownPress() = usageTrackerProvider().trackNavigationPanelEdgeDropdownPress()
 
+  fun trackNavigateButtonClick() = usageTrackerProvider().trackNavigateButtonClick()
+
   @TestOnly
   fun setIsTrustedNavigationEventDispatcherOwnerForTestOnly(isTrusted: (Any) -> Boolean) {
     isTrustedNavigationEventDispatcherOwner = isTrusted

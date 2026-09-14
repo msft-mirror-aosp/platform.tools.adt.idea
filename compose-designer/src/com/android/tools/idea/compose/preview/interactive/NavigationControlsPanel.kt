@@ -94,7 +94,10 @@ fun NavigationControlsContent(
         interactivePreviewNavigationController.trackEdgeDropdownPress()
         interactivePreviewNavigationController.backPressCancelled()
       },
-      backToState = { navigationState -> interactivePreviewNavigationController.backToState(navigationState) },
+      backToState = { navigationState ->
+        interactivePreviewNavigationController.backToState(navigationState)
+        interactivePreviewNavigationController.trackNavigateButtonClick()
+      },
       fpsUpdater = fpsUpdater,
       backPressCompletedFlow = interactivePreviewNavigationController.backPressCompletedFlow,
     )
