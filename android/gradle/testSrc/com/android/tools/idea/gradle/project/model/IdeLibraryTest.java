@@ -15,19 +15,12 @@
  */
 package com.android.tools.idea.gradle.project.model;
 
-import com.android.builder.model.AndroidLibrary;
 import com.android.builder.model.Library;
 import com.android.builder.model.MavenCoordinates;
 import com.android.tools.idea.gradle.model.IdeLibrary;
-import com.android.tools.idea.gradle.model.impl.BuildFolderPaths;
-import com.android.tools.idea.gradle.model.stubs.AndroidLibraryStub;
 import com.android.tools.idea.gradle.model.stubs.LibraryStub;
 import com.android.tools.idea.gradle.model.stubs.MavenCoordinatesStub;
-import com.android.tools.idea.gradle.project.sync.ModelCacheV1ImplKt;
 import com.google.common.truth.Truth;
-import java.io.File;
-import org.jetbrains.annotations.Nullable;
-import org.junit.Assert;
 import org.junit.Test;
 
 /** Tests for {@link IdeLibrary}. */
@@ -54,159 +47,6 @@ public class IdeLibraryTest {
       };
       Truth.assertThat(computeCoordinates(library.getResolvedCoordinates())).isEqualTo("myGroup:androidLib.subModule:undefined@aar");
     }
-
-    @Test
-    public void checkIsLocalAarModule() {
-      AndroidLibrary localAarLibrary = new AndroidLibraryStub() {
-        @Override
-        public String getProject() {
-          return ":aarModule";
-        }
-
-        @Override
-        public File getBundle() {
-          return new File("/ProjectRoot/aarModule/aarModule.aar");
-        }
-      };
-      AndroidLibrary moduleLibrary = new AndroidLibraryStub() {
-        @Override
-        public String getProject() {
-          return ":androidLib";
-        }
-
-        @Override
-        public File getBundle() {
-          return new File("/ProjectRoot/androidLib/build/androidLib.aar");
-        }
-      };
-
-      AndroidLibrary externalLibrary = new AndroidLibraryStub() {
-        @Override
-        @Nullable
-        public String getProject() {
-        return null;
-        }
-      };
-
-      BuildFolderPaths buildFoldersPath = new BuildFolderPaths();
-      buildFoldersPath.setRootBuildId("project");
-      buildFoldersPath.addBuildFolderMapping(
-        "project", ":aarModule", new File("/ProjectRoot/aarModule/build/")
-      );
-      buildFoldersPath.addBuildFolderMapping(
-        "project", ":androidLib", new File("/ProjectRoot/androidLib/build/")
-      );
-      Assert.assertTrue(ModelCacheV1ImplKt.isLocalAarModule(buildFoldersPath, localAarLibrary));
-      Assert.assertFalse(ModelCacheV1ImplKt.isLocalAarModule(buildFoldersPath, moduleLibrary));
-      Assert.assertFalse(ModelCacheV1ImplKt.isLocalAarModule(buildFoldersPath, externalLibrary));
-    }
-
-  @Test
-  public void checkIsLocalAarModuleWithCompositeBuild() {
-    // simulate project structure:
-    // project(root)     - aarModule
-    // project(root)     - androidLib
-    //      project1     - aarModule
-    //      project1     - androidLib
-    AndroidLibrary localAarLibraryInRootProject = new AndroidLibraryStub() {
-      @Override
-      public String getProject() {
-        return ":aarModule";
-      }
-
-      @Override
-      public File getBundle() {
-        return new File("/Project/aarModule/aarModule.aar");
-      }
-
-      @Override
-      @Nullable
-      public String getBuildId() {
-      return "Project";
-      }
-    };
-
-    AndroidLibrary localAarLibraryInProject1 = new AndroidLibraryStub() {
-      @Override
-      public String getProject() {
-        return ":aarModule";
-      }
-
-      @Override
-      public File getBundle() {
-        return new File("/Project1/aarModule/aarModule.aar");
-      }
-
-      @Override
-      @Nullable
-      public String getBuildId() {
-      return "Project1";
-      }
-    };
-
-    AndroidLibrary moduleLibraryInRootProject = new AndroidLibraryStub() {
-      @Override
-      public String getProject() {
-        return ":androidLib";
-      }
-
-      @Override
-      public File getBundle() {
-        return new File("/Project/androidLib/build/androidLib.aar");
-      }
-
-      @Override
-      @Nullable
-      public String getBuildId() {
-      return "Project";
-      }
-    };
-
-    AndroidLibrary moduleLibraryInProject1 = new AndroidLibraryStub() {
-      @Override
-      public String getProject() {
-        return ":androidLib";
-      }
-
-      @Override
-      public File getBundle() {
-        return new File("/Project1/androidLib/build/androidLib.aar");
-      }
-
-      @Override
-      @Nullable
-      public String getBuildId() {
-      return "Project1";
-      }
-    };
-
-    AndroidLibrary externalLibrary = new AndroidLibraryStub() {
-      @Override
-      public String getProject() {
-      return null;
-      }
-    };
-
-    BuildFolderPaths buildFolderPaths = new BuildFolderPaths();
-    buildFolderPaths.setRootBuildId("Project");
-    buildFolderPaths.addBuildFolderMapping(
-      "Project", ":aarModule", new File("/Project/aarModule/build/")
-    );
-    buildFolderPaths.addBuildFolderMapping(
-      "Project", ":androidLib", new File("/Project/androidLib/build/")
-    );
-    buildFolderPaths.addBuildFolderMapping(
-      "Project1", ":aarModule", new File("/Project1/aarModule/build/")
-    );
-    buildFolderPaths.addBuildFolderMapping(
-      "Project1", ":androidLib", new File("/Project1/androidLib/build/")
-    );
-    Assert.assertTrue(ModelCacheV1ImplKt.isLocalAarModule(buildFolderPaths, localAarLibraryInRootProject));
-    Assert.assertTrue(ModelCacheV1ImplKt.isLocalAarModule(buildFolderPaths, localAarLibraryInProject1));
-    Assert.assertFalse(ModelCacheV1ImplKt.isLocalAarModule(buildFolderPaths, moduleLibraryInRootProject));
-    Assert.assertFalse(ModelCacheV1ImplKt.isLocalAarModule(buildFolderPaths, moduleLibraryInProject1));
-    Assert.assertFalse(ModelCacheV1ImplKt.isLocalAarModule(buildFolderPaths, externalLibrary));
-  }
 
   private String computeCoordinates(MavenCoordinates coordinate) {
       String artifactId = coordinate.getArtifactId();

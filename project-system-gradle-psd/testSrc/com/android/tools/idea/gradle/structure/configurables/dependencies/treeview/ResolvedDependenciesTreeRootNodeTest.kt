@@ -42,7 +42,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
   }
 
   @Test
-  open fun testTreeStructure_javaModule() {
+  fun testTreeStructure_javaModule() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY)
     projectRule.psTestWithProject(preparedProject) {
       val module = project.findModuleByGradlePath(":jModuleZ")!!

@@ -26,7 +26,6 @@ import org.gradle.tooling.model.build.BuildEnvironment
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.gradle.tooling.model.gradle.GradleBuild
 import org.gradle.util.GradleVersion
-import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider.GradleModelConsumer
 
 internal class BuildInfo(
@@ -122,14 +121,6 @@ internal class AndroidExtraModelProviderWorker(
         IdeAndroidSyncError::class.java,
       )
     }
-  }
-
-  private fun ProjectImportModelProvider.runModelProvider(
-    controller: BuildController,
-    buildInfo: BuildInfo,
-    modelConsumer: GradleModelConsumer,
-  ) {
-    populateModels(controller, listOf(buildInfo.rootBuild), modelConsumer)
   }
 
   private fun getBasicIncompleteGradleModules(): List<BasicIncompleteGradleModule> {

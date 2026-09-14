@@ -226,11 +226,7 @@ internal class VariantDiscovery(
     val module =
       androidModulesById[id]
         ?: return ActionToRun({ ModelResult.create { error("Module with id '${id}' not found") }.toFinishedResult() }, false)
-    val isV2Action =
-      when (module) { // Exhaustive when, do not replace with `is`.
-        is AndroidModule.V1 -> false
-        is AndroidModule.V2 -> true
-      }
+    val isV2Action = true
     return ActionToRun(
       { controller ->
         // If a result exists, return that, otherwise set in progress and calculate it

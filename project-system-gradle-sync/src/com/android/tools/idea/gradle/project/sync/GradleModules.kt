@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.builder.model.ProjectSyncIssues as ProjectSyncIssuesV1
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject as AndroidProjectV2
 import com.android.builder.model.v2.models.BasicAndroidProject
@@ -161,51 +160,6 @@ constructor(
    */
   fun getLibraryDependencies(libraryResolver: (LibraryReference) -> IdeUnresolvedLibrary): Collection<ArtifactIdentifier> {
     return collectIdentifiers(listOfNotNull(syncedVariant?.variant), libraryResolver)
-  }
-
-  class V1(
-    modelVersions: ModelVersions,
-    buildPathMap: Map<String, BuildId>,
-    gradleProject: BasicGradleProject,
-    androidProject: IdeAndroidProjectImpl,
-    /** All configured variant names if supported by the AGP version. */
-    allVariantNames: Set<String>?,
-    defaultVariantName: String?,
-    variantFetcher: IdeVariantFetcher,
-    /** New V2 native model. It's only set if [nativeAndroidProject] is not set. */
-    nativeModule: IdeNativeModule?,
-    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-  ) :
-    AndroidModule(
-      modelVersions = modelVersions,
-      buildPathMap = buildPathMap,
-      gradleProject = gradleProject,
-      androidProject = androidProject,
-      /** All configured variant names if supported by the AGP version. */
-      allVariantNames = allVariantNames,
-      defaultVariantName = defaultVariantName,
-      variantFetcher = variantFetcher,
-      androidVariantResolver = AndroidVariantResolver.NONE,
-      /** New V2 model. It's only set if [nativeAndroidProject] is not set. */
-      nativeModule = nativeModule,
-      legacyAndroidGradlePluginProperties = legacyAndroidGradlePluginProperties,
-      androidDsl = null,
-      declaredDependencies = null,
-    ) {
-    override fun getFetchSyncIssuesAction(): ActionToRun<Unit> {
-      return ActionToRun(
-        fun(controller: BuildController) {
-          val syncIssues = controller.findModel(this.findModelRoot, ProjectSyncIssuesV1::class.java)?.syncIssues?.toSyncIssueData()
-
-          if (syncIssues != null) {
-            // These would have been attached above if there is no separate sync issue model.
-            val legacyModelProblems = this.legacyAndroidGradlePluginProperties.getProblemsAsSyncIssues()
-            this.setSyncIssues(syncIssues + legacyModelProblems)
-          }
-        },
-        fetchesV1Models = true,
-      )
-    }
   }
 
   class V2(

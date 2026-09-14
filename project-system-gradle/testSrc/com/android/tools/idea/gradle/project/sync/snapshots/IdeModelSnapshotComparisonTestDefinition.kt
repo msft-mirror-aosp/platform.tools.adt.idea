@@ -20,17 +20,13 @@ import com.android.tools.idea.gradle.project.sync.CapturePlatformModelsProjectRe
 import com.android.tools.idea.gradle.project.sync.internal.dumpAndroidIdeModel
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_70
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_72
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_72_V1
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 import com.android.tools.idea.testing.ModelVersion
 import com.android.tools.idea.testing.SnapshotContext
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
 import com.android.tools.idea.testing.assertIsEqualToUpdatedSnapshot
-import com.android.tools.idea.testing.getAndMaybeUpdateSnapshot
 import com.android.tools.idea.testing.nameProperties
 import com.android.tools.idea.testing.saveAndDump
-import com.google.common.truth.Truth
 import com.intellij.openapi.project.Project
 import java.io.File
 
@@ -197,42 +193,10 @@ data class IdeModelSnapshotComparisonTestDefinition(
     } else {
       v2snapshots.assertIsEqualToSnapshot(dump)
     }
-    when {
-      agpVersion == AGP_72 -> testV1vsV2(AGP_72_V1, AGP_72)
-    }
   }
 
   override fun withAgpVersion(agpVersion: AgpVersionSoftwareEnvironmentDescriptor): SyncedProjectTestDef {
     return copy(agpVersion = agpVersion)
-  }
-
-  private fun testV1vsV2(v1Version: AgpVersionSoftwareEnvironmentDescriptor, v2Version: AgpVersionSoftwareEnvironmentDescriptor) {
-    if (skipV1toV2Comparison) return
-
-    fun String.filterOutProperties(): String =
-      this.splitToSequence('\n')
-        .nameProperties()
-        .filter { (property, line) ->
-          !PROPERTIES_TO_SKIP.any { property.endsWith(it) } &&
-            !ENTITIES_TO_SKIP.any { property.contains(it) } &&
-            !v1toV2PropertiesToSkip.any { property.endsWith(it) }
-        }
-        .filter { (property, line) ->
-          !VALUES_TO_SUPPRESS.any { property.endsWith(it.key) and it.value.any { value -> line.contains(value) } }
-        }
-        .map { it.first + " <> " + it.second }
-        .joinToString(separator = "\n")
-
-    val v1snapshots = SnapshotContext(testProject.projectName, v1Version, IDE_MODEL_SNAPSHOT_DIR)
-    val (_, expectedTextV1) = v1snapshots.getAndMaybeUpdateSnapshot("", "", doNotUpdate = true)
-
-    val v2snapshots = SnapshotContext(testProject.projectName, v2Version, IDE_MODEL_SNAPSHOT_DIR)
-    val (_, expectedTextV2) = v2snapshots.getAndMaybeUpdateSnapshot("", "", doNotUpdate = true)
-
-    val expectedTextV2Filtered = expectedTextV2.filterOutProperties()
-    val expectedTextV1Filtered = expectedTextV1.filterOutProperties()
-
-    Truth.assertThat(expectedTextV2Filtered).isEqualTo(expectedTextV1Filtered)
   }
 }
 

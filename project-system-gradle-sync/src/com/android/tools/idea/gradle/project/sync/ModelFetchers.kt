@@ -15,9 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.builder.model.AndroidProject
-import com.android.builder.model.ModelBuilderParameter
-import com.android.builder.model.Variant
 import com.android.builder.model.v2.ide.ArtifactDependencies
 import com.android.builder.model.v2.ide.ArtifactDependenciesAdjacencyList
 import com.android.builder.model.v2.ide.ArtifactDependenciesFlatList
@@ -45,29 +42,6 @@ import org.jetbrains.plugins.gradle.tooling.ModelBuilderService
 /** Gets the [V2AndroidProject] or [ModelVersions] (based on [modelType]) for the given [BasicGradleProject]. */
 internal fun <T> BuildController.findNonParameterizedV2Model(project: BasicGradleProject, modelType: Class<T>): T? {
   return findModel(project, modelType)
-}
-
-/** Gets the [AndroidProject] for the given [BasicGradleProject]. */
-internal fun <T> BuildController.findParameterizedAndroidModel(
-  project: BasicGradleProject,
-  modelType: Class<T>,
-  shouldBuildVariant: Boolean,
-): T? {
-  if (!shouldBuildVariant) {
-    try {
-      val model = getModel(project, modelType, ModelBuilderParameter::class.java) { parameter -> parameter.shouldBuildVariant = false }
-      if (model != null) return model
-    } catch (e: UnsupportedVersionException) {
-      // Using old version of Gradle. Fall back to all variants sync for this module.
-    }
-  }
-  return findModel(project, modelType)
-}
-
-internal fun BuildController.findVariantModel(module: AndroidModule, variantName: String): Variant? {
-  return findModel(module.findModelRoot, Variant::class.java, ModelBuilderParameter::class.java) { parameter ->
-    parameter.setVariantName(variantName)
-  }
 }
 
 internal fun parameterMutatorForProject(
