@@ -2850,6 +2850,11 @@ public final class StudioFlags {
                     "Enable Progress UI in Guided Planning Mode",
                     "When enabled, Guided Planning Mode will display a new UI to track the progress of the plan.");
 
+  public static final Flag<Boolean> STUDIOBOT_TASK_PROGRESS_UI_IN_CHAT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "task.progressui.chat.enabled",
+                    "Enable Task Progress UI in general chat",
+                    "When enabled, the Task Progress UI tool will be added for the general chat. Requires studiobot.task.progressui.enabled.");
+
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_IN_QUERY_BOX =
     new BooleanFlag(STUDIOBOT, "ask.user.in.query.box",
                     "Replace the query box with the pending ask user tool call.",
