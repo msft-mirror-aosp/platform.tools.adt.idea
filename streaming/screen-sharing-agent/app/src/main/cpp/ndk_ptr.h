@@ -46,12 +46,12 @@ public:
     pointer_ = ptr;
   }
 
-  NdkPtr& operator =(NdkType* ptr) {
+  NdkPtr& operator=(NdkType* ptr) {
     Reset(ptr);
     return *this;
   }
 
-  NdkPtr& operator =(NdkPtr&& other) noexcept {
+  NdkPtr& operator=(NdkPtr&& other) noexcept {
     Reset(other.pointer_);
     other.pointer_ = nullptr;
     return *this;
@@ -74,10 +74,10 @@ public:
   }
 
   operator NdkType*() const noexcept { return pointer_; }
-  NdkType* operator ->() const noexcept { return pointer_; }
+  NdkType* operator->() const noexcept { return pointer_; }
 
   // Safe override because &pointer_ is the same address as &*this.
-  NdkType** operator &() noexcept { return &pointer_; }  // NOLINT(google-runtime-operator)
+  NdkType** operator&() noexcept { return &pointer_; }  // NOLINT(google-runtime-operator)
   NdkType*& Get() noexcept { return pointer_; }
   NdkType* Get() const noexcept { return pointer_; }
 
