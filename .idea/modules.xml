@@ -623,6 +623,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/lsp4ij/language/altlang.lsp4ij.language.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/lsp4ij/language/altlang.lsp4ij.language.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/exception-breakpoints/altlang.dap.exception-breakpoints.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/exception-breakpoints/altlang.dap.exception-breakpoints.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cpp/altlang.cpp.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cpp/altlang.cpp.iml" />
     </modules>
   </component>
 </project>
