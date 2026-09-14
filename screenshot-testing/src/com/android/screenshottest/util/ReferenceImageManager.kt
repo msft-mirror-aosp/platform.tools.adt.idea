@@ -27,6 +27,7 @@ import java.nio.file.Path
 data class ImageData(val previewData: PreviewDetails, val loadedImagePaths: Map<String, String>)
 
 private val LOG = Logger.getInstance("com.android.screenshottest.util.ReferenceImageManager")
+private val ALLOWED_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
 
 private fun File.toCanonicalPathOrNull(): Path? =
   try {
@@ -34,6 +35,8 @@ private fun File.toCanonicalPathOrNull(): Path? =
   } catch (_: IOException) {
     null
   } catch (_: InvalidPathException) {
+    null
+  } catch (_: SecurityException) {
     null
   }
 
@@ -115,16 +118,13 @@ fun copyReferenceImages(imagesToCopy: List<ImageData>, projectBasePath: String):
           val sourceFile = File(imagePath)
           val destinationFile = File(destinationPath)
           if (!isValidSourceAndDestination(sourceFile, destinationFile, basePath, tmpPath)) {
-            LOG.error(
-              "Skipped copying reference image due to path security violation. " + "Source: $imagePath, Destination: $destinationPath"
-            )
+            LOG.error("Skipped copying reference image due to path security violation. Source: $imagePath, Destination: $destinationPath")
             failures.add(imageData)
             break
           }
 
-          val allowedExtensions = listOf("png", "jpg", "jpeg", "webp")
           val extension = destinationFile.extension.lowercase()
-          if (extension !in allowedExtensions) {
+          if (extension !in ALLOWED_EXTENSIONS) {
             LOG.error("Reference image destination must be a supported image file (png, jpg, jpeg, webp): $destinationFile")
             failures.add(imageData)
             break
@@ -144,6 +144,12 @@ fun copyReferenceImages(imagesToCopy: List<ImageData>, projectBasePath: String):
       } catch (e: IOException) {
         LOG.error(
           "Failed to copy screenshot reference image due to an I/O error for: ${imageData.previewData}",
+          e,
+        )
+        failures.add(imageData)
+      } catch (e: SecurityException) {
+        LOG.error(
+          "Failed to copy screenshot reference image due to security restrictions for: ${imageData.previewData}",
           e,
         )
         failures.add(imageData)
