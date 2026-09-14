@@ -265,7 +265,7 @@ local_generate_old_agp_tests_from_list(
             "additional_jdks": ["17"],
             "agp_version": AGP_7_1,
             "gradle_version": GRADLE_7_2,
-            "shard_count": 3,
+            "shard_count": 1,
             "tags": COMMON_OLD_AGP_TEST_TARGETS_TAGS,
         },
         {

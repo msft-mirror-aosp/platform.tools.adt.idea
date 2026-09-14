@@ -13,28 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * Copyright (C) 2021 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.android.tools.idea.gradle.project.upgrade.integration
 
 import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.junit4.OldAgpSuite
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.LATEST
-import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_1
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_2
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_3
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_8_0
@@ -90,22 +74,12 @@ enum class AUATestProjectState(
   val basePath: String,
   val patchPath: String? = null,
 ) {
-  BASIC_7_1(FROM_AGP_40_BASIC, V_7_1, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
   BASIC_7_2(FROM_AGP_40_BASIC, V_7_2, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
   BASIC_7_3(FROM_AGP_40_BASIC, V_7_3, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   BASIC_8_11_MIN(FROM_AGP_40_BASIC, V_8_11, minimalState = true, basePath = "4.0.0", patchPath = "dev-minimal"),
   BASIC_8_11_FULL(FROM_AGP_40_BASIC, V_8_11, minimalState = false, basePath = "4.0.0", patchPath = "dev-upgraded"),
-  // No changes from 7.0 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_1_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_1, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
-  ALL_DEPRECATIONS_7_1_FULL(
-    FROM_AGP_40_ALL_DEPRECATIONS,
-    V_7_1,
-    minimalState = false,
-    basePath = "4.2.0-base",
-    patchPath = "7.1.0-upgraded",
-  ),
   // No changes from 7.0 apart from versions so reuse the same files.
   ALL_DEPRECATIONS_7_2_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_2, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
   // No changes from 7.1 apart from versions so reuse the same files.
