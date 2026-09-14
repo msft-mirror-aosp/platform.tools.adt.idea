@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -254,11 +255,12 @@ class ScreenshotAttributesView : Disposable {
                     currentState.testResult?.name ?: NOT_APPLICABLE
                   }
               }
+            val matchModifier = Modifier.testTag("match_status")
             when {
-              isNew -> GreenText(text)
-              currentState.testResult == AndroidTestCaseResult.PASSED -> GreenText(text)
-              currentState.testResult == AndroidTestCaseResult.FAILED -> RedText(text)
-              else -> GrayText(text)
+              isNew -> GreenText(text, modifier = matchModifier)
+              currentState.testResult == AndroidTestCaseResult.PASSED -> GreenText(text, modifier = matchModifier)
+              currentState.testResult == AndroidTestCaseResult.FAILED -> RedText(text, modifier = matchModifier)
+              else -> GrayText(text, modifier = matchModifier)
             }
           }
           KeyValueRow("Preview") {
