@@ -391,6 +391,25 @@ class ReferenceImageManagerTest {
     assertEquals("content", expectedDestFile.readText())
   }
 
+  @Test
+  fun copyReferenceImages_emptyImagePaths() {
+    val expectedDestFile =
+      File(
+          projectRule.project.basePath,
+          "app/src/screenshotTestDebug/reference/MyTestClass/image.png",
+        )
+        .canonicalFile
+    val imageData = createImageData(emptyMap(), expectedDestFile.canonicalPath)
+
+    var failures: List<ImageData> = emptyList()
+    LoggedErrorProcessor.executeAndReturnLoggedError {
+      failures = copyReferenceImages(listOf(imageData), projectRule.project.basePath!!)
+    }
+
+    assertEquals("Should report failure when image paths map is empty", 1, failures.size)
+    assertEquals(imageData, failures.first())
+  }
+
   /** Creates a test data object with the given image paths. */
   private fun createImageData(imagePaths: Map<String, String>, destImagePath: String): ImageData {
     val details = PreviewDetails("", "", "", "", destImagePath = destImagePath)

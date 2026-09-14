@@ -113,6 +113,12 @@ fun copyReferenceImages(imagesToCopy: List<ImageData>, projectBasePath: String):
         return@forEach // Continue to the next item in the loop
       }
 
+      if (imageData.loadedImagePaths.isEmpty()) {
+        LOG.error("Failed to copy screenshot reference image because no image paths were provided for: ${imageData.previewData}")
+        failures.add(imageData)
+        return@forEach
+      }
+
       try {
         for ((imagePath, _) in imageData.loadedImagePaths) {
           val sourceFile = File(imagePath)
