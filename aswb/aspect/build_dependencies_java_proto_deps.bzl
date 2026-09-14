@@ -1,8 +1,3 @@
-load(
-    ":build_dependencies_java_provider_deps.bzl",
-    _JAVA_INFO = "JAVA_INFO",
-)
-
 _PROTO_TOOLCHAIN_TYPES = [
     "@protobuf//bazel/private:java_toolchain_type",
     "@protobuf//bazel/private:javalite_toolchain_type",
@@ -24,9 +19,9 @@ def _get_java_proto_info(target, rule):
             proto_source_jars = [],
         )
     if rule.kind in ["java_proto_library", "java_lite_proto_library"]:
-        if _JAVA_INFO in target:
+        if JavaInfo in target:
             return struct(
-                proto_source_jars = target[_JAVA_INFO].source_jars,
+                proto_source_jars = target[JavaInfo].source_jars,
             )
     return None
 
