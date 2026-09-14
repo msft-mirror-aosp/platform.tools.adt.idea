@@ -54,14 +54,15 @@ class SimpleComposeProjectScenarios {
             true,
           )
           .get()
-      val image = renderResult.result!!.renderedImage
+      val result = renderResult.result!!
+      val image = result.renderedImage
       Assert.assertTrue(
         "Valid result image is expected to be bigger than 10x10. It's ${image.width}x${image.height}",
         image.width > 10 && image.height > 10,
       )
       Assert.assertNotNull(image.copy)
 
-      return renderResult.result!!
+      return result.disposeAndReturn()
     }
 
     fun complexRenderScenario(projectRule: AndroidGradleProjectRule): RenderResult {
@@ -75,14 +76,15 @@ class SimpleComposeProjectScenarios {
             true,
           )
           .get()
-      val image = renderResult.result!!.renderedImage
+      val result = renderResult.result!!
+      val image = result.renderedImage
       Assert.assertTrue(
         "Valid result image is expected to be bigger than 10x10. It's ${image.width}x${image.height}",
         image.width > 10 && image.height > 10,
       )
       Assert.assertNotNull(image.copy)
 
-      return renderResult.result!!
+      return result.disposeAndReturn()
     }
 
     fun complexRenderScenarioWithBoundsCalculation(projectRule: AndroidGradleProjectRule): RenderResult =
@@ -119,14 +121,14 @@ class SimpleComposeProjectScenarios {
         val firstTouchEventResult =
           renderTask.triggerTouchEvent(RenderSession.TouchEventType.PRESS, clickX, clickY, 1000).get(5, TimeUnit.SECONDS)
 
-        renderTask.render().get(5, TimeUnit.SECONDS)
+        renderTask.render().get(5, TimeUnit.SECONDS).dispose()
         val postTouchEventResult = renderTask.executeCallbacks(frameNanos).get(5, TimeUnit.SECONDS)
-        renderTask.render().get(5, TimeUnit.SECONDS)
+        renderTask.render().get(5, TimeUnit.SECONDS).dispose()
         renderTask.executeCallbacks(2 * frameNanos).get(5, TimeUnit.SECONDS)
 
         renderTask.triggerTouchEvent(RenderSession.TouchEventType.RELEASE, clickX, clickY, 2 * frameNanos + 1000).get(5, TimeUnit.SECONDS)
 
-        renderTask.render().get(5, TimeUnit.SECONDS)
+        renderTask.render().get(5, TimeUnit.SECONDS).dispose()
         renderTask.executeCallbacks(3 * frameNanos).get(5, TimeUnit.SECONDS)
 
         val finalRenderResult = renderTask.render().get(5, TimeUnit.SECONDS)
@@ -136,11 +138,28 @@ class SimpleComposeProjectScenarios {
         // Not black and not white
         Assert.assertNotEquals(clickPixel or 0xFFFFFF, 0)
         Assert.assertNotEquals(clickPixel, 0xFFFFFFFF)
+        finalRenderResult.dispose()
 
+        // The extended result shares its image with renderResult, so disposing it releases that buffer too.
         return ExtendedRenderResult.create(renderResult, firstExecutionResult, firstTouchEventResult, postTouchEventResult)
+          .disposeAndReturn()
       } finally {
         renderTaskFuture.future.get(5, TimeUnit.SECONDS).disposeAsync().get(5, TimeUnit.SECONDS)
       }
     }
   }
 }
+
+/**
+ * Disposes this [RenderResult] and returns it.
+ *
+ * A [RenderResult] owns a recyclable image whose backing buffer is only handed back to layoutlib when the result is disposed. Disposing the
+ * [com.android.tools.rendering.RenderTask] is not enough, as the buffer ownership is transferred to the result when it is created. A
+ * scenario that does not dispose its results therefore leaks one buffer per render, which shows up as a memory regression in the Perfgate
+ * benchmarks. Production code disposes a [RenderResult] as soon as it is replaced, so doing the same here keeps the measurements
+ * representative.
+ *
+ * Only [RenderResult.getRenderedImage] stops returning the image after disposal. Everything the measurements read, in particular
+ * [RenderResult.getStats] and [RenderResult.getRootViews], keeps working, so the disposed result can safely be returned to the benchmark.
+ */
+private fun <T : RenderResult> T.disposeAndReturn(): T = also { it.dispose() }
