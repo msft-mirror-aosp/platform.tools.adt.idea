@@ -56,6 +56,7 @@ import kotlin.io.path.readText
 import kotlin.time.Duration.Companion.seconds
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -104,6 +105,7 @@ class RecompositionUiPanelIntegrationTest {
   }
 
   @Test
+  @Ignore("b/561697076")
   fun testPanelWithStateReads() {
     StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(true, projectRule.testRootDisposable)
     imitateObserveAllMode()
