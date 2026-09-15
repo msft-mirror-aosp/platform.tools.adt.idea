@@ -415,7 +415,7 @@ public:
     return jni_env_;
   }
 
-  JNIEnv* operator ->() const {
+  JNIEnv* operator->() const {
     return jni_env_;
   }
 
