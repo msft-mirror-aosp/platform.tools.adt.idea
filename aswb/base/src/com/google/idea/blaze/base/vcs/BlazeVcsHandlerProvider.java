@@ -58,8 +58,8 @@ public interface BlazeVcsHandlerProvider {
     }
   }
 
-  /** Returns the name of this VCS, eg. "git" or "hg" */
-  String getVcsName();
+  /** Returns the name of this VCS for the specified project, eg. "git" or "hg". */
+  String getVcsName(Project project);
 
   /** Returns whether this vcs handler can manage this project */
   boolean handlesProject(Project project, WorkspaceRoot workspaceRoot);

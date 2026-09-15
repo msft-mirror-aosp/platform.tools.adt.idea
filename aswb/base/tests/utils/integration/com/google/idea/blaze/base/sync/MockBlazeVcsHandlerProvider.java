@@ -48,7 +48,7 @@ public class MockBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
   }
 
   @Override
-  public String getVcsName() {
+  public String getVcsName(Project project) {
     return "Mock";
   }
 

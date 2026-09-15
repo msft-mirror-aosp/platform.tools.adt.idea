@@ -42,7 +42,7 @@ public class GitBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
   private static final Logger logger = Logger.getInstance(GitBlazeVcsHandlerProvider.class);
 
   @Override
-  public String getVcsName() {
+  public String getVcsName(Project project) {
     return "git";
   }
 

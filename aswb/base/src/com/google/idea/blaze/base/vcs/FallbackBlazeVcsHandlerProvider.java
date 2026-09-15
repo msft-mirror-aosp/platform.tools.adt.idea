@@ -34,7 +34,7 @@ import java.util.Optional;
 public class FallbackBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
 
   @Override
-  public String getVcsName() {
+  public String getVcsName(Project project) {
     return "Generic VCS Handler";
   }
 
