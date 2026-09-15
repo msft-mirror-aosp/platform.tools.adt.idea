@@ -41,7 +41,6 @@ class LogcatR8MappingsGradleToken : LogcatR8MappingsToken<GradleProjectSystem>, 
       .asSequence()
       .mapNotNull { GradleAndroidModel.get(it) }
       .filter { it.androidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_APP }
-      .filter { it.features.isBuildOutputFileSupported }
       .flatMap { gradleModel -> gradleModel.androidProject.coreVariants.map { it.mainArtifact } }
       .distinct()
       .toList()

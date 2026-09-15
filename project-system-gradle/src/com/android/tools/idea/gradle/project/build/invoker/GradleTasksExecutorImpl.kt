@@ -91,11 +91,8 @@ import java.nio.file.StandardOpenOption
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import org.gradle.tooling.BuildAction
-import org.gradle.tooling.BuildActionExecuter
 import org.gradle.tooling.BuildCancelledException
 import org.gradle.tooling.BuildException
-import org.gradle.tooling.BuildLauncher
 import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
@@ -110,12 +107,11 @@ import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
 internal class GradleTasksExecutorImpl : GradleTasksExecutor {
   override fun execute(
     request: GradleBuildInvoker.Request,
-    buildAction: BuildAction<*>?,
     buildStopper: BuildStopper,
     listener: ExternalSystemTaskNotificationListener,
   ): ListenableFuture<GradleInvocationResult> {
     val resultFuture = SettableFuture.create<GradleInvocationResult>()
-    TaskImpl(request, buildAction, buildStopper, listener, resultFuture).queue()
+    TaskImpl(request, buildStopper, listener, resultFuture).queue()
     return resultFuture
   }
 
@@ -137,7 +133,6 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
   private class TaskImpl
   constructor(
     private val myRequest: GradleBuildInvoker.Request,
-    private val myBuildAction: BuildAction<*>?,
     private val myBuildStopper: BuildStopper,
     private val myListener: ExternalSystemTaskNotificationListener,
     private val myResultFuture: SettableFuture<GradleInvocationResult>,
@@ -160,7 +155,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         }
         try {
           addIndicatorDelegate()
-          myResultFuture.set(invokeGradleTasks(myBuildAction))
+          myResultFuture.set(invokeGradleTasks())
         } finally {
           try {
             myProgressIndicator.stop()
@@ -200,14 +195,13 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
       buildAttributionManager!!.onBuildStart(myRequest)
     }
 
-    private fun invokeGradleTasks(buildAction: BuildAction<*>?): GradleInvocationResult {
+    private fun invokeGradleTasks(): GradleInvocationResult {
       val project = myRequest.project
       val executionSettings = myRequest.toExecutionSettings()
       val model = AtomicReference<Any?>(null)
       val gradleRootProjectPath = myRequest.rootProjectPath.path
       val executeTasksFunction = Function { connection: ProjectConnection ->
         val stopwatch = Stopwatch.createStarted()
-        val isRunBuildAction = buildAction != null
         val gradleTasks = myRequest.gradleTasks
         val executingTasksText = "Executing tasks: $gradleTasks in project $gradleRootProjectPath"
         expireOldEvents()
@@ -295,7 +289,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             // Add trace arguments to jvmArguments.
             Trace.addVmArgs(traceJvmArgs)
             executionSettings.withVmOptions(traceJvmArgs).withArguments(commandLineArguments)
-            val operation: LongRunningOperation = if (isRunBuildAction) connection.action(buildAction) else connection.newBuild()
+            val operation = connection.newBuild()
             val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
             // Mirrors GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which
             // enables built-in (Tooling API) test events for Gradle 7.6+. That method is only called
@@ -322,16 +316,8 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
                 ApplicationManager.getApplication().isUnitTestMode,
               )
             }
-            if (isRunBuildAction) {
-              (operation as BuildActionExecuter<*>).forTasks(*ArrayUtil.toStringArray(gradleTasks))
-            } else {
-              (operation as BuildLauncher).forTasks(*ArrayUtil.toStringArray(gradleTasks))
-            }
-            if (isRunBuildAction) {
-              model.set((operation as BuildActionExecuter<*>).run())
-            } else {
-              (operation as BuildLauncher).run()
-            }
+            operation.forTasks(*ArrayUtil.toStringArray(gradleTasks))
+            operation.run()
             val buildInfo = buildAttributionManager?.onBuildSuccess(myRequest)
             val skipAgpVersionCheck = executionSettings.getUserData(SKIP_POST_BUILD_AGP_VERSION_CHECK) ?: false
             val isJavaHomeOperation = executionSettings.getUserData(AUTO_JAVA_HOME) ?: false

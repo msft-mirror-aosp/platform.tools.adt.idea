@@ -35,7 +35,6 @@ import com.android.tools.idea.gradle.project.Info
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult
 import com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
-import com.android.tools.idea.gradle.run.OutputBuildAction.PostBuildProjectModels
 import com.android.tools.idea.gradle.util.AndroidGradleSettings
 import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.gradle.util.GradleBuilds
@@ -47,7 +46,6 @@ import com.android.tools.idea.projectsystem.gradle.getGradleContext
 import com.android.tools.idea.projectsystem.gradle.getGradlePluginVersion
 import com.android.tools.idea.projectsystem.requiresAndroidModel
 import com.android.tools.idea.run.DeviceFutures
-import com.android.tools.idea.run.GradleApkProvider
 import com.android.tools.idea.run.PreferGradleMake
 import com.android.tools.idea.run.editor.ProfilerState
 import com.android.tools.idea.run.profiler.AbstractProfilerExecutorGroup
@@ -73,7 +71,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import icons.StudioIcons
@@ -250,14 +247,6 @@ class MakeBeforeRunTaskProvider : BeforeRunTaskProvider<MakeBeforeRunTask>() {
         is ProcessedDeviceSpec.SingleDeviceSpec.TargetDeviceSpec -> targetDeviceSpec.deviceSpec.commonVersion
       }
     val buildResult = build(modules, runConfigurationGradleContext, targetDeviceVersion, task.goal, cmdLineArgs, env)
-    if (configuration is UserDataHolderEx && buildResult != null) {
-      val model = buildResult.invocationResult.models.firstOrNull()
-      if (model is PostBuildProjectModels) {
-        configuration.putUserData(GradleApkProvider.POST_BUILD_MODEL, PostBuildModel(model))
-      } else {
-        log.info("Couldn't get post build models.")
-      }
-    }
     log.info("Gradle invocation complete, build result = $buildResult")
 
     // If the model needs a sync, we need to sync "synchronously" before running.

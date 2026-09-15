@@ -145,28 +145,6 @@ class ProfilerR8MappingGradleTokenTest {
     assertThat(getMappings()).isEmpty()
   }
 
-  // AGP < 4.1.0 (e.g. 3.6.0) has isBuildOutputFileSupported == false.
-  @Test
-  fun getR8MappingsIgnoresModulesWhenBuildOutputFileNotSupported() {
-    projectRule.setupProjectFrom(
-      JavaModuleModelBuilder.rootModuleBuilder,
-      AndroidModuleModelBuilder(
-        agpVersion = "3.6.0",
-        gradlePath = ":app",
-        selectedBuildVariant = "release",
-        projectBuilder =
-          AndroidProjectBuilder(
-            applicationIdFor = { "com.example.app" },
-            mainArtifactStub = { variant ->
-              buildMainArtifactStub(variant).copy(mappingR8TextFile = releaseMappingFile.toImpl())
-            },
-          ),
-      ),
-    )
-
-    assertThat(getMappings()).isEmpty()
-  }
-
   // distinct() deduplicates multiple source-set modules sharing a model as well as separate modules with identical mappings.
   @Test
   fun getR8MappingsReturnsMappingsForMultipleAppModulesAndDeduplicates() {

@@ -38,11 +38,6 @@ import org.junit.Test;
 public class PublicMethodsBuildActionTest {
 
   @Test
-  public void testOutputBuildActionAgainstGuava() throws IOException, ClassNotFoundException {
-    testActionAgainstJar(OutputBuildAction.class, getGuavaJar());
-  }
-
-  @Test
   public void testBadActionAgainstGuavaFails() throws IOException, ClassNotFoundException {
     try {
       testActionAgainstJar(BadAction.class, getGuavaJar());

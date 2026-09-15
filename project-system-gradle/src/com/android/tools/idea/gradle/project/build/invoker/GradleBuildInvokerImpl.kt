@@ -23,7 +23,6 @@ import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionO
 import com.android.tools.idea.gradle.project.build.attribution.buildOutputLine
 import com.android.tools.idea.gradle.project.build.attribution.isBuildAttributionEnabledForProject
 import com.android.tools.idea.gradle.project.build.output.BuildOutputParserManager
-import com.android.tools.idea.gradle.run.createOutputBuildAction
 import com.android.tools.idea.gradle.util.AndroidGradleSettings.createProjectProperty
 import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.gradle.util.BuildMode.ASSEMBLE
@@ -104,7 +103,6 @@ import java.util.Collections.emptyList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit.SECONDS
-import org.gradle.tooling.BuildAction
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.TestOnly
 
@@ -245,7 +243,7 @@ internal constructor(
         .mapValues { it.value.map { it.first } }
 
     val futures: List<ListenableFuture<GradleInvocationResult>> = request.map {
-      executeTasks(it, createOutputBuildAction(modulesByRootProject[it.rootProjectPath.toPath()].orEmpty()))
+      executeTasks(it)
     }
     val resultFuture: ListenableFuture<GradleMultiInvocationResult> = combineGradleInvocationResults(futures)
     return Futures.transform(resultFuture, { AssembleInvocationResult(it!!, buildMode) }, directExecutor())
@@ -422,16 +420,11 @@ internal constructor(
     }
   }
 
-  override fun executeTasks(request: GradleBuildInvoker.Request): ListenableFuture<GradleInvocationResult> {
-    return executeTasks(request, null)
-  }
-
   override fun executeTasks(request: List<GradleBuildInvoker.Request>): ListenableFuture<GradleMultiInvocationResult> {
     return combineGradleInvocationResults(request.map { executeTasks(it) })
   }
 
-  @VisibleForTesting
-  fun executeTasks(request: GradleBuildInvoker.Request, buildAction: BuildAction<*>?): ListenableFuture<GradleInvocationResult> {
+  override fun executeTasks(request: GradleBuildInvoker.Request): ListenableFuture<GradleInvocationResult> {
     // Remember the current build's tasks, in case they want to re-run it with transient gradle options.
     val gradleTasks: List<String> = request.gradleTasks.toList()
     lastBuildTasks[request.rootProjectPath.toPath()] = gradleTasks
@@ -442,17 +435,16 @@ internal constructor(
     }
     val executionName = getExecutionName(request)
     val buildTaskListener: ExternalSystemTaskNotificationListener = createBuildTaskListener(request, executionName, request.listener)
-    return internalExecuteTasks(request, buildAction, buildTaskListener)
+    return internalExecuteTasks(request, buildTaskListener)
   }
 
   private fun internalExecuteTasks(
     request: GradleBuildInvoker.Request,
-    buildAction: BuildAction<*>?,
     buildTaskListener: ExternalSystemTaskNotificationListener,
   ): ListenableFuture<GradleInvocationResult> {
     ApplicationManager.getApplication().invokeAndWait(documentManager::saveAllDocuments)
 
-    val resultFuture: ListenableFuture<GradleInvocationResult> = taskExecutor.execute(request, buildAction, buildStopper, buildTaskListener)
+    val resultFuture: ListenableFuture<GradleInvocationResult> = taskExecutor.execute(request, buildStopper, buildTaskListener)
 
     if (request.isWaitForCompletion && !ApplicationManager.getApplication().isDispatchThread) {
       try {
@@ -680,7 +672,7 @@ internal constructor(
       val executionName: String = getExecutionName(newRequest)
       val buildTaskListener: ExternalSystemTaskNotificationListener =
         createBuildTaskListener(newRequest, executionName, newRequest.listener)
-      internalExecuteTasks(newRequest, null, buildTaskListener)
+      internalExecuteTasks(newRequest, buildTaskListener)
     }
   }
 

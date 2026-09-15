@@ -19,7 +19,6 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.project.Project
-import org.gradle.tooling.BuildAction
 
 class FakeGradleTaskExecutor : GradleTasksExecutor {
   var invoked: Int = 0
@@ -27,7 +26,6 @@ class FakeGradleTaskExecutor : GradleTasksExecutor {
 
   override fun execute(
     request: GradleBuildInvoker.Request,
-    buildAction: BuildAction<*>?,
     buildStopper: BuildStopper,
     listener: ExternalSystemTaskNotificationListener,
   ): ListenableFuture<GradleInvocationResult> {

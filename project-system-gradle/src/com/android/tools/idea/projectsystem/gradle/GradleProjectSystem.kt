@@ -27,9 +27,6 @@ import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationRes
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
-import com.android.tools.idea.gradle.run.OutputBuildAction
-import com.android.tools.idea.gradle.run.PostBuildModel
-import com.android.tools.idea.gradle.run.PostBuildModelProvider
 import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.getGeneratedSourceFoldersToUse
 import com.android.tools.idea.project.FacetBasedApplicationProjectContext
@@ -77,7 +74,6 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.roots.ProjectRootModificationTracker
-import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.psi.PsiElementFinder
@@ -153,7 +149,6 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
     return GradleApkProvider(
       context.androidFacet,
       getApplicationIdProvider(runConfiguration) ?: return null,
-      PostBuildModelProvider { (runConfiguration as? UserDataHolder)?.getUserData(GradleApkProvider.POST_BUILD_MODEL) },
       context.isTestConfiguration,
       context.alwaysDeployApkFromBundle,
     )
@@ -177,13 +172,6 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
   ): List<ApkInfo>? {
     val androidModel = GradleAndroidModel.get(androidFacet) ?: return null
 
-    // Composite builds are not properly supported with AGPs 3.x and we ignore a possibility of receiving multiple models here.
-    // `PostBuildModel`s were not designed to handle this.
-    val postBuildModel: PostBuildModel? =
-      (assembleResult.invocationResult.models.firstOrNull() as? OutputBuildAction.PostBuildProjectModels)?.let { PostBuildModel(it) }
-
-    val postBuildModelProvider = PostBuildModelProvider { postBuildModel }
-
     return GradleApkProvider(
         androidFacet,
         GradleApplicationIdProvider.create(
@@ -193,7 +181,6 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
           androidModel.selectedBasicVariant,
           androidModel.selectedVariant,
         ),
-        postBuildModelProvider,
         forTests,
         false, // Overridden and doesn't matter.
       )

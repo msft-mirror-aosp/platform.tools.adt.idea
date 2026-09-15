@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -6822,23 +6822,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             isComputable = false,
                             isKey = false,
                             isOpen = false,
-                            name = "features",
-                            valueType =
-                              ValueTypeMetadata.SimpleType.CustomType(
-                                isNullable = false,
-                                typeMetadata =
-                                  FinalClassMetadata.ClassMetadata(
-                                    fqName = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures",
-                                    properties = listOf(),
-                                    supertypes = listOf(),
-                                  ),
-                              ),
-                            withDefault = false,
-                          ),
-                          OwnPropertyMetadata(
-                            isComputable = false,
-                            isKey = false,
-                            isOpen = false,
                             name = "filteredDebuggableVariants",
                             valueType =
                               ValueTypeMetadata.ParameterizedType(
@@ -13479,12 +13462,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
   }
 
   override fun initializeMetadataHash() {
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = 1859273993)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = -340484778)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity", metadataHash = 860414102)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleProjectPathEntity", metadataHash = -1975636342)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId", metadataHash = -1768909912)
     addMetadataHash(typeFqn = "com.intellij.platform.workspace.jps.entities.ModuleId", metadataHash = 369441961)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = 1657983096)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = 1166011787)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider", metadataHash = 713147243)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.FileImpl", metadataHash = -1013892919)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", metadataHash = 236716780)
@@ -13551,7 +13534,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
       metadataHash = -667183215,
     )
     addMetadataHash(typeFqn = "com.android.tools.lint.detector.api.Desugaring", metadataHash = -1307312824)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures", metadataHash = 730136386)
     addMetadataHash(typeFqn = "com.android.sdklib.AndroidVersion", metadataHash = 1650380424)
     addMetadataHash(typeFqn = "com.android.tools.idea.model.Namespacing", metadataHash = 866211896)
     addMetadataHash(typeFqn = "com.android.projectmodel.DynamicResourceValue", metadataHash = -1418688792)

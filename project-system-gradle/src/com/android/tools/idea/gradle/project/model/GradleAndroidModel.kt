@@ -72,7 +72,6 @@ data class GradleAndroidModelImpl(val data: GradleAndroidModelData) : GradleAndr
   private val myCachedVariantsByName: Map<String, IdeVariantCoreImpl> = data.variants.associateBy { it.name }
 
   override val agpVersion: AgpVersion = AgpVersion.parse(androidProject.agpVersion) // Fail sync if the reported version cannot be parsed.
-  override val features: AndroidModelFeatures = AndroidModelFeatures(agpVersion)
   override val moduleName: String
     get() = data.moduleName
 
@@ -370,7 +369,6 @@ sealed interface GradleAndroidModel : AndroidModel {
 
   val androidProject: IdeAndroidProject
   val agpVersion: AgpVersion
-  val features: AndroidModelFeatures
   val moduleName: String
   val rootDirPath: File
   val declaredDependencies: IdeDeclaredDependencies

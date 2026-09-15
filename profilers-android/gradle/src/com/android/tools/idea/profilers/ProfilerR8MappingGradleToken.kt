@@ -38,7 +38,6 @@ class ProfilerR8MappingGradleToken : ProfilerR8MappingToken<GradleProjectSystem>
       .filter { !it.isDisposed }
       .mapNotNull { GradleAndroidModel.get(it) }
       .filter { it.androidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_APP }
-      .filter { it.features.isBuildOutputFileSupported }
 
   /**
    * Returns the mapping file (mapping.txt) for the currently selected build variant of this module, or null if the variant has no R8

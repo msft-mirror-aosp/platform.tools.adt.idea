@@ -15,9 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.builder.model.AndroidProject as AndroidProjectV1
-import com.android.builder.model.ProjectSyncIssues as ProjectSyncIssuesV1
-import com.android.builder.model.Variant as VariantV1
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
@@ -92,9 +89,6 @@ data class ActionToRun<T>(
         ProjectGraph::class.java -> fetchesV2Models
         AndroidDsl::class.java -> fetchesV2Models
         ProjectSyncIssues::class.java -> fetchesV2Models
-        AndroidProjectV1::class.java -> fetchesV1Models
-        VariantV1::class.java -> fetchesV1Models
-        ProjectSyncIssuesV1::class.java -> fetchesV1Models
         KotlinGradleModel::class.java -> fetchesKotlinModels
         KaptGradleModel::class.java -> fetchesKotlinModels
         KotlinMPPGradleModel::class.java -> fetchesKotlinModels
@@ -389,9 +383,6 @@ private fun <T> SyncCounters.measure(modelType: Class<*>, block: () -> T): T {
       ProjectGraph::class.java -> projectGraphModel
       AndroidDsl::class.java -> projectModel
       ProjectSyncIssues::class.java -> otherModel
-      AndroidProjectV1::class.java -> projectModel
-      VariantV1::class.java -> variantDependenciesModel
-      ProjectSyncIssuesV1::class.java -> otherModel
       KotlinGradleModel::class.java -> kotlinModel
       KaptGradleModel::class.java -> kaptModel
       KotlinMPPGradleModel::class.java -> mppModel

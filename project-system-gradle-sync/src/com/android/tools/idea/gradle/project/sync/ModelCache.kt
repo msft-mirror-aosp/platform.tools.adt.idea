@@ -18,8 +18,8 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.Library
-import com.android.builder.model.Variant
 import com.android.builder.model.v2.ide.BasicVariant
+import com.android.builder.model.v2.ide.Variant
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.BasicTestSuite

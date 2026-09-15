@@ -476,18 +476,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
                                      @NotNull List<String> buildVariants,
                                      @NotNull TargetType targetType) {
     List<String> taskNames;
-    if (GradleAndroidModel.getFeatures().isBuildOutputFileSupported()) {
-      taskNames = getTaskNamesFromBuildInformation(GradleAndroidModel, buildVariants, targetType);
-    }
-    else {
-      IdeVariantCore selectedVariant = GradleAndroidModel.getSelectedVariant();
-      String selectedTaskName = getTaskName(selectedVariant, targetType);
-      if (selectedTaskName == null) {
-        getLog().warn("Could not get tasks for target " + targetType + " on variant " + selectedVariant.getName());
-        return Collections.emptyList();
-      }
-      taskNames = getTaskNamesFromSelectedVariant(buildVariants, selectedVariant.getName(), selectedTaskName);
-    }
+    taskNames = getTaskNamesFromBuildInformation(GradleAndroidModel, buildVariants, targetType);
     return ContainerUtil.map(taskNames, name -> GradleProjectSystemUtil.createFullTaskName(gradleProjectPath, name));
   }
 
