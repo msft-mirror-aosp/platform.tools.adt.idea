@@ -18,6 +18,7 @@ package com.android.tools.idea.whatsnew.assistant.v2.model
 import com.android.annotations.concurrency.WorkerThread
 import com.android.repository.Revision
 import com.intellij.openapi.application.ApplicationInfo
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import java.io.InputStream
 import java.util.zip.ZipInputStream
@@ -54,6 +55,7 @@ class WhatsNewDocumentLoaderImpl(
   private val zipStreamSupplier: () -> InputStream? = {
     WhatsNewDocumentLoaderImpl::class.java.getResourceAsStream("/whats-new.zip")
   },
+  private val shouldFilterNewerVersions: Boolean = !isDevBuild(),
 ) : WhatsNewDocumentLoader {
 
   override suspend fun loadDocuments(): List<WhatsNewMarkdownDocument> {
@@ -76,7 +78,9 @@ class WhatsNewDocumentLoaderImpl(
               // should still be displayed up to the same micro, so we ignore preview here
               if (
                 revision != null &&
-                  (currentVersion == Revision.NOT_SPECIFIED || revision.compareTo(currentVersion, Revision.PreviewComparison.IGNORE) <= 0)
+                  (!shouldFilterNewerVersions ||
+                    currentVersion == Revision.NOT_SPECIFIED ||
+                    revision.compareTo(currentVersion, Revision.PreviewComparison.IGNORE) <= 0)
               ) {
                 val content = zipStream.readBytes().toString(Charsets.UTF_8)
                 documents.add(Pair(revision, content))
@@ -100,4 +104,10 @@ class WhatsNewDocumentLoaderImpl(
   private fun loadMarkdownDocument(revision: Revision, content: String): WhatsNewMarkdownDocument {
     return WhatsNewMarkdownParser.parseMarkdown(revision, content)
   }
+}
+
+private fun isDevBuild(): Boolean {
+  if (ApplicationManager.getApplication() == null) return false
+  val appInfo = ApplicationInfo.getInstance() ?: return false
+  return appInfo.build.isSnapshot
 }
