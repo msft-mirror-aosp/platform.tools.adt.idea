@@ -45,6 +45,7 @@ import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.ui.getUserData
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -56,7 +57,6 @@ import kotlin.io.path.readText
 import kotlin.time.Duration.Companion.seconds
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -105,7 +105,6 @@ class RecompositionUiPanelIntegrationTest {
   }
 
   @Test
-  @Ignore("b/561697076")
   fun testPanelWithStateReads() {
     StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(true, projectRule.testRootDisposable)
     imitateObserveAllMode()
@@ -251,7 +250,7 @@ class RecompositionUiPanelIntegrationTest {
     var expectedText = ""
     if (dataFile.isNotEmpty()) {
       val file = "${TEST_DATA_PATH}/$dataFile"
-      expectedText = TestUtils.resolveWorkspacePathUnchecked(file).readText()
+      expectedText = StringUtil.convertLineSeparators(TestUtils.resolveWorkspacePathUnchecked(file).readText())
     }
     val editor = getUserData(STATE_READ_EDITOR_KEY)!!
     waitForCondition(10.seconds) { editor.document.text == expectedText }
