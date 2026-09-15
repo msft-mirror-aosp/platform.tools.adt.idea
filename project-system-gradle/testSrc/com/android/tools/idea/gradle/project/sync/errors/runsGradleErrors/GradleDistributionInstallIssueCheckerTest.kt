@@ -122,12 +122,17 @@ class GradleDistributionInstallIssueCheckerTest : AbstractIssueCheckerIntegratio
       overrideGradleJdkPath = File(JdkConstants.JDK_17_PATH),
       verifyBuildIssue = { _, buildIssue ->
         expect.that(buildIssue).isNotNull()
+        val description =
+          buildIssue.description.replace(
+            Regex("""Reason: java\.net\.ConnectException: .*"""),
+            "Reason: java.net.ConnectException: <masked>",
+          )
         expect
-          .that(buildIssue.description)
+          .that(description)
           .isEqualTo(
             """
             Could not install Gradle distribution from 'https://127.0.0.1:1234/distributions/gradle-8.3-rc-2-bin.zip'.
-            Reason: java.net.ConnectException: Connection refused
+            Reason: java.net.ConnectException: <masked>
 
             Please ensure <a href="open_gradle_wrapper_settings">gradle distribution url</a> is correct.
             If you are behind an HTTP proxy, please <a href="open.proxy.settings">configure the proxy settings</a>.
