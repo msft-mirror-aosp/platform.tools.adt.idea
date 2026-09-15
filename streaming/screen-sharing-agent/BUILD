@@ -1,4 +1,5 @@
 load("@rules_android//rules:rules.bzl", "android_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//tools/adt/idea/studio:studio.bzl", "studio_data")
 load("//tools/base/bazel:android.bzl", "ANDROID_COPTS", "ANDROID_LINKOPTS", "android_cc_binary", "dex_library")
 
@@ -9,6 +10,7 @@ cc_library(
     copts = ANDROID_COPTS + [
         "-Wno-macro-redefined",
         "-D__ANDROID_API__=26",
+        "-Oz",
     ],
     includes = [
         "app/src/main/cpp",
@@ -24,6 +26,8 @@ cc_binary(
         "-laaudio",
         "-landroid",
         "-lmediandk",
+        "-Wl,--exclude-libs,ALL",
+        "-Wl,--icf=all",
     ],
     linkshared = True,
     stamp = 0,
@@ -35,7 +39,7 @@ cc_binary(
 
 android_cc_binary(
     name = "native",
-    binary = ":screen-sharing-agent.so",
+    binary = ":screen-sharing-agent.so.stripped",
     filename = "libscreen-sharing-agent.so",
     target_compatible_with = select({
         "@platforms//os:windows": ["@platforms//:incompatible"],
