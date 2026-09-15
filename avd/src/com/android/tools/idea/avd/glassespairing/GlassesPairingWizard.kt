@@ -79,7 +79,6 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.util.ui.JBUI
-import icons.StudioIconsCompose
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.Window
@@ -126,13 +125,15 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.ExternalLink
-import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IndeterminateHorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 
 private const val GLASSES_PAIRING_AUTH_IMAGE_PATH = "/screens/glasses_auth.png"
 private const val GLASSES_CORE_CONNECTING_IMAGE_PATH = "/screens/glasses_core.png"
+private const val GLASSES_PAIRING_BRIDGE_IMAGE_PATH = "/screens/glasses_pairing_bridge.svg"
+private const val GLASSES_PAIRING_SUCCESS_IMAGE_PATH = "/screens/glasses_pairing_success.svg"
+private const val GLASSES_PAIRING_ERROR_IMAGE_PATH = "/screens/glasses_pairing_error.svg"
 
 internal interface WizardController {
   suspend fun show(): Boolean
@@ -690,29 +691,55 @@ private fun PairingState(pairingState: PairingState, phone: DeviceRow) {
       }
       is PairingState.Complete -> {
         Column(Modifier.fillMaxSize(), Arrangement.Center) {
-          Icon(StudioIconsCompose.Common.Success, null, Modifier.size(100.dp).align(Alignment.CenterHorizontally).padding(bottom = 10.dp))
+          PairingIllustration(GLASSES_PAIRING_SUCCESS_IMAGE_PATH, Modifier.padding(bottom = 10.dp))
           LargeText(pairingState.heading, Modifier.align(Alignment.CenterHorizontally))
         }
       }
+      is PairingState.Error ->
+        PairingStateHorizontalProgress(
+          header = pairingState.heading,
+          detail = pairingState.detailText,
+          illustrationPath = GLASSES_PAIRING_ERROR_IMAGE_PATH,
+          showProgressBar = false,
+        )
       else ->
         PairingStateHorizontalProgress(
-          pairingState.heading,
-          pairingState.detailText,
-          pairingState !is PairingState.Complete && pairingState !is PairingState.Error,
+          header = pairingState.heading,
+          detail = pairingState.detailText,
+          illustrationPath = GLASSES_PAIRING_BRIDGE_IMAGE_PATH,
+          showProgressBar = true,
         )
     }
   }
 }
 
 @Composable
-private fun PairingStateHorizontalProgress(header: String, detail: String?, showProgressBar: Boolean) {
+private fun PairingStateHorizontalProgress(
+  header: String,
+  detail: String?,
+  illustrationPath: String,
+  showProgressBar: Boolean,
+) {
   LargeText(header)
+  PairingIllustration(illustrationPath, Modifier.padding(vertical = 24.dp))
   Box(Modifier.height(100.dp)) {
     if (showProgressBar) {
       IndeterminateHorizontalProgressBar(Modifier.fillMaxWidth().align(Alignment.Center))
     }
   }
   detail?.let { Text(it, color = JewelTheme.globalColors.text.info) }
+}
+
+/** Jewel resolves the `_dark` variant of [path] from the active theme. */
+@Composable
+private fun PairingIllustration(path: String, modifier: Modifier = Modifier) {
+  val painter by rememberResourcePainterProvider(path, GlassesPairingWizard::class.java).getPainter()
+  Image(
+    painter = painter,
+    contentDescription = null,
+    modifier = modifier.fillMaxWidth().height(120.dp),
+    contentScale = ContentScale.Fit,
+  )
 }
 
 @Composable

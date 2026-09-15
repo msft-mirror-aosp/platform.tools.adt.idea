@@ -45,6 +45,7 @@ import com.android.tools.idea.avd.glassespairing.LaunchState.Launching
 import com.android.tools.idea.avd.glassespairing.LaunchState.Ready
 import com.android.tools.idea.deviceprovisioner.GlassesInteractivePairableDeviceHandle
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import com.google.protobuf.Message.Builder
 import com.google.wireless.android.play.playlog.proto.ClientAnalytics
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
@@ -867,6 +868,15 @@ class GlassesPairingWizardTest {
     } finally {
       coroutineScope.cancel()
       UsageTracker.cleanAfterTesting()
+    }
+  }
+
+  @Test
+  fun testPairingIllustrationsHaveDarkVariants() {
+    for (name in listOf("glasses_pairing_bridge", "glasses_pairing_success", "glasses_pairing_error")) {
+      for (path in listOf("/screens/$name.svg", "/screens/${name}_dark.svg")) {
+        assertWithMessage(path).that(GlassesPairingWizard::class.java.getResource(path)).isNotNull()
+      }
     }
   }
 }
