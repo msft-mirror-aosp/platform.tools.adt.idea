@@ -64,6 +64,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
+import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.ArrayUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
@@ -1079,16 +1080,23 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                                   myIdeProfilerServices.getFeatureTracker(), myStage);
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
-    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
 
     File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
     try {
       myStage.selectCaptureDuration(dataList.getFirst().value, null);
       assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("bundled trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
     } finally {
       if (captureFile.exists()) {
         captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
       }
     }
   }
@@ -1129,16 +1137,23 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                                   myIdeProfilerServices.getFeatureTracker(), myStage);
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
-    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
 
     File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
     try {
       myStage.selectCaptureDuration(dataList.getFirst().value, null);
       assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("bundled trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
     } finally {
       if (captureFile.exists()) {
         captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
       }
     }
   }
@@ -1179,16 +1194,23 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                                   myIdeProfilerServices.getFeatureTracker(), myStage);
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
-    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
 
     File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
     try {
       myStage.selectCaptureDuration(dataList.getFirst().value, null);
       assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isFalse();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("dummy raw trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
     } finally {
       if (captureFile.exists()) {
         captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
       }
     }
   }
@@ -1229,16 +1251,82 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                                   myIdeProfilerServices.getFeatureTracker(), myStage);
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
-    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
 
     File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
     try {
       myStage.selectCaptureDuration(dataList.getFirst().value, null);
       assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("bundled trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
     } finally {
       if (captureFile.exists()) {
         captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
+      }
+    }
+  }
+
+  @Test
+  public void nativeAllocationInEditorWhenBundlingFailsFallsBackToRawTrace() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+    myIdeProfilerServices.setSymbolizeAndDeobfuscateFails(true);
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(55);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(60);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  55,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  60,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                                  myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+      assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      // When bundling fails, the raw trace is preserved and renamed to captureFile
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("dummy raw trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
+    } finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
       }
     }
   }

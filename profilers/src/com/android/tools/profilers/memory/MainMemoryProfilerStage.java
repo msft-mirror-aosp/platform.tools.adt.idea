@@ -56,6 +56,7 @@ import com.android.tools.profilers.tasks.analytics.TaskStartFailedMetadata;
 import com.android.tools.profilers.tasks.analytics.TaskStopFailedMetadata;
 import com.android.tools.profilers.transporteventutils.TransportListenerTracker;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
@@ -727,6 +728,11 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
               file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, traceFileName);
               if (file == null) {
                 file = processedFile;
+              }
+              // Delete the original raw trace when traceconv generated a distinct bundled file,
+              // to avoid leaking stale files in the temp directory.
+              if (!FileUtil.filesEqual(processedFile, originalFile)) {
+                FileUtil.delete(originalFile);
               }
             }
           }

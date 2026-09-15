@@ -39,8 +39,11 @@ import com.android.tools.profilers.stacktrace.NativeFrameSymbolizer;
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -690,6 +693,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   }
 
   private boolean myTraceSymbolizedAndDeobfuscated = false;
+  private boolean mySymbolizeAndDeobfuscateFails = false;
+
+  public void setSymbolizeAndDeobfuscateFails(boolean fails) {
+    mySymbolizeAndDeobfuscateFails = fails;
+  }
 
   @Nullable
   @Override
@@ -697,7 +705,17 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
                                           @NotNull List<String> symbolDirs,
                                           @NotNull Map<String, String> proguardMaps) {
     myTraceSymbolizedAndDeobfuscated = true;
-    return traceFile;
+    if (mySymbolizeAndDeobfuscateFails) {
+      return null;
+    }
+    try {
+      File bundledFile = FileUtil.createTempFile("bundled", ".heapprofd", true);
+      FileUtil.writeToFile(bundledFile, "bundled trace".getBytes(StandardCharsets.UTF_8));
+      return bundledFile;
+    }
+    catch (IOException e) {
+      return traceFile;
+    }
   }
 
   public boolean isTraceSymbolizedAndDeobfuscated() {
