@@ -75,12 +75,6 @@
       "hit": "750 ms"
     },
     {
-      "hit": "AI inline code completion"
-    },
-    {
-      "hit": "AI next edit prediction"
-    },
-    {
       "hit": "Automatically collapse diff chunks below:"
     },
     {
@@ -96,10 +90,13 @@
       "hit": "Editor"
     },
     {
-      "hit": "Enable AI predictions"
+      "hit": "Enable AI next edit prediction"
     },
     {
       "hit": "Enable AI smart rename suggestions"
+    },
+    {
+      "hit": "Enable suggestions away from cursor"
     },
     {
       "hit": "Major"
