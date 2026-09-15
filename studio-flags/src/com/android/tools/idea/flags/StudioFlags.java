@@ -2734,6 +2734,11 @@ public final class StudioFlags {
                     "Enable KMP support in Import Project migration",
                     "Enables KMP target support in the Import Project migration wizard and agent.");
 
+  public static final Flag<Boolean> STUDIOBOT_IMAGE_REF_ENABLED =
+    new BooleanFlag(STUDIOBOT, "image.ref.enabled",
+                    "Enable image_ref in function responses",
+                    "When enabled, function response messages in Gemini API requests include image_ref entries mapping to inline image attachments. This is a workaround for b/519079379 until it is fixed server side.");
+
 
   public enum DasherSupportMode {
     /**
