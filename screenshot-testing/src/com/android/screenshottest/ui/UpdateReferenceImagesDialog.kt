@@ -137,7 +137,11 @@ class UpdateReferenceImagesDialog(
 
   fun updateDialogWithTestResult(previewDetails: PreviewDetails, isChecked: Boolean) {
     ApplicationManager.getApplication().invokeLater {
-      val (testId, className, methodName, previewName, testResult, destImagePath, srcImagePath, diffImagePath, diffPercent) = previewDetails
+      val className = previewDetails.className
+      val methodName = previewDetails.methodName
+      val previewName = previewDetails.previewName
+      val testId = previewDetails.testId
+      val srcImagePath = previewDetails.srcImagePath
 
       if (methodName.isNotBlank() && previewName.isNotBlank()) {
         if (!isFirstTestDiscovered) {
@@ -478,7 +482,7 @@ class UpdateReferenceImagesDialog(
 
     val imagesToCopy = checkedPreviews.map { previewDetails ->
       val sourceImageMap = mutableMapOf<String, String>()
-      val simpleClassName = previewDetails.testId.split('.', limit = 2).first()
+      val simpleClassName = previewDetails.className.substringAfterLast('.')
       previewDetails.srcImagePath?.let { sourceImageMap[it] = simpleClassName }
       ImageData(previewDetails, sourceImageMap)
     }
