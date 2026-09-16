@@ -24,6 +24,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.ui.LafManager
 import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -38,7 +39,8 @@ import org.mockito.kotlin.whenever
 @RunsInEdt
 class EmulatorShowExtendedControlsActionTest {
   private val emulatorViewRule = EmulatorViewRule()
-  @get:Rule val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), EdtRule(), HeadlessDialogRule())
+  @get:Rule
+  val ruleChain = RuleChain(ApplicationRule(), ClipboardSynchronizationDisablementRule(), emulatorViewRule, EdtRule(), HeadlessDialogRule())
 
   @Test
   fun testShowExtendedControls() {

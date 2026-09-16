@@ -77,6 +77,7 @@ import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -157,7 +158,9 @@ class EmulatorViewTest {
   private val emulatorViewRule = EmulatorViewRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/EmulatorViewTest/golden")
   private val hiDpiRule = HiDpiRule()
-  @get:Rule val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), goldenImageRule, EdtRule(), hiDpiRule)
+  @get:Rule
+  val ruleChain =
+    RuleChain(ApplicationRule(), ClipboardSynchronizationDisablementRule(), emulatorViewRule, goldenImageRule, EdtRule(), hiDpiRule)
   @get:Rule val usageTrackerRule = UsageTrackerRule()
   private lateinit var view: EmulatorView
   private val fakeEmulator: FakeEmulator by lazy { emulatorViewRule.getFakeEmulator(view) }

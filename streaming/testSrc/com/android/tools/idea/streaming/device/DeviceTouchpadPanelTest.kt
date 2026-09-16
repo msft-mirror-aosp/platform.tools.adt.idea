@@ -22,6 +22,7 @@ import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablement
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -50,7 +51,15 @@ class DeviceTouchpadPanelTest {
   private val androidExecutorsRule = AndroidExecutorsRule(workerThreadExecutor = Executors.newCachedThreadPool())
 
   @get:Rule
-  val ruleChain = RuleChain(agentRule, androidExecutorsRule, ClipboardSynchronizationDisablementRule(), EdtRule(), PortableUiFontRule())
+  val ruleChain =
+    RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
+      agentRule,
+      androidExecutorsRule,
+      EdtRule(),
+      PortableUiFontRule(),
+    )
 
   private val testRootDisposable
     get() = agentRule.disposable

@@ -88,6 +88,7 @@ import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
@@ -176,12 +177,13 @@ internal class DeviceViewTest {
   @get:Rule
   val ruleChain =
     RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
       agentRule,
       DataManagerRule(agentRule::project),
       crashReporterRule,
       androidExecutorsRule,
       notificationRule,
-      ClipboardSynchronizationDisablementRule(),
       goldenImageRule,
       PortableUiFontRule(),
       EdtRule(),

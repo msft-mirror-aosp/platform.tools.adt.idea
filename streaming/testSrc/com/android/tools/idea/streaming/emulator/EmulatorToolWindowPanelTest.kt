@@ -158,9 +158,9 @@ class EmulatorToolWindowPanelTest {
     RuleChain(
       projectRule,
       DataManagerRule(projectRule),
+      ClipboardSynchronizationDisablementRule(),
       emulatorRule,
       ProcessHandleProviderRule(),
-      ClipboardSynchronizationDisablementRule(),
       PortableUiFontRule(),
       goldenImageRule,
       popupRule,

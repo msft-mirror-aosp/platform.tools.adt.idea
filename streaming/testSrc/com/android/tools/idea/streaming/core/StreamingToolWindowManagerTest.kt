@@ -84,6 +84,7 @@ import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.impl.InternalDecorator
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.IndexingTestUtil.Companion.waitUntilIndexesAreReady
 import com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue
@@ -127,10 +128,11 @@ class StreamingToolWindowManagerTest {
   @get:Rule
   val ruleChain =
     RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
       agentRule,
       provisionerRule,
       emulatorRule,
-      ClipboardSynchronizationDisablementRule(),
       androidExecutorsRule,
       EdtRule(),
       PortableUiFontRule(),

@@ -82,8 +82,8 @@ class EmulatorScreenshotActionTest {
     RuleChain(
       projectRule,
       DataManagerRule(projectRule),
-      emulatorRule,
       ClipboardSynchronizationDisablementRule(),
+      emulatorRule,
       goldenImageRule,
       EdtRule(),
       HeadlessDialogRule(),

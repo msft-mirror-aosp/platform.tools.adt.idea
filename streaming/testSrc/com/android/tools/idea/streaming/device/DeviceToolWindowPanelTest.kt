@@ -66,6 +66,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
@@ -135,7 +136,15 @@ class DeviceToolWindowPanelTest {
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/DeviceToolWindowPanelTest/golden")
 
   @get:Rule
-  val ruleChain = RuleChain(agentRule, ClipboardSynchronizationDisablementRule(), PortableUiFontRule(), goldenImageRule, EdtRule())
+  val ruleChain =
+    RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
+      agentRule,
+      PortableUiFontRule(),
+      goldenImageRule,
+      EdtRule(),
+    )
 
   private lateinit var device: FakeDevice
   private val panel: DeviceToolWindowPanel by lazy { createToolWindowPanel() }

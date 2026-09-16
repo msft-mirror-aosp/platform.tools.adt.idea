@@ -50,7 +50,7 @@ class EmulatorTouchpadPanelTest {
 
   @get:Rule
   val ruleChain =
-    RuleChain(applicationRule, emulatorRule, ClipboardSynchronizationDisablementRule(), goldenImageRule, EdtRule(), PortableUiFontRule())
+    RuleChain(applicationRule, ClipboardSynchronizationDisablementRule(), emulatorRule, goldenImageRule, EdtRule(), PortableUiFontRule())
 
   private val glasses by lazy { createGlassesAvd() }
   private val touchpadPanel by lazy { createTouchpadPanel() }
