@@ -1317,30 +1317,7 @@ java_binary(
         "noci:studio-win",
     ],
     visibility = ["//visibility:public"],
-    runtime_deps = [
-        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
-        "//tools/adt/idea/studio-updater:intellij.android.updater.studio-updater.jar",  # Adds analytics to the updater
-        "//tools/analytics-library/shared:analytics-shared.jar",
-        "//tools/analytics-library/tracker:analytics-tracker.jar",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations.jar",
-        "//tools/base/common:studio.android.sdktools.common.jar",
-        "@intellij//:updater",
-        "@maven//:com.google.code.gson.gson",
-        "@maven//:com.google.guava.failureaccess",
-        "@maven//:com.google.guava.guava",
-        "@maven//:com.google.j2objc.j2objc-annotations",
-        "@maven//:com.google.protobuf.protobuf-java",
-        "@maven//:com.nothome.javaxdelta",
-        "@maven//:it.unimi.dsi.fastutil",
-        "@maven//:log4j.log4j",
-        "@maven//:net.java.dev.jna.jna",
-        "@maven//:net.java.dev.jna.jna-platform",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8",
-        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core",
-    ],
+    runtime_deps = ["//tools/adt/idea/studio-updater"],
 )
 
 # managed by go/iml_to_build

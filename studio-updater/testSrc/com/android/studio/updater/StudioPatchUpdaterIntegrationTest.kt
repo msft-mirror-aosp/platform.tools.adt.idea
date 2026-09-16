@@ -208,6 +208,18 @@ class StudioPatchUpdaterIntegrationTest {
     }
   }
 
+  /**
+   * The updater packs its own jar into each patch it creates, so we want the jar to remain small. If this test fails, check whether a new
+   * dependency crept into //tools/adt/idea/studio-updater.
+   */
+  @Test
+  fun updaterJarIsNotTooLarge() {
+    val maxSizeMb = 35
+    val sizeMb = Files.size(updaterFullJar) / 1000 / 1000
+    val advice = "The updater should be small because it's embedded in every update patch."
+    assertTrue("Expected ${updaterFullJar.name} to be at most $maxSizeMb MB, but it is $sizeMb MB. $advice", sizeMb <= maxSizeMb)
+  }
+
   private fun readEvents(analyticsHome: Path): List<AndroidStudioEvent> {
     // Check the analytics were written.
     val spool = analyticsHome.resolve("metrics/spool")
