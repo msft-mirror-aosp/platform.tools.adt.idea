@@ -21,6 +21,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.service
+import com.intellij.util.ui.UIUtil.invokeLaterIfNeeded
 import com.intellij.util.xmlb.XmlSerializerUtil
 import kotlin.reflect.KProperty
 
@@ -72,7 +73,12 @@ class DeviceMirroringSettings : PersistentStateComponent<DeviceMirroringSettings
   private fun notifyListeners() {
     // Notify listeners if this is the main DeviceMirroringSettings instance, and it has been already initialized.
     if (initialized && this == getInstance()) {
-      ApplicationManager.getApplication().messageBus.syncPublisher(DeviceMirroringSettingsListener.TOPIC).settingsChanged(this)
+      invokeLaterIfNeeded {
+        val app = ApplicationManager.getApplication()
+        if (app != null && !app.isDisposed) {
+          app.messageBus.syncPublisher(DeviceMirroringSettingsListener.TOPIC).settingsChanged(this)
+        }
+      }
     }
   }
 
