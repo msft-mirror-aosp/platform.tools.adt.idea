@@ -73,6 +73,10 @@ class AndroidAdbUsageTracker : AdbUsageTracker {
       deviceStateChange.lastOnlineMs?.let { builder.lastOnlineMs = it }
     }
 
+    appInfoSupport?.let {
+      androidStudioEvent.adbUsageEventBuilder.appInfoSupportEventBuilder.setReason(it.reason.toProtoEnum())
+    }
+
     return androidStudioEvent
   }
 
@@ -119,6 +123,23 @@ class AndroidAdbUsageTracker : AdbUsageTracker {
         AdbUsageEvent.AppInfoProcessPropertiesCollectorEvent.EventType.VM_INFO_IO_EXCEPTION
       AdbUsageTracker.AppInfoProcessPropertiesCollectorEventType.VM_INFO_OTHER_EXCEPTION ->
         AdbUsageEvent.AppInfoProcessPropertiesCollectorEvent.EventType.VM_INFO_OTHER_EXCEPTION
+    }
+  }
+
+  private fun AdbUsageTracker.AppInfoSupportReason.toProtoEnum(): AdbUsageEvent.AppInfoSupportEvent.Reason {
+    return when (this) {
+      AdbUsageTracker.AppInfoSupportReason.SUPPORTED -> AdbUsageEvent.AppInfoSupportEvent.Reason.SUPPORTED
+      AdbUsageTracker.AppInfoSupportReason.TRACK_APP_NOT_SUPPORTED -> AdbUsageEvent.AppInfoSupportEvent.Reason.TRACK_APP_NOT_SUPPORTED
+      AdbUsageTracker.AppInfoSupportReason.APP_INFO_NOT_SUPPORTED -> AdbUsageEvent.AppInfoSupportEvent.Reason.APP_INFO_NOT_SUPPORTED
+      AdbUsageTracker.AppInfoSupportReason.ACTIVITY_MANAGER_CAPABILITIES_NOT_SUPPORTED ->
+        AdbUsageEvent.AppInfoSupportEvent.Reason.ACTIVITY_MANAGER_CAPABILITIES_NOT_SUPPORTED
+      AdbUsageTracker.AppInfoSupportReason.VM_CAPABILITIES_NOT_SUPPORTED ->
+        AdbUsageEvent.AppInfoSupportEvent.Reason.VM_CAPABILITIES_NOT_SUPPORTED
+      AdbUsageTracker.AppInfoSupportReason.FRAMEWORK_CAPABILITIES_NOT_SUPPORTED ->
+        AdbUsageEvent.AppInfoSupportEvent.Reason.FRAMEWORK_CAPABILITIES_NOT_SUPPORTED
+      AdbUsageTracker.AppInfoSupportReason.API_LEVEL_IS_DEFAULT -> AdbUsageEvent.AppInfoSupportEvent.Reason.API_LEVEL_IS_DEFAULT
+      AdbUsageTracker.AppInfoSupportReason.DISABLED_BY_CONFIG_PROPERTY ->
+        AdbUsageEvent.AppInfoSupportEvent.Reason.DISABLED_BY_CONFIG_PROPERTY
     }
   }
 
