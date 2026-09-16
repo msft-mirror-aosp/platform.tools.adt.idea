@@ -62,7 +62,6 @@ import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Dimension
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 import javax.accessibility.AccessibleContext
 import javax.accessibility.AccessibleRole
 import javax.swing.BorderFactory
@@ -94,7 +93,6 @@ class UpdateReferenceImagesDialog(
   private val centerPanel = JPanel(centerPanelCardLayout)
   private var isFirstTestDiscovered = false
   private var isTestSuiteFinished = false
-  private val successfulLoads = AtomicInteger(0)
   private lateinit var tree: CheckboxTree
   private val placeholderLabel = JBLabel("Select a node from the left to see its previews.", JBLabel.CENTER)
   private val classNodeMap = mutableMapOf<String, CheckedTreeNode>()
