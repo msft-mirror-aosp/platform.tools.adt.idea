@@ -27,6 +27,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.XmlRecursiveElementVisitor;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
@@ -78,7 +80,9 @@ public class DomPsiConverter {
   }
 
   /**
-   * Convert the given {@link XmlFile} to a DOM tree
+   * Converts the given {@link XmlFile} to a read-only DOM tree.
+   * <p>
+   * The returned tree is cached on the {@link XmlFile} and reused until the PSI changes.
    *
    * @param xmlFile the file to be converted
    * @return a corresponding W3C DOM tree
@@ -86,12 +90,11 @@ public class DomPsiConverter {
   @Nullable
   public static Document convert(@NotNull XmlFile xmlFile) {
     try {
-      XmlDocument xmlDocument = xmlFile.getDocument();
-      if (xmlDocument == null) {
-        return null;
-      }
-
-      return convert(xmlDocument, xmlFile);
+      return CachedValuesManager.getCachedValue(xmlFile, () -> {
+        XmlDocument xmlDocument = xmlFile.getDocument();
+        var document = xmlDocument != null ? convert(xmlDocument, xmlFile) : null;
+        return CachedValueProvider.Result.create(document, xmlFile);
+      });
     }
     catch (ProcessCanceledException e) {
       // Ignore: common occurrence, e.g. we're running lint as part of an editor background
@@ -506,7 +509,7 @@ public class DomPsiConverter {
     @Nullable protected final Document myOwner;
     @Nullable protected final DomNode myParent;
     @NotNull protected final XmlElement myElement;
-    @Nullable protected DomNodeList myChildren;
+    @Nullable protected DomNodeList myChildren; // lazily initialized, guarded by `this`
     @Nullable protected DomNode myNext;
     @Nullable protected DomNode myPrevious;
     @Nullable protected TextRange myRange;
@@ -525,7 +528,7 @@ public class DomPsiConverter {
 
     @NotNull
     @Override
-    public DomNodeList getChildNodes() {
+    public synchronized DomNodeList getChildNodes() {
       if (myChildren == null) {
         PsiElement child = myElement.getFirstChild();
         if (child == null) {
@@ -803,7 +806,6 @@ public class DomPsiConverter {
   private static class DomDocument extends DomNode implements Document {
     @NotNull private final XmlDocument myPsiDocument;
     private final XmlFile myFile;
-    @Nullable private DomElement myRoot;
 
     private DomDocument(@NotNull XmlDocument document, @NotNull XmlFile file) {
       super(null, null, document);
@@ -843,29 +845,19 @@ public class DomPsiConverter {
 
     @NotNull
     @Override
-    public DomNodeList getChildNodes() {
+    public synchronized DomNodeList getChildNodes() {
       if (myChildren == null) {
         var list = new DomNodeList.Builder();
         // Include siblings as well such as the root comment
         PsiElement element = myPsiDocument.getFirstChild();
         while (element != null) {
-          if (element instanceof XmlTag) {
-            if (myRoot != null && myRoot.myTag == element) {
-              list.add(myRoot, true);
-            } else {
-              DomElement node = new DomElement(this, this, (XmlTag)element);
-              if (myRoot == null) {
-                myRoot = node;
-              }
-              list.add(node, true);
-            }
-          } else if (element instanceof XmlComment) {
-            DomNode node = new DomComment(this, this, (XmlComment)element);
-            list.add(node, true);
-          } else if (element instanceof XmlText) {
-            // This is not valid XML but PSI may represent erroneous XML being edited
-            DomNode node = new DomText(this, this, (XmlText)element);
-            list.add(node, true);
+          switch (element) {
+            case XmlTag tag -> list.add(new DomElement(this, this, tag), true);
+            case XmlComment comment -> list.add(new DomComment(this, this, comment), true);
+            case XmlText text ->
+              // This is not valid XML but PSI may represent erroneous XML being edited
+              list.add(new DomText(this, this, text), true);
+            default -> { }
           }
           element = element.getNextSibling();
         }
@@ -907,15 +899,12 @@ public class DomPsiConverter {
     @Nullable
     @Override
     public Element getDocumentElement() {
-      if (myRoot == null) {
-        XmlTag rootTag = myPsiDocument.getRootTag();
-        if (rootTag == null) {
-          return null;
-        }
-        myRoot = new DomElement(this, this, rootTag);
+      // Find the first element child (matching XmlDocument#getRootTag) from getChildNodes()
+      // so we return the same DomElement instance.
+      for (var child = getFirstChild(); child != null; child = child.getNextSibling()) {
+        if (child instanceof DomElement element) return element;
       }
-
-      return myRoot;
+      return null;
     }
 
     @NotNull
@@ -1136,11 +1125,13 @@ public class DomPsiConverter {
     @Override
     public NamedNodeMap getAttributes() {
       return ApplicationManager.getApplication().runReadAction((Computable<NamedNodeMap>)() -> {
-        if (myAttributes == null) {
-          XmlAttribute[] attributes = myTag.getAttributes();
-          myAttributes = attributes.length == 0 ? EMPTY_ATTRIBUTES : new DomNamedNodeMap(this, attributes);
+        synchronized (this) {
+          if (myAttributes == null) {
+            XmlAttribute[] attributes = myTag.getAttributes();
+            myAttributes = attributes.length == 0 ? EMPTY_ATTRIBUTES : new DomNamedNodeMap(this, attributes);
+          }
+          return myAttributes;
         }
-        return myAttributes;
       });
     }
 
