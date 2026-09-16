@@ -17,9 +17,11 @@ package com.android.tools.idea.npw.assetstudio
 
 import com.android.tools.idea.npw.assetstudio.assets.ImageAsset
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.RunsInEdt
 import junit.framework.TestCase.assertFalse
 import kotlin.test.assertTrue
 import org.intellij.lang.annotations.Language
@@ -27,8 +29,9 @@ import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class AssetStudioWizardTrackerTest {
-  @get:Rule val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
 
   private var iconGenerator: LauncherIconGenerator? = null
 
