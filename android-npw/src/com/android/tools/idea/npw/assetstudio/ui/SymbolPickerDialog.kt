@@ -499,11 +499,8 @@ constructor(
       if (hadFocus) {
         KeyboardFocusManager.getCurrentKeyboardFocusManager().clearFocusOwner()
       }
+      refreshButton.isEnabled = false
       coroutineScope.launch {
-        // Disable the refresh button while download is in progress
-        withContext(Dispatchers.Main) {
-          refreshButton.isEnabled = false
-        }
         try {
           ensureFontsAndMetadataAreDownloaded(true)
         } finally {
