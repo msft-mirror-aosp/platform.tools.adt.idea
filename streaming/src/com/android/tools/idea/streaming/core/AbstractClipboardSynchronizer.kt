@@ -33,7 +33,7 @@ import java.beans.PropertyChangeListener
 import java.io.IOException
 
 /** Synchronizes clipboards between the host and a connected physical or virtual device. */
-internal abstract class AbstractClipboardSynchronizer(disposableParent: Disposable) : CopyPasteManager.ContentChangedListener, Disposable {
+internal abstract class AbstractClipboardSynchronizer : CopyPasteManager.ContentChangedListener, Disposable {
 
   protected var lastClipboardText = ""
   @Volatile
@@ -51,7 +51,8 @@ internal abstract class AbstractClipboardSynchronizer(disposableParent: Disposab
     }
   }
 
-  init {
+  /** Must be called by the subclasses in their constructors. */
+  protected fun initialize(disposableParent: Disposable) {
     Disposer.register(disposableParent, this)
     copyPasteManager.addContentChangedListener(this, this)
     KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", focusOwnerListener)
