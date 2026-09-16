@@ -24,9 +24,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PluginPathManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VfsUtilCore
-import com.intellij.openapi.vfs.VirtualFileManager
 import java.io.File
 
 class StudioEmbeddedRenderTarget {
@@ -34,7 +31,7 @@ class StudioEmbeddedRenderTarget {
     private val LOG = Logger.getInstance(StudioEmbeddedRenderTarget::class.java)
 
     private var ourDisableEmbeddedTargetForTesting = false
-    val ourEmbeddedLayoutlibPath = getEmbeddedLayoutLibPath()
+    val ourEmbeddedLayoutlibPath: String? by lazy { getEmbeddedLayoutLibPath() }
 
     /**
      * Method that allows to disable the use of the embedded render target. Only for testing.
@@ -58,21 +55,18 @@ class StudioEmbeddedRenderTarget {
       return EmbeddedRenderTarget.getCompatibilityTarget(target) { ourEmbeddedLayoutlibPath }
     }
 
-    /** Returns the URL for the embedded layoutlib distribution. */
-    private fun getEmbeddedLayoutLibPath(): String? {
+    /** Returns the path for the embedded layoutlib distribution. */
+    @VisibleForTesting
+    internal fun getEmbeddedLayoutLibPath(): String? {
       val homePath = FileUtil.toSystemIndependentName(PluginPathManager.getPluginHomePath("design-tools"))
       var path = FileUtil.join(homePath, "/resources/layoutlib/")
       if (StudioPathManager.isRunningFromSources()) {
         path = StudioPathManager.resolvePathFromSourcesRoot("prebuilts/studio/layoutlib/").toString()
       }
-      val root =
-        VirtualFileManager.getInstance().getFileSystem(LocalFileSystem.PROTOCOL).findFileByPath(FileUtil.toSystemIndependentName(path))
-      if (root != null) {
-        val rootFile = VfsUtilCore.virtualToIoFile(root)
-        if (rootFile.exists() && rootFile.isDirectory) {
-          LOG.debug("Embedded layoutlib found at $path")
-          return rootFile.absolutePath + File.separator
-        }
+      val rootFile = File(path)
+      if (rootFile.isDirectory) {
+        LOG.debug("Embedded layoutlib found at $path")
+        return rootFile.absolutePath + File.separator
       }
       if (!ApplicationManager.getApplication().isUnitTestMode) {
         LOG.error("Unable to find embedded layoutlib in path: $path")
