@@ -459,6 +459,9 @@
     <lang.inspectionSuppressor
         language="UAST"
         implementationClass="com.android.tools.idea.lint.inspections.JavaApiUsageInspectionSuppressor"/>
+    <lang.inspectionSuppressor
+        language="Properties"
+        implementationClass="com.android.tools.idea.lint.inspections.GradleWrapperInspectionSuppressor"/>
   </extensions>
 
   <actions>
