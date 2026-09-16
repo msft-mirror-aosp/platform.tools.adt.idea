@@ -15,12 +15,14 @@
  */
 package org.jetbrains.android.uipreview
 
+import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.rendering.StudioModuleRenderContext
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.rendering.classloading.ClassTransform
 import com.android.tools.rendering.classloading.FirewalledResourcesClassLoader
 import com.android.tools.rendering.classloading.toClassTransform
 import com.android.tools.rendering.classloading.useWithClassLoader
+import java.nio.file.Files
 import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
 import kotlin.test.assertEquals
@@ -471,6 +473,34 @@ class ModuleClassLoaderHatcheryTest {
               assertNotNull(hatchery.requestClassLoader(null, donor3.projectClassesTransform, donor3.nonProjectClassesTransform))
             }
         }
+    }
+  }
+
+  /**
+   * Regression test for the Fast Preview cold start: an egg has only ever preloaded non-project classes, and an overlay can only shadow
+   * project classes, so pushing an overlay must not empty the clutch.
+   */
+  @Test
+  fun testEggSurvivesFastPreviewOverlayPush() {
+    val hatchery = ModuleClassLoaderHatchery(capacity = 1, copies = 1, parentDisposable = project.testRootDisposable)
+
+    StudioModuleClassLoaderManager.get().getPrivate(null, StudioModuleRenderContext.forModule(project.module)).useWithClassLoader { donor ->
+      val creationContext = StudioModuleClassLoaderCreationContext.fromClassLoaderOrThrow(donor)
+      val cloner: (StudioModuleClassLoaderCreationContext) -> StudioModuleClassLoader? = { d -> d.createClassLoader() }
+
+      assertNull(hatchery.requestClassLoader(null, donor.projectClassesTransform, donor.nonProjectClassesTransform))
+      assertTrue(hatchery.incubateIfNeeded(creationContext, cloner))
+
+      // Simulate a Fast Preview compilation pushing its output as a new overlay.
+      val overlayDir = Files.createDirectories(Files.createTempDirectory("overlay"))
+      ModuleClassLoaderOverlays.getInstance(BuildTargetReference.gradleOnly(project.module)).pushOverlayPath(overlayDir)
+
+      // The pre-warmed class loader is still usable: it has not loaded any project class, so the overlay cannot shadow anything it has
+      // already defined.
+      val retrieved = hatchery.requestClassLoader(null, donor.projectClassesTransform, donor.nonProjectClassesTransform)
+      assertNotNull(retrieved)
+      // Pin the invariant the reuse relies on. Eggs only ever preload non-project classes.
+      assertTrue(retrieved.projectLoadedClasses.isEmpty())
     }
   }
 }
