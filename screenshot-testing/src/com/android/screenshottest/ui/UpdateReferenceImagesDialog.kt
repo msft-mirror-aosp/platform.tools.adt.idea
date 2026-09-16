@@ -76,6 +76,11 @@ import org.jetbrains.jewel.ui.component.SegmentedControl
 import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
 
+private const val CARD_PLACEHOLDER = "placeholder"
+private const val CARD_DETAILS = "details"
+private const val CARD_CONTENT = "content"
+private const val CARD_LOADING = "Loading"
+
 /**
  * A dialog for selecting and viewing screenshot test previews. It features a two-pane layout with a tree of previews on the left and a
  * live-updating image viewer on the right.
@@ -244,9 +249,9 @@ class UpdateReferenceImagesDialog(
     rightPaneContent = JPanel(rightPaneCardLayout)
     previewDetailsPanel = PreviewDetailsPanel(project)
 
-    rightPaneContent.add(placeholderLabel, "placeholder")
-    rightPaneContent.add(previewDetailsPanel, "details")
-    rightPaneCardLayout.show(rightPaneContent, "placeholder")
+    rightPaneContent.add(placeholderLabel, CARD_PLACEHOLDER)
+    rightPaneContent.add(previewDetailsPanel, CARD_DETAILS)
+    rightPaneCardLayout.show(rightPaneContent, CARD_PLACEHOLDER)
 
     rightPaneWrapper = JPanel(BorderLayout())
     previewToolbar = createPreviewToolbar()
@@ -291,14 +296,14 @@ class UpdateReferenceImagesDialog(
 
     splitter.firstComponent = treeContainer
     splitter.secondComponent = rightPaneWrapper
-    centerPanel.add(splitter, "content")
-    centerPanelCardLayout.show(centerPanel, "content")
+    centerPanel.add(splitter, CARD_CONTENT)
+    centerPanelCardLayout.show(centerPanel, CARD_CONTENT)
   }
 
   override fun createCenterPanel(): JComponent {
     val loadingIcon = JBLabel("Generating screenshots", AnimatedIcon.Default(), JBLabel.CENTER)
-    centerPanel.add(loadingIcon, "Loading")
-    centerPanelCardLayout.show(centerPanel, "Loading")
+    centerPanel.add(loadingIcon, CARD_LOADING)
+    centerPanelCardLayout.show(centerPanel, CARD_LOADING)
     centerPanel.preferredSize = Dimension(800, 600)
     centerPanel.minimumSize = Dimension(550, 400)
     return centerPanel
@@ -412,7 +417,7 @@ class UpdateReferenceImagesDialog(
   private fun updateRightPane(tree: CheckboxTree) {
     val selectedNode = tree.selectionPath?.lastPathComponent as? CheckedTreeNode
     if (selectedNode == null) {
-      rightPaneCardLayout.show(rightPaneContent, "placeholder")
+      rightPaneCardLayout.show(rightPaneContent, CARD_PLACEHOLDER)
       previewToolbar.isVisible = false
       return
     }
@@ -422,7 +427,7 @@ class UpdateReferenceImagesDialog(
     previewToolbar.isVisible = previewsToShow.isNotEmpty()
 
     if (previewsToShow.isEmpty()) {
-      rightPaneCardLayout.show(rightPaneContent, "placeholder")
+      rightPaneCardLayout.show(rightPaneContent, CARD_PLACEHOLDER)
     } else {
       if (isLeafSelected) {
         rightPaneWrapper.remove(previewToolbar)
@@ -437,7 +442,7 @@ class UpdateReferenceImagesDialog(
         previewDetailsPanel.displayPreviews(previewsToShow, selectedViewType, null)
       }
 
-      rightPaneCardLayout.show(rightPaneContent, "details")
+      rightPaneCardLayout.show(rightPaneContent, CARD_DETAILS)
     }
     rightPaneWrapper.revalidate()
     rightPaneWrapper.repaint()
