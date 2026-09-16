@@ -16,7 +16,6 @@
 package com.google.idea.blaze.base.vcs.git;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.idea.blaze.base.async.process.ExternalTask;
@@ -28,16 +27,12 @@ import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.blaze.base.sync.workspace.WorkingSet;
 import com.google.idea.blaze.base.vcs.BlazeVcsHandlerProvider;
-import com.google.idea.blaze.common.vcs.VcsState;
-import com.google.idea.blaze.exception.BuildException;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.nio.file.Path;
-import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
@@ -87,17 +82,6 @@ public class GitBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
           });
     }
 
-    @Nullable
-    @Override
-    public BlazeVcsSyncHandler createSyncHandler() {
-      return null;
-    }
-
-    @Override
-    public Optional<ImmutableSet<Path>> diffVcsState(VcsState current, VcsState previous) {
-      return Optional.empty();
-    }
-
     @Override
     public ListenableFuture<String> getUpstreamContent(
         BlazeContext context, WorkspacePath path, ListeningExecutorService executor) {
@@ -108,12 +92,6 @@ public class GitBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
     public Optional<ListenableFuture<String>> getUpstreamVersion(
         BlazeContext context, ListeningExecutorService executor) {
       return Optional.of(executor.submit(() -> getUpstreamSha(workspaceRoot)));
-    }
-
-    @Override
-    public Optional<VcsState> vcsStateForWorkspaceStatus(Map<String, String> workspaceStatus)
-        throws BuildException {
-      return Optional.empty();
     }
   }
 

@@ -65,8 +65,6 @@ import com.google.idea.blaze.qsync.java.AddProjectKotlinCompilerFlags;
 import com.google.idea.blaze.qsync.java.JavaArtifactMetadata;
 import com.google.idea.blaze.qsync.java.PackageReader;
 import com.google.idea.blaze.qsync.java.PackageStatementParser;
-import com.google.idea.blaze.qsync.java.ParallelPackageReader;
-import com.google.idea.blaze.qsync.java.WorkspaceResolvingPackageReader;
 import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.google.idea.blaze.qsync.project.FileExtensions;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
@@ -74,7 +72,6 @@ import com.google.idea.blaze.qsync.project.ProjectDirectoryConfigurator;
 import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation;
 import com.google.idea.blaze.qsync.query.QuerySpec.QueryStrategy;
-import com.google.idea.common.experiments.BoolExperiment;
 import com.google.idea.common.experiments.EnumExperiment;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
@@ -98,8 +95,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
 
   public static final EnumExperiment<QueryStrategy> enableExperimentalQuery =
       new EnumExperiment<>("query.sync.experimental.query", QueryStrategy.PLAIN_WITH_SAFE_FILTERS);
-  public static final BoolExperiment runQueryInWorkspace =
-      new BoolExperiment("query.sync.run.query.in.workspace", true);
 
   protected final ListeningExecutorService executor;
 
@@ -132,8 +127,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
       ImmutableSet<String> handledRuleKinds,
       BuildGraphData.ProtoRules protoRules,
       ProjectStructureReader projectStructureReader,
-      PackageReader packageReader,
-      PackageReader.ParallelReader parallelPackageReader,
       Optional<BlazeVcsHandler> vcsHandler,
       BazelVersionHandler bazelVersionProvider) {}
 
@@ -188,8 +181,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
             result.handledRuleKinds(),
             result.protoRules(),
             result.projectStructureReader(),
-            result.packageReader(),
-            result.parallelPackageReader(),
             result.vcsHandler().orElse(null),
             result.bazelVersionProvider());
 
@@ -309,9 +300,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
             snapshotHolder, dependencyBuilder, artifactTracker, querySyncUserPreferences);
     ProjectRefresher projectRefresher =
         new ProjectRefresher(
-            workspaceRoot.path(),
-            enableExperimentalQuery.getValue(),
-            snapshotHolder::getCurrent);
+            workspaceRoot.path(), enableExperimentalQuery.getValue(), snapshotHolder::getCurrent);
     ProjectStructureReader projectStructureReader =
         ProjectStructureReader.Companion.create(new FileExtensions(), createPackageReader());
 
@@ -343,8 +332,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
         handledRules,
         buildSystem.getProtoRules(),
         projectStructureReader,
-        new WorkspaceResolvingPackageReader(workspaceRoot.path(), createPackageReader()),
-        createParallelPackageReader(),
         vcsHandler,
         new BazelVersionHandler(buildSystem, buildSystem.getBuildInvoker(project)));
   }
@@ -364,10 +351,6 @@ public class ProjectLoaderImpl implements ProjectLoader {
 
   private PackageReader createPackageReader() {
     return new PackageStatementParser();
-  }
-
-  private PackageReader.ParallelReader createParallelPackageReader() {
-    return new ParallelPackageReader();
   }
 
   private ProjectQuerierImpl createProjectQuerier(

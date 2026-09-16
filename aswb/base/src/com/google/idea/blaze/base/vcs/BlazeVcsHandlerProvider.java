@@ -15,23 +15,17 @@
  */
 package com.google.idea.blaze.base.vcs;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
-import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.workspace.WorkingSet;
-import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver;
 import com.google.idea.blaze.common.vcs.VcsState;
 import com.google.idea.blaze.exception.BuildException;
-import com.google.idea.blaze.qsync.VcsStateDiffer;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
-import java.nio.file.Path;
-import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
@@ -99,10 +93,6 @@ public interface BlazeVcsHandlerProvider {
     Optional<ListenableFuture<String>> getUpstreamVersion(
         BlazeContext context, ListeningExecutorService executor);
 
-    /** Optionally creates a sync handler to perform vcs-specific computation during sync. */
-    @Nullable
-    BlazeVcsSyncHandler createSyncHandler();
-
     default Optional<ListenableFuture<VcsState>> getVcsState(
         BlazeContext context, ListeningExecutorService executor) {
       Optional<ListenableFuture<String>> upstreamRev = getUpstreamVersion(context, executor);
@@ -122,38 +112,5 @@ public interface BlazeVcsHandlerProvider {
                           Optional.empty()),
                   executor));
     }
-
-    Optional<VcsState> vcsStateForWorkspaceStatus(Map<String, String> workspaceStatus) throws BuildException;
-
-    /**
-     * Diffs two VCS states from different points in time.
-     *
-     * @param current The more recent VCS state
-     * @param previous An earlier VCS state
-     * @return All files that changed between the points at which the two states correspond to, as
-     *     workspace relative paths. If this VCS does not support diffing two states in this way,
-     *     returns empty. If nothing has changed between the two points, an empty list is returned.
-     */
-    Optional<ImmutableSet<Path>> diffVcsState(VcsState current, VcsState previous)
-        throws BuildException;
-  }
-
-  /** Sync handler that performs VCS specific computation. */
-  interface BlazeVcsSyncHandler {
-    enum ValidationResult {
-      OK,
-      Error,
-      RestartSync, // The sync process needs restarting
-    }
-
-    /**
-     * Updates the vcs state of the project.
-     *
-     * @return True for OK, false to abort the sync process.
-     */
-    boolean update(BlazeContext context, ListeningExecutorService executor);
-
-    /** Validates the project view. Can cause sync to fail or restart. */
-    ValidationResult validateProjectView(BlazeContext context, ProjectViewSet projectViewSet);
   }
 }

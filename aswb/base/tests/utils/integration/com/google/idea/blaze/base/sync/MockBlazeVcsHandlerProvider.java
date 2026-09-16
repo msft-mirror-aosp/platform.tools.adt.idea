@@ -19,7 +19,6 @@ import static com.google.common.util.concurrent.Futures.immediateFuture;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
@@ -27,12 +26,9 @@ import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.workspace.WorkingSet;
 import com.google.idea.blaze.base.vcs.BlazeVcsHandlerProvider;
-import com.google.idea.blaze.common.vcs.VcsState;
 import com.intellij.openapi.project.Project;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
-import javax.annotation.Nullable;
 
 /** Provides a {@link BlazeVcsHandlerProvider} for integration tests. */
 public class MockBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
@@ -84,22 +80,6 @@ public class MockBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider {
     public Optional<ListenableFuture<String>> getUpstreamVersion(
         BlazeContext context, ListeningExecutorService executor) {
       return Optional.of(immediateFuture(""));
-    }
-
-    @Nullable
-    @Override
-    public BlazeVcsSyncHandler createSyncHandler() {
-      return null;
-    }
-
-    @Override
-    public Optional<VcsState> vcsStateForWorkspaceStatus(Map<String, String> workspaceStatus) {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<ImmutableSet<Path>> diffVcsState(VcsState current, VcsState previous) {
-      return Optional.empty();
     }
   }
 }

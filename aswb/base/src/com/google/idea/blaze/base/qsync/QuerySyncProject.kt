@@ -42,7 +42,6 @@ import com.google.idea.blaze.qsync.ProjectBuilder
 import com.google.idea.blaze.qsync.ProjectStructureReader
 import com.google.idea.blaze.qsync.RefreshParameters
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
-import com.google.idea.blaze.qsync.java.PackageReader
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -109,8 +108,6 @@ class QuerySyncProject(
   val handledRuleKinds: Set<String>,
   val protoRules: BuildGraphData.ProtoRules,
   private val projectStructureReader: ProjectStructureReader,
-  val packageReader: PackageReader,
-  val parallelPackageReader: PackageReader.ParallelReader,
   val vcsHandler: BlazeVcsHandler?,
   val bazelVersionProvider: BazelVersionHandler,
 ) : ReadonlyQuerySyncProject {

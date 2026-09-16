@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.base.vcs;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -25,13 +24,8 @@ import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.blaze.base.sync.workspace.WorkingSet;
-import com.google.idea.blaze.common.vcs.VcsState;
-import com.google.idea.blaze.exception.BuildException;
 import com.intellij.openapi.project.Project;
-import java.nio.file.Path;
-import java.util.Map;
 import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Used for bazel projects, when no other vcs handler can be found. Fallback to returning a null
@@ -71,23 +65,6 @@ public class FallbackBlazeVcsHandlerProvider implements BlazeVcsHandlerProvider 
     @Override
     public Optional<ListenableFuture<String>> getUpstreamVersion(
         BlazeContext context, ListeningExecutorService executor) {
-      return Optional.empty();
-    }
-
-    @Nullable
-    @Override
-    public BlazeVcsSyncHandler createSyncHandler() {
-      return null;
-    }
-
-    @Override
-    public Optional<VcsState> vcsStateForWorkspaceStatus(Map<String, String> workspaceStatus)
-      throws BuildException {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<ImmutableSet<Path>> diffVcsState(VcsState current, VcsState previous) {
       return Optional.empty();
     }
   }
