@@ -57,7 +57,6 @@ import kotlin.io.path.readText
 import kotlin.time.Duration.Companion.seconds
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -105,7 +104,6 @@ class RecompositionUiPanelIntegrationTest {
     cleanUpListenersFromEditorMouseHoverPopupManager()
   }
 
-  @Ignore("b/561697076")
   @Test
   fun testPanelWithStateReads() {
     StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_PARAMETER_CHANGES.overrideForTest(true, projectRule.testRootDisposable)
@@ -211,7 +209,8 @@ class RecompositionUiPanelIntegrationTest {
     // Imitate clicking on the same recomposition. Make sure the state reads are shown again:
     requestStateReads()
     waitForCondition(10.seconds) { panel.isVisible }
-    waitForCondition(10.seconds) { recompositionText.text == "Recomposition 104" }
+    val newRecompositionText = panel.getDescendant<JLabel> { it.name == RECOMPOSITION_TEXT_LABEL_NAME }
+    waitForCondition(10.seconds) { newRecompositionText.text == "Recomposition 104" }
 
     val data = DynamicLayoutInspectorSession.newBuilder()
     inspectorRule.inspectorClient.stats.save(data)
