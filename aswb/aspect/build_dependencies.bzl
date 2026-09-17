@@ -520,6 +520,13 @@ def _collect_own_java_artifacts(
                 if generated_output.compile_jdeps:
                     own_compile_jdeps_files.append(generated_output.compile_jdeps)
             own_jar_depsets.append(java_info.compile_jars_depset)
+            if hasattr(rule.attr, "srcjar"):
+                if rule.attr.srcjar and type(rule.attr.srcjar) == "Target":
+                    for file in rule.attr.srcjar.files.to_list():
+                        if file.is_source:
+                            own_srcjar_file_paths.append(file.path)
+                        else:
+                            own_gensrc_files.append(file)
             own_output_jar_files = java_info.java_output_compile_jars
 
         if declares_android_resources(target, ctx):
@@ -598,13 +605,6 @@ def _collect_own_java_artifacts(
                             own_src_file_paths.append(file.path)
                         else:
                             own_gensrc_files.append(file)
-        if hasattr(rule.attr, "srcjar"):
-            if rule.attr.srcjar and type(rule.attr.srcjar) == "Target":
-                for file in rule.attr.srcjar.files.to_list():
-                    if file.is_source:
-                        own_srcjar_file_paths.append(file.path)
-                    else:
-                        own_gensrc_files.append(file)
 
     if not (java_info or kotlin_info or android_info or java_proto_info or own_gensrc_files or own_src_file_paths or own_srcjar_file_paths):
         return None
