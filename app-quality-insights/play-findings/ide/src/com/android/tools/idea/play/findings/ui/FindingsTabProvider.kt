@@ -20,6 +20,8 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsConfigurationManager
 import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.InsightsProvider
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.analytics.AppInsightsTrackerImpl
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.insights.ui.AppInsightsTabProvider
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
@@ -50,6 +52,7 @@ class FindingsTabProvider(private val mainContext: kotlin.coroutines.CoroutineCo
     val configService = FindingsConfigurationService.getInstance(project)
     val configManager = configService.manager
     val scope = tabPanel.createCoroutineScope()
+    val tracker = AppInsightsTrackerImpl(project, AppInsightsTracker.ProductType.PLAY_FINDINGS)
     tabPanel.setComponent(placeholderContent())
 
     scope.launch(mainContext) {
@@ -61,7 +64,7 @@ class FindingsTabProvider(private val mainContext: kotlin.coroutines.CoroutineCo
           }
           is AppInsightsModel.Authenticated -> {
             val controller = appInsightsModel.controller as FindingsProjectLevelController
-            tabPanel.setComponent(FindingsTab(controller, project, mainContext = mainContext))
+            tabPanel.setComponent(FindingsTab(controller, project, tracker, mainContext = mainContext))
           }
           // InitializationFailed is not currently emitted by FindingsConfigurationManager; share the placeholder with Uninitialized.
           AppInsightsModel.InitializationFailed,

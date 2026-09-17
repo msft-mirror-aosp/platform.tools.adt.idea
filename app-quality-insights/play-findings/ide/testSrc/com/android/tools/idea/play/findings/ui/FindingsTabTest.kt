@@ -21,12 +21,15 @@ import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
+import com.android.tools.idea.insights.analytics.TestAppInsightsTracker
+import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.common.WithCount
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsToolbar
 import com.android.tools.idea.insights.ui.actions.AppInsightsToggleAction
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
@@ -84,11 +87,12 @@ class FindingsTabTest {
 
   @Before
   fun setUp() {
-    controller = TestFindingsController()
+    controller = TestFindingsController(projectRule.project)
     tab =
       FindingsTab(
         controller = controller,
         project = projectRule.project,
+        tracker = TestAppInsightsTracker,
         clock = Clock.fixed(Instant.parse("2026-10-01T00:00:00Z"), ZoneOffset.UTC),
         mainContext = Dispatchers.Unconfined,
       )
@@ -331,13 +335,14 @@ class FindingsTabTest {
   }
 }
 
-private class TestFindingsController : FindingsProjectLevelController {
+private class TestFindingsController(project: Project) : FindingsProjectLevelController {
   val mutableState = MutableStateFlow(FindingsState(packageName = null))
   override val state: StateFlow<FindingsState> = mutableState.asStateFlow()
   var refreshCount = 0
 
   override val provider: InsightsProvider = PlayFindingsInsightsProvider
   override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(Selection.emptySelection())
+  override val aiInsightToolkit: FindingsInsightToolkit = FindingsInsightToolkit(project)
 
   override fun refresh() {
     refreshCount++
@@ -346,4 +351,8 @@ private class TestFindingsController : FindingsProjectLevelController {
   override fun selectFinding(finding: AppFinding?) {
     mutableState.value = mutableState.value.copy(selectedFinding = finding)
   }
+
+  override fun refreshInsight(forceGenerateNewInsight: Boolean) = Unit
+
+  override fun submitInsightFeedback(feedback: InsightFeedback) = Unit
 }

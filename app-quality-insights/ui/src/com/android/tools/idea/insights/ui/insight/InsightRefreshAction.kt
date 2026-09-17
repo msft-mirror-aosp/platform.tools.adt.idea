@@ -15,13 +15,13 @@
  */
 package com.android.tools.idea.insights.ui.insight
 
-import com.android.tools.idea.insights.AppInsightsCrashController
+import com.android.tools.idea.insights.AiInsightController
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 
-class InsightRefreshAction(private val controller: AppInsightsCrashController) : AnAction() {
+class InsightRefreshAction(private val controller: AiInsightController) : AnAction("Regenerate insight", null, AllIcons.General.Refresh) {
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
@@ -31,6 +31,6 @@ class InsightRefreshAction(private val controller: AppInsightsCrashController) :
   }
 
   override fun actionPerformed(e: AnActionEvent) {
-    controller.refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+    controller.refreshInsight(forceGenerateNewInsight = true)
   }
 }

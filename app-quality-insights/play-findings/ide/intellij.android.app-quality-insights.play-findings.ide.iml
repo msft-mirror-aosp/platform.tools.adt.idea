@@ -44,5 +44,6 @@
     <orderEntry type="module" module-name="google-login" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
+    <orderEntry type="module" module-name="intellij.android.ml-api" />
   </component>
 </module>

@@ -15,14 +15,13 @@
  */
 package com.android.tools.idea.insights.ai
 
-import com.android.tools.idea.insights.model.event.Event
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.delay
 import org.jetbrains.annotations.TestOnly
 
 interface AiInsightContributor {
-  suspend fun fetchInsight(project: Project, event: Event): AiInsight
+  suspend fun fetchInsight(project: Project, request: AiInsightRequest): AiInsight
 
   fun canContribute(): Boolean
 
@@ -50,9 +49,9 @@ class StubAiInsightContributor : AiInsightContributor {
 
   override fun handleModelAssignment(project: Project) = Unit
 
-  override suspend fun fetchInsight(project: Project, event: Event): AiInsight {
+  override suspend fun fetchInsight(project: Project, request: AiInsightRequest): AiInsight {
     delay(2000)
-    return AiInsight(rawInsight = "Fake insight for testing purposes.", event = event, insightSource = InsightSource.STUDIO_BOT)
+    return AiInsight(rawInsight = "Fake insight for testing purposes.", insightSource = InsightSource.STUDIO_BOT)
   }
 }
 

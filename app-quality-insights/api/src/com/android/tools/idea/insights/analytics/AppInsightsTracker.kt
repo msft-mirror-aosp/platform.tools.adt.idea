@@ -74,12 +74,15 @@ interface AppInsightsTracker {
 
   enum class ProductType {
     CRASHLYTICS,
-    PLAY_VITALS;
+    PLAY_VITALS,
+    PLAY_FINDINGS;
 
     fun toProtoProductType(): AppQualityInsightsUsageEvent.AppQualityInsightsProductType =
       when (this) {
         CRASHLYTICS -> AppQualityInsightsUsageEvent.AppQualityInsightsProductType.CRASHLYTICS
         PLAY_VITALS -> AppQualityInsightsUsageEvent.AppQualityInsightsProductType.PLAY_VITALS
+        // TODO(b/517599039): Map to PLAY_FINDINGS once added in studio_stats.proto.
+        PLAY_FINDINGS -> AppQualityInsightsUsageEvent.AppQualityInsightsProductType.UNKNOWN_PRODUCT_TYPE
       }
   }
 }

@@ -38,4 +38,14 @@ data class Event(
   }
 
   fun isStackTraceEmpty() = stacktraceGroup.exceptions.isEmpty() || stacktraceGroup.exceptions.joinToString("").isEmpty()
+
+  fun prettyStackTrace() = buildString {
+    stacktraceGroup.exceptions.forEachIndexed { idx, exception ->
+      if (idx == 0 || exception.rawExceptionMessage.startsWith("Caused by")) {
+        appendLine(exception.rawExceptionMessage)
+        append(exception.stacktrace.frames.joinToString(separator = "") { "\t${it.rawSymbol}\n" })
+      }
+    }
+  }
+    .trim()
 }

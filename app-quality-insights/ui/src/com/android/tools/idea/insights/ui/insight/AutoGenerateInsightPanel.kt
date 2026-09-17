@@ -56,7 +56,7 @@ class AutoGenerateInsightPanel(
     JPanel(HorizontalLayout(JBUI.scale(16))).apply {
       val generateInsight =
         createLink("Generate insight for this issue", Action.GENERATE_ONCE) {
-          controller.refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+          controller.refreshInsight(forceGenerateNewInsight = true)
         }
       val enableAutoGenerate =
         JPanel(HorizontalLayout(JBUI.scale(4))).apply {
@@ -99,7 +99,7 @@ class AutoGenerateInsightPanel(
         HyperlinkLabel("Assign model").apply { addHyperlinkListener { controller.aiInsightToolkit.handleModelAssignment() } }
       val regenerateInsight =
         createLink("Regenerate", Action.GENERATE_ONCE) {
-          controller.refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+          controller.refreshInsight(forceGenerateNewInsight = true)
         }
       val linkPanel =
         JPanel(HorizontalLayout(JBUI.scale(5))).apply {

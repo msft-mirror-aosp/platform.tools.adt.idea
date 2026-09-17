@@ -22,9 +22,11 @@ import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.OfflineStatusManagerImpl
 import com.android.tools.idea.insights.Selection
+import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
@@ -54,7 +56,7 @@ class FindingsTabProviderTest {
 
   @Before
   fun setUp() {
-    controller = FakeFindingsProjectLevelController()
+    controller = FakeFindingsProjectLevelController(projectRule.project)
 
     model = MutableStateFlow(AppInsightsModel.Uninitialized)
     val manager =
@@ -87,16 +89,21 @@ class FindingsTabProviderTest {
   }
 }
 
-private class FakeFindingsProjectLevelController : FindingsProjectLevelController {
+private class FakeFindingsProjectLevelController(project: Project) : FindingsProjectLevelController {
   val mutableState = MutableStateFlow(FindingsState(packageName = null))
   override val state: StateFlow<FindingsState> = mutableState.asStateFlow()
 
   override val provider: InsightsProvider = PlayFindingsInsightsProvider
   override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(Selection.emptySelection())
+  override val aiInsightToolkit: FindingsInsightToolkit = FindingsInsightToolkit(project)
 
   override fun refresh() = Unit
 
   override fun selectFinding(finding: AppFinding?) {
     mutableState.value = mutableState.value.copy(selectedFinding = finding)
   }
+
+  override fun refreshInsight(forceGenerateNewInsight: Boolean) = Unit
+
+  override fun submitInsightFeedback(feedback: InsightFeedback) = Unit
 }

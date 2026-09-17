@@ -17,12 +17,16 @@ package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.adtui.common.primaryContentBackground
 import com.android.tools.adtui.util.ActionToolbarUtil
+import com.android.tools.adtui.workbench.AutoHide
+import com.android.tools.adtui.workbench.Side
+import com.android.tools.adtui.workbench.Split
 import com.android.tools.adtui.workbench.ToolWindowDefinition
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.insights.LoadingState
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.model.common.GroupAware
 import com.android.tools.idea.insights.ui.APP_INSIGHTS_ID
 import com.android.tools.idea.insights.ui.AppInsightsToolbar
@@ -47,6 +51,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SideBorder
 import com.intellij.ui.components.JBLoadingPanel
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.time.Clock
 import javax.swing.Icon
@@ -90,14 +95,16 @@ class FindingsToolWindowContext
 /**
  * The main tab panel for Play Console Findings.
  *
- * Layout consists of a top filter toolbar above a two-pane [WorkBench] and [ThreeComponentsSplitter]:
+ * Layout consists of a top filter toolbar above a three-pane [WorkBench] and [ThreeComponentsSplitter]:
  * - **Top toolbar**: Category/severity filter dropdowns, refresh action, and last-refreshed timestamp.
  * - **Left pane**: [FindingsTableView] listing findings matching the active filters.
- * - **Right pane**: [FindingsDetailsPanel] displaying metadata, description, and evidence for the selected finding.
+ * - **Center pane**: [FindingsDetailsPanel] displaying metadata, description, and evidence for the selected finding.
+ * - **Right side panel**: Docked [FindingsInsightPanel] tool window showing Gemini-generated insights for the selected finding.
  */
 class FindingsTab(
   private val controller: FindingsProjectLevelController,
   private val project: Project,
+  private val tracker: AppInsightsTracker,
   clock: Clock = Clock.systemDefaultZone(),
   mainContext: CoroutineContext = Dispatchers.EDT,
 ) : JPanel(BorderLayout()), Disposable {
@@ -221,7 +228,22 @@ class FindingsTab(
       }
     }
 
-  private fun createToolWindowDefinitions(): List<ToolWindowDefinition<FindingsToolWindowContext>> = emptyList()
+  private fun createToolWindowDefinitions(): List<ToolWindowDefinition<FindingsToolWindowContext>> =
+    listOf(
+      ToolWindowDefinition(
+        "Insights",
+        AllIcons.Actions.IntentionBulbGrey,
+        "FINDINGS_INSIGHTS",
+        Side.RIGHT,
+        Split.TOP,
+        AutoHide.DOCKED,
+        JBUI.scale(400),
+        ToolWindowDefinition.DEFAULT_BUTTON_SIZE,
+        ToolWindowDefinition.ALLOW_BASICS,
+      ) { disposable ->
+        FindingsInsightPanel(project, controller, disposable, tracker)
+      }
+    )
 
   /** Collects [FindingsProjectLevelController.state] to drive the loading overlay, table rows, filters, and details panel. */
   private fun observeControllerState(loadingPanel: JBLoadingPanel) {

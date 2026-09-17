@@ -19,6 +19,8 @@ import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.AiInsightContributor
+import com.android.tools.idea.insights.ai.AiInsightRequest
+import com.android.tools.idea.insights.ai.AiInsightToolkit
 import com.android.tools.idea.insights.ai.InsightSource
 import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.issue.FailureType
@@ -55,8 +57,8 @@ class VitalsAiInsightToolkitTest {
 
         override fun handleModelAssignment(project: Project) = Unit
 
-        override suspend fun fetchInsight(project: Project, event: Event): AiInsight {
-          return AiInsight("insight for $event", event, insightSource = InsightSource.STUDIO_BOT)
+        override suspend fun fetchInsight(project: Project, request: AiInsightRequest): AiInsight {
+          return AiInsight("insight for ${request.prompt}", insightSource = InsightSource.STUDIO_BOT)
         }
       }
     ExtensionTestUtil.maskExtensions(AiInsightContributor.EP_NAME, listOf(client), projectRule.disposable)
@@ -69,7 +71,7 @@ class VitalsAiInsightToolkitTest {
     val insight = aiInsightToolkit.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, ISSUE1.issueDetails.fatality, ISSUE1.sampleEvent, true)
 
     val rawInsight = (insight as LoadingState.Ready).value.rawInsight
-    Truth.assertThat(rawInsight).isEqualTo("insight for ${ISSUE1.sampleEvent}")
+    Truth.assertThat(rawInsight).isEqualTo("insight for ${AiInsightToolkit.createCrashPrompt(ISSUE1.sampleEvent)}")
   }
 
   @Test

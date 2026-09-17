@@ -18,7 +18,6 @@ package com.android.tools.idea.insights
 import com.android.tools.idea.insights.ai.AiInsightToolkit
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.events.actions.Action
-import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.OperatingSystemInfo
@@ -36,7 +35,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
 /** The source-based controller which provides lifecycle and App Insights crash state data. */
-interface AppInsightsCrashController : AppInsightsProjectLevelController {
+interface AppInsightsCrashController : AppInsightsProjectLevelController, AiInsightController {
 
   /**
    * This flow represents the App Insights crash state of a host Android app module.
@@ -103,10 +102,6 @@ interface AppInsightsCrashController : AppInsightsProjectLevelController {
   fun selectVisibilityType(value: VisibilityType)
 
   fun selectIssueVariant(variant: IssueVariant?)
-
-  fun refreshInsight(regenerateWithContext: Boolean, forceGenerateNewInsight: Boolean = false)
-
-  fun submitInsightFeedback(insightFeedback: InsightFeedback)
 
   /** Disables the [action]. Use [enableAction] to enable the action. */
   fun disableAction(action: KClass<out Action>)

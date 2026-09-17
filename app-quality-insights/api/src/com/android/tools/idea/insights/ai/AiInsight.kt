@@ -20,7 +20,7 @@ import com.android.tools.idea.insights.model.event.Event
 
 data class AiInsight(
   val rawInsight: String,
-  val event: Event,
+  val event: Event = Event.EMPTY,
   val isCached: Boolean = false,
   val insightSource: InsightSource = InsightSource.UNKNOWN,
   val feedback: InsightFeedback = InsightFeedback.NONE,

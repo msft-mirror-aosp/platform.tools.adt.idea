@@ -239,8 +239,8 @@ class AppInsightsCrashControllerImpl(
     emit(SelectedIssueVariantChanged(variant))
   }
 
-  override fun refreshInsight(regenerateWithContext: Boolean, forceGenerateNewInsight: Boolean) {
-    emit(RefreshInsight(regenerateWithContext, forceGenerateNewInsight))
+  override fun refreshInsight(forceGenerateNewInsight: Boolean) {
+    emit(RefreshInsight(forceGenerateNewInsight))
   }
 
   override fun submitInsightFeedback(insightFeedback: InsightFeedback) {

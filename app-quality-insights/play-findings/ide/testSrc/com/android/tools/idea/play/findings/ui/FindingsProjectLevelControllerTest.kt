@@ -21,6 +21,8 @@ import com.android.tools.idea.findings.client.utils.FakeFindingsClient
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.insights.InsightsProvider.Source
 import com.android.tools.idea.insights.LoadingState
+import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
 import com.android.tools.idea.insights.ui.ConnectionFilter
 import com.android.tools.idea.insights.ui.ConnectionPreference
@@ -31,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -92,7 +95,7 @@ class FindingsProjectLevelControllerTest {
   }
 
   @Test
-  fun testSetPackageName_fetchesFindingsAutomatically() {
+  fun testSetPackageName_updatesStateAndFetchesFindings() {
     runBlocking {
       packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
 
@@ -104,7 +107,7 @@ class FindingsProjectLevelControllerTest {
   }
 
   @Test
-  fun testSetPackageName_callsClientFetch() {
+  fun testSetPackageName_twiceWithSamePackage_doesNotFetchAgain() {
     runBlocking {
       val mockClient = mock<FindingsClient>()
       whenever(mockClient.fetchFindings(any())).thenReturn(LoadingState.Ready(emptyList()))
@@ -116,6 +119,7 @@ class FindingsProjectLevelControllerTest {
           packageNameFlow = packageNameFlow,
         )
 
+      packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
       packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
 
       verify(mockClient).fetchFindings(FetchFindingsRequest(FakeFindingsClient.TEST_PACKAGE_NAME))
@@ -192,6 +196,203 @@ class FindingsProjectLevelControllerTest {
   }
 
   @Test
+  fun testRefreshInsight_fetchesInsightForSelectedFinding() {
+    runBlocking {
+      val mockToolkit = mock<FindingsInsightToolkit>()
+      val fakeInsight = AiInsight("Test insight")
+      whenever(mockToolkit.fetchInsight(any(), any())).thenReturn(LoadingState.Ready(fakeInsight))
+
+      val controllerWithToolkit =
+        FindingsProjectLevelControllerImpl(
+          projectRule.project,
+          client = fakeClient,
+          scope = controllerScope,
+          aiInsightToolkit = mockToolkit,
+          packageNameFlow = packageNameFlow,
+        )
+      packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+      controllerWithToolkit.refresh()
+      @Suppress("UNCHECKED_CAST")
+      val finding = (controllerWithToolkit.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value.first()
+      controllerWithToolkit.selectFinding(finding)
+
+      controllerWithToolkit.refreshInsight(false)
+
+      val currentInsight = controllerWithToolkit.state.value.currentInsight
+      assertThat(currentInsight).isInstanceOf(LoadingState.Ready::class.java)
+      assertThat((currentInsight as LoadingState.Ready<*>).value).isEqualTo(fakeInsight)
+    }
+  }
+
+  @Test
+  fun testRefreshInsight_whenNoFindingSelected_doesNotFetchInsight() {
+    runBlocking {
+      val mockToolkit = mock<FindingsInsightToolkit>()
+      val controllerWithToolkit =
+        FindingsProjectLevelControllerImpl(
+          projectRule.project,
+          client = fakeClient,
+          scope = controllerScope,
+          aiInsightToolkit = mockToolkit,
+          packageNameFlow = packageNameFlow,
+        )
+      controllerWithToolkit.refreshInsight(false)
+
+      verify(mockToolkit, never()).fetchInsight(any(), any())
+      assertThat(controllerWithToolkit.state.value.currentInsight).isNull()
+    }
+  }
+
+  @Test
+  fun testSelectFinding_setsInsightLoadingAndClearingSelectionClearsInsight() {
+    runBlocking {
+      val mockToolkit = mock<FindingsInsightToolkit>()
+      whenever(mockToolkit.fetchInsight(any(), any())).thenReturn(LoadingState.Ready(AiInsight("Test insight")))
+      val controllerWithToolkit =
+        FindingsProjectLevelControllerImpl(
+          projectRule.project,
+          client = fakeClient,
+          scope = controllerScope,
+          aiInsightToolkit = mockToolkit,
+          packageNameFlow = packageNameFlow,
+        )
+      assertThat(controllerWithToolkit.state.value.currentInsight).isNull()
+
+      packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+      @Suppress("UNCHECKED_CAST")
+      val finding = (controllerWithToolkit.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value.first()
+      controllerWithToolkit.selectFinding(finding)
+      assertThat(controllerWithToolkit.state.value.currentInsight).isEqualTo(LoadingState.Ready(AiInsight("Test insight")))
+
+      controllerWithToolkit.selectFinding(null)
+      assertThat(controllerWithToolkit.state.value.currentInsight).isNull()
+    }
+  }
+
+  @Test
+  fun testSwitchingApps_clearsSelectionAndInsight() {
+    runBlocking {
+      val mockToolkit = mock<FindingsInsightToolkit>()
+      whenever(mockToolkit.fetchInsight(any(), any())).thenReturn(LoadingState.Ready(AiInsight("Test insight")))
+      val controllerWithToolkit =
+        FindingsProjectLevelControllerImpl(
+          projectRule.project,
+          client = fakeClient,
+          scope = controllerScope,
+          aiInsightToolkit = mockToolkit,
+          packageNameFlow = packageNameFlow,
+        )
+      packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+      @Suppress("UNCHECKED_CAST")
+      val finding = (controllerWithToolkit.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value.first()
+      controllerWithToolkit.selectFinding(finding)
+
+      packageNameFlow.tryEmit(FakeFindingsClient.OTHER_PACKAGE_NAME)
+
+      val state = controllerWithToolkit.state.value
+      assertThat(state.packageName).isEqualTo(FakeFindingsClient.OTHER_PACKAGE_NAME)
+      assertThat(state.selectedFinding).isNull()
+      assertThat(state.currentInsight).isNull()
+    }
+  }
+
+  @Test
+  fun testSelectDifferentFinding_resetsCurrentInsightAtomically() = runTest {
+    val mockToolkit = mock<FindingsInsightToolkit>()
+    val firstInsight = AiInsight("First insight")
+    val secondInsight = AiInsight("Second insight")
+
+    val testController =
+      FindingsProjectLevelControllerImpl(
+        projectRule.project,
+        client = FakeFindingsClient(delayMs = 0L),
+        scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job()),
+        aiInsightToolkit = mockToolkit,
+        packageNameFlow = packageNameFlow,
+      )
+    packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+    testScheduler.advanceUntilIdle()
+
+    @Suppress("UNCHECKED_CAST") val findings = (testController.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value
+    whenever(mockToolkit.fetchInsight(findings[0], false)).thenReturn(LoadingState.Ready(firstInsight))
+    whenever(mockToolkit.fetchInsight(findings[1], false)).thenReturn(LoadingState.Ready(secondInsight))
+
+    testController.selectFinding(findings[0])
+    testScheduler.advanceUntilIdle()
+    assertThat(testController.state.value.currentInsight).isEqualTo(LoadingState.Ready(firstInsight))
+
+    // Selecting findings[1] immediately resets currentInsight to Loading before the coroutine scheduler dispatches Pipeline 2
+    testController.selectFinding(findings[1])
+    assertThat(testController.state.value.selectedFinding).isEqualTo(findings[1])
+    assertThat(testController.state.value.currentInsight).isEqualTo(LoadingState.Loading("Fetching insights..."))
+
+    testScheduler.advanceUntilIdle()
+    assertThat(testController.state.value.currentInsight).isEqualTo(LoadingState.Ready(secondInsight))
+  }
+
+  @Test
+  fun testForceRefreshInsight_doesNotCarryOverToNextSelectedFinding() {
+    runBlocking {
+      val mockToolkit = mock<FindingsInsightToolkit>()
+      val fakeInsight = AiInsight("Regenerated insight")
+      whenever(mockToolkit.fetchInsight(any(), org.mockito.kotlin.eq(false))).thenReturn(LoadingState.InsightAutogenerateDisabled)
+      whenever(mockToolkit.fetchInsight(any(), org.mockito.kotlin.eq(true))).thenReturn(LoadingState.Ready(fakeInsight))
+
+      val controllerWithToolkit =
+        FindingsProjectLevelControllerImpl(
+          projectRule.project,
+          client = fakeClient,
+          scope = controllerScope,
+          aiInsightToolkit = mockToolkit,
+          packageNameFlow = packageNameFlow,
+        )
+      packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+      controllerWithToolkit.refresh()
+      @Suppress("UNCHECKED_CAST")
+      val findings = (controllerWithToolkit.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value
+
+      // 1. Select first finding while auto-generate is disabled -> InsightAutogenerateDisabled
+      controllerWithToolkit.selectFinding(findings[0])
+      assertThat(controllerWithToolkit.state.value.currentInsight).isEqualTo(LoadingState.InsightAutogenerateDisabled)
+
+      // 2. User manually clicks "Generate insight for this finding" (forceGenerateNewInsight = true)
+      controllerWithToolkit.refreshInsight(forceGenerateNewInsight = true)
+      assertThat(controllerWithToolkit.state.value.currentInsight).isEqualTo(LoadingState.Ready(fakeInsight))
+
+      // 3. Selecting a different finding should NOT inherit forceGenerateNewInsight = true
+      controllerWithToolkit.selectFinding(findings[1])
+      assertThat(controllerWithToolkit.state.value.currentInsight).isEqualTo(LoadingState.InsightAutogenerateDisabled)
+    }
+  }
+
+  @Test
+  fun testSubmitInsightFeedback_updatesCurrentInsightFeedback() {
+    runBlocking {
+      val mockToolkit = mock<FindingsInsightToolkit>()
+      val fakeInsight = AiInsight("Test insight")
+      whenever(mockToolkit.fetchInsight(any(), any())).thenReturn(LoadingState.Ready(fakeInsight))
+
+      val controllerWithToolkit =
+        FindingsProjectLevelControllerImpl(
+          projectRule.project,
+          client = fakeClient,
+          scope = controllerScope,
+          aiInsightToolkit = mockToolkit,
+          packageNameFlow = packageNameFlow,
+        )
+      packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+      @Suppress("UNCHECKED_CAST")
+      val finding = (controllerWithToolkit.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value.first()
+      controllerWithToolkit.selectFinding(finding)
+
+      controllerWithToolkit.submitInsightFeedback(InsightFeedback.THUMBS_UP)
+
+      val updatedInsight = (controllerWithToolkit.state.value.currentInsight as LoadingState.Ready<AiInsight>).value
+      assertThat(updatedInsight.feedback).isEqualTo(InsightFeedback.THUMBS_UP)
+    }
+  }
+
+  @Test
   fun testSetPackageName_cancelsInFlightRefresh() = runTest {
     val delayedClient = FakeFindingsClient(delayMs = 1000L)
     val testController =
@@ -259,10 +460,56 @@ class FindingsProjectLevelControllerTest {
   }
 
   @Test
+  fun testRefreshInsight_forceGenerate_emitsRegeneratingLoadingState() = runTest {
+    val fakeInsight = AiInsight("Regenerated insight")
+
+    // An interface object allows us to insert a native coroutine delay to test the loading state
+    val delayedToolkit =
+      object : FindingsInsightToolkit(projectRule.project) {
+        override suspend fun fetchInsight(
+          finding: AppFinding,
+          forceGenerateNewInsight: Boolean,
+        ): LoadingState.Done<AiInsight> {
+          delay(100)
+          return LoadingState.Ready(fakeInsight)
+        }
+      }
+
+    val testController =
+      FindingsProjectLevelControllerImpl(
+        projectRule.project,
+        client = FakeFindingsClient(delayMs = 0L),
+        scope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job()),
+        aiInsightToolkit = delayedToolkit,
+        packageNameFlow = packageNameFlow,
+      )
+
+    packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
+    testController.refresh()
+    testScheduler.advanceUntilIdle()
+
+    @Suppress("UNCHECKED_CAST")
+    val finding = (testController.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value.first()
+    testController.selectFinding(finding)
+    testScheduler.advanceUntilIdle()
+
+    testController.refreshInsight(forceGenerateNewInsight = true)
+    testScheduler.runCurrent() // Runs up until the 100ms suspension in the mock toolkit
+
+    val loadingState = testController.state.value.currentInsight
+    assertThat(loadingState).isEqualTo(LoadingState.Loading("Regenerating insight..."))
+
+    testScheduler.advanceUntilIdle() // Finish the 100ms suspension
+
+    val finalState = testController.state.value.currentInsight
+    assertThat(finalState).isEqualTo(LoadingState.Ready(fakeInsight))
+  }
+
+  @Test
   fun testRefresh_reconcilesSelectedFinding() = runTest {
     val mockClient = mock<FindingsClient>()
     val allFindings = (fakeClient.fetchFindings(FetchFindingsRequest(FakeFindingsClient.TEST_PACKAGE_NAME)) as LoadingState.Ready).value
-    val firstFinding = allFindings.first()
+    val finding = allFindings.last()
 
     whenever(mockClient.fetchFindings(any())).thenReturn(LoadingState.Ready(allFindings))
     val testController =
@@ -276,11 +523,11 @@ class FindingsProjectLevelControllerTest {
     packageNameFlow.tryEmit(FakeFindingsClient.TEST_PACKAGE_NAME)
     testScheduler.advanceUntilIdle()
 
-    testController.selectFinding(firstFinding)
-    assertThat(testController.state.value.selectedFinding).isEqualTo(firstFinding)
+    testController.selectFinding(finding)
+    assertThat(testController.state.value.selectedFinding).isEqualTo(finding)
 
-    // Now refresh when firstFinding is no longer in the returned list
-    whenever(mockClient.fetchFindings(any())).thenReturn(LoadingState.Ready(allFindings.drop(1)))
+    // Now refresh when finding is no longer in the returned list
+    whenever(mockClient.fetchFindings(any())).thenReturn(LoadingState.Ready(allFindings.dropLast(1)))
     testController.refresh()
     testScheduler.advanceUntilIdle()
 
@@ -409,6 +656,7 @@ class FindingsProjectLevelControllerTest {
     }
     assertThat(emissions).containsExactly(PLAY_APP)
 
+    // Signing into a different account leaves the stale selection pointing at an app that is no longer connected.
     connectedApps.value = listOf(playApp(OTHER_PLAY_APP))
     assertThat(emissions).containsExactly(PLAY_APP, null).inOrder()
   }

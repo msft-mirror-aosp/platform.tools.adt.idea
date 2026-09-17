@@ -16,7 +16,7 @@
 package com.android.tools.idea.insights.ui.insight
 
 import com.android.tools.idea.concurrency.createCoroutineScope
-import com.android.tools.idea.insights.AppInsightsCrashController
+import com.android.tools.idea.insights.AiInsightController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.experiments.InsightFeedback
@@ -29,6 +29,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.Toggleable
+import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
 import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.project.DumbAwareAction
 import icons.StudioIcons
@@ -45,10 +46,10 @@ import kotlinx.coroutines.flow.stateIn
 const val INSIGHT_TOOLBAR = "InsightToolbarPanel"
 
 class InsightToolbarPanel(
-  controller: AppInsightsCrashController,
+  controller: AiInsightController,
   currentInsightFlow: Flow<LoadingState<AiInsight?>>,
   parentDisposable: Disposable,
-  private val onSubmitFeedback: (InsightFeedback) -> Unit,
+  private val onSubmitFeedback: (InsightFeedback) -> Unit = controller::submitInsightFeedback,
 ) : JPanel(BorderLayout()) {
 
   private val scope = parentDisposable.createCoroutineScope()
@@ -80,6 +81,7 @@ class InsightToolbarPanel(
       DefaultActionGroup(copyAction, InsightRefreshAction(controller), upvoteAction, downvoteAction).apply { add(InsightSettingGroup()) }
 
     val toolbar = ActionManager.getInstance().createActionToolbar("${controller.provider.displayName} $INSIGHT_TOOLBAR", actionGroup, true)
+    toolbar.layoutStrategy = ToolbarLayoutStrategy.NOWRAP_STRATEGY
     toolbar.targetComponent = this
     add(toolbar.component, BorderLayout.CENTER)
 

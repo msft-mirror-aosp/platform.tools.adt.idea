@@ -27,8 +27,15 @@ import com.android.tools.idea.insights.DEFAULT_AI_INSIGHT
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.client.AiInsightCache
+import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.event.EventData
+import com.android.tools.idea.insights.model.event.OperatingSystemInfo
 import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.stacktrace.ExceptionStack
+import com.android.tools.idea.insights.model.stacktrace.Frame
+import com.android.tools.idea.insights.model.stacktrace.Stacktrace
+import com.android.tools.idea.insights.model.stacktrace.StacktraceGroup
 import com.android.tools.idea.insights.persistence.AppInsightsSettings
 import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.testing.ui.FakeToolWindow
@@ -165,7 +172,7 @@ class AiInsightToolkitTest {
 
   @Test
   fun `toolkit returns new insight with force regenerate`() = runBlocking {
-    setupAiInsightContributor { event -> AiInsight("a different insight", event, insightSource = InsightSource.STUDIO_BOT) }
+    setupAiInsightContributor { AiInsight("a different insight", insightSource = InsightSource.STUDIO_BOT) }
 
     val cache = AiInsightCache()
     cache.putAiInsight(CONNECTION1, ISSUE1.id, null, DEFAULT_AI_INSIGHT)
@@ -305,6 +312,67 @@ class AiInsightToolkitTest {
     assertThat(mutex.isLocked).isTrue()
   }
 
+  @Test
+  fun testCreateCrashPrompt() {
+    val event =
+      crashEvent(
+        device = Device("Google", "Pixel 4a"),
+        osDisplayVersion = "12",
+        exceptionMessage = "retrofit2.HttpException: HTTP 401",
+        frameSymbol = "dev.firebase.ResponseWrapper.build(ResponseWrapper.kt:23)",
+      )
+
+    assertThat(AiInsightToolkit.createCrashPrompt(event))
+      .isEqualTo(
+        """
+        |Explain this exception from my app running on Google Pixel 4a with Android version 12:
+        |Exception:
+        |```
+        |retrofit2.HttpException: HTTP 401
+        |${'\t'}dev.firebase.ResponseWrapper.build(ResponseWrapper.kt:23)
+        |```
+        """
+          .trimMargin()
+      )
+  }
+
+  @Test
+  fun testCreateCrashPrompt_stripsBackticksFromEveryInterpolatedValue() {
+    // Backticks delimit the exception block in the prompt, so any that survive in event data would let a crash report break out of
+    // that block and have the rest of its contents read as instructions.
+    val event =
+      crashEvent(
+        device = Device("manu```facturer", "mo```del"),
+        osDisplayVersion = "12```",
+        exceptionMessage = "retrofit2.HttpException:```\nHTTP 401",
+        frameSymbol = "frame```Symbol",
+      )
+
+    assertThat(AiInsightToolkit.createCrashPrompt(event))
+      .isEqualTo(
+        """
+        |Explain this exception from my app running on manufacturer model with Android version 12:
+        |Exception:
+        |```
+        |retrofit2.HttpException:
+        |HTTP 401
+        |${'\t'}frameSymbol
+        |```
+        """
+          .trimMargin()
+      )
+  }
+
+  private fun crashEvent(device: Device, osDisplayVersion: String, exceptionMessage: String, frameSymbol: String) =
+    Event(
+      name = "event",
+      eventData = EventData(device, OperatingSystemInfo(osDisplayVersion, "")),
+      stacktraceGroup =
+        StacktraceGroup(
+          listOf(ExceptionStack(Stacktrace(frames = listOf(Frame(rawSymbol = frameSymbol))), rawExceptionMessage = exceptionMessage))
+        ),
+    )
+
   private fun createToolkit(
     cache: AiInsightCache = AiInsightCache(),
     fetchInsightCondition: (FailureType, Event) -> LoadingState.Done<AiInsight>? = { _, _ -> null },
@@ -318,7 +386,7 @@ class AiInsightToolkitTest {
     return AiInsight("expected insight", ISSUE1.sampleEvent)
   }
 
-  private fun setupAiInsightContributor(fetchInsight: suspend (Event) -> AiInsight = { _ -> expectedInsight() }) {
+  private fun setupAiInsightContributor(fetchInsight: suspend (AiInsightRequest) -> AiInsight = { _ -> expectedInsight() }) {
     val contributor =
       object : AiInsightContributor {
         override fun canContribute() = true
@@ -329,8 +397,8 @@ class AiInsightToolkitTest {
 
         override fun handleModelAssignment(project: Project) = Unit
 
-        override suspend fun fetchInsight(project: Project, event: Event): AiInsight {
-          return fetchInsight(event)
+        override suspend fun fetchInsight(project: Project, request: AiInsightRequest): AiInsight {
+          return fetchInsight(request)
         }
       }
     ExtensionTestUtil.maskExtensions(AiInsightContributor.EP_NAME, listOf(contributor), projectRule.disposable)

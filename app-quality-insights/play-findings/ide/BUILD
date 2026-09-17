@@ -25,6 +25,7 @@ iml_module(
         "//tools/vendor/google/login:google-login",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api",
     ],
 )
 
@@ -57,7 +58,9 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
+        "//tools/adt/idea/android-common:intellij.android.common",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/play-findings/ide:intellij.android.app-quality-insights.play-findings.ide"],
     test_srcs = ["testSrc"],

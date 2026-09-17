@@ -22,9 +22,7 @@ import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.events.actions.Action
 
-private const val REGENERATING_INSIGHT = "Regenerating insight..."
-
-class RefreshInsight(private val regenerateWithContext: Boolean, private val forceGenerateNewInsight: Boolean) : ChangeEvent {
+class RefreshInsight(private val forceGenerateNewInsight: Boolean = false) : ChangeEvent {
   override fun transition(
     state: AppInsightsCrashState,
     tracker: AppInsightsTracker,
@@ -37,7 +35,7 @@ class RefreshInsight(private val regenerateWithContext: Boolean, private val for
       StateTransition(state, Action.NONE)
     } else {
       StateTransition(
-        state.copy(currentInsight = LoadingState.Loading(if (regenerateWithContext) REGENERATING_INSIGHT else "")),
+        state.copy(currentInsight = LoadingState.Loading),
         Action.FetchInsight(issue.id, state.selectedVariant?.id, issue.issueDetails.fatality, issue.sampleEvent, forceGenerateNewInsight),
       )
     }

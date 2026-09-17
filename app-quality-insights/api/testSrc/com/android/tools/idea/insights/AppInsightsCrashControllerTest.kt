@@ -1286,7 +1286,7 @@ class AppInsightsCrashControllerTest {
 
     controllerRule.controller.refreshInsight(true)
     state = controllerRule.consumeNext()
-    assertThat(state.currentInsight).isEqualTo(LoadingState.Loading("Regenerating insight..."))
+    assertThat(state.currentInsight).isEqualTo(LoadingState.Loading)
 
     val newInsight = AiInsight("Insight", ISSUE1.sampleEvent)
     controllerRule.geminiToolkit.completeFetchInsightCallWith(LoadingState.Ready(newInsight))

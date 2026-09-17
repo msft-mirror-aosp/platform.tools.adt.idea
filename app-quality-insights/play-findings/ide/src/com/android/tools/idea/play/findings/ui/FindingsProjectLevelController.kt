@@ -18,10 +18,12 @@ package com.android.tools.idea.play.findings.ui
 import com.android.tools.idea.findings.client.FetchFindingsRequest
 import com.android.tools.idea.findings.client.FindingsClient
 import com.android.tools.idea.findings.model.AppFinding
+import com.android.tools.idea.insights.AiInsightController
 import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
+import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
@@ -37,6 +39,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -57,9 +61,9 @@ internal fun playConnectedPackageNameFlow(filterSelector: AppInsightsFilterSelec
 /**
  * Project-level controller for Play Console Findings integration in App Quality Insights.
  *
- * Manages findings state, package name updates, and active finding selection for the project.
+ * Manages findings state and active finding selection for the project.
  */
-interface FindingsProjectLevelController : AppInsightsProjectLevelController {
+interface FindingsProjectLevelController : AppInsightsProjectLevelController, AiInsightController {
   /** The observable [FindingsState] representing the currently loaded findings and selection. */
   val state: StateFlow<FindingsState>
 
@@ -69,9 +73,11 @@ interface FindingsProjectLevelController : AppInsightsProjectLevelController {
    * @param finding The finding to select, or null to deselect.
    */
   fun selectFinding(finding: AppFinding?)
+
+  val aiInsightToolkit: FindingsInsightToolkit
 }
 
-/** The terminal empty state, used when there is no app selected. */
+/** The terminal empty state, used when there is no Play-connected app selected. */
 private val NO_APP_SELECTED_STATE = FindingsState(currentFindings = LoadingState.Ready(emptyList()), packageName = null)
 
 /**
@@ -82,23 +88,31 @@ private val NO_APP_SELECTED_STATE = FindingsState(currentFindings = LoadingState
  * @param project The active [Project].
  * @param client The [FindingsClient] used to retrieve findings.
  * @param scope The [CoroutineScope] used for asynchronous operations.
- * @param packageNameFlow Reactive stream of the selected Play Console package name, or null when no Play app is selected.
+ * @param packageNameFlow Package name of the Play-connected app to fetch findings for, or null when there is no app to show.
  */
 class FindingsProjectLevelControllerImpl(
   project: Project,
   client: FindingsClient,
-  scope: CoroutineScope,
+  private val scope: CoroutineScope,
   packageNameFlow: Flow<String?> = playConnectedPackageNameFlow(project.service<AppInsightsFilterSelector>()),
+  aiInsightToolkit: FindingsInsightToolkit? = null,
   connections: Selection<Connection> = Selection.emptySelection(),
 ) : FindingsProjectLevelController {
   override val provider: InsightsProvider = PlayFindingsInsightsProvider
   override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(connections).asStateFlow()
+
+  override val aiInsightToolkit: FindingsInsightToolkit = aiInsightToolkit ?: FindingsInsightToolkit(project)
 
   private val _state = MutableStateFlow(FindingsState(packageName = null))
   override val state: StateFlow<FindingsState> = _state.asStateFlow()
 
   private val forceRefreshTrigger =
     MutableSharedFlow<Unit>(
+      extraBufferCapacity = 1,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+  private val forceInsightRefreshTrigger =
+    MutableSharedFlow<Boolean>(
       extraBufferCapacity = 1,
       onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -119,21 +133,18 @@ class FindingsProjectLevelControllerImpl(
             return@collectLatest
           }
 
-          // Preserve the current selection when refreshing the same app; clear it when switching apps.
+          // Preserve the current selection and insight when refreshing the same app; clear them when switching apps.
           _state.update { currentState ->
-            FindingsState(
-              currentFindings = LoadingState.Loading,
-              selectedFinding = currentState.selectedFinding.takeIf { currentState.packageName == packageName },
-              packageName = packageName,
-            )
+            if (currentState.packageName == packageName) {
+              currentState.copy(currentFindings = LoadingState.Loading)
+            } else {
+              FindingsState(currentFindings = LoadingState.Loading, packageName = packageName)
+            }
           }
 
-          // Fetch findings asynchronously. If `packageName` changes while fetching,
-          // `collectLatest` cancels this coroutine naturally without leaking state updates.
           val result = client.fetchFindings(FetchFindingsRequest(packageName))
 
           _state.update { currentState ->
-            // Attempt to restore the user's previously selected finding using its name as a stable identifier.
             val updatedSelection =
               when (result) {
                 is LoadingState.Ready ->
@@ -142,14 +153,68 @@ class FindingsProjectLevelControllerImpl(
                   }
                 else -> currentState.selectedFinding
               }
-            currentState.copy(currentFindings = result, selectedFinding = updatedSelection)
+            currentState.copy(currentFindings = result).withSelection(updatedSelection)
+          }
+        }
+    }
+
+    // Pipeline 2: Gemini AI Insights Pipeline
+    // Monitors changes to the currently selected finding to fetch associated AI Insights.
+    scope.launch {
+      state
+        .map { it.selectedFinding }
+        .distinctUntilChanged()
+        .flatMapLatest { finding ->
+          forceInsightRefreshTrigger
+            .onStart { emit(false) }
+            .map { forceGenerateNewInsight ->
+              finding to forceGenerateNewInsight
+            }
+        }
+        .collectLatest { (finding, forceGenerateNewInsight) ->
+          if (finding == null) {
+            return@collectLatest
+          }
+
+          val message = if (forceGenerateNewInsight) "Regenerating insight..." else "Fetching insights..."
+          _state.update { currentState ->
+            if (currentState.selectedFinding == finding) {
+              currentState.copy(currentInsight = LoadingState.Loading(message))
+            } else {
+              currentState
+            }
+          }
+
+          val insight =
+            this@FindingsProjectLevelControllerImpl.aiInsightToolkit.fetchInsight(
+              finding,
+              forceGenerateNewInsight,
+            )
+          _state.update { currentState ->
+            if (currentState.selectedFinding == finding) {
+              currentState.copy(currentInsight = insight)
+            } else {
+              currentState
+            }
           }
         }
     }
   }
 
   override fun selectFinding(finding: AppFinding?) {
-    _state.update { it.copy(selectedFinding = finding) }
+    _state.update { currentState -> currentState.withSelection(finding) }
+  }
+
+  override fun refreshInsight(forceGenerateNewInsight: Boolean) {
+    forceInsightRefreshTrigger.tryEmit(forceGenerateNewInsight)
+  }
+
+  override fun submitInsightFeedback(insightFeedback: InsightFeedback) {
+    // TODO(b/517599039): Persist feedback in an insight cache and log sentiment metrics via AppInsightsTracker.
+    _state.update { currentState ->
+      val readyInsight = currentState.currentInsight as? LoadingState.Ready ?: return@update currentState
+      currentState.copy(currentInsight = LoadingState.Ready(readyInsight.value.copy(feedback = insightFeedback)))
+    }
   }
 
   override fun refresh() {

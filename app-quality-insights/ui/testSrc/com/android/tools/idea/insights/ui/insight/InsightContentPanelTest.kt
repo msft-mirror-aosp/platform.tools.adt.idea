@@ -268,7 +268,7 @@ class InsightContentPanelTest {
       fakeUi.findComponent<HyperlinkLabel> { it.text == "Generate insight for this issue" } ?: fail("Generate insight link not found")
 
     generateLink.doClick()
-    verify(mockController).refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+    verify(mockController).refreshInsight(forceGenerateNewInsight = true)
     verify(mockTracker).logGenerateInsightAction("app1", Action.GENERATE_ONCE)
   }
 
@@ -393,7 +393,7 @@ class InsightContentPanelTest {
 
     val regenerateLink = fakeUi.findComponent<HyperlinkLabel> { it.text == "Regenerate" } ?: fail("Regenerate link not found")
     regenerateLink.doClick()
-    verify(mockController).refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+    verify(mockController).refreshInsight(forceGenerateNewInsight = true)
   }
 
   @Test
@@ -440,7 +440,7 @@ class InsightContentPanelTest {
     val regenerateLink = fakeUi.findComponent<HyperlinkLabel> { it.text == "Regenerate" } ?: fail("Regenerate link not found")
     regenerateLink.doClick()
 
-    verify(mockController).refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+    verify(mockController).refreshInsight(forceGenerateNewInsight = true)
     verify(mockTracker).logGenerateInsightAction("app1", Action.GENERATE_ONCE)
   }
 
