@@ -143,9 +143,19 @@ public class RenderResult implements Disposable {
   }
 
   @NotNull
-  private static Dimension getRootViewDimensionFromSystemViews(@Nullable List<ViewInfo> viewInfo) {
+  private static Dimension getViewDimensions(@Nullable List<ViewInfo> viewInfo) {
     if (viewInfo == null || viewInfo.isEmpty()) return new Dimension(0, 0);
-    return new Dimension(viewInfo.get(0).getRight(), viewInfo.get(0).getBottom());
+    int minLeft = Integer.MAX_VALUE;
+    int minTop = Integer.MAX_VALUE;
+    int maxRight = Integer.MIN_VALUE;
+    int maxBottom = Integer.MIN_VALUE;
+    for (ViewInfo info : viewInfo) {
+      minLeft = Math.min(minLeft, info.getLeft());
+      minTop = Math.min(minTop, info.getTop());
+      maxRight = Math.max(maxRight, info.getRight());
+      maxBottom = Math.max(maxBottom, info.getBottom());
+    }
+    return new Dimension(Math.max(0, maxRight - minLeft), Math.max(0, maxBottom - minTop));
   }
 
   /**
@@ -157,7 +167,8 @@ public class RenderResult implements Disposable {
                                     @NotNull Supplier<PsiFile> file,
                                     @NotNull RenderLogger logger,
                                     @NotNull RecyclableImage image,
-                                    boolean hasRequestedCustomViews) {
+                                    boolean hasRequestedCustomViews,
+                                    boolean showDecorations) {
     List<ViewInfo> rootViews = session.getRootViews();
     List<ViewInfo> systemRootViews = session.getSystemRootViews();
     Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties = null;
@@ -170,6 +181,7 @@ public class RenderResult implements Disposable {
         LOG.warn("Failed to get default properties/styles", t);
       }
     }
+    List<ViewInfo> viewsForDimensions = showDecorations ? systemRootViews : (rootViews != null && !rootViews.isEmpty() ? rootViews : systemRootViews);
     RenderResult result = new RenderResult(
       createSourceFileProvider(renderContext.getModule().getEnvironment(), file),
       renderContext.getModule().getProject(),
@@ -184,7 +196,7 @@ public class RenderResult implements Disposable {
       defaultProperties != null ? ImmutableMap.copyOf(defaultProperties) : ImmutableMap.of(),
       defaultStyles != null ? ImmutableMap.copyOf(defaultStyles) : ImmutableMap.of(),
       session.getValidationData(),
-      getRootViewDimensionFromSystemViews(systemRootViews), RenderResultStats.getEMPTY()
+      getViewDimensions(viewsForDimensions), RenderResultStats.getEMPTY()
     );
 
     if (LOG.isDebugEnabled()) {
@@ -192,6 +204,16 @@ public class RenderResult implements Disposable {
     }
 
     return result;
+  }
+
+  @NotNull
+  public static RenderResult create(@NotNull RenderContext renderContext,
+                                    @NotNull RenderSession session,
+                                    @NotNull Supplier<PsiFile> file,
+                                    @NotNull RenderLogger logger,
+                                    @NotNull RecyclableImage image,
+                                    boolean hasRequestedCustomViews) {
+    return create(renderContext, session, file, logger, image, hasRequestedCustomViews, true);
   }
 
   /**
@@ -240,7 +262,8 @@ public class RenderResult implements Disposable {
       myDefaultProperties,
       myDefaultStyles,
       myValidatorResult,
-      myRootViewDimensions, myStats.combine(stats)
+      myRootViewDimensions,
+      myStats.combine(stats)
     );
   }
 
@@ -373,7 +396,7 @@ public class RenderResult implements Disposable {
 
   @NotNull
   public Dimension getRootViewDimensions() {
-    return myRootViews.isEmpty() ? myRootViewDimensions : getRootViewDimensionFromSystemViews(mySystemRootViews);
+    return myRootViewDimensions;
   }
 
   @Override

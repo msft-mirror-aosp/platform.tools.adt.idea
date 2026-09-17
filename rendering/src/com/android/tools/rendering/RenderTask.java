@@ -777,7 +777,7 @@ public class RenderTask {
       if (oldRenderSession != null) {
         disposeRenderSession(oldRenderSession);
       }
-      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
+      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed(), myShowDecorations);
       addDiagnostics(result.getRenderResult());
       return result;
     }
@@ -993,7 +993,7 @@ public class RenderTask {
       RenderXmlFile xmlFile = getXmlFile();
       return runAsyncRenderAction(() -> {
         myRenderSession.measure();
-        return RenderResult.create(myContext, renderSession, xmlFile, myLogger, RecyclableImage.NULL, myLayoutlibCallback.isUsed());
+        return RenderResult.create(myContext, renderSession, xmlFile, myLogger, RecyclableImage.NULL, myLayoutlibCallback.isUsed(), myShowDecorations);
       });
     }
     catch (Exception e) {
@@ -1128,7 +1128,7 @@ public class RenderTask {
           myTestEventListener.onBeforeRender();
           myRenderSession.render(forceMeasure);
           RenderResult result =
-            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toRecyclableImage(myRenderSession), myLayoutlibCallback.isUsed());
+            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toRecyclableImage(myRenderSession), myLayoutlibCallback.isUsed(), myShowDecorations);
           Result renderResult = result.getRenderResult();
           if (renderResult.getException() != null) {
             reportException(renderResult.getException());

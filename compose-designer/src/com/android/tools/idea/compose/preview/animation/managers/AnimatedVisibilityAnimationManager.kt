@@ -19,6 +19,7 @@ import androidx.compose.animation.tooling.ComposeAnimation
 import com.android.tools.idea.compose.preview.animation.AnimationClock
 import com.android.tools.idea.compose.preview.animation.ComposeAnimationTracker
 import com.android.tools.idea.compose.preview.animation.getAnimatedVisibilityState
+import com.android.tools.idea.compose.preview.animation.setClockTimes
 import com.android.tools.idea.compose.preview.animation.state.SingleState
 import com.android.tools.idea.compose.preview.animation.updateAnimatedVisibilityState
 import com.android.tools.idea.preview.animation.AnimationTabs
@@ -72,7 +73,11 @@ class AnimatedVisibilityAnimationManager(
   override suspend fun syncAnimationWithState() {
     animationClock.apply {
       val state = animationState.state.value ?: return
-      executeInRenderSession(false, true) { updateAnimatedVisibilityState(animation, state) }
+      val time = if (frozenState.value.isFrozen) frozenState.value.frozenAt.toLong() else getCurrentTime().toLong()
+      executeInRenderSession(false, true) {
+        updateAnimatedVisibilityState(animation, state)
+        setClockTimes(mapOf(animation to time))
+      }
     }
   }
 }

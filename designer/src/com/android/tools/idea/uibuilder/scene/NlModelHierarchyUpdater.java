@@ -117,10 +117,11 @@ public class NlModelHierarchyUpdater {
                                      @NotNull NlModel model) {
     model.syncWithPsi(rootTag, ContainerUtil.map(views, ViewInfoTagSnapshotNode::new));
     model.updateAccessibility(views);
-    updateBounds(views, systemRootViews, model);
+    boolean boundsChanged = updateBounds(views, systemRootViews, model);
     ImmutableList<NlComponent> components = model.getTreeReader().getComponents();
-    if (!components.isEmpty() && handleScroll(components.getFirst())) {
-      // If there is scrolling involved, this will update the SceneManager to show the correct location for bounding boxes.
+    boolean scrolled = !components.isEmpty() && handleScroll(components.getFirst());
+    if (scrolled || boundsChanged) {
+      // If there is scrolling involved or component bounds changed, this will update the SceneManager to show the correct location for bounding boxes.
       model.notifyListenersModelChangedOnLayout(false);
     }
   }
@@ -146,16 +147,25 @@ public class NlModelHierarchyUpdater {
   }
 
   // TODO: we shouldn't be going back in and modifying NlComponents here
-  private static void updateBounds(@NotNull List<ViewInfo> rootViews,
-                                   @Nullable List<ViewInfo> systemRootViews,
-                                   @NotNull NlModel model) {
-    model.getTreeReader().flattenComponents().forEach(NlModelHierarchyUpdater::clearDerivedData);
+  private static boolean updateBounds(@NotNull List<ViewInfo> rootViews,
+                                      @Nullable List<ViewInfo> systemRootViews,
+                                      @NotNull NlModel model) {
+    List<NlComponent> allComponents = model.getTreeReader().flattenComponents().toList();
+    int[] oldBounds = new int[allComponents.size() * 4];
+    for (int i = 0; i < allComponents.size(); i++) {
+      NlComponent c = allComponents.get(i);
+      oldBounds[i * 4] = NlComponentHelperKt.getX(c);
+      oldBounds[i * 4 + 1] = NlComponentHelperKt.getY(c);
+      oldBounds[i * 4 + 2] = NlComponentHelperKt.getW(c);
+      oldBounds[i * 4 + 3] = NlComponentHelperKt.getH(c);
+    }
+    allComponents.forEach(NlModelHierarchyUpdater::clearDerivedData);
     Map<TagSnapshot, NlComponent> snapshotToComponent =
-      model.getTreeReader().flattenComponents().collect(Collectors.toMap(NlComponent::getSnapshot, Function.identity(), (n1, n2) -> n1));
+      allComponents.stream().collect(Collectors.toMap(NlComponent::getSnapshot, Function.identity(), (n1, n2) -> n1));
     Map<XmlTag, NlComponent> tagToComponent =
-      model.getTreeReader().flattenComponents().collect(Collectors.toMap(NlComponent::getTagDeprecated, Function.identity(), (n1, n2) -> n1));
+      allComponents.stream().collect(Collectors.toMap(NlComponent::getTagDeprecated, Function.identity(), (n1, n2) -> n1));
     Map<Long, NlComponent> sourceIdToComponent =
-      model.getTreeReader().flattenComponents().collect(Collectors.toMap(NlComponent::getAccessibilityId, Function.identity(), (n1, n2) -> n1));
+      allComponents.stream().collect(Collectors.toMap(NlComponent::getAccessibilityId, Function.identity(), (n1, n2) -> n1));
 
     // Update the bounds. This is based on the ViewInfo instances.
     for (ViewInfo view : rootViews) {
@@ -177,6 +187,17 @@ public class NlModelHierarchyUpdater {
       // info hierarchy inherit position from parent
       fixBounds(components.get(0));
     }
+
+    for (int i = 0; i < allComponents.size(); i++) {
+      NlComponent c = allComponents.get(i);
+      if (oldBounds[i * 4] != NlComponentHelperKt.getX(c) ||
+          oldBounds[i * 4 + 1] != NlComponentHelperKt.getY(c) ||
+          oldBounds[i * 4 + 2] != NlComponentHelperKt.getW(c) ||
+          oldBounds[i * 4 + 3] != NlComponentHelperKt.getH(c)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private record ViewWithOffset(ViewInfo view, int relX, int relY) {}

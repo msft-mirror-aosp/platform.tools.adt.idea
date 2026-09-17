@@ -17,7 +17,6 @@ package com.android.tools.idea.compose.preview.animation
 
 import androidx.compose.animation.tooling.ComposeAnimation
 import androidx.compose.animation.tooling.ComposeAnimationType
-import androidx.compose.runtime.mutableStateOf
 import com.android.testutils.delayUntilCondition
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
@@ -44,11 +43,13 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenDisposed
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.assertInstanceOf
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.util.containers.getIfSingle
 import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import javax.swing.JComponent
 import javax.swing.JSlider
@@ -64,6 +65,7 @@ import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.any
@@ -518,37 +520,42 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
   @OptIn(ExperimentalCoroutinesApi::class)
   @Test
   fun renderIsRequested() = runTest {
-    val calls = mutableStateOf(0)
+    val calls = AtomicInteger(0)
+    val executeCallbacksAfterRender = AtomicBoolean(false)
+    val doubleRender = AtomicBoolean(false)
     val sceneManager =
       mock<LayoutlibSceneManager>().apply {
-        whenever(this.requestRenderAndWait()).then { calls.value++ }
+        whenever(this.requestRenderAndWait()).then { calls.incrementAndGet() }
         whenever(this.executeInRenderSessionAsync(any(), any(), any())).then { CompletableFuture.completedFuture(null) }
 
         val configuration =
           mock<LayoutlibSceneRenderConfiguration>().apply {
-            whenever(this.executeCallbacksAfterRender).then { AtomicBoolean(false) }
-            whenever(this.doubleRender).then { AtomicBoolean(false) }
+            whenever(this.executeCallbacksAfterRender).thenReturn(executeCallbacksAfterRender)
+            whenever(this.doubleRender).thenReturn(doubleRender)
           }
         whenever(this.sceneRenderConfiguration).then { configuration }
       }
 
-    val animationPreview =
-      com.intellij.testFramework.runInEdtAndGet {
-        ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
-          it.animationClock = AnimationClock(TestClock())
-        }
+    val animationPreview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(TestClock())
       }
+    }
 
     animationPreview.addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)).join()
     runCurrent()
     val animationManager = animationPreview.animations.first() as SupportedAnimationManager
 
     /** We want to check what after syncing states - new render request was called. */
-    val previousCalls = calls.value
+    val previousCalls = calls.get()
+    executeCallbacksAfterRender.set(false)
+    doubleRender.set(false)
     animationManager.syncAnimationWithState()
     runCurrent()
     advanceUntilIdle()
-    delayUntilCondition(100, 5.seconds) { calls.value > previousCalls }
+    delayUntilCondition(100, 5.seconds) { calls.get() > previousCalls }
+    assertTrue(executeCallbacksAfterRender.get())
+    assertTrue(doubleRender.get())
   }
 
   private fun ComposeAnimationPreview.getAnimationTitleAt(index: Int): String = findAllCards(this.component)[index].findLabel().text
