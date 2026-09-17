@@ -136,10 +136,12 @@ class CapturePanelTest {
     val fakeCapture = FakeCaptureObject.Builder().build()
     fakeCapture.classDatabase.registerClass(1, 0, "android.app.Activity")
 
+    val duplicateBitmap = FakeInstanceObject.Builder(fakeCapture, 2, "android.graphics.Bitmap").setHeapId(1).build()
+
     val capture = mock(HeapDumpCaptureObject::class.java)
     `when`(capture.classDatabase).thenReturn(fakeCapture.classDatabase)
     `when`(capture.activityFragmentLeakFilter).thenReturn(ActivityFragmentLeakInstanceFilter(fakeCapture.classDatabase))
-    `when`(capture.bitmapDuplicationFilter).thenReturn(BitmapDuplicationInstanceFilter(emptySet()))
+    `when`(capture.bitmapDuplicationFilter).thenReturn(BitmapDuplicationInstanceFilter(setOf(duplicateBitmap)))
     `when`(capture.supportedClassTypeFilters).thenReturn(setOf(AllClassTypeFilter))
     `when`(capture.instances).thenAnswer { fakeCapture.instances }
     `when`(capture.classifierAttributes).thenReturn(fakeCapture.classifierAttributes)
@@ -159,6 +161,7 @@ class CapturePanelTest {
         .build()
 
     heap.addDeltaInstanceObject(leakedActivity)
+    heap.addDeltaInstanceObject(duplicateBitmap)
 
     val stage = MainMemoryProfilerStage(profilers, FakeCaptureObjectLoader())
     val selection = MemoryCaptureSelection(profilers.ideServices)
@@ -174,6 +177,11 @@ class CapturePanelTest {
     assertThat(leakLabel).isNotNull()
     assertThat(leakLabel!!.icon).isEqualTo(StudioIcons.Common.WARNING)
     assertThat(leakLabel.isVisible).isTrue()
+
+    val duplicateBitmapsLabel = panel.component.getStatLabel("Duplicate Bitmaps")
+    assertThat(duplicateBitmapsLabel).isNotNull()
+    assertThat(duplicateBitmapsLabel!!.icon).isEqualTo(StudioIcons.Common.WARNING)
+    assertThat(duplicateBitmapsLabel.isVisible).isTrue()
   }
 
   @Test
@@ -218,6 +226,11 @@ class CapturePanelTest {
     assertThat(leakLabel).isNotNull()
     assertThat(leakLabel!!.icon).isNull()
     assertThat(leakLabel.isVisible).isTrue()
+
+    val duplicateBitmapsLabel = panel.component.getStatLabel("Duplicate Bitmaps")
+    assertThat(duplicateBitmapsLabel).isNotNull()
+    assertThat(duplicateBitmapsLabel!!.icon).isNull()
+    assertThat(duplicateBitmapsLabel.isVisible).isTrue()
   }
 
   /**
