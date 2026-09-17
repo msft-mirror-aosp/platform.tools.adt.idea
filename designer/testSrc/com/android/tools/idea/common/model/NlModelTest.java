@@ -32,9 +32,13 @@ import static com.android.tools.idea.projectsystem.TestRepositories.PLATFORM_SUP
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,6 +46,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import android.view.ViewGroup;
 import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.MergeCookie;
 import com.android.ide.common.rendering.api.ResourceReference;
@@ -67,6 +72,9 @@ import com.android.tools.idea.uibuilder.model.NlComponentRegistrar;
 import com.android.tools.idea.uibuilder.scene.NlModelHierarchyUpdater;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.rendering.parsers.TagSnapshot;
+import com.android.tools.rendering.security.AllowAllRenderSandbox;
+import com.android.tools.rendering.security.DenyAllRenderSandbox;
+import com.android.tools.rendering.security.RenderSandbox;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
@@ -448,10 +456,16 @@ public class NlModelTest extends LayoutTestCase {
       model.getFile());
     model.notifyModified(ChangeType.ADD_COMPONENTS);
 
-    assertEquals("NlComponent{tag=<LinearLayout>, bounds=[0,0:768x1280, instance=0}\n" +
-                 "    NlComponent{tag=<FrameLayout>, bounds=[0,0:200x200, instance=1}\n" +
-                 "        NlComponent{tag=<android.support.v7.widget.RecyclerView>, bounds=[0,0:200x72, instance=2}",
-                 myTreeDumper.toTree(model.getTreeReader().getComponents()));
+    String actualTree = myTreeDumper.toTree(model.getTreeReader().getComponents());
+    assertThat(actualTree).isAnyOf(
+      "NlComponent{tag=<LinearLayout>, bounds=[0,0:768x1280, instance=0}\n" +
+      "    NlComponent{tag=<FrameLayout>, bounds=[0,0:200x200, instance=1}\n" +
+      "        NlComponent{tag=<android.support.v7.widget.RecyclerView>, bounds=[0,0:200x71, instance=2}",
+      // Remove when IntelliJ 2026.2 is merged
+      "NlComponent{tag=<LinearLayout>, bounds=[0,0:768x1280, instance=0}\n" +
+      "    NlComponent{tag=<FrameLayout>, bounds=[0,0:200x200, instance=1}\n" +
+      "        NlComponent{tag=<android.support.v7.widget.RecyclerView>, bounds=[0,0:200x72, instance=2}"
+    );
   }
 
   public void testAddComponentsWithDependencyCheck() {
@@ -498,10 +512,16 @@ public class NlModelTest extends LayoutTestCase {
       }
     }
 
-    assertEquals("NlComponent{tag=<LinearLayout>, bounds=[0,0:768x1280, instance=0}\n" +
-                 "    NlComponent{tag=<FrameLayout>, bounds=[0,0:200x200, instance=1}\n" +
-                 "        NlComponent{tag=<android.support.v7.widget.RecyclerView>, bounds=[0,0:200x72, instance=2}",
-                 myTreeDumper.toTree(model.getTreeReader().getComponents()));
+    String actualTree = myTreeDumper.toTree(model.getTreeReader().getComponents());
+    assertThat(actualTree).isAnyOf(
+      "NlComponent{tag=<LinearLayout>, bounds=[0,0:768x1280, instance=0}\n" +
+      "    NlComponent{tag=<FrameLayout>, bounds=[0,0:200x200, instance=1}\n" +
+      "        NlComponent{tag=<android.support.v7.widget.RecyclerView>, bounds=[0,0:200x71, instance=2}",
+      // Remove when IntelliJ 2026.2 is merged
+      "NlComponent{tag=<LinearLayout>, bounds=[0,0:768x1280, instance=0}\n" +
+      "    NlComponent{tag=<FrameLayout>, bounds=[0,0:200x200, instance=1}\n" +
+      "        NlComponent{tag=<android.support.v7.widget.RecyclerView>, bounds=[0,0:200x72, instance=2}"
+    );
   }
 
   public void testAddComponentsNoDependencyCheckOnMove() {
@@ -765,6 +785,94 @@ public class NlModelTest extends LayoutTestCase {
     assertEquals("android.widget.SearchView", NlComponentHelperKt.getViewInfo(searchViewComponent).getClassName());
   }
 
+  public void testUpdateHierarchyWithSystemUiDecor() {
+    XmlFile modelXml = (XmlFile)myFixture.addFileToProject("res/layout/model_sys_ui.xml",
+                                                           "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"" +
+                                                           "    android:layout_width=\"match_parent\"" +
+                                                           "    android:layout_height=\"match_parent\">" +
+                                                           "  <Button" +
+                                                           "      android:layout_width=\"wrap_content\"" +
+                                                           "      android:layout_height=\"wrap_content\" />" +
+                                                           "</LinearLayout>");
+    NlModel model = createAndActivateModel(modelXml);
+
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(modelXml.getRootTag()), null);
+    TagSnapshot buttonSnapshot = rootSnapshot.children.get(0);
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 500, 500);
+    ViewInfo buttonViewInfo = new ViewInfo("android.widget.Button", buttonSnapshot, 10, 20, 100, 60);
+    buttonViewInfo.setChildren(Collections.emptyList());
+    rootViewInfo.setChildren(ImmutableList.of(buttonViewInfo));
+
+    ViewInfo contentViewInfo = new ViewInfo("android.widget.FrameLayout", null, 0, 120, 500, 620);
+    contentViewInfo.setChildren(ImmutableList.of(rootViewInfo));
+
+    ViewInfo decorViewInfo = new ViewInfo("com.android.internal.policy.DecorView", null, 0, 0, 500, 700);
+    decorViewInfo.setChildren(ImmutableList.of(contentViewInfo));
+
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), ImmutableList.of(decorViewInfo), model);
+
+    NlComponent rootComponent = model.getTreeReader().getComponents().get(0);
+    assertNotNull(rootComponent);
+    NlComponent buttonComponent = rootComponent.getChild(0);
+    assertNotNull(buttonComponent);
+
+    // Root component should be shifted down by 120px due to system decor (status bar / action bar)
+    assertEquals(0, NlComponentHelperKt.getX(rootComponent));
+    assertEquals(120, NlComponentHelperKt.getY(rootComponent));
+    assertEquals(500, NlComponentHelperKt.getW(rootComponent));
+    assertEquals(500, NlComponentHelperKt.getH(rootComponent));
+
+    // Child button component should also inherit the 120px vertical offset
+    assertEquals(10, NlComponentHelperKt.getX(buttonComponent));
+    assertEquals(140, NlComponentHelperKt.getY(buttonComponent));
+    assertEquals(90, NlComponentHelperKt.getW(buttonComponent));
+    assertEquals(40, NlComponentHelperKt.getH(buttonComponent));
+  }
+
+  public void testUpdateHierarchyWithPreferenceScreenAndSystemUiDecor() {
+    XmlFile modelXml = (XmlFile)myFixture.addFileToProject("res/xml/preferences.xml",
+                                                           "<PreferenceScreen xmlns:android=\"http://schemas.android.com/apk/res/android\">\n" +
+                                                           "    <PreferenceCategory android:title=\"Settings\" />\n" +
+                                                           "</PreferenceScreen>");
+    NlModel model = createAndActivateModel(modelXml);
+
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(modelXml.getRootTag()), null);
+    TagSnapshot categorySnapshot = rootSnapshot.children.get(0);
+
+    ViewInfo rootViewInfo = new ViewInfo("androidx.preference.PreferenceScreen", rootSnapshot, 0, 0, 500, 500);
+    ViewInfo categoryViewInfo = new ViewInfo("androidx.preference.PreferenceCategory", categorySnapshot, 0, 0, 500, 100);
+    categoryViewInfo.setChildren(Collections.emptyList());
+    rootViewInfo.setChildren(ImmutableList.of(categoryViewInfo));
+
+    // System decor tree where root PreferenceScreen itself is a synthetic container, but category child matches
+    ViewInfo categoryViewInfoInSystem = new ViewInfo("androidx.preference.PreferenceCategory", categorySnapshot, 0, 0, 500, 100);
+    categoryViewInfoInSystem.setChildren(Collections.emptyList());
+
+    ViewInfo recyclerViewInfo = new ViewInfo("androidx.recyclerview.widget.RecyclerView", null, 0, 0, 500, 540);
+    recyclerViewInfo.setChildren(ImmutableList.of(categoryViewInfoInSystem));
+
+    ViewInfo contentViewInfo = new ViewInfo("android.widget.FrameLayout", null, 0, 160, 500, 700);
+    contentViewInfo.setChildren(ImmutableList.of(recyclerViewInfo));
+
+    ViewInfo decorViewInfo = new ViewInfo("com.android.internal.policy.DecorView", null, 0, 0, 500, 700);
+    decorViewInfo.setChildren(ImmutableList.of(contentViewInfo));
+
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), ImmutableList.of(decorViewInfo), model);
+
+    NlComponent rootComponent = model.getTreeReader().getComponents().get(0);
+    assertNotNull(rootComponent);
+    NlComponent categoryComponent = rootComponent.getChild(0);
+    assertNotNull(categoryComponent);
+
+    // PreferenceScreen and PreferenceCategory should be offset by 160px from System UI decor
+    assertEquals(0, NlComponentHelperKt.getX(rootComponent));
+    assertEquals(160, NlComponentHelperKt.getY(rootComponent));
+
+    assertEquals(0, NlComponentHelperKt.getX(categoryComponent));
+    assertEquals(160, NlComponentHelperKt.getY(categoryComponent));
+  }
+
   public void testLayoutListenersModifyListenerList() {
     XmlFile modelXml = (XmlFile)myFixture.addFileToProject("res/layout/model.xml",
                                                            "<LinearLayout" +
@@ -996,6 +1104,77 @@ public class NlModelTest extends LayoutTestCase {
     model.activate();
     // Check that the model was not activated
     assertEquals(0, modelActivations.get());
+  }
+
+  public void testHierarchyUpdaterDoesNotCallGetScrollOnViewsWhenUnscrolled() {
+    SyncNlModel model = createDefaultModelBuilder(true).build(false);
+    XmlTag rootTag = model.getFile().getRootTag();
+    assertNotNull(rootTag);
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(rootTag), null);
+
+    ViewGroup mockViewGroup = mock(ViewGroup.class);
+    when(mockViewGroup.getScrollX()).thenThrow(new AssertionError("getScrollX should not be called"));
+    when(mockViewGroup.getScrollY()).thenThrow(new AssertionError("getScrollY should not be called"));
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 1000, 1000, mockViewGroup, null, null);
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), model);
+
+    verify(mockViewGroup, never()).setScrollX(anyInt());
+    verify(mockViewGroup, never()).setScrollY(anyInt());
+  }
+
+  public void testHierarchyUpdaterSetsScrollUnderSandboxWhenScrolled() {
+    SyncNlModel model = createDefaultModelBuilder(true).build(false);
+    NlComponent rootComponent = model.getTreeReader().getComponents().getFirst();
+    NlComponentHelperKt.setScrollX(rootComponent, 10);
+    NlComponentHelperKt.setScrollY(rootComponent, 20);
+
+    XmlTag rootTag = model.getFile().getRootTag();
+    assertNotNull(rootTag);
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(rootTag), null);
+
+    AtomicInteger sandboxChecks = new AtomicInteger(0);
+    ViewGroup mockViewGroup = mock(ViewGroup.class);
+    doAnswer(ignored -> {
+      if (RenderSandbox.getRenderSandbox() == DenyAllRenderSandbox.INSTANCE) {
+        sandboxChecks.incrementAndGet();
+      }
+      return null;
+    }).when(mockViewGroup).setScrollX(anyInt());
+    doAnswer(ignored -> {
+      if (RenderSandbox.getRenderSandbox() == DenyAllRenderSandbox.INSTANCE) {
+        sandboxChecks.incrementAndGet();
+      }
+      return null;
+    }).when(mockViewGroup).setScrollY(anyInt());
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 1000, 1000, mockViewGroup, null, null);
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), model);
+
+    verify(mockViewGroup).setScrollX(10);
+    verify(mockViewGroup).setScrollY(20);
+    assertEquals(2, sandboxChecks.get());
+    assertEquals(AllowAllRenderSandbox.INSTANCE, RenderSandbox.getRenderSandbox());
+  }
+
+  public void testHierarchyUpdaterHandlesSecurityExceptionInSetScroll() {
+    SyncNlModel model = createDefaultModelBuilder(true).build(false);
+    NlComponent rootComponent = model.getTreeReader().getComponents().getFirst();
+    NlComponentHelperKt.setScrollY(rootComponent, 50);
+
+    XmlTag rootTag = model.getFile().getRootTag();
+    assertNotNull(rootTag);
+    TagSnapshot rootSnapshot = TagSnapshot.createTagSnapshot(new PsiXmlTag(rootTag), null);
+
+    ViewGroup mockViewGroup = mock(ViewGroup.class);
+    doThrow(new SecurityException("Blocked by sandbox")).when(mockViewGroup).setScrollY(anyInt());
+
+    ViewInfo rootViewInfo = new ViewInfo("android.widget.LinearLayout", rootSnapshot, 0, 0, 1000, 1000, mockViewGroup, null, null);
+    // Should not throw or crash
+    NlModelHierarchyUpdater.updateHierarchy(ImmutableList.of(rootViewInfo), model);
+
+    verify(mockViewGroup).setScrollY(50);
+    assertEquals(AllowAllRenderSandbox.INSTANCE, RenderSandbox.getRenderSandbox());
   }
 
   /**

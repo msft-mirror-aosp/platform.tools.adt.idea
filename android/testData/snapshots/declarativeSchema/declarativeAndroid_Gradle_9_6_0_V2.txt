@@ -1934,6 +1934,25 @@ Projects:
                     - PropertyName                  : versionNameSuffix
                       Property SimpleType           : STRING
                 Supertypes                    : com.android.build.api.dsl.VariantDimension,kotlin.Any
+            com.android.build.api.dsl.BackupTestSuite
+                Name                          : com.android.build.api.dsl.BackupTestSuite
+                MemberFunctions
+                    - MemberFunctionName            : hostJar
+                      Receiver ReferenceType        : com.android.build.api.dsl.BackupTestSuite
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.TestSuiteHostJarSpec
+                    - MemberFunctionName            : testApk
+                      Receiver ReferenceType        : com.android.build.api.dsl.BackupTestSuite
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.TestSuiteTestApkSpec
+                Properties
+                    - PropertyName                  : backupTestLibraryVersion
+                      Property SimpleType           : STRING
+                    - PropertyName                  : targetVariants
+                      Property DataClassWithType    : kotlin.collections.List
+                      GenericTypes
+                          - ConcreteGeneric SimpleType    : STRING
+                Supertypes                    : kotlin.Any
             com.android.build.api.dsl.BaseFlavor
                 Name                          : com.android.build.api.dsl.BaseFlavor
                 MemberFunctions
@@ -6715,6 +6734,14 @@ Projects:
                       Receiver ReferenceType        : com.android.build.api.dsl.Lint
                       Parameters
                       Block ReferenceType           : com.android.build.api.dsl.TargetSdkSpec
+                    - MemberFunctionName            : toolchain
+                      Receiver ReferenceType        : com.android.build.api.dsl.Lint
+                      Parameters
+                      Block ReferenceType           : org.gradle.jvm.toolchain.JavaToolchainSpec
+                    - MemberFunctionName            : toolchain
+                      Receiver ReferenceType        : com.android.build.api.dsl.Lint
+                      Parameters
+                      Block ReferenceType           : org.gradle.jvm.toolchain.JavaToolchainSpec
                 Properties
                     - PropertyName                  : abortOnError
                       Property SimpleType           : BOOLEAN
@@ -6794,6 +6821,8 @@ Projects:
                       Property ReferenceType        : java.io.File
                     - PropertyName                  : textReport
                       Property SimpleType           : BOOLEAN
+                    - PropertyName                  : toolchain
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JavaToolchainSpec
                     - PropertyName                  : warning
                       Property DataClassWithType    : kotlin.collections.Set
                       GenericTypes
@@ -7741,6 +7770,8 @@ Projects:
                 Properties
                     - PropertyName                  : engineVersion
                       Property SimpleType           : STRING
+                    - PropertyName                  : imageDifferenceThreshold
+                      Property ReferenceType        : kotlin.Float
                     - PropertyName                  : targetVariants
                       Property DataClassWithType    : kotlin.collections.List
                       GenericTypes
@@ -7884,6 +7915,10 @@ Projects:
             com.android.build.api.dsl.TestOptions
                 Name                          : com.android.build.api.dsl.TestOptions
                 MemberFunctions
+                    - MemberFunctionName            : backupTests
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestOptions
+                      Parameters
+                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
                     - MemberFunctionName            : emulatorControl
                       Receiver ReferenceType        : com.android.build.api.dsl.TestOptions
                       Parameters
@@ -7923,6 +7958,8 @@ Projects:
                       Property ReferenceType        : com.android.build.api.dsl.EmulatorControl
                     - PropertyName                  : execution
                       Property SimpleType           : STRING
+                    - PropertyName                  : instrumentInPrivateComputeCore
+                      Property SimpleType           : BOOLEAN
                     - PropertyName                  : managedDevices
                       Property ReferenceType        : com.android.build.api.dsl.ManagedDevices
                     - PropertyName                  : reportDir
@@ -7935,6 +7972,38 @@ Projects:
                       Property SimpleType           : STRING
                     - PropertyName                  : unitTests
                       Property ReferenceType        : com.android.build.api.dsl.UnitTestOptions
+                Supertypes                    : kotlin.Any
+            com.android.build.api.dsl.TestSuiteHostJarSpec
+                Name                          : com.android.build.api.dsl.TestSuiteHostJarSpec
+                MemberFunctions
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteHostJarSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteHostJarSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                Properties
+                    - PropertyName                  : dependencies
+                      Property ReferenceType        : com.android.build.api.dsl.AgpTestSuiteDependencies
+                    - PropertyName                  : enableAndroidResources
+                      Property SimpleType           : BOOLEAN
+                Supertypes                    : kotlin.Any
+            com.android.build.api.dsl.TestSuiteTestApkSpec
+                Name                          : com.android.build.api.dsl.TestSuiteTestApkSpec
+                MemberFunctions
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteTestApkSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteTestApkSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                Properties
+                    - PropertyName                  : dependencies
+                      Property ReferenceType        : com.android.build.api.dsl.AgpTestSuiteDependencies
                 Supertypes                    : kotlin.Any
             com.android.build.api.dsl.TestedDeclarativeDefinition
                 Name                          : com.android.build.api.dsl.TestedDeclarativeDefinition
@@ -8182,6 +8251,11 @@ Projects:
                 MemberFunctions
                 Properties
                 Supertypes                    : kotlin.Any
+            kotlin.Float
+                Name                          : kotlin.Float
+                MemberFunctions
+                Properties
+                Supertypes                    : kotlin.Number,kotlin.Any,java.io.Serializable,kotlin.Comparable
             kotlin.Int
                 Name                          : kotlin.Int
                 MemberFunctions
@@ -8228,6 +8302,13 @@ Projects:
                 Name                          : kotlin.collections.Set
                 GenericArguments
                     ConcreteGeneric ReferenceType : org.gradle.api.artifacts.DependencyArtifact
+            org.gradle.api.Describable
+                Name                          : org.gradle.api.Describable
+                MemberFunctions
+                Properties
+                    - PropertyName                  : displayName
+                      Property SimpleType           : STRING
+                Supertypes                    : kotlin.Any
             org.gradle.api.JavaVersion
                 Name                          : org.gradle.api.JavaVersion
                 EntryNames
@@ -8244,6 +8325,17 @@ Projects:
                           - Name                          : name
                             Value SimpleType              : STRING
                       Block ReferenceType           : com.android.build.api.dsl.ApkSigningConfig
+                Properties
+                Supertypes                    :
+            org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
+                Name                          : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
+                MemberFunctions
+                    - MemberFunctionName            : backupTestSuite
+                      Receiver ReferenceType        : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
+                      Parameters
+                          - Name                          : name
+                            Value SimpleType              : STRING
+                      Block ReferenceType           : com.android.build.api.dsl.BackupTestSuite
                 Properties
                 Supertypes                    :
             org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_DeclarativeApplicationBuildType
@@ -8757,6 +8849,90 @@ Projects:
                 Properties
                     - PropertyName                  : layout
                       Property ReferenceType        : org.gradle.api.file.ProjectLayout
+                Supertypes                    : kotlin.Any
+            org.gradle.jvm.toolchain.JavaLanguageVersion
+                Name                          : org.gradle.jvm.toolchain.JavaLanguageVersion
+                MemberFunctions
+                    - MemberFunctionName            : asInt
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                      Function SimpleType           : INT
+                    - MemberFunctionName            : canCompileOrRun
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : otherVersion
+                            Value SimpleType              : INT
+                      Function SimpleType           : BOOLEAN
+                    - MemberFunctionName            : canCompileOrRun
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : other
+                            Value ReferenceType           : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Function SimpleType           : BOOLEAN
+                    - MemberFunctionName            : current
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                    - MemberFunctionName            : of
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : version
+                            Value SimpleType              : INT
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                    - MemberFunctionName            : of
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : version
+                            Value SimpleType              : STRING
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                Properties
+                Supertypes                    : kotlin.Comparable,kotlin.Any
+            org.gradle.jvm.toolchain.JavaToolchainSpec
+                Name                          : org.gradle.jvm.toolchain.JavaToolchainSpec
+                MemberFunctions
+                Properties
+                    - PropertyName                  : displayName
+                      Property SimpleType           : STRING
+                    - PropertyName                  : implementation
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JvmImplementation
+                    - PropertyName                  : languageVersion
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                    - PropertyName                  : nativeImageCapable
+                      Property SimpleType           : BOOLEAN
+                    - PropertyName                  : vendor
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                Supertypes                    : org.gradle.api.Describable,kotlin.Any
+            org.gradle.jvm.toolchain.JvmImplementation
+                Name                          : org.gradle.jvm.toolchain.JvmImplementation
+                MemberFunctions
+                    - MemberFunctionName            : toString
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmImplementation
+                      Parameters
+                      Function SimpleType           : STRING
+                Properties
+                Supertypes                    : kotlin.Any
+            org.gradle.jvm.toolchain.JvmVendorSpec
+                Name                          : org.gradle.jvm.toolchain.JvmVendorSpec
+                MemberFunctions
+                    - MemberFunctionName            : matches
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                      Parameters
+                          - Name                          : vendor
+                            Value SimpleType              : STRING
+                      Function SimpleType           : BOOLEAN
+                    - MemberFunctionName            : matching
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                      Parameters
+                          - Name                          : match
+                            Value SimpleType              : STRING
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                    - MemberFunctionName            : of
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                      Parameters
+                          - Name                          : vendor
+                            Value SimpleType              : STRING
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                Properties
                 Supertypes                    : kotlin.Any
             org.gradle.process.CommandLineArgumentProvider
                 Name                          : org.gradle.process.CommandLineArgumentProvider
@@ -12028,6 +12204,25 @@ Settings:
                     - PropertyName                  : versionNameSuffix
                       Property SimpleType           : STRING
                 Supertypes                    : com.android.build.api.dsl.VariantDimension,kotlin.Any
+            com.android.build.api.dsl.BackupTestSuite
+                Name                          : com.android.build.api.dsl.BackupTestSuite
+                MemberFunctions
+                    - MemberFunctionName            : hostJar
+                      Receiver ReferenceType        : com.android.build.api.dsl.BackupTestSuite
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.TestSuiteHostJarSpec
+                    - MemberFunctionName            : testApk
+                      Receiver ReferenceType        : com.android.build.api.dsl.BackupTestSuite
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.TestSuiteTestApkSpec
+                Properties
+                    - PropertyName                  : backupTestLibraryVersion
+                      Property SimpleType           : STRING
+                    - PropertyName                  : targetVariants
+                      Property DataClassWithType    : kotlin.collections.List
+                      GenericTypes
+                          - ConcreteGeneric SimpleType    : STRING
+                Supertypes                    : kotlin.Any
             com.android.build.api.dsl.BaseFlavor
                 Name                          : com.android.build.api.dsl.BaseFlavor
                 MemberFunctions
@@ -16809,6 +17004,14 @@ Settings:
                       Receiver ReferenceType        : com.android.build.api.dsl.Lint
                       Parameters
                       Block ReferenceType           : com.android.build.api.dsl.TargetSdkSpec
+                    - MemberFunctionName            : toolchain
+                      Receiver ReferenceType        : com.android.build.api.dsl.Lint
+                      Parameters
+                      Block ReferenceType           : org.gradle.jvm.toolchain.JavaToolchainSpec
+                    - MemberFunctionName            : toolchain
+                      Receiver ReferenceType        : com.android.build.api.dsl.Lint
+                      Parameters
+                      Block ReferenceType           : org.gradle.jvm.toolchain.JavaToolchainSpec
                 Properties
                     - PropertyName                  : abortOnError
                       Property SimpleType           : BOOLEAN
@@ -16888,6 +17091,8 @@ Settings:
                       Property ReferenceType        : java.io.File
                     - PropertyName                  : textReport
                       Property SimpleType           : BOOLEAN
+                    - PropertyName                  : toolchain
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JavaToolchainSpec
                     - PropertyName                  : warning
                       Property DataClassWithType    : kotlin.collections.Set
                       GenericTypes
@@ -17835,6 +18040,8 @@ Settings:
                 Properties
                     - PropertyName                  : engineVersion
                       Property SimpleType           : STRING
+                    - PropertyName                  : imageDifferenceThreshold
+                      Property ReferenceType        : kotlin.Float
                     - PropertyName                  : targetVariants
                       Property DataClassWithType    : kotlin.collections.List
                       GenericTypes
@@ -17978,6 +18185,10 @@ Settings:
             com.android.build.api.dsl.TestOptions
                 Name                          : com.android.build.api.dsl.TestOptions
                 MemberFunctions
+                    - MemberFunctionName            : backupTests
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestOptions
+                      Parameters
+                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
                     - MemberFunctionName            : emulatorControl
                       Receiver ReferenceType        : com.android.build.api.dsl.TestOptions
                       Parameters
@@ -18017,6 +18228,8 @@ Settings:
                       Property ReferenceType        : com.android.build.api.dsl.EmulatorControl
                     - PropertyName                  : execution
                       Property SimpleType           : STRING
+                    - PropertyName                  : instrumentInPrivateComputeCore
+                      Property SimpleType           : BOOLEAN
                     - PropertyName                  : managedDevices
                       Property ReferenceType        : com.android.build.api.dsl.ManagedDevices
                     - PropertyName                  : reportDir
@@ -18029,6 +18242,38 @@ Settings:
                       Property SimpleType           : STRING
                     - PropertyName                  : unitTests
                       Property ReferenceType        : com.android.build.api.dsl.UnitTestOptions
+                Supertypes                    : kotlin.Any
+            com.android.build.api.dsl.TestSuiteHostJarSpec
+                Name                          : com.android.build.api.dsl.TestSuiteHostJarSpec
+                MemberFunctions
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteHostJarSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteHostJarSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                Properties
+                    - PropertyName                  : dependencies
+                      Property ReferenceType        : com.android.build.api.dsl.AgpTestSuiteDependencies
+                    - PropertyName                  : enableAndroidResources
+                      Property SimpleType           : BOOLEAN
+                Supertypes                    : kotlin.Any
+            com.android.build.api.dsl.TestSuiteTestApkSpec
+                Name                          : com.android.build.api.dsl.TestSuiteTestApkSpec
+                MemberFunctions
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteTestApkSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                    - MemberFunctionName            : dependencies
+                      Receiver ReferenceType        : com.android.build.api.dsl.TestSuiteTestApkSpec
+                      Parameters
+                      Block ReferenceType           : com.android.build.api.dsl.AgpTestSuiteDependencies
+                Properties
+                    - PropertyName                  : dependencies
+                      Property ReferenceType        : com.android.build.api.dsl.AgpTestSuiteDependencies
                 Supertypes                    : kotlin.Any
             com.android.build.api.dsl.TestedDeclarativeDefinition
                 Name                          : com.android.build.api.dsl.TestedDeclarativeDefinition
@@ -18276,6 +18521,11 @@ Settings:
                 MemberFunctions
                 Properties
                 Supertypes                    : kotlin.Any
+            kotlin.Float
+                Name                          : kotlin.Float
+                MemberFunctions
+                Properties
+                Supertypes                    : kotlin.Number,kotlin.Any,java.io.Serializable,kotlin.Comparable
             kotlin.Int
                 Name                          : kotlin.Int
                 MemberFunctions
@@ -18322,6 +18572,13 @@ Settings:
                 Name                          : kotlin.collections.Set
                 GenericArguments
                     ConcreteGeneric ReferenceType : org.gradle.api.artifacts.DependencyArtifact
+            org.gradle.api.Describable
+                Name                          : org.gradle.api.Describable
+                MemberFunctions
+                Properties
+                    - PropertyName                  : displayName
+                      Property SimpleType           : STRING
+                Supertypes                    : kotlin.Any
             org.gradle.api.JavaVersion
                 Name                          : org.gradle.api.JavaVersion
                 EntryNames
@@ -18338,6 +18595,17 @@ Settings:
                           - Name                          : name
                             Value SimpleType              : STRING
                       Block ReferenceType           : com.android.build.api.dsl.ApkSigningConfig
+                Properties
+                Supertypes                    :
+            org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
+                Name                          : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
+                MemberFunctions
+                    - MemberFunctionName            : backupTestSuite
+                      Receiver ReferenceType        : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_BackupTestSuite
+                      Parameters
+                          - Name                          : name
+                            Value SimpleType              : STRING
+                      Block ReferenceType           : com.android.build.api.dsl.BackupTestSuite
                 Properties
                 Supertypes                    :
             org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_DeclarativeApplicationBuildType
@@ -18865,6 +19133,90 @@ Settings:
                       Receiver ReferenceType        : org.gradle.internal.declarativedsl.evaluator.defaults.DefaultsConfiguringBlock
                       Parameters
                       Block ReferenceType           : com.android.build.api.dsl.LibraryDeclarativeDefinition
+                Properties
+                Supertypes                    : kotlin.Any
+            org.gradle.jvm.toolchain.JavaLanguageVersion
+                Name                          : org.gradle.jvm.toolchain.JavaLanguageVersion
+                MemberFunctions
+                    - MemberFunctionName            : asInt
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                      Function SimpleType           : INT
+                    - MemberFunctionName            : canCompileOrRun
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : otherVersion
+                            Value SimpleType              : INT
+                      Function SimpleType           : BOOLEAN
+                    - MemberFunctionName            : canCompileOrRun
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : other
+                            Value ReferenceType           : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Function SimpleType           : BOOLEAN
+                    - MemberFunctionName            : current
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                    - MemberFunctionName            : of
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : version
+                            Value SimpleType              : INT
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                    - MemberFunctionName            : of
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                      Parameters
+                          - Name                          : version
+                            Value SimpleType              : STRING
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                Properties
+                Supertypes                    : kotlin.Comparable,kotlin.Any
+            org.gradle.jvm.toolchain.JavaToolchainSpec
+                Name                          : org.gradle.jvm.toolchain.JavaToolchainSpec
+                MemberFunctions
+                Properties
+                    - PropertyName                  : displayName
+                      Property SimpleType           : STRING
+                    - PropertyName                  : implementation
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JvmImplementation
+                    - PropertyName                  : languageVersion
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JavaLanguageVersion
+                    - PropertyName                  : nativeImageCapable
+                      Property SimpleType           : BOOLEAN
+                    - PropertyName                  : vendor
+                      Property ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                Supertypes                    : org.gradle.api.Describable,kotlin.Any
+            org.gradle.jvm.toolchain.JvmImplementation
+                Name                          : org.gradle.jvm.toolchain.JvmImplementation
+                MemberFunctions
+                    - MemberFunctionName            : toString
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmImplementation
+                      Parameters
+                      Function SimpleType           : STRING
+                Properties
+                Supertypes                    : kotlin.Any
+            org.gradle.jvm.toolchain.JvmVendorSpec
+                Name                          : org.gradle.jvm.toolchain.JvmVendorSpec
+                MemberFunctions
+                    - MemberFunctionName            : matches
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                      Parameters
+                          - Name                          : vendor
+                            Value SimpleType              : STRING
+                      Function SimpleType           : BOOLEAN
+                    - MemberFunctionName            : matching
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                      Parameters
+                          - Name                          : match
+                            Value SimpleType              : STRING
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                    - MemberFunctionName            : of
+                      Receiver ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
+                      Parameters
+                          - Name                          : vendor
+                            Value SimpleType              : STRING
+                      Function ReferenceType        : org.gradle.jvm.toolchain.JvmVendorSpec
                 Properties
                 Supertypes                    : kotlin.Any
             org.gradle.process.CommandLineArgumentProvider

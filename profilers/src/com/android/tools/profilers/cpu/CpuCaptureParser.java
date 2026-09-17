@@ -223,16 +223,17 @@ public class CpuCaptureParser {
       return myCaptures.get(traceId);
     }
 
+
     // If we don't have a hint for the process id, we assume it was an imported trace as we have no extra information.
     boolean isImportedTrace = (processIdHint == 0);
 
     CompletableFuture<CpuCapture> cpuCapture =
       CompletableFuture.runAsync(new TraceFileValidationAction(traceFile), myServices.getPoolExecutor())
-        .thenRunAsync(new ParsingStartAction(traceFile), myServices.getMainExecutor())
-        .thenApplyAsync(
-          new ProcessTraceAction(traceFile, traceId, preferredProfilerType, processIdHint, processNameHint, myServices),
-          myServices.getPoolExecutor())
-        .whenCompleteAsync(new TraceResultHandler(traceFile, traceId, isImportedTrace, taskTracker), myServices.getMainExecutor());
+      .thenRunAsync(new ParsingStartAction(traceFile), myServices.getMainExecutor())
+      .thenApplyAsync(
+        new ProcessTraceAction(traceFile, traceId, preferredProfilerType, processIdHint, processNameHint, myServices),
+        myServices.getPoolExecutor())
+      .whenCompleteAsync(new TraceResultHandler(traceFile, traceId, isImportedTrace, taskTracker), myServices.getMainExecutor());
     myCaptures.put(traceId, cpuCapture);
     return cpuCapture;
   }
@@ -565,10 +566,10 @@ public class CpuCaptureParser {
               myTaskTracker.trackProcessingTaskFailed(new TaskProcessingFailedMetadata(metadata));
             }
           }
-          else {
-            myServices.getFeatureTracker()
-              .trackImportTrace(createCpuImportTraceMetadata(type, isSuccess, metadata.getHasComposeTracingNodes()));
-          }
+          // Always track import trace regardless of whether Task-Based UX is enabled or not,
+          // because imported legacy traces still use this parser.
+          var importMetadata = createCpuImportTraceMetadata(type, isSuccess, metadata.getHasComposeTracingNodes());
+          myServices.getFeatureTracker().trackImportTrace(importMetadata);
         }
         myCaptureMetadataMap.remove(traceId);
       }

@@ -231,7 +231,7 @@ internal fun AnActionEvent.getSceneManagerInFocusMode(): LayoutlibSceneManager? 
  * dp.
  */
 private fun createNewName(configuration: Configuration): String {
-  val targetDevice = configuration.device ?: error("Device should not be null, because it's required for rendering preview")
+  val targetDevice = configuration.cachedDevice ?: error("Device should not be null, because it's required for rendering preview")
 
   if (targetDevice.id != Configuration.CUSTOM_DEVICE_ID) {
     return targetDevice.displayName

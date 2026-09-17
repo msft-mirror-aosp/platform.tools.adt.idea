@@ -17,6 +17,7 @@ package com.android.tools.idea.preview.animation
 
 import com.android.annotations.TestOnly
 import com.android.annotations.concurrency.GuardedBy
+import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.TabularLayout
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.google.common.annotations.VisibleForTesting
@@ -149,22 +150,26 @@ class AllTabPanel private constructor(parentDisposable: Disposable, private val 
     add(playback.apply { border = MatteBorder(0, 0, 1, 0, JBColor.border()) }, TabularLayout.Constraint(0, 1))
   }
 
+  @UiThread
   fun addCard(card: Card) {
-    cardsLock.read {
-      if (cards.contains(card)) return
-      cardsPanel.add(card.component, TabularLayout.Constraint(cards.size, 0))
-      cardsLock.write { cards.add(card) }
-      cardsPanelLayout.setRowSizing(
-        cards.indexOf(card),
-        TabularLayout.SizingRule(TabularLayout.SizingRule.Type.FIXED, card.getCurrentHeight()),
-      )
-    }
+    val cardIndex =
+      cardsLock.write {
+        if (cards.contains(card)) return@write null
+        cards.add(card)
+        cards.size - 1
+      } ?: return
+    cardsPanel.add(card.component, TabularLayout.Constraint(cardIndex, 0))
+    cardsPanelLayout.setRowSizing(
+      cardIndex,
+      TabularLayout.SizingRule(TabularLayout.SizingRule.Type.FIXED, card.getCurrentHeight()),
+    )
     updateDimension()
     if (card is AnimationCard) {
       jobsByCard[card] = scope.launch { card.expanded.collect { withContext(Dispatchers.EDT) { updateCardSize(card) } } }
     }
   }
 
+  @UiThread
   fun updateCardSize(card: Card) {
     cardsPanelLayout.setRowSizing(
       cardsLock.read { cards.indexOf(card) },
@@ -174,6 +179,7 @@ class AllTabPanel private constructor(parentDisposable: Disposable, private val 
     card.component.revalidate()
   }
 
+  @UiThread
   fun removeCard(card: Card) {
     cardsLock.write { cards.remove(card) }
     cardsPanel.remove(card.component)

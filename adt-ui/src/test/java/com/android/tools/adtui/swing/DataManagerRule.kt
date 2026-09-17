@@ -18,23 +18,28 @@ package com.android.tools.adtui.swing
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.TestDataProvider
+import java.util.function.Supplier
 import org.junit.rules.ExternalResource
 
 /**
  * By default, [HeadlessDataManager] never traverses across Swing component hierarchy. This rule enables a more realistic production data
  * manager in tests.
  */
-class DataManagerRule(private val projectRule: ProjectRule) : ExternalResource() {
+@Suppress("UnstableApiUsage")
+class DataManagerRule(private val projectSupplier: Supplier<Project>) : ExternalResource() {
 
   private lateinit var disposable: Disposable
+
+  constructor(projectRule: ProjectRule) : this(projectRule::project)
 
   override fun before() {
     disposable = Disposer.newDisposable()
     HeadlessDataManager.fallbackToProductionDataManager(disposable) // Necessary to properly update toolbar button states.
-    (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(projectRule.project), disposable)
+    (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(projectSupplier.get()), disposable)
   }
 
   override fun after() {

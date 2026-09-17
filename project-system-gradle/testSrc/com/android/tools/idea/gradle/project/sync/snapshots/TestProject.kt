@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.builder.model.v2.ide.SyncIssue
+import com.android.ide.common.repository.AgpVersion
 import com.android.testutils.AssumeUtil.assumeNotWindows
 import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings
@@ -84,7 +85,7 @@ enum class TestProject(
   COMPATIBILITY_TESTS_AS_36_NO_IML(TestProjectToSnapshotPaths.COMPATIBILITY_TESTS_AS_36_NO_IML, patch = { updateProjectJdk(it) }),
   ANDROID_KOTLIN_MULTIPLATFORM(
     TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM,
-    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_8_12 },
+    isCompatibleWith = { it == AGP_CURRENT },
     patch = { projectRoot ->
       projectRoot.resolve("gradle.properties").replaceContent { content ->
         content.plus(
@@ -219,9 +220,7 @@ enum class TestProject(
         truncateForV2(projectRoot.resolve("settings.gradle"))
 
         // Synchronize the file modification with VFS
-        projectRoot.toVirtualFile()?.let {
-          VfsUtilCore.processFilesRecursively(it) { true }
-        }
+        projectRoot.toVirtualFile()?.let { VfsUtilCore.processFilesRecursively(it) { true } }
       }
     },
   ),
@@ -238,15 +237,77 @@ enum class TestProject(
   NON_STANDARD_SOURCE_SET_DEPENDENCIES(
     TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES,
     isCompatibleWith = { it.modelVersion == ModelVersion.V2 },
+    patch = { root ->
+      val version = agpVersion?.let { AgpVersion.parse(it) }
+      if (version != null && !version.isAtLeastIncludingPreviews(8, 12, 0)) {
+        root
+          .resolve("feature-b/build.gradle")
+          .writeText(
+            """
+          plugins {
+            id 'org.jetbrains.kotlin.multiplatform'
+            id 'com.android.library'
+          }
+
+          android {
+              namespace = "me.monori.feature.b"
+              compileSdkVersion $compileSdk
+          }
+
+          kotlin {
+            androidTarget()
+            sourceSets {
+              commonMain {
+                dependencies {
+                  implementation project(':common')
+                }
+              }
+            }
+          }
+          """
+              .trimIndent()
+          )
+      }
+    },
   ),
   NON_STANDARD_SOURCE_SET_DEPENDENCIES_MANUAL_TEST_FIXTURES_WORKAROUND(
     TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES,
     testName = "manualTestFixturesWorkaround",
     isCompatibleWith = { it.modelVersion == ModelVersion.V2 },
-    patch = {
-      it
+    patch = { root ->
+      root
         .resolve("app/build.gradle")
         .replaceInContent("androidTestImplementation project(':lib')", "// androidTestImplementation project(':lib')")
+      val version = agpVersion?.let { AgpVersion.parse(it) }
+      if (version != null && !version.isAtLeastIncludingPreviews(8, 12, 0)) {
+        root
+          .resolve("feature-b/build.gradle")
+          .writeText(
+            """
+          plugins {
+            id 'org.jetbrains.kotlin.multiplatform'
+            id 'com.android.library'
+          }
+
+          android {
+              namespace = "me.monori.feature.b"
+              compileSdkVersion $compileSdk
+          }
+
+          kotlin {
+            androidTarget()
+            sourceSets {
+              commonMain {
+                dependencies {
+                  implementation project(':common')
+                }
+              }
+            }
+          }
+          """
+              .trimIndent()
+          )
+      }
     },
   ),
   LINKED(TestProjectToSnapshotPaths.LINKED, "/firstapp"),
@@ -256,22 +317,14 @@ enum class TestProject(
     isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_71 },
   ),
   TEST_FIXTURES(TestProjectToSnapshotPaths.TEST_FIXTURES, isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_72 }),
-  TEST_ONLY_MODULE(
-    TestProjectToSnapshotPaths.TEST_ONLY_MODULE,
-    patch = { projectRoot ->
-      if (this < AgpVersionSoftwareEnvironmentDescriptor.AGP_42) {
-        // Benchmarks sub-project is incompatible with <= 4.1.
-        projectRoot.resolve("settings.gradle").replaceInContent(", ':benchmark'", "")
-      }
-    },
-  ),
+  TEST_ONLY_MODULE(TestProjectToSnapshotPaths.TEST_ONLY_MODULE),
   KOTLIN_MULTIPLATFORM(
     TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM,
-    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_70 },
+    isCompatibleWith = { it == AGP_CURRENT },
   ),
   KOTLIN_MULTIPLATFORM_MODULE_ONLY(
     TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM_MODULE_ONLY,
-    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_70 },
+    isCompatibleWith = { it == AGP_CURRENT },
   ),
   KOTLIN_MULTIPLATFORM_WITHJS(
     TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM,
@@ -339,22 +392,18 @@ enum class TestProject(
     isCompatibleWith = { it == AGP_CURRENT },
     patch = { projectRoot ->
       patchMppProject(projectRoot, convertAppToKmp = true)
-      projectRoot
-        .resolve("app")
-        .resolve("build.gradle")
-        .replaceInContent(
-          "androidTarget()",
+      projectRoot.resolve("module2").resolve("build.gradle").replaceContent { content ->
+        content.replace(
+          "named(\"androidDeviceTest\") {",
           """
-          androidTarget()
-            sourceSets {
-              androidTest
-              androidAndroidTest {
-                dependsOn(androidTest)
-              }
-            }
+          create("androidDeviceTestExtra") {
+              dependsOn(getByName("androidDeviceTest"))
+          }
+          named("androidDeviceTest") {
           """
             .trimIndent(),
         )
+      }
     },
   ),
   MULTI_FLAVOR(TestProjectToSnapshotPaths.MULTI_FLAVOR),
@@ -371,8 +420,10 @@ enum class TestProject(
       projectRoot.resolve("app").resolve("build.gradle").replaceContent { content ->
         content.replace(" implementation", "// implementation").replace(" androidTestImplementation", "// androidTestImplementation") +
           """
-              android.variantFilter { variant ->
-                  variant.setIgnore(!variant.name.startsWith("firstAbcSecondAbc"))
+              androidComponents {
+                  beforeVariants(selector().all()) { variant ->
+                      variant.enable = variant.name.startsWith("firstAbcSecondAbc")
+                  }
               }
         """
       }
@@ -427,7 +478,10 @@ enum class TestProject(
   MIGRATE_TO_NON_TRANSITIVE_R_CLASSES(TestProjectToSnapshotPaths.MIGRATE_TO_NON_TRANSITIVE_R_CLASSES),
   PURE_JAVA_PROJECT(TestProjectToSnapshotPaths.PURE_JAVA_PROJECT),
   BUILDSRC_WITH_COMPOSITE(TestProjectToSnapshotPaths.BUILDSRC_WITH_COMPOSITE),
-  APP_WITH_BUILD_FEATURES_ENABLED(TestProjectToSnapshotPaths.APP_WITH_BUILD_FEATURES_ENABLED),
+  APP_WITH_BUILD_FEATURES_ENABLED(
+    TestProjectToSnapshotPaths.APP_WITH_BUILD_FEATURES_ENABLED,
+    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
+  ),
   DEPENDENT_MODULES_ONLY_APP_RUNTIME(
     TestProjectToSnapshotPaths.DEPENDENT_MODULES,
     testName = "noLibraryRuntime",
@@ -455,7 +509,7 @@ enum class TestProject(
         .appendText(
           """
 
-          android.buildFeatures.buildConfig true
+          android.buildFeatures.buildConfig = true
           """
             .trimIndent()
         )

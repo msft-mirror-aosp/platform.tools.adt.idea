@@ -27,6 +27,7 @@ import java.nio.file.Path
 data class ImageData(val previewData: PreviewDetails, val loadedImagePaths: Map<String, String>)
 
 private val LOG = Logger.getInstance("com.android.screenshottest.util.ReferenceImageManager")
+private val ALLOWED_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp")
 
 private fun File.toCanonicalPathOrNull(): Path? =
   try {
@@ -34,6 +35,8 @@ private fun File.toCanonicalPathOrNull(): Path? =
   } catch (_: IOException) {
     null
   } catch (_: InvalidPathException) {
+    null
+  } catch (_: SecurityException) {
     null
   }
 
@@ -52,7 +55,12 @@ private fun File.toCanonicalPathOrNull(): Path? =
  * @param tmpPath The canonical Path of the system temporary directory.
  * @return True if both paths satisfy all security and structural constraints; false otherwise.
  */
-private fun isValidSourceAndDestination(sourceFile: File, destinationFile: File, basePath: Path, tmpPath: Path?): Boolean {
+private fun isValidSourceAndDestination(
+  sourceFile: File,
+  destinationFile: File,
+  basePath: Path,
+  tmpPath: Path?,
+): Boolean {
   val sourcePath = sourceFile.toCanonicalPathOrNull() ?: return false
   val destPath = destinationFile.toCanonicalPathOrNull() ?: return false
 
@@ -71,7 +79,8 @@ private fun isValidSourceAndDestination(sourceFile: File, destinationFile: File,
     return false
   }
 
-  // 3. Source must live canonically inside the project's base directory OR under system temporary directory
+  // 3. Source must live canonically inside the project's base directory OR under system temporary
+  // directory
   val isUnderProjectBase = sourcePath.startsWith(basePath)
   val isUnderSystemTemp = tmpPath?.let { sourcePath.startsWith(it) } ?: false
 
@@ -104,21 +113,24 @@ fun copyReferenceImages(imagesToCopy: List<ImageData>, projectBasePath: String):
         return@forEach // Continue to the next item in the loop
       }
 
+      if (imageData.loadedImagePaths.isEmpty()) {
+        LOG.error("Failed to copy screenshot reference image because no image paths were provided for: ${imageData.previewData}")
+        failures.add(imageData)
+        return@forEach
+      }
+
       try {
         for ((imagePath, _) in imageData.loadedImagePaths) {
           val sourceFile = File(imagePath)
           val destinationFile = File(destinationPath)
           if (!isValidSourceAndDestination(sourceFile, destinationFile, basePath, tmpPath)) {
-            LOG.error(
-              "Skipped copying reference image due to path security violation. " + "Source: $imagePath, Destination: $destinationPath"
-            )
+            LOG.error("Skipped copying reference image due to path security violation. Source: $imagePath, Destination: $destinationPath")
             failures.add(imageData)
             break
           }
 
-          val allowedExtensions = listOf("png", "jpg", "jpeg", "webp")
           val extension = destinationFile.extension.lowercase()
-          if (extension !in allowedExtensions) {
+          if (extension !in ALLOWED_EXTENSIONS) {
             LOG.error("Reference image destination must be a supported image file (png, jpg, jpeg, webp): $destinationFile")
             failures.add(imageData)
             break
@@ -136,7 +148,16 @@ fun copyReferenceImages(imagesToCopy: List<ImageData>, projectBasePath: String):
           refreshTarget?.let { refreshRoots.add(it) }
         }
       } catch (e: IOException) {
-        LOG.error("Failed to copy screenshot reference image due to an I/O error for: ${imageData.previewData}", e)
+        LOG.error(
+          "Failed to copy screenshot reference image due to an I/O error for: ${imageData.previewData}",
+          e,
+        )
+        failures.add(imageData)
+      } catch (e: SecurityException) {
+        LOG.error(
+          "Failed to copy screenshot reference image due to security restrictions for: ${imageData.previewData}",
+          e,
+        )
         failures.add(imageData)
       }
     }
@@ -145,7 +166,10 @@ fun copyReferenceImages(imagesToCopy: List<ImageData>, projectBasePath: String):
       LocalFileSystem.getInstance().refreshIoFiles(refreshRoots, true, true, null)
     }
   } catch (e: IllegalStateException) {
-    LOG.error("Failed to copy screenshot reference images during setup due to invalid project state or configuration.", e)
+    LOG.error(
+      "Failed to copy screenshot reference images during setup due to invalid project state or configuration.",
+      e,
+    )
     // If setup fails, all items are considered failures.
     return imagesToCopy
   }

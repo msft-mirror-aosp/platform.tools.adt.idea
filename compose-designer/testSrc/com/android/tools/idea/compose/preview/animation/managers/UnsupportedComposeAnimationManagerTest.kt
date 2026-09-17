@@ -19,17 +19,22 @@ import com.android.tools.idea.compose.preview.animation.TestUtils
 import com.android.tools.idea.preview.animation.LabelCard
 import com.android.tools.idea.preview.animation.TestUtils.createTestSlider
 import com.android.tools.idea.preview.animation.timeline.UnsupportedLabel
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.assertInstanceOf
 import kotlin.test.assertNotNull
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Rule
 import org.junit.Test
 
 class UnsupportedComposeAnimationManagerTest {
+  @get:Rule val edtRule = EdtRule()
 
   val animation = TestUtils.createComposeAnimation("Label")
 
   @Test
+  @RunsInEdt
   fun `default states`() = runBlocking {
     val manager = ComposeUnsupportedAnimationManager(animation, "Label")
     assertNotNull(manager.card)
@@ -38,6 +43,7 @@ class UnsupportedComposeAnimationManagerTest {
   }
 
   @Test
+  @RunsInEdt
   fun `create timeline element`() {
     val manager = ComposeUnsupportedAnimationManager(animation, "Label")
     val slider = createTestSlider()

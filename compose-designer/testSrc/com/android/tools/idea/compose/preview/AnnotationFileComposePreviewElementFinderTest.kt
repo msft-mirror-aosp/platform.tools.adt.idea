@@ -836,15 +836,17 @@ class AnnotationFileComposePreviewElementFinderTest {
 
     val result =
       DumbModeTestUtils.computeInDumbModeSynchronously(project) {
-        val hasPreviewElements =
-          GlobalScope.async { AnnotationFilePreviewElementFinder.hasPreviewElements(project, composeTest.virtualFile) }
+        val hasPreviewElements = GlobalScope.async {
+          AnnotationFilePreviewElementFinder.hasPreviewElements(project, composeTest.virtualFile)
+        }
         try {
           runBlocking { withTimeout(2500) { hasPreviewElements.await() } }
           fail("The result should not have been returned in non-smart mode")
         } catch (_: TimeoutCancellationException) {}
 
-        val previewElementsOnNonSmartMode =
-          GlobalScope.async { AnnotationFilePreviewElementFinder.findPreviewElements(project, composeTest.virtualFile) }
+        val previewElementsOnNonSmartMode = GlobalScope.async {
+          AnnotationFilePreviewElementFinder.findPreviewElements(project, composeTest.virtualFile)
+        }
         try {
           runBlocking { withTimeout(2500) { previewElementsOnNonSmartMode.await() } }
           fail("The result should not have been returned in non-smart mode")
@@ -883,6 +885,12 @@ class AnnotationFileComposePreviewElementFinderTest {
             override val values: Sequence<String> = sequenceOf(1, 2)
         }
 
+        class OuterClass {
+            class NestedProvider: PreviewParameterProvider<String> {
+                override val values: Sequence<String> = sequenceOf("N")
+            }
+        }
+
         @Composable
         @Preview
         fun SingleParameter(@PreviewParameter(provider = TestStringProvider::class) aString: String) {
@@ -898,6 +906,11 @@ class AnnotationFileComposePreviewElementFinderTest {
         @Preview
         fun MultiParameter(@PreviewParameter(provider = TestStringProvider::class) aString: String,
                            @PreviewParameter(provider = TestIntProvider::class, limit = 2) aInt: Int) {
+        }
+
+        @Composable
+        @Preview
+        fun NestedParameter(@PreviewParameter(provider = OuterClass.NestedProvider::class) aString: String) {
         }
       """
           .trimIndent(),
@@ -932,6 +945,16 @@ class AnnotationFileComposePreviewElementFinderTest {
           assertEquals("test.TestIntProvider", parameter.providerClassFqn)
           assertEquals(1, parameter.index)
           assertEquals(2, parameter.limit)
+        }
+    }
+    (elements[4] as ParametrizedComposePreviewElementTemplate).let {
+      assertEquals("NestedParameter", it.displaySettings.name)
+      assertEquals(1, it.parameterProviders.size)
+      it.parameterProviders
+        .single { param -> "aString" == param.name }
+        .let { parameter ->
+          assertEquals("test.OuterClass${'$'}NestedProvider", parameter.providerClassFqn)
+          assertEquals(0, parameter.index)
         }
     }
   }

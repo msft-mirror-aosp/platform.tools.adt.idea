@@ -5,6 +5,7 @@ java_library(
     name = "plugin_api",
     visibility = ["//visibility:public"],
     exports = [
+        ":nio_fs_neverlink_wrapper",
         "//prebuilts/tools/common/m2:jsr305-2.0.1",
         "//tools/adt/idea/.idea/libraries:libbinary-resources",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
@@ -50,9 +51,11 @@ java_library(
         "@intellij//:intellij.c.core",
         "@intellij//:intellij.c.debugger",
         "@intellij//:intellij.cidr.clangd.core",
+        "@intellij//:intellij.cidr.debugger.core",
         "@intellij//:intellij.cidr.lang.base",
         "@intellij//:intellij.cidr.projectModel",
         "@intellij//:intellij.cidr.psi.base",
+        "@intellij//:intellij.cidr.util.execution",
         "@intellij//:intellij.cidr.workspaceModel",
         "@intellij//:intellij.java",
         "@intellij//:intellij.java.analysis.impl",
@@ -70,8 +73,12 @@ java_library(
         "@intellij//:intellij.libraries.grpc",
         "@intellij//:intellij.platform.coverage",
         "@intellij//:intellij.platform.coverage.agent",
+        "@intellij//:intellij.platform.smRunner",
+        "@intellij//:intellij.platform.structureView",
+        "@intellij//:intellij.platform.structureView.impl",
         "@intellij//:intellij.platform.tasks",
         "@intellij//:intellij.platform.tasks.impl",
+        "@intellij//:intellij.platform.testRunner",
         "@intellij//:intellij.platform.vcs.dvcs",
         "@intellij//:intellij.platform.vcs.dvcs.impl",
         "@intellij//:intellij.platform.vcs.dvcs.impl.shared",
@@ -86,9 +93,17 @@ java_library(
     ],
 )
 
+java_library(
+    name = "nio_fs_neverlink_wrapper",
+    neverlink = 1,
+    visibility = ["//tools/adt/idea/aswb:__pkg__"],
+    exports = ["@intellij//:nio-fs"],
+)
+
 aswb_module(
     name = "plugin_api_module",
     lib_deps = [
+        ":nio_fs_neverlink_wrapper",
         "//prebuilts/tools/common/m2:jspecify-0.2.0",
         "//prebuilts/tools/common/m2:jsr305-2.0.1",
         "//tools/adt/idea/.idea/libraries:libbinary-resources",

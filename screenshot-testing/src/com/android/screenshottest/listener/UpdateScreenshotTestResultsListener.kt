@@ -36,7 +36,11 @@ class UpdateScreenshotTestResultsListener(
   private val executor: Executor = AppExecutorUtil.createBoundedApplicationPoolExecutor("ScreenshotTestResults", 1),
 ) : AndroidTestResultListener {
 
-  override fun onTestCaseFinished(device: AndroidDevice, testSuite: AndroidTestSuite, testCase: AndroidTestCase) {
+  override fun onTestCaseFinished(
+    device: AndroidDevice,
+    testSuite: AndroidTestSuite,
+    testCase: AndroidTestCase,
+  ) {
     val className = testCase.className
     val methodName = testCase.additionalTestArtifacts["PreviewScreenshot.methodName"] ?: " "
     val rawPreviewName = testCase.additionalTestArtifacts["PreviewScreenshot.previewName"] ?: " "
@@ -45,11 +49,20 @@ class UpdateScreenshotTestResultsListener(
 
     executor.execute {
       val destPath =
-        ScreenshotTestUtils.resolvePath(dialog.project, className, testCase.additionalTestArtifacts["PreviewScreenshot.refImagePath"])
+        ScreenshotTestUtils.resolvePath(
+          dialog.project,
+          testCase.additionalTestArtifacts["PreviewScreenshot.refImagePath"],
+        )
       val srcPath =
-        ScreenshotTestUtils.resolvePath(dialog.project, className, testCase.additionalTestArtifacts["PreviewScreenshot.newImagePath"])
+        ScreenshotTestUtils.resolvePath(
+          dialog.project,
+          testCase.additionalTestArtifacts["PreviewScreenshot.newImagePath"],
+        )
       val diffPath =
-        ScreenshotTestUtils.resolvePath(dialog.project, className, testCase.additionalTestArtifacts["PreviewScreenshot.diffImagePath"])
+        ScreenshotTestUtils.resolvePath(
+          dialog.project,
+          testCase.additionalTestArtifacts["PreviewScreenshot.diffImagePath"],
+        )
 
       ApplicationManager.getApplication().invokeLater {
         val errorTrace = (testCase.errorStackTrace as? String) ?: ""
@@ -77,7 +90,9 @@ class UpdateScreenshotTestResultsListener(
   }
 
   override fun onTestSuiteFinished(device: AndroidDevice, testSuite: AndroidTestSuite) {
-    executor.execute { ApplicationManager.getApplication().invokeLater { dialog.onTestSuiteFinished() } }
+    executor.execute {
+      ApplicationManager.getApplication().invokeLater { dialog.onTestSuiteFinished() }
+    }
   }
 
   /**

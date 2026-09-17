@@ -66,8 +66,6 @@ import com.android.tools.idea.gradle.util.LocalProperties;
 import com.android.tools.idea.project.AndroidRunConfigurationsManager;
 import com.android.tools.idea.sdk.AndroidSdkPathStore;
 import com.android.tools.idea.sdk.IdeSdks;
-import com.android.tools.idea.sdk.Jdks;
-import com.android.tools.idea.util.StudioPathManager;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -83,7 +81,9 @@ import com.intellij.openapi.externalSystem.service.project.manage.SourceFolderMa
 import com.intellij.openapi.externalSystem.service.project.manage.SourceFolderManagerImpl;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.projectRoots.JavaSdk;
 import com.intellij.openapi.projectRoots.Sdk;
+import com.intellij.openapi.projectRoots.impl.SdkConfigurationUtil;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.SystemInfo;
@@ -294,6 +294,8 @@ public class AndroidGradleTests {
         String localRepositories = getLocalRepositoriesForGroovy(localRepos);
 
         contents = replaceRegexGroup(contents, "classpath ['\"]com.android.tools.build:gradle:(.+)['\"]", agpEnvironment.getAgpVersion());
+        contents = replaceRegexGroup(contents, "classpath ['\"]com.android.tools.build:gradle-kotlin:(.+)['\"]", agpEnvironment.getAgpVersion());
+        contents = replaceRegexGroup(contents, "classpath ['\"]com.android.legacy-kapt:com.android.legacy-kapt.gradle.plugin:(.+)['\"]", agpEnvironment.getAgpVersion());
         contents = replaceRegexGroup(contents, "id ['\"]com\\.android\\..+['\"].*version ['\"](.+)['\"]", agpEnvironment.getAgpVersion());
 
         contents = replaceRegexGroup(contents, "ext.kotlin_version ?= ?['\"](.+)['\"]", agpEnvironment.getKotlinVersion());
@@ -340,10 +342,8 @@ public class AndroidGradleTests {
         contents = replaceRegexGroup(contents, "\\(\"com.android.application\"\\) version \"(.+)\"", agpEnvironment.getAgpVersion());
         contents = replaceRegexGroup(contents, "\\(\"com.android.library\"\\) version \"(.+)\"", agpEnvironment.getAgpVersion());
         contents = replaceRegexGroup(contents, "buildToolsVersion\\(\"(.+)\"\\)", BuildEnvironment.getInstance().getBuildToolsVersion());
-        contents = replaceRegexGroup(contents, "compileSdkVersion\\((.+)\\)", agpEnvironment.getCompileSdk());
-        contents = replaceRegexGroup(contents, "compileSdk *= *(\\d+)", agpEnvironment.getCompileSdk());
-        contents = replaceRegexGroup(contents, "targetSdkVersion\\((.+)\\)", agpEnvironment.getTargetSdk());
-        contents = replaceRegexGroup(contents, "targetSdk *= *(\\d+)", agpEnvironment.getTargetSdk());
+        contents = updateCompileSdkVersion(contents, agpEnvironment.getCompileSdk());
+        contents = updateTargetSdkVersion(contents, agpEnvironment.getTargetSdk());
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdkVersion[ (](\\d+)");
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdk *= *(\\d+)");
         contents = updateLocalRepositories(contents, localRepositories);
@@ -364,10 +364,8 @@ public class AndroidGradleTests {
 
         final var buildEnvironment = BuildEnvironment.getInstance();
         contents = replaceRegexGroup(contents, "buildToolsVersion\\(\"(.+)\"\\)", buildEnvironment.getBuildToolsVersion());
-        contents = replaceRegexGroup(contents, "compileSdkVersion\\((.+)\\)", agpEnvironment.getCompileSdk());
-        contents = replaceRegexGroup(contents, "compileSdk *= *(\\d+)", agpEnvironment.getCompileSdk());
-        contents = replaceRegexGroup(contents, "targetSdkVersion\\((.+)\\)", agpEnvironment.getTargetSdk());
-        contents = replaceRegexGroup(contents, "targetSdk *= *(\\d+)", agpEnvironment.getTargetSdk());
+        contents = updateCompileSdkVersion(contents, agpEnvironment.getCompileSdk());
+        contents = updateTargetSdkVersion(contents, agpEnvironment.getTargetSdk());
         contents = replaceRegexGroup(contents, "\"[a-zA-Z]+\"\\s*\\(\"org.jetbrains.kotlin:kotlin-stdlib:(.+)\"\\)", agpEnvironment.getKotlinVersion());
 
         contents = updateLocalRepositories(contents, localRepositories);
@@ -413,17 +411,63 @@ public class AndroidGradleTests {
     return replaceRegexGroup(contents, "buildToolsVersion ['\"](.+)['\"]", BuildEnvironment.getInstance().getBuildToolsVersion());
   }
 
+  // Matches compileSdk { ... } blocks, including single-level nested blocks like release(36) { minorApiLevel = 1 }
+  private static final Pattern COMPILE_SDK_BLOCK_PATTERN =
+      Pattern.compile("\\bcompileSdk\\s*\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)?\\}");
+
+  // Matches compileSdkVersion or compileSdk declarations, including optional @Suppress("DEPRECATION")
+  private static final Pattern COMPILE_SDK_LEGACY_PATTERN =
+      Pattern.compile(
+          "(?:@Suppress\\([\"']DEPRECATION[\"']\\)\\s*[\r\n]+\\s*)?\\bcompileSdk(?:Version)?\\b(?:\\s*\\([^)]*\\)|\\s*=\\s*['\"]?[0-9a-zA-Z._-]+['\"]?|\\s+['\"]?[0-9a-zA-Z._-]+['\"]?)");
+
+  @Nullable
+  private static String buildCompileSdkDsl(@NotNull AndroidVersion version) {
+    if (version.getCodename() != null) {
+      return String.format("compileSdk {\n        version = preview(\"%s\")\n    }", version.getCodename());
+    }
+    if (version.getApiMinorLevel() > 0) {
+      return String.format(
+          "compileSdk {\n        version = release(%d) {\n            minorApiLevel = %d\n        }\n    }",
+          version.getApiLevel(), version.getApiMinorLevel());
+    }
+    if (version.getApiLevel() >= 36) {
+      return String.format("compileSdk {\n        version = release(%d)\n    }", version.getApiLevel());
+    }
+    return null;
+  }
+
   @NotNull
   public static String updateCompileSdkVersion(@NotNull String contents, @NotNull String compileSdkVersion) {
-    contents = replaceRegexGroup(contents, "compileSdkVersion *[(=]? *([0-9]+)", compileSdkVersion);
-    contents = replaceRegexGroup(contents, "compileSdk *[(=]? *([0-9]+)", compileSdkVersion);
+    try {
+      AndroidVersion version = AndroidVersion.fromString(compileSdkVersion);
+      String dsl = buildCompileSdkDsl(version);
+      if (dsl != null) {
+        Matcher blockMatcher = COMPILE_SDK_BLOCK_PATTERN.matcher(contents);
+        if (blockMatcher.find()) {
+          return blockMatcher.replaceAll(Matcher.quoteReplacement(dsl));
+        }
+        Matcher legacyMatcher = COMPILE_SDK_LEGACY_PATTERN.matcher(contents);
+        if (legacyMatcher.find()) {
+          return legacyMatcher.replaceAll(Matcher.quoteReplacement(dsl));
+        }
+      } else {
+        // When downgrading to < 36, convert any existing block DSL to legacy syntax
+        Matcher blockMatcher = COMPILE_SDK_BLOCK_PATTERN.matcher(contents);
+        if (blockMatcher.find()) {
+          contents = blockMatcher.replaceAll("compileSdk = " + compileSdkVersion);
+        }
+      }
+    } catch (IllegalArgumentException ignored) {
+    }
+    contents = replaceRegexGroup(contents, "\\bcompileSdkVersion\\b *[(=]? *([0-9]+(?:\\.[0-9]+)?)", compileSdkVersion);
+    contents = replaceRegexGroup(contents, "\\bcompileSdk\\b *[(=]? *([0-9]+(?:\\.[0-9]+)?)", compileSdkVersion);
     return contents;
   }
 
   @NotNull
   public static String updateTargetSdkVersion(@NotNull String contents, @NotNull String targetSdkVersion) {
-    contents = replaceRegexGroup(contents, "targetSdkVersion *[(=]? *([0-9]+)", targetSdkVersion);
-    contents = replaceRegexGroup(contents, "targetSdk *[(=]? *([0-9]+)", targetSdkVersion);
+    contents = replaceRegexGroup(contents, "\\btargetSdkVersion\\b *[(=]? *([0-9]+(?:\\.[0-9]+)?)", targetSdkVersion);
+    contents = replaceRegexGroup(contents, "\\btargetSdk\\b *[(=]? *([0-9]+(?:\\.[0-9]+)?)", targetSdkVersion);
     return contents;
   }
 
@@ -510,7 +554,7 @@ public class AndroidGradleTests {
     return StringUtil.join(
       Iterables.concat(getLocalRepositoryDirectories(), localRepos),
       file -> "maven {\n" +
-              "  url \"" + file.toURI() + "\"\n" +
+              "  url = \"" + file.toURI() + "\"\n" +
               "  try {\n" +
               "    metadataSources() {\n" +
               "      mavenPom()\n" +
@@ -582,15 +626,16 @@ public class AndroidGradleTests {
     if (!builtInKotlin) return contents;
 
     // Top level gradle build file
-    if (contents.contains("classpath\\s+['\"]com.android.tools.build:gradle:.+['\"]")) {
-      // Remove old Kotlin plugin dependency application
-      contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]", "");
-    } else {
-      contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]",
-                                     "classpath 'com.android.tools.build:gradle-kotlin:" + agpVersion + "'\n");
+    if (contents.contains("org.jetbrains.kotlin:kotlin-gradle-plugin")) {
+      if (contents.contains("com.android.tools.build:gradle-kotlin")) {
+        contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]\\s*", "");
+      } else {
+        contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]",
+                                       "classpath 'com.android.tools.build:gradle-kotlin:" + agpVersion + "'\n");
+      }
     }
 
-    if (contents.contains("org.jetbrains.kotlin.android") || contents.contains("kotlin-android")) {
+    if (contents.contains("com.android.") || contents.contains("android {") || contents.contains("kotlin-android")) {
       // Remove old Kotlin plugin application
       contents = contents.replaceAll("id\\s+['\"]org.jetbrains.kotlin.android['\"].*\\s+", "");
       contents = contents.replaceAll("(?:apply\\s+plugin:|id)\\s+['\"](?:kotlin-android|kotlin-android-extensions)['\"].*\\s+", "");
@@ -822,12 +867,11 @@ public class AndroidGradleTests {
     }
   }
 
-  public static void overrideJdkTo8() throws IOException {
-    String jdk8Path = getEmbeddedJdk8Path();
+  public static void overrideJdkTo(@NotNull String jdkPath) {
     @NotNull IdeSdks ideSdks = IdeSdks.getInstance();
-    LOG.info("Using JDK from " + jdk8Path);
-    ideSdks.overrideJdkEnvVariable(jdk8Path);
-    assertTrue("Could not use JDK from " + jdk8Path, ideSdks.isJdkEnvVariableValid());
+    LOG.info("Using JDK from " + jdkPath);
+    ideSdks.overrideJdkEnvVariable(jdkPath);
+    assertTrue("Could not use JDK from " + jdkPath, ideSdks.isJdkEnvVariableValid());
   }
 
   public static void overrideJdkToCurrentJdk() {
@@ -839,42 +883,13 @@ public class AndroidGradleTests {
     assertTrue("Could not use JDK from " + jdkPath, ideSdks.isJdkEnvVariableValid());
   }
 
-  public static void addJdk8ToTableButUseCurrent() throws IOException {
-    String jdk8Path = getEmbeddedJdk8Path();
-    Jdks.getInstance().createAndAddJdk(jdk8Path);
+  public static void addJdk17ToTableButUseCurrent() {
+    Sdk jdk = JavaSdk.getInstance().createJdk("jdk17", JdkConstants.INSTANCE.getJDK_17_PATH());
+    ApplicationManager.getApplication().invokeAndWait(() -> SdkConfigurationUtil.addSdk(jdk));
     overrideJdkToCurrentJdk();
   }
 
   public static void restoreJdk() {
     IdeSdks.getInstance().cleanJdkEnvVariableInitialization();
-  }
-
-  public static String getEmbeddedJdk8Path() {
-    Path jdkRootPath = StudioPathManager.resolvePathFromSourcesRoot("prebuilts/studio/jdk/jdk8");
-    if (SystemInfo.isWindows) {
-      // For JDK8 we have 32 and 64 bits versions on Windows
-      jdkRootPath = jdkRootPath.resolve("win64");
-    }
-    else if (SystemInfo.isLinux) {
-      jdkRootPath = jdkRootPath.resolve("linux");
-    }
-    else if (SystemInfo.isMac) {
-      jdkRootPath = jdkRootPath.resolve("mac").resolve(MAC_JDK_CONTENT_PATH);
-    }
-
-    // Resolve real path
-    //
-    // Gradle prior to 6.9 don't work well with symlinks
-    // see https://discuss.gradle.org/t/gradle-daemon-different-context/2146/3
-    // see https://github.com/gradle/gradle/issues/12840
-    //
-    // [WARNING] This effective escapes Bazel's sandbox. Remove as soon as possible.
-    try {
-      Path wellKnownJdkFile = jdkRootPath.resolve("release");
-      jdkRootPath = wellKnownJdkFile.toRealPath().getParent();
-    }
-    catch (IOException ignore) {
-    }
-    return jdkRootPath.toString();
   }
 }

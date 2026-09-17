@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.preview.actions
 
+import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.actions.SCENE_VIEW
 import com.android.tools.idea.common.surface.SceneView
@@ -32,7 +33,6 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepres
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
-import com.android.tools.rendering.imagepool.ImagePool
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -47,11 +47,12 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 
 /**
- * Helper method that navigates back to the pre`vious [PreviewMode] for all [PreviewModeManager]s in the given [AnActionEvent]'s
+ * Helper method that navigates back to the previous [PreviewMode] for all [PreviewModeManager]s in the given [AnActionEvent]'s
  * [DataContext].
  *
  * @param e the [AnActionEvent] holding the context of the action
  */
+@RequiresBackgroundThread
 fun navigateBack(e: AnActionEvent) {
   e.dataContext.findPreviewManager(PreviewModeManager.KEY)?.restorePrevious()
 }
@@ -169,7 +170,7 @@ fun hasSceneViewErrors(dataContext: DataContext) = dataContext.getData(SCENE_VIE
 private fun hasRenderedImage(dataContext: DataContext): Boolean {
   val sceneView = dataContext.getData(SCENE_VIEW) ?: dataContext.getData(DESIGN_SURFACE)?.focusedSceneView
   val sceneManager = sceneView?.sceneManager as? LayoutlibSceneManager
-  return sceneManager?.renderResult?.renderedImage?.let { image -> image != ImagePool.NULL_POOLED_IMAGE } == true
+  return sceneManager?.renderResult?.renderedImage?.let { image -> image != RecyclableImage.NULL } == true
 }
 
 // TODO(b/292057010) Enable group filtering for Gallery mode.

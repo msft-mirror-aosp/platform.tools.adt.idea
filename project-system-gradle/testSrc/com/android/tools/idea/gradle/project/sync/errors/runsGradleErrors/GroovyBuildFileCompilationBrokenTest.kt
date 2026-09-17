@@ -50,7 +50,9 @@ class GroovyBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest(
         expect.that(buildEvents.finishEventFailures()).isEmpty()
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(AndroidStudioEvent.GradleSyncFailure.GROOVY_COMPILATION_ERROR)
+        expect
+          .that(it.gradleFailureDetails.detectedGradleSyncFailuresList)
+          .isEqualTo(listOf(AndroidStudioEvent.GradleSyncFailure.GROOVY_COMPILATION_ERROR))
         expect
           .that(it.buildOutputWindowStats.buildErrorMessagesList.map { it.errorShownType })
           .containsExactly(BuildErrorMessage.ErrorType.UNKNOWN_ERROR_TYPE)
@@ -83,7 +85,7 @@ class GroovyBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest(
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.groovy.scripts.ScriptCompilationException
@@ -114,7 +116,7 @@ class GroovyBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest(
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.groovy.scripts.ScriptCompilationException
@@ -151,7 +153,9 @@ class GroovyBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest(
         expect.that(buildEvents.finishEventFailures()).isEmpty()
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(AndroidStudioEvent.GradleSyncFailure.CANNOT_BE_CAST_TO)
+        expect
+          .that(it.gradleFailureDetails.detectedGradleSyncFailuresList)
+          .isEqualTo(listOf(AndroidStudioEvent.GradleSyncFailure.CANNOT_BE_CAST_TO))
         expect
           .that(it.buildOutputWindowStats.buildErrorMessagesList.map { it.errorShownType })
           .containsExactly(BuildErrorMessage.ErrorType.UNKNOWN_ERROR_TYPE)
@@ -170,7 +174,7 @@ class GroovyBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest(
             failure {
               error {
                 exception: org.gradle.tooling.BuildActionFailureException
-                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
                 exception: org.gradle.api.ProjectConfigurationException
                   at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
                 exception: org.gradle.api.GradleScriptException

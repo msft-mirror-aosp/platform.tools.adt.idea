@@ -13,32 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * Copyright (C) 2021 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.android.tools.idea.gradle.project.upgrade.integration
 
 import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.junit4.OldAgpSuite
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.LATEST
-import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_1
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_2
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_3
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_8_0
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_8_11
+import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_9_0
 import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.FROM_AGP_40_ALL_DEPRECATIONS
 import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.FROM_AGP_40_BASIC
 import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.FROM_AGP_80_BASIC
@@ -71,6 +56,7 @@ enum class TestAGPVersion(
   V_7_3("7.3.0", jdkVersion = JavaSdkVersion.JDK_11, kotlinVersion = "1.6.21"),
   V_8_0("8.0.2", jdkVersion = JavaSdkVersion.JDK_17, kotlinVersion = "1.6.21"),
   V_8_11("8.11.0", jdkVersion = JavaSdkVersion.JDK_17, kotlinVersion = "1.6.21"),
+  V_9_0("9.0.0", jdkVersion = JavaSdkVersion.JDK_17, kotlinVersion = "2.2.10"),
   LATEST(null, jdkVersion = JavaSdkVersion.JDK_17, kotlinVersion = AGP_BUILT_IN_KOTLIN_VERSION),
 }
 
@@ -88,22 +74,12 @@ enum class AUATestProjectState(
   val basePath: String,
   val patchPath: String? = null,
 ) {
-  BASIC_7_1(FROM_AGP_40_BASIC, V_7_1, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
   BASIC_7_2(FROM_AGP_40_BASIC, V_7_2, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
   BASIC_7_3(FROM_AGP_40_BASIC, V_7_3, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   BASIC_8_11_MIN(FROM_AGP_40_BASIC, V_8_11, minimalState = true, basePath = "4.0.0", patchPath = "dev-minimal"),
   BASIC_8_11_FULL(FROM_AGP_40_BASIC, V_8_11, minimalState = false, basePath = "4.0.0", patchPath = "dev-upgraded"),
-  // No changes from 7.0 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_1_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_1, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
-  ALL_DEPRECATIONS_7_1_FULL(
-    FROM_AGP_40_ALL_DEPRECATIONS,
-    V_7_1,
-    minimalState = false,
-    basePath = "4.2.0-base",
-    patchPath = "7.1.0-upgraded",
-  ),
   // No changes from 7.0 apart from versions so reuse the same files.
   ALL_DEPRECATIONS_7_2_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_2, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
   // No changes from 7.1 apart from versions so reuse the same files.
@@ -133,6 +109,8 @@ enum class AUATestProjectState(
     patchPath = "dev-upgraded",
   ),
   FROM_80_BASIC_8_0(FROM_AGP_80_BASIC, V_8_0, minimalState = true, basePath = "8.0.0"),
+  FROM_80_BASIC_9_0_MIN(FROM_AGP_80_BASIC, V_9_0, minimalState = true, basePath = "8.0.0", patchPath = "dev-minimal"),
+  FROM_80_BASIC_9_0_FULL(FROM_AGP_80_BASIC, V_9_0, minimalState = false, basePath = "8.0.0", patchPath = "dev-upgraded"),
   FROM_80_BASIC_LATEST_MIN(FROM_AGP_80_BASIC, LATEST, minimalState = true, basePath = "8.0.0", patchPath = "dev-minimal"),
   FROM_80_BASIC_LATEST_FULL(FROM_AGP_80_BASIC, LATEST, minimalState = false, basePath = "8.0.0", patchPath = "dev-upgraded");
 

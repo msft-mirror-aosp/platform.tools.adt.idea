@@ -41,12 +41,12 @@ import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.adblib.AdbLibApplicationService
+import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.run.DeviceHeadsUpListener
-import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.MirroringManager
@@ -84,7 +84,9 @@ import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.impl.InternalDecorator
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.IndexingTestUtil.Companion.waitUntilIndexesAreReady
 import com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -126,10 +128,11 @@ class StreamingToolWindowManagerTest {
   @get:Rule
   val ruleChain =
     RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
       agentRule,
       provisionerRule,
       emulatorRule,
-      ClipboardSynchronizationDisablementRule(),
       androidExecutorsRule,
       EdtRule(),
       PortableUiFontRule(),
@@ -175,6 +178,7 @@ class StreamingToolWindowManagerTest {
     deviceMirroringSettings.loadState(DeviceMirroringSettings()) // Reset device mirroring settings to defaults.
     service<DeviceClientRegistry>().clear()
     PairedDevicesLayoutStorage.getInstance().clear()
+    waitUntilIndexesAreReady(project) // Wait for indexing activity to finish to avoid leaking threads.
   }
 
   @Test
@@ -469,11 +473,10 @@ class StreamingToolWindowManagerTest {
 
   @Test
   fun testRemoteDevice() {
-    val properties =
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_CAR
-        model = "Pixel 9000"
-      }
+    val properties = DeviceProperties.buildForTest {
+      icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_CAR
+      model = "Pixel 9000"
+    }
     val device = provisionerRule.deviceProvisionerPlugin.newDevice(properties = properties)
     device.sourceTemplate =
       object : DeviceTemplate {
@@ -507,17 +510,15 @@ class StreamingToolWindowManagerTest {
 
   @Test
   fun testReservableRemoteDevice() {
-    val templateProperties =
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_PHONE
-        model = "Pixel Reservable"
-        isRemote = true
-      }
-    val deviceProperties =
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_WEAR
-        model = "Pixel Reserved"
-      }
+    val templateProperties = DeviceProperties.buildForTest {
+      icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_PHONE
+      model = "Pixel Reservable"
+      isRemote = true
+    }
+    val deviceProperties = DeviceProperties.buildForTest {
+      icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_WEAR
+      model = "Pixel Reserved"
+    }
     val template =
       object : DeviceTemplate {
         override val id = DeviceId("TEST", true, "")
@@ -754,7 +755,11 @@ class StreamingToolWindowManagerTest {
     tablet.start(standalone = true)
     runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
 
-    val popup = triggerAddDevicePopup()
+    lateinit var popup: FakeJBPopup<Any>
+    waitForCondition(2.seconds) {
+      popup = triggerAddDevicePopup()
+      popup.actions.size > 1
+    }
     assertThat(popup.actions.toString())
       .isEqualTo(
         "[Separator (Virtual Devices), ${phone.avdName} (null), " +
@@ -777,9 +782,8 @@ class StreamingToolWindowManagerTest {
     contentManager.removeContent(contentManager.contents[0], true)
     waitForCondition(2.seconds) { contentManager.contents.size == 1 && contentManager.contents[0].displayName == null }
     assertThat(RunningAvdTracker.getInstance().runningAvds[phone.avdFolder]?.isShuttingDown).isTrue()
-    val startAction = triggerAddDevicePopup().actions.find { it.templateText == phone.avdName }
-    assertThat(startAction).isNotNull()
-    executeAction(startAction!!, toolWindow.component, project)
+    val startAction = waitForAddDeviceAction(2.seconds, phone.avdName)
+    executeAction(startAction, toolWindow.component, project)
     assertThat(phone.isRunning)
     phone.resumeGrpc() // Allow the phone AVD to finish its shutdown sequence and terminate.
     waitForCondition(2.seconds) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
@@ -1115,6 +1119,7 @@ class StreamingToolWindowManagerTest {
   }
 
   private fun triggerAddDevicePopup(): FakeJBPopup<Any> {
+    AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(true) // Force loading of AVDs.
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }
     val newTabAction = toolWindow.tabActions[0]
     val testEvent = createTestEvent(toolWindow.component, project)

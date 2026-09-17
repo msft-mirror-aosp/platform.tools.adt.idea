@@ -55,8 +55,10 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.EditorNotifications
 import com.intellij.ui.OnePixelSplitter
+import com.intellij.ui.RowIcon
 import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
+import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
@@ -290,33 +292,30 @@ internal class ComposePreviewViewImpl(
 
   override var focusMode by FocusModeProperty(content, mainSurface)
 
-  override fun updateProgress(message: String) =
-    UIUtil.invokeLaterIfNeeded {
-      log.debug("updateProgress: $message")
-      if (workbench.isMessageVisible) {
-        workbench.showLoading(message)
-        workbench.hideContent()
-      }
+  override fun updateProgress(message: String) = UIUtil.invokeLaterIfNeeded {
+    log.debug("updateProgress: $message")
+    if (workbench.isMessageVisible) {
+      workbench.showLoading(message)
+      workbench.hideContent()
     }
+  }
 
-  private fun showModalErrorMessage(message: String, actionData: ActionData? = null) =
-    UIUtil.invokeLaterIfNeeded {
-      log.debug("showModelErrorMessage: $message")
-      workbench.loadingStopped(message, actionData)
+  private fun showModalErrorMessage(message: String, actionData: ActionData? = null) = UIUtil.invokeLaterIfNeeded {
+    log.debug("showModelErrorMessage: $message")
+    workbench.loadingStopped(message, actionData)
+  }
+
+  override fun updateNotifications(parentEditor: FileEditor) = UIUtil.invokeLaterIfNeeded {
+    if (Disposer.isDisposed(workbench) || project.isDisposed || !parentEditor.isValid) return@invokeLaterIfNeeded
+
+    val vFile = psiFilePointer.virtualFile
+    if (vFile == null) {
+      thisLogger().warn("virtualFile is null for $psiFilePointer element=${psiFilePointer.element} file=${psiFilePointer.containingFile}")
+      if (!hasRendered) showModalErrorMessage(message("panel.error.reopen.file"))
+    } else {
+      notificationPanel.updateNotifications(vFile, parentEditor, project)
     }
-
-  override fun updateNotifications(parentEditor: FileEditor) =
-    UIUtil.invokeLaterIfNeeded {
-      if (Disposer.isDisposed(workbench) || project.isDisposed || !parentEditor.isValid) return@invokeLaterIfNeeded
-
-      val vFile = psiFilePointer.virtualFile
-      if (vFile == null) {
-        thisLogger().warn("virtualFile is null for $psiFilePointer element=${psiFilePointer.element} file=${psiFilePointer.containingFile}")
-        if (!hasRendered) showModalErrorMessage(message("panel.error.reopen.file"))
-      } else {
-        notificationPanel.updateNotifications(vFile, parentEditor, project)
-      }
-    }
+  }
 
   /** Method called to ask all notifications to update. */
   private fun updateNotifications() {
@@ -396,7 +395,7 @@ internal class ComposePreviewViewImpl(
     return StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC.ifEnabled {
       getComposeStudioBotActionFactory()?.createPreviewGenerator()?.also {
         it.templatePresentation.text = message("action.generate.single.preview.for.file.empty.panel")
-        it.templatePresentation.icon = StudioIcons.StudioBot.GENERIC_AI_ACTION
+        it.templatePresentation.icon = createPaddedAiIcon()
       }
     }
   }
@@ -404,9 +403,11 @@ internal class ComposePreviewViewImpl(
   /** Creates an [AnAction] that generates code from a screenshot. */
   private fun createScreenshotToCodeActionData(): AnAction? {
     return getComposeStudioBotActionFactory()?.screenshotToCodeAction()?.also {
-      it.templatePresentation.icon = StudioIcons.StudioBot.GENERIC_AI_ACTION
+      it.templatePresentation.icon = createPaddedAiIcon()
     }
   }
+
+  private fun createPaddedAiIcon(): RowIcon = RowIcon(StudioIcons.StudioBot.GENERIC_AI_ACTION, EmptyIcon.create(6, 16))
 
   @get:Synchronized
   override var hasContent: Boolean = false

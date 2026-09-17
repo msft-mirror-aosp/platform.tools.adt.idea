@@ -101,10 +101,6 @@ abstract class AnimationPreview<T : AnimationManager>(
       parentDisposable = parentScope.scopeDisposable(),
     )
 
-  init {
-    scope.coroutineContext.job.invokeOnCompletion { timeline.sliderUI.elements.forEach { Disposer.dispose(it) } }
-  }
-
   fun cancelScope() {
     scope.cancel()
   }
@@ -164,6 +160,10 @@ abstract class AnimationPreview<T : AnimationManager>(
       addChangeListener { scope.launch(Dispatchers.EDT) { bottomPanel.clockTimeMs = value } }
     }
   val clockControl = SliderClockControl(timeline)
+
+  init {
+    scope.coroutineContext.job.invokeOnCompletion { timeline.sliderUI.elements.forEach { Disposer.dispose(it) } }
+  }
 
   /** Provides buttons and controls for playing, pausing, and adjusting the playback speed of the animation. */
   protected val playbackControls =
@@ -336,15 +336,14 @@ abstract class AnimationPreview<T : AnimationManager>(
   }
 
   /** Remove all tabs from [tabbedPane], replace it with [noAnimationsPanel], and clears the cached animations. */
-  open fun invalidatePanel(): Job =
-    scope.launch {
-      /**
-       * Calling [removeAnimationManager] for all animations will properly remove the cards from AllTabPanel, animationsMap, and tabs from
-       * tabbedPane. It will also show the noAnimationsPanel when removing all tabs.
-       */
-      val toRemove = animations.toList()
-      toRemove.forEach { removeAnimationManager(it) }
-    }
+  open fun invalidatePanel(): Job = scope.launch {
+    /**
+     * Calling [removeAnimationManager] for all animations will properly remove the cards from AllTabPanel, animationsMap, and tabs from
+     * tabbedPane. It will also show the noAnimationsPanel when removing all tabs.
+     */
+    val toRemove = animations.toList()
+    toRemove.forEach { removeAnimationManager(it) }
+  }
 
   protected suspend fun removeAnimationManager(animationManager: T) {
     withContext(Dispatchers.EDT) {
@@ -359,7 +358,7 @@ abstract class AnimationPreview<T : AnimationManager>(
         // There are no more tabs. Replace the TabbedPane with the placeholder panel.
         showNoAnimationsPanel()
       } else if (tabbedPane.tabCount != 0) {
-        tabbedPane.select(tabbedPane.getTabAt(0), true)
+        tabbedPane.select(tabbedPane.getTabAt(0), false)
       }
     }
     updateMaxDuration()

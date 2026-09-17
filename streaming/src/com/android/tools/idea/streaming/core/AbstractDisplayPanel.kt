@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.core
 
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.adtui.common.primaryPanelBackground
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ZoomLevelIndicator
 import com.android.tools.idea.ui.DISPLAY_ID_KEY
@@ -41,6 +42,7 @@ import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.Insets
 import java.awt.LayoutManager
 import javax.swing.JComponent
@@ -61,6 +63,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
 
   private val scrollPane: JScrollPane
   private val floatingToolbarLayerPane: JComponent
+  protected val notificationLayerPane: JComponent
   private var zoomToolbar: JComponent? = null
   private var xrNavigationToolbar: JComponent? = null
   protected val loadingPanel: StreamingLoadingPanel
@@ -102,9 +105,29 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
 
     scrollPane = MyScrollPane()
 
+    notificationLayerPane =
+      object : JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)) {
+          override fun contains(x: Int, y: Int): Boolean {
+            return components.any { it.isVisible && it.bounds.contains(x, y) }
+          }
+        }
+        .apply {
+          val scrollBarWidth = scrollPane.verticalScrollBar.preferredWidth + 1
+          @Suppress("UseDPIAwareBorders") // scrollBarWidth is scaled already.
+          border = EmptyBorder(scrollBarWidth, scrollBarWidth, scrollBarWidth, scrollBarWidth)
+          isOpaque = false
+          isFocusable = false
+        }
+
     floatingToolbarLayerPane =
       JPanel().apply {
-        layout = DirectionalFlowLayout(DirectionalFlowLayout.Direction.BOTTOM_TO_TOP, gap = JBUI.scale(6))
+        val layoutDirection =
+          if (StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.get()) {
+            DirectionalFlowLayout.Direction.RIGHT_TO_LEFT
+          } else {
+            DirectionalFlowLayout.Direction.BOTTOM_TO_TOP
+          }
+        layout = DirectionalFlowLayout(layoutDirection, gap = JBUI.scale(6))
         val scrollBarWidth = scrollPane.verticalScrollBar.preferredWidth + 1
         @Suppress("UseDPIAwareBorders") // scrollBarWidth is scaled already.
         border = EmptyBorder(scrollBarWidth, scrollBarWidth, scrollBarWidth, scrollBarWidth)
@@ -116,9 +139,11 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
       JLayeredPane().apply {
         layout = LayeredPaneLayoutManager()
         isFocusable = true
+        setLayer(notificationLayerPane, JLayeredPane.PALETTE_LAYER)
         setLayer(floatingToolbarLayerPane, JLayeredPane.PALETTE_LAYER)
         setLayer(scrollPane, JLayeredPane.DEFAULT_LAYER)
 
+        add(notificationLayerPane, BorderLayout.CENTER)
         add(floatingToolbarLayerPane, BorderLayout.CENTER)
         add(scrollPane, BorderLayout.CENTER)
       }
@@ -147,36 +172,39 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
         add(actionManager.getAction("android.streaming.zoom.fit.inner"))
         add(Separator())
         add(ZoomLevelIndicator())
-        add(FloatingToolbarContainer.CollapserAction())
+        val horizontal = !StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.get()
+        add(FloatingToolbarContainer.CollapserAction(horizontal = horizontal))
       }
+    val horizontal = !StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.get()
     val toolbar =
-      FloatingToolbarContainer(horizontal = true, inactiveAlpha = 0.8, collapsedStateSelector = { it.action is ZoomLevelIndicator }).apply {
-        addToolbar("ZoomToolbar", zoomGroup)
-        isVisible = zoomToolbarVisible
-        setTargetComponent(displayView)
-      }
+      FloatingToolbarContainer(horizontal = horizontal, inactiveAlpha = 0.8, collapsedStateSelector = { it.action is ZoomLevelIndicator })
+        .apply {
+          addToolbar("ZoomToolbar", zoomGroup)
+          isVisible = zoomToolbarVisible
+          setTargetComponent(displayView)
+        }
     floatingToolbarLayerPane.add(toolbar, BorderLayout.SOUTH)
     zoomToolbar = toolbar
   }
 
   private fun createXrNavigationToolbar() {
+    val horizontal = !StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.get()
     val toolbar =
-      FloatingToolbarContainer(horizontal = true, inactiveAlpha = 0.8, collapsedStateSelector = { it.isSelected }, initiallyActive = true)
-        .apply {
-          val group = DefaultActionGroup()
-          val actionManager = ActionManager.getInstance()
-          val inputModeGroup = actionManager.getAction("android.streaming.xr.input.mode.group") as? ActionGroup
-          if (inputModeGroup != null) {
-            group.add(inputModeGroup)
-          }
-          group.add(Separator.getInstance())
-          val recenterGroup = actionManager.getAction("android.streaming.xr.recenter.group") as? ActionGroup
-          if (recenterGroup != null) {
-            group.add(recenterGroup)
-          }
-          group.add(FloatingToolbarContainer.CollapserAction())
-          addToolbar("XrNavigationToolbar", group)
+      FloatingToolbarContainer(horizontal, inactiveAlpha = 0.8, collapsedStateSelector = { it.isSelected }, initiallyActive = true).apply {
+        val group = DefaultActionGroup()
+        val actionManager = ActionManager.getInstance()
+        val inputModeGroup = actionManager.getAction("android.streaming.xr.input.mode.group") as? ActionGroup
+        if (inputModeGroup != null) {
+          group.add(inputModeGroup)
         }
+        group.add(Separator.getInstance())
+        val recenterGroup = actionManager.getAction("android.streaming.xr.recenter.group") as? ActionGroup
+        if (recenterGroup != null) {
+          group.add(recenterGroup)
+        }
+        group.add(FloatingToolbarContainer.CollapserAction(horizontal = horizontal))
+        addToolbar("XrNavigationToolbar", group)
+      }
 
     toolbar.setTargetComponent(displayView)
     toolbar.isVisible = service<FloatingXrToolbarState>().floatingXrToolbarEnabled

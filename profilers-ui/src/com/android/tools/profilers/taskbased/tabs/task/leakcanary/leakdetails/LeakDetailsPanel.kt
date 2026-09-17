@@ -15,7 +15,6 @@
  */
 package com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails
 
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,9 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,10 +63,8 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_GC_ROOT
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_GO_TO_DECLARATION
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE
-import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_MISSING_MESSAGE
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_NO_DECLARATION_FOUND
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_NO_DECLARATION_FOUND_TOOLTIP
-import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_NO_LEAK_FOUND_MESSAGE
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_OPEN
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.START_TASK_SELECTION_ERROR_ICON_DESC
 import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizontalDivider
@@ -81,6 +76,7 @@ import java.util.concurrent.CompletableFuture
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 /**
@@ -95,14 +91,13 @@ fun LeakDetailsPanel(
   selectedLeak: Leak?,
   gotoDeclaration: (Node) -> Unit,
   isRecording: Boolean,
-  isLeakCanaryPresent: Boolean,
+  hasActiveFilter: Boolean = false,
   isDeclarationAvailableAsync: (Node) -> CompletableFuture<Boolean>,
   openStates: List<Boolean>,
   onOpenStatesChange: (List<Boolean>) -> Unit,
   onCopy: () -> Unit,
   trackUiAction: (LeakCanaryUiAction) -> Unit = {},
 ) {
-  val emptyLeakMessage = if (isRecording) LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE else LEAKCANARY_NO_LEAK_FOUND_MESSAGE
   val traceNodes = selectedLeak?.displayedLeakTrace?.firstOrNull()?.nodes ?: emptyList()
   val onExpandAll = {
     trackUiAction(LeakCanaryUiAction.EXPAND_ALL_NODES_CLICKED)
@@ -113,23 +108,18 @@ fun LeakDetailsPanel(
     onOpenStatesChange(List(traceNodes.size) { false })
   }
 
-  if (!isLeakCanaryPresent) {
-    Box(modifier = Modifier.fillMaxSize().padding(horizontal = 15.dp), contentAlignment = Alignment.Center) {
-      SelectionContainer { EllipsisText(text = LEAKCANARY_MISSING_MESSAGE, maxLines = 3) }
-    }
-  } else if (selectedLeak == null) {
-    Box(modifier = Modifier.fillMaxSize().padding(horizontal = 15.dp), contentAlignment = Alignment.Center) {
-      EllipsisText(text = emptyLeakMessage, maxLines = 3)
+  if (selectedLeak == null) {
+    if (!hasActiveFilter && isRecording) {
+      Box(modifier = Modifier.fillMaxSize().padding(horizontal = 15.dp), contentAlignment = Alignment.Center) {
+        EllipsisText(text = LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE, maxLines = 3)
+      }
+    } else {
+      Box(modifier = Modifier.fillMaxSize())
     }
   } else {
     val scrollState = rememberScrollState()
     Column(modifier = Modifier.fillMaxSize()) {
-      LeakActionToolbar(
-        selectedLeak = selectedLeak,
-        onExpandAll = onExpandAll,
-        onCollapseAll = onCollapseAll,
-        onCopy = onCopy,
-      )
+      LeakActionToolbar(selectedLeak = selectedLeak, onExpandAll = onExpandAll, onCollapseAll = onCollapseAll, onCopy = onCopy)
       ToolWindowHorizontalDivider()
       Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(10.dp)) {
@@ -144,16 +134,17 @@ fun LeakDetailsPanel(
               previousNode = if (index > 0) traceNodes[index - 1] else null,
               gotoDeclaration = gotoDeclaration,
               nextNode = if (index + 1 < traceNodes.size) traceNodes[index + 1] else null,
-              isOpen = openStates[index],
+              isOpen = openStates.getOrElse(index) { false },
               onClickNode = {
-                val newStates = openStates.toMutableList().apply { this[index] = !this[index] }
+                val newStates =
+                  List(traceNodes.size) { i -> if (i == index) !openStates.getOrElse(i) { false } else openStates.getOrElse(i) { false } }
                 onOpenStatesChange(newStates)
               },
               isDeclarationAvailableAsync = isDeclarationAvailableAsync,
             )
           }
         }
-        VerticalScrollbar(adapter = rememberScrollbarAdapter(scrollState), modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd))
+        VerticalScrollbar(scrollState = scrollState, modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd))
       }
     }
   }
@@ -223,7 +214,7 @@ fun LeakTraceNodeView(
       Modifier.height(IntrinsicSize.Min)
         .border(
           width = if (showBorder) 1.dp else 0.dp,
-          color = if (showBorder) TaskBasedUxColors.PAST_RECORDINGS_BANNER_BORDER_COLOR else Color.Transparent,
+          color = if (showBorder) TaskBasedUxColors.BANNER_BORDER_COLOR else Color.Transparent,
           shape = RoundedCornerShape(4.dp),
         )
         .padding(horizontal = 5.dp)

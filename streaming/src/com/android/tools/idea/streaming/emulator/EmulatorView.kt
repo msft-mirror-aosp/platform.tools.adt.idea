@@ -38,6 +38,7 @@ import com.android.tools.adtui.device.SkinDefinition
 import com.android.tools.adtui.device.SkinLayout
 import com.android.tools.adtui.util.rotatedByQuadrants
 import com.android.tools.adtui.util.scaled
+import com.android.tools.adtui.util.toWxH
 import com.android.tools.analytics.toProto
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.createCoroutineScope
@@ -51,6 +52,7 @@ import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.BUTTON_MASK
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.StreamingDeviceId
+import com.android.tools.idea.streaming.core.isMouseInside
 import com.android.tools.idea.streaming.core.isSameAspectRatio
 import com.android.tools.idea.streaming.core.scaledDown
 import com.android.tools.idea.streaming.core.scaledUnbiased
@@ -207,8 +209,7 @@ internal class EmulatorView(
       }
     }
 
-  private val emulatorId = emulator.emulatorId
-  override val deviceId: StreamingDeviceId = StreamingDeviceId.ofEmulator(emulatorId)
+  override val deviceId: StreamingDeviceId = emulator.deviceId
   override val deviceType: DeviceType = emulatorConfig.deviceType
   override val apiLevel: Int
     get() = emulatorConfig.api
@@ -252,15 +253,17 @@ internal class EmulatorView(
   private var screenshotFeed: Cancelable? = null
   @Volatile private var screenshotReceiver: ScreenshotReceiver? = null
 
-  private val notificationReceiver = NotificationReceiver.forEmulator(emulator)
+  private val notificationTracker = NotificationTracker.forEmulator(emulator)
 
   private val coroutineScope = createCoroutineScope()
   private var notificationCollectionJob: Job? = null
   private var environmentCollectionJob: Job? = null
 
+  private val alarm = Alarm(this)
+
   private val sourceFrameListeners = DisposableWrapperList<SourceFrameListener>()
   private val currentPosture: PostureValue?
-    get() = notificationReceiver.currentPosture.value?.posture
+    get() = notificationTracker.currentPosture.value?.posture
 
   var deviceFrameVisible: Boolean = deviceFrameVisible
     set(value) {
@@ -377,10 +380,13 @@ internal class EmulatorView(
     lastModifiers = modifiers
 
     val is360Environment = emulatorConfig.deviceType == DeviceType.AI_GLASSES && sceneMode?.startsWith("image360:") == true
-    val cameraReadyToOperate = (virtualSceneCameraActive || is360Environment) && isFocusOwner && !isHardwareInputEnabled()
+    val is3dEnvironment = emulatorConfig.deviceType == DeviceType.AI_GLASSES && sceneMode?.startsWith("mesh3d:") == true
+    val cameraReadyToOperate =
+      (virtualSceneCameraActive || is360Environment || is3dEnvironment) && isFocusOwner && isMouseInside() && !isHardwareInputEnabled()
     if (cameraReadyToOperate && modifiers and SHIFT_DOWN_MASK != 0) {
       if (virtualSceneCameraController == null) {
-        virtualSceneCameraController = VirtualSceneCameraController(this, this, emulator, allowTranslation = virtualSceneCameraActive)
+        virtualSceneCameraController =
+          VirtualSceneCameraController(this, this, emulator, allowTranslation = virtualSceneCameraActive || is3dEnvironment)
       }
     } else {
       virtualSceneCameraController?.let { Disposer.dispose(it) }
@@ -405,14 +411,14 @@ internal class EmulatorView(
     multiTouchMode =
       emulatorConfig.hasTouchScreen &&
         mouseCoordinates != null &&
-        !(virtualSceneCameraActive || is360Environment) &&
+        !(virtualSceneCameraActive || is360Environment || is3dEnvironment) &&
         modifiers and CTRL_DOWN_MASK != 0 &&
         !isHardwareInputEnabled() &&
         xrInputController == null
   }
 
   private val virtualSceneCameraActive: Boolean
-    get() = notificationReceiver.virtualSceneCameraActive.value
+    get() = notificationTracker.virtualSceneCameraActive.value
 
   private var virtualSceneCameraController: VirtualSceneCameraController? = null
   override var xrInputController: EmulatorXrInputController? = null
@@ -565,7 +571,7 @@ internal class EmulatorView(
       stopClipboardSynchronization()
       environmentCollectionJob?.cancel()
       environmentCollectionJob = null
-      if (RunningAvdTracker.getInstance().runningAvds[emulatorId.avdFolder]?.isShuttingDown != true) {
+      if (RunningAvdTracker.getInstance().runningAvds[emulator.emulatorId.avdFolder]?.isShuttingDown != true) {
         lastScreenshot = null
         xrInputController = null
         hideLongRunningOperationIndicatorInstantly()
@@ -743,7 +749,6 @@ internal class EmulatorView(
   }
 
   private fun cancelScreenshotFeed() {
-    screenshotReceiver?.let { Disposer.dispose(it) }
     screenshotReceiver = null
     screenshotFeed?.cancel()
     screenshotFeed = null
@@ -753,13 +758,13 @@ internal class EmulatorView(
     notificationCollectionJob =
       coroutineScope.launch(Dispatchers.EDT) {
         launch {
-          notificationReceiver.currentPosture.collect { posture ->
+          notificationTracker.currentPosture.collect { posture ->
             if (posture != null && deviceFrameVisible) {
               requestScreenshotFeed()
             }
           }
         }
-        launch { notificationReceiver.virtualSceneCameraActive.collect { updateCameraPromptAndMultiTouchFeedback() } }
+        launch { notificationTracker.virtualSceneCameraActive.collect { updateCameraPromptAndMultiTouchFeedback() } }
       }
   }
 
@@ -1252,13 +1257,12 @@ internal class EmulatorView(
     }
   }
 
-  private inner class ScreenshotReceiver(val maxImageSize: Dimension, val orientationQuadrants: Int) :
-    EmptyStreamObserver<ImageMessage>(), Disposable {
+  private inner class ScreenshotReceiver(val maxImageSize: Dimension, val orientationQuadrants: Int) : EmptyStreamObserver<ImageMessage>() {
+
     private val screenshotForProcessing = AtomicReference<Screenshot?>()
     private val screenshotForDisplay = AtomicReference<Screenshot?>()
     private val skinLayoutCache = SkinLayoutCache(emulator)
     private val recycledImage = AtomicReference<SofterReference<BufferedImage>?>()
-    private val alarm = Alarm(this)
     private var expectedFrameNumber = -1
 
     override fun onNext(message: ImageMessage) {
@@ -1395,7 +1399,7 @@ internal class EmulatorView(
           }
         log.error(
           "Inconsistent ImageMessage for display ${imageFormat.display}: the $imageDimensions display image has different aspect" +
-            " ratio than the ${displayMode.width}x${displayMode.height} display in the ${displayMode.displayModeId} mode$foldedState"
+            " ratio than the ${displayMode.displaySize.toWxH()} display in the ${displayMode.displayModeId} mode$foldedState"
         )
         return false
       }
@@ -1463,8 +1467,6 @@ internal class EmulatorView(
         firePropertyChange(DISPLAY_MODE_PROPERTY, lastDisplayMode, screenshot.displayShape.displayMode)
       }
     }
-
-    override fun dispose() {}
 
     override fun onError(t: Throwable) {
       if (screenshotReceiver == this && t is EmulatorController.RetryException) {

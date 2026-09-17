@@ -52,7 +52,9 @@ class JavaCompilationInBuildSrcBrokenTest : AbstractSyncFailureIntegrationTest()
         expect.that(buildEvents.finishEventFailures()).isEmpty()
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(AndroidStudioEvent.GradleSyncFailure.JAVA_COMPILATION_ERROR)
+        expect
+          .that(it.gradleFailureDetails.detectedGradleSyncFailuresList)
+          .isEqualTo(listOf(AndroidStudioEvent.GradleSyncFailure.JAVA_COMPILATION_ERROR))
         expect
           .that(it.buildOutputWindowStats.buildErrorMessagesList.map { it.errorShownType })
           .containsExactly(BuildErrorMessage.ErrorType.JAVA_COMPILER, BuildErrorMessage.ErrorType.JAVA_COMPILER)
@@ -74,7 +76,7 @@ class JavaCompilationInBuildSrcBrokenTest : AbstractSyncFailureIntegrationTest()
             failure {
               error {
                 exception: org.gradle.tooling.BuildActionFailureException
-                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
                 exception: org.gradle.internal.exceptions.LocationAwareException
                   at: [0]org.gradle.initialization.exception.DefaultExceptionAnalyser#transform
                 exception: org.gradle.api.tasks.TaskExecutionException

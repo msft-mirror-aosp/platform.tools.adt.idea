@@ -31,7 +31,6 @@ import com.android.tools.idea.streaming.core.LeafNode
 import com.android.tools.idea.streaming.core.PanelState
 import com.android.tools.idea.streaming.core.SplitNode
 import com.android.tools.idea.streaming.core.SplitPanel
-import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.ZoomablePanel
 import com.android.tools.idea.streaming.core.computeBestLayout
 import com.android.tools.idea.streaming.core.htmlColored
@@ -52,6 +51,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.JBColor
 import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap
+import java.awt.Dimension
 import java.awt.EventQueue
 import java.util.concurrent.TimeoutException
 import javax.swing.Icon
@@ -68,7 +68,7 @@ internal class DeviceToolWindowPanel(
   private val project: Project,
   val deviceHandle: DeviceHandle,
   val deviceClient: DeviceClient,
-) : AbstractDevicePanel<DeviceDisplayPanel>(StreamingDeviceId.ofPhysicalDevice(deviceClient.deviceSerialNumber), DEVICE_MAIN_TOOLBAR_ID) {
+) : AbstractDevicePanel<DeviceDisplayPanel>(deviceClient.deviceId, DEVICE_MAIN_TOOLBAR_ID) {
 
   override val deviceSerialNumber: String
     get() = deviceClient.deviceSerialNumber
@@ -147,7 +147,16 @@ internal class DeviceToolWindowPanel(
     val initialOrientation = uiState.orientation
     val primaryDisplayPanel =
       createDisplayPanelIfAbsent(PRIMARY_DISPLAY_ID) {
-        DeviceDisplayPanel(disposable, deviceClient, PRIMARY_DISPLAY_ID, initialOrientation, project, zoomToolbarVisible)
+        DeviceDisplayPanel(
+          disposable,
+          deviceClient,
+          PRIMARY_DISPLAY_ID,
+          DisplayType.INTERNAL,
+          Dimension(),
+          initialOrientation,
+          project,
+          zoomToolbarVisible,
+        )
       }
     val zoomScrollState = uiState.zoomScrollState
     for (displayPanel in displayPanels) {
@@ -274,7 +283,12 @@ internal class DeviceToolWindowPanel(
     }
 
     @AnyThread
-    override fun onDisplayAddedOrChanged(displayId: Int, width: Int, height: Int, rotation: Int, displayType: DisplayType) {
+    override fun onDisplayAddedOrChanged(
+      displayId: Int,
+      displaySize: Dimension,
+      rotation: Int,
+      displayType: DisplayType,
+    ) {
       EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
         if (contentDisposable != null) {
           val displayDescriptors = pendingDisplayDescriptors ?: displayDescriptors
@@ -285,12 +299,11 @@ internal class DeviceToolWindowPanel(
           val newDisplays = displayDescriptors.toMutableList()
           val pos = newDisplays.binarySearch { it.displayId.compareTo(displayId) }
           if (pos >= 0) {
-            newDisplays[pos].width = width
-            newDisplays[pos].height = height
+            newDisplays[pos].size = displaySize
             newDisplays[pos].orientation = rotation
             newDisplays[pos].type = displayType
           } else {
-            newDisplays.add(pos.inv(), DisplayDescriptor(displayId, width, height, rotation, displayType))
+            newDisplays.add(pos.inv(), DisplayDescriptor(displayId, displaySize, rotation, displayType))
           }
           reconfigureDisplayPanels(newDisplays)
         }
@@ -357,7 +370,16 @@ internal class DeviceToolWindowPanel(
           val displayId = display.displayId
           createDisplayPanelIfAbsent(displayId) {
             assert(it != PRIMARY_DISPLAY_ID)
-            DeviceDisplayPanel(contentDisposable!!, deviceClient, displayId, display.orientation, project, zoomToolbarVisible)
+            DeviceDisplayPanel(
+              contentDisposable!!,
+              deviceClient,
+              displayId,
+              display.type,
+              display.size,
+              display.orientation,
+              project,
+              zoomToolbarVisible,
+            )
           }
         }
         is SplitNode -> {
@@ -381,7 +403,16 @@ internal class DeviceToolWindowPanel(
         val display = displayDescriptors.find { it.displayId == displayId } ?: throw IllegalArgumentException()
         createDisplayPanelIfAbsent(displayId) {
           assert(it != PRIMARY_DISPLAY_ID)
-          DeviceDisplayPanel(contentDisposable!!, deviceClient, displayId, display.orientation, project, zoomToolbarVisible)
+          DeviceDisplayPanel(
+            contentDisposable!!,
+            deviceClient,
+            displayId,
+            display.type,
+            display.size,
+            display.orientation,
+            project,
+            zoomToolbarVisible,
+          )
         }
       }
     }
@@ -397,8 +428,7 @@ internal class DeviceToolWindowPanel(
       for (display in displays) {
         val displayView = findDisplayPanel(display.displayId)?.displayView ?: continue
         if (displayView.deviceDisplaySize.width != 0 && displayView.deviceDisplaySize.height != 0) {
-          display.width = displayView.deviceDisplaySize.width
-          display.height = displayView.deviceDisplaySize.height
+          display.size = displayView.deviceDisplaySize
           display.orientation = displayView.displayOrientationQuadrants
         }
       }

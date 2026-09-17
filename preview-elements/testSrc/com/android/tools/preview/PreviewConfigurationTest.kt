@@ -21,6 +21,7 @@ import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.ScreenSize
 import com.android.resources.UiMode
 import com.android.sdklib.IAndroidTarget
+import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.Hardware
 import com.android.sdklib.devices.Screen
@@ -32,6 +33,7 @@ import com.android.tools.configurations.ConfigurationModelModule
 import com.android.tools.configurations.ConfigurationSettings
 import com.android.tools.configurations.ResourceResolverCache
 import com.android.tools.configurations.ThemeInfoProvider
+import com.android.tools.configurations.UiModeState
 import com.android.tools.idea.layoutlib.LayoutLibrary
 import com.android.tools.layoutlib.LayoutlibContext
 import com.android.tools.module.AndroidModuleInfo
@@ -178,6 +180,49 @@ class PreviewConfigurationTest {
     // Test with null device
     PreviewConfiguration.cleanAndGet(device = null).applyConfigurationForTest(configuration, { null }, { emptyList() }, { deviceNull })
     Assert.assertEquals(UiMode.NORMAL, configuration.uiMode)
+  }
+
+  @Test
+  // Regression test for b/338656388
+  fun testWatchUiModeOverridesDeviceTagId() {
+    val devicePhone = createDevice(tagId = null)
+    val configuration = Configuration.create(TestConfigurationSettingsImpl(), FolderConfiguration.createDefault())
+
+    // When uiMode is WATCH, the device's tagId should be overridden to WEAR_TAG (android-wear)
+    PreviewConfiguration.cleanAndGet(uiMode = UiModeState.UI_MODE_TYPE_WATCH, device = devicePhone.id)
+      .applyConfigurationForTest(configuration, { null }, { listOf(devicePhone) }, { devicePhone })
+
+    assertThat(configuration.device?.tagId).isEqualTo(SystemImageTags.WEAR_TAG.id)
+    assertThat(Device.isWear(configuration.device)).isTrue()
+
+    // When uiMode is WATCH with night mode flags, the device's tagId should also be overridden to WEAR_TAG
+    val watchWithNightMode = UiModeState.UI_MODE_TYPE_WATCH or UiModeState.UI_MODE_NIGHT_YES
+    PreviewConfiguration.cleanAndGet(uiMode = watchWithNightMode, device = devicePhone.id)
+      .applyConfigurationForTest(configuration, { null }, { listOf(devicePhone) }, { devicePhone })
+
+    assertThat(configuration.device?.tagId).isEqualTo(SystemImageTags.WEAR_TAG.id)
+    assertThat(Device.isWear(configuration.device)).isTrue()
+
+    // When no device is specified in PreviewConfiguration, default device provider is used and tagId is updated if uiMode is WATCH
+    val defaultPhone = createDevice(tagId = null)
+    PreviewConfiguration.cleanAndGet(uiMode = UiModeState.UI_MODE_TYPE_WATCH, device = null)
+      .applyConfigurationForTest(configuration, { null }, { emptyList() }, { defaultPhone })
+
+    assertThat(configuration.device?.tagId).isEqualTo(SystemImageTags.WEAR_TAG.id)
+    assertThat(Device.isWear(configuration.device)).isTrue()
+
+    // When uiMode is NOT WATCH (e.g. NORMAL or TELEVISION), the device's tagId should not be changed
+    PreviewConfiguration.cleanAndGet(uiMode = UiModeState.UI_MODE_TYPE_NORMAL, device = devicePhone.id)
+      .applyConfigurationForTest(configuration, { null }, { listOf(devicePhone) }, { devicePhone })
+
+    assertThat(configuration.device?.tagId).isNull()
+    assertThat(Device.isWear(configuration.device)).isFalse()
+
+    PreviewConfiguration.cleanAndGet(uiMode = UiModeState.UI_MODE_TYPE_TELEVISION, device = devicePhone.id)
+      .applyConfigurationForTest(configuration, { null }, { listOf(devicePhone) }, { devicePhone })
+
+    assertThat(configuration.device?.tagId).isNull()
+    assertThat(Device.isWear(configuration.device)).isFalse()
   }
 
   private fun createDevice(tagId: String?): Device {

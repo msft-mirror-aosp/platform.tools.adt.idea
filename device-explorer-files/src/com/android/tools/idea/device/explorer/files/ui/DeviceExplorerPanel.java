@@ -26,9 +26,6 @@ import com.android.tools.idea.device.explorer.files.MyLoadingNode;
 import com.android.tools.idea.device.explorer.files.fs.DeviceFileEntry;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.ui.search.SearchUtil;
-import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.ActionToolbar;
-import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.ui.ColoredTreeCellRenderer;
@@ -99,10 +96,6 @@ public class DeviceExplorerPanel {
   @TestOnly
   public JBScrollPane getColumnTreePane() { return (JBScrollPane)myColumnTreePane.getComponent(0); }
 
-  public void showMessageLayer(@NotNull String message) {
-    showMessageLayerWorker(message, NamedColorUtil.getInactiveTextColor(), null);
-  }
-
   @SuppressWarnings("SameParameterValue")
   public void showMessageLayer(@NotNull String message, @NotNull Icon messageIcon) {
     showMessageLayerWorker(message, NamedColorUtil.getInactiveTextColor(), messageIcon);
@@ -132,18 +125,6 @@ public class DeviceExplorerPanel {
 
   public void setCancelActionListener(@Nullable ActionListener cancelActionListener) {
     myProgressPanel.setCancelActionListener(cancelActionListener);
-  }
-
-  @SuppressWarnings("unused")
-  private void createToolbar() {
-    final ActionManager actionManager = ActionManager.getInstance();
-    ActionToolbar actionToolbar = actionManager.createActionToolbar("Device Explorer Toolbar",
-                                                                    (DefaultActionGroup)actionManager
-                                                                      .getAction("Android.DeviceExplorer.ActionsToolbar"),
-                                                                    true);
-
-    actionToolbar.setTargetComponent(myTree);
-    myToolbarPanel.add(actionToolbar.getComponent(), BorderLayout.CENTER);
   }
 
   private void createUIComponents() {
@@ -261,8 +242,6 @@ public class DeviceExplorerPanel {
                                                          GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
   }
 
-  public JComponent getRootComponent() { return myComponent; }
-
   private static class NameRenderer extends ColoredTreeCellRenderer {
     @NotNull private final TreeSpeedSearch mySpeedSearch;
 
@@ -309,7 +288,7 @@ public class DeviceExplorerPanel {
         }
         String linkTarget = node.getEntry().getSymbolicLinkTarget();
         if (!StringUtil.isEmpty(linkTarget)) {
-          setToolTipText("Link target: " + linkTarget);
+          setToolTipText("Link target: " + StringUtil.escapeXmlEntities(linkTarget));
         }
       }
       else if (value instanceof ErrorNode) {

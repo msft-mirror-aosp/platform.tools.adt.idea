@@ -18,7 +18,6 @@ package com.android.tools.profilers.sessions;
 import static com.android.tools.profilers.StudioProfilers.buildSessionName;
 
 import com.android.sdklib.AndroidVersion;
-import com.android.tools.profilers.cpu.ProfilerInEditorUtils;
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.idea.protobuf.GeneratedMessageV3;
@@ -39,6 +38,7 @@ import com.android.tools.profilers.LiveViewSessionArtifact;
 import com.android.tools.profilers.LogUtils;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact;
+import com.android.tools.profilers.cpu.ProfilerInEditorUtils;
 import com.android.tools.profilers.leakcanary.LeakCanarySessionArtifact;
 import com.android.tools.profilers.memory.AllocationSessionArtifact;
 import com.android.tools.profilers.memory.HeapProfdSessionArtifact;
@@ -368,16 +368,22 @@ public class SessionsManager extends AspectModel<SessionAspect> {
 
     // If Task-Based UX is enabled, then there are two specific instances where selection of the session should be made:
     // (1) A new session was found, and it is ongoing.
-    // (2) An existing session was found, and it has completed.
+    // (2) An existing session was found, it has completed, and it is the currently selected session with a matching task type.
     // Both cases (1) and (2) require that there be a non-UNSPECIFIED `currentTaskType` set and that the session was not imported.
     //
     // Note: A newly found and complete session is not auto-selected to prevent Studio from auto-selecting a task recording after soft
-    // restarting Studio.
+    // restarting Studio. Also, an ending session that is no longer the selected session should not hijack selection.
     boolean isTaskBasedUXEnabled = myProfilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
     if (isTaskBasedUXEnabled) {
+      Common.SessionMetaData metaData = getSessionMetaData(session.getSessionId());
+      boolean taskTypeMatches = metaData != null &&
+                                TaskTypeMappingUtils.convertTaskType(metaData.getTaskType()) == myCurrentTaskType;
+      boolean isCurrentSessionEnding = !newSessionFound && sessionNewlyEnded &&
+                                       mySelectedSession.getSessionId() == session.getSessionId() &&
+                                       taskTypeMatches;
       shouldSetSession = !isSessionImported(session) &&
                          myCurrentTaskType != ProfilerTaskType.UNSPECIFIED &&
-                         ((newSessionFound && !sessionNewlyEnded) || (!newSessionFound && sessionNewlyEnded));
+                         ((newSessionFound && !sessionNewlyEnded) || isCurrentSessionEnding);
     }
     return shouldSetSession;
   }
@@ -447,7 +453,10 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     SessionItem sessionItem = new SessionItem(myProfilers, session, metadata);
     mySessionItems.put(session.getSessionId(), sessionItem);
     mySessionMetaDatas.put(session.getSessionId(), metadata);
-    myCurrentTaskType = TaskTypeMappingUtils.convertTaskType(sessionData.getTaskType());
+    // Do not overwrite the current task type for imported sessions so that an active live session's task type is preserved.
+    if (!isSessionImported(session)) {
+      myCurrentTaskType = TaskTypeMappingUtils.convertTaskType(sessionData.getTaskType());
+    }
     return sessionItem;
   }
 
@@ -482,13 +491,24 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     }
 
     if (mySelectedSession.equals(session)) {
+      ProfilerTaskType taskType = sessionItem != null ? sessionItem.getTaskType() : ProfilerTaskType.UNSPECIFIED;
+      if (taskType == ProfilerTaskType.UNSPECIFIED && sessionItem != null) {
+        taskType = TaskTypeMappingUtils.convertTaskType(sessionItem.getSessionMetaData().getTaskType());
+      }
+      boolean isLegacyAllocations = sessionItem != null && sessionItem.isLegacyAllocations();
       boolean openInEditor = sessionItem != null && ProfilerInEditorUtils.isEditorEnabled(
-        myProfilers.getIdeServices().getFeatureConfig(), sessionItem.getTaskType());
+        myProfilers.getIdeServices().getFeatureConfig(), taskType, isLegacyAllocations);
+      boolean isLiveTask = sessionItem != null && ProfilerInEditorUtils.isLiveTaskInEditorEnabled(
+        myProfilers.getIdeServices().getFeatureConfig(), taskType, isLegacyAllocations);
 
       // When a profiler task is editor enabled, although a session is selected, its editor tab may be hidden because
       // the user has shifted to another tab or closed it, so we need to reselect it to bring it to focus even if it's already selected.
       if (openInEditor) {
-        myProfilers.bringSelectedEditorToFront();
+        if (isLiveTask) {
+          myProfilers.openTaskTab();
+        } else {
+          myProfilers.bringSelectedEditorToFront();
+        }
       }
       return;
     }

@@ -16,6 +16,7 @@
 apply plugin: 'android'
 
 android {
+  namespace 'com.example.android.app'
   compileSdkVersion 19
 
   defaultConfig {
@@ -27,13 +28,11 @@ android {
 
   buildTypes {
     benchmark {
-      signingConfig signingConfigs.debug
+      signingConfig = signingConfigs.debug
       matchingFallbacks = ['release']
-      debuggable false
+      debuggable = false
     }
   }
-
-  publishNonDefault true
 }
 
 repositories {

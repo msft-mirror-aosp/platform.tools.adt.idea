@@ -5,7 +5,7 @@ iml_module(
     name = "intellij.android.buildCommon",
     srcs = ["src"],
     iml_files = ["intellij.android.buildCommon.iml"],
-    jvm_target = "8",
+    jvm_target = "11",
     lint_baseline = "lint_baseline.xml",
     test_deps = ["//tools/base/testutils:studio.android.sdktools.testutils"],
     visibility = ["//visibility:public"],

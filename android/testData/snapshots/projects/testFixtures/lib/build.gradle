@@ -19,10 +19,11 @@ plugins {
 }
 
 android {
+    namespace = "com.example.lib"
     compileSdkVersion 23
     testFixtures {
-        enable true
-        androidResources true
+        enable = true
+        androidResources = true
     }
 }
 

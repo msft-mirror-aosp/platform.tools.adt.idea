@@ -46,11 +46,10 @@ fun ObservablePairedDevicesList.pairedDevicesFlow(): Flow<ImmutableMap<String, I
     pair: WearPairingManager.PhoneWearPair,
     updateList: (PersistentList<PairingStatus>, PairingDevice) -> PersistentList<PairingStatus>,
   ) {
-    pairedDevices =
-      pairedDevices.mutate {
-        it[pair.wear.deviceID] = updateList(pairedDevices[pair.wear.deviceID] ?: persistentListOf(), pair.phone)
-        it[pair.phone.deviceID] = updateList(pairedDevices[pair.phone.deviceID] ?: persistentListOf(), pair.wear)
-      }
+    pairedDevices = pairedDevices.mutate {
+      it[pair.wear.deviceID] = updateList(pairedDevices[pair.wear.deviceID] ?: persistentListOf(), pair.phone)
+      it[pair.phone.deviceID] = updateList(pairedDevices[pair.phone.deviceID] ?: persistentListOf(), pair.wear)
+    }
     trySendBlocking(pairedDevices)
   }
 
@@ -71,6 +70,7 @@ fun ObservablePairedDevicesList.pairedDevicesFlow(): Flow<ImmutableMap<String, I
       }
     }
 
+  trySend(pairedDevices)
   addDevicePairingStatusChangedListener(listener)
   awaitClose { removeDevicePairingStatusChangedListener(listener) }
 }

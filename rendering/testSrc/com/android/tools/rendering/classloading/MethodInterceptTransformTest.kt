@@ -25,6 +25,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Handle
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 
 class DoNotIntercept {
@@ -276,6 +280,87 @@ class MethodInterceptTransformTest {
     }
   }
 
+  @Test
+  fun `check LDC MethodHandle intercept`() {
+    val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, "TestLdc", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    val handle = Handle(Opcodes.H_INVOKEVIRTUAL, "java/lang/ProcessBuilder", "start", "()Ljava/lang/Process;", false)
+    mv.visitLdcInsn(handle)
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 0)
+    mv.visitEnd()
+    cw.visitEnd()
+    val originalBytes = cw.toByteArray()
+
+    val transformedWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    val transform =
+      MethodInterceptTransform(
+        transformedWriter,
+        virtualTrampolineMethod = Trampoline::invoke.javaMethod!!,
+        staticTrampolineMethod = Trampoline::invokeStatic.javaMethod!!,
+        memberCheckTrampolineMethod = Trampoline::checkMemberAccess.javaMethod!!,
+        shouldIntercept = { className, methodName -> className == "java/lang/ProcessBuilder" && methodName == "start" },
+      )
+    ClassReader(originalBytes).accept(transform, 0)
+    val transformedBytes = transformedWriter.toByteArray()
+
+    val loader =
+      object : ClassLoader(MethodInterceptTransformTest::class.java.classLoader) {
+        fun define(name: String, bytes: ByteArray): Class<*> = defineClass(name, bytes, 0, bytes.size)
+      }
+    val loadedClass = loader.define("TestLdc", transformedBytes)
+    loadedClass.getMethod("test").invoke(null)
+
+    assertEquals(
+      "CHECK_MEMBER_ACCESS java/lang/ProcessBuilder start",
+      Trampoline.callLog.toString().trim(),
+    )
+  }
+
+  @Test
+  fun `check method handle ldc with shouldInterceptMember`() {
+    Trampoline.callLog.clear()
+    val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, "TestLdcMember", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    val handle = Handle(Opcodes.H_INVOKEVIRTUAL, "sun/misc/Unsafe", "allocateMemory", "(J)J", false)
+    mv.visitLdcInsn(handle)
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 0)
+    mv.visitEnd()
+    cw.visitEnd()
+    val originalBytes = cw.toByteArray()
+
+    val transformedWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    val transform =
+      MethodInterceptTransform(
+        transformedWriter,
+        virtualTrampolineMethod = Trampoline::invoke.javaMethod!!,
+        staticTrampolineMethod = Trampoline::invokeStatic.javaMethod!!,
+        memberCheckTrampolineMethod = Trampoline::checkMemberAccess.javaMethod!!,
+        shouldInterceptMember = { className, _ -> className.startsWith("sun/misc/") },
+      )
+    ClassReader(originalBytes).accept(transform, 0)
+    val transformedBytes = transformedWriter.toByteArray()
+
+    val loader =
+      object : ClassLoader(MethodInterceptTransformTest::class.java.classLoader) {
+        fun define(name: String, bytes: ByteArray): Class<*> = defineClass(name, bytes, 0, bytes.size)
+      }
+    val loadedClass = loader.define("TestLdcMember", transformedBytes)
+    loadedClass.getMethod("test").invoke(null)
+
+    assertEquals(
+      "CHECK_MEMBER_ACCESS sun/misc/Unsafe allocateMemory",
+      Trampoline.callLog.toString().trim(),
+    )
+  }
+
   object Trampoline {
     val callLog = StringBuilder()
 
@@ -287,6 +372,11 @@ class MethodInterceptTransformTest {
     @JvmStatic
     fun invokeStatic(ownerClass: String, method: String, params: Array<Any>?): Unit {
       callLog.appendLine("STATIC $ownerClass $method ${params?.joinToString(",")}")
+    }
+
+    @JvmStatic
+    fun checkMemberAccess(ownerClass: String, method: String): Unit {
+      callLog.appendLine("CHECK_MEMBER_ACCESS $ownerClass $method")
     }
   }
 

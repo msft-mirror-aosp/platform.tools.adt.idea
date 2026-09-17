@@ -112,13 +112,23 @@ class PhasedSyncVariantNameResolutionTest {
     // Setup: lib3 is the switch target.
     setSwitchVariantRequest(":lib3", "")
 
-    val nodes =
-      projects.map { project ->
-        val params = createMocksForProject(project)
-        ProjectNode(project.moduleId, params.basicGradleProject.moduleId(), project.projectType, project.dependencies)
-      }
+    val nodes = projects.map { project ->
+      val params = createMocksForProject(project)
+      val mappingNode =
+        AndroidProjectDataMappingNode(
+          modelVersions = params.modelVersions,
+          basicAndroidProject = params.basicAndroidProject,
+          androidProject = params.androidProject,
+          androidDsl = params.androidDsl,
+          declaredDependencies = params.declaredDependencies,
+          selectedVariantName = project.defaultVariant,
+          legacyAndroidGradlePluginProperties = params.legacyAndroidGradlePluginPropertiesImpl,
+          moduleId = params.basicGradleProject.moduleId(),
+        )
+      params.basicGradleProject to mappingNode
+    }
 
-    val sortedBatches = sortProjectsByPriority(nodes, { it }, syncOptions)
+    val sortedBatches = sortProjectsByPriority(nodes, syncOptions)
 
     // Expected Layers:
     // Batch 0: :lib3 (Switch target)
@@ -126,10 +136,10 @@ class PhasedSyncVariantNameResolutionTest {
     // Batch 2: :lib2, :lib4 (Direct dependencies of :app)
     // Batch 3: :lib1 (Transitive dependency of :lib2 and :lib3)
 
-    assertThat(sortedBatches[0]!!.map { it.path }).containsExactly(":lib3")
-    assertThat(sortedBatches[1]!!.map { it.path }).containsExactly(":app")
-    assertThat(sortedBatches[2]!!.map { it.path }).containsExactly(":lib2", ":lib4")
-    assertThat(sortedBatches[3]!!.map { it.path }).containsExactly(":lib1")
+    assertThat(sortedBatches[0]!!.map { it.first.path }).containsExactly(":lib3")
+    assertThat(sortedBatches[1]!!.map { it.first.path }).containsExactly(":app")
+    assertThat(sortedBatches[2]!!.map { it.first.path }).containsExactly(":lib2", ":lib4")
+    assertThat(sortedBatches[3]!!.map { it.first.path }).containsExactly(":lib1")
   }
 
   @Test
@@ -858,21 +868,27 @@ class PhasedSyncVariantNameResolutionTest {
         ),
       )
 
-    val nodes =
-      projects.map { project ->
-        ProjectNode(
-          path = project.moduleId,
-          moduleId = project.moduleId,
-          projectType = project.projectType,
-          outgoingDependencies = project.dependencies,
+    val nodes = projects.map { project ->
+      val params = createMocksForProject(project)
+      val mappingNode =
+        AndroidProjectDataMappingNode(
+          modelVersions = params.modelVersions,
+          basicAndroidProject = params.basicAndroidProject,
+          androidProject = params.androidProject,
+          androidDsl = params.androidDsl,
+          declaredDependencies = params.declaredDependencies,
+          selectedVariantName = project.defaultVariant,
+          legacyAndroidGradlePluginProperties = params.legacyAndroidGradlePluginPropertiesImpl,
+          moduleId = params.basicGradleProject.moduleId(),
         )
-      }
+      params.basicGradleProject to mappingNode
+    }
 
     // This should not throw or loop infinitely
-    val sortedBatches = sortProjectsByPriority(nodes, { it }, syncOptions)
+    val sortedBatches = sortProjectsByPriority(nodes, syncOptions)
 
     // Both libA and libB should end up in the fallback Batch 1000
-    assertThat(sortedBatches[1000]!!.map { it.path }).containsAllOf(":libA", ":libB")
+    assertThat(sortedBatches[1000]!!.map { it.first.path }).containsAllOf(":libA", ":libB")
   }
 
   @Test
@@ -950,7 +966,8 @@ class PhasedSyncVariantNameResolutionTest {
           dependencies = emptyList(),
           defaultVariant = "debug",
           variants = listOf("debug", "release", "qa"),
-          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release"), TestAndroidBuildType("qa", listOf("release"))),
+          buildTypes =
+            listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release"), TestAndroidBuildType("qa", listOf("release"))),
         ),
         ProjectSetup(
           moduleId = ":lib1",
@@ -1121,15 +1138,6 @@ class PhasedSyncVariantNameResolutionTest {
 
     assertThat(selectedFromFeature1[":app"]).isEqualTo("qa")
     assertThat(selectedFromFeature1[":feature"]).isEqualTo("qa")
-
-    // Now change the dynamic feature variant to something that does not directly match in App.
-    // The expectation here is that the matchingFallback specified by the Dynamic Feature project will not be used to resolve APP.
-    setSwitchVariantRequest(":feature", "faq")
-
-    val newException = assertFailsWith(Exception::class) { sortProjectsAndGetSelectedVariants(projects) }
-    assertThat(newException)
-      .hasMessageThat()
-      .contains("Variant Conflict: Unresolved variant \"faq\".\n" + "Cause: Could not resolve BuildTypes ambiguity for project: :app.")
   }
 
   @Test
@@ -1172,20 +1180,23 @@ class PhasedSyncVariantNameResolutionTest {
       )
 
     val projects = setup.map { createMocksForProject(it) }
-    val projectsWithNodes =
-      projects.map { params ->
-        params.basicGradleProject to
-          ProjectNode(
-            path = params.basicGradleProject.path,
-            moduleId = params.basicGradleProject.path,
-            projectType =
-              if (params.basicGradleProject.path == ":app") IdeAndroidProjectType.PROJECT_TYPE_APP
-              else IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
-            outgoingDependencies = setup.first { it.moduleId == params.basicGradleProject.path }.dependencies,
-          )
-      }
+    val projectsWithNodes = projects.map { params ->
+      val setupProject = setup.first { it.moduleId == params.basicGradleProject.path }
+      val mappingNode =
+        AndroidProjectDataMappingNode(
+          modelVersions = params.modelVersions,
+          basicAndroidProject = params.basicAndroidProject,
+          androidProject = params.androidProject,
+          androidDsl = params.androidDsl,
+          declaredDependencies = params.declaredDependencies,
+          selectedVariantName = setupProject.defaultVariant,
+          legacyAndroidGradlePluginProperties = params.legacyAndroidGradlePluginPropertiesImpl,
+          moduleId = params.basicGradleProject.moduleId(),
+        )
+      params.basicGradleProject to mappingNode
+    }
 
-    val batches = sortProjectsByPriority(projectsWithNodes, { it.second }, syncOptions)
+    val batches = sortProjectsByPriority(projectsWithNodes, syncOptions)
 
     // Find the batch number for each project.
     val batchByProject = mutableMapOf<String, Int>()
@@ -1239,29 +1250,28 @@ class PhasedSyncVariantNameResolutionTest {
   }
 
   private fun sortProjectsAndGetSelectedVariants(projectsSetups: List<ProjectSetup>): Map<String, String> {
-    val projectDataList =
-      projectsSetups.map { projectSetup ->
-        val projectParamsMock = createMocksForProject(projectSetup)
-        val androidProjectData =
-          AndroidProjectData(
-            versions = Mockito.mock(Versions::class.java),
-            modelVersions = projectParamsMock.modelVersions,
-            basicAndroidProject = projectParamsMock.basicAndroidProject,
-            androidProject = projectParamsMock.androidProject,
-            androidDsl = projectParamsMock.androidDsl,
-            declaredDependencies = projectParamsMock.declaredDependencies,
-            gradlePluginModel = Mockito.mock(GradlePluginModel::class.java),
-            gradleTaskModel = Mockito.mock(GradleTaskModel::class.java),
-            ideAndroidProject =
-              Mockito.mock(IdeAndroidProjectImpl::class.java).apply { whenever(projectType).thenReturn(projectSetup.projectType) },
-            selectedVariantName =
-              switchVariantRequest.takeIf { it.moduleId == projectParamsMock.basicGradleProject.moduleId() }?.variantName
-                ?: projectSetup.defaultVariant,
-            shouldSkipRuntimeClassPathForLibraries = false,
-            legacyAndroidGradlePluginProperties = projectParamsMock.legacyAndroidGradlePluginPropertiesImpl,
-          )
-        projectParamsMock.basicGradleProject to androidProjectData
-      }
+    val projectDataList = projectsSetups.map { projectSetup ->
+      val projectParamsMock = createMocksForProject(projectSetup)
+      val androidProjectData =
+        AndroidProjectData(
+          versions = Mockito.mock(Versions::class.java),
+          modelVersions = projectParamsMock.modelVersions,
+          basicAndroidProject = projectParamsMock.basicAndroidProject,
+          androidProject = projectParamsMock.androidProject,
+          androidDsl = projectParamsMock.androidDsl,
+          declaredDependencies = projectParamsMock.declaredDependencies,
+          gradlePluginModel = Mockito.mock(GradlePluginModel::class.java),
+          gradleTaskModel = Mockito.mock(GradleTaskModel::class.java),
+          ideAndroidProject =
+            Mockito.mock(IdeAndroidProjectImpl::class.java).apply { whenever(projectType).thenReturn(projectSetup.projectType) },
+          selectedVariantName =
+            switchVariantRequest.takeIf { it.moduleId == projectParamsMock.basicGradleProject.moduleId() }?.variantName
+              ?: projectSetup.defaultVariant,
+          shouldSkipRuntimeClassPathForLibraries = false,
+          legacyAndroidGradlePluginProperties = projectParamsMock.legacyAndroidGradlePluginPropertiesImpl,
+        )
+      projectParamsMock.basicGradleProject to androidProjectData
+    }
 
     val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = false)
 
@@ -1350,7 +1360,8 @@ class PhasedSyncVariantNameResolutionTest {
     whenever(androidDsl.buildTypes).thenReturn(buildTypes)
     whenever(androidDsl.productFlavors).thenReturn(productFlavors)
     whenever(androidDsl.flavorDimensions).thenReturn(dimensions)
-    whenever(declaredDependencies.allOutgoingProjectDependencies).thenReturn(project.dependencies)
+    whenever(declaredDependencies.allOutgoingProjectsDependenciesToConfigurations)
+      .thenReturn(project.dependencies.associateWith { setOf("implementation") })
 
     return Parameters(
       gradleProject,

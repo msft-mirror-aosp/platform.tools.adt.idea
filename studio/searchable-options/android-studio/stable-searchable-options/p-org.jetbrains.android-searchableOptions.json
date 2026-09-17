@@ -930,10 +930,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Environment",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Environment Visibility",
       "path": "ActionManager"
     },
@@ -1254,6 +1250,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "No Environment (Black Background)",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Obtain a screenshot from the device",
       "path": "ActionManager"
     },
@@ -1334,10 +1334,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Pitch Dark",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Power",
       "path": "ActionManager"
     },
@@ -1411,6 +1407,10 @@
     },
     {
       "hit": "Project Structure\u2026",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Project View Popup Menu",
       "path": "ActionManager"
     },
     {
@@ -1559,6 +1559,10 @@
     },
     {
       "hit": "Select Device",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Select Environment",
       "path": "ActionManager"
     },
     {

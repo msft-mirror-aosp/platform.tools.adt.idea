@@ -38,6 +38,7 @@ import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.replaceService
@@ -50,6 +51,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 
 class ForegroundProcessDetectionInitializerTest {
   private val timer = FakeTimer()
@@ -250,6 +252,24 @@ class ForegroundProcessDetectionInitializerTest {
       assertThat(startTrackingStreamIds).containsExactly(fakeStream1.streamId, fakeStream2.streamId)
       assertThat(stopTrackingStreamIds).containsExactly(fakeStream1.streamId)
     }
+  }
+
+  @Test
+  fun testTransportClientIsShutDownOnDispose() {
+    val mockTransportClient = mock<TransportClient>()
+    val disposable = Disposer.newDisposable()
+    ForegroundProcessDetectionInitializer.initialize(
+      parentDisposable = disposable,
+      project = projectRule.project,
+      processModel = processModel,
+      deviceModel = deviceModel,
+      coroutineScope = disposableRule.disposable.createCoroutineScope(),
+      streamManager = streamManagerRule.streamManager,
+      transportClient = mockTransportClient,
+      metrics = ForegroundProcessDetectionMetrics,
+    )
+    Disposer.dispose(disposable)
+    verify(mockTransportClient).shutdown()
   }
 
   private fun Common.Stream.createFakeProcess(name: String? = null, pid: Int = 0): ProcessDescriptor {

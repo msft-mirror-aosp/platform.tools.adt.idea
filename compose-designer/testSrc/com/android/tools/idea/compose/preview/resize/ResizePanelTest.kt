@@ -215,6 +215,15 @@ class ResizePanelTest {
   }
 
   @Test
+  fun `selecting device from dropdown sets needsInflation`() = runInEdtAndGet {
+    setupAndShowPanel()
+    sceneManager.sceneRenderConfiguration.needsInflation.set(false)
+    assertFalse(sceneManager.sceneRenderConfiguration.needsInflation.get())
+    setDifferentDevice()
+    assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
+  }
+
+  @Test
   fun `reverting to original sets needsInflation`() = runInEdtAndGet {
     setupAndShowPanel()
     setDifferentDevice()

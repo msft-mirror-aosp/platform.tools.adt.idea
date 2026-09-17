@@ -41,9 +41,9 @@ class DeepLinkLaunchTest {
     state.DEEP_LINK = "com.example"
     val device = mock<IDevice>()
 
-    val app = createApp(device, "com.example.myapplication", emptyList(), ArrayList(setOf("com.example.myapplication.MainActivity")))
+    val app = createApp("com.example.myapplication", emptyList(), ArrayList(setOf("com.example.myapplication.MainActivity")))
     val stats = RunStats(projectRule.project)
-    state.launch(device, app, { emptyList() }, false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, null, app, { emptyList() }, false, "", EmptyTestConsoleView(), stats)
 
     stats.success()
     assertTaskPresentedInStats(usageTrackerRule.usages, "LAUNCH_DEEP_LINK")

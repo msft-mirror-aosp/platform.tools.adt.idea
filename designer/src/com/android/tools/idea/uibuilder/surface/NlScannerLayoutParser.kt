@@ -21,10 +21,13 @@ import com.android.SdkConstants
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.uibuilder.model.viewInfo
 import com.android.tools.idea.validator.ValidatorData
+import com.android.tools.rendering.security.DenyAllRenderSandbox
+import com.android.tools.rendering.security.RenderSandbox
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.BiMap
 import com.google.common.collect.HashBiMap
 import com.google.common.collect.ImmutableBiMap
+import com.intellij.openapi.diagnostic.thisLogger
 
 /** Parse the layout for Accessibility Testing Framework. Builds the metadata required to link a11y lints to the source [NlComponent]. */
 class NlScannerLayoutParser {
@@ -45,6 +48,16 @@ class NlScannerLayoutParser {
 
   /** It's needed to build bridge from [Long] to [View] to [NlComponent]. */
   fun buildViewToComponentMap(component: NlComponent) {
+    try {
+      RenderSandbox.runWithSandbox(DenyAllRenderSandbox) {
+        buildViewToComponentMapInternal(component)
+      }
+    } catch (t: Throwable) {
+      thisLogger().warn("Failed to build view to component map", t)
+    }
+  }
+
+  private fun buildViewToComponentMapInternal(component: NlComponent) {
     val root = tryFindingRootWithViewInfo(component)
     componentCount++
     val className = root.tagName
@@ -58,10 +71,14 @@ class NlScannerLayoutParser {
     root.viewInfo?.let { viewInfo ->
       val viewObj = viewInfo.viewObject
       if (viewObj is View) {
-        viewToComponent[viewObj] = component
+        try {
+          viewToComponent[viewObj] = component
 
-        if (View.NO_ID != viewObj.id) {
-          idToComponent[viewObj.id] = component
+          if (View.NO_ID != viewObj.id) {
+            idToComponent[viewObj.id] = component
+          }
+        } catch (t: Throwable) {
+          thisLogger().warn("Failed to map view to component", t)
         }
       }
 
@@ -70,7 +87,7 @@ class NlScannerLayoutParser {
         nodeIdToComponent[accessibilityNodeInfo.sourceNodeId] = component
       }
 
-      component.children.forEach { buildViewToComponentMap(it) }
+      component.children.forEach { buildViewToComponentMapInternal(it) }
     }
   }
 
@@ -101,12 +118,19 @@ class NlScannerLayoutParser {
   ): NlComponent? {
     val view = map[result.mSrcId]
     if (view != null) {
-      var toReturn = viewToComponent[view]
-      if (toReturn == null) {
-        // attempt to see if we can do id matching.
-        toReturn = idToComponent[view.id]
+      try {
+        return RenderSandbox.computeWithSandbox(DenyAllRenderSandbox) {
+          var toReturn = viewToComponent[view]
+          if (toReturn == null) {
+            // attempt to see if we can do id matching.
+            toReturn = idToComponent[view.id]
+          }
+          toReturn
+        }
+      } catch (t: Throwable) {
+        thisLogger().warn("Failed to find component for view", t)
+        return null
       }
-      return toReturn
     } else {
       val node = nodeInfoMap[result.mSrcId] ?: return null
       return nodeIdToComponent[node.sourceNodeId]

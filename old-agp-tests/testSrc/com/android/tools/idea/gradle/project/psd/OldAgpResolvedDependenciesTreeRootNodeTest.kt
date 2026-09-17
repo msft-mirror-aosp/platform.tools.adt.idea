@@ -35,13 +35,52 @@ import org.junit.Assert.assertThat
  * information is not available in the mode. There should be no change in the resulting dependency tree apart from where the information is
  * being obtained from.
  */
-@OldAgpTest(agpVersions = ["7.1.0"], gradleVersions = ["7.2"])
+@OldAgpTest(agpVersions = ["7.2.0"], gradleVersions = ["7.3.3"])
 @RunsInEdt
 class OldAgpResolvedDependenciesTreeRootNodeTest : ResolvedDependenciesTreeRootNodeTest() {
   override fun testTreeStructure() {
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_71)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_72)
     projectRule.psTestWithProject(preparedProject) { project.runOldAgpTestAndroidTreeStructure() }
+  }
+
+  override fun testTreeStructure_javaModule() {
+    // TODO: I think we only need this overrides because AGP 7.2 has two entries in AgpVersionSoftwareEnvironmentDecriptor (for
+    //  model V1 and V2).  Once that's gone, try zapping this again.  (The android module result differs at least in that built-in
+    //  Kotlin for current means that the kotlin stdlib is included.
+    val preparedProject =
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_72)
+    projectRule.psTestWithProject(preparedProject) {
+      val module = project.findModuleByGradlePath(":jModuleZ")!!
+      val node = ResolvedDependenciesTreeRootNode(module, PsUISettings())
+
+      // Note: indentation matters!
+      val expectedProjectStructure =
+        """
+        jModuleZ
+            projectjModuleZ
+                jModuleK
+                    jModuleL
+                        lib3:1.0 (com.example.jlib)
+                            lib4:1.0 (com.example.jlib)
+                    lib3:0.9.1 (com.example.jlib)
+                        lib4:0.9.1 (com.example.jlib)
+                    lib4:0.9.1 (com.example.jlib)
+                    jarlib-1.1.jar (libs)
+                jModuleL
+                    lib3:1.0 (com.example.jlib)
+                        lib4:1.0 (com.example.jlib)
+                nestedZ
+                    lib4:0.6 (com.example.jlib)
+                lib4:0.6 (com.example.jlib)
+                libsam1-1.1.jar (../lib)
+                libsam2-1.1.jar (../lib)
+        """
+          .trimIndent()
+      val treeStructure = node.testStructure { !it.name.startsWith("appcompat-v7") }
+      // Note: If fails see a nice diff by clicking <Click to see difference> in the IDEA output window.
+      assertThat(treeStructure.toString(), equalTo(expectedProjectStructure))
+    }
   }
 
   private fun PsProjectImpl.runOldAgpTestAndroidTreeStructure() {

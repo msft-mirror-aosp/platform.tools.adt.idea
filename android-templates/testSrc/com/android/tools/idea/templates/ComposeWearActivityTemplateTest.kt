@@ -40,7 +40,7 @@ class ComposeWearActivityTemplateTest {
   @Test
   fun testApi35() {
     val template = TemplateResolver.getTemplateByName("Empty Wear App")!!
-    val renderer = ProjectDiffer(template, goldenDirName = "testNewComposeWearActivity")
+    val renderer = ProjectDiffer(template, goldenDirName = "testNewComposeWearActivityApi35")
 
     renderer.renderProject(projectRule.project, getPinnedAgpVersion(), withKotlin(), withApi(35))
   }

@@ -91,8 +91,7 @@ public class SdkComponentSourceTest {
   public void setUp() throws Exception {
     try (MockedStatic<PermanentInstallationID> theMock = Mockito.mockStatic(PermanentInstallationID.class)) {
       theMock.when(PermanentInstallationID::get).thenReturn("foo");
-      //noinspection ResultOfMethodCallIgnored
-      UpdateChecker.INSTANCE.toString();
+      String unused = UpdateChecker.INSTANCE.toString();
     }
 
     InMemoryFileSystems.recordExistingFile(sdkRoot.resolve("noRemote/package.xml"), getLocalRepoXml("noRemote", new Revision(1)));

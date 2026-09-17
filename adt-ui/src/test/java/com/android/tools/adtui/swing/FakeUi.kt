@@ -22,6 +22,7 @@ import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeMouse.Button.LEFT
 import com.android.tools.adtui.swing.FakeMouse.Button.RIGHT
 import com.android.tools.adtui.util.scaled
+import com.android.tools.adtui.util.toWxH
 import com.android.tools.idea.concurrency.executeAsync
 import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
@@ -86,6 +87,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
         // Replace TestWindowManager with a more lenient version.
         application.registerServiceInstance(WindowManager::class.java, FakeUiWindowManager())
       }
+      checkNotNull(parentDisposable) { "FakeUi parent disposable is required when createFakeWindow=true" }
       createFakeWindow<Window>(rootPane, parentDisposable)
     }
     glassPane = (getTopLevelComponent(root) as? JRootPane)?.glassPane as? IdeGlassPaneImpl
@@ -142,8 +144,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   private fun dump(component: Component, prefix: String) {
     System.err.println(
-      "$prefix${component.javaClass.simpleName}@(${component.x}, ${component.y}) " +
-        "[${component.size.getWidth()}x${component.size.getHeight()}]" +
+      "$prefix${component.javaClass.simpleName}@(${component.x}, ${component.y}) [${component.size.toWxH()}]" +
         if (isMouseTarget(component)) " {*}" else "" + if (component is JLabel) " text: " + component.text else ""
     )
     if (component is Container) {
@@ -260,7 +261,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   /**
    * This method exists only for historical reasons. Tests should use [updateToolbarsIfNecessary] instead. If a test fails after replacing
-   * [updateToolbars] with [updateToolbarsIfNecessary], most likely there a missing `ActivityTracker.getInstance().inc()` call in the
+   * [updateToolbars] with [updateToolbarsIfNecessary], most likely there is a missing `ActivityTracker.getInstance().inc()` call in the
    * production code.
    */
   @Deprecated("Use updateToolbarsIfNecessary", replaceWith = ReplaceWith("updateToolbarsIfNecessary"))

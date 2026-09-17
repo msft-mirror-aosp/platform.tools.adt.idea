@@ -21,6 +21,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.newvfs.ManagingFS
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.codeStyle.CodeStyleManager
@@ -30,20 +31,21 @@ import java.io.File
 object ReformatUtil {
   @JvmStatic
   fun reformatRearrangeAndSave(project: Project, files: Iterable<File>) {
-    WriteCommandAction.runWriteCommandAction(project) {
-      files
-        .asSequence()
-        .filter { it.isFile }
-        // We skip gradlew files, which IntelliJ recognizes as shell files and offers to install the bash IDE plugin. These files are
-        // created with the right formatting by the templates and we don't want the balloon on startup.
-        .filterNot { it.name.startsWith("gradlew") }
-        .forEach {
-          val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(it)!!
-          virtualFile.refresh(false, false)
+    files
+      .asSequence()
+      .filter { it.isFile }
+      // We skip gradlew files, which IntelliJ recognizes as shell files and offers to install the bash IDE plugin. These files are
+      // created with the right formatting by the templates and we don't want the balloon on startup.
+      .filterNot { it.name.startsWith("gradlew") }
+      .forEach {
+        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(it) ?: return@forEach
+        virtualFile.refresh(false, false)
+        WriteCommandAction.runWriteCommandAction(project) {
           reformatAndRearrange(project, virtualFile, keepDocumentLocked = true)
           FileDocumentManager.getInstance().run { getDocument(virtualFile)?.let { document -> saveDocument(document) } }
         }
-    }
+      }
+    ManagingFS.getInstance().flushPendingUpdates()
   }
 
   /**

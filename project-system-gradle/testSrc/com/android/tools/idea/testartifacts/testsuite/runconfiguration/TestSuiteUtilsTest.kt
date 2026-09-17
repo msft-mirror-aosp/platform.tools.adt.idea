@@ -31,6 +31,7 @@ import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.createMainSourceProviderForDefaultTestProjectStructure
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.util.toIoFile
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.Module
@@ -39,6 +40,7 @@ import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.resolveFromRootOrRelative
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.RunsInEdt
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -47,109 +49,119 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class TestSuiteUtilsTest {
 
   @get:Rule
   val rule =
     AndroidProjectRule.withAndroidModels(
-      JavaModuleModelBuilder.rootModuleBuilder,
-      AndroidModuleModelBuilder(
-        gradlePath = ":app",
-        selectedBuildVariant = "debug",
-        projectBuilder =
-          AndroidProjectBuilder(
-            projectType = { IdeAndroidProjectType.PROJECT_TYPE_APP },
-            namespace = { "com.example.app" },
-            mainSourceProvider = { createMainSourceProviderForDefaultTestProjectStructure() },
-            testSuites = {
-              listOf(
-                IdeTestSuiteImpl(
-                  name = "myTestSuite",
-                  sources = listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuite"))),
-                  junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
-                  targetedVariants = listOf("debug"),
-                ),
-                IdeTestSuiteImpl(
-                  name = "myTestSuiteWithoutTargets",
-                  sources = listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuiteWithoutTargets"))),
-                  junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
-                  targetedVariants = listOf("debug"),
-                ),
-                IdeTestSuiteImpl(
-                  name = "myTestSuiteWithNonTargetedVariant",
-                  sources =
-                    listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuiteWithNonTargetedVariant"))),
-                  junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
-                  targetedVariants = listOf("release"),
-                ),
-                IdeTestSuiteImpl(
-                  name = "myTestSuiteWithMultipleTargets",
-                  sources =
-                    listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuiteWithMultipleTargets"))),
-                  junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
-                  targetedVariants = listOf("debug"),
-                ),
-              )
-            },
-            testSuiteArtifactsStub = { variant ->
-              when (variant) {
-                "debug" ->
-                  listOf(
-                    IdeTestSuiteVariantTargetImpl(
-                      suiteName = "myTestSuite",
-                      targetedVariantName = "debug",
-                      targets =
-                        listOf(
-                          IdeTestSuiteTargetImpl(
-                            targetName = "connectedTest",
-                            testTaskName = "myTestSuiteTaskName",
-                            targetedDevices = emptyList(),
-                          )
-                        ),
-                    ),
-                    IdeTestSuiteVariantTargetImpl(
-                      suiteName = "myTestSuiteWithoutTargets",
-                      targetedVariantName = "debug",
-                      targets = emptyList(),
-                    ),
-                    IdeTestSuiteVariantTargetImpl(
-                      suiteName = "myTestSuiteWithMultipleTargets",
-                      targetedVariantName = "debug",
-                      targets =
-                        listOf(
-                          IdeTestSuiteTargetImpl(targetName = "target1", testTaskName = "myTarget1TaskName", targetedDevices = emptyList()),
-                          IdeTestSuiteTargetImpl(targetName = "target2", testTaskName = "myTarget2TaskName", targetedDevices = emptyList()),
-                          IdeTestSuiteTargetImpl(
-                            targetName = "target3",
-                            testTaskName = "myTarget3TaskName",
-                            targetedDevices = listOf("deviceId"),
+        JavaModuleModelBuilder.rootModuleBuilder,
+        AndroidModuleModelBuilder(
+          gradlePath = ":app",
+          selectedBuildVariant = "debug",
+          projectBuilder =
+            AndroidProjectBuilder(
+              projectType = { IdeAndroidProjectType.PROJECT_TYPE_APP },
+              namespace = { "com.example.app" },
+              mainSourceProvider = { createMainSourceProviderForDefaultTestProjectStructure() },
+              testSuites = {
+                listOf(
+                  IdeTestSuiteImpl(
+                    name = "myTestSuite",
+                    sources = listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuite"))),
+                    junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
+                    targetedVariants = listOf("debug"),
+                  ),
+                  IdeTestSuiteImpl(
+                    name = "myTestSuiteWithoutTargets",
+                    sources = listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuiteWithoutTargets"))),
+                    junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
+                    targetedVariants = listOf("debug"),
+                  ),
+                  IdeTestSuiteImpl(
+                    name = "myTestSuiteWithNonTargetedVariant",
+                    sources =
+                      listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuiteWithNonTargetedVariant"))),
+                    junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
+                    targetedVariants = listOf("release"),
+                  ),
+                  IdeTestSuiteImpl(
+                    name = "myTestSuiteWithMultipleTargets",
+                    sources =
+                      listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuiteWithMultipleTargets"))),
+                    junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
+                    targetedVariants = listOf("debug"),
+                  ),
+                )
+              },
+              testSuiteArtifactsStub = { variant ->
+                when (variant) {
+                  "debug" ->
+                    listOf(
+                      IdeTestSuiteVariantTargetImpl(
+                        suiteName = "myTestSuite",
+                        targetedVariantName = "debug",
+                        targets =
+                          listOf(
+                            IdeTestSuiteTargetImpl(
+                              targetName = "connectedTest",
+                              testTaskName = "myTestSuiteTaskName",
+                              targetedDevices = emptyList(),
+                            )
                           ),
-                        ),
-                    ),
-                  )
-
-                "release" ->
-                  listOf(
-                    IdeTestSuiteVariantTargetImpl(
-                      suiteName = "myTestSuiteWithNonTargetedVariant",
-                      targetedVariantName = "release",
-                      targets =
-                        listOf(
-                          IdeTestSuiteTargetImpl(
-                            targetName = "connectedTest",
-                            testTaskName = "myTestSuiteWithNonTargetedVariantTaskName",
-                            targetedDevices = emptyList(),
-                          )
-                        ),
+                      ),
+                      IdeTestSuiteVariantTargetImpl(
+                        suiteName = "myTestSuiteWithoutTargets",
+                        targetedVariantName = "debug",
+                        targets = emptyList(),
+                      ),
+                      IdeTestSuiteVariantTargetImpl(
+                        suiteName = "myTestSuiteWithMultipleTargets",
+                        targetedVariantName = "debug",
+                        targets =
+                          listOf(
+                            IdeTestSuiteTargetImpl(
+                              targetName = "target1",
+                              testTaskName = "myTarget1TaskName",
+                              targetedDevices = emptyList(),
+                            ),
+                            IdeTestSuiteTargetImpl(
+                              targetName = "target2",
+                              testTaskName = "myTarget2TaskName",
+                              targetedDevices = emptyList(),
+                            ),
+                            IdeTestSuiteTargetImpl(
+                              targetName = "target3",
+                              testTaskName = "myTarget3TaskName",
+                              targetedDevices = listOf("deviceId"),
+                            ),
+                          ),
+                      ),
                     )
-                  )
 
-                else -> emptyList()
-              }
-            },
-          ),
-      ),
-    )
+                  "release" ->
+                    listOf(
+                      IdeTestSuiteVariantTargetImpl(
+                        suiteName = "myTestSuiteWithNonTargetedVariant",
+                        targetedVariantName = "release",
+                        targets =
+                          listOf(
+                            IdeTestSuiteTargetImpl(
+                              targetName = "connectedTest",
+                              testTaskName = "myTestSuiteWithNonTargetedVariantTaskName",
+                              targetedDevices = emptyList(),
+                            )
+                          ),
+                      )
+                    )
+
+                  else -> emptyList()
+                }
+              },
+            ),
+        ),
+      )
+      .onEdt()
 
   lateinit var testFile: PsiFile
   lateinit var testSuiteModule: Module

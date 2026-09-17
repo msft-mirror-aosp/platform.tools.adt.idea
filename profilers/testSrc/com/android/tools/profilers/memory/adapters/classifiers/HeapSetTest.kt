@@ -18,6 +18,7 @@ package com.android.tools.profilers.memory.adapters.classifiers
 import com.android.tools.adtui.model.filter.Filter
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject
 import com.android.tools.profilers.memory.adapters.FakeInstanceObject
+import com.android.tools.profilers.memory.adapters.instancefilters.CaptureObjectInstanceFilter
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -32,6 +33,36 @@ class HeapSetTest {
     h.addDeltaInstanceObject(inst2)
     h.removeAddedDeltaInstanceObject(inst1)
     assertThat(h.totalRemainingSize).isEqualTo(inst2.shallowSize)
+  }
+
+  @Test
+  fun `classSetCount sums only unfiltered classes`() {
+    val capture = FakeCaptureObject.Builder().build()
+    val cl1 = capture.registerClass(1, 0, "Class1", -1)
+    val cl2 = capture.registerClass(2, 0, "Class2", -1)
+    // Add two instances for Class1 and one for Class2.
+    val inst1 = FakeInstanceObject.Builder(cl1).build()
+    val inst1Dup = FakeInstanceObject.Builder(cl1).build()
+    val inst2 = FakeInstanceObject.Builder(cl2).build()
+    val h = HeapSet(capture, "Fake", 0)
+    h.addDeltaInstanceObject(inst1)
+    h.addDeltaInstanceObject(inst1Dup)
+    h.addDeltaInstanceObject(inst2)
+
+    // Should count distinct classes (2), not the total instance count (3).
+    assertThat(h.classSetCount).isEqualTo(2)
+
+    // Filter down to only Class1; only 1 class should match.
+    h.applyFilter(Filter("Class1"), true)
+    assertThat(h.classSetCount).isEqualTo(1)
+
+    // Filter with no matches should return 0 classes.
+    h.applyFilter(Filter("NonExistent"), true)
+    assertThat(h.classSetCount).isEqualTo(0)
+
+    // Resetting to empty filter should restore the full class count.
+    h.applyFilter(Filter.EMPTY_FILTER, true)
+    assertThat(h.classSetCount).isEqualTo(2)
   }
 
   @Test
@@ -62,5 +93,23 @@ class HeapSetTest {
 
     h.applyFilter(Filter("Class1"), true)
     assertThat(h.totalRetainedSize).isEqualTo(10)
+  }
+
+  @Test
+  fun `getInstanceFilterMatchCount sums only unfiltered children`() {
+    val capture = FakeCaptureObject.Builder().build()
+    val cl1 = capture.registerClass(1, 0, "Class1", -1)
+    val cl2 = capture.registerClass(2, 0, "Class2", -1)
+    val inst1 = FakeInstanceObject.Builder(cl1).build()
+    val inst2 = FakeInstanceObject.Builder(cl2).build()
+    val h = HeapSet(capture, "Fake", 0)
+    h.addDeltaInstanceObject(inst1)
+    h.addDeltaInstanceObject(inst2)
+
+    val filter = CaptureObjectInstanceFilter("Test", "Test", null, null) { true }
+    assertThat(h.getInstanceFilterMatchCount(filter)).isEqualTo(2)
+
+    h.applyFilter(Filter("Class1"), true)
+    assertThat(h.getInstanceFilterMatchCount(filter)).isEqualTo(1)
   }
 }

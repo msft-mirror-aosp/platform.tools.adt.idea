@@ -36,7 +36,6 @@ import com.android.tools.idea.streaming.core.PanelState
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.SplitNode
 import com.android.tools.idea.streaming.core.SplitPanel
-import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.ZoomablePanel
 import com.android.tools.idea.streaming.core.computeBestLayout
 import com.android.tools.idea.streaming.core.htmlColored
@@ -72,6 +71,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.util.xmlb.annotations.Property
 import icons.StudioIcons
 import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap
+import java.awt.Dimension
 import java.awt.EventQueue
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -82,10 +82,9 @@ import org.jetbrains.annotations.TestOnly
 
 /** Provides view of one AVD in the Running Devices tool window. */
 internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val project: Project, val emulator: EmulatorController) :
-  AbstractDevicePanel<EmulatorDisplayPanel>(StreamingDeviceId.ofEmulator(emulator.emulatorId), EMULATOR_MAIN_TOOLBAR_ID),
-  ConnectionStateListener {
+  AbstractDevicePanel<EmulatorDisplayPanel>(emulator.deviceId, EMULATOR_MAIN_TOOLBAR_ID), ConnectionStateListener {
 
-  val log = Logger.getInstance("EmulatorToolWindowPanel: ${emulator.emulatorId.avdName}")
+  private val log = Logger.getInstance("EmulatorToolWindowPanel: ${emulator.emulatorId.avdName}")
 
   private val displayConfigurator = DisplayConfigurator(project)
   private var contentDisposable: Disposable? = null
@@ -144,7 +143,7 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
     Disposer.register(disposableParent, this)
 
     if (deviceType == DeviceType.AI_GLASSES) {
-      addTopPanel(GlassesInputPanel(emulator, this))
+      addTopPanel(EmulatorGlassesInputPanel(emulator, this))
     }
 
     // Start Adb ready service for context menu actions.
@@ -185,11 +184,11 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
     primaryDisplayView = emulatorView
     installFileDropHandler(this, id.serialNumber, emulatorView, project)
     val coroutineScope = disposable.createCoroutineScope()
-    val notificationReceiver = NotificationReceiver.forEmulator(emulator)
-    coroutineScope.launch(Dispatchers.EDT) { notificationReceiver.currentPosture.collect { ActivityTracker.getInstance().inc() } }
-    coroutineScope.launch(Dispatchers.EDT) { notificationReceiver.currentPosture.collect { ActivityTracker.getInstance().inc() } }
+    val notificationTracker = NotificationTracker.forEmulator(emulator)
+    coroutineScope.launch(Dispatchers.EDT) { notificationTracker.currentPosture.collect { ActivityTracker.getInstance().inc() } }
+    coroutineScope.launch(Dispatchers.EDT) { notificationTracker.currentPosture.collect { ActivityTracker.getInstance().inc() } }
     coroutineScope.launch(Dispatchers.EDT) {
-      notificationReceiver.displayConfigurations.collect { displayConfigs ->
+      notificationTracker.displayConfigurations.collect { displayConfigs ->
         if (displayConfigs != null) {
           displayConfigurator.displayConfigurationReceived(displayConfigs)
         }
@@ -545,4 +544,4 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
   }
 }
 
-private fun DisplayConfiguration.toDisplayDescriptor(): DisplayDescriptor = DisplayDescriptor(display, width, height)
+private fun DisplayConfiguration.toDisplayDescriptor(): DisplayDescriptor = DisplayDescriptor(display, Dimension(width, height))

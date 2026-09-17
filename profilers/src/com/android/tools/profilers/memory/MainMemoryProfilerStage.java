@@ -56,10 +56,12 @@ import com.android.tools.profilers.tasks.analytics.TaskStartFailedMetadata;
 import com.android.tools.profilers.tasks.analytics.TaskStopFailedMetadata;
 import com.android.tools.profilers.transporteventutils.TransportListenerTracker;
 import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
@@ -599,7 +601,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
    * @return the actual status, which may be different from the input
    */
   public void trackAllocations(boolean enable) {
-    TransportEventListener listener = MemoryProfiler.trackAllocations(getStudioProfilers(), getSessionData(), enable, true, status -> {
+    MemoryProfiler.trackAllocations(getStudioProfilers(), getSessionData(), enable, true, status -> {
       switch (status.getStatus()) {
         case SUCCESS:
           setTrackingAllocations(enable);
@@ -632,11 +634,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         getTimeline().setStreaming(true);
         getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_MEMORY_CAPTURE, true);
       }
-    });
-
-    if (listener != null) {
-      myListenerTracker.trackListener(listener, !enable);
-    }
+    }, listener -> myListenerTracker.trackListener(listener, !enable));
   }
 
   public long getAllocationTrackingElapsedTimeNs() {
@@ -706,18 +704,12 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       }
 
       if (isTaskBasedUxEnabled && isUnifiedEditorEnabled) {
+        if (!getCaptureSelection().selectCaptureEntry(durationData.getCaptureEntry())) {
+          return;
+        }
         profilers.getIdeServices().getPoolExecutor().execute(() -> {
           CaptureObject capture = durationData.getCaptureEntry().getCaptureObject();
-          String extension = "alloc";
-          if (capture instanceof HeapDumpCaptureObject) {
-            extension = "hprof";
-          }
-          else if (capture instanceof NativeAllocationSampleCaptureObject) {
-            extension = "heapprofd";
-          }
-          else if (capture instanceof LegacyAllocationCaptureObject) {
-            extension = "alloc";
-          }
+          String extension = capture.getExportableExtension() != null ? capture.getExportableExtension() : "alloc";
           String traceFileName = "capture_" + capture.getStartTimeNs() + "." + extension;
           File file = ProfilerCaptureFileUtils.getCaptureFile(traceFileName);
           if (!file.exists()) {
@@ -728,27 +720,33 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
             Transport.FileResponse response = profilers.getClient().getTransportClient().getFile(request);
             if (!response.getFilePath().isEmpty()) {
               File originalFile = new File(response.getFilePath());
-              file = ProfilerCaptureFileUtils.renameToTargetFile(originalFile, traceFileName);
+              File processedFile = originalFile;
+              if (capture instanceof NativeAllocationSampleCaptureObject &&
+                  profilers.getIdeServices().getFeatureConfig().isDeobfuscationForNativeAllocationsEnabled()) {
+                processedFile = deobfuscateNativeAllocationTrace(originalFile);
+              }
+              file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, traceFileName);
               if (file == null) {
-                file = originalFile;
+                file = processedFile;
+              }
+              // Delete the original raw trace when traceconv generated a distinct bundled file,
+              // to avoid leaking stale files in the temp directory.
+              if (!FileUtil.filesEqual(processedFile, originalFile)) {
+                FileUtil.delete(originalFile);
               }
             }
           }
           ProfilerCaptureFileUtils.writeMetadataToFile(profilers, profilers.getSession(), file);
           final File traceFile = file;
           profilers.getIdeServices().getMainExecutor().execute(() -> {
-            if (traceFile.exists()) {
+            if (traceFile != null && traceFile.exists() && traceFile.length() > 0) {
               profilers.getIdeServices().openTraceFile(traceFile);
-              if (capture instanceof HeapDumpCaptureObject) {
-                profilers.getIdeServices().closeTaskTab(ProfilerTaskType.HEAP_DUMP);
-              }
-              else if (capture instanceof NativeAllocationSampleCaptureObject) {
-                profilers.getIdeServices().closeTaskTab(ProfilerTaskType.NATIVE_ALLOCATIONS);
-              }
-              else if (capture instanceof LegacyAllocationCaptureObject) {
-                profilers.getIdeServices().closeTaskTab(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
-              }
             }
+            else {
+              profilers.getIdeServices().showNotification(MemoryProfilerNotifications.getCaptureFailure(capture));
+              cleanupFailedCapture();
+            }
+            closeMemoryTaskTab(capture);
           });
         });
       }
@@ -759,6 +757,29 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     else {
       doSelectCaptureDuration(durationData, joiner);
     }
+  }
+
+  private void closeMemoryTaskTab(@NotNull CaptureObject capture) {
+    if (capture instanceof HeapDumpCaptureObject) {
+      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.HEAP_DUMP);
+    }
+    else if (capture instanceof NativeAllocationSampleCaptureObject) {
+      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.NATIVE_ALLOCATIONS);
+    }
+    else if (capture instanceof LegacyAllocationCaptureObject) {
+      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
+    }
+  }
+
+  @NotNull
+  private File deobfuscateNativeAllocationTrace(@NotNull File originalFile) {
+    List<String> symbolDirs = getStudioProfilers().getIdeServices().getNativeSymbolsDirectories();
+    Map<String, String> proguardMaps = getStudioProfilers().getIdeServices().getProguardMappings();
+    if (symbolDirs.isEmpty() && proguardMaps.isEmpty()) {
+      return originalFile;
+    }
+    File bundledFile = getStudioProfilers().getIdeServices().symbolizeAndDeobfuscateTrace(originalFile, symbolDirs, proguardMaps);
+    return bundledFile != null ? bundledFile : originalFile;
   }
 
   private void updateAllocationTrackingStatus() {

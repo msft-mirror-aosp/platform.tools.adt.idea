@@ -42,6 +42,9 @@ abstract class AiInsightToolkit(private val project: Project, private val insigh
   /** Returns true if there is a model selected in the contributor. */
   fun isModelAvailable(): Boolean = AiInsightContributor.getFirstAvailableContributor()?.isModelAvailable() ?: false
 
+  /** Delegates handling model assignment to the insight contributor */
+  fun handleModelAssignment() = AiInsightContributor.getFirstAvailableContributor()?.handleModelAssignment(project)
+
   /**
    * Validates whether an AI insight can be fetched for the [fetchInsight] call.
    *

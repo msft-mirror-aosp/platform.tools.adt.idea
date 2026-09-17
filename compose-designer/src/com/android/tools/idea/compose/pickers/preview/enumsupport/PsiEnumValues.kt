@@ -70,18 +70,17 @@ internal open class UiModeWithNightMaskEnumValue(
 
   override val fqFallbackValue: String =
     if (isNight) {
-      "${SdkConstants.CLASS_CONFIGURATION}.$nightModeString or ${SdkConstants.CLASS_CONFIGURATION}.$uiModeType}"
+      "${SdkConstants.CLASS_CONFIGURATION}.$nightModeString or ${SdkConstants.CLASS_CONFIGURATION}.$uiModeType"
     } else {
       "${SdkConstants.CLASS_CONFIGURATION}.$uiModeType"
     }
 
   override val fqClass: String = SdkConstants.CLASS_CONFIGURATION
 
-  override val resolvedValue: String =
-    kotlin.run {
-      val nightModeValue = if (isNight) 0x20 else 0x10
-      return@run ((uiModeTypeResolvedValue.toIntOrNull() ?: 0) or nightModeValue).toString()
-    }
+  override val resolvedValue: String = kotlin.run {
+    val nightModeValue = if (isNight) 0x20 else 0x10
+    return@run ((uiModeTypeResolvedValue.toIntOrNull() ?: 0) or nightModeValue).toString()
+  }
 
   override val trackableValue: PreviewPickerValue = if (isNight) PreviewPickerValue.UI_MODE_NIGHT else PreviewPickerValue.UI_MODE_NOT_NIGHT
 
@@ -127,9 +126,6 @@ internal open class UiModeWithNightMaskEnumValue(
 /** A set of pre-defined [EnumValue]s for the `uiMode` parameter. Should only be used for reference/comparison or as fallback. */
 internal enum class UiMode(override val classConstant: String, override val display: String, override val resolvedValue: String) :
   ClassConstantEnumValue {
-  // TODO(154503873): Add proper support to display values as enums, currently, selecting one of
-  // these values, will leave the dropwdown
-  //  empty, even though the value is properly set in the code.
   UNDEFINED("UI_MODE_TYPE_UNDEFINED", "Undefined", "0"),
   NORMAL("UI_MODE_TYPE_NORMAL", "Normal", "1"),
   DESK("UI_MODE_TYPE_DESK", "Desk", "2"),
@@ -169,21 +165,21 @@ internal enum class Device(override val classConstant: String, override val disp
 
 /** Pre-defined Font scaling options, based from the options available in the Layout Validation tool window. */
 internal enum class FontScale(scaleValue: Float, visibleName: String) : EnumValue {
-  DEFAULT(1f, "Default (100%)"),
-  P85(0.85f, "85%"),
-  P115(1.15f, "115%"),
-  P130(1.30f, "130%"),
-  P150(1.50f, "150%"),
-  P180(1.80f, "180%"),
-  P200(2f, "200%");
+  DEFAULT(1f, "100% (1.0f)"),
+  P85(0.85f, "85% (0.85f)"),
+  P115(1.15f, "115% (1.15f)"),
+  P130(1.30f, "130% (1.3f)"),
+  P150(1.50f, "150% (1.5f)"),
+  P180(1.80f, "180% (1.8f)"),
+  P200(2f, "200% (2.0f)");
 
-  override val value: String = "%.2f".format(scaleValue)
+  override val value: String = "${scaleValue}f"
 
   override val display: String = visibleName
 
   override fun select(property: PropertyItem, newEnumValue: NewEnumValueCallback, onSelected: () -> Unit): Boolean {
-    newEnumValue.newValue("${this.value}f")
-    property.value = "${this.value}f"
+    newEnumValue.newValue(this.value)
+    property.value = this.value
     onSelected()
     return true
   }

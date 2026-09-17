@@ -16,6 +16,8 @@
 package com.android.tools.rendering.classloading
 
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.ConstantDynamic
+import org.objectweb.asm.Handle
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -23,6 +25,7 @@ import org.objectweb.asm.commons.GeneratorAdapter
 
 private const val VIRTUAL_METHOD_DESCRIPTOR = "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;)V"
 private const val STATIC_METHOD_DESCRIPTOR = "(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;)V"
+private const val MEMBER_CHECK_METHOD_DESCRIPTOR = "(Ljava/lang/String;Ljava/lang/String;)V"
 
 @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN") // This is intentionally the Object type
 private val OBJECT_TYPE = Type.getType(Object::class.java)
@@ -36,7 +39,13 @@ private class MethodInterceptorVisitor(
   private val staticTrampolineMethodType: org.objectweb.asm.commons.Method,
   private val virtualTrampolineClassType: Type,
   private val virtualTrampolineMethodType: org.objectweb.asm.commons.Method,
-  private val shouldIntercept: (String, String) -> Boolean,
+  private val memberCheckTrampolineClassType: Type?,
+  private val memberCheckTrampolineMethodType: org.objectweb.asm.commons.Method?,
+  private val fieldCheckTrampolineClassType: Type?,
+  private val fieldCheckTrampolineMethodType: org.objectweb.asm.commons.Method?,
+  private val shouldIntercept: (Int, String, String) -> Boolean,
+  private val shouldInterceptField: ((String, String) -> Boolean)?,
+  private val shouldInterceptMember: ((String, String) -> Boolean)?,
 ) : GeneratorAdapter(Opcodes.ASM9, delegate, access, name, descriptor) {
   /**
    * Creates a local variable with an `Object[]` that will store all the parameters to the call. The arguments are expected to be currently
@@ -143,27 +152,7 @@ private class MethodInterceptorVisitor(
       }
       Opcodes.INVOKEVIRTUAL,
       Opcodes.INVOKEINTERFACE -> {
-        val arguments = Type.getArgumentTypes(interceptedMethodDescriptor)
-        if (arguments.isEmpty()) {
-          dup() // Push "this" again
-          push(interceptedOwner)
-          push(interceptedMethodName)
-          push(null as String?)
-          invokeStatic(virtualTrampolineClassType, virtualTrampolineMethodType)
-        } else {
-          // stack: [this, <arguments>]
-          buildObjectsArrayFromOperandStackForCall(arguments)
-          // stack: [this, ar]
-          dup2() // stack: [this, ar, this, ar]
-          push(interceptedOwner) // stack: [this, ar, this, ar, owner]
-          swap() // stack: [this, ar, this, owner, ar]
-          push(interceptedMethodName) // stack: [this, ar, this, owner, ar, methodName]
-          swap() // stack: [this, ar, this, owner, methodName, ar]
-          invokeStatic(virtualTrampolineClassType, virtualTrampolineMethodType)
-          // stack: [this, ar]
-          pushObjectsFromArrayIntoOperandStack(arguments)
-          // stack: [this, <arguments>]
-        }
+        interceptVirtualOrSpecial(interceptedOwner, interceptedMethodName, interceptedMethodDescriptor)
       }
       Opcodes.INVOKESPECIAL -> {
         if (interceptedMethodName == "<init>") {
@@ -190,7 +179,7 @@ private class MethodInterceptorVisitor(
             // stack: []
           }
         } else {
-          // Do nothing
+          interceptVirtualOrSpecial(interceptedOwner, interceptedMethodName, interceptedMethodDescriptor)
         }
       }
       else -> {
@@ -198,8 +187,120 @@ private class MethodInterceptorVisitor(
       }
     }
 
+  private fun interceptVirtualOrSpecial(
+    interceptedOwner: String,
+    interceptedMethodName: String,
+    interceptedMethodDescriptor: String,
+  ) {
+    val arguments = Type.getArgumentTypes(interceptedMethodDescriptor)
+    if (arguments.isEmpty()) {
+      dup() // Push "this" again
+      push(interceptedOwner)
+      push(interceptedMethodName)
+      push(null as String?)
+      invokeStatic(virtualTrampolineClassType, virtualTrampolineMethodType)
+    } else {
+      // stack: [this, <arguments>]
+      buildObjectsArrayFromOperandStackForCall(arguments)
+      // stack: [this, ar]
+      dup2() // stack: [this, ar, this, ar]
+      push(interceptedOwner) // stack: [this, ar, this, ar, owner]
+      swap() // stack: [this, ar, this, owner, ar]
+      push(interceptedMethodName) // stack: [this, ar, this, owner, ar, methodName]
+      swap() // stack: [this, ar, this, owner, methodName, ar]
+      invokeStatic(virtualTrampolineClassType, virtualTrampolineMethodType)
+      // stack: [this, ar]
+      pushObjectsFromArrayIntoOperandStack(arguments)
+      // stack: [this, <arguments>]
+    }
+  }
+
+  private fun extractHandles(arg: Any): List<Handle> =
+    when (arg) {
+      is Handle -> listOf(arg)
+      is ConstantDynamic -> {
+        val result = mutableListOf<Handle>()
+        result.add(arg.bootstrapMethod)
+        for (i in 0 until arg.bootstrapMethodArgumentCount) {
+          result.addAll(extractHandles(arg.getBootstrapMethodArgument(i)))
+        }
+        result
+      }
+      else -> emptyList()
+    }
+
+  private fun isFieldHandle(handle: Handle): Boolean =
+    when (handle.tag) {
+      Opcodes.H_GETFIELD,
+      Opcodes.H_GETSTATIC,
+      Opcodes.H_PUTFIELD,
+      Opcodes.H_PUTSTATIC -> true
+      else -> false
+    }
+
+  private fun handleMatches(handle: Handle): Boolean {
+    if (isFieldHandle(handle)) {
+      return shouldInterceptField?.invoke(handle.owner, handle.name) ?: false
+    }
+    if (shouldInterceptMember?.invoke(handle.owner, handle.name) == true) {
+      return true
+    }
+    val opcode =
+      when (handle.tag) {
+        Opcodes.H_INVOKESTATIC -> Opcodes.INVOKESTATIC
+        Opcodes.H_NEWINVOKESPECIAL -> Opcodes.INVOKESPECIAL
+        else -> Opcodes.INVOKEVIRTUAL
+      }
+    return shouldIntercept(opcode, handle.owner, handle.name)
+  }
+
+  private fun emitHandleChecks(handles: List<Handle>) {
+    for (handle in handles) {
+      if (handleMatches(handle)) {
+        push(handle.owner)
+        push(handle.name)
+        if (isFieldHandle(handle) && fieldCheckTrampolineClassType != null && fieldCheckTrampolineMethodType != null) {
+          invokeStatic(fieldCheckTrampolineClassType, fieldCheckTrampolineMethodType)
+        } else if (memberCheckTrampolineClassType != null && memberCheckTrampolineMethodType != null) {
+          invokeStatic(memberCheckTrampolineClassType, memberCheckTrampolineMethodType)
+        }
+      }
+    }
+  }
+
+  override fun visitInvokeDynamicInsn(
+    name: String,
+    descriptor: String,
+    bootstrapMethodHandle: Handle,
+    vararg bootstrapMethodArguments: Any,
+  ) {
+    if (
+      (memberCheckTrampolineClassType != null && memberCheckTrampolineMethodType != null) ||
+        (fieldCheckTrampolineClassType != null && fieldCheckTrampolineMethodType != null)
+    ) {
+      val handles = mutableListOf<Handle>()
+      handles.add(bootstrapMethodHandle)
+      for (arg in bootstrapMethodArguments) {
+        handles.addAll(extractHandles(arg))
+      }
+      emitHandleChecks(handles)
+    }
+    super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, *bootstrapMethodArguments)
+  }
+
+  override fun visitLdcInsn(value: Any) {
+    if (
+      (memberCheckTrampolineClassType != null && memberCheckTrampolineMethodType != null) ||
+        (fieldCheckTrampolineClassType != null && fieldCheckTrampolineMethodType != null)
+    ) {
+      val handles = extractHandles(value)
+      emitHandleChecks(handles)
+    }
+    super.visitLdcInsn(value)
+  }
+
   override fun visitMethodInsn(opcode: Int, owner: String, name: String, descriptor: String, isInterface: Boolean) {
-    if (shouldIntercept(owner, name)) interceptMethodCall(opcode, owner, name, descriptor, isInterface)
+    if (shouldIntercept(opcode, owner, name)) interceptMethodCall(opcode, owner, name, descriptor, isInterface)
     if (mv != null) mv.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
   }
 }
@@ -234,9 +335,54 @@ class MethodInterceptTransform(
   delegate: ClassVisitor,
   virtualTrampolineMethod: java.lang.reflect.Method,
   staticTrampolineMethod: java.lang.reflect.Method,
+  memberCheckTrampolineMethod: java.lang.reflect.Method? = null,
+  fieldCheckTrampolineMethod: java.lang.reflect.Method? = null,
   private val shouldInstrument: (String, String) -> Boolean = { _, _ -> true },
+  private val shouldInterceptWithOpcode: ((Int, String, String) -> Boolean)? = null,
+  private val shouldInterceptField: ((String, String) -> Boolean)? = null,
+  private val shouldInterceptMember: ((String, String) -> Boolean)? = null,
   private val shouldIntercept: (String, String) -> Boolean = { _, _ -> false },
 ) : ClassVisitor(Opcodes.ASM9, delegate), ClassVisitorUniqueIdProvider {
+  constructor(
+    delegate: ClassVisitor,
+    virtualTrampolineMethod: java.lang.reflect.Method,
+    staticTrampolineMethod: java.lang.reflect.Method,
+    memberCheckTrampolineMethod: java.lang.reflect.Method? = null,
+    shouldInstrument: (String, String) -> Boolean = { _, _ -> true },
+    shouldInterceptWithOpcode: ((Int, String, String) -> Boolean)? = null,
+    shouldIntercept: (String, String) -> Boolean = { _, _ -> false },
+  ) : this(
+    delegate,
+    virtualTrampolineMethod,
+    staticTrampolineMethod,
+    memberCheckTrampolineMethod,
+    null,
+    shouldInstrument,
+    shouldInterceptWithOpcode,
+    null,
+    null,
+    shouldIntercept,
+  )
+
+  constructor(
+    delegate: ClassVisitor,
+    virtualTrampolineMethod: java.lang.reflect.Method,
+    staticTrampolineMethod: java.lang.reflect.Method,
+    shouldInstrument: (String, String) -> Boolean = { _, _ -> true },
+    shouldIntercept: (String, String) -> Boolean = { _, _ -> false },
+  ) : this(
+    delegate,
+    virtualTrampolineMethod,
+    staticTrampolineMethod,
+    null,
+    null,
+    shouldInstrument,
+    null,
+    null,
+    null,
+    shouldIntercept,
+  )
+
   override val uniqueId: String = "${MethodInterceptTransform::className}"
   private var className = ""
 
@@ -244,6 +390,10 @@ class MethodInterceptTransform(
   private val virtualTrampolineMethodType = virtualTrampolineMethod.toMethodType()
   private val staticTrampolineClassType = Type.getType(staticTrampolineMethod.declaringClass)
   private val staticTrampolineMethodType = staticTrampolineMethod.toMethodType()
+  private val memberCheckTrampolineClassType = memberCheckTrampolineMethod?.let { Type.getType(it.declaringClass) }
+  private val memberCheckTrampolineMethodType = memberCheckTrampolineMethod?.toMethodType()
+  private val fieldCheckTrampolineClassType = fieldCheckTrampolineMethod?.let { Type.getType(it.declaringClass) }
+  private val fieldCheckTrampolineMethodType = fieldCheckTrampolineMethod?.toMethodType()
 
   init {
     assert(virtualTrampolineMethodType.descriptor == VIRTUAL_METHOD_DESCRIPTOR) {
@@ -251,6 +401,16 @@ class MethodInterceptTransform(
     }
     assert(staticTrampolineMethodType.descriptor == STATIC_METHOD_DESCRIPTOR) {
       "Static trampoline method descriptor must be $STATIC_METHOD_DESCRIPTOR but was ${staticTrampolineMethodType.descriptor}"
+    }
+    if (memberCheckTrampolineMethodType != null) {
+      assert(memberCheckTrampolineMethodType.descriptor == MEMBER_CHECK_METHOD_DESCRIPTOR) {
+        "Member check trampoline method descriptor must be $MEMBER_CHECK_METHOD_DESCRIPTOR but was ${memberCheckTrampolineMethodType.descriptor}"
+      }
+    }
+    if (fieldCheckTrampolineMethodType != null) {
+      assert(fieldCheckTrampolineMethodType.descriptor == MEMBER_CHECK_METHOD_DESCRIPTOR) {
+        "Field check trampoline method descriptor must be $MEMBER_CHECK_METHOD_DESCRIPTOR but was ${fieldCheckTrampolineMethodType.descriptor}"
+      }
     }
   }
 
@@ -269,6 +429,9 @@ class MethodInterceptTransform(
     val delegate = super.visitMethod(access, name, descriptor, signature, exceptions)
     if (!shouldInstrument(className, name ?: "")) return delegate
 
+    val interceptPredicate: (Int, String, String) -> Boolean =
+      shouldInterceptWithOpcode ?: { _, owner, methodName -> shouldIntercept(owner, methodName) }
+
     return MethodInterceptorVisitor(
       delegate,
       access,
@@ -278,7 +441,13 @@ class MethodInterceptTransform(
       staticTrampolineMethodType,
       virtualTrampolineClassType,
       virtualTrampolineMethodType,
-      shouldIntercept,
+      memberCheckTrampolineClassType,
+      memberCheckTrampolineMethodType,
+      fieldCheckTrampolineClassType,
+      fieldCheckTrampolineMethodType,
+      interceptPredicate,
+      shouldInterceptField,
+      shouldInterceptMember,
     )
   }
 }

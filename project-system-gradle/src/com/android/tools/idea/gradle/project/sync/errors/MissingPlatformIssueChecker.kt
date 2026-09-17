@@ -40,13 +40,13 @@ import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.util.io.toCanonicalPath
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 import java.util.regex.Pattern
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
-import org.jetbrains.plugins.gradle.service.execution.GradleExecutionErrorHandler
 
 private val MISSING_PLATFORM_PATTERNS =
   listOf(
@@ -62,14 +62,21 @@ private val EXTERNAL_SYSTEM_EXCEPTION_PATTERN =
 class MissingPlatformIssueChecker : GradleIssueChecker {
 
   override fun check(issueData: GradleIssueData): BuildIssue? {
-    val rootCause = GradleExecutionErrorHandler.getRootCauseAndLocation(issueData.error).first
+    val rootCause = issueData.failure.rootCause
+    val rootCauseClassName = rootCause.className ?: return null
     val message = rootCause.message ?: return null
     val missingPlatform = getMissingPlatform(message)
-    if (message.isBlank() || missingPlatform == null || (rootCause !is IllegalStateException) && (rootCause !is ExternalSystemException))
+    if (
+      message.isBlank() ||
+        missingPlatform == null ||
+        !rootCauseClassName.contains(IllegalStateException::class.java.name) &&
+          !rootCauseClassName.contains(ExternalSystemException::class.java.name)
+    )
       return null
 
     // Log metrics.
-    SyncFailureUsageReporter.getInstance().collectFailure(issueData.projectPath, GradleSyncFailure.MISSING_ANDROID_PLATFORM)
+    SyncFailureUsageReporter.getInstance()
+      .collectFailure(issueData.projectRoot.toCanonicalPath(), GradleSyncFailure.MISSING_ANDROID_PLATFORM)
     val buildIssueComposer = BuildIssueComposer(message)
 
     // Get quickFixes.
@@ -94,7 +101,7 @@ class MissingPlatformIssueChecker : GradleIssueChecker {
       // TODO(151215857) : Update here when it's possible to use the Gradle projectPath in sync services.
       for (project in ProjectManager.getInstance().openProjects) {
         for (module in ModuleManager.getInstance(project).modules) {
-          if (AndroidProjectRootUtil.getModuleDirPath(module) == issueData.projectPath) {
+          if (AndroidProjectRootUtil.getModuleDirPath(module) == issueData.projectRoot.toCanonicalPath()) {
             projectFound = true
             // If module is found, fetch Android facet.
             val facets = FacetManager.getInstance(module).getFacetsByType(AndroidFacet.ID)

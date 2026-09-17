@@ -350,7 +350,7 @@ class UserInputHandlersTest {
   private fun EditorEx.getUserInputAreas(): List<String> {
     val markupModel = DocumentMarkupModel.forDocument(document, projectRule.project, false)
     return markupModel.allHighlighters
-      .filter { it.textAttributesKey == USER_INPUT.attributesKey }
+      .filter { it.isValid && it.textAttributesKey == USER_INPUT.attributesKey }
       .map { document.text.substring(it.startOffset, it.endOffset) }
   }
 }

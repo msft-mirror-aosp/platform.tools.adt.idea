@@ -216,7 +216,6 @@ class ViewLayoutInspectorClient(
             Event.SpecializedCase.LAYOUT_EVENT -> handleLayoutEvent(event.layoutEvent)
             Event.SpecializedCase.PROPERTIES_EVENT -> handlePropertiesEvent(event.propertiesEvent)
             Event.SpecializedCase.PROGRESS_EVENT -> handleProgressEvent(event.progressEvent)
-            Event.SpecializedCase.FOLD_EVENT -> handleFoldEvent(event.foldEvent)
             else -> {
               val handled = onDeviceRendering.handleEvent(event)
               if (!handled) {
@@ -228,21 +227,15 @@ class ViewLayoutInspectorClient(
     }
   }
 
-  private fun handleFoldEvent(foldEvent: LayoutInspectorViewProtocol.FoldEvent) {
-    model.foldInfo = foldEvent.convert()
-    if (model.foldInfo != null) {
-      stats.foldInfoReceived()
-    }
-  }
-
   private fun handleProgressEvent(progressEvent: LayoutInspectorViewProtocol.ProgressEvent) =
     launchMonitor.updateProgress(progressEvent.checkpoint.toAttachErrorState())
 
   suspend fun startFetching(continuous: Boolean) {
     isFetchingContinuously = continuous
     launchMonitor.updateProgress(AttachErrorState.START_REQUEST_SENT)
-    val response =
-      messenger.sendCommand { startFetchCommand = StartFetchCommand.newBuilder().apply { this.continuous = continuous }.build() }
+    val response = messenger.sendCommand {
+      startFetchCommand = StartFetchCommand.newBuilder().apply { this.continuous = continuous }.build()
+    }
     if (!response.startFetchResponse.error.isNullOrEmpty()) {
       throw ConnectionFailedException(response.startFetchResponse.error, response.startFetchResponse.code.toAttachErrorCode())
     }
@@ -277,16 +270,15 @@ class ViewLayoutInspectorClient(
   }
 
   suspend fun getProperties(rootViewId: Long, viewId: Long): GetPropertiesResponse {
-    val response =
-      messenger.sendCommand {
-        getPropertiesCommand =
-          GetPropertiesCommand.newBuilder()
-            .apply {
-              this.rootViewId = rootViewId
-              this.viewId = viewId
-            }
-            .build()
-      }
+    val response = messenger.sendCommand {
+      getPropertiesCommand =
+        GetPropertiesCommand.newBuilder()
+          .apply {
+            this.rootViewId = rootViewId
+            this.viewId = viewId
+          }
+          .build()
+    }
     return response.getPropertiesResponse
   }
 
@@ -418,12 +410,13 @@ class ViewLayoutInspectorClient(
     val data = HashMap(lastData)
     val properties = HashMap(lastProperties)
     val composeParameters = HashMap(lastComposeParameters)
-    saveAppInspectorSnapshot(path, data, properties, composeParameters, snapshotMetadata, model.foldInfo)
+    saveAppInspectorSnapshot(path, data, properties, composeParameters, snapshotMetadata)
   }
 
   private suspend fun fetchAndSaveSnapshot(path: Path, snapshotMetadata: SnapshotMetadata, screenshotType: Screenshot.Type) {
-    val response =
-      messenger.sendCommand { captureSnapshotCommand = CaptureSnapshotCommand.newBuilder().setScreenshotType(screenshotType).build() }
+    val response = messenger.sendCommand {
+      captureSnapshotCommand = CaptureSnapshotCommand.newBuilder().setScreenshotType(screenshotType).build()
+    }
 
     val snapshotResponse = response.captureSnapshotResponse ?: throw Exception("Failed to receive snapshot from agent.")
 
@@ -437,7 +430,7 @@ class ViewLayoutInspectorClient(
         emptyMap()
       }
 
-    saveAppInspectorSnapshot(path, snapshotResponse, composeInfo, snapshotMetadata, model.foldInfo)
+    saveAppInspectorSnapshot(path, snapshotResponse, composeInfo, snapshotMetadata)
   }
 }
 

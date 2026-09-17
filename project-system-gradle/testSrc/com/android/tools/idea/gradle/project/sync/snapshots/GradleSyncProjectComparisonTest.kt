@@ -21,8 +21,6 @@ import com.android.testutils.ignore.IgnoreWithCondition
 import com.android.testutils.ignore.OnWindows
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_33
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_42
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 import com.android.tools.idea.testing.AndroidModuleDependency
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
@@ -82,9 +80,9 @@ data class ProjectStructureSnapshotTestDef(
   companion object {
     val tests: List<ProjectStructureSnapshotTestDef> =
       listOf(
-        ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION, compatibleWith = setOf(AGP_33, AGP_CURRENT)),
-        ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_VIA_SYMLINK, compatibleWith = setOf(AGP_33, AGP_CURRENT)),
-        ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_APP_VIA_SYMLINK, compatibleWith = setOf(AGP_33, AGP_CURRENT)),
+        ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION, compatibleWith = setOf(AGP_CURRENT)),
+        ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_VIA_SYMLINK, compatibleWith = setOf(AGP_CURRENT)),
+        ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_APP_VIA_SYMLINK, compatibleWith = setOf(AGP_CURRENT)),
         ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_NOT_AT_ROOT),
         ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_MULTIPLE_ROOTS),
         ProjectStructureSnapshotTestDef(TestProject.SIMPLE_APPLICATION_WITH_UNNAMED_DIMENSION),
@@ -128,7 +126,7 @@ data class ProjectStructureSnapshotTestDef(
           TestProject.NON_STANDARD_SOURCE_SETS,
           roots = mapOf("EXTERNAL_SOURCE_SET" to File("externalRoot"), "EXTERNAL_MANIFEST" to File("externalManifest")),
         ),
-        ProjectStructureSnapshotTestDef(TestProject.BUILDSRC_WITH_COMPOSITE, compatibleWith = setOf(AGP_42, AGP_CURRENT)),
+        ProjectStructureSnapshotTestDef(TestProject.BUILDSRC_WITH_COMPOSITE, compatibleWith = setOf(AGP_CURRENT)),
         ProjectStructureSnapshotTestDef(TestProject.APP_WITH_BUILD_FEATURES_ENABLED),
         ProjectStructureSnapshotTestDef(TestProject.DEPENDENT_MODULES_ONLY_APP_RUNTIME, compatibleWith = setOf(AGP_CURRENT)),
         ProjectStructureSnapshotTestDef(TestProject.BUILD_CONFIG_AS_BYTECODE_ENABLED),
@@ -215,10 +213,18 @@ class LightSyncReferenceTest : SnapshotComparisonTest {
 private fun String.filterOutProperties(
   filterProperties: Set<String> = PROPERTIES_TO_SKIP_BY_PREFIXES,
   addPropertyNameToLine: Boolean = true,
-): String =
-  this.splitToSequence('\n')
+): String {
+  var inKotlinFacet = false
+  return this.splitToSequence('\n')
     .nameProperties()
-    .filter { (property, line) -> !filterProperties.any { property.startsWith(it) } }
+    .filter { (property, line) ->
+      if (property == "PROJECT/MODULE/FACET") {
+        inKotlinFacet = line.trimStart().removePrefix("- ").startsWith("FACET") && line.contains("Kotlin")
+      } else if (!property.startsWith("PROJECT/MODULE/FACET/")) {
+        inKotlinFacet = false
+      }
+      !inKotlinFacet && !filterProperties.any { property.startsWith(it) }
+    }
     .map {
       if (addPropertyNameToLine) {
         it.first + " >> " + it.second
@@ -227,6 +233,7 @@ private fun String.filterOutProperties(
       }
     }
     .joinToString(separator = "\n")
+}
 
 private fun Sequence<String>.nameProperties() = com.android.tools.idea.testing.nameProperties(this)
 

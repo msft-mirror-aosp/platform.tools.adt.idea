@@ -26,7 +26,6 @@ import com.android.tools.profilers.cpu.FakeTracePreProcessor;
 import com.android.tools.profilers.cpu.TracePreProcessor;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfigurationLegacy;
-import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfigurationLegacy;
 import com.android.tools.profilers.cpu.config.AtraceConfiguration;
 import com.android.tools.profilers.cpu.config.PerfettoNativeAllocationsConfiguration;
@@ -37,16 +36,19 @@ import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.cpu.config.UnspecifiedConfiguration;
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorService;
 import com.android.tools.profilers.stacktrace.NativeFrameSymbolizer;
-import com.android.tools.profilers.taskbased.home.TaskHomeTabModel;
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -110,6 +112,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    * Whether long trace files should be parsed.
    */
   private boolean myShouldProceedYesNoDialog = false;
+  private boolean myShouldProceedOkCancelDialog = true;
 
   /**
    * Whether the task-based UX should be visible.
@@ -128,6 +131,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private boolean myLeakCanaryEnabled = true;
 
+  private boolean myUseTraceProcessorForHprofEnabled = false;
+
   private boolean mySystemTraceInEditorEnabled = false;
 
   private boolean myMethodTraceInEditorEnabled = false;
@@ -139,6 +144,12 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myNativeAllocationsTraceInEditorEnabled = true;
 
   private boolean myJavaKotlinAllocationsLegacyTraceInEditorEnabled = true;
+
+  private boolean myLiveTelemetryInEditorEnabled = true;
+
+  private boolean myJavaKotlinAllocationsInEditorEnabled = true;
+
+  private boolean myLeakCanaryInEditorEnabled = true;
 
   public void setSystemTraceInEditorEnabled(boolean enabled) {
     mySystemTraceInEditorEnabled = enabled;
@@ -164,7 +175,24 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myJavaKotlinAllocationsLegacyTraceInEditorEnabled = enabled;
   }
 
+  public void setLiveTelemetryInEditorEnabled(boolean enabled) {
+    myLiveTelemetryInEditorEnabled = enabled;
+  }
+
+  public void setJavaKotlinAllocationsInEditorEnabled(boolean enabled) {
+    myJavaKotlinAllocationsInEditorEnabled = enabled;
+  }
+
+  public void setLeakCanaryInEditorEnabled(boolean enabled) {
+    myLeakCanaryInEditorEnabled = enabled;
+  }
+
   private boolean myProfilerHomeTabV2Enabled = true;
+  private boolean myDeobfuscationForNativeAllocationsEnabled = false;
+
+  public void enableDeobfuscationForNativeAllocations(boolean enabled) {
+    myDeobfuscationForNativeAllocationsEnabled = enabled;
+  }
 
   private String myLastLeakRawTrace;
   private Leak myLastLeak;
@@ -296,6 +324,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isDeobfuscationForNativeAllocationsEnabled() {
+        return myDeobfuscationForNativeAllocationsEnabled;
+      }
+
+      @Override
       public boolean isTestingModeEnabled() {
         return false;
       }
@@ -323,6 +356,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isLeakCanaryStudioBotEnabled() {
         return myLeakCanaryStudioBotEnabled;
+      }
+
+      @Override
+      public boolean isUseTraceProcessorForHprofEnabled() {
+        return myUseTraceProcessorForHprofEnabled;
       }
 
       @Override
@@ -354,6 +392,21 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       public boolean isJavaKotlinAllocationsLegacyTraceInEditorEnabled() {
         return myJavaKotlinAllocationsLegacyTraceInEditorEnabled;
       }
+
+      @Override
+      public boolean isLiveTelemetryInEditorEnabled() {
+        return myLiveTelemetryInEditorEnabled;
+      }
+
+      @Override
+      public boolean isJavaKotlinAllocationsInEditorEnabled() {
+        return myJavaKotlinAllocationsInEditorEnabled;
+      }
+
+      @Override
+      public boolean isLeakCanaryInEditorEnabled() {
+        return myLeakCanaryInEditorEnabled;
+      }
     };
   }
 
@@ -376,7 +429,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public boolean openOkCancelDialog(@NotNull String message, @NotNull String title, @NotNull Consumer<Boolean> okCallback) {
-    return true;
+    return myShouldProceedOkCancelDialog;
   }
 
 
@@ -423,10 +476,14 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myShouldProceedYesNoDialog = shouldProceedYesNoDialog;
   }
 
+  public void setShouldProceedOkCancelDialog(boolean shouldProceedOkCancelDialog) {
+    myShouldProceedOkCancelDialog = shouldProceedOkCancelDialog;
+  }
+
   public void addCustomProfilingConfiguration(String name, TraceType type) {
     ProfilingConfiguration config;
     if (type == TraceType.ART) {
-      config = ArtSampledConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
+      config = ArtInstrumentedConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
     }
     else if (type == TraceType.SIMPLEPERF) {
       config = new SimpleperfConfiguration(name);
@@ -504,10 +561,27 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myNotification = notification;
   }
 
+  private List<String> myNativeSymbolsDirectories = Collections.singletonList(FAKE_SYMBOL_DIR);
+  private Map<String, String> myProguardMappings = Collections.emptyMap();
+
   @NotNull
   @Override
   public List<String> getNativeSymbolsDirectories() {
-    return Collections.singletonList(FAKE_SYMBOL_DIR);
+    return myNativeSymbolsDirectories;
+  }
+
+  public void setNativeSymbolsDirectories(@NotNull List<String> dirs) {
+    myNativeSymbolsDirectories = dirs;
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getProguardMappings() {
+    return myProguardMappings;
+  }
+
+  public void setProguardMappings(@NotNull Map<String, String> mappings) {
+    myProguardMappings = mappings;
   }
 
   @NotNull
@@ -582,6 +656,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myProfilerHomeTabV2Enabled = enabled;
   }
 
+  public void setUseTraceProcessorForHprofEnabled(boolean enabled) {
+    myUseTraceProcessorForHprofEnabled = enabled;
+  }
+
   @Override
   public boolean openTraceFile(@NotNull File file) {
     myOpenedFile = file;
@@ -612,5 +690,35 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   @Override
   public kotlinx.coroutines.flow.Flow<String> fetchLeakInsight(@NotNull String rawTrace) {
     return kotlinx.coroutines.flow.FlowKt.emptyFlow();
+  }
+
+  private boolean myTraceSymbolizedAndDeobfuscated = false;
+  private boolean mySymbolizeAndDeobfuscateFails = false;
+
+  public void setSymbolizeAndDeobfuscateFails(boolean fails) {
+    mySymbolizeAndDeobfuscateFails = fails;
+  }
+
+  @Nullable
+  @Override
+  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,
+                                          @NotNull List<String> symbolDirs,
+                                          @NotNull Map<String, String> proguardMaps) {
+    myTraceSymbolizedAndDeobfuscated = true;
+    if (mySymbolizeAndDeobfuscateFails) {
+      return null;
+    }
+    try {
+      File bundledFile = FileUtil.createTempFile("bundled", ".heapprofd", true);
+      FileUtil.writeToFile(bundledFile, "bundled trace".getBytes(StandardCharsets.UTF_8));
+      return bundledFile;
+    }
+    catch (IOException e) {
+      return traceFile;
+    }
+  }
+
+  public boolean isTraceSymbolizedAndDeobfuscated() {
+    return myTraceSymbolizedAndDeobfuscated;
   }
 }

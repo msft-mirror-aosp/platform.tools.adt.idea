@@ -1,11 +1,10 @@
 plugins {
   id 'com.android.application'
-  id 'org.jetbrains.kotlin.android'
 }
 
 android {
     compileSdkVersion 33
-    namespace "google.simpleapplication"
+    namespace = "google.simpleapplication"
     useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
@@ -21,15 +20,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    lintOptions {
-        abortOnError false
+    lint {
+        abortOnError = false
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = '1.8'
     }
 }
 

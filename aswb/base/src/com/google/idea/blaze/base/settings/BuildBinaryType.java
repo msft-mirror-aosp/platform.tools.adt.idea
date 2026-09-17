@@ -19,6 +19,7 @@ package com.google.idea.blaze.base.settings;
 public enum BuildBinaryType {
   NONE(false, false),
   BLAZE(false, false),
+  BLAZE_FOR_AGENTS(false, false),
   BAZEL(false, true),
   RABBIT(true, false), // rabbit CLI
   RABBIT_API(true, false), // rabbit via RPCs

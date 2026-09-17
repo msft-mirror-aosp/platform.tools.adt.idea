@@ -33,6 +33,7 @@ import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.LegacyV1AgpVersionModel
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
+import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.projectsystem.gradle.sync.Counter
 import org.gradle.api.Action
 import org.gradle.tooling.BuildAction
@@ -103,6 +104,7 @@ data class ActionToRun<T>(
         LegacyV1AgpVersionModel::class.java -> true
         GradlePluginModel::class.java -> true
         GradlePropertiesModel::class.java -> true
+        DeclaredDependencies::class.java -> true
         else -> error("Unexpected model type: $modelType. ActionToRun.validateModelType needs to be updated.")
       }
     if (!isDeclared) {
@@ -132,7 +134,12 @@ data class ActionToRun<T>(
         return delegate.getModel(modelType, parameterType, parameterInitializer)
       }
 
-      override fun <T, P : Any> getModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
+      override fun <T, P : Any> getModel(
+        target: Model?,
+        modelType: Class<T>,
+        parameterType: Class<P>,
+        parameterInitializer: Action<in P>,
+      ): T {
         validateModelType(modelType)
         return delegate.getModel(target, modelType, parameterType, parameterInitializer)
       }
@@ -152,7 +159,12 @@ data class ActionToRun<T>(
         return delegate.findModel(modelType, parameterType, parameterInitializer)
       }
 
-      override fun <T, P : Any> findModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
+      override fun <T, P : Any> findModel(
+        target: Model?,
+        modelType: Class<T>,
+        parameterType: Class<P>,
+        parameterInitializer: Action<in P>,
+      ): T? {
         validateModelType(modelType)
         return delegate.findModel(target, modelType, parameterType, parameterInitializer)
       }
@@ -298,7 +310,12 @@ private fun BuildController.toMeasuringController(syncCounters: SyncCounters): B
       return syncCounters.measure(modelType) { delegate.getModel(modelType, parameterType, parameterInitializer) }
     }
 
-    override fun <T, P : Any> getModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T {
+    override fun <T, P : Any> getModel(
+      target: Model?,
+      modelType: Class<T>,
+      parameterType: Class<P>,
+      parameterInitializer: Action<in P>,
+    ): T {
       return syncCounters.measure(modelType) { delegate.getModel(target, modelType, parameterType, parameterInitializer) }
     }
 
@@ -314,7 +331,12 @@ private fun BuildController.toMeasuringController(syncCounters: SyncCounters): B
       return syncCounters.measure(modelType) { delegate.findModel(modelType, parameterType, parameterInitializer) }
     }
 
-    override fun <T, P : Any> findModel(target: Model?, modelType: Class<T>, parameterType: Class<P>, parameterInitializer: Action<in P>): T? {
+    override fun <T, P : Any> findModel(
+      target: Model?,
+      modelType: Class<T>,
+      parameterType: Class<P>,
+      parameterInitializer: Action<in P>,
+    ): T? {
       return syncCounters.measure(modelType) { delegate.findModel(target, modelType, parameterType, parameterInitializer) }
     }
 
@@ -379,6 +401,7 @@ private fun <T> SyncCounters.measure(modelType: Class<*>, block: () -> T): T {
       LegacyV1AgpVersionModel::class.java -> otherModel
       GradlePluginModel::class.java -> otherModel
       GradlePropertiesModel::class.java -> otherModel
+      DeclaredDependencies::class.java -> otherModel
       else -> error("Unexpected model type: $modelType. ActionToRun.SyncCounters.measure needs to be updated.")
     }
   return counter(block)

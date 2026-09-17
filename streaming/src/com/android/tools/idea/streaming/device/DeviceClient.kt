@@ -25,6 +25,7 @@ import com.android.adblib.isKnownDevice
 import com.android.adblib.shellAsLines
 import com.android.adblib.syncSend
 import com.android.annotations.concurrency.GuardedBy
+import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.adblib.AdbLibApplicationService
@@ -35,6 +36,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
+import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.htmlEscaped
 import com.android.tools.idea.util.StudioPathManager
 import com.android.utils.TraceUtils.simpleId
@@ -95,8 +97,8 @@ internal const val START_VIDEO_STREAM = 0x01
 internal const val TURN_OFF_DISPLAY_WHILE_MIRRORING = 0x02
 internal const val STREAM_AUDIO = 0x04
 internal const val USE_UINPUT = 0x08
-internal const val DEVICE_IS_XR = 0x10 // TODO: Remove when b/406870742 is fixed.
-internal const val UNICODE_TYPING = 0x20
+internal const val DEVICE_IS_XR = 0x10
+internal const val MIRROR_GLASSES_DISPLAY = 0x20
 internal const val TRACE_CLIPBOARD_SYNCHRONIZATION = 0x40
 
 /** Maximum cumulative length of agent messages to remember. */
@@ -114,9 +116,16 @@ private val logger = Logger.getInstance(DeviceClient::class.java)
 
 private val pushSerializer = ExecutionSerializer()
 
-class DeviceClient(val deviceSerialNumber: String, val deviceConfig: DeviceConfiguration, private val deviceAbi: String) : Disposable {
+class DeviceClient(
+  deviceId: DeviceId,
+  val deviceSerialNumber: String,
+  val deviceConfig: DeviceConfiguration,
+  private val deviceAbi: String,
+) : Disposable {
 
   val deviceName: String = deviceConfig.deviceName
+  val deviceId: StreamingDeviceId = StreamingDeviceId.ofPhysicalDevice(deviceSerialNumber, deviceId)
+
   internal val streamingSessionTracker: DeviceStreamingSessionTracker = DeviceStreamingSessionTracker(deviceConfig)
   private val clientScope = createCoroutineScope()
   private val connectionHolder = AtomicReference<Connection>()
@@ -225,6 +234,9 @@ class DeviceClient(val deviceSerialNumber: String, val deviceConfig: DeviceConfi
     }
 
     if (channels != null) {
+      if (startVideoStream) {
+        synchronized(videoStreams) { videoStreams[PRIMARY_DISPLAY_ID] = VideoStreamArbiter(project, PRIMARY_DISPLAY_ID, maxVideoSize) }
+      }
       connection.deviceController = DeviceController(connection, channels.controlChannel)
       connection.videoDecoder =
         VideoDecoder(channels.videoChannel, clientScope, deviceConfig.deviceProperties, streamingSessionTracker).apply {
@@ -236,10 +248,6 @@ class DeviceClient(val deviceSerialNumber: String, val deviceConfig: DeviceConfi
         val messageBusConnection = ApplicationManager.getApplication().messageBus.connect(this)
         messageBusConnection.subscribe(DeviceMirroringSettingsListener.TOPIC, DeviceMirroringSettingsListener { updateAudioStreaming() })
       }
-    }
-
-    if (startVideoStream) {
-      synchronized(videoStreams) { videoStreams[PRIMARY_DISPLAY_ID] = VideoStreamArbiter(project, PRIMARY_DISPLAY_ID, maxVideoSize) }
     }
   }
 
@@ -423,7 +431,7 @@ class DeviceClient(val deviceSerialNumber: String, val deviceConfig: DeviceConfi
         (if (shouldTurnOffDisplay()) TURN_OFF_DISPLAY_WHILE_MIRRORING else 0) or
         (if (StudioFlags.DEVICE_MIRRORING_USE_UINPUT.get()) USE_UINPUT else 0) or
         (if (deviceConfig.deviceType == DeviceType.XR_HEADSET) DEVICE_IS_XR else 0) or // Workaround for b/406870742 and b/408280128.
-        (if (StudioFlags.DEVICE_MIRRORING_UNICODE_TYPING.get()) UNICODE_TYPING else 0) or
+        (if (StudioFlags.DEVICE_MIRRORING_GLASSES_DISPLAY.get()) MIRROR_GLASSES_DISPLAY else 0) or
         (if (StudioFlags.DEVICE_MIRRORING_TRACE_CLIPBOARD_SYNCHRONIZATION.get()) TRACE_CLIPBOARD_SYNCHRONIZATION else 0)
     val flagsArg = if (flags != 0) " --flags=$flags" else ""
     val maxBitRate = calculateMaxBitRate()

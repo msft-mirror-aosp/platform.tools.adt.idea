@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.device.actions
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN_AND_UP
 import com.android.tools.idea.streaming.device.DeviceConfiguration
 import com.android.tools.idea.streaming.device.KeyEventMessage
+import com.android.tools.idea.ui.DISPLAY_ID_KEY
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import java.util.function.Predicate
@@ -27,7 +28,9 @@ internal open class DeviceKeypressAction(private val keyCode: Int, configFilter:
   AbstractDeviceAction(configFilter) {
 
   override fun actionPerformed(event: AnActionEvent) {
-    getDeviceController(event)?.sendControlMessage(KeyEventMessage(ACTION_DOWN_AND_UP, keyCode, metaState = 0))
+    val deviceController = getDeviceController(event) ?: return
+    val displayId = event.getData(DISPLAY_ID_KEY) ?: KeyEventMessage.UNSPECIFIED_DISPLAY
+    deviceController.sendControlMessage(KeyEventMessage(ACTION_DOWN_AND_UP, keyCode, metaState = 0, displayId))
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT

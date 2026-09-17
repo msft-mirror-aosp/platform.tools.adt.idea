@@ -30,12 +30,29 @@ public class AttributeSnapshot {
   @Nullable public String prefix;
   @NotNull public String name;
   @Nullable public String value;
+  @Nullable public String renderValue;
 
   public AttributeSnapshot(@Nullable String namespace, @Nullable String prefix, @NotNull String name, @Nullable String value) {
+    this(namespace, prefix, name, value, null);
+  }
+
+  public AttributeSnapshot(
+    @Nullable String namespace,
+    @Nullable String prefix,
+    @NotNull String name,
+    @Nullable String value,
+    @Nullable String renderValue
+  ) {
     this.namespace = namespace;
     this.prefix = prefix == null || prefix.isEmpty() ? null : prefix;
     this.name = name;
     this.value = value;
+    this.renderValue = renderValue;
+  }
+
+  @Nullable
+  public String getRenderValue() {
+    return renderValue != null ? renderValue : value;
   }
 
   /**
@@ -83,6 +100,9 @@ public class AttributeSnapshot {
 
   @Override
   public String toString() {
+    if (renderValue != null) {
+      return "AttributeSnapshot{" + name + "=\"" + value + "\", renderValue=\"" + renderValue + "\"}";
+    }
     return "AttributeSnapshot{" + name + "=\"" + value + "\"}";
   }
 }

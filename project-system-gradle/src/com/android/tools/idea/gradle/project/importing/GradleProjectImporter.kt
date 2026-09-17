@@ -26,6 +26,7 @@ import com.android.tools.idea.project.ANDROID_PROJECT_TYPE
 import com.android.tools.idea.util.ToolWindows
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.impl.OpenProjectTask
+import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
@@ -80,7 +81,11 @@ internal constructor(private val mySdkSync: SdkSync, private val myTopLevelModul
             this.projectToClose = projectToClose
             isNewProject = false
             useDefaultProjectAsTemplate = false
-            beforeInit = { setUpLocalProperties(projectFolderPath) }
+            beforeInit = {
+              if (TrustedProjects.isProjectTrusted(projectFolderPath.toPath())) {
+                setUpLocalProperties(projectFolderPath)
+              }
+            }
             beforeOpen = {
               // The scope of this is rather large to mimic old behaviour, it could likely be improved
               withContext(Dispatchers.EDT) {

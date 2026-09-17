@@ -75,7 +75,7 @@ public class ImportApkAction extends DumbAwareAction {
     VirtualFile toSelect = null;
     String lastLocation = myPropertiesComponent.getValue(LAST_IMPORTED_LOCATION);
     if (lastLocation != null) {
-      toSelect = LocalFileSystem.getInstance().refreshAndFindFileByPath(lastLocation);
+      toSelect = LocalFileSystem.getInstance().findFileByPath(lastLocation);
     }
     VirtualFile[] files = chooser.choose(null, toSelect);
     if (files.length == 0) {

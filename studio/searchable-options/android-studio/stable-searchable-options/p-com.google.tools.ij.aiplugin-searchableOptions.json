@@ -96,7 +96,13 @@
       "hit": "Model:"
     },
     {
+      "hit": "Next Edit Prediction"
+    },
+    {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Smart Rename"
     }
   ]
 }
@@ -142,6 +148,9 @@
     },
     {
       "hit": "Automatically run safe shell commands"
+    },
+    {
+      "hit": "Customize..."
     },
     {
       "hit": "Delete or rename files in the project"
@@ -332,10 +341,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Document Code",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Explain Code",
       "path": "ActionManager"
     },
@@ -348,15 +353,15 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Generate Code\u2026",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Generate Jetpack Compose code from the attached image",
       "path": "ActionManager"
     },
     {
       "hit": "Generate Preview for Composable",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Inline Edit",
       "path": "ActionManager"
     },
     {
@@ -380,7 +385,27 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Manage Agent Skills",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Merge Conflicts with Agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate File to Compose",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate Layout XML to Jetpack Compose using AI.",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate Project to Compose",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate the project to Jetpack Compose using AI.",
       "path": "ActionManager"
     },
     {
@@ -416,15 +441,15 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Predict Now",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Previous Chat",
       "path": "ActionManager"
     },
     {
       "hit": "Prompt Library",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Quick Edit",
       "path": "ActionManager"
     },
     {
@@ -460,11 +485,11 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Start a code review of the selected commit(s) using the AI agent",
+      "hit": "Start a review of the selected commit(s) using the AI agent",
       "path": "ActionManager"
     },
     {
-      "hit": "Start a code review of your pending changes using the AI agent",
+      "hit": "Start a review of your pending changes using the AI agent",
       "path": "ActionManager"
     },
     {
@@ -480,7 +505,7 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Transform Selected Code\u2026",
+      "hit": "Triggers Next Edit Prediction manually at the current caret position.",
       "path": "ActionManager"
     },
     {
@@ -557,6 +582,9 @@
       "hit": "Refresh"
     },
     {
+      "hit": "Show Gemma in the model picker when no models are downloaded"
+    },
+    {
       "hit": "Sign in"
     },
     {
@@ -620,6 +648,18 @@
       "path": "Available Models"
     },
     {
+      "hit": "Update",
+      "path": "Available Models"
+    },
+    {
+      "hit": "0 (Disabled)",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "1 draft token",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "10 minutes of no requests",
       "path": "Host Configuration"
     },
@@ -628,11 +668,31 @@
       "path": "Host Configuration"
     },
     {
+      "hit": "2 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "3 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "30 minutes of no requests",
       "path": "Host Configuration"
     },
     {
+      "hit": "4 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "5 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "5 minutes of no requests",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "6 draft tokens",
       "path": "Host Configuration"
     },
     {
@@ -648,11 +708,11 @@
       "path": "Host Configuration"
     },
     {
-      "hit": "Never",
+      "hit": "Multi-Token Prediction (MTP) draft tokens:",
       "path": "Host Configuration"
     },
     {
-      "hit": "Parallel request processing",
+      "hit": "Never",
       "path": "Host Configuration"
     }
   ]
@@ -710,6 +770,10 @@
     },
     {
       "hit": "Refresh",
+      "path": "Model Providers"
+    },
+    {
+      "hit": "Show Gemma in the model picker when no models are downloaded",
       "path": "Model Providers"
     },
     {
@@ -781,6 +845,18 @@
       "path": "Model Providers.Available Models"
     },
     {
+      "hit": "Update",
+      "path": "Model Providers.Available Models"
+    },
+    {
+      "hit": "0 (Disabled)",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "1 draft token",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "10 minutes of no requests",
       "path": "Model Providers.Host Configuration"
     },
@@ -789,11 +865,31 @@
       "path": "Model Providers.Host Configuration"
     },
     {
+      "hit": "2 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "3 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "30 minutes of no requests",
       "path": "Model Providers.Host Configuration"
     },
     {
+      "hit": "4 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "5 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "5 minutes of no requests",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "6 draft tokens",
       "path": "Model Providers.Host Configuration"
     },
     {
@@ -809,11 +905,11 @@
       "path": "Model Providers.Host Configuration"
     },
     {
-      "hit": "Never",
+      "hit": "Multi-Token Prediction (MTP) draft tokens:",
       "path": "Model Providers.Host Configuration"
     },
     {
-      "hit": "Parallel request processing",
+      "hit": "Never",
       "path": "Model Providers.Host Configuration"
     }
   ]

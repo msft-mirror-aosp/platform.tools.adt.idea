@@ -56,6 +56,7 @@ _ConfigurationInfo = provider(
         "application_icon": "The application icon to use.",
         "mac_app_name": "The application name on Mac, e.g. 'Android Studio Preview'",
         "vm_options": "Custom vm options per configuration",
+        "properties": "Custom properties per configuration",
     },
 )
 
@@ -835,6 +836,7 @@ def _get_external_attributes(all_files):
         "plugins/android/resources/perfetto/*/traced_probes",
         "plugins/android/resources/perfetto/*/libperfetto.so",
         "plugins/android/resources/trace_processor_daemon/trace_processor_daemon",
+        "plugins/android/resources/traceconv/traceconv",
         "plugins/android/resources/trace_processor_server/trace-processor",
         "plugins/gemini/resources/llamacpp/llama-server",
         "plugins/gemini/resources/llamacpp/libggml*",
@@ -873,7 +875,7 @@ def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
     platform_prefix = config.mac_app_name + ".app/" if platform in [MAC, MAC_ARM] else "android-studio/"
 
     platform_files = platform.get(ctx.attr.platform[IntellijInfo].base)
-    platform_files = replace_app_icon(ctx, platform.name, platform_files, config.application_icon[AppIconInfo])
+    platform_files = replace_app_icon(ctx, platform.name, platform_files, config.application_icon[AppIconInfo], branding = "android-studio")
     plugin_files = platform.get(ctx.attr.platform[IntellijInfo].plugins)
 
     if ctx.attr.jre:
@@ -896,20 +898,22 @@ def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
 
     suffix = "64" if platform == LINUX else ("64.exe" if platform == WIN else "")
     vm_options_path = platform_prefix + platform.base_path + "bin/studio" + suffix + ".vmoptions"
-    vm_options = config.vm_options + ctx.attr.vm_options + {
+    platform_vm_options = {
         LINUX: ctx.attr.vm_options_linux,
         MAC: ctx.attr.vm_options_mac,
         MAC_ARM: ctx.attr.vm_options_mac_arm,
         WIN: ctx.attr.vm_options_win,
     }[platform]
+    vm_options = ctx.attr.vm_options + platform_vm_options + config.vm_options
     _append(ctx, platform, all_files, vm_options_path, vm_options)
 
-    properties = ctx.attr.properties + {
+    platform_properties = {
         LINUX: ctx.attr.properties_linux,
         MAC: ctx.attr.properties_mac,
         MAC_ARM: ctx.attr.properties_mac_arm,
         WIN: ctx.attr.properties_win,
     }[platform]
+    properties = ctx.attr.properties + platform_properties + config.properties
     _append(ctx, platform, all_files, platform_prefix + platform.base_path + "bin/idea.properties", properties)
 
     license_files = []
@@ -1334,6 +1338,7 @@ def _android_studio_configuration_impl(ctx):
         version_suffix = ctx.attr.version_suffix,
         mac_app_name = ctx.attr.mac_app_name,
         vm_options = ctx.attr.vm_options,
+        properties = ctx.attr.properties,
     )]
 
 def android_studio_configuration(
@@ -1341,6 +1346,7 @@ def android_studio_configuration(
         flag_level,
         enable_debug_flags = False,
         vm_options = [],
+        properties = [],
         **kwargs):
     _vm_options = vm_options + [
         "-Dflags.configuration.level=" + flag_level,
@@ -1349,6 +1355,7 @@ def android_studio_configuration(
     _android_studio_configuration(
         name = name,
         vm_options = _vm_options,
+        properties = properties,
         **kwargs
     )
 
@@ -1359,6 +1366,7 @@ _android_studio_configuration = rule(
         "version_suffix": attr.string(),
         "mac_app_name": attr.string(mandatory = True),
         "vm_options": attr.string_list(),
+        "properties": attr.string_list(),
     },
     implementation = _android_studio_configuration_impl,
 )
@@ -1626,6 +1634,12 @@ def intellij_platform_import(name, spec):
         visibility = ["//visibility:public"],
     )
 
+    jvm_import(
+        name = name + "-nio-fs",
+        jars = ["lib/nio-fs.jar"],
+        visibility = ["//visibility:public"],
+    )
+
 def intellij_platform(
         name,
         src,
@@ -1809,7 +1823,7 @@ def intellij_platform(
         is_v2_module = len(jars) == 1 and ("/modules/" in jars[0] or jars[0].startswith("lib/"))
         kind = "module" if is_v2_module else "plugin"
         jars_target_name = "%s-plugin-%s_jars" % (name, plugin)
-        _gen_plugin_jars_import_target(jars_target_name, spec, sdk_dirs, plugin, jars)
+        _gen_plugin_jars_import_target(jars_target_name, spec, sdk_dirs, plugin, jars, srcjar = src + "/android-studio-sources.zip")
         _intellij_plugin_import(
             name = name + "-plugin-%s" % plugin,
             id = plugin,
@@ -1833,10 +1847,24 @@ def intellij_platform(
             "//tools/base/bazel/platforms:macos-arm64": [sdk_dirs.darwin_aarch64 + "/Contents/lib/testFramework.jar"],
             "//conditions:default": [sdk_dirs.linux + "/lib/testFramework.jar"],
         }),
+        srcjar = src + "/android-studio-sources.zip",
         visibility = ["@intellij//:__subpackages__"],
     )
 
-def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars):
+    # Expose nio-fs.jar separately for bootclasspath and NIO FS dependencies.
+    jvm_import(
+        name = name + "-nio-fs",
+        jars = select({
+            "@platforms//os:windows": [sdk_dirs.windows + "/lib/nio-fs.jar"],
+            "//tools/base/bazel/platforms:macos-x86_64": [sdk_dirs.darwin + "/Contents/lib/nio-fs.jar"],
+            "//tools/base/bazel/platforms:macos-arm64": [sdk_dirs.darwin_aarch64 + "/Contents/lib/nio-fs.jar"],
+            "//conditions:default": [sdk_dirs.linux + "/lib/nio-fs.jar"],
+        }),
+        srcjar = src + "/android-studio-sources.zip",
+        visibility = ["@intellij//:__subpackages__"],
+    )
+
+def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars, srcjar):
     """Generates a jvm_import target for the specified plugin."""
     add_windows = spec.plugin_jars_windows[plugin] if plugin in spec.plugin_jars_windows else []
     jars_windows = [sdk_dirs.windows + "/" + jar for jar in jars + add_windows]
@@ -1855,6 +1883,7 @@ def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars):
             "//tools/base/bazel/platforms:macos-arm64": jars_darwin_aarch64,
             "//conditions:default": jars_linux,
         }),
+        srcjar = srcjar,
     )
 
 def _studio_project_model_generator_impl(ctx):

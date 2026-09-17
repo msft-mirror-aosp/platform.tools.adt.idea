@@ -55,7 +55,8 @@ class TraceProcessorServiceImplTest {
   @Test
   fun `loadTrace - ok`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     fakeGrpcService.loadTraceResponse = TraceProcessor.LoadTraceResponse.newBuilder().setOk(true).build()
@@ -63,6 +64,7 @@ class TraceProcessorServiceImplTest {
     val traceFile = tempFolder.newFile("perfetto.trace")
     traceFile.writeBytes(Random.Default.nextBytes(256))
 
+    fakeIdeProfilerServices.enableDeobfuscationForNativeAllocations(false)
     val traceLoaded = ideService.loadTrace(10, traceFile, fakeIdeProfilerServices)
 
     assertThat(traceLoaded).isTrue()
@@ -81,9 +83,60 @@ class TraceProcessorServiceImplTest {
   }
 
   @Test
+  fun `loadTrace - native allocation skips tpd symbolization when deobfuscation is enabled`() {
+    val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
+    Disposer.register(disposableRule.disposable, ideService)
+
+    fakeGrpcService.loadTraceResponse = TraceProcessor.LoadTraceResponse.newBuilder().setOk(true).build()
+
+    val traceFile = tempFolder.newFile("sample.heapprofd")
+    traceFile.writeBytes(Random.Default.nextBytes(256))
+
+    fakeIdeProfilerServices.enableDeobfuscationForNativeAllocations(true)
+    val traceLoaded = ideService.loadTrace(10, traceFile, fakeIdeProfilerServices)
+
+    assertThat(traceLoaded).isTrue()
+    val expectedRequest = TraceProcessor.LoadTraceRequest.newBuilder().setTraceId(10).setTracePath(traceFile.absolutePath).build()
+    assertThat(fakeGrpcService.lastLoadTraceRequest).isEqualTo(expectedRequest)
+
+    assertThat(fakeFeatureTracker.traceProcessorQueryMetrics)
+      .containsExactly(Pair.of(AndroidProfilerEvent.Type.TPD_QUERY_LOAD_TRACE, getOkMetricStatsFor(10, 10, 256)))
+  }
+
+  @Test
+  fun `loadTrace - non-heapprofd trace receives symbol paths when native allocation deobfuscation is enabled`() {
+    val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
+    Disposer.register(disposableRule.disposable, ideService)
+
+    fakeGrpcService.loadTraceResponse = TraceProcessor.LoadTraceResponse.newBuilder().setOk(true).build()
+
+    val traceFile = tempFolder.newFile("perfetto.trace")
+    traceFile.writeBytes(Random.Default.nextBytes(256))
+
+    fakeIdeProfilerServices.enableDeobfuscationForNativeAllocations(true)
+    val traceLoaded = ideService.loadTrace(10, traceFile, fakeIdeProfilerServices)
+
+    assertThat(traceLoaded).isTrue()
+    val symbolsFile = File("${FileUtil.getTempDirectory()}${File.separator}10.symbols")
+    val expectedRequest =
+      TraceProcessor.LoadTraceRequest.newBuilder()
+        .setTraceId(10)
+        .setTracePath(traceFile.absolutePath)
+        .addSymbolPath("/fake/sym/dir/")
+        .setSymbolizedOutputPath(symbolsFile.absolutePath)
+        .build()
+    assertThat(fakeGrpcService.lastLoadTraceRequest).isEqualTo(expectedRequest)
+  }
+
+  @Test
   fun `loadTrace - fail`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     fakeGrpcService.loadTraceResponse = TraceProcessor.LoadTraceResponse.newBuilder().setOk(false).setError("Testing Failure").build()
@@ -99,7 +152,8 @@ class TraceProcessorServiceImplTest {
   @Test
   fun `loadTrace - grpc retry`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     fakeGrpcService.failsPerQuery = 2
@@ -116,7 +170,8 @@ class TraceProcessorServiceImplTest {
   @Test
   fun `loadTrace - grpc retry exhausted`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     fakeGrpcService.failsPerQuery = 5
@@ -139,12 +194,18 @@ class TraceProcessorServiceImplTest {
   @Test
   fun `loadCpuData - ok`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     // For test simplicity here, will return a single result (the real case would be one for each query in the batch)
     fakeGrpcService.queryBatchResponse =
       TraceProcessor.QueryBatchResponse.newBuilder().addResult(TraceProcessor.QueryResult.newBuilder().setOk(true)).build()
+
+    fakeGrpcService.loadTraceResponse = TraceProcessor.LoadTraceResponse.newBuilder().setOk(true).build()
+    val traceFile = tempFolder.newFile("perfetto.trace")
+    traceFile.writeBytes(Random.Default.nextBytes(256))
+    ideService.loadTrace(10, traceFile, fakeIdeProfilerServices)
 
     ideService.loadCpuData(
       10,
@@ -221,13 +282,17 @@ class TraceProcessorServiceImplTest {
     assertThat(fakeGrpcService.lastQueryBatchRequest).isEqualTo(expectedRequest)
 
     assertThat(fakeFeatureTracker.traceProcessorQueryMetrics)
-      .containsExactly(Pair.of(AndroidProfilerEvent.Type.TPD_QUERY_LOAD_CPU_DATA, getOkMetricStatsFor(30, 10)))
+      .containsExactly(
+        Pair.of(AndroidProfilerEvent.Type.TPD_QUERY_LOAD_TRACE, getOkMetricStatsFor(10, 10, 256)),
+        Pair.of(AndroidProfilerEvent.Type.TPD_QUERY_LOAD_CPU_DATA, getOkMetricStatsFor(30, 10)),
+      )
   }
 
   @Test
   fun `loadCpuData - reload trace if necessary`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     fakeGrpcService.loadTraceResponse = TraceProcessor.LoadTraceResponse.newBuilder().setOk(true).build()
@@ -264,7 +329,8 @@ class TraceProcessorServiceImplTest {
   @Test
   fun `loadCpuData - trace not loaded`() {
     val client = TraceProcessorDaemonClient(fakeTicker, TraceProcessorServiceGrpc.newBlockingStub(fakeGrpcChannel.channel))
-    val ideService = TraceProcessorServiceImpl(fakeTicker, client)
+    Disposer.register(disposableRule.disposable, client)
+    val ideService = TraceProcessorServiceImpl(fakeTicker) { client }
     Disposer.register(disposableRule.disposable, ideService)
 
     // For test simplicity here, will return a single result (the real case would be one for each query in the batch)
@@ -281,7 +347,7 @@ class TraceProcessorServiceImplTest {
       ideService.loadCpuData(10, listOf(fakeProcess(33), fakeProcess(42)), fakeProcess, fakeIdeProfilerServices)
       fail()
     } catch (e: RuntimeException) {
-      assertThat(e.message).isEqualTo("TPD Service: Fail to get cpu data for trace 10: Trace 10 needs to be loaded before querying.")
+      assertThat(e.message).isEqualTo("TPD Service: Fail to get data for trace 10: Trace 10 needs to be loaded before querying.")
     }
 
     // We never issue a load trace since we don't know about the trace.

@@ -36,11 +36,13 @@ object TaskBasedUxColors {
   val TABLE_SEPARATOR_COLOR
     get() = retrieveColorOrUnspecified("TableHeader.separatorColor")
 
-  // Color of secondary text in a dropdown option (only if it is enabled, otherwise the disabled text color is used).
+  val LABEL_DISABLED_FOREGROUND
+    get() = retrieveColorOrUnspecified("Label.disabledForeground")
+
   val DROPDOWN_SEC_TEXT_COLOR
     get() = retrieveColorOrUnspecified("Component.infoForeground")
 
-  // Border color of past recordings banner.
-  val PAST_RECORDINGS_BANNER_BORDER_COLOR
+  // Border color of banners across Task-Based UX.
+  val BANNER_BORDER_COLOR
     get() = retrieveColorOrUnspecified("ActionButton.focusedBorderColor")
 }

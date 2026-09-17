@@ -23,10 +23,6 @@ import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProje
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_35
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_40
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_41
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_42
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_72
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 import com.google.common.truth.Expect
@@ -144,7 +140,6 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
       TestScenario(testProject = AndroidCoreTestProject.APPLICATION_ID_SUFFIX, executeMakeBeforeRun = false),
       expectPackageName = "one.name.defaultConfig.debug",
       expectTestPackageName = "(null)",
-      expectSyncIssueContent = ALL_LEGACY_WARNINGS,
     ),
     def(
       stackMarker = { it() },
@@ -155,7 +150,6 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
       ),
       expectPackageName = "one.name.defaultConfig.debug",
       expectTestPackageName = "one.name.test_app",
-      expectSyncIssueContent = ALL_LEGACY_WARNINGS,
     ),
     def(
       stackMarker = { it() },
@@ -163,7 +157,6 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
       IGNORE = { if (agpVersion != AGP_CURRENT) error("Variant API is not supported by this AGP version.") },
       expectPackageName = "one.dynamic.name.debug",
       expectTestPackageName = "(null)",
-      expectSyncIssueContent = APP_LEGACY_WARNINGS,
     ),
     def(
       stackMarker = { it() },
@@ -178,7 +171,6 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
       },
       expectPackageName = "one.dynamic.name.debug",
       expectTestPackageName = "one.dynamic.name.debug.test",
-      expectSyncIssueContent = APP_LEGACY_WARNINGS,
     ),
     def(
       stackMarker = { it() },
@@ -205,7 +197,7 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
               "Failed to read applicationId for debug.\nSetting the application ID to the output of a task in the variant api is not supported",
               "Failed to read applicationId for debugAndroidTest.\nSetting the application ID to the output of a task in the variant api is not supported",
               "Failed to read applicationId for release.\nSetting the application ID to the output of a task in the variant api is not supported",
-            ) + APP_LEGACY_WARNINGS, // <--- ADDED HERE
+            ), // <--- ADDED HERE
           AGP_72 to
             listOf(
               "Failed to read applicationId for debug.\nSetting the application ID to the output of a task in the variant api is not supported",
@@ -236,22 +228,8 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
         target = TestTargetRunConfiguration("com.example.projectwithappandlib.lib.ExampleInstrumentedTest"),
         executeMakeBeforeRun = false,
       ),
-      expectPackageName =
-        mapOf(
-          AGP_CURRENT to "com.example.projectwithappandlib.lib.test",
-          AGP_35 to "com.example.projectwithappandlib.lib.test",
-          AGP_40 to "com.example.projectwithappandlib.lib.test",
-          AGP_41 to "com.example.projectwithappandlib.lib.test",
-        ),
-      expectTestPackageName =
-        mapOf(
-          AGP_CURRENT to "com.example.projectwithappandlib.lib.test",
-          AGP_35 to "com.example.projectwithappandlib.lib.test",
-          AGP_40 to "com.example.projectwithappandlib.lib.test",
-          AGP_41 to "com.example.projectwithappandlib.lib.test",
-        ),
-      // CHANGE: Use the helper here to ensure old versions (AGP_35 etc) don't inherit AGP_CURRENT's warnings
-      expectSyncIssueContent = expectedWarnings(ALL_LEGACY_WARNINGS),
+      expectPackageName = mapOf(AGP_CURRENT to "com.example.projectwithappandlib.lib.test"),
+      expectTestPackageName = mapOf(AGP_CURRENT to "com.example.projectwithappandlib.lib.test"),
     ),
     def(
       stackMarker = { it() },
@@ -306,7 +284,6 @@ internal val APPLICATION_ID_PROVIDER_TESTS: List<ProviderTestDefinition> =
         target = TestTargetRunConfiguration("com.example.android.benchmark.ExampleTest"),
         executeMakeBeforeRun = false,
       ),
-      IGNORE = { if (agpVersion < AGP_42) error("The test project does not contain the test class for older AGPs. ") },
       expectPackageName = "com.example.android.app",
       expectTestPackageName = "com.example.android.benchmark",
     ),

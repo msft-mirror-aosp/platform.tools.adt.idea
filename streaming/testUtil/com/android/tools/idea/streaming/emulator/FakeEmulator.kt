@@ -25,6 +25,7 @@ import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.DisplayConfigurations
 import com.android.emulator.control.DisplayConfigurationsChangedNotification
 import com.android.emulator.control.DisplayMode as DisplayModeMessage
+import com.android.emulator.control.DisplayPowerModeNotification
 import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.emulator.control.EmulatorStatus
 import com.android.emulator.control.Environment
@@ -191,8 +192,8 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     private set(value) {
       if (value != null && value != field) {
         field = value
-        notificationStreamObserver?.sendStreamingResponse(createPostureNotification(value))
         foldedDisplay = if (value == PostureValue.POSTURE_CLOSED) foldedDisplayRegion else null
+        executor.execute { notificationStreamObserver?.sendStreamingResponse(createPostureNotification(value)) }
       }
     }
 
@@ -201,7 +202,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     private set(value) {
       if (value != field) {
         field = value
-        notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setXrOptions(value).build())
+        executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setXrOptions(value).build()) }
       }
     }
 
@@ -210,7 +211,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     private set(value) {
       if (value != field) {
         field = value
-        notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setMicrophoneState(value).build())
+        executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setMicrophoneState(value).build()) }
       }
     }
 
@@ -226,8 +227,27 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     }
     val led = ledBuilder.build()
     ledStates = ledStates + (facing to led)
-    notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build())
+    executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build()) }
   }
+
+  var displayPowerModes: Map<Int, DisplayPowerModeNotification> = emptyMap()
+    private set
+
+  fun setDisplayPowerMode(displayId: Int, powerMode: DisplayPowerModeNotification.PowerMode) {
+    val notification = DisplayPowerModeNotification.newBuilder().setDisplay(displayId).setPowerMode(powerMode).build()
+    displayPowerModes = displayPowerModes + (displayId to notification)
+    executor.execute {
+      notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setDisplayPowerMode(notification).build())
+      val screenshotObserver = screenshotStreamObserver
+      val request = screenshotStreamRequest
+      if (screenshotObserver != null && request != null) {
+        sendScreenshot(request, screenshotObserver)
+      }
+    }
+  }
+
+  fun isDisplayOff(displayId: Int = PRIMARY_DISPLAY_ID): Boolean =
+    displayPowerModes[displayId]?.powerMode == DisplayPowerModeNotification.PowerMode.OFF
 
   private var foldedDisplay: FoldedDisplay? = null
     set(value) {
@@ -795,6 +815,9 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         for (led in ledStates.values) {
           responseObserver.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build())
         }
+        for (powerMode in displayPowerModes.values) {
+          responseObserver.sendStreamingResponse(Notification.newBuilder().setDisplayPowerMode(powerMode).build())
+        }
       }
     }
 
@@ -908,7 +931,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     val size = computeConstrainedSize(environmentImage.width, environmentImage.height, 0, request.width, request.height)
     val blendedImage = rotateByQuadrantsAndScale(environmentImage, 0, size.width, size.height)
     val scale = max(blendedImage.width, blendedImage.height).toDouble() / max(environmentImage.width, environmentImage.height)
-    if (config.displayWidth > 0 && config.displayHeight > 0) {
+    if (config.displayWidth > 0 && config.displayHeight > 0 && !isDisplayOff()) {
       val displayImageSize = config.displaySize.scaled(scale)
       val displayImage = drawDisplayImage(displayImageSize, PRIMARY_DISPLAY_ID)
       val x = (blendedImage.width - displayImageSize.width) / 2
@@ -2303,7 +2326,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         """
           .trimIndent()
 
-      val advancedFeatures = "LedIndicators = on\n"
+      val advancedFeatures = "XrStatusLed = on\n"
 
       createSystemImage(systemImageFolder, androidVersion, sourceProperties, advancedFeatures)
       return createAvd(avdId, avdFolder, configIni, hardwareIni)
@@ -2416,7 +2439,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         """
           .trimIndent()
 
-      val advancedFeatures = "LedIndicators = on\n"
+      val advancedFeatures = "XrStatusLed = on\n"
 
       createSystemImage(systemImageFolder, androidVersion, sourceProperties, advancedFeatures)
       return createAvd(avdId, avdFolder, configIni, hardwareIni)

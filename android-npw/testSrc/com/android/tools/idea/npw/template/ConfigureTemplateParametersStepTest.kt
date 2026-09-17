@@ -56,6 +56,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 @RunWith(JUnit4::class)
+@RunsInEdt
 class ConfigureTemplateParametersStepTest {
   private lateinit var step: ConfigureTemplateParametersStep
 
@@ -135,7 +136,7 @@ class ConfigureTemplateParametersStepTest {
 
     // Create and show the wizard
     var modelWizard = createTemplateWizard(templateModel, moduleTemplates)
-    var fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true)
+    var fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
 
@@ -157,7 +158,7 @@ class ConfigureTemplateParametersStepTest {
 
     // Re-create and show the wizard with the new template model
     modelWizard = createTemplateWizard(newTemplateModel, moduleTemplates)
-    fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true)
+    fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
     myInvokeStrategy.updateAllSteps()

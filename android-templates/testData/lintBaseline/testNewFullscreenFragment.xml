@@ -5,7 +5,7 @@
     <issue
         id="OldTargetApi"
         message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
-        errorLine1="        targetSdk 35"
+        errorLine1="        targetSdk 36"
         errorLine2="        ~~~~~~~~~~~~">
         <location
             file="build.gradle"
@@ -31,7 +31,7 @@
         errorLine2="                       ~~~~~~~">
         <location
             file="src/main/java/template/test/in/FullscreenFragment.java"
-            line="101"
+            line="95"
             column="24"/>
     </issue>
 
@@ -42,7 +42,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/template/test/in/FullscreenFragment.java"
-            line="141"
+            line="137"
             column="9"/>
     </issue>
 

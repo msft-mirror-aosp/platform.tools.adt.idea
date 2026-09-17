@@ -63,9 +63,6 @@ import com.android.tools.rendering.classloading.ModuleClassLoader;
 import com.android.tools.rendering.classloading.ModuleClassLoaderManager;
 import com.android.tools.rendering.compose.RenderTaskPatcher;
 import com.android.ide.common.rendering.api.RecyclableImage;
-import com.android.tools.rendering.imagepool.ImagePool;
-import com.android.tools.rendering.imagepool.NonPooledImage;
-import com.android.tools.rendering.imagepool.RecyclablePooledImage;
 import com.android.tools.rendering.parsers.ILayoutPullParserFactory;
 import com.android.tools.rendering.parsers.LayoutFilePullParser;
 import com.android.tools.rendering.parsers.LayoutPullParsers;
@@ -188,6 +185,7 @@ public class RenderTask {
   @Nullable private RenderSession myRenderSession;
   private final RenderSizeProvider mySizeProvider;
   private final boolean isSecurityManagerEnabled;
+  @Nullable private RenderSecurity myRenderSecurity;
   @NotNull private CrashReporter myCrashReporter;
   private final List<CompletableFuture<?>> myRunningFutures = new LinkedList<>();
   @NotNull private final AtomicBoolean isDisposed = new AtomicBoolean(false);
@@ -388,6 +386,9 @@ public class RenderTask {
     myLayoutlibCallback.setLogger(IRenderLogger.NULL_LOGGER);
     RenderSession renderSessionToDispose = myRenderSession;
     myRenderSession = null;
+    synchronized (this) {
+      myRenderSecurity = null;
+    }
 
     if (renderSessionToDispose != null) {
       renderSessionToDispose.releaseRender();
@@ -576,27 +577,19 @@ public class RenderTask {
     return null;
   }
 
-  /**
-   * Returns a valid pooled image or {@link ImagePool#NULL_POOLED_IMAGE} if the input is null or not valid.
-   */
   @NotNull
-  private ImagePool.Image toPooledImage(@Nullable RenderSession session) {
+  private RecyclableImage toRecyclableImage(@Nullable RenderSession session) {
     if (session != null) {
       RecyclableImage recyclableImage = session.getRecyclableImage();
       if (recyclableImage != null) {
         if (recyclableImage.getWidth() > 1 && recyclableImage.getHeight() > 1) {
-          return new RecyclablePooledImage(recyclableImage);
+          return recyclableImage;
         }
         recyclableImage.close();
-        return ImagePool.NULL_POOLED_IMAGE;
-      }
-      // Fallback for screenshot testing running with older version of layoutlib-api
-      BufferedImage image = session.getImage();
-      if (image != null && image.getWidth() > 1 && image.getHeight() > 1) {
-        return NonPooledImage.create(image);
+        return RecyclableImage.NULL;
       }
     }
-    return ImagePool.NULL_POOLED_IMAGE;
+    return RecyclableImage.NULL;
   }
 
   /**
@@ -752,43 +745,24 @@ public class RenderTask {
     try {
       myLayoutlibCallback.setLogger(myLogger);
 
-      RenderSecurity security = null;
-      if (isSecurityManagerEnabled) {
-        security = myContext.getModule().getEnvironment().createRenderSecurity(
-          module.getProject().getBasePath(),
-          context.getModule().getAndroidPlatform()
-        );
+      RenderSession session = myLayoutLib.createSession(params);
+
+      if (session.getResult().isSuccess()) {
+        session.setSystemBootTimeNanos(0);
+        session.setSystemTimeNanos(0);
+        // Advance the frame time to display the material progress bars
+        session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
       }
 
-      if (security != null) {
-        security.activate(myCredential);
+      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
+      RenderSession oldRenderSession = myRenderSession;
+      myRenderSession = session;
+      RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
+      if (oldRenderSession != null) {
+        disposeRenderSession(oldRenderSession);
       }
-
-      try {
-        RenderSession session = myLayoutLib.createSession(params);
-
-        if (session.getResult().isSuccess()) {
-          session.setSystemBootTimeNanos(0);
-          session.setSystemTimeNanos(0);
-          // Advance the frame time to display the material progress bars
-          session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
-        }
-
-        RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toPooledImage(session), myLayoutlibCallback.isUsed());
-        RenderSession oldRenderSession = myRenderSession;
-        myRenderSession = session;
-        RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
-        if (oldRenderSession != null) {
-          disposeRenderSession(oldRenderSession);
-        }
-        addDiagnostics(result.getRenderResult());
-        return result;
-      }
-      finally {
-        if (security != null) {
-          security.deactivate(myCredential);
-        }
-      }
+      addDiagnostics(result.getRenderResult());
+      return result;
     }
     catch (RuntimeException t) {
       // Exceptions from the bridge
@@ -856,6 +830,20 @@ public class RenderTask {
    * @param unit     the {@link TimeUnit} for the timeout.
    *                 See {@link RenderService#getRenderAsyncActionExecutor()}.
    */
+  @Nullable
+  private synchronized RenderSecurity getRenderSecurity() {
+    if (isDisposed.get()) {
+      return null;
+    }
+    if (myRenderSecurity == null && isSecurityManagerEnabled) {
+      myRenderSecurity = myContext.getModule().getEnvironment().createRenderSecurity(
+        myContext.getModule().getProject().getBasePath(),
+        myContext.getModule().getAndroidPlatform()
+      );
+    }
+    return myRenderSecurity;
+  }
+
   @VisibleForTesting
   @NotNull
   private <V> CompletableFuture<V> runAsyncRenderAction(@NotNull Callable<V> callable, long timeout, @NotNull TimeUnit unit) {
@@ -863,11 +851,36 @@ public class RenderTask {
       return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
     }
 
+    RenderSecurity security = getRenderSecurity();
+    if (security == null && isSecurityManagerEnabled) {
+      return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+    }
+
+    Callable<V> sandboxedCallable = () -> {
+      if (security != null) {
+        security.activate(myCredential);
+      }
+      else if (isSecurityManagerEnabled) {
+        throw new IllegalStateException("Cannot execute render action without active security sandbox");
+      }
+      try {
+        return callable.call();
+      }
+      finally {
+        if (security != null) {
+          security.deactivate(myCredential);
+        }
+      }
+    };
+
     synchronized (myRunningFutures) {
+      if (isDisposed.get()) {
+        return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+      }
       CompletableFuture<V> newFuture = timeout < 1 ?
-                                       RenderService.getRenderAsyncActionExecutor().runAsyncAction(myTopic, callable) :
+                                       RenderService.getRenderAsyncActionExecutor().runAsyncAction(myTopic, sandboxedCallable) :
                                        RenderService.getRenderAsyncActionExecutor().runAsyncActionWithTimeout(timeout, unit, myTopic,
-                                                                                                              callable);
+                                                                                                              sandboxedCallable);
       myRunningFutures.add(newFuture);
       newFuture
         .whenCompleteAsync((result, ex) -> {
@@ -963,7 +976,7 @@ public class RenderTask {
       RenderXmlFile xmlFile = getXmlFile();
       return runAsyncRenderAction(() -> {
         myRenderSession.measure();
-        return RenderResult.create(myContext, renderSession, xmlFile, myLogger, ImagePool.NULL_POOLED_IMAGE, myLayoutlibCallback.isUsed());
+        return RenderResult.create(myContext, renderSession, xmlFile, myLogger, RecyclableImage.NULL, myLayoutlibCallback.isUsed());
       });
     }
     catch (Exception e) {
@@ -1091,7 +1104,7 @@ public class RenderTask {
           myTestEventListener.onBeforeRender();
           myRenderSession.render(forceMeasure);
           RenderResult result =
-            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toPooledImage(myRenderSession), myLayoutlibCallback.isUsed());
+            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toRecyclableImage(myRenderSession), myLayoutlibCallback.isUsed());
           Result renderResult = result.getRenderResult();
           if (renderResult.getException() != null) {
             reportException(renderResult.getException());
@@ -1300,7 +1313,7 @@ public class RenderTask {
                                                                   myLogger,
                                                                   myContext.getModule().getResourceRepositoryManager());
     Map<RenderXmlTag, ViewInfo> map = new HashMap<>();
-    return RenderService.getRenderAsyncActionExecutor().runAsyncAction(myTopic, () -> measure(modelParser))
+    return runAsyncRenderAction(() -> measure(modelParser))
       .thenComposeAsync(session -> {
         if (session != null) {
           try {

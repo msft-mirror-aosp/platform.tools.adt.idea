@@ -17,101 +17,62 @@ package com.google.idea.blaze.qsync;
 
 import com.google.idea.blaze.common.Context;
 import com.google.idea.blaze.common.PrintOutput;
-import com.google.idea.blaze.common.vcs.VcsState;
 import com.google.idea.blaze.exception.BuildException;
-import com.google.idea.blaze.qsync.project.PostQuerySyncData;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
 import com.google.idea.blaze.qsync.query.QuerySpec;
+import com.google.idea.blaze.qsync.project.ProjectStructureData;
+import com.google.idea.blaze.qsync.query.QuerySummary;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
  * Project refresher creates an appropriate {@link RefreshOperation} based on the project and
- * current VCS state.
+ * stamp from {@link ProjectStructureData} and {@link QuerySummary}.
  */
 public class ProjectRefresher {
 
-  private final VcsStateDiffer vcsDiffer;
   private final Path workspaceRoot;
   private final QuerySpec.QueryStrategy queryStrategy;
   private final Supplier<Optional<QuerySyncProjectSnapshot>> latestProjectSnapshotSupplier;
 
   public ProjectRefresher(
-      VcsStateDiffer vcsDiffer,
       Path workspaceRoot,
       QuerySpec.QueryStrategy queryStrategy,
       Supplier<Optional<QuerySyncProjectSnapshot>> latestProjectSnapshotSupplier) {
-    this.vcsDiffer = vcsDiffer;
     this.workspaceRoot = workspaceRoot;
     this.queryStrategy = queryStrategy;
     this.latestProjectSnapshotSupplier = latestProjectSnapshotSupplier;
   }
 
   public RefreshOperation startFullUpdate(
-      Context<?> context,
-      ProjectDefinition spec,
-      Optional<VcsState> vcsState,
-      Optional<String> bazelVersion) {
-    return new FullProjectUpdate(
-        context, workspaceRoot, spec, vcsState, bazelVersion, queryStrategy);
+      Context<?> context, ProjectDefinition spec, ProjectStructureData projectStructureData) {
+    return new FullProjectUpdate(context, workspaceRoot, spec, queryStrategy, projectStructureData);
   }
 
-  public RefreshOperation startPartialRefresh(
-      Context<?> context,
-      PostQuerySyncData currentProject,
-      Optional<VcsState> latestVcsState,
-      Optional<String> latestBazelVersion,
-      ProjectDefinition latestProjectDefinition)
-      throws BuildException {
-    ProjectDefinition currentProjectDefinition =
-        latestProjectSnapshotSupplier
-            .get()
-            .map(QuerySyncProjectSnapshot::getProjectDefinition)
-            .orElse(ProjectDefinition.EMPTY);
-    return startPartialRefresh(
-        new RefreshParameters(
-            currentProject,
-            currentProjectDefinition,
-            latestVcsState,
-            latestBazelVersion,
-            latestProjectDefinition,
-            vcsDiffer),
-        context);
-  }
-
-  public RefreshOperation startPartialRefresh(RefreshParameters params, Context<?> context)
-      throws BuildException {
-    if (params.requiresFullUpdate(context)) {
-      return startFullUpdate(
-          context,
-          params.latestProjectDefinition,
-          params.latestVcsState,
-          params.latestBazelVersion);
+  public RefreshOperation startPartialRefresh(RefreshParameters params, Context<?> context) {
+    if (params.requireFullSync.invoke(context)) {
+      return startFullUpdate(context, params.projectDefinition, params.projectStructureData);
     }
-    AffectedPackages affected = params.calculateAffectedPackages(context);
+    AffectedPackages affected = params.calculateAffectedPackages();
 
     if (affected.isEmpty()) {
       // No consequential changes since last sync
       if (latestProjectSnapshotSupplier.get().isPresent()) {
         // We have full project state. We don't need to do anything.
         context.output(PrintOutput.log("Nothing has changed since last sync."));
-        return new NoopProjectRefresh(
-            latestProjectSnapshotSupplier.get()::get,
-            params.latestVcsState,
-            params.latestBazelVersion);
+        return new NoopProjectRefresh(latestProjectSnapshotSupplier.get()::get);
       }
-      // else we need to recalculate the project structure. This happens on the first sync after
-      // reloading the project.
+      // else we need to recalculate the project structure. This happens on the first sync
+      // after reloading the project.
     }
     // TODO(mathewi) check affected.isIncomplete() and offer (or just do?) a full sync in that case.
 
     return new PartialProjectRefresh(
         workspaceRoot,
-        params.currentProject,
-        params.latestVcsState,
-        params.latestBazelVersion,
+        params.lastQuery,
         affected.getModifiedPackages(),
-        affected.getDeletedPackages());
+        affected.getDeletedPackages(),
+        params.projectStructureData);
   }
 }

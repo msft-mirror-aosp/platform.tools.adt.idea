@@ -24,9 +24,11 @@ import com.android.tools.rendering.classloading.ViewMethodWrapperTransform;
 import com.android.tools.rendering.classloading.CooperativeInterruptTransform;
 import com.android.tools.rendering.classloading.FilteringClassLoader;
 import com.android.tools.rendering.classloading.FirewalledResourcesClassLoader;
+import com.android.tools.rendering.classloading.GapWorkerTransform;
 import com.android.tools.rendering.classloading.PreviewAnimationClockMethodTransform;
 import com.android.tools.rendering.classloading.RenderActionAllocationLimiterTransform;
 import com.android.tools.rendering.classloading.RepackageTransform;
+import com.android.tools.rendering.classloading.FontsContractCompatTransform;
 import com.android.tools.rendering.classloading.RequestExecutorTransform;
 import com.android.tools.rendering.classloading.ResourcesCompatTransform;
 import com.android.tools.rendering.classloading.SdkIntReplacer;
@@ -105,6 +107,24 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
   );
 
   /**
+   * List of prefixes that cannot be loaded from the plugin class loader.
+   */
+  private static final ImmutableList<String> DISALLOWED_PACKAGES_FROM_PLUGIN = ImmutableList.of(
+      "com.android.tools.rendering.RenderService",
+      "com.android.tools.rendering.security.",
+      "org.jetbrains.android.uipreview.StudioRenderSandbox",
+      "org.jetbrains.android.uipreview.StudioRenderSecurity",
+      "sun.misc.Signal"
+  );
+
+  /**
+   * List of prefixes exempt from {@link #DISALLOWED_PACKAGES_FROM_PLUGIN} that must be loadable by transformed classes.
+   */
+  private static final ImmutableList<String> EXEMPT_PACKAGES_FROM_PLUGIN = ImmutableList.of(
+      "com.android.tools.rendering.security.RenderSandboxTransformTrampoline"
+  );
+
+  /**
    * Map containing which classes we should look into and do string replacements. The map is of the form:
    * <code>class name -> map of constants</code>
    * If we find the class name while processing the class transformations, we use the map of constants of the form:
@@ -172,6 +192,8 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     PreviewAnimationClockMethodTransform::new,
     ResourcesCompatTransform::new,
     RequestExecutorTransform::new,
+    GapWorkerTransform::new,
+    FontsContractCompatTransform::new,
     ViewTreeLifecycleTransform::new,
     LocalNavigationEventTransform::new,
     NavigationEventHandlerTransform::new,
@@ -232,7 +254,11 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
         new FirewalledResourcesClassLoader(
           // Do not allow to load kotlin any unexpected libraries from the plugin classpath. This could cause version
           // mismatches.
-          FilteringClassLoader.allowedPrefixes(parent, ALLOWED_PACKAGES_FROM_PLUGIN)
+          FilteringClassLoader.allowedPrefixes(
+              parent,
+              ALLOWED_PACKAGES_FROM_PLUGIN,
+              DISALLOWED_PACKAGES_FROM_PLUGIN,
+              EXEMPT_PACKAGES_FROM_PLUGIN)
         ),
         renderContext.getBuildTargetReference().getModuleIfNotDisposed(),
         loader

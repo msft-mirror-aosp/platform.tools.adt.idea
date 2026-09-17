@@ -76,7 +76,7 @@ public class AllInDirectoryRecursiveTestContextProviderTest
         new WorkspacePath("java/com/google/test/BUILD"), "java_test(name='unit_tests'");
 
     ConfigurationContext context = createContextFromPsi(directory);
-    List<ConfigurationFromContext> configurations = context.getConfigurationsFromContext();
+    List<ConfigurationFromContext> configurations = getConfigurationsFromContext(context);
     assertThat(configurations).isNotNull();
     assertThat(configurations).hasSize(1);
 
@@ -86,8 +86,8 @@ public class AllInDirectoryRecursiveTestContextProviderTest
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
-    assertThat(config.getTargetPatterns())
-        .containsExactly("//java/com/google/test/...:all");
+    performFirstRun(config, context);
+    assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test/...:all");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -99,14 +99,16 @@ public class AllInDirectoryRecursiveTestContextProviderTest
 
     ConfigurationContext context = createContextFromPsi(directory);
 
-    TestContextRunConfigurationProducer producer = new TestContextRunConfigurationProducer();
-    ConfigurationFromContext fromContext = producer.createConfigurationFromContext(context);
+    TestContextRunConfigurationProducer producer =
+        TestContextRunConfigurationProducer.getInstance();
+    ConfigurationFromContext fromContext =
+        runReadAction(() -> producer.createConfigurationFromContext(context));
     assertThat(fromContext).isNotNull();
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
-    assertThat(config.getTargetPatterns())
-        .containsExactly("//java/com/google/test/...:all");
+    performFirstRun(config, context);
+    assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test/...:all");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -121,7 +123,7 @@ public class AllInDirectoryRecursiveTestContextProviderTest
             "I am just a normal file!");
 
     List<ConfigurationFromContext> configurations =
-        createContextFromPsi(file).getConfigurationsFromContext();
+        getConfigurationsFromContext(createContextFromPsi(file));
 
     assertThat(configurations).isNull();
   }

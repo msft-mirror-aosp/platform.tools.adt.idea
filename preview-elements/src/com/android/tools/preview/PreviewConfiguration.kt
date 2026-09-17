@@ -17,12 +17,15 @@ package com.android.tools.preview
 
 import com.android.annotations.TestOnly
 import com.android.ide.common.resources.Locale
+import com.android.resources.ScreenOrientation
 import com.android.resources.UiMode
 import com.android.sdklib.AndroidDpCoordinate
 import com.android.sdklib.IAndroidTarget
+import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConversionUtil
+import com.android.tools.configurations.UiModeState
 import com.android.tools.configurations.Wallpaper
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.preview.config.DEVICE_BY_SPEC_PREFIX
@@ -58,8 +61,7 @@ interface ConfigurablePreviewElement<T> : PreviewElement<T> {
 }
 
 /** Contains settings for rendering. */
-data class PreviewConfiguration
-internal constructor(
+data class PreviewConfiguration(
   val apiLevel: Int,
   val width: Int,
   val height: Int,
@@ -130,12 +132,13 @@ fun ConfigurablePreviewElement<*>.applyTo(
 }
 
 /**
- * If specified in the [ConfigurablePreviewElement], this method will return the `widthDp` and `heightDp` dimensions as a [Pair] as long as
- * the device frame is disabled (i.e. `showDecorations` is false).
+ * If specified in the [ConfigurablePreviewElement], this method will return the `widthDp` and `heightDp` dimensions as a [Dimension] as
+ * long as the device frame is disabled (i.e. `showDecorations` is false). If only one of the dimensions (width or height) is specified, the
+ * unspecified dimension will be returned as [UNDEFINED_DIMENSION] in the [Dimension] object.
  */
 @AndroidDpCoordinate
 private fun ConfigurablePreviewElement<*>.getCustomDeviceSize(): Dimension? =
-  if (!displaySettings.showDecoration && configuration.width != -1 && configuration.height != -1) {
+  if (!displaySettings.showDecoration && (configuration.width != UNDEFINED_DIMENSION || configuration.height != UNDEFINED_DIMENSION)) {
     Dimension(configuration.width, configuration.height)
   } else null
 
@@ -190,7 +193,15 @@ private fun PreviewConfiguration.applyTo(
   renderConfiguration.isGestureNav = deviceConfig == null || deviceConfig.navigation == Navigation.gesture
 
   val deviceFromSpec = deviceConfig?.createDeviceInstance() ?: allDevices.findByIdOrName(deviceSpec)
-  val device = deviceFromSpec ?: defaultDeviceProvider(renderConfiguration)
+  val device =
+    (deviceFromSpec ?: defaultDeviceProvider(renderConfiguration))?.let {
+      // If the ui mode is set to WATCH, override device tag ID to wear to ensure proper rendering.
+      if ((uiMode and Configuration.UI_MODE_TYPE_MASK) == UiModeState.UI_MODE_TYPE_WATCH) {
+        Device.Builder(it).apply { setTagId(SystemImageTags.WEAR_TAG.id) }.build()
+      } else {
+        it
+      }
+    }
   if (device != null) {
     // Ensure the device is reset
     renderConfiguration.setEffectiveDevice(null, null)
@@ -215,9 +226,11 @@ private fun PreviewConfiguration.applyTo(
     // device itself.
     // This is to match the intuition that those sizes always determine the size of the composable.
     renderConfiguration.device?.let { device ->
-      val xDimension = ConversionUtil.dpToPx(it.width, renderConfiguration.density.dpiValue)
-      val yDimension = ConversionUtil.dpToPx(it.height, renderConfiguration.density.dpiValue)
-      renderConfiguration.updateScreenSize(xDimension, yDimension, device)
+      val xDimension = getCustomDimensionInPx(it.width, device, renderConfiguration) { size -> size.width }
+      val yDimension = getCustomDimensionInPx(it.height, device, renderConfiguration) { size -> size.height }
+      if (xDimension != UNDEFINED_DIMENSION && yDimension != UNDEFINED_DIMENSION) {
+        renderConfiguration.updateScreenSize(xDimension, yDimension, device)
+      }
     }
   }
 
@@ -226,6 +239,24 @@ private fun PreviewConfiguration.applyTo(
   deviceConfig?.parentDeviceId?.let { renderConfiguration.useDeviceForCutout(it) }
   renderConfiguration.finishBulkEditing()
 }
+
+/**
+ * Resolves a custom dimension (width or height) to pixels. If the custom dimension is [UNDEFINED_DIMENSION], it falls back to the
+ * corresponding dimension of the [device] (resolved using the current orientation). Otherwise, it converts the custom dimension from DP to
+ * pixels.
+ */
+private fun getCustomDimensionInPx(
+  customDim: Int,
+  device: Device,
+  renderConfiguration: Configuration,
+  getDeviceDimension: (Dimension) -> Int,
+): Int =
+  if (customDim == UNDEFINED_DIMENSION) {
+    val orientation = renderConfiguration.deviceState?.orientation ?: device.defaultState.orientation ?: ScreenOrientation.PORTRAIT
+    device.getScreenSize(orientation)?.let(getDeviceDimension) ?: UNDEFINED_DIMENSION
+  } else {
+    ConversionUtil.dpToPx(customDim, renderConfiguration.density.dpiValue)
+  }
 
 @TestOnly
 fun PreviewConfiguration.applyConfigurationForTest(

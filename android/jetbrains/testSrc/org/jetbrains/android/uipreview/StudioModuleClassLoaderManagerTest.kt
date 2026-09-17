@@ -22,6 +22,9 @@ import com.android.tools.rendering.classloading.ModuleClassLoaderManager
 import com.android.tools.rendering.classloading.NopModuleClassLoadedDiagnostics
 import com.android.tools.rendering.classloading.toClassTransform
 import com.android.tools.rendering.classloading.useWithClassLoader
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -118,6 +121,37 @@ class StudioModuleClassLoaderManagerTest {
           assertFalse(privateClassLoader.stats is NopModuleClassLoadedDiagnostics)
         }
       }
+    }
+  }
+
+  @Test
+  fun testConcurrentReleaseDoesNotDoubleDispose() {
+    val manager = StudioModuleClassLoaderManager.get() as StudioModuleClassLoaderManager
+    val context = StudioModuleRenderContext.forModule(project.module)
+    val executor = Executors.newFixedThreadPool(4)
+    try {
+      for (i in 0 until 10) {
+        val ref1 = manager.getShared(null, context)
+        val ref2 = manager.getShared(null, context)
+        assertEquals(ref1.classLoader, ref2.classLoader)
+
+        val latch = CountDownLatch(1)
+        val f1 = executor.submit {
+          latch.await()
+          manager.release(ref1)
+        }
+        val f2 = executor.submit {
+          latch.await()
+          manager.release(ref2)
+        }
+        latch.countDown()
+        f1.get(5, TimeUnit.SECONDS)
+        f2.get(5, TimeUnit.SECONDS)
+        assertTrue(ref1.classLoader.isDisposed)
+      }
+    } finally {
+      executor.shutdownNow()
+      executor.awaitTermination(5, TimeUnit.SECONDS)
     }
   }
 }

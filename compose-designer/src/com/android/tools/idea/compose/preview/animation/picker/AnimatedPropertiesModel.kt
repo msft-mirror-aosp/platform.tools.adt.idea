@@ -80,11 +80,9 @@ internal class AnimatedPropertiesModel(
           inspector.addEditorsForProperties(properties.values)
         } else {
           inspector.addSectionLabel("initial")
-          // First half of properties.
-          inspector.addEditorsForProperties(properties.values.filterIndexed { index, _ -> index < size / 2 })
+          inspector.addEditorsForProperties(properties.getByNamespace(INITIAL_PROPERTY).values)
           inspector.addSectionLabel("target")
-          // Second half of properties.
-          inspector.addEditorsForProperties(properties.values.filterIndexed { index, _ -> index >= size / 2 })
+          inspector.addEditorsForProperties(properties.getByNamespace(TARGET_PROPERTY).values)
         }
       }
     }

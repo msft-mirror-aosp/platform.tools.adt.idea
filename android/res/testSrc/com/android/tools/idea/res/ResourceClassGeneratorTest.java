@@ -377,7 +377,7 @@ public class ResourceClassGeneratorTest extends AndroidTestCase {
     String name = "my.test.pkg.R$style";
     Class<?> clz = generateClass(generator, name);
     assertNotNull(clz);
-    clz.newInstance();
+    assertNotNull(clz.newInstance());
     assertEquals(name, clz.getName());
     assertTrue(Modifier.isPublic(clz.getModifiers()));
     assertTrue(Modifier.isFinal(clz.getModifiers()));

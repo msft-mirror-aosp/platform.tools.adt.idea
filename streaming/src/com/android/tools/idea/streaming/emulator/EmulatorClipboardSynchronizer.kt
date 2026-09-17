@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 
 /** Synchronizes the AVD and the host clipboards. */
 internal class EmulatorClipboardSynchronizer(disposableParent: Disposable, val emulator: EmulatorController) :
-  AbstractClipboardSynchronizer(disposableParent) {
+  AbstractClipboardSynchronizer() {
 
   private val coroutineScope = createCoroutineScope()
   @GuardedBy("lock") private var clipboardReceiver: Job? = null
@@ -39,6 +39,7 @@ internal class EmulatorClipboardSynchronizer(disposableParent: Disposable, val e
     get() = thisLogger()
 
   init {
+    initialize(disposableParent)
     synchronizeDeviceClipboard(forceSend = true)
   }
 
@@ -81,24 +82,23 @@ internal class EmulatorClipboardSynchronizer(disposableParent: Disposable, val e
     synchronized(lock) {
       cancelClipboardFeed()
       if (emulator.connectionState == EmulatorController.ConnectionState.CONNECTED) {
-        clipboardReceiver =
-          coroutineScope.launch {
-            while (true) {
-              try {
-                emulator.streamClipboard().collect { message ->
-                  logger.debug { "ClipboardReceiver.onNext: \"${message.text}\"" }
-                  if (message.text.isNotEmpty()) {
-                    onDeviceClipboardChanged(message.text)
-                  }
+        clipboardReceiver = coroutineScope.launch {
+          while (true) {
+            try {
+              emulator.streamClipboard().collect { message ->
+                logger.debug { "ClipboardReceiver.onNext: \"${message.text}\"" }
+                if (message.text.isNotEmpty()) {
+                  onDeviceClipboardChanged(message.text)
                 }
-              } catch (_: EmulatorController.RetryException) {
-                continue
-              } catch (t: Throwable) {
-                t.throwIfCancellation()
               }
-              break
+            } catch (_: EmulatorController.RetryException) {
+              continue
+            } catch (t: Throwable) {
+              t.throwIfCancellation()
             }
+            break
           }
+        }
       }
     }
   }

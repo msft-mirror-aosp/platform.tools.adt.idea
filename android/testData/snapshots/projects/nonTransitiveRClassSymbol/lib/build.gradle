@@ -1,10 +1,9 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
 }
 
 android {
-    namespace 'com.example.lib'
+    namespace = 'com.example.lib'
     compileSdk 33
 
     defaultConfig {
@@ -24,8 +23,5 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = '1.8'
     }
 }

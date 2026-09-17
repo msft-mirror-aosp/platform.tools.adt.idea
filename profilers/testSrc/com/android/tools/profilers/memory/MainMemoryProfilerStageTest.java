@@ -44,9 +44,11 @@ import com.android.tools.profiler.proto.Memory.HeapDumpInfo;
 import com.android.tools.profiler.proto.Memory.TrackStatus.Status;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.FakeFeatureTracker;
+import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilersTestData;
 import com.android.tools.idea.transport.TransportServiceUtils;
+import com.android.tools.profilers.FakeIdeProfilerServices;
 import com.android.tools.profilers.RecordingOption;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
@@ -62,6 +64,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
+import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.ArrayUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
@@ -887,7 +890,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                           myIdeProfilerServices.getFeatureTracker(), myStage);
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
-    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy heap dump content"));
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
 
     myStage.selectCaptureDuration(dataList.getFirst().value, null);
@@ -899,17 +902,165 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   }
 
   @Test
+  public void selectingHeapDump_inEditorEnabled_failure() throws Exception {
+    myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(6);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(8);
+    HeapDumpInfo info = HeapDumpInfo.newBuilder()
+      .setStartTime(startTimeNs)
+      .setEndTime(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryHeapDumpData(info.getStartTime(), info.getStartTime(), info)
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofHeapDumpSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                          myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".hprof");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+      assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
+      assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.HEAP_DUMP);
+      assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.HEAP_DUMP_CAPTURE_FAILURE);
+    }
+    finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+    }
+  }
+
+  @Test
   public void selectingNativeAllocationGoesToSeparateStage_inEditorEnabled() throws Exception {
     myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
     myIdeProfilerServices.enableTaskBasedUx(true);
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(10);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(12);
     Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
-      .setFromTimestamp(TimeUnit.MICROSECONDS.toNanos(5))
-      .setToTimestamp(TimeUnit.MICROSECONDS.toNanos(10))
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
       .build();
 
     myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
                                         ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
-                                                                                  5,
+                                                                                  10,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                           .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                           .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  12,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                           .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                           .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                          myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    // Simulate the trace file existing in the trace file location
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy native trace content"));
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+      // When the editor flag is enabled, it should open the file instead of transitioning the stage
+      assertThat(myProfilers.getStage()).isInstanceOf(MainMemoryProfilerStage.class); // Stays on the main stage
+      assertThat(myIdeProfilerServices.getOpenedFile()).isNotNull();
+      assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.NATIVE_ALLOCATIONS);
+    }
+    finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+    }
+  }
+
+  @Test
+  public void selectingNativeAllocation_inEditorEnabled_failure() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(30);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(32);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  30,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                           .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                           .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  32,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                           .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                           .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                          myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+      assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
+      assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.NATIVE_ALLOCATIONS);
+      assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.NATIVE_ALLOCATIONS_PARSING_FAILURE);
+    }
+    finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+    }
+  }
+
+  @Test
+  public void nativeAllocationInEditorWithDeobfuscationEnabledAndOnlySymbolFiles() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.emptyMap());
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(15);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(20);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  15,
                                                                                   Trace.TraceData.newBuilder().setTraceStarted(
                                                                                     Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
                                                                                   ).build())
@@ -917,7 +1068,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                           .build());
     myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
                                         ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
-                                                                                  10,
+                                                                                  20,
                                                                                   Trace.TraceData.newBuilder().setTraceEnded(
                                                                                     Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
                                                                                   ).build())
@@ -926,19 +1077,258 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
 
     DataSeries<CaptureDurationData<? extends CaptureObject>> series =
       CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
-                                          myIdeProfilerServices.getFeatureTracker(), myStage);
+                                                  myIdeProfilerServices.getFeatureTracker(), myStage);
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
-    // Simulate the trace file existing in the trace file location
-    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
 
-    myStage.selectCaptureDuration(dataList.getFirst().value, null);
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+      assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("bundled trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
+    } finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
+      }
+    }
+  }
 
-    // When the editor flag is enabled, it should open the file instead of transitioning the stage
-    assertThat(myProfilers.getStage()).isInstanceOf(MainMemoryProfilerStage.class); // Stays on the main stage
-    assertThat(myIdeProfilerServices.getOpenedFile()).isNotNull();
-    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.NATIVE_ALLOCATIONS);
+  @Test
+  public void nativeAllocationInEditorWithDeobfuscationEnabledAndOnlyProguardMappings() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.emptyList());
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(25);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(30);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  25,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  30,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                                  myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+      assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("bundled trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
+    } finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
+      }
+    }
+  }
+
+  @Test
+  public void nativeAllocationInEditorWithDeobfuscationEnabledAndNeitherSymbolsNorProguardMappings() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.emptyList());
+    myIdeProfilerServices.setProguardMappings(Collections.emptyMap());
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(35);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(40);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  35,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  40,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                                  myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+      assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isFalse();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("dummy raw trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
+    } finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
+      }
+    }
+  }
+
+  @Test
+  public void nativeAllocationInEditorWithDeobfuscationEnabledAndBothSymbolsAndProguardMappings() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(45);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(50);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  45,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  50,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                                  myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+      assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("bundled trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
+    } finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
+      }
+    }
+  }
+
+  @Test
+  public void nativeAllocationInEditorWhenBundlingFailsFallsBackToRawTrace() throws Exception {
+    myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+    myIdeProfilerServices.setSymbolizeAndDeobfuscateFails(true);
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(55);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(60);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .build();
+
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  55,
+                                                                                  Trace.TraceData.newBuilder().setTraceStarted(
+                                                                                    Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryTraceData(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                                                                  60,
+                                                                                  Trace.TraceData.newBuilder().setTraceEnded(
+                                                                                    Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)
+                                                                                  ).build())
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofNativeAllocationSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                                  myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy raw trace"));
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+      assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
+      // When bundling fails, the raw trace is preserved and renamed to captureFile
+      assertThat(dummyFile.exists()).isFalse();
+      assertThat(captureFile.exists()).isTrue();
+      assertThat(FileUtil.loadFile(captureFile)).isEqualTo("dummy raw trace");
+      assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(captureFile);
+    } finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+      if (dummyFile.exists()) {
+        dummyFile.delete();
+      }
+    }
   }
 
   @Test
@@ -962,6 +1352,44 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myStage.selectCaptureDuration(dataList.getFirst().value, null);
     assertThat(myProfilers.getStage()).isInstanceOf(MemoryCaptureStage.class);
     assertThat(myProfilers.getStage().getStageType()).isEqualTo(AndroidProfilerEvent.Stage.MEMORY_STAGE);
+  }
+
+  @Test
+  public void selectingLegacyAllocations_inEditorEnabled_failure() throws Exception {
+    myIdeProfilerServices.setJavaKotlinAllocationsLegacyTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    long startTimeUs = 5;
+    long endTimeUs = 10;
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(startTimeUs);
+    AllocationsInfo info = AllocationsInfo.newBuilder()
+      .setStartTime(startTimeNs).setEndTime(TimeUnit.MICROSECONDS.toNanos(endTimeUs)).setLegacy(true)
+      .build();
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryAllocationInfoData(info.getStartTime(),
+                                                                                          ProfilersTestData.SESSION_DATA.getPid(),
+                                                                                          info).build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofLegacyAllocationInfos(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                                myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
+
+    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".alloc");
+    try {
+      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+      assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
+      assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
+      assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.JAVA_KOTLIN_ALLOCATIONS_PARSING_FAILURE);
+    }
+    finally {
+      if (captureFile.exists()) {
+        captureFile.delete();
+      }
+    }
   }
 
   @Test

@@ -17,10 +17,14 @@ package com.android.tools.idea.preview.modes
 
 import com.android.tools.idea.preview.TestBasePreviewElement
 import com.android.tools.idea.preview.TestPreviewElement
+import com.intellij.openapi.project.Project
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import org.junit.Test
+import org.mockito.kotlin.mock
 
 /**
  * A [TestBasePreviewElement] that uses a string as the type for the "Psi" references like the body or the annotation element. This is
@@ -99,5 +103,17 @@ class PreviewModeManagerTest {
       )
     val newMode = mode.newMode(newElements = newElements, previousElements = emptySet())
     assertEquals(newSelected, newMode.selected)
+  }
+
+  @Test
+  fun defaultModeExpectResizeOnEnter() {
+    val project = mock<Project>()
+    val defaultMode = PreviewMode.Default()
+    assertTrue(defaultMode.expectResizeOnEnter(PreviewMode.Focus(null), project))
+    assertTrue(defaultMode.expectResizeOnEnter(PreviewMode.AnimationInspection(mock()), project))
+    assertTrue(defaultMode.expectResizeOnEnter(PreviewMode.UiCheck(mock()), project))
+    assertFalse(defaultMode.expectResizeOnEnter(PreviewMode.Interactive(mock()), project))
+    assertFalse(defaultMode.expectResizeOnEnter(PreviewMode.Default(), project))
+    assertFalse(defaultMode.expectResizeOnEnter(null, project))
   }
 }

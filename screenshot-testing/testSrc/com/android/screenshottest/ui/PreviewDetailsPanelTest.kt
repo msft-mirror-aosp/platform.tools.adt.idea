@@ -29,6 +29,7 @@ import java.awt.Container
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.JSeparator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -252,7 +253,8 @@ class PreviewDetailsPanelTest {
     assertTrue("Toolbar should contain actions", actions.isNotEmpty())
 
     // Verify expected actions are present (by checking some names or types if possible,
-    // or just count. The standard actions are: Chessboard, Grid, Separator, ZoomOut, ZoomIn, 1:1, Fit)
+    // or just count. The standard actions are: Chessboard, Grid, Separator, ZoomOut, ZoomIn, 1:1,
+    // Fit)
     // We expect at least 6 items (including separator).
     assertTrue("Toolbar should have multiple actions", actions.size >= 6)
   }
@@ -338,6 +340,74 @@ class PreviewDetailsPanelTest {
     assertTrue(panel.screenshotAttributesView.state.refLocation == "N/A")
   }
 
+  @Test
+  fun testMethodGroupRendererContainsDivider() = runInEdtAndWait {
+    val panel = PreviewDetailsPanel(projectRule.project)
+    val details1 =
+      PreviewDetails(
+        testId = "test1",
+        className = "Class",
+        methodName = "method",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+      )
+    val details2 =
+      PreviewDetails(
+        testId = "test2",
+        className = "Class",
+        methodName = "method",
+        previewName = "preview2",
+        testResult = AndroidTestCaseResult.PASSED,
+      )
+
+    panel.displayPreviews(listOf(details1, details2), ScreenshotViewType.NEW, null)
+
+    val visibleComponents = panel.components.filter { it.isVisible }
+    val activePanel = visibleComponents[0] as JPanel
+    val scrollPane = activePanel.components.find { it is JBScrollPane } as JBScrollPane
+    val list = scrollPane.viewport.view as JList<MethodGroup>
+
+    val cellRenderer = list.cellRenderer
+    val rendererComponent = cellRenderer.getListCellRendererComponent(list, list.model.getElementAt(0), 0, false, false) as JPanel
+
+    val hasSeparator = rendererComponent.components.any { it is JSeparator }
+    assertTrue("MethodGroupRenderer should contain a JSeparator divider", hasSeparator)
+  }
+
+  @Test
+  fun testSinglePreviewContainsDivider() = runInEdtAndWait {
+    val panel = PreviewDetailsPanel(projectRule.project)
+    val details =
+      PreviewDetails(
+        testId = "test1",
+        className = "Class",
+        methodName = "method",
+        previewName = "preview",
+        testResult = AndroidTestCaseResult.PASSED,
+      )
+    val toolbar = ComposePanel()
+
+    panel.displayPreviews(listOf(details), ScreenshotViewType.NEW, toolbar)
+
+    val visibleComponents = panel.components.filter { it.isVisible }
+    val activePanel = visibleComponents[0] as JPanel
+    val splitter = activePanel.components.find { it is OnePixelSplitter } as OnePixelSplitter
+    val topContainer = splitter.firstComponent as JPanel
+
+    fun containsSeparator(container: Container): Boolean {
+      for (comp in container.components) {
+        if (comp is JSeparator) return true
+        if (comp is Container && containsSeparator(comp)) return true
+      }
+      return false
+    }
+
+    assertTrue(
+      "Single preview panel should contain a JSeparator divider",
+      containsSeparator(topContainer),
+    )
+  }
+
   private fun findLabelsInScrollPaneContent(container: Container): List<String> {
     val scrollPane = container.components.find { it is JBScrollPane } as? JBScrollPane ?: return emptyList()
     val viewport = scrollPane.viewport
@@ -360,7 +430,10 @@ class PreviewDetailsPanelTest {
     return contentPanel.components.filterIsInstance<JBLabel>().map { it.text }
   }
 
-  private fun findImagePanel(container: Container, type: ScreenshotViewType): ImageWithToolbarPanel? {
+  private fun findImagePanel(
+    container: Container,
+    type: ScreenshotViewType,
+  ): ImageWithToolbarPanel? {
     if (container is ImageWithToolbarPanel && container.title == type) {
       return container
     }

@@ -52,6 +52,7 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.AdditionalO
 import com.android.tools.profilers.event.EventMonitor;
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
+import com.android.tools.profilers.tasks.analytics.TaskFinishedState;
 import com.android.tools.profilers.tasks.analytics.TaskStartFailedMetadata;
 import com.android.tools.profilers.tasks.analytics.TaskStopFailedMetadata;
 import com.android.tools.profilers.transporteventutils.TransportListenerTracker;
@@ -405,11 +406,11 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
 
   @VisibleForTesting
   void stopCapturing() {
-    LogUtils.log(getClass(), "CPU capture stop attempted");
     // We need to send the trace configuration that was used to initiate the capture. Return early if no in-progress trace exists.
     if (Trace.TraceInfo.getDefaultInstance().equals(myInProgressTraceInfo)) {
       return;
     }
+    LogUtils.log(getClass(), "CPU capture stop attempted");
 
     setCaptureState(CaptureState.STOPPING);
     CpuProfiler.stopTracing(getStudioProfilers(), mySession, myInProgressTraceInfo.getConfiguration(), this::stopCapturingCallback, null, listener -> myListenerTracker.trackListener(listener, true));
@@ -471,30 +472,27 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
           Trace.TraceInfo traceInfo = myCompletedTraceIdToInfoMap.get(traceId).getTraceInfo();
           ProfilingConfiguration config = ProfilingConfiguration.fromProto(traceInfo.getConfiguration(), isTraceboxEnabled);
           ProfilingConfiguration.TraceType traceType = config.getTraceType();
-          boolean isSystemTrace = traceType == ProfilingConfiguration.TraceType.ATRACE || traceType == ProfilingConfiguration.TraceType.PERFETTO;
-          boolean isArtTrace = traceType == ProfilingConfiguration.TraceType.ART;
-          boolean isSimpleperfTrace = traceType == ProfilingConfiguration.TraceType.SIMPLEPERF;
-
           ProfilerTaskType taskType = traceType.toTaskType();
           boolean openInEditor = ProfilerInEditorUtils.isEditorEnabled(getStudioProfilers().getIdeServices().getFeatureConfig(), taskType);
 
           if (openInEditor) {
             File captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(getStudioProfilers(), getStudioProfilers().getSession(), traceId);
-            if (captureFile != null) {
-              getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> {
-                if (captureFile.exists()) {
-                  getStudioProfilers().getIdeServices().openTraceFile(captureFile);
-                  if (isSystemTrace) {
-                    getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.SYSTEM_TRACE);
-                  } else if (isArtTrace) {
-                    getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING);
-                  } else if (isSimpleperfTrace) {
-                    getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.CALLSTACK_SAMPLE);
-                  }
+            getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> {
+              if (captureFile != null && captureFile.exists() && captureFile.length() > 0) {
+                getStudioProfilers().getIdeServices().openTraceFile(captureFile);
+                // When Task-Based UX is enabled and the trace opens in the Editor, it bypasses
+                // the legacy CpuCaptureStage (where task completion is usually tracked).
+                // Therefore, we must log trackTaskFinished here for live recordings.
+                if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+                  myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED);
                 }
-              });
-              return Pair.create((CpuCaptureStage) null, true);
-            }
+              } else {
+                getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.PARSING_FAILURE);
+                cleanupFailedCapture();
+              }
+              closeCpuTaskTab(taskType);
+            });
+            return Pair.create((CpuCaptureStage) null, true);
           }
 
           CpuCaptureStage stage = CpuCaptureStage.create(getStudioProfilers(), config, getCpuCaptureMetadata(config, traceInfo), traceId);
@@ -515,6 +513,12 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
             getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.IMPORT_TRACE_PARSING_FAILURE);
           }
         }, 300000); //Set a 5 minutes timeout to retrieve and parse a potentially large trace file.
+    }
+  }
+
+  private void closeCpuTaskTab(@NotNull ProfilerTaskType taskType) {
+    if (taskType != ProfilerTaskType.UNSPECIFIED) {
+      getStudioProfilers().getIdeServices().closeTaskTab(taskType);
     }
   }
 

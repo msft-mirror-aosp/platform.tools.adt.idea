@@ -49,9 +49,43 @@ internal object BasicRenderSandbox : RenderSandboxDelegate(DenyAllRenderSandbox)
   }
 
   override fun checkReflectionInvoke(owner: String, name: String) {
-    if (RenderSandboxTransformTrampoline.shouldIntercept(owner, name)) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptPolymorphic(owner, name)) {
       throw SecurityException("Reflection access to restricted method: $owner#$name")
     }
+  }
+
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptPolymorphic(clazz, name)) {
+      throw SecurityException("Reflection access to restricted method: ${clazz.name.replace('.', '/')}#$name")
+    }
+  }
+
+  override fun checkFieldAccess(owner: String, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptField(owner, name)) {
+      throw SecurityException("Reflection access to restricted field: $owner#$name")
+    }
+  }
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptField(clazz, name)) {
+      throw SecurityException("Reflection access to restricted field: ${clazz.name.replace('.', '/')}#$name")
+    }
+  }
+
+  override fun checkSetFactory() {
+    throw SecurityException("Setting URL stream handler factory is denied")
+  }
+
+  override fun checkScriptEngine() {
+    throw SecurityException("Access to ScriptEngineManager is denied")
+  }
+
+  override fun checkServiceLoader() {
+    throw SecurityException("Access to ServiceLoader is denied")
+  }
+
+  override fun checkXmlDecoder() {
+    throw SecurityException("Access to java.beans.XMLDecoder is denied")
   }
 
   override fun checkFileRead(absolutePath: String) {

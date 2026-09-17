@@ -17,6 +17,9 @@ package com.android.tools.profilers
 
 import com.android.tools.adtui.RangeTooltipComponent
 import com.android.tools.adtui.TabularLayout
+import com.android.tools.adtui.TooltipView
+import com.android.tools.adtui.flat.FlatSeparator
+import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.ViewBinder
 import com.android.tools.adtui.stdui.CommonButton
 import com.android.tools.adtui.stdui.TimelineScrollbar
@@ -29,18 +32,36 @@ import com.android.tools.profilers.event.UserEventTooltip
 import com.android.tools.profilers.event.UserEventTooltipView
 import com.android.tools.profilers.memory.LiveMemoryFootprintModel
 import com.android.tools.profilers.memory.LiveMemoryFootprintView
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
+import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
+import com.intellij.openapi.util.IconLoader
+import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBUI
 import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.FlowLayout
+import java.awt.GridBagConstraints
+import java.util.concurrent.TimeUnit
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 
 class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : StageView<LiveStage>(profilersView, liveStage) {
 
   val binder: ViewBinder<StudioProfilersView, LiveDataModel, LiveDataView<out LiveDataModel>> = ViewBinder()
-  private val stopRecordingButton: CommonButton
+  private val stopRecordingButton: JButton
   private val liveStageToolbarItems: MutableList<JComponent>
+
+  private val tooltipPanels = mutableListOf<JPanel>()
+  private val activeTooltipViews = mutableListOf<TooltipView>()
+  val recordingTimerLabel = JBLabel("").apply { foreground = ProfilerColors.CPU_CAPTURE_STATUS }
+  private val recordingSeparator = FlatSeparator().apply { isVisible = false }
+  val leftToolbar =
+    JPanel(ProfilerLayout.createToolbarLayout()).apply {
+      border = JBUI.Borders.emptyLeft(5)
+      add(recordingTimerLabel)
+    }
 
   init {
     binder.bind(LiveMemoryFootprintModel::class.java) { view: StudioProfilersView, model -> LiveMemoryFootprintView(view, model) }
@@ -61,8 +82,6 @@ class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : 
     liveStageToolbarItems = createLiveStageToolbarItems()
 
     tooltipPanel.layout = FlowLayout(FlowLayout.LEFT, 0, 0)
-    val myTooltipComponent =
-      RangeTooltipComponent(stage.timeline, tooltipPanel, profilersView.component, this::shouldShowTooltipSeekComponent)
 
     val topPanelLayout = TabularLayout("*", "*,Fit-")
     val topPanel = JPanel(topPanelLayout)
@@ -74,7 +93,11 @@ class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : 
       liveStage.eventMonitor.let { eventMonitor ->
         val eventsView = EventMonitorView(profilersView, eventMonitor.get())
         val eventComponent = eventsView.component
-        eventsView.registerTooltip(myTooltipComponent, stage)
+        val eventTooltipPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply { background = ProfilerColors.TOOLTIP_BACKGROUND }
+        tooltipPanels.add(eventTooltipPanel)
+        val eventTooltipComponent =
+          RangeTooltipComponent(stage.timeline, eventTooltipPanel, profilersView.component, this::shouldShowTooltipSeekComponent)
+        eventsView.registerTooltip(eventTooltipComponent, stage)
         topPanelLayout.setRowSizing(1, "Fit-")
         topPanel.add(eventComponent, TabularLayout.Constraint(1, 0))
       }
@@ -84,10 +107,19 @@ class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : 
       liveDataModel.enter()
       val view = binder.build(profilersView, liveDataModel) as LiveDataView<LiveDataModel>
       val viewComponent = view.component
-      view.populateUi(myTooltipComponent)
-      view.registerTooltip(tooltipBinder, myTooltipComponent, liveStage)
+      val liveTooltipPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply { background = ProfilerColors.TOOLTIP_BACKGROUND }
+      tooltipPanels.add(liveTooltipPanel)
+      val tooltipComponent =
+        RangeTooltipComponent(stage.timeline, liveTooltipPanel, profilersView.component, this::shouldShowTooltipSeekComponent)
+      view.populateUi(tooltipComponent)
+      view.registerTooltip(tooltipBinder, tooltipComponent, liveStage)
       liveViews.add(viewComponent, TabularLayout.Constraint(rowIndex, 0))
       liveViewLayout.setRowSizing(rowIndex, rowSizeString(view))
+      view.addWeightChangedListener {
+        liveViewLayout.setRowSizing(rowIndex, rowSizeString(view))
+        liveViews.revalidate()
+        liveViews.repaint()
+      }
     }
 
     topPanelLayout.setRowSizing(2, "*")
@@ -108,32 +140,63 @@ class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : 
     // (like LiveCpuUsageModel) use a "continuous pull" pattern where the view redraws on every frame, which is not affected by the
     // initial missed event.
     stage.liveModels.filterIsInstance<LiveMemoryFootprintModel>().firstOrNull()?.refreshModels()
+
+    fun updateTimer() {
+      if (!isLiveRecordingOngoing || isStopping) {
+        recordingTimerLabel.text = ""
+        recordingTimerLabel.isVisible = false
+        recordingTimerLabel.icon = null
+        updateSeparatorVisibility()
+        return
+      }
+      val elapsedUs = (stage.timeline.dataRange.max - stage.timeline.dataRange.min).coerceAtLeast(0.0).toLong()
+      val elapsedNs = TimeUnit.MICROSECONDS.toNanos(elapsedUs)
+      val formattedTime = RecordingScreenModel.formatElapsedTime(elapsedNs)
+      recordingTimerLabel.icon = StudioIcons.Profiler.Toolbar.STOP_RECORDING
+      recordingTimerLabel.text = "<html><b>Recording:</b> $formattedTime</html>"
+      recordingTimerLabel.isVisible = true
+      updateSeparatorVisibility()
+    }
+
+    stage.timeline.dataRange.addDependency(this).onChange(Range.Aspect.RANGE, ::updateTimer)
+    updateTimer()
+  }
+
+  private fun updateSeparatorVisibility() {
+    recordingSeparator.isVisible = isLiveRecordingOngoing && !isStopping && recordingSeparator.parent == leftToolbar
   }
 
   private val isLiveRecordingOngoing
     get() = stage.studioProfilers.sessionsManager.isSessionAlive
 
+  private var isStopping = false
+
   private fun onStopRecordingClick() {
+    isStopping = true
     stage.stopTask.invoke()
     stopRecordingButton.isVisible = false
+    recordingTimerLabel.isVisible = false
+    recordingTimerLabel.text = ""
+    recordingTimerLabel.icon = null
+    updateSeparatorVisibility()
 
     // Live model icons in toolbar is set to invisible on stop recording button click
     liveStageToolbarItems.forEach { it.isVisible = false }
   }
 
-  private fun createStopRecordingButton(): CommonButton {
+  private fun createStopRecordingButton(): JButton {
     val button =
-      CommonButton(
-          if (profilersView.studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-            StudioIcons.Profiler.Toolbar.STOP_SESSION
-          } else {
-            StudioIcons.Profiler.Toolbar.STOP_RECORDING
+      if (profilersView.studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
+          JButton(TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING).apply {
+            putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+            font = font.deriveFont(font.style)
           }
-        )
+        } else {
+          CommonButton(StudioIcons.Profiler.Toolbar.STOP_RECORDING).apply { disabledIcon = IconLoader.getDisabledIcon(icon) }
+        }
         .apply {
           toolTipText = Companion.stopRecordingTooltip
           addActionListener { onStopRecordingClick() }
-          putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
         }
     button.isVisible = isLiveRecordingOngoing
     return button
@@ -153,16 +216,52 @@ class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : 
 
   private fun rowSizeString(view: LiveDataView<LiveDataModel>): String {
     val weight = (view.verticalWeight * 100f).toInt()
-    return if (weight > 0) "$weight*" else "Fit-"
+    return if (weight > 0) "$weight*" else "Fit"
+  }
+
+  override fun tooltipChanged() {
+    activeTooltipViews.forEach { it.dispose() }
+    activeTooltipViews.clear()
+    for (panel in tooltipPanels) {
+      panel.removeAll()
+      panel.isVisible = false
+    }
+
+    val tooltip = stage.tooltip
+    if (tooltip != null) {
+      for (panel in tooltipPanels) {
+        val view = tooltipBinder.build(this, tooltip)
+        activeTooltipViews.add(view)
+        panel.add(view.createComponent())
+        panel.isVisible = true
+      }
+    }
+    for (panel in tooltipPanels) {
+      panel.invalidate()
+      panel.repaint()
+    }
+  }
+
+  fun addLeftToolbarComponent(component: JComponent) {
+    if (component.parent != leftToolbar) {
+      if (recordingSeparator.parent != leftToolbar) {
+        leftToolbar.add(recordingSeparator)
+      }
+      leftToolbar.add(component)
+      updateSeparatorVisibility()
+    }
   }
 
   override fun getToolbar(): JComponent {
     val panel = JPanel(BorderLayout())
-    val toolbar = JPanel(ProfilerLayout.createToolbarLayout())
-    toolbar.removeAll()
-    liveStageToolbarItems.forEach { toolbar.add(it) }
-    toolbar.add(stopRecordingButton)
-    panel.add(toolbar, BorderLayout.WEST)
+    val rightToolbar =
+      JPanel(ProfilerLayout.createToolbarLayout()).apply {
+        border = JBUI.Borders.emptyRight(5)
+        liveStageToolbarItems.forEach { add(it, GridBagConstraints().apply { insets = JBUI.insets(0, 0, 0, 0) }) }
+        add(stopRecordingButton, GridBagConstraints().apply { insets = JBUI.insets(0, 2, 0, 0) })
+      }
+    panel.add(leftToolbar, BorderLayout.WEST)
+    panel.add(rightToolbar, BorderLayout.EAST)
     return panel
   }
 

@@ -20,6 +20,8 @@ import com.android.tools.idea.common.surface.DEVICE_CONFIGURATION_SHAPE_POLICY
 import com.android.tools.idea.common.surface.Layer
 import com.android.tools.idea.common.surface.SQUARE_SHAPE_POLICY
 import com.android.tools.idea.common.surface.SceneLayer
+import com.android.tools.idea.common.surface.SceneView
+import com.android.tools.idea.common.surface.ShapePolicy
 import com.android.tools.idea.compose.preview.ComposePreviewManager
 import com.android.tools.idea.compose.preview.PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.compose.preview.util.isRootComponentSelected
@@ -41,6 +43,7 @@ import com.android.tools.idea.uibuilder.surface.sizepolicy.ImageContentSizePolic
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
+import java.awt.Shape
 
 class ComposeScreenViewProvider(private val previewManager: ComposePreviewManager) : ScreenViewProvider {
   override val displayName: String = "Compose"
@@ -93,9 +96,15 @@ class ComposeScreenViewProvider(private val previewManager: ComposePreviewManage
           .build()
       }
       .withShapePolicy(
-        if (manager.model.dataProvider?.getData(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.showDecoration == true)
-          DEVICE_CONFIGURATION_SHAPE_POLICY
-        else SQUARE_SHAPE_POLICY
+        object : ShapePolicy {
+          override fun getShape(sceneView: SceneView): Shape? {
+            return if (manager.model.dataProvider?.getData(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.showDecoration == true) {
+              DEVICE_CONFIGURATION_SHAPE_POLICY.getShape(sceneView)
+            } else {
+              SQUARE_SHAPE_POLICY.getShape(sceneView)
+            }
+          }
+        }
       )
       .decorateContentSizePolicy { policy -> ImageContentSizePolicy(policy) }
       .apply { if (StudioFlags.COMPOSE_PREVIEW_RESIZING.get()) this.resizeable() }

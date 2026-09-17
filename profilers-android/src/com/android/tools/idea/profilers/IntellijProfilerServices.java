@@ -20,23 +20,35 @@ import static com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfig
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
+import com.android.ide.common.gradle.Dependency;
+import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.tools.idea.codenavigation.CodeNavigator;
 import com.android.tools.idea.codenavigation.IntelliJNavSource;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.profilers.analytics.StudioFeatureTracker;
+import com.android.tools.idea.profilers.capture.unified.ProfilerVirtualFile;
+import com.android.tools.idea.profilers.capture.unified.UnifiedProfilerFileEditor;
 import com.android.tools.idea.profilers.leakcanary.LeakCanaryAiHandler;
+import com.android.tools.idea.profilers.perfetto.traceconv.TraceconvBundler;
 import com.android.tools.idea.profilers.perfetto.traceprocessor.TraceProcessorServiceImpl;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfigConverter;
 import com.android.tools.idea.profilers.stacktrace.IntelliJNativeFrameSymbolizer;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink;
+import com.android.tools.idea.projectsystem.AndroidModuleSystem;
+import com.android.tools.idea.projectsystem.DependencyType;
+import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
+import com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityResult;
 import com.android.tools.idea.projectsystem.RegisteredDependencyId;
 import com.android.tools.idea.projectsystem.RegisteredDependencyQueryId;
+import com.android.tools.idea.projectsystem.RegisteringModuleSystem;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.idea.run.editor.ProfilerState;
 import com.android.tools.idea.run.profiler.CpuProfilerConfig;
 import com.android.tools.idea.run.profiler.CpuProfilerConfigsState;
+import com.android.tools.idea.util.DependencyConfirmationDialog;
 import com.android.tools.leakcanarylib.data.Leak;
 import com.android.tools.nativeSymbolizer.NativeSymbolizer;
 import com.android.tools.nativeSymbolizer.NativeSymbolizerKt;
@@ -55,31 +67,30 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.execution.RunManager;
-import kotlinx.coroutines.flow.Flow;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.impl.EditConfigurationsDialog;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.progress.ProgressManager;
-import com.intellij.openapi.progress.Task;
-import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
-import com.intellij.openapi.application.ModalityState;
-import com.intellij.openapi.util.Computable;
-import com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityResult;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.DoNotAskOption;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -97,25 +108,19 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import com.android.ide.common.gradle.Dependency;
-import com.android.ide.common.repository.GoogleMavenArtifactId;
-import com.android.tools.idea.projectsystem.AndroidModuleSystem;
-import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
-import com.android.tools.idea.projectsystem.ProjectSystemUtil;
-import com.android.tools.idea.projectsystem.RegisteringModuleSystem;
-import com.android.tools.idea.projectsystem.DependencyType;
-import com.android.tools.idea.util.DependencyConfirmationDialog;
-import com.intellij.openapi.module.Module;
-import com.intellij.openapi.command.WriteCommandAction;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
+import kotlinx.coroutines.flow.Flow;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -127,6 +132,7 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   }
 
   @NotNull private final SymbolFilesLocator mySymbolLocator;
+  @NotNull private final MappingFilesLocator myMappingLocator;
   private final CodeNavigator myCodeNavigator;
   @NotNull private final NativeFrameSymbolizer myNativeSymbolizer;
   private final StudioFeatureTracker myFeatureTracker;
@@ -136,11 +142,13 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @NotNull private final TemporaryProfilerPreferences myTemporaryPreferences;
 
   public IntellijProfilerServices(@NotNull Project project,
-                                  @NotNull SymbolFilesLocator symbolLocator) {
+                                  @NotNull SymbolFilesLocator symbolLocator,
+                                  @NotNull MappingFilesLocator mappingLocator) {
     myProject = project;
     myFeatureTracker = new StudioFeatureTracker(myProject);
 
     mySymbolLocator = symbolLocator;
+    myMappingLocator = mappingLocator;
 
     NativeSymbolizer nativeSymbolizer = NativeSymbolizerKt.createNativeSymbolizer(mySymbolLocator);
     Disposer.register(this, nativeSymbolizer::stop);
@@ -442,7 +450,7 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   public void closeTaskTab(@NotNull ProfilerTaskType taskType) {
     // used by unifiedProfiler
     // Close the recording tab and show the preview in a new tab in the code editor space.
-    AndroidProfilerToolWindow profilerToolWindow = AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP.get(myProject);
+    AndroidProfilerToolWindow profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(myProject);
     if (profilerToolWindow != null) {
       profilerToolWindow.closeTaskTab(taskType);
     }
@@ -827,6 +835,21 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   public Flow<String> fetchLeakInsight(@NotNull String rawTrace) {
     return LeakCanaryAiHandler.fetchLeakInsight(myProject, rawTrace);
   }
+
+  @NotNull
+  @Override
+  @Unmodifiable
+  public Map<String, String> getProguardMappings() {
+    return myMappingLocator.getMappings();
+  }
+
+  @Nullable
+  @Override
+  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,
+                                          @NotNull List<String> symbolDirs,
+                                          @NotNull Map<String, String> proguardMaps) {
+    return TraceconvBundler.bundle(traceFile, symbolDirs, proguardMaps);
+  }
   /**
    * Implementation of {@link FeatureConfig} with values used in production.
    */
@@ -878,6 +901,21 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
+    public boolean isLiveTelemetryInEditorEnabled() {
+      return StudioFlags.PROFILER_LIVE_TELEMETRY_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isJavaKotlinAllocationsInEditorEnabled() {
+      return StudioFlags.PROFILER_JAVA_KOTLIN_ALLOCATIONS_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isLeakCanaryInEditorEnabled() {
+      return StudioFlags.PROFILER_LEAKCANARY_IN_EDITOR.get();
+    }
+
+    @Override
     public boolean isTraceboxEnabled() {
       return StudioFlags.PROFILER_TRACEBOX.get();
     }
@@ -890,6 +928,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     @Override
     public boolean isLeakCanaryStudioBotEnabled() {
       return StudioFlags.PROFILER_LEAKCANARY_STUDIOBOT.get();
+    }
+
+    @Override
+    public boolean isUseTraceProcessorForHprofEnabled() {
+      return StudioFlags.PROFILER_USE_TRACEPROCESSOR_FOR_HPROF.get();
     }
 
     @Override
@@ -906,5 +949,51 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     public boolean isProfilerHomeTabV2Enabled() {
       return StudioFlags.PROFILER_HOME_TAB_V2.get();
     }
+
+    @Override
+    public boolean isDeobfuscationForNativeAllocationsEnabled() {
+      return StudioFlags.PROFILER_DEOBFUSCATION_FOR_NATIVE_ALLOCATIONS.get();
+    }
+  }
+
+  /**
+   * Returns the count of all active profiler file editor tabs currently open across all editor windows.
+   */
+  @Override
+  public int getProfilerTabsCount() {
+    if (myProject == null || myProject.isDisposed()) {
+      return 0;
+    }
+    FileEditorManager fileEditorManager = FileEditorManager.getInstance(myProject);
+    if (fileEditorManager == null) {
+      return 0;
+    }
+    int profilerTabsCount = 0;
+    for (FileEditor editor : fileEditorManager.getAllEditors()) {
+      if (editor instanceof UnifiedProfilerFileEditor) {
+        profilerTabsCount++;
+      }
+    }
+    return profilerTabsCount;
+  }
+
+  /**
+   * Returns true if there is an active editor tab open for a live profiling session.
+   */
+  @Override
+  public boolean getHasLiveProfilerTab() {
+    if (myProject == null || myProject.isDisposed()) {
+      return false;
+    }
+    FileEditorManager fileEditorManager = FileEditorManager.getInstance(myProject);
+    if (fileEditorManager == null) {
+      return false;
+    }
+    for (FileEditor editor : fileEditorManager.getAllEditors()) {
+      if (editor.getFile() instanceof ProfilerVirtualFile) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -39,7 +39,7 @@ class StartupPerformanceTest {
 
     // Create a maven repo and set it up in the installation and environment
     system.installRepo(MavenRepo("tools/adt/idea/android/integration/editor_performance_test_deps.manifest"))
-    project.setDistribution("tools/external/gradle/gradle-8.6-bin.zip")
+    project.setDistribution("tools/external/gradle/gradle-9.1.0-bin.zip")
 
     system.runStudio(project) { studio ->
       studio.waitForSync()
@@ -56,7 +56,6 @@ class StartupPerformanceTest {
     system.runStudio(project, watcher.dashboardName) { studio ->
       studio.waitForSync()
       studio.waitForIndex()
-
       studio.waitForFinishedCodeAnalysis(null)
     }
 
@@ -119,7 +118,7 @@ class StartupPerformanceTest {
         benchmark.logWithoutAnalyzer(it.metricLabel, it.metricValue)
         return
       }
-      metricConstTerms[it.metricLabel]?.get(if (SystemInfo.isWindows) 0 else 1)?.toLong()?.let { constTerm ->
+      metricConstTerms[it.metricLabel]?.get(if (SystemInfo.isWindows) 1 else 0)?.toLong()?.let { constTerm ->
         benchmark.log(it.metricLabel, it.metricValue, constTerm)
         return
       }

@@ -35,6 +35,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileEditor.FileEditorProvider
@@ -309,10 +310,15 @@ class ScreenshotViewer(
     when (saveConfig.postSaveAction) {
       PostSaveAction.NONE -> {}
       PostSaveAction.SHOW_IN_FOLDER -> RevealFileAction.openFile(file)
-      PostSaveAction.OPEN -> LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file)?.let { openAssociatedApplication(it) }
+      PostSaveAction.OPEN -> openAssociatedApplication(file)
     }
 
     super.doOKAction()
+  }
+
+  private fun openAssociatedApplication(file: Path) {
+    val virtualFile = runWriteAction { LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file) } ?: return
+    openAssociatedApplication(virtualFile)
   }
 
   private fun adjustToAvoidExistingFiles(file: Path): Path {
@@ -391,8 +397,8 @@ class ScreenshotViewer(
       withModalProgress(project, message("screenshot.task.step.obtain")) {
         try {
           val screenshotImage = screenshotProvider.captureScreenshot()
-          sourceImageRef.set(screenshotImage)
-          ApplicationManager.getApplication().invokeLater { processScreenshot(if (allowImageRotation) rotationQuadrants else 0) }
+          processScreenshot(screenshotImage, if (allowImageRotation) rotationQuadrants else 0)
+          ApplicationManager.getApplication().invokeLater { updateEditorImage() }
         } catch (e: CancellationException) {
           throw e
         } catch (e: Throwable) {
@@ -431,7 +437,11 @@ class ScreenshotViewer(
   }
 
   private fun processScreenshot(rotationQuadrants: Int = 0) {
-    val screenshotImage: ScreenshotImage = sourceImageRef.get()
+    processScreenshot(sourceImageRef.get(), rotationQuadrants)
+    updateEditorImage()
+  }
+
+  private fun processScreenshot(screenshotImage: ScreenshotImage, rotationQuadrants: Int = 0) {
     val rotatedImage = screenshotImage.rotatedAndScaled(rotationQuadrants = rotationQuadrants)
     val processedImage = processImage(rotatedImage)
 
@@ -446,7 +456,6 @@ class ScreenshotViewer(
     }
     sourceImageRef.set(rotatedImage)
     displayedImageRef.set(TimestampedImage(processedImage))
-    updateEditorImage()
   }
 
   private fun processImage(sourceImage: ScreenshotImage): BufferedImage {
@@ -590,14 +599,15 @@ class ScreenshotViewer(
     private fun deflate(data: ByteArray): ByteArray {
       val out = ByteArrayOutputStream(data.size)
 
-      val deflater = Deflater()
-      deflater.setInput(data)
-      deflater.finish()
-
       val buffer = ByteArray(4096)
-      while (!deflater.finished()) {
-        val count = deflater.deflate(buffer)
-        out.write(buffer, 0, count)
+      Deflater().use { deflater ->
+        deflater.setInput(data)
+        deflater.finish()
+
+        while (!deflater.finished()) {
+          val count = deflater.deflate(buffer)
+          out.write(buffer, 0, count)
+        }
       }
       return out.toByteArray()
     }

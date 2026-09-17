@@ -665,9 +665,10 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
 
     if (isBlockAllowed) {
       val config = compileSdkModel.toCompileSdkConfig() ?: return
+      val betaNumber = androidVersion.betaNumber
       when {
+        betaNumber != null -> config.setBetaVersion(apiLevelMajor, apiLevelMinor, betaNumber)
         androidVersion.isPreview -> config.setPreviewVersion(androidVersion.apiStringWithExtension)
-
         else -> config.setReleaseVersion(apiLevelMajor, apiLevelMinor, null)
       }
     } else {

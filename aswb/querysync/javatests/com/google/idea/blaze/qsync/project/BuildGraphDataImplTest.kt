@@ -676,6 +676,137 @@ class BuildGraphDataImplTest {
       .requiredTargets(graph.getCodeAnalysisDependencyGraphProvider())
   }
 
+  @Test
+  fun testAllDepsIncludesAdditionalAttributes() {
+    val builder = builder()
+
+    val t1 = Label.of("//t:t1")
+    val t2 = Label.of("//t:t2")
+    val t3 = Label.of("//t:t3")
+    val t4 = Label.of("//t:t4")
+    val t5 = Label.of("//t:t5")
+    val t6 = Label.of("//t:t6")
+
+    val t2Builder = ProjectTarget.builder().label(t2).kind("android_binary").tags(emptyList())
+    t2Builder.sourceLabelsBuilder().put(ProjectTarget.SourceType.REGULAR_JVM, Label.of("//t:T2.java"))
+    builder.addTarget(t2, t2Builder.build())
+    builder.addSourceFileLabel(Label.of("//t:T2.java"))
+
+    val t4Builder = ProjectTarget.builder().label(t4).kind("android_binary").tags(emptyList())
+    t4Builder.sourceLabelsBuilder().put(ProjectTarget.SourceType.REGULAR_JVM, Label.of("//t:T4.java"))
+    builder.addTarget(t4, t4Builder.build())
+    builder.addSourceFileLabel(Label.of("//t:T4.java"))
+
+    val t6Builder = ProjectTarget.builder().label(t6).kind("android_library").tags(emptyList())
+    t6Builder.sourceLabelsBuilder().put(ProjectTarget.SourceType.REGULAR_JVM, Label.of("//t:T6.java"))
+    builder.addTarget(t6, t6Builder.build())
+    builder.addSourceFileLabel(Label.of("//t:T6.java"))
+
+    builder.addTarget(t1, ProjectTarget.builder().label(t1).kind("android_instrumentation_test").testApp(t2).tags(emptyList()).build())
+    builder.addTarget(t3, ProjectTarget.builder().label(t3).kind("android_binary").instruments(t4).tags(emptyList()).build())
+    builder.addTarget(t5, ProjectTarget.builder().label(t5).kind("android_local_test").library(t6).tags(emptyList()).build())
+
+    val graph = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
+
+    assertThat(graph.getReverseDepsForSource(Label.of("//t:T2.java")).map { it.label() }).contains(t1)
+
+    assertThat(graph.getReverseDepsForSource(Label.of("//t:T4.java")).map { it.label() }).contains(t3)
+
+    assertThat(graph.getReverseDepsForSource(Label.of("//t:T6.java")).map { it.label() }).contains(t5)
+  }
+
+  @Test
+  fun getReverseDepsForSource_includesRuntimeDeps() {
+    val builder = builder()
+    builder
+      .addSourceFileLabel(Label.of("//pkg:BUILD"))
+      .addSourceFileLabel(Label.of("//pkg:TestLib.java"))
+      .addSupportedTargetLabel(Label.of("//pkg:test_lib"))
+      .addSupportedTargetLabel(Label.of("//pkg:test_target"))
+
+    val testLibTarget =
+      ProjectTarget.builder()
+        .label(Label.of("//pkg:test_lib"))
+        .kind("java_library")
+        .tags(emptyList())
+        .apply { sourceLabelsBuilder().put(ProjectTarget.SourceType.REGULAR_JVM, Label.of("//pkg:TestLib.java")) }
+        .build()
+
+    val testTarget =
+      ProjectTarget.builder()
+        .label(Label.of("//pkg:test_target"))
+        .kind("java_test")
+        .tags(emptyList())
+        .apply { runtimeDepsBuilder().add(Label.of("//pkg:test_lib")) }
+        .build()
+
+    builder.addTarget(Label.of("//pkg:test_lib"), testLibTarget)
+    builder.addTarget(Label.of("//pkg:test_target"), testTarget)
+
+    val graph = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
+    val rdeps = graph.getReverseDepsForSource(Label.of("//pkg:TestLib.java"))
+    assertThat(rdeps.map { it.label() }).containsExactly(Label.of("//pkg:test_lib"), Label.of("//pkg:test_target"))
+  }
+
+  @Test
+  fun getReverseDepsForSource_traversesImlTestModuleToSplitJavaTests() {
+    val builder = builder()
+    builder
+      .addSourceFileLabel(Label.of("//pkg:BUILD"))
+      .addSourceFileLabel(Label.of("//pkg:MyTest.kt"))
+      .addSupportedTargetLabel(Label.of("//pkg:my_module"))
+      .addSupportedTargetLabel(Label.of("//pkg:my_module_testlib"))
+      .addSupportedTargetLabel(Label.of("//pkg:my_module_tests__part1"))
+      .addSupportedTargetLabel(Label.of("//pkg:my_module_tests__part2"))
+
+    val imlModule =
+      ProjectTarget.builder()
+        .label(Label.of("//pkg:my_module"))
+        .kind("_iml_module_")
+        .tags(emptyList())
+        .apply { sourceLabelsBuilder().put(ProjectTarget.SourceType.REGULAR_JVM, Label.of("//pkg:MyTest.kt")) }
+        .build()
+
+    val imlTestModule =
+      ProjectTarget.builder()
+        .label(Label.of("//pkg:my_module_testlib"))
+        .kind("_iml_test_module_")
+        .tags(emptyList())
+        .apply { depsBuilder().add(Label.of("//pkg:my_module")) }
+        .build()
+
+    val splitTest1 =
+      ProjectTarget.builder()
+        .label(Label.of("//pkg:my_module_tests__part1"))
+        .kind("java_test")
+        .tags(emptyList())
+        .apply { runtimeDepsBuilder().add(Label.of("//pkg:my_module_testlib")) }
+        .build()
+
+    val splitTest2 =
+      ProjectTarget.builder()
+        .label(Label.of("//pkg:my_module_tests__part2"))
+        .kind("java_test")
+        .tags(emptyList())
+        .apply { runtimeDepsBuilder().add(Label.of("//pkg:my_module_testlib")) }
+        .build()
+
+    builder.addTarget(Label.of("//pkg:my_module"), imlModule)
+    builder.addTarget(Label.of("//pkg:my_module_testlib"), imlTestModule)
+    builder.addTarget(Label.of("//pkg:my_module_tests__part1"), splitTest1)
+    builder.addTarget(Label.of("//pkg:my_module_tests__part2"), splitTest2)
+
+    val graph = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
+    val rdeps = graph.getReverseDepsForSource(Label.of("//pkg:MyTest.kt"))
+    assertThat(rdeps.map { it.label() })
+      .containsExactly(
+        Label.of("//pkg:my_module"),
+        Label.of("//pkg:my_module_testlib"),
+        Label.of("//pkg:my_module_tests__part1"),
+        Label.of("//pkg:my_module_tests__part2"),
+      )
+  }
+
   companion object {
     private val TEST_ROOT: Path = Path.of("tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync")
 

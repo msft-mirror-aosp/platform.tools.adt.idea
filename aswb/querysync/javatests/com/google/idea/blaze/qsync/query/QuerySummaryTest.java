@@ -21,8 +21,11 @@ import static com.google.idea.blaze.qsync.query.QuerySummaryTestUtil.createProto
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+import com.google.devtools.build.lib.query2.proto.proto2api.Build;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.qsync.testdata.TestData;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.junit.Test;
@@ -237,5 +240,121 @@ public class QuerySummaryTest {
     QueryData.Rule rule = QuerySummaryKt.getRulesMapForTests(qs).get(aliasLabel);
     assertThat(rule.ruleClass()).isEqualTo("alias");
     assertThat(rule.deps()).containsExactly(Label.of(TestData.ROOT_PACKAGE + "/nodeps:nodeps"));
+  }
+
+  @Test
+  public void testCreate_libraryAttributePopulated() throws Exception {
+    Build.Target target =
+        Build.Target.newBuilder()
+            .setType(Build.Target.Discriminator.RULE)
+            .setRule(
+                Build.Rule.newBuilder()
+                    .setName("//foo:bar")
+                    .setRuleClass("android_local_test")
+                    .addAttribute(
+                        Build.Attribute.newBuilder()
+                            .setName("library")
+                            .setType(Build.Attribute.Discriminator.LABEL)
+                            .setStringValue("//foo:lib")))
+            .build();
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    target.writeDelimitedTo(out);
+    ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+
+    QuerySummary qs = QuerySummaryImpl.create(QuerySpec.QueryStrategy.PLAIN, in);
+
+    Label barLabel = Label.of("//foo:bar");
+    assertThat(QuerySummaryKt.getRulesMapForTests(qs).keySet()).contains(barLabel);
+    QueryData.Rule rule = QuerySummaryKt.getRulesMapForTests(qs).get(barLabel);
+    assertThat(rule.library()).isEqualTo(Label.of("//foo:lib"));
+    assertThat(rule.deps()).containsExactly(Label.of("//foo:lib"));
+  }
+
+  @Test
+  public void testCreate_runtimeDepsAttributePopulated() throws Exception {
+    Build.Target target =
+        Build.Target.newBuilder()
+            .setType(Build.Target.Discriminator.RULE)
+            .setRule(
+                Build.Rule.newBuilder()
+                    .setName("//foo:test")
+                    .setRuleClass("java_test")
+                    .addAttribute(
+                        Build.Attribute.newBuilder()
+                            .setName("runtime_deps")
+                            .setType(Build.Attribute.Discriminator.LABEL_LIST)
+                            .addStringListValue("//foo:lib")))
+            .build();
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    target.writeDelimitedTo(out);
+    ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+
+    QuerySummary qs = QuerySummaryImpl.create(QuerySpec.QueryStrategy.PLAIN, in);
+
+    Label testLabel = Label.of("//foo:test");
+    assertThat(QuerySummaryKt.getRulesMapForTests(qs).keySet()).contains(testLabel);
+    QueryData.Rule rule = QuerySummaryKt.getRulesMapForTests(qs).get(testLabel);
+    assertThat(rule.runtimeDeps()).containsExactly(Label.of("//foo:lib"));
+  }
+
+  @Test
+  public void testCreate_imlModuleAttributePopulated() throws Exception {
+    Build.Target target =
+        Build.Target.newBuilder()
+            .setType(Build.Target.Discriminator.RULE)
+            .setRule(
+                Build.Rule.newBuilder()
+                    .setName("//foo:testlib")
+                    .setRuleClass("_iml_test_module_")
+                    .addAttribute(
+                        Build.Attribute.newBuilder()
+                            .setName("iml_module")
+                            .setType(Build.Attribute.Discriminator.LABEL)
+                            .setStringValue("//foo:main")))
+            .build();
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    target.writeDelimitedTo(out);
+    ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+
+    QuerySummary qs = QuerySummaryImpl.create(QuerySpec.QueryStrategy.PLAIN, in);
+
+    Label testLabel = Label.of("//foo:testlib");
+    assertThat(QuerySummaryKt.getRulesMapForTests(qs).keySet()).contains(testLabel);
+    QueryData.Rule rule = QuerySummaryKt.getRulesMapForTests(qs).get(testLabel);
+    assertThat(rule.deps()).containsExactly(Label.of("//foo:main"));
+  }
+
+  @Test
+  public void testBuildPackage_stampPreservedInSerialization() {
+    Query.Summary summaryProto =
+        Query.Summary.newBuilder()
+            .setVersion(QuerySummaryImpl.PROTO_VERSION)
+            .setStringStorage(
+                Query.StringStorage.newBuilder()
+                    .addIndexedStrings("")
+                    .addIndexedStrings("pkg")
+                    .build())
+            .addBuildPackages(
+                Query.StoredBuildPackage.newBuilder()
+                    .setWorkspace(0)
+                    .setBuildPackage(1)
+                    .setStamp(12345L)
+                    .build())
+            .build();
+
+    QuerySummary qs = QuerySummaryImpl.create(summaryProto);
+    QuerySummary.BuildPackage buildPackage = qs.getBuildPackage(Label.of("//pkg:pkg"));
+    assertThat(buildPackage).isNotNull();
+    assertThat(buildPackage.getStamp()).isEqualTo(12345L);
+
+    Query.Summary serialized =
+        QuerySummaryImpl.newBuilder().putAllPackages(qs.getBuildPackages()).build().protoForSerializationOnly();
+    QuerySummary deserialized = QuerySummaryImpl.create(serialized);
+    QuerySummary.BuildPackage deserializedPackage = deserialized.getBuildPackage(Label.of("//pkg:pkg"));
+    assertThat(deserializedPackage).isNotNull();
+    assertThat(deserializedPackage.getStamp()).isEqualTo(12345L);
   }
 }

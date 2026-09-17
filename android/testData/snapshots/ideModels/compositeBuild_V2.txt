@@ -620,8 +620,6 @@ MODULE                        : project
                             configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                         taskModel                     : DefaultGradleTaskModel
                             tasks
-                                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                                    qName                         : :app:connectedDebugAndroidTest
                                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                                     qName                         : :app:testDebugUnitTest
                     lib                           : :includedLib1:lib (DefaultExternalProject)
@@ -641,15 +639,11 @@ MODULE                        : project
                             configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                         taskModel                     : DefaultGradleTaskModel
                             tasks
-                                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                                    qName                         : :lib:connectedDebugAndroidTest
                                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                                     qName                         : :lib:testDebugUnitTest
                 sourceSetModel                : DefaultGradleSourceSetModel
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             TestCompositeLib3             : :TestCompositeLib3 (DefaultExternalProject)
@@ -680,8 +674,6 @@ MODULE                        : project
                             configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                         taskModel                     : DefaultGradleTaskModel
                             tasks
-                                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                                    qName                         : :app:connectedDebugAndroidTest
                                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                                     qName                         : :app:testDebugUnitTest
                     lib                           : :TestCompositeLib3:lib (DefaultExternalProject)
@@ -701,15 +693,11 @@ MODULE                        : project
                             configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                         taskModel                     : DefaultGradleTaskModel
                             tasks
-                                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                                    qName                         : :lib:connectedDebugAndroidTest
                                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                                     qName                         : :lib:testDebugUnitTest
                 sourceSetModel                : DefaultGradleSourceSetModel
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             app                           : :app (DefaultExternalProject)
@@ -729,8 +717,6 @@ MODULE                        : project
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             composite2                    : :TestCompositeLib2 (DefaultExternalProject)
@@ -945,15 +931,11 @@ MODULE                        : project
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :lib:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :lib:testDebugUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
 MODULE                        : project.app
@@ -966,7 +948,6 @@ MODULE                        : project.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -1176,8 +1157,8 @@ MODULE                        : project.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -1349,6 +1330,7 @@ MODULE                        : project.app
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
@@ -1479,11 +1461,13 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
@@ -1642,6 +1626,7 @@ MODULE                        : project.app
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
@@ -1836,6 +1821,7 @@ MODULE                        : project.app
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
@@ -1974,11 +1960,13 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
@@ -1999,7 +1987,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2018,7 +2005,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -2037,7 +2023,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2074,7 +2059,6 @@ MODULE                        : project.lib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -2285,8 +2269,8 @@ MODULE                        : project.lib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -3110,7 +3094,6 @@ MODULE                        : project.lib
                     moduleName                    : lib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3128,7 +3111,6 @@ MODULE                        : project.lib
                     moduleName                    : lib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -3147,7 +3129,6 @@ MODULE                        : project.lib
                     moduleName                    : lib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3186,7 +3167,6 @@ MODULE                        : TestCompositeLib1.app
         rootFolderPath                : <ROOT>/TestCompositeLib1
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -3247,6 +3227,7 @@ MODULE                        : TestCompositeLib1.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : com.test.composite1
         testApplicationId             : com.test.composite1.test
@@ -3395,8 +3376,8 @@ MODULE                        : TestCompositeLib1.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -3438,6 +3419,7 @@ MODULE                        : TestCompositeLib1.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/app/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -3552,6 +3534,9 @@ MODULE                        : TestCompositeLib1.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -3562,9 +3547,11 @@ MODULE                        : TestCompositeLib1.app
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
                     runtimeClasspath
@@ -3678,6 +3665,9 @@ MODULE                        : TestCompositeLib1.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -3688,11 +3678,13 @@ MODULE                        : TestCompositeLib1.app
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
@@ -3719,6 +3711,7 @@ MODULE                        : TestCompositeLib1.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -3833,6 +3826,9 @@ MODULE                        : TestCompositeLib1.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -3842,11 +3838,14 @@ MODULE                        : TestCompositeLib1.app
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib1-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
                     runtimeClasspath
@@ -3883,6 +3882,8 @@ MODULE                        : TestCompositeLib1.app
                     - provided                    : com.android.support:swiperefreshlayout:28.0.0@aar
                     - provided                    : com.android.support:versionedparcelable:28.0.0@aar
                     - provided                    : com.android.support:viewpager:28.0.0@aar
+                    - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                    - provided                    : org.jetbrains:annotations:13.0
                 ApplicationId                 : com.test.composite1.test
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -3906,6 +3907,7 @@ MODULE                        : TestCompositeLib1.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/compile_and_runtime_r_class_jar/debug/processDebugResources/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -4020,6 +4022,9 @@ MODULE                        : TestCompositeLib1.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -4029,11 +4034,14 @@ MODULE                        : TestCompositeLib1.app
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib1-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
                     runtimeClasspath
@@ -4147,6 +4155,9 @@ MODULE                        : TestCompositeLib1.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -4156,6 +4167,7 @@ MODULE                        : TestCompositeLib1.app
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib1-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
@@ -4163,15 +4175,91 @@ MODULE                        : TestCompositeLib1.app
                             module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1/TestCompositeLibNested_1-:-MAIN
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib1/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib1/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib1/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :includedLib1:app (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib1.app.androidTest
 MODULE                        : TestCompositeLib1.app.main
@@ -4186,7 +4274,6 @@ MODULE                        : TestCompositeLib1.lib
         rootFolderPath                : <ROOT>/TestCompositeLib1
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -4208,8 +4295,8 @@ MODULE                        : TestCompositeLib1.lib
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
     GroupId                       : com.test.composite1
-    Namespace                     : com.test.composite1
-    TestNamespace                 : com.test.composite1.test
+    Namespace                     : com.test.composite1.lib
+    TestNamespace                 : com.test.composite1.lib.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -4247,8 +4334,9 @@ MODULE                        : TestCompositeLib1.lib
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
-        testApplicationId             : com.test.composite1.test
+        testApplicationId             : com.test.composite1.lib.test
         buildType                     : debug
     - basicVariant:               : release
         buildType                     : release
@@ -4396,8 +4484,8 @@ MODULE                        : TestCompositeLib1.lib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -4429,6 +4517,7 @@ MODULE                        : TestCompositeLib1.lib
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/lib/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -4541,6 +4630,9 @@ MODULE                        : TestCompositeLib1.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -4551,9 +4643,12 @@ MODULE                        : TestCompositeLib1.lib
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                     runtimeClasspath
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
@@ -4565,7 +4660,9 @@ MODULE                        : TestCompositeLib1.lib
                             androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-compat:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -4689,6 +4786,7 @@ MODULE                        : TestCompositeLib1.lib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -4801,6 +4899,9 @@ MODULE                        : TestCompositeLib1.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -4811,8 +4912,10 @@ MODULE                        : TestCompositeLib1.lib
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                     runtimeClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -4923,6 +5026,9 @@ MODULE                        : TestCompositeLib1.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -4932,14 +5038,16 @@ MODULE                        : TestCompositeLib1.lib
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
-                ApplicationId                 : com.test.composite1.test
+                ApplicationId                 : com.test.composite1.lib.test
                 SigningConfigName             : debug
                 IsSigned                      : true
                 CodeShrinker                  : null
@@ -4962,6 +5070,7 @@ MODULE                        : TestCompositeLib1.lib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib1/lib/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/compile_and_runtime_r_class_jar/debugUnitTest/generateDebugUnitTestStubRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib1/lib/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -5074,6 +5183,9 @@ MODULE                        : TestCompositeLib1.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -5084,8 +5196,10 @@ MODULE                        : TestCompositeLib1.lib
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                     runtimeClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -5196,6 +5310,9 @@ MODULE                        : TestCompositeLib1.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -5205,14 +5322,89 @@ MODULE                        : TestCompositeLib1.lib
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         module                        : <ROOT>/TestCompositeLib1-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib2-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                         module                        : <ROOT>/TestCompositeLib2-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib1/lib/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib1/lib/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib1/lib/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :includedLib1:lib (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib1.lib.androidTest
 MODULE                        : TestCompositeLib1.lib.main
@@ -5319,7 +5511,6 @@ MODULE                        : TestCompositeLib3.app
         rootFolderPath                : <ROOT>/TestCompositeLib3
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -5380,6 +5571,7 @@ MODULE                        : TestCompositeLib3.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : com.test.composite3
         testApplicationId             : com.test.composite3.test
@@ -5528,8 +5720,8 @@ MODULE                        : TestCompositeLib3.app
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -5571,6 +5763,7 @@ MODULE                        : TestCompositeLib3.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/app/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -5685,6 +5878,9 @@ MODULE                        : TestCompositeLib3.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -5695,6 +5891,7 @@ MODULE                        : TestCompositeLib3.app
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3-:-MAIN
                     runtimeClasspath
@@ -5808,6 +6005,9 @@ MODULE                        : TestCompositeLib3.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -5818,6 +6018,7 @@ MODULE                        : TestCompositeLib3.app
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3-:-MAIN
@@ -5844,6 +6045,7 @@ MODULE                        : TestCompositeLib3.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -5958,6 +6160,9 @@ MODULE                        : TestCompositeLib3.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -5967,8 +6172,10 @@ MODULE                        : TestCompositeLib3.app
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib3-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3-:-MAIN
                     runtimeClasspath
@@ -6005,6 +6212,8 @@ MODULE                        : TestCompositeLib3.app
                     - provided                    : com.android.support:swiperefreshlayout:28.0.0@aar
                     - provided                    : com.android.support:versionedparcelable:28.0.0@aar
                     - provided                    : com.android.support:viewpager:28.0.0@aar
+                    - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                    - provided                    : org.jetbrains:annotations:13.0
                 ApplicationId                 : com.test.composite3.test
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -6028,6 +6237,7 @@ MODULE                        : TestCompositeLib3.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/compile_and_runtime_r_class_jar/debug/processDebugResources/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -6142,6 +6352,9 @@ MODULE                        : TestCompositeLib3.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -6151,8 +6364,10 @@ MODULE                        : TestCompositeLib3.app
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib3-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3-:-MAIN
                     runtimeClasspath
@@ -6266,6 +6481,9 @@ MODULE                        : TestCompositeLib3.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -6275,16 +6493,92 @@ MODULE                        : TestCompositeLib3.app
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
                         module                        : <ROOT>/TestCompositeLib3-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3/TestCompositeLibNested_3-:-MAIN
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib3/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib3/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib3/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :TestCompositeLib3:app (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib3.app.androidTest
 MODULE                        : TestCompositeLib3.app.main
@@ -6299,7 +6593,6 @@ MODULE                        : TestCompositeLib3.lib
         rootFolderPath                : <ROOT>/TestCompositeLib3
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -6321,8 +6614,8 @@ MODULE                        : TestCompositeLib3.lib
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
     GroupId                       : com.test.composite3
-    Namespace                     : com.test.composite3
-    TestNamespace                 : com.test.composite3.test
+    Namespace                     : com.test.composite3.lib
+    TestNamespace                 : com.test.composite3.lib.test
     AaptOptions
         NameSpacing                   : DISABLED
     LintOptions
@@ -6360,8 +6653,9 @@ MODULE                        : TestCompositeLib3.lib
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
-        testApplicationId             : com.test.composite3.test
+        testApplicationId             : com.test.composite3.lib.test
         buildType                     : debug
     - basicVariant:               : release
         buildType                     : release
@@ -6509,8 +6803,8 @@ MODULE                        : TestCompositeLib3.lib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -6542,6 +6836,7 @@ MODULE                        : TestCompositeLib3.lib
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/lib/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -6654,6 +6949,9 @@ MODULE                        : TestCompositeLib3.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -6664,6 +6962,8 @@ MODULE                        : TestCompositeLib3.lib
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                     runtimeClasspath
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
@@ -6673,6 +6973,7 @@ MODULE                        : TestCompositeLib3.lib
                             androidLibrary                : com.android.support:support-fragment:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-compat:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -6795,6 +7096,7 @@ MODULE                        : TestCompositeLib3.lib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/lib/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -6907,6 +7209,9 @@ MODULE                        : TestCompositeLib3.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -6917,6 +7222,7 @@ MODULE                        : TestCompositeLib3.lib
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -7026,6 +7332,9 @@ MODULE                        : TestCompositeLib3.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -7035,9 +7344,10 @@ MODULE                        : TestCompositeLib3.lib
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
-                ApplicationId                 : com.test.composite3.test
+                ApplicationId                 : com.test.composite3.lib.test
                 SigningConfigName             : debug
                 IsSigned                      : true
                 CodeShrinker                  : null
@@ -7060,6 +7370,7 @@ MODULE                        : TestCompositeLib3.lib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/TestCompositeLib3/lib/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/compile_and_runtime_r_class_jar/debugUnitTest/generateDebugUnitTestStubRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/TestCompositeLib3/lib/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -7172,6 +7483,9 @@ MODULE                        : TestCompositeLib3.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -7182,6 +7496,7 @@ MODULE                        : TestCompositeLib3.lib
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -7291,6 +7606,9 @@ MODULE                        : TestCompositeLib3.lib
                         androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
@@ -7300,9 +7618,83 @@ MODULE                        : TestCompositeLib3.lib
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         module                        : <ROOT>/TestCompositeLib3-:lib-MAIN
                             module                        : <ROOT>/TestCompositeLib4-:-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
                         module                        : <ROOT>/TestCompositeLib4-:-MAIN
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib3/lib/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib3/lib/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/TestCompositeLib3/lib/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : lib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :TestCompositeLib3:lib (DefaultExternalProject) (*seen*)
 MODULE                        : TestCompositeLib3.lib.androidTest
 MODULE                        : TestCompositeLib3.lib.main

@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "accessors/agent_context.h"
 #include "flags.h"
 #include "log.h"
 #include "session_environment.h"
@@ -224,6 +225,7 @@ void Agent::Initialize(const vector<string>& args) {
 void Agent::Run(const vector<string>& args) {
   main_thread_id_ = this_thread::get_id();
   Initialize(args);
+  AgentContext::Initialize(Jvm::GetJni());
 
   assert(display_streamers_.empty());
   int video_socket_fd = CreateAndConnectSocket(socket_name_);
@@ -369,6 +371,7 @@ void Agent::Shutdown() {
   if (this_thread::get_id() == main_thread_id_) {
     if (!shutting_down_.exchange(true)) {
       Log::D("Shutting down");
+      AgentContext::StopMainLooper();
       if (controller_ != nullptr) {
         controller_->Shutdown();
       }

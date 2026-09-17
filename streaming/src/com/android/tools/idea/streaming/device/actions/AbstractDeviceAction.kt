@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.device.actions
 
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.device.DEVICE_CLIENT_KEY
 import com.android.tools.idea.streaming.device.DEVICE_CONTROLLER_KEY
 import com.android.tools.idea.streaming.device.DEVICE_VIEW_KEY
@@ -52,5 +53,7 @@ internal fun getDeviceController(event: AnActionEvent): DeviceController? = even
 internal fun getDeviceView(event: AnActionEvent): DeviceView? = event.dataContext.getData(DEVICE_VIEW_KEY)
 
 internal fun getDeviceConfig(event: AnActionEvent): DeviceConfiguration? = getDeviceClient(event)?.deviceConfig
+
+internal fun isGlassesDisplay(event: AnActionEvent): Boolean = getDeviceView(event)?.displayType == DisplayType.GLASSES_PROJECTION
 
 internal fun isDeviceConnected(event: AnActionEvent) = getDeviceView(event)?.isConnected == true

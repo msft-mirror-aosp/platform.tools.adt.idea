@@ -121,8 +121,8 @@ class RoomSchemaManager(val module: Module) {
   ): Set<T> {
     val allScope = GlobalSearchScope.allScope(psiFacade.project)
     return buildSet {
-      annotation.bothNames { name ->
-        val annotationClass = psiFacade.findClass(name, allScope) ?: return@bothNames
+      annotation.allNames { name ->
+        val annotationClass = psiFacade.findClass(name, allScope) ?: return@allNames
         addAll(searchPsiClasses(annotationClass, scope).findAll().mapNotNull(processor))
       }
     }
@@ -284,7 +284,7 @@ class RoomSchemaManager(val module: Module) {
   private fun KtLightField.getPropertyAnnotationExpression(annotationName: AndroidxName, annotationAttributeName: String): KtExpression? {
     val annotationEntry =
       kotlinOrigin?.annotationEntries?.firstOrNull {
-        it.fqNameMatches(annotationName.oldName()) || it.fqNameMatches(annotationName.newName())
+        annotationName.names().any { name -> it.fqNameMatches(name) }
       } ?: return null
 
     // Property annotation it is annotation without target
@@ -326,13 +326,12 @@ class RoomSchemaManager(val module: Module) {
     return null
   }
 
-  private inline fun AndroidxName.bothNames(f: (String) -> Unit) {
-    f(oldName())
-    f(newName())
+  private inline fun AndroidxName.allNames(f: (String) -> Unit) {
+    names().forEach { f(it) }
   }
 
   private fun PsiModifierList.findAnnotation(annotation: AndroidxName): PsiAnnotation? {
-    return findAnnotation(annotation.oldName()) ?: findAnnotation(annotation.newName())
+    return annotation.names().firstNotNullOfOrNull { findAnnotation(it) }
   }
 
   private fun PsiAnnotation.getAttributeValue(attributeName: String): UExpression? {

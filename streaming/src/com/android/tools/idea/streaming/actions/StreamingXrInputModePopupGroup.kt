@@ -15,20 +15,29 @@
  */
 package com.android.tools.idea.streaming.actions
 
+import com.android.tools.idea.actions.enableRichTooltip
 import com.android.tools.idea.streaming.core.FloatingToolbarContainer
+import com.android.tools.idea.streaming.core.findComponentForAction
 import com.android.tools.idea.streaming.xr.XrInputMode
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Toggleable
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import icons.StudioIcons
 
 /** Displays a popup menu of XR input modes. */
-internal class StreamingXrInputModePopupGroup : DefaultActionGroup(), Toggleable {
+internal class StreamingXrInputModePopupGroup : DefaultActionGroup(), Toggleable, DumbAware {
 
   init {
     templatePresentation.isPerformGroup = true
+    addSeparator("App Interaction Mode")
+    val actionManager = ActionManager.getInstance()
+    actionManager.getAction("android.streaming.xr.interaction.hand")?.let(::add) ?: add(StreamingXrInputModeAction.InteractionHand())
+    actionManager.getAction("android.streaming.xr.interaction.eye")?.let(::add) ?: add(StreamingXrInputModeAction.InteractionEye())
+    actionManager.getAction("android.streaming.xr.interaction.mouse")?.let(::add) ?: add(StreamingXrInputModeAction.InteractionMouse())
   }
 
   override fun update(event: AnActionEvent) {
@@ -38,6 +47,12 @@ internal class StreamingXrInputModePopupGroup : DefaultActionGroup(), Toggleable
       presentation.isEnabledAndVisible = false
       return
     }
+
+    ActionManager.getInstance().getAction("android.streaming.xr.interaction")?.let {
+      copyShortcutFrom(it)
+    }
+
+    presentation.enableRichTooltip(this)
 
     // We only want to show as a group IF the floating toolbar is active (expanded). The reason for this is that
     // when collapsed, the first click will simply expand the floating toolbar first.
@@ -65,22 +80,26 @@ internal class StreamingXrInputModePopupGroup : DefaultActionGroup(), Toggleable
       return
     }
 
-    getXrInputController(event)?.apply { inputMode = lastAppInteractionMode }
+    val controller = getXrInputController(event) ?: return
+    val previousInputMode = controller.inputMode
+    controller.apply { inputMode = lastAppInteractionMode }
 
-    // Manually show the popup since isPerformGroup = true might bypass the default toolbar behavior
-    val popup =
-      JBPopupFactory.getInstance()
-        .createActionGroupPopup(
-          null,
-          this,
-          event.dataContext,
-          JBPopupFactory.ActionSelectionAid.MNEMONICS,
-          true,
-          null,
-          -1,
-          null,
-          event.place,
-        )
-    event.inputEvent?.component?.let { popup.showUnderneathOf(it) } ?: popup.showInFocusCenter()
+    if (!previousInputMode.isNavigation) {
+      // Manually show the popup since isPerformGroup = true might bypass the default toolbar behavior
+      val popup =
+        JBPopupFactory.getInstance()
+          .createActionGroupPopup(
+            null,
+            this,
+            event.dataContext,
+            JBPopupFactory.ActionSelectionAid.MNEMONICS,
+            true,
+            null,
+            -1,
+            null,
+            event.place,
+          )
+      event.findComponentForAction(this)?.let { popup.showUnderneathOf(it) } ?: popup.showInFocusCenter()
+    }
   }
 }

@@ -43,6 +43,7 @@ public:
   jint scancode = 0;
   jint flags = 0;
   jint source;
+  jint display_id;
 
 private:
   static void InitializeConstructor(Jni jni);
@@ -50,6 +51,7 @@ private:
 
   static JClass key_event_class_;
   static jmethodID constructor_;
+  static jmethodID set_display_id_method_;
   static jfieldID key_code_field_;
   static jfieldID action_field_;
 

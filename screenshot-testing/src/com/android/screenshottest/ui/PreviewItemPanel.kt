@@ -21,6 +21,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScree
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
 import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
@@ -37,7 +38,7 @@ import java.awt.Graphics
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.io.File
-import java.io.IOException
+import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import javax.swing.BorderFactory
 import javax.swing.BoxLayout
@@ -108,7 +109,11 @@ class PreviewItemPanel(
     }
   }
 
-  fun updateData(newData: PreviewDetails, viewType: ScreenshotViewType, onImageLoaded: (() -> Unit)? = null) {
+  fun updateData(
+    newData: PreviewDetails,
+    viewType: ScreenshotViewType,
+    onImageLoaded: (() -> Unit)? = null,
+  ) {
     this.previewData = newData
     if (showDetails) {
       updateDetails(newData)
@@ -125,6 +130,26 @@ class PreviewItemPanel(
   }
 
   private fun createMatchPercentageLabel(previewData: PreviewDetails): JPanel {
+    val hasReferenceImage =
+      (previewData.destImagePath?.let { File(it).exists() } == true) ||
+        previewData.diffPercent != null ||
+        previewData.testResult == AndroidTestCaseResult.PASSED
+
+    if (!hasReferenceImage) {
+      return JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.X_AXIS)
+        isOpaque = false
+        alignmentX = LEFT_ALIGNMENT
+
+        add(
+          JBLabel(NEW_TAG_TEXT).apply {
+            foreground = JBColor.GREEN.darker()
+            font = font.deriveFont(Font.BOLD)
+          }
+        )
+      }
+    }
+
     val diffDouble = previewData.diffPercent?.toDoubleOrNull()
     val matchPercentage = ScreenshotTestUtils.calculateMatchPercentage(diffDouble)
     val percentageText = matchPercentage ?: DEFAULT_MATCH_PERCENTAGE
@@ -169,7 +194,10 @@ class PreviewItemPanel(
         previewData.srcImagePath?.let { loadImage(it, previewData.testId, onImageLoaded) }
           ?: run {
             // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event
-            logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+            logScreenshotTestEvent(
+              ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+              project,
+            )
             showError(NO_NEW_IMAGE_TEXT)
           }
       }
@@ -197,15 +225,14 @@ class PreviewItemPanel(
   }
 
   fun loadImage(newPath: String, testId: String, onImageLoaded: (() -> Unit)? = null) {
-    val simpleClassName = testId.split('.', limit = 2).first()
-
     if (currentImagePath == newPath && currentTestId == testId) {
       if (isLoadedSuccessfully) {
         onImageLoaded?.invoke()
       }
       return
     }
-    // Update tracking fields immediately to ensure subsequent calls can detect if this request becomes stale.
+    // Update tracking fields immediately to ensure subsequent calls can detect if this request
+    // becomes stale.
     currentImagePath = newPath
     currentTestId = testId
 
@@ -229,7 +256,8 @@ class PreviewItemPanel(
       }
 
       ApplicationManager.getApplication().invokeLater {
-        // Double-check if the request is still relevant to this panel instance before updating the UI.
+        // Double-check if the request is still relevant to this panel instance before updating the
+        // UI.
         if (currentImagePath == newPath && currentTestId == testId) {
           if (image != null) {
             imagePanel.setImage(image)
@@ -241,12 +269,20 @@ class PreviewItemPanel(
             isLoadedSuccessfully = true
             onImageLoaded?.invoke()
           } else {
-            logger.error("Couldn't load image from path: $newPath")
+            logger.warn("Couldn't load image from path: $newPath")
             // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event
-            logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+            logScreenshotTestEvent(
+              ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+              project,
+            )
             showError(COULD_NOT_LOAD_IMAGE_TEXT)
             onImageLoaded?.invoke() // To trigger a list repaint
           }
+        } else {
+          // If the panel was reused for another item before this image finished decoding,
+          // still notify onImageLoaded so that the parent container repaints and can retrieve
+          // the decoded thumbnail from thumbnailCache.
+          onImageLoaded?.invoke()
         }
       }
     }
@@ -294,8 +330,9 @@ class PreviewItemPanel(
 
       val scaledImage = ImageUtil.scaleImage(image, finalW, finalH)
       JBImageIcon(scaledImage)
-    } catch (e: IOException) {
-      logger.error("IOException occurred while loading image from path: $path", e)
+    } catch (t: Throwable) {
+      if (t is ControlFlowException || t is CancellationException) throw t
+      logger.warn("Exception occurred while loading image from path: $path", t)
       null
     }
   }
@@ -316,6 +353,7 @@ class PreviewItemPanel(
     }
 
     fun setImage(newImage: JBImageIcon) {
+      loadingIcon.suspend()
       this.image = newImage
       removeAll() // Remove loading icon or text labels
 
@@ -329,6 +367,7 @@ class PreviewItemPanel(
     }
 
     fun showLoading() {
+      loadingIcon.resume()
       this.image = null
       removeAll()
       add(loadingIcon)
@@ -339,6 +378,7 @@ class PreviewItemPanel(
     }
 
     fun showText(message: String, color: JBColor = JBColor.RED) {
+      loadingIcon.suspend()
       this.image = null
       removeAll()
       add(JBLabel(message).apply { foreground = color })

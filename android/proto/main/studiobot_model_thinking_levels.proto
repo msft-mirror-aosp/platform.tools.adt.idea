@@ -1,0 +1,31 @@
+syntax = "proto2";
+
+option java_package = "com.android.tools.idea.serverflags.protos";
+option java_multiple_files = true;
+
+// A specific thinking level supported by a model.
+message ThinkingLevel {
+  // E.g., "minimal", "low", "high", "xhigh"
+  optional string id = 1;
+
+  // E.g., "Minimal", "Low", "High", "Extra High"
+  optional string display_name = 2;
+}
+
+// Thinking level configuration for a specific model.
+// If a model is not listed or supported_thinking_levels is empty, thinking
+// level selection is disabled for that model.
+message ModelThinkingLevels {
+  // E.g., "gemini-3.8-flash", "gemini-3.1-pro-preview".
+  optional string model_id = 1;
+
+  repeated ThinkingLevel supported_thinking_levels = 2;
+}
+
+// Thinking level configurations for models under a specific provider.
+message StudioProviderModelThinkingLevels {
+  // E.g., "aistudio", "anthropic", "openai".
+  optional string provider = 1;
+
+  repeated ModelThinkingLevels model_thinking_levels = 2;
+}

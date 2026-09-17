@@ -242,6 +242,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
    */
   private fun handleDeviceSelection(selectedItem: Device) {
     dimensionInputsAction.resetErrors()
+    currentSceneManager?.sceneRenderConfiguration?.needsInflation?.set(true)
     currentConfiguration?.setEffectiveDevice(selectedItem, selectedItem.defaultState)
     dimensionInputsAction.updateTextFieldsFromConfiguration()
     ComposeResizeToolingUsageTracker.logResizeStopped(

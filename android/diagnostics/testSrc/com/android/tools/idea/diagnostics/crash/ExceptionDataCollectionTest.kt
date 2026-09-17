@@ -106,6 +106,37 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(uploadFieldsEx2.logs.size).isEqualTo(0)
   }
 
+  fun testGetExceptionUploadFields_trackedExceptionMessagePreservedWhenWrapped() {
+    val icce = IncompatibleClassChangeError("class A has interface B as super class")
+    val wrapped = RuntimeException("wrapper exception", icce)
+    val uploadFields = service.getExceptionUploadFields(wrapped, forceExceptionMessage = false, includeLogs = false)
+    assertThat(uploadFields.description).contains("class A has interface B as super class")
+    assertThat(uploadFields.description).doesNotContain("<elided>")
+  }
+
+  fun testGetExceptionUploadFields_trackedExceptionMessagePreservedUnwrapped() {
+    val icce = IncompatibleClassChangeError("class A has interface B as super class")
+    val uploadFields = service.getExceptionUploadFields(icce, forceExceptionMessage = false, includeLogs = false)
+    assertThat(uploadFields.description).contains("class A has interface B as super class")
+    assertThat(uploadFields.description).doesNotContain("<elided>")
+  }
+
+  fun testGetExceptionUploadFields_untrackedExceptionMessageElidedWhenWrapped() {
+    val root = IllegalArgumentException("sensitive argument info")
+    val wrapped = RuntimeException("wrapper exception", root)
+    val uploadFields = service.getExceptionUploadFields(wrapped, forceExceptionMessage = false, includeLogs = false)
+    assertThat(uploadFields.description).contains("java.lang.IllegalArgumentException: <elided>")
+    assertThat(uploadFields.description).doesNotContain("sensitive argument info")
+  }
+
+  fun testGetExceptionUploadFields_untrackedExceptionMessageElidedWhenWrappedInTrackedException() {
+    val root = IllegalArgumentException("sensitive argument info")
+    val wrapped = java.lang.reflect.InvocationTargetException(root, "reflection error")
+    val uploadFields = service.getExceptionUploadFields(wrapped, forceExceptionMessage = false, includeLogs = false)
+    assertThat(uploadFields.description).contains("java.lang.IllegalArgumentException: <elided>")
+    assertThat(uploadFields.description).doesNotContain("sensitive argument info")
+  }
+
   fun testRegisteringAppenders() {
     val registeredAppenders = service.registeredAppenders
     assertThat(registeredAppenders).hasSize(1)

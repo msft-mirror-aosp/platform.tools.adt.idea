@@ -225,7 +225,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
                 ExecutorType.DEBUG,
                 "/path/to/kotlinx-coroutines-lib.jar")
             .build()
-            .toArgumentList());
+            .toArgumentList()).isNotEmpty();
     assertThat(
             BlazeJavaRunProfileState.getBlazeCommandBuilder(
                     project,

@@ -149,7 +149,8 @@ abstract class ModuleModel(
 
     @WorkerThread
     override fun render() {
-      success = WriteCommandAction.writeCommandAction(project).withName(commandName).compute<Boolean, Exception> { renderTemplate(false) }
+      // Delegate directly to renderTemplate; Recipe.render manages modal progress and Recipe.doRender provides the WriteCommandAction
+      success = renderTemplate(false)
 
       if (!success) {
         log.warn("A problem occurred while creating a new Module. Please check the log file for possible errors.")
@@ -217,7 +218,8 @@ abstract class ModuleModel(
         if (dryRun) {
           FindReferencesRecipeExecutor(context)
         } else {
-          renderStrategy?.createRecipeExecutor(context) ?: DefaultRecipeExecutor(context)
+          renderStrategy?.createRecipeExecutor(context, templateRenderStrategyAdditionalUserSettings[templateRendererStrategy.value]!!)
+            ?: DefaultRecipeExecutor(context)
         }
 
       if (renderStrategy == null && StudioFlags.NPW_ENABLE_GRADLE_VERSION_CATALOG.get() && isNewProject && useVersionCatalog.get()) {

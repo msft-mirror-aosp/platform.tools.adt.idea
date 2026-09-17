@@ -115,9 +115,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
 
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val watchFaceApp =
-      createApp(device, TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
+      createApp(TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
 
     val settings =
       object : AppRunSettings {
@@ -234,9 +234,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
 
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val watchFaceApp =
-      createApp(device, TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
+      createApp(TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
 
     val settings =
       object : AppRunSettings {
@@ -339,9 +339,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
 
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val watchFaceApp =
-      createApp(device, TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
+      createApp(TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
 
     val settings =
       object : AppRunSettings {
@@ -427,9 +427,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
           }
       }
 
-    val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+    val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
     val watchFaceApp =
-      createApp(device, TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
+      createApp(TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
     val appInstaller = TestApplicationInstaller(hashMapOf(Pair(appId, app), Pair(TestWatchFaceInfo.appId, watchFaceApp)))
 
     val executor =
@@ -501,9 +501,9 @@ class AndroidComplicationConfigurationExecutorTest : AndroidConfigurationExecuto
 
     try {
       val device = AndroidDebugBridge.getBridge()!!.devices.single { it.serialNumber == deviceState.deviceId }
-      val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
+      val app = createApp(appId, servicesName = listOf(componentName), activitiesName = emptyList())
       val watchFaceApp =
-        createApp(device, TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
+        createApp(TestWatchFaceInfo.appId, servicesName = listOf(TestWatchFaceInfo.watchFaceFQName), activitiesName = emptyList())
       val settings =
         object : AppRunSettings {
           override val deployOptions = DeployOptions(emptyList(), "", true, true, false)

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.profilers
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.util.CommonAndroidUtil
 import com.intellij.execution.Executor
@@ -36,6 +37,13 @@ class ProfileRunExecutor : DefaultRunExecutor() {
   override fun getId(): String = EXECUTOR_ID
 
   override fun getStartActionText(): String = "Profile"
+
+  override fun getStartActionText(configurationName: String) =
+    when {
+      configurationName.isEmpty() -> startActionText
+      StudioFlags.PROFILER_TASK_BASED_UX.get() -> "Profiler: Run '$configurationName'"
+      else -> "Profile '$configurationName'"
+    }
 
   override fun getContextActionId(): String = "ProfileRunClass"
 

@@ -49,30 +49,33 @@ abstract class TaskEntranceTabModel(val profilers: StudioProfilers) {
         else -> null
       }
 
-    val opensInEditor =
-      selectedTaskTypeForEditor != null &&
-        ProfilerInEditorUtils.isEditorEnabled(profilers.ideServices.featureConfig, selectedTaskTypeForEditor)
+    val isLegacyAllocations =
+      if (this is PastRecordingsTabModel) {
+        selectedRecording?.isLegacyAllocations == true
+      } else {
+        false
+      }
 
-    when (this) {
-      // Disable start button until the previous task has started successfully.
-      is TaskHomeTabModel -> {
-        disableStartButtonUntilPrevTaskStarts()
-      }
-      // If the existing Profiler task tab is already showing the selected recording, there is no need to load the task again. Instead, the
-      // existing task tab will be re-opened.
-      is PastRecordingsTabModel -> {
-        val selectedSession = selectedRecording!!.session
-        if (selectedSession == profilers.session && !opensInEditor) {
-          profilers.openTaskTab()
-          return
-        }
-      }
+    val openInEditor =
+      selectedTaskTypeForEditor != null &&
+        ProfilerInEditorUtils.isEditorEnabled(profilers.ideServices.featureConfig, selectedTaskTypeForEditor, isLegacyAllocations)
+
+    val isLiveTaskInEditor =
+      selectedTaskTypeForEditor != null &&
+        ProfilerInEditorUtils.isLiveTaskInEditorEnabled(profilers.ideServices.featureConfig, selectedTaskTypeForEditor, isLegacyAllocations)
+
+    // If the past trace task opens in its own editor window (and is an offline trace capture, not a live task),
+    // open it directly without mutating the central selected session so it doesn't conflict with any active task in the Profiler window.
+    if (this is PastRecordingsTabModel && openInEditor && !isLiveTaskInEditor) {
+      val recording = selectedRecording ?: return
+      profilers.unifiedTraceOpener.openUnifiedTrace(recording, selectedTaskTypeForEditor)
+      return
     }
 
-    // Bypass current task checks if the past trace task opens in its own editor window
-    // so it doesn't conflict with the existing task in the Profiler window.
-    if (this is PastRecordingsTabModel && opensInEditor) {
-      doEnterTaskButton()
+    // If the existing Profiler task tab is already showing the selected recording, there is no need to load the task again. Instead, the
+    // existing task tab will be re-opened.
+    if (this is PastRecordingsTabModel && selectedRecording!!.session == profilers.session) {
+      profilers.openTaskTab()
       return
     }
 

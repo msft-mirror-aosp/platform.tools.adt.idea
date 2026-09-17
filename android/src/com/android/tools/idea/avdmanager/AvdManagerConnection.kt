@@ -24,7 +24,9 @@ import com.android.repository.api.RepoPackage
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.DeviceActionCanceledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
+import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
+import com.android.sdklib.deviceprovisioner.deviceType
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.internal.avd.AvdBuilder
 import com.android.sdklib.internal.avd.AvdInfo
@@ -58,7 +60,6 @@ import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
@@ -124,6 +125,9 @@ constructor(
     }
     return avdManager.allAvds
   }
+
+  /** Returns a list of AVDs currently present on the system that have already been discovered. */
+  open fun getCachedAvds(): List<AvdInfo> = avdManager?.allAvds ?: listOf()
 
   /** Delete the given AVD if it exists. */
   @Slow fun deleteAvd(info: AvdInfo): Boolean = avdManager?.deleteAvd(info) ?: false
@@ -200,6 +204,7 @@ constructor(
         // noinspection DuplicateBranchesInSwitch
         return continueToStartAvd(project, avd, forceLaunchInToolWindow, bootMode)
       AccelerationErrorCode.EMULATOR_UPDATE_REQUIRED,
+      AccelerationErrorCode.QEMU_NEXT_REQUIRED,
       AccelerationErrorCode.NO_EMULATOR_INSTALLED -> return handleAccelerationError(project, avd, forceLaunchInToolWindow, bootMode, code)
       else -> {
         val abi = Abi.getEnum(avd.abiType) ?: return continueToStartAvd(project, avd, forceLaunchInToolWindow, bootMode)
@@ -214,8 +219,26 @@ constructor(
     }
   }
 
+  private fun isQemuNextRequired(avd: AvdInfo) =
+    StudioFlags.EMULATOR_PREVIEW_REQUIRED.get() &&
+      avd.androidVersion.androidApiLevel.majorVersion >= 37 &&
+      avd.deviceType() == DeviceType.HANDHELD
+
   private suspend fun continueToStartAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode): IDevice =
     coroutineScope {
+      // Check AVD-specific error conditions
+      if (isQemuNextRequired(avd)) {
+        if (sdkHandler?.getEmulatorPackage(REPO_LOG, requireLatestEmulator = true) == null) {
+          return@coroutineScope handleAccelerationError(
+            project,
+            avd,
+            forceLaunchInToolWindow,
+            bootMode,
+            AccelerationErrorCode.QEMU_NEXT_REQUIRED,
+          )
+        }
+      }
+
       var avd = avd
       val emulator = emulator
       if (emulator == null) {
@@ -311,7 +334,7 @@ constructor(
     if (params.isEmpty()) {
       return null
     }
-    return writeTempFile(params)?.absoluteFile?.toPath()
+    return writeTempFile(params)?.toAbsolutePath()
   }
 
   private suspend fun handleAccelerationError(
@@ -335,7 +358,14 @@ constructor(
 
   private suspend fun showAccelerationErrorDialog(code: AccelerationErrorCode, project: Project?): Int =
     withContext(uiContext) {
-      val message = "${code.problem}\n\n${code.solutionMessage}"
+      val message =
+        when (code) {
+          AccelerationErrorCode.QEMU_NEXT_REQUIRED ->
+            // TODO(b/556789299): Include hyperlink to details about qemu-next once the docs are ready
+            "<html>API 37.0 and above now requires Emulator (Preview), the next generation Android Emulator.<br><br>" +
+              "Emulator (Preview) will be downloaded.</html>"
+          else -> "${code.problem}\n\n${code.solutionMessage}"
+        }
       Messages.showOkCancelDialog(
         project,
         message,
@@ -475,27 +505,22 @@ constructor(
      * @return The temporary file. This will be null if we could not create or write the file.
      */
     @JvmStatic
-    private fun writeTempFile(fileContents: List<String>): File? {
-      var tempFile: File? = null
+    private fun writeTempFile(fileContents: List<String>): Path? {
       try {
-        tempFile = FileUtil.createTempFile("emu", ".tmp", true)
-        tempFile.deleteOnExit() // File disappears when Studio exits
-        if (
-          !tempFile.setReadable(false, false) || // Non-owner cannot read
-            !tempFile.setReadable(true, true)
-        ) { // Owner can read
-          IJ_LOG.warn("Error setting permissions for " + tempFile.absolutePath)
+        val tempPath = Files.createTempFile("emu", ".tmp")
+        try {
+          tempPath.toFile().deleteOnExit()
+          Files.write(tempPath, fileContents, StandardOpenOption.WRITE)
+          return tempPath
+        } catch (e: IOException) {
+          // Try to remove the temporary file
+          Files.deleteIfExists(tempPath)
+          throw e
         }
-
-        Files.write(tempFile.toPath(), fileContents, StandardOpenOption.WRITE)
-      } catch (_: IOException) {
-        // Try to remove the temporary file
-        if (tempFile != null) {
-          tempFile.delete()
-          tempFile = null
-        }
+      } catch (e: IOException) {
+        IJ_LOG.warn("Failed to write emulator parameters to temp file", e)
       }
-      return tempFile
+      return null
     }
 
     @JvmStatic

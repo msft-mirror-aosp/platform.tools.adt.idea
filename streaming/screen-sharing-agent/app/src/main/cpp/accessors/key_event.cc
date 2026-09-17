@@ -18,6 +18,7 @@
 
 #include <android/input.h>
 
+#include "agent.h"
 #include "jvm.h"
 #include "log.h"
 
@@ -27,13 +28,18 @@ using namespace std;
 
 KeyEvent::KeyEvent(Jni jni)
     : source(AINPUT_SOURCE_KEYBOARD),
+      display_id(UNSPECIFIED_DISPLAY_ID),
       jni_(jni) {
 }
 
 JObject KeyEvent::ToJava() const {
   InitializeConstructor(jni_);
-  return key_event_class_.NewObject(
+  auto obj = key_event_class_.NewObject(
       jni_, constructor_, down_time_millis, event_time_millis, action, code, repeat, meta_state, device_id, scancode, flags, source);
+  if (display_id != UNSPECIFIED_DISPLAY_ID && set_display_id_method_ != nullptr) {
+    obj.CallVoidMethod(jni_, set_display_id_method_, display_id);
+  }
+  return obj;
 }
 
 int32_t KeyEvent::GetKeyCode(const JObject& key_event) {
@@ -50,6 +56,9 @@ void KeyEvent::InitializeConstructor(Jni jni) {
   if (constructor_ == nullptr) {
     key_event_class_ = jni.GetClass("android/view/KeyEvent");
     constructor_ = key_event_class_.GetConstructor("(JJIIIIIIII)V");
+    if (Agent::feature_level() >= 29) {
+      set_display_id_method_ = key_event_class_.GetMethod("setDisplayId", "(I)V");
+    }
     key_event_class_.MakeGlobal();
   }
 }
@@ -62,6 +71,7 @@ void KeyEvent::InitializeFieldIds(const JObject& key_event) {
 
 JClass KeyEvent::key_event_class_;
 jmethodID KeyEvent::constructor_ = nullptr;
+jmethodID KeyEvent::set_display_id_method_ = nullptr;
 jfieldID KeyEvent::key_code_field_ = nullptr;
 jfieldID KeyEvent::action_field_ = nullptr;
 

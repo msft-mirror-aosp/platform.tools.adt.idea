@@ -15,15 +15,27 @@
  */
 package com.android.tools.rendering.security
 
+import com.android.tools.rendering.RenderService
+import java.awt.DefaultKeyboardFocusManager
+import java.awt.Frame
+import java.awt.KeyboardFocusManager
 import java.awt.Toolkit
+import java.awt.Window
+import java.awt.dnd.DragSource
 import java.awt.print.PrinterJob
+import java.beans.Expression
+import java.beans.Statement
+import java.beans.XMLDecoder
+import java.beans.XMLEncoder
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.RandomAccessFile
 import java.lang.invoke.MethodHandles
+import java.lang.ref.Cleaner
 import java.lang.reflect.AccessibleObject
+import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.Member
 import java.lang.reflect.Method
@@ -33,25 +45,45 @@ import java.net.MulticastSocket
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URL
+import java.net.URLConnection
+import java.nio.channels.AsynchronousFileChannel
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
+import java.nio.file.spi.FileSystemProvider
+import java.util.ServiceLoader
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.zip.ZipFile
+import javax.imageio.ImageIO
+import javax.imageio.spi.IIORegistry
+import javax.imageio.spi.ServiceRegistry
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
+import javax.print.PrintServiceLookup
+import javax.script.ScriptEngineManager
+import javax.swing.JEditorPane
+import javax.swing.LayoutStyle
+import javax.swing.MenuSelectionManager
+import javax.swing.PopupFactory
+import javax.swing.RepaintManager
+import javax.swing.Timer as SwingTimer
+import javax.swing.UIDefaults
+import javax.swing.UIManager
+import javax.swing.text.Keymap
+import javax.swing.text.LayoutQueue
 import kotlin.reflect.KFunction
 import kotlin.reflect.jvm.javaMethod
 import org.jetbrains.annotations.TestOnly
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.Type
+import sun.misc.Signal
 import sun.misc.Unsafe
 
 private val tmpDir = File(System.getProperty("java.io.tmpdir"))
@@ -67,6 +99,8 @@ private fun checkPropertyAccess(): Unit = RenderSandbox.getRenderSandbox().check
 private fun checkEnvAccess(): Unit = RenderSandbox.getRenderSandbox().checkEnvAccess()
 
 private fun checkSystemIoSet(): Unit = RenderSandbox.getRenderSandbox().checkSystemIoSet()
+
+private fun checkSetFactory(): Unit = RenderSandbox.getRenderSandbox().checkSetFactory()
 
 @Suppress("UNUSED_PARAMETER")
 private fun checkPropertyRead(propertyName: String) = RenderSandbox.getRenderSandbox().checkPropertyRead(propertyName)
@@ -117,6 +151,14 @@ private fun checkResourceLoad(owner: Class<*>, args: Array<Any>?): Unit {
   RenderSandbox.getRenderSandbox().checkResourceLoad(resourceName)
 }
 
+private fun checkGetClassLoader(clazz: Class<*>, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
+  RenderSandbox.getRenderSandbox().checkGetClassLoader(clazz)
+}
+
+private fun checkClassLoaderAccess() {
+  RenderSandbox.getRenderSandbox().checkClassLoaderAccess()
+}
+
 private fun checkCreateClassLoader() = RenderSandbox.getRenderSandbox().checkCreateClassLoader()
 
 private fun checkClipboard() = RenderSandbox.getRenderSandbox().checkClipboard()
@@ -125,32 +167,62 @@ private fun checkEventQueue() = RenderSandbox.getRenderSandbox().checkEventQueue
 
 private fun checkPrintJob() = RenderSandbox.getRenderSandbox().checkPrintJob()
 
+private fun checkImageIo() = RenderSandbox.getRenderSandbox().checkImageIo()
+
+private fun checkCleaner() = RenderSandbox.getRenderSandbox().checkCleaner()
+
+private fun checkSignal() = RenderSandbox.getRenderSandbox().checkSignal()
+
+private fun checkRenderExecutor() = RenderSandbox.getRenderSandbox().checkRenderExecutor()
+
+private fun checkThreadConstruct(owner: String, args: Array<Any>?) {
+  if (args != null && args.size == 5 && args[4] == false) {
+    RenderSandbox.getRenderSandbox().checkProcessExec()
+  }
+}
+
 private fun checkMethodInvoke(method: Method, args: Array<Any>?) {
-  val owner = method.declaringClass.name.replace(".", "/")
-  val name = method.name
-  RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+  val target = args?.getOrNull(0)
+  if (target != null) {
+    RenderSandbox.getRenderSandbox().checkReflectionInvoke(target.javaClass, method.name)
+  }
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(method.declaringClass, method.name)
+}
+
+private fun checkConstructorNewInstance(ctor: Constructor<*>, args: Array<Any>?) {
+  if (ctor.declaringClass == Thread::class.java) {
+    val initArgs = args?.getOrNull(0) as? Array<*>
+    if (initArgs != null && initArgs.size == 5 && initArgs[4] == false) {
+      RenderSandbox.getRenderSandbox().checkProcessExec()
+    }
+  }
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(ctor.declaringClass, "<init>")
+}
+
+private fun checkClassNewInstance(clazz: Class<*>, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(clazz, "<init>")
 }
 
 private fun checkFieldAccess(field: Field, args: Array<Any>?) {
-  val owner = field.declaringClass.name.replace(".", "/")
-  val name = field.name
-  RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+  RenderSandbox.getRenderSandbox().checkFieldAccess(field.declaringClass, field.name)
 }
 
 private fun checkAccessibleObjectAccess(accessibleObject: AccessibleObject, args: Array<Any>?) {
-  if (accessibleObject is Member) {
-    val owner = accessibleObject.declaringClass.name.replace(".", "/")
-    val name = accessibleObject.name
-    RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+  if (accessibleObject is Field) {
+    RenderSandbox.getRenderSandbox().checkFieldAccess(accessibleObject.declaringClass, accessibleObject.name)
+  } else if (accessibleObject is Member) {
+    val name = if (accessibleObject is Constructor<*>) "<init>" else accessibleObject.name
+    RenderSandbox.getRenderSandbox().checkReflectionInvoke(accessibleObject.declaringClass, name)
   }
 }
 
 private fun checkStaticAccessibleObjectAccess(accessibleObjects: Array<AccessibleObject>, args: Array<Any>?) {
   for (accessibleObject in accessibleObjects) {
-    if (accessibleObject is Member) {
-      val owner = accessibleObject.declaringClass.name.replace(".", "/")
-      val name = accessibleObject.name
-      RenderSandbox.getRenderSandbox().checkReflectionInvoke(owner, name)
+    if (accessibleObject is Field) {
+      RenderSandbox.getRenderSandbox().checkFieldAccess(accessibleObject.declaringClass, accessibleObject.name)
+    } else if (accessibleObject is Member) {
+      val name = if (accessibleObject is Constructor<*>) "<init>" else accessibleObject.name
+      RenderSandbox.getRenderSandbox().checkReflectionInvoke(accessibleObject.declaringClass, name)
     }
   }
 }
@@ -159,22 +231,74 @@ private fun checkUnsafeAccess() {
   RenderSandbox.getRenderSandbox().checkUnsafeAccess()
 }
 
-private fun checkFindStatic(owner: Any, args: Array<Any>?) {
+private fun checkFindMember(owner: Any, args: Array<Any>?) {
+  val first = args?.getOrNull(0) ?: return
+  val refc = if (first is Class<*>) first else first.javaClass
+  val name = args.getOrNull(1) as? String ?: return
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(refc, name)
+}
+
+private fun checkPrivateLookupIn(ownerClass: String, args: Array<Any>?) {
+  val target = args?.getOrNull(0) as? Class<*> ?: return
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(target, "<privateLookup>")
+}
+
+private fun checkLookupAccessClass(owner: Any, args: Array<Any>?) {
+  val target = args?.getOrNull(0) as? Class<*> ?: return
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(target, "<access>")
+}
+
+private fun checkFindField(owner: Any, args: Array<Any>?) {
   val refc = args?.getOrNull(0) as? Class<*> ?: return
   val name = args.getOrNull(1) as? String ?: return
-  val classInternalName = refc.name.replace(".", "/")
-  RenderSandbox.getRenderSandbox().checkReflectionInvoke(classInternalName, name)
+  RenderSandbox.getRenderSandbox().checkFieldAccess(refc, name)
+}
+
+private fun checkFindConstructor(owner: Any, args: Array<Any>?) {
+  val refc = args?.getOrNull(0) as? Class<*> ?: return
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(refc, "<init>")
+}
+
+private fun checkUnreflectConstructor(owner: Any, args: Array<Any>?) {
+  val ctor = args?.getOrNull(0) as? Constructor<*> ?: return
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(ctor.declaringClass, "<init>")
+}
+
+private fun checkUnreflectField(owner: Any, args: Array<Any>?) {
+  val field = args?.getOrNull(0) as? Field ?: return
+  RenderSandbox.getRenderSandbox().checkFieldAccess(field.declaringClass, field.name)
+}
+
+private fun checkStatementExecute(@Suppress("UNUSED_PARAMETER") statement: Statement, @Suppress("UNUSED_PARAMETER") args: Array<Any>?) {
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke("java/beans/Statement", "execute")
+}
+
+private fun checkExpressionGetValue(
+  @Suppress("UNUSED_PARAMETER") expression: Expression,
+  @Suppress("UNUSED_PARAMETER") args: Array<Any>?,
+) {
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke("java/beans/Expression", "getValue")
 }
 
 private fun checkUnreflect(owner: Any, args: Array<Any>?) {
   val method = args?.getOrNull(0) as? Method ?: return
-  val classInternalName = method.declaringClass.name.replace(".", "/")
-  val name = method.name
-  RenderSandbox.getRenderSandbox().checkReflectionInvoke(classInternalName, name)
+  RenderSandbox.getRenderSandbox().checkReflectionInvoke(method.declaringClass, method.name)
 }
 
 private fun checkDefineClass() {
   RenderSandbox.getRenderSandbox().checkDefineClass()
+}
+
+private fun checkScriptEngine() {
+  RenderSandbox.getRenderSandbox().checkScriptEngine()
+}
+
+private fun checkServiceLoader() {
+  RenderSandbox.getRenderSandbox().checkServiceLoader()
+}
+
+private fun checkXmlDecoder() {
+  RenderSandbox.getRenderSandbox().checkXmlDecoder()
 }
 
 private fun checkReadObject(owner: Any, args: Array<Any>?) {
@@ -199,21 +323,70 @@ private fun checkRandomAccessFileInit(owner: String, args: Array<Any>?) {
   }
 }
 
-@Suppress("UNUSED_PARAMETER")
-private fun checkFileChannelOpen(owner: String, args: Array<Any>?) {
-  val path = args?.getOrNull(0) as? Path ?: return
-  val options = args.getOrNull(1)
-  val isWrite =
-    when (options) {
-      is Array<*> -> options.any { it == StandardOpenOption.WRITE || it == StandardOpenOption.APPEND }
-      is java.util.Set<*> -> options.any { it == StandardOpenOption.WRITE || it == StandardOpenOption.APPEND }
-      else -> false
-    }
-  if (isWrite) {
-    checkFileWrite(path.toString())
-  } else {
-    checkFileRead(path.toString())
+private fun isWriteOpenOption(option: Any?): Boolean =
+  option == StandardOpenOption.WRITE ||
+    option == StandardOpenOption.APPEND ||
+    option == StandardOpenOption.CREATE ||
+    option == StandardOpenOption.CREATE_NEW ||
+    option == StandardOpenOption.TRUNCATE_EXISTING ||
+    option == StandardOpenOption.DELETE_ON_CLOSE
+
+private fun hasWriteOptions(options: Any?): Boolean =
+  when (options) {
+    is Array<*> -> options.any { isWriteOpenOption(it) }
+    is Iterable<*> -> options.any { isWriteOpenOption(it) }
+    else -> isWriteOpenOption(options)
   }
+
+@Suppress("UNUSED_PARAMETER")
+private fun <T> checkFileChannelOpen(owner: T, args: Array<Any>?) {
+  val path =
+    when (val p = args?.getOrNull(0)) {
+      is Path -> p.toString()
+      is File -> p.absolutePath
+      is String -> p
+      else -> return
+    }
+  val isWrite = args.drop(1).any { hasWriteOptions(it) }
+  if (isWrite) {
+    checkFileWrite(path)
+  } else {
+    checkFileRead(path)
+  }
+}
+
+@Suppress("UNUSED_PARAMETER")
+private fun <T> checkNewInputStream(owner: T, args: Array<Any>?) {
+  val path =
+    when (val p = args?.getOrNull(0)) {
+      is Path -> p.toString()
+      is File -> p.absolutePath
+      is String -> p
+      else -> return
+    }
+  val isWrite = args.drop(1).any { hasWriteOptions(it) }
+  if (isWrite) {
+    checkFileWrite(path)
+  } else {
+    checkFileRead(path)
+  }
+}
+
+private fun <T> checkAsyncFileChannelOpen(owner: T, args: Array<Any>?) {
+  checkConcurrency()
+  checkFileChannelOpen(owner, args)
+}
+
+private fun <T> checkFileAttributeView(owner: T, args: Array<Any>?) {
+  val path =
+    when (val p = args?.getOrNull(0)) {
+      is Path -> p.toAbsolutePath().normalize().toString()
+      is File -> p.absolutePath
+      is String -> p
+      else -> return
+    }
+  checkFileRead(path)
+  checkFileWrite(path)
 }
 
 private fun checkFileInstance(call: (String) -> Unit): (File, Array<Any>?) -> Unit {
@@ -246,8 +419,8 @@ private fun <T> checkNthPathArgument(@Suppress("SameParameterValue") n: Int, cal
 
 private fun <T> checkFirstPathArgument(call: (String) -> Unit): (T, Array<Any>?) -> Unit = checkNthPathArgument(0, call)
 
-private fun checkSourceAndDestinationPaths(sourceCall: (String) -> Unit, destinationCall: (String) -> Unit): (String, Array<Any>?) -> Unit {
-  return { _: String, args: Array<Any>? ->
+private fun <T> checkSourceAndDestinationPaths(sourceCall: (String) -> Unit, destinationCall: (String) -> Unit): (T, Array<Any>?) -> Unit {
+  return { _: T, args: Array<Any>? ->
     val source = args?.getOrNull(0)
     val destination = args?.getOrNull(1)
 
@@ -288,6 +461,7 @@ internal sealed class Intercept {
    * instance of the class being invoked and the second the arguments of the call.
    */
   internal class VirtualIntercept(
+    val clazz: Class<*>,
     override val classInternalName: String,
     override val methodName: String,
     val intercept: (Any, Array<Any>?) -> Unit,
@@ -310,7 +484,7 @@ internal sealed class Intercept {
      * call as arguments.
      */
     inline fun <reified T> instance(methodName: String, noinline intercept: (T, Array<Any>?) -> Unit): Intercept {
-      return VirtualIntercept(Type.getInternalName(T::class.java), methodName) { type, args -> intercept(type as T, args) }
+      return VirtualIntercept(T::class.java, Type.getInternalName(T::class.java), methodName) { type, args -> intercept(type as T, args) }
     }
 
     /**
@@ -328,6 +502,10 @@ internal sealed class Intercept {
      */
     inline fun <reified T> static(methodName: String, noinline intercept: (String, Array<Any>?) -> Unit): Intercept {
       return StaticIntercept(Type.getInternalName(T::class.java), methodName) { owner, args -> intercept(owner, args) }
+    }
+
+    fun static(classInternalName: String, methodName: String, intercept: (String, Array<Any>?) -> Unit): Intercept {
+      return StaticIntercept(classInternalName, methodName, intercept)
     }
 
     /**
@@ -427,8 +605,8 @@ object RenderSandboxTransformTrampoline {
       Intercept.instance<File>(File::isAbsolute, checkFileInstance(::checkFileRead)),
       Intercept.instance<File>(File::lastModified, checkFileInstance(::checkFileRead)),
       Intercept.instance<File>(File::length, checkFileInstance(::checkFileRead)),
-      Intercept.instance<File>(File::delete, checkFileInstance(::checkFileRead)),
-      Intercept.instance<File>(File::deleteOnExit, checkFileInstance(::checkFileRead)),
+      Intercept.instance<File>(File::delete, checkFileInstance(::checkFileWrite)),
+      Intercept.instance<File>(File::deleteOnExit, checkFileInstance(::checkFileWrite)),
       Intercept.instance<File>(File::getName, checkFileInstance(::checkFileRead)),
       Intercept.instance<File>(File::getAbsoluteFile, checkFileInstance(::checkFileRead)),
       Intercept.instance<File>(File::getAbsolutePath, checkFileInstance(::checkFileRead)),
@@ -512,7 +690,7 @@ object RenderSandboxTransformTrampoline {
       Intercept.static<Paths>("get", checkStaticPath(::checkFileRead)),
       Intercept.static<Files>(Files::newOutputStream, checkFirstPathArgument(::checkFileWrite)),
       Intercept.static<Files>("newBufferedReader", checkFirstPathArgument(::checkFileRead)),
-      Intercept.static<Files>(Files::newInputStream, checkFirstPathArgument(::checkFileRead)),
+      Intercept.static<Files>(Files::newInputStream, ::checkNewInputStream),
       Intercept.static<Files>("newBufferedWriter", checkFirstPathArgument(::checkFileWrite)),
       Intercept.static<Files>("newByteChannel", checkFirstPathArgument(::checkFileWrite)),
       Intercept.static<Files>("newDirectoryStream", checkFirstPathArgument(::checkFileRead)),
@@ -521,10 +699,10 @@ object RenderSandboxTransformTrampoline {
       Intercept.static<Files>(Files::createDirectories, checkFirstPathArgument(::checkFileWrite)),
       Intercept.static<Files>("createTempFile", ::checkCreateTempFromFiles),
       Intercept.static<Files>("createTempDirectory", ::checkCreateTempFromFiles),
-      Intercept.static<Files>(Files::createLink, checkSourceAndDestinationPaths(::checkFileRead, ::checkFileWrite)),
+      Intercept.static<Files>(Files::createLink, checkSourceAndDestinationPaths(::checkFileWrite, ::checkFileRead)),
       Intercept.static<Files>(Files::createSymbolicLink, checkFirstPathArgument(::checkFileWrite)),
-      Intercept.static<Files>(Files::delete, checkFirstPathArgument(::checkFileRead)),
-      Intercept.static<Files>(Files::deleteIfExists, checkFirstPathArgument(::checkFileRead)),
+      Intercept.static<Files>(Files::delete, checkFirstPathArgument(::checkFileWrite)),
+      Intercept.static<Files>(Files::deleteIfExists, checkFirstPathArgument(::checkFileWrite)),
       Intercept.static<Files>(Files::exists, checkFirstPathArgument(::checkFileRead)),
       Intercept.static<Files>("copy", checkSourceAndDestinationPaths(::checkFileRead, ::checkFileWrite)),
       Intercept.static<Files>(Files::move, checkSourceAndDestinationPaths(::checkFileRead, ::checkFileWrite)),
@@ -581,19 +759,37 @@ object RenderSandboxTransformTrampoline {
       // Class loading
       Intercept.instance<ClassLoader>(ClassLoader::loadClass, checkFirstStringArgument(::checkClassLoad)),
       Intercept.static<Class<*>>("forName", ::checkForNameCalls),
+      Intercept.instance<Class<*>>("getClassLoader", ::checkGetClassLoader),
+      Intercept.instance<ClassLoader>("getParent", checkInstanceCallIgnoreArgs(::checkClassLoaderAccess)),
+      Intercept.instance<Thread>("getContextClassLoader", checkInstanceCallIgnoreArgs(::checkClassLoaderAccess)),
+      Intercept.static<ClassLoader>("getSystemClassLoader", checkStaticNoArgsCall(::checkClassLoaderAccess)),
+      Intercept.static<ClassLoader>("getPlatformClassLoader", checkStaticNoArgsCall(::checkClassLoaderAccess)),
       Intercept.instance<Class<*>>(Class<*>::getResource, ::checkResourceLoad),
       Intercept.instance<Class<*>>(Class<*>::getResourceAsStream, ::checkResourceLoad),
 
-      // ClassLoader creation
+      // ClassLoader creation & definition
       Intercept.static<ClassLoader>("<init>", checkStaticNoArgsCall(::checkCreateClassLoader)),
       Intercept.static<java.net.URLClassLoader>("<init>", checkStaticNoArgsCall(::checkCreateClassLoader)),
       Intercept.static<java.security.SecureClassLoader>("<init>", checkStaticNoArgsCall(::checkCreateClassLoader)),
+      Intercept.instance<ClassLoader>("defineClass", checkInstanceCallIgnoreArgs(::checkDefineClass)),
+      Intercept.instance<java.security.SecureClassLoader>("defineClass", checkInstanceCallIgnoreArgs(::checkDefineClass)),
 
       // Process execution
       Intercept.instance<Runtime>(Runtime::exit, checkInstanceCallIgnoreArgs(::checkExit)),
       Intercept.instance<Runtime>(Runtime::halt, checkInstanceCallIgnoreArgs(::checkExit)),
+      Intercept.instance<Runtime>("addShutdownHook", checkInstanceCallIgnoreArgs(::checkExit)),
+      Intercept.instance<Runtime>("removeShutdownHook", checkInstanceCallIgnoreArgs(::checkExit)),
       Intercept.instance<Runtime>("exec", checkInstanceCallIgnoreArgs(::checkProcessExec)),
       Intercept.instance<ProcessBuilder>(ProcessBuilder::start, checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.static<ProcessBuilder>("startPipeline", checkStaticNoArgsCall(::checkProcessExec)),
+      Intercept.static("java/lang/ProcessImpl", "start", checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.instance<Process>("destroy", checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.instance<Process>("destroyForcibly", checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.instance<Process>("waitFor", checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.instance<ProcessHandle>("destroy", checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.instance<ProcessHandle>("destroyForcibly", checkInstanceCallIgnoreArgs(::checkProcessExec)),
+      Intercept.static("java/lang/Shutdown", "exit", checkInstanceCallIgnoreArgs(::checkExit)),
+      Intercept.static("java/lang/Shutdown", "halt", checkInstanceCallIgnoreArgs(::checkExit)),
 
       // Library loading
       Intercept.instance<Runtime>(Runtime::load, checkFirstStringArgument(::checkLoadLibrary)),
@@ -602,12 +798,68 @@ object RenderSandboxTransformTrampoline {
       // AWT operations
       Intercept.instance<Toolkit>("getSystemClipboard", checkInstanceCallIgnoreArgs(::checkClipboard)),
       Intercept.instance<Toolkit>("getSystemEventQueue", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<JEditorPane>("registerEditorKitForContentType", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("addKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("removeKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("addKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<KeyboardFocusManager>("removeKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<KeyboardFocusManager>("setCurrentKeyboardFocusManager", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("addKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("removeKeyEventDispatcher", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("addKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DefaultKeyboardFocusManager>("removeKeyEventPostProcessor", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<Keymap>("setDefaultAction", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<Keymap>("addActionForKeyStroke", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<PopupFactory>("setSharedInstance", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<LayoutStyle>("setInstance", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<UIManager>("put", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<UIManager>("setLookAndFeel", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<UIDefaults>("put", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<RepaintManager>("setCurrentManager", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<Window>("getWindows", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<Window>("getOwnerlessWindows", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<Frame>("getFrames", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<DragSource>("getDefaultDragSource", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<DragSource>("addDragSourceListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DragSource>("removeDragSourceListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DragSource>("addDragSourceMotionListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<DragSource>("removeDragSourceMotionListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<MenuSelectionManager>("addChangeListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<MenuSelectionManager>("removeChangeListener", checkInstanceCallIgnoreArgs(::checkEventQueue)),
 
       // Print operations
       Intercept.static<PrinterJob>("getPrinterJob", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrinterJob>("lookupPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrinterJob>("lookupStreamPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("registerServiceProvider", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("registerService", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("lookupPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("lookupDefaultPrintService", checkStaticNoArgsCall(::checkPrintJob)),
+      Intercept.static<PrintServiceLookup>("lookupMultiDocPrintServices", checkStaticNoArgsCall(::checkPrintJob)),
+
+      // ImageIO SPI operations
+      Intercept.static<IIORegistry>("getDefaultInstance", checkStaticNoArgsCall(::checkImageIo)),
+      Intercept.instance<IIORegistry>("registerApplicationClasspathSpis", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("registerServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("registerServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("deregisterServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("deregisterServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("deregisterAll", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("setOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<IIORegistry>("unsetOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.static<ServiceRegistry>("lookupProviders", checkStaticNoArgsCall(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("registerServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("registerServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("deregisterServiceProvider", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("deregisterServiceProviders", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("deregisterAll", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("setOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.instance<ServiceRegistry>("unsetOrdering", checkInstanceCallIgnoreArgs(::checkImageIo)),
+      Intercept.static<ImageIO>("scanForPlugins", checkStaticNoArgsCall(::checkImageIo)),
 
       // FileChannel
       Intercept.static<FileChannel>("open", ::checkFileChannelOpen),
+      Intercept.static<AsynchronousFileChannel>("open", ::checkAsyncFileChannelOpen),
 
       // ZipFile
       Intercept.static<ZipFile>("<init>", checkFirstFileOrStringArgument(::checkFileRead)),
@@ -629,8 +881,38 @@ object RenderSandboxTransformTrampoline {
       Intercept.static<ScheduledThreadPoolExecutor>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
       Intercept.static<ForkJoinPool>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
 
+      // Cleaner operations
+      Intercept.static<Cleaner>("create", checkStaticNoArgsCall(::checkCleaner)),
+      Intercept.instance<Cleaner>("register", checkInstanceCallIgnoreArgs(::checkCleaner)),
+
+      // Signal operations
+      Intercept.static<Signal>("handle", checkStaticNoArgsCall(::checkSignal)),
+      Intercept.static<Signal>("raise", checkStaticNoArgsCall(::checkSignal)),
+
+      // Timer operations
+      Intercept.instance<SwingTimer>("start", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.instance<SwingTimer>("restart", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+      Intercept.static<java.util.Timer>("<init>", checkStaticNoArgsCall(::checkConcurrency)),
+      Intercept.instance<java.util.Timer>("schedule", checkInstanceCallIgnoreArgs(::checkConcurrency)),
+      Intercept.instance<java.util.Timer>("scheduleAtFixedRate", checkInstanceCallIgnoreArgs(::checkConcurrency)),
+
+      // LayoutQueue operations
+      Intercept.static<LayoutQueue>("getDefaultQueue", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<LayoutQueue>("setDefaultQueue", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.static<LayoutQueue>("<init>", checkStaticNoArgsCall(::checkEventQueue)),
+      Intercept.instance<LayoutQueue>("addTask", checkInstanceCallIgnoreArgs(::checkEventQueue)),
+
+      // RenderService internal operations
+      Intercept.static<RenderService>("initializeRenderExecutor", checkStaticNoArgsCall(::checkRenderExecutor)),
+      Intercept.static<RenderService>("shutdownRenderExecutor", checkStaticNoArgsCall(::checkRenderExecutor)),
+
+      // Thread operations
+      Intercept.static<Thread>("<init>", ::checkThreadConstruct),
+
       // Reflection
       Intercept.instance<Method>("invoke", ::checkMethodInvoke),
+      Intercept.instance<Constructor<*>>("newInstance", ::checkConstructorNewInstance),
+      Intercept.instance<Class<*>>("newInstance", ::checkClassNewInstance),
       Intercept.instance<Field>("set", ::checkFieldAccess),
       Intercept.instance<Field>("get", ::checkFieldAccess),
       Intercept.instance<AccessibleObject>("setAccessible", ::checkAccessibleObjectAccess),
@@ -644,10 +926,31 @@ object RenderSandboxTransformTrampoline {
       // Unsafe
       Intercept.static<Unsafe>("getUnsafe", checkStaticNoArgsCall(::checkUnsafeAccess)),
 
-      // MethodHandles.Lookup
-      Intercept.instance<MethodHandles.Lookup>("findStatic", ::checkFindStatic),
+      // MethodHandles.Lookup (b/557286904)
+      Intercept.instance<MethodHandles.Lookup>("findStatic", ::checkFindMember),
+      Intercept.instance<MethodHandles.Lookup>("findVirtual", ::checkFindMember),
+      Intercept.instance<MethodHandles.Lookup>("findConstructor", ::checkFindConstructor),
+      Intercept.instance<MethodHandles.Lookup>("findSpecial", ::checkFindMember),
+      Intercept.instance<MethodHandles.Lookup>("bind", ::checkFindMember),
+      Intercept.instance<MethodHandles.Lookup>("findGetter", ::checkFindField),
+      Intercept.instance<MethodHandles.Lookup>("findSetter", ::checkFindField),
+      Intercept.instance<MethodHandles.Lookup>("findStaticGetter", ::checkFindField),
+      Intercept.instance<MethodHandles.Lookup>("findStaticSetter", ::checkFindField),
+      Intercept.instance<MethodHandles.Lookup>("findVarHandle", ::checkFindField),
+      Intercept.instance<MethodHandles.Lookup>("findStaticVarHandle", ::checkFindField),
+      Intercept.instance<MethodHandles.Lookup>("findClass", checkFirstStringArgument(::checkClassLoad)),
+      Intercept.instance<MethodHandles.Lookup>("accessClass", ::checkLookupAccessClass),
+      Intercept.instance<MethodHandles.Lookup>("ensureInitialized", ::checkLookupAccessClass),
       Intercept.instance<MethodHandles.Lookup>("unreflect", ::checkUnreflect),
+      Intercept.instance<MethodHandles.Lookup>("unreflectConstructor", ::checkUnreflectConstructor),
+      Intercept.instance<MethodHandles.Lookup>("unreflectGetter", ::checkUnreflectField),
+      Intercept.instance<MethodHandles.Lookup>("unreflectSetter", ::checkUnreflectField),
+      Intercept.instance<MethodHandles.Lookup>("unreflectVarHandle", ::checkUnreflectField),
+      Intercept.instance<MethodHandles.Lookup>("unreflectSpecial", ::checkUnreflect),
       Intercept.instance<MethodHandles.Lookup>("defineClass", checkInstanceCallIgnoreArgs(::checkDefineClass)),
+      Intercept.instance<MethodHandles.Lookup>("defineHiddenClass", checkInstanceCallIgnoreArgs(::checkDefineClass)),
+      Intercept.instance<MethodHandles.Lookup>("defineHiddenClassWithClassData", checkInstanceCallIgnoreArgs(::checkDefineClass)),
+      Intercept.static<MethodHandles>("privateLookupIn", ::checkPrivateLookupIn),
 
       // ObjectInputStream
       Intercept.instance<ObjectInputStream>("readObject", ::checkReadObject),
@@ -655,13 +958,65 @@ object RenderSandboxTransformTrampoline {
       // System.load and System.loadLibrary (checkLink bypass)
       Intercept.static<System>("load", checkFirstStringArgument(::checkLoadLibrary)),
       Intercept.static<System>("loadLibrary", checkFirstStringArgument(::checkLoadLibrary)),
+
+      // FileSystemProvider operations (b/557278228)
+      Intercept.instance<FileSystemProvider>("newOutputStream", checkFirstPathArgument(::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("newInputStream", ::checkNewInputStream),
+      Intercept.instance<FileSystemProvider>("newFileChannel", ::checkFileChannelOpen),
+      Intercept.instance<FileSystemProvider>("newAsynchronousFileChannel", ::checkAsyncFileChannelOpen),
+      Intercept.instance<FileSystemProvider>("newByteChannel", ::checkFileChannelOpen),
+      Intercept.instance<FileSystemProvider>("createDirectory", checkFirstPathArgument(::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("createSymbolicLink", checkFirstPathArgument(::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("createLink", checkSourceAndDestinationPaths(::checkFileWrite, ::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("delete", checkFirstPathArgument(::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("deleteIfExists", checkFirstPathArgument(::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("copy", checkSourceAndDestinationPaths(::checkFileRead, ::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("move", checkSourceAndDestinationPaths(::checkFileRead, ::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("checkAccess", checkFirstPathArgument(::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("readAttributes", checkFirstPathArgument(::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("readAttributesIfExists", checkFirstPathArgument(::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("readSymbolicLink", checkFirstPathArgument(::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("getFileAttributeView", ::checkFileAttributeView),
+      Intercept.instance<FileSystemProvider>("getFileStore", checkFirstPathArgument(::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("isHidden", checkFirstPathArgument(::checkFileRead)),
+      Intercept.instance<FileSystemProvider>("setAttribute", checkFirstPathArgument(::checkFileWrite)),
+      Intercept.instance<FileSystemProvider>("newDirectoryStream", checkFirstPathArgument(::checkFileRead)),
+
+      // java.beans.Statement / Expression / XMLDecoder operations (b/557278850)
+      Intercept.instance<Statement>("execute", ::checkStatementExecute),
+      Intercept.instance<Expression>("getValue", ::checkExpressionGetValue),
+      Intercept.static<XMLDecoder>("<init>", checkStaticNoArgsCall(::checkXmlDecoder)),
+      Intercept.instance<XMLDecoder>("readObject", checkInstanceCallIgnoreArgs(::checkXmlDecoder)),
+      Intercept.instance<XMLDecoder>("close", checkInstanceCallIgnoreArgs(::checkXmlDecoder)),
+      Intercept.static<XMLEncoder>("<init>", checkStaticNoArgsCall(::checkXmlDecoder)),
+
+      // ScriptEngineManager & ServiceLoader operations (b/557285779)
+      Intercept.static<ScriptEngineManager>("<init>", checkStaticNoArgsCall(::checkScriptEngine)),
+      Intercept.instance<ScriptEngineManager>("getClassLoader", checkInstanceCallIgnoreArgs(::checkScriptEngine)),
+      Intercept.static<ServiceLoader<*>>("load", checkStaticNoArgsCall(::checkServiceLoader)),
+      Intercept.static<ServiceLoader<*>>("loadInstalled", checkStaticNoArgsCall(::checkServiceLoader)),
+
+      // URL.setURLStreamHandlerFactory (b/557286705)
+      Intercept.static<URL>("setURLStreamHandlerFactory", checkStaticNoArgsCall(::checkSetFactory)),
+      Intercept.static<URLConnection>("setContentHandlerFactory", checkStaticNoArgsCall(::checkSetFactory)),
     )
 
   private val localKey = ThreadLocal.withInitial { CallKey() }
 
   /** Index by class name and method name to allow for quick lookup of interceptors. */
-  private val interceptorIndex: Map<CallKey, Intercept> =
-    defaultInterceptors.associateBy { CallKey(it.classInternalName, it.methodName, it is Intercept.StaticIntercept) }
+  private val interceptorIndex: Map<CallKey, Intercept> = defaultInterceptors.associateBy {
+    CallKey(it.classInternalName, it.methodName, it is Intercept.StaticIntercept)
+  }
+
+  private val virtualMethodToInterceptors: Map<String, List<Intercept.VirtualIntercept>> =
+    defaultInterceptors
+      .filterIsInstance<Intercept.VirtualIntercept>()
+      .filter { (it.clazz.modifiers and java.lang.reflect.Modifier.FINAL) == 0 }
+      .groupBy { it.methodName }
+
+  private val virtualMethodNames: Set<String> = virtualMethodToInterceptors.keys
+
+  private val virtualMethodBytes: List<ByteArray> = virtualMethodNames.map { it.toByteArray(Charsets.UTF_8) }
 
   private val ownerStrings: Set<String> = defaultInterceptors.map { it.classInternalName }.toSet()
 
@@ -675,35 +1030,194 @@ object RenderSandboxTransformTrampoline {
     interceptorIndex.containsKey(localKey.get().set(owner, method, true)) ||
       interceptorIndex.containsKey(localKey.get().set(owner, method, false))
 
+  fun shouldInterceptVirtual(method: String): Boolean = virtualMethodToInterceptors.containsKey(method)
+
+  private val sandboxInternalPrefixes =
+    listOf(
+      "com/android/tools/rendering/security/RenderSandbox",
+      "com/android/tools/rendering/security/PreCheckRenderSandbox",
+      "com/android/tools/rendering/security/AllowAllRenderSandbox",
+      "com/android/tools/rendering/security/DenyAllRenderSandbox",
+      "org/jetbrains/android/uipreview/StudioRenderSandbox",
+      "com/android/tools/preview/BasicRenderSandbox",
+    )
+
+  private val restrictedReflectionPrefixes =
+    listOf(
+      "java/lang/Process",
+      "java/lang/UNIXProcess",
+      "java/lang/Shutdown",
+      "jdk/internal/",
+      "sun/misc/",
+      "sun/reflect/",
+      "java/beans/XMLDecoder",
+      "java/beans/XMLEncoder",
+      "java/beans/Statement",
+      "java/beans/Expression",
+    )
+
+  private val restrictedReflectionPrefixBytes: List<ByteArray> =
+    (restrictedReflectionPrefixes + sandboxInternalPrefixes).map { it.toByteArray(Charsets.UTF_8) }
+
+  private fun isRestrictedReflectionTarget(owner: String): Boolean =
+    sandboxInternalPrefixes.any { owner.startsWith(it) } || restrictedReflectionPrefixes.any { owner.startsWith(it) }
+
+  private fun isRestrictedClass(clazz: Class<*>): Boolean =
+    Process::class.java.isAssignableFrom(clazz) ||
+      ProcessBuilder::class.java.isAssignableFrom(clazz) ||
+      ProcessHandle::class.java.isAssignableFrom(clazz) ||
+      XMLDecoder::class.java.isAssignableFrom(clazz) ||
+      XMLEncoder::class.java.isAssignableFrom(clazz) ||
+      Statement::class.java.isAssignableFrom(clazz) ||
+      Expression::class.java.isAssignableFrom(clazz)
+
+  fun shouldInterceptPolymorphic(owner: String, method: String): Boolean {
+    if (isRestrictedReflectionTarget(owner)) return true
+    if (shouldIntercept(owner, method)) return true
+    val candidates = virtualMethodToInterceptors[method] ?: return false
+    val fqcn = owner.replace('/', '.')
+    val clazz =
+      try {
+        Class.forName(fqcn, false, Thread.currentThread().contextClassLoader)
+      } catch (_: Throwable) {
+        try {
+          Class.forName(fqcn, false, RenderSandboxTransformTrampoline::class.java.classLoader)
+        } catch (_: Throwable) {
+          null
+        }
+      } ?: return true
+    if (isRestrictedClass(clazz)) return true
+    return candidates.any { it.clazz.isAssignableFrom(clazz) }
+  }
+
+  fun shouldInterceptPolymorphic(clazz: Class<*>, method: String): Boolean {
+    val owner = clazz.name.replace('.', '/')
+    if (isRestrictedReflectionTarget(owner)) return true
+    if (isRestrictedClass(clazz)) return true
+    if (shouldIntercept(owner, method)) return true
+    val candidates = virtualMethodToInterceptors[method] ?: return false
+    return candidates.any { it.clazz.isAssignableFrom(clazz) }
+  }
+
+  private val restrictedFieldSuperclasses: List<Class<*>> by lazy {
+    defaultInterceptors
+      .filterIsInstance<Intercept.VirtualIntercept>()
+      .map { it.clazz }
+      .filter { (it.modifiers and java.lang.reflect.Modifier.FINAL) == 0 }
+      .distinct()
+  }
+
+  fun shouldInterceptField(owner: String, fieldName: String): Boolean {
+    if (isRestrictedReflectionTarget(owner)) return true
+    if (ownerStrings.contains(owner)) return true
+    if (
+      owner.startsWith("java/lang/reflect/") ||
+        owner.startsWith("java/lang/invoke/") ||
+        owner.startsWith("sun/misc/") ||
+        owner.startsWith("jdk/internal/")
+    ) {
+      return true
+    }
+    val fqcn = owner.replace('/', '.')
+    val clazz =
+      try {
+        Class.forName(fqcn, false, Thread.currentThread().contextClassLoader)
+      } catch (_: Throwable) {
+        try {
+          Class.forName(fqcn, false, RenderSandboxTransformTrampoline::class.java.classLoader)
+        } catch (_: Throwable) {
+          null
+        }
+      } ?: return true
+    if (isRestrictedClass(clazz)) return true
+    return restrictedFieldSuperclasses.any { it.isAssignableFrom(clazz) }
+  }
+
+  fun shouldInterceptField(clazz: Class<*>, fieldName: String): Boolean {
+    val owner = clazz.name.replace('.', '/')
+    if (isRestrictedReflectionTarget(owner)) return true
+    if (isRestrictedClass(clazz)) return true
+    if (ownerStrings.contains(owner)) return true
+    if (
+      owner.startsWith("java/lang/reflect/") ||
+        owner.startsWith("java/lang/invoke/") ||
+        owner.startsWith("sun/misc/") ||
+        owner.startsWith("jdk/internal/")
+    ) {
+      return true
+    }
+    return restrictedFieldSuperclasses.any { it.isAssignableFrom(clazz) }
+  }
+
+  fun shouldIntercept(opcode: Int, owner: String, method: String): Boolean =
+    when (opcode) {
+      org.objectweb.asm.Opcodes.INVOKESTATIC -> interceptorIndex.containsKey(localKey.get().set(owner, method, true))
+      org.objectweb.asm.Opcodes.INVOKESPECIAL ->
+        if (method == "<init>") {
+          interceptorIndex.containsKey(localKey.get().set(owner, method, true))
+        } else {
+          interceptorIndex.containsKey(localKey.get().set(owner, method, false)) || virtualMethodToInterceptors.containsKey(method)
+        }
+      org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+      org.objectweb.asm.Opcodes.INVOKEINTERFACE ->
+        interceptorIndex.containsKey(localKey.get().set(owner, method, false)) || virtualMethodToInterceptors.containsKey(method)
+      else -> false
+    }
+
   /**
    * Returns whether any of the methods called by the class defined in [classData] could be intercepted.
    *
    * This is an optimization to avoid expensive ASM transformations for classes that don't need them. It performs a fast scan of the class's
-   * constant pool to see if it references any of the "interesting" owner classes tracked by the sandbox.
+   * constant pool to see if it references any of the "interesting" owner classes tracked by the sandbox or virtual methods that could be
+   * intercepted polymorphically.
    *
    * This method is optimized to be zero-allocation by comparing UTF8 bytes directly in the constant pool instead of allocating String
    * objects for every class reference.
    */
   fun couldIntercept(classData: ByteArray): Boolean {
     val reader = ClassReader(classData)
-    // Scan the constant pool for Class references
+    // Scan the constant pool for Class references and NameAndType references
     for (i in 1 until reader.itemCount) {
       val offset = reader.getItem(i)
-      if (offset > 0 && reader.readByte(offset - 1) == 7) { // CONSTANT_Class
-        // Read 2 bytes for name index
-        val b1 = reader.readByte(offset)
-        val b2 = reader.readByte(offset + 1)
-        val nameIndex = ((b1.toInt() and 0xFF) shl 8) or (b2.toInt() and 0xFF)
+      if (offset > 0) {
+        val tag = reader.readByte(offset - 1)
+        if (tag == 7) { // CONSTANT_Class
+          // Read 2 bytes for name index
+          val b1 = reader.readByte(offset)
+          val b2 = reader.readByte(offset + 1)
+          val nameIndex = ((b1.toInt() and 0xFF) shl 8) or (b2.toInt() and 0xFF)
 
-        val utf8Offset = reader.getItem(nameIndex)
-        // Read 2 bytes for length
-        val l1 = reader.readByte(utf8Offset)
-        val l2 = reader.readByte(utf8Offset + 1)
-        val len = ((l1.toInt() and 0xFF) shl 8) or (l2.toInt() and 0xFF)
+          val utf8Offset = reader.getItem(nameIndex)
+          // Read 2 bytes for length
+          val l1 = reader.readByte(utf8Offset)
+          val l2 = reader.readByte(utf8Offset + 1)
+          val len = ((l1.toInt() and 0xFF) shl 8) or (l2.toInt() and 0xFF)
 
-        for (targetBytes in ownerBytes) {
-          if (targetBytes.size == len && matchBytes(reader, utf8Offset + 2, targetBytes)) {
-            return true
+          for (targetBytes in ownerBytes) {
+            if (targetBytes.size == len && matchBytes(reader, utf8Offset + 2, targetBytes)) {
+              return true
+            }
+          }
+
+          for (prefixBytes in restrictedReflectionPrefixBytes) {
+            if (len >= prefixBytes.size && matchBytes(reader, utf8Offset + 2, prefixBytes)) {
+              return true
+            }
+          }
+        } else if (tag == 12) { // CONSTANT_NameAndType
+          val b1 = reader.readByte(offset)
+          val b2 = reader.readByte(offset + 1)
+          val nameIndex = ((b1.toInt() and 0xFF) shl 8) or (b2.toInt() and 0xFF)
+
+          val utf8Offset = reader.getItem(nameIndex)
+          val l1 = reader.readByte(utf8Offset)
+          val l2 = reader.readByte(utf8Offset + 1)
+          val len = ((l1.toInt() and 0xFF) shl 8) or (l2.toInt() and 0xFF)
+
+          for (targetBytes in virtualMethodBytes) {
+            if (targetBytes.size == len && matchBytes(reader, utf8Offset + 2, targetBytes)) {
+              return true
+            }
           }
         }
       }
@@ -728,11 +1242,32 @@ object RenderSandboxTransformTrampoline {
 
   @JvmStatic
   fun invoke(owner: Any, ownerClass: String, method: String, params: Array<Any>?): Unit {
-    (interceptorIndex[localKey.get().set(ownerClass, method, false)] as? Intercept.VirtualIntercept)?.intercept?.invoke(owner, params)
+    val exactInterceptor = interceptorIndex[localKey.get().set(ownerClass, method, false)] as? Intercept.VirtualIntercept
+    if (exactInterceptor != null) {
+      exactInterceptor.intercept(owner, params)
+      return
+    }
+    val candidates = virtualMethodToInterceptors[method] ?: return
+    for (candidate in candidates) {
+      if (candidate.clazz.isInstance(owner)) {
+        candidate.intercept(owner, params)
+        return
+      }
+    }
   }
 
   @JvmStatic
   fun invokeStatic(ownerClass: String, method: String, params: Array<Any>?): Unit {
     (interceptorIndex[localKey.get().set(ownerClass, method, true)] as? Intercept.StaticIntercept)?.intercept?.invoke(ownerClass, params)
+  }
+
+  @JvmStatic
+  fun checkMemberAccess(ownerClass: String, method: String): Unit {
+    RenderSandbox.getRenderSandbox().checkReflectionInvoke(ownerClass, method)
+  }
+
+  @JvmStatic
+  fun checkFieldAccessTrampoline(ownerClass: String, fieldName: String): Unit {
+    RenderSandbox.getRenderSandbox().checkFieldAccess(ownerClass, fieldName)
   }
 }

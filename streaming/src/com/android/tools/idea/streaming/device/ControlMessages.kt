@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.streaming.device
 
+import com.android.tools.adtui.util.toWxH
 import com.android.tools.idea.streaming.core.DisplayDescriptor
 import com.android.tools.idea.streaming.core.DisplayType
-import com.android.tools.idea.streaming.device.RequestDeviceStateMessage.Companion.PHYSICAL_STATE
 import com.android.tools.idea.streaming.xr.XrEnvironment
 import com.android.utils.Base128InputStream
 import com.android.utils.Base128InputStream.StreamFormatException
@@ -222,6 +222,7 @@ internal data class KeyEventMessage(
   val action: AndroidKeyEventActionType,
   val keyCode: Int, // One of the values defined in AndroidKeyCodes.kt
   val metaState: Int,
+  val displayId: Int = UNSPECIFIED_DISPLAY,
 ) : ControlMessage(TYPE) {
 
   override fun serialize(stream: Base128OutputStream) {
@@ -229,19 +230,25 @@ internal data class KeyEventMessage(
     stream.writeInt(action.value)
     stream.writeInt(keyCode)
     stream.writeInt(metaState)
+    stream.writeInt(displayId - UNSPECIFIED_DISPLAY)
   }
 
-  override fun toString(): String = "KeyEventMessage(action=$action, keyCode=$keyCode, metaState=0x${metaState.toString(16)})"
+  override fun toString(): String =
+    "KeyEventMessage(action=$action, keyCode=$keyCode, metaState=0x${metaState.toString(16)}, displayId=$displayId)"
 
   companion object : Deserializer {
     const val TYPE = 2
+
+    /** Similar to INVALID_DISPLAY in android.view.Display. */
+    const val UNSPECIFIED_DISPLAY = -1
 
     override fun deserialize(stream: Base128InputStream): KeyEventMessage {
       val actionValue = stream.readInt()
       val action = AndroidKeyEventActionType.fromValue(actionValue) ?: throw StreamFormatException("Unrecognized action: $actionValue")
       val keyCode = stream.readInt()
       val metaState = stream.readInt()
-      return KeyEventMessage(action, keyCode, metaState)
+      val displayId = stream.readInt() + UNSPECIFIED_DISPLAY
+      return KeyEventMessage(action, keyCode, metaState, displayId)
     }
   }
 }
@@ -296,8 +303,7 @@ internal data class SetMaxVideoResolutionMessage(val displayId: Int, val maxVide
     stream.writeInt(maxVideoSize.height)
   }
 
-  override fun toString(): String =
-    "SetMaxVideoResolutionMessage(displayId=$displayId, maxVideoSize=${maxVideoSize.width}x${maxVideoSize.height})"
+  override fun toString(): String = "SetMaxVideoResolutionMessage(displayId=$displayId, maxVideoSize=${maxVideoSize.toWxH()})"
 
   companion object : Deserializer {
     const val TYPE = 5
@@ -321,8 +327,7 @@ internal data class StartVideoStreamMessage(val displayId: Int, val maxVideoSize
     stream.writeInt(maxVideoSize.height)
   }
 
-  override fun toString(): String =
-    "StartVideoStreamMessage(displayId=$displayId, maxVideoSize=${maxVideoSize.width}x${maxVideoSize.height})"
+  override fun toString(): String = "StartVideoStreamMessage(displayId=$displayId, maxVideoSize=${maxVideoSize.toWxH()})"
 
   companion object : Deserializer {
     const val TYPE = 6
@@ -638,12 +643,12 @@ internal data class DisplayConfigurationResponse(override val requestId: Int, va
   override fun serialize(stream: Base128OutputStream) {
     super.serialize(stream)
     stream.writeInt(displays.size)
-    for (display in displays) {
-      stream.writeInt(display.displayId)
-      stream.writeInt(display.width)
-      stream.writeInt(display.height)
-      stream.writeInt(display.orientation)
-      stream.writeEnum(display.type)
+    for ((displayId, displaySize, orientation, displayType) in displays) {
+      stream.writeInt(displayId)
+      stream.writeInt(displaySize.width)
+      stream.writeInt(displaySize.height)
+      stream.writeInt(orientation)
+      stream.writeEnum(displayType)
     }
   }
 
@@ -663,13 +668,8 @@ internal data class DisplayConfigurationResponse(override val requestId: Int, va
         val width = stream.readInt()
         val height = stream.readInt()
         val orientation = stream.readInt()
-        val type =
-          try {
-            DisplayType.entries[stream.readInt()]
-          } catch (_: ArrayIndexOutOfBoundsException) {
-            DisplayType.UNKNOWN
-          }
-        displays.add(DisplayDescriptor(displayId, width, height, orientation, type))
+        val type = stream.readEnum(default = DisplayType.UNKNOWN)
+        displays.add(DisplayDescriptor(displayId, Dimension(width, height), orientation, type))
       }
       return DisplayConfigurationResponse(requestId, displays)
     }
@@ -762,8 +762,7 @@ internal data class DeviceStateNotification(val deviceStateId: Int) : ControlMes
 /** Notification of an added or a changed display. */
 internal data class DisplayAddedOrChangedNotification(
   val displayId: Int,
-  val width: Int,
-  val height: Int,
+  val displaySize: Dimension,
   val rotation: Int,
   val displayType: Int,
 ) : ControlMessage(TYPE) {
@@ -771,14 +770,16 @@ internal data class DisplayAddedOrChangedNotification(
   override fun serialize(stream: Base128OutputStream) {
     super.serialize(stream)
     stream.writeInt(displayId)
-    stream.writeInt(width)
-    stream.writeInt(height)
+    stream.writeInt(displaySize.width)
+    stream.writeInt(displaySize.height)
     stream.writeInt(rotation)
     stream.writeInt(displayType)
   }
 
-  override fun toString(): String =
-    "DisplayAddedOrChangedNotification(displayId=$displayId, width=$width, height=$height, rotation=$rotation, displayType=$displayType)"
+  override fun toString(): String {
+    return "DisplayAddedOrChangedNotification(displayId=$displayId, displaySize=${displaySize.toWxH()}, rotation=$rotation," +
+      " displayType=$displayType)"
+  }
 
   companion object : Deserializer {
     const val TYPE = 26
@@ -789,7 +790,7 @@ internal data class DisplayAddedOrChangedNotification(
       val height = stream.readInt()
       val rotation = stream.readInt()
       val displayType = stream.readInt()
-      return DisplayAddedOrChangedNotification(displayId, width, height, rotation, displayType)
+      return DisplayAddedOrChangedNotification(displayId, Dimension(width, height), rotation, displayType)
     }
   }
 }
@@ -829,7 +830,7 @@ internal data class XrPassthroughCoefficientChangedNotification(val passthroughC
 
     override fun deserialize(stream: Base128InputStream): XrPassthroughCoefficientChangedNotification {
       val passthroughCoefficient = stream.readFloat()
-      if (passthroughCoefficient < 0 || passthroughCoefficient > 1) {
+      if (passthroughCoefficient !in 0.0..1.0) {
         throw StreamFormatException("Invalid passthrough coefficient: $passthroughCoefficient")
       }
       return XrPassthroughCoefficientChangedNotification(passthroughCoefficient)

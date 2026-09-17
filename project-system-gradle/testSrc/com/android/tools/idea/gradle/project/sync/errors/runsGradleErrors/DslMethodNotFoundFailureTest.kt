@@ -47,7 +47,9 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         expect.that(buildEvents.finishEventFailures()).isEmpty()
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(AndroidStudioEvent.GradleSyncFailure.DSL_METHOD_NOT_FOUND)
+        expect
+          .that(it.gradleFailureDetails.detectedGradleSyncFailuresList)
+          .isEqualTo(listOf(AndroidStudioEvent.GradleSyncFailure.DSL_METHOD_NOT_FOUND))
         expect
           .that(it.buildOutputWindowStats.buildErrorMessagesList.map { it.errorShownType })
           .containsExactly(BuildErrorMessage.ErrorType.UNKNOWN_ERROR_TYPE)
@@ -83,7 +85,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.GradleScriptException
               at: [0]org.gradle.groovy.scripts.internal.DefaultScriptRunnerFactory${'$'}ScriptRunnerImpl#run
             exception: org.gradle.internal.metaobject.AbstractDynamicObject${'$'}CustomMessageMissingMethodException
@@ -118,7 +120,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.api.GradleScriptException
@@ -155,7 +157,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.api.GradleScriptException
@@ -192,7 +194,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.api.GradleScriptException
@@ -218,7 +220,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
       expectedErrorNodeNameVerifier = {
         // Contains '[build_amf2rqavq1o9tpj2lvcymfp27$_run_closure3$_closure9@6263dc2d]' in the middle so verify before and after that.
         expect.that(it).startsWith("Could not find method abdd() for arguments [")
-        expect.that(it).endsWith("] on extension 'android' of type com.android.build.gradle.internal.dsl.BaseAppModuleExtension")
+        expect.that(it).contains("on object of type com.android.build.gradle.internal.dsl.ApplicationExtensionImpl")
       },
       expectedPhases =
         """
@@ -231,7 +233,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.api.GradleScriptException
@@ -257,8 +259,8 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
       expectedErrorNodeNameVerifier = {
         expect
           .that(it)
-          .isEqualTo(
-            "Could not set unknown property 'abdd' for extension 'android' of type com.android.build.gradle.internal.dsl.BaseAppModuleExtension"
+          .startsWith(
+            "Could not set unknown property 'abdd' for object of type com.android.build.gradle.internal.dsl.ApplicationExtensionImpl"
           )
       },
       expectedPhases =
@@ -272,7 +274,7 @@ class DslMethodNotFoundFailureTest : AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+              at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.api.GradleScriptException

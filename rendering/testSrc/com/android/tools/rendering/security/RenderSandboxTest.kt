@@ -15,22 +15,49 @@
  */
 package com.android.tools.rendering.security
 
+import com.android.tools.rendering.RenderService
 import com.android.tools.rendering.classloading.TestClassLoader
 import com.android.tools.rendering.classloading.fromBinaryNameToPackageName
 import com.android.tools.rendering.classloading.setupTestClassLoaderWithTransformation
 import com.intellij.openapi.util.io.FileUtil
+import java.awt.Frame
+import java.awt.KeyboardFocusManager
 import java.awt.Toolkit
+import java.awt.Window
+import java.awt.dnd.DragSource
 import java.awt.print.PrinterJob
+import java.beans.Expression
+import java.beans.Statement
+import java.beans.XMLDecoder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.io.PrintStream
+import java.io.RandomAccessFile
+import java.io.Serializable
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
+import java.lang.ref.Cleaner
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier
+import java.net.DatagramSocket
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
+import java.net.URLClassLoader
 import java.nio.channels.FileChannel
+import java.nio.charset.Charset
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.BasicFileAttributeView
+import java.util.ServiceLoader
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.LinkedBlockingQueue
@@ -38,13 +65,37 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 import java.util.zip.ZipFile
+import javax.imageio.ImageIO
+import javax.imageio.spi.IIORegistry
+import javax.imageio.spi.ImageReaderSpi
+import javax.imageio.spi.ServiceRegistry
+import javax.print.PrintServiceLookup
+import javax.script.ScriptEngineManager
+import javax.swing.JEditorPane
+import javax.swing.LayoutStyle
+import javax.swing.MenuSelectionManager
+import javax.swing.PopupFactory
+import javax.swing.RepaintManager
+import javax.swing.Timer as SwingTimer
+import javax.swing.UIDefaults
+import javax.swing.UIManager
+import javax.swing.text.JTextComponent
+import javax.swing.text.LayoutQueue
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Handle
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import sun.misc.Signal
+import sun.misc.SignalHandler
+import sun.misc.Unsafe
 
 private val testingDirectory = Files.createTempDirectory("renderSandbox")
 private val allowedDirectory = Files.createDirectory(testingDirectory.resolve("allowed"))
@@ -61,8 +112,8 @@ private val commonMethods = setOf("toString", "equals", "hashCode", "getClass", 
 private fun removeTestingDirPrefix(path: String): String =
   FileUtil.toSystemIndependentName(path).replace(FileUtil.toSystemIndependentName(testingDirectoryPath), "")
 
-class MaliciousSerializable : java.io.Serializable {
-  private fun readObject(stream: java.io.ObjectInputStream) {
+class MaliciousSerializable : Serializable {
+  private fun readObject(stream: ObjectInputStream) {
     stream.defaultReadObject()
     System.exit(0)
   }
@@ -74,6 +125,45 @@ class TestSupplier : Supplier<String> {
 
 class TestRunnable : Runnable {
   override fun run() {}
+}
+
+open class SubclassFile(pathname: String) : File(pathname) {
+  fun customDelete(): Boolean = super.delete()
+}
+
+open class BenignModel {
+  @JvmField var modelField: String = "test_val"
+
+  fun getName(): String = "name"
+
+  fun getValue(): String = "val"
+
+  fun execute(): String = "ok"
+}
+
+open class MaliciousToctouStatement(private val realTarget: Any, private val realMethod: String) :
+  Statement(Any(), "toString", emptyArray()) {
+  private var accessCount = 0
+
+  override fun getTarget(): Any = if (accessCount++ == 0) "benign" else realTarget
+
+  override fun getMethodName(): String = if (accessCount++ <= 1) "toString" else realMethod
+}
+
+class TestTimerTask : java.util.TimerTask() {
+  override fun run() {}
+}
+
+class UnmanagedWorkerRunnable : Runnable {
+  var error: Throwable? = null
+
+  override fun run() {
+    try {
+      Runtime.getRuntime().exec("echo pwned")
+    } catch (t: Throwable) {
+      error = t
+    }
+  }
 }
 
 interface ClassToCheck {
@@ -159,7 +249,75 @@ interface ClassToCheck {
 
   fun checkEventQueue()
 
+  fun checkKeyboardFocusManager()
+
+  fun checkKeymapDefaultAction()
+
+  fun checkPopupFactory()
+
+  fun checkLayoutStyle()
+
+  fun checkUIManagerPut()
+
+  fun checkRepaintManager()
+
+  fun checkWindowGetWindows()
+
+  fun checkFrameGetFrames()
+
+  fun checkKeyboardFocusManagerSetCurrent()
+
+  fun checkUIManagerSetLookAndFeel()
+
+  fun checkUIDefaultsPut()
+
+  fun checkDragSourceGetDefault()
+
+  fun checkDragSourceAddListener(dragSource: DragSource)
+
+  fun checkMenuSelectionManager()
+
   fun checkPrintJob()
+
+  fun checkPrinterJobLookup()
+
+  fun checkPrintServiceLookupRegister()
+
+  fun checkPrintServiceLookup()
+
+  fun checkIIORegistryGetDefault()
+
+  fun checkIIORegistryDeregisterAll()
+
+  fun checkServiceRegistry()
+
+  fun checkServiceRegistryLookupProviders()
+
+  fun checkImageIOScanForPlugins()
+
+  fun checkJEditorPaneRegisterEditorKit()
+
+  fun checkCleanerCreate()
+
+  fun checkCleanerRegister(cleaner: Cleaner)
+
+  fun checkSignalHandle()
+
+  fun checkSignalRaise()
+
+  fun checkSwingTimerStart()
+
+  fun checkJavaUtilTimer()
+
+  fun checkJavaUtilTimerSchedule(timer: java.util.Timer)
+
+  fun checkLayoutQueue()
+
+  fun checkLayoutQueueAddTask(queue: LayoutQueue)
+
+  fun checkRenderServiceInitialize()
+
+  fun checkUnmanagedThreadExec()
 
   fun checkFileChannelOpen(path: Path)
 
@@ -169,6 +327,10 @@ interface ClassToCheck {
 
   fun checkReflectionInvoke()
 
+  fun checkReflectionInvokePrintServiceLookup()
+
+  fun checkReflectionInvokeIIORegistry()
+
   fun checkUnsafe()
 
   fun tryDefineClass(): Class<*>
@@ -176,6 +338,18 @@ interface ClassToCheck {
   fun tryInvokeMethodHandle()
 
   fun checkFindStatic()
+
+  fun checkFindVirtual()
+
+  fun checkFindConstructor()
+
+  fun checkConstructorNewInstanceThread()
+
+  fun checkGetClassLoader()
+
+  fun checkGetParent(cl: ClassLoader)
+
+  fun checkGetContextClassLoader()
 
   fun checkUnreflect()
 
@@ -188,6 +362,80 @@ interface ClassToCheck {
   fun checkForkJoinPool()
 
   fun checkThreadPoolExecutor()
+
+  fun checkFileSystemProviderOutputStream(path: Path)
+
+  fun checkFileSystemProviderDelete(path: Path)
+
+  fun checkStatementExecute()
+
+  fun checkStatementNew()
+
+  fun checkExpressionGetValue()
+
+  fun checkSubclassStatementExecute()
+
+  fun checkScriptEngineManager()
+
+  fun checkServiceLoaderLoad()
+
+  fun checkURLSetFactory()
+
+  fun checkMethodHandlesFindVirtual()
+
+  fun checkMethodHandlesFindConstructor()
+
+  fun checkMethodHandlesFindGetter()
+
+  fun checkMethodHandlesUnreflectGetter()
+
+  fun checkMethodHandlesFindVarHandle()
+
+  fun checkMethodHandlesSandboxInternalField()
+
+  fun checkSubclassFileDelete()
+
+  fun checkSubclassFileSuperDelete()
+
+  fun checkSubclassFileCreateNewFile()
+
+  fun checkConstructorSetAccessible()
+
+  fun checkFileChannelOpenWrite()
+
+  fun checkBenignReflection(): String
+
+  fun checkBenignMethodHandles(): String
+
+  fun checkBenignFieldAccess(): String
+
+  fun checkFileChannelOpenDeleteOnClose()
+
+  fun checkFilesNewInputStreamDeleteOnClose()
+
+  fun checkMethodHandlesDummyClassLoader()
+
+  fun checkMethodHandlesFindGetterDummyClassLoader()
+
+  fun checkXmlDecoderDirect()
+
+  fun checkXmlDecoderReflection()
+
+  fun checkXmlDecoderConstructorNewInstance()
+
+  fun checkProcessImplStartReflection(clazz: Class<*>)
+
+  fun checkMethodHandlesBind()
+
+  fun checkFileSystemProviderGetFileAttributeView()
+
+  fun checkMethodHandlesPrivateLookupIn()
+
+  fun checkProcessBuilderStartPipeline()
+
+  fun checkFilesCreateLink(link: Path, existing: Path)
+
+  fun checkFileSystemProviderCreateLink(link: Path, existing: Path)
 }
 
 class ClassToCheckImpl : ClassToCheck {
@@ -219,7 +467,7 @@ class ClassToCheckImpl : ClassToCheck {
   }
 
   override fun checkReadTextWithCharset() {
-    disallowedFile.readText(java.nio.charset.Charset.defaultCharset())
+    disallowedFile.readText(Charset.defaultCharset())
   }
 
   override fun checkReadBytes() {
@@ -335,15 +583,15 @@ class ClassToCheckImpl : ClassToCheck {
   }
 
   override fun checkRandomAccessFile() {
-    java.io.RandomAccessFile(disallowedFilePath, "r")
+    RandomAccessFile(disallowedFilePath, "r")
   }
 
   override fun checkDatagramSocket() {
-    java.net.DatagramSocket()
+    DatagramSocket()
   }
 
   override fun checkClassLoaderCreation() {
-    java.net.URLClassLoader(arrayOf())
+    URLClassLoader(arrayOf())
   }
 
   override fun checkAllowlistedPropertyWrite() {
@@ -358,8 +606,151 @@ class ClassToCheckImpl : ClassToCheck {
     Toolkit.getDefaultToolkit().systemEventQueue
   }
 
+  override fun checkKeyboardFocusManager() {
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(null)
+  }
+
+  override fun checkKeymapDefaultAction() {
+    val keymap = JTextComponent.addKeymap("testKeymap", null)
+    keymap.defaultAction = null
+  }
+
+  override fun checkPopupFactory() {
+    PopupFactory.setSharedInstance(PopupFactory())
+  }
+
+  override fun checkLayoutStyle() {
+    LayoutStyle.setInstance(null)
+  }
+
+  override fun checkUIManagerPut() {
+    UIManager.put("Test.key", "Test.value")
+  }
+
+  override fun checkRepaintManager() {
+    RepaintManager.setCurrentManager(RepaintManager())
+  }
+
+  override fun checkWindowGetWindows() {
+    Window.getWindows()
+  }
+
+  override fun checkFrameGetFrames() {
+    Frame.getFrames()
+  }
+
+  override fun checkKeyboardFocusManagerSetCurrent() {
+    KeyboardFocusManager.setCurrentKeyboardFocusManager(null)
+  }
+
+  override fun checkUIManagerSetLookAndFeel() {
+    UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName())
+  }
+
+  override fun checkUIDefaultsPut() {
+    UIDefaults().put("test.key", "test.value")
+  }
+
+  override fun checkDragSourceGetDefault() {
+    DragSource.getDefaultDragSource()
+  }
+
+  override fun checkDragSourceAddListener(dragSource: DragSource) {
+    dragSource.addDragSourceListener(null)
+  }
+
+  override fun checkMenuSelectionManager() {
+    MenuSelectionManager.defaultManager().addChangeListener(null)
+  }
+
   override fun checkPrintJob() {
     PrinterJob.getPrinterJob()
+  }
+
+  override fun checkPrinterJobLookup() {
+    PrinterJob.lookupPrintServices()
+  }
+
+  override fun checkPrintServiceLookupRegister() {
+    PrintServiceLookup.registerServiceProvider(null)
+  }
+
+  override fun checkPrintServiceLookup() {
+    PrintServiceLookup.lookupDefaultPrintService()
+  }
+
+  override fun checkIIORegistryGetDefault() {
+    IIORegistry.getDefaultInstance()
+  }
+
+  override fun checkIIORegistryDeregisterAll() {
+    val reg = ServiceRegistry(listOf<Class<*>>(ImageReaderSpi::class.java).iterator())
+    reg.deregisterAll()
+  }
+
+  override fun checkServiceRegistry() {
+    val reg = ServiceRegistry(listOf<Class<*>>(ImageReaderSpi::class.java).iterator())
+    reg.registerServiceProvider(Any())
+  }
+
+  override fun checkServiceRegistryLookupProviders() {
+    ServiceRegistry.lookupProviders(ImageReaderSpi::class.java)
+  }
+
+  override fun checkImageIOScanForPlugins() {
+    ImageIO.scanForPlugins()
+  }
+
+  override fun checkJEditorPaneRegisterEditorKit() {
+    JEditorPane.registerEditorKitForContentType("text/html", "EvilKit")
+  }
+
+  override fun checkCleanerCreate() {
+    Cleaner.create()
+  }
+
+  override fun checkCleanerRegister(cleaner: Cleaner) {
+    cleaner.register(Any(), TestRunnable())
+  }
+
+  override fun checkSignalHandle() {
+    Signal.handle(Signal("INT"), SignalHandler.SIG_DFL)
+  }
+
+  override fun checkSignalRaise() {
+    Signal.raise(Signal("INT"))
+  }
+
+  override fun checkSwingTimerStart() {
+    SwingTimer(100, null).start()
+  }
+
+  override fun checkJavaUtilTimer() {
+    java.util.Timer()
+  }
+
+  override fun checkJavaUtilTimerSchedule(timer: java.util.Timer) {
+    timer.schedule(TestTimerTask(), 1000)
+  }
+
+  override fun checkLayoutQueue() {
+    LayoutQueue.getDefaultQueue()
+  }
+
+  override fun checkLayoutQueueAddTask(queue: LayoutQueue) {
+    queue.addTask(TestRunnable())
+  }
+
+  override fun checkRenderServiceInitialize() {
+    RenderService.initializeRenderExecutor()
+  }
+
+  override fun checkUnmanagedThreadExec() {
+    val worker = UnmanagedWorkerRunnable()
+    val thread = Thread(null, worker, "unmanaged-worker", 0, false)
+    thread.start()
+    thread.join()
+    if (worker.error != null) throw worker.error!!
   }
 
   override fun checkFileChannelOpen(path: Path) {
@@ -379,59 +770,115 @@ class ClassToCheckImpl : ClassToCheck {
     method.invoke(null, 0)
   }
 
+  override fun checkReflectionInvokePrintServiceLookup() {
+    val method = PrintServiceLookup::class.java.getMethod("lookupDefaultPrintService")
+    method.invoke(null)
+  }
+
+  override fun checkReflectionInvokeIIORegistry() {
+    val method = IIORegistry::class.java.getMethod("getDefaultInstance")
+    method.invoke(null)
+  }
+
   override fun checkUnsafe() {
-    sun.misc.Unsafe.getUnsafe()
+    Unsafe.getUnsafe()
   }
 
   override fun tryDefineClass(): Class<*> {
-    val cw = org.objectweb.asm.ClassWriter(0)
+    val cw = ClassWriter(0)
     cw.visit(
-      org.objectweb.asm.Opcodes.V1_7,
-      org.objectweb.asm.Opcodes.ACC_PUBLIC + org.objectweb.asm.Opcodes.ACC_SUPER,
+      Opcodes.V1_7,
+      Opcodes.ACC_PUBLIC + Opcodes.ACC_SUPER,
       "Malicious",
       null,
       "java/lang/Object",
       null,
     )
-    val mv = cw.visitMethod(org.objectweb.asm.Opcodes.ACC_PUBLIC + org.objectweb.asm.Opcodes.ACC_STATIC, "run", "()V", null, null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "run", "()V", null, null)
     mv.visitCode()
-    mv.visitInsn(org.objectweb.asm.Opcodes.ICONST_0)
-    mv.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
-    mv.visitInsn(org.objectweb.asm.Opcodes.RETURN)
+    mv.visitInsn(Opcodes.ICONST_0)
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/System", "exit", "(I)V", false)
+    mv.visitInsn(Opcodes.RETURN)
     mv.visitMaxs(1, 1)
     mv.visitEnd()
     cw.visitEnd()
     val bytes = cw.toByteArray()
-    return java.lang.invoke.MethodHandles.lookup().defineClass(bytes)
+    return MethodHandles.lookup().defineClass(bytes)
   }
 
   override fun tryInvokeMethodHandle() {
-    val lookup = java.lang.invoke.MethodHandles.lookup()
-    val type = java.lang.invoke.MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
     val handle = lookup.findStatic(System::class.java, "exit", type)
     handle.invoke(0)
   }
 
   override fun checkFindStatic() {
-    val lookup = java.lang.invoke.MethodHandles.lookup()
-    val type = java.lang.invoke.MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Void.TYPE, Int::class.javaPrimitiveType)
     lookup.findStatic(System::class.java, "exit", type)
   }
 
+  override fun checkFindVirtual() {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Cleaner.Cleanable::class.java, Any::class.java, Runnable::class.java)
+    lookup.findVirtual(Cleaner::class.java, "register", type)
+  }
+
+  override fun checkFindConstructor() {
+    val lookup = MethodHandles.lookup()
+    val type =
+      MethodType.methodType(
+        Void.TYPE,
+        ThreadGroup::class.java,
+        Runnable::class.java,
+        String::class.java,
+        java.lang.Long.TYPE,
+        java.lang.Boolean.TYPE,
+      )
+    lookup.findConstructor(Thread::class.java, type)
+  }
+
+  override fun checkConstructorNewInstanceThread() {
+    val constructor =
+      Thread::class
+        .java
+        .getConstructor(
+          ThreadGroup::class.java,
+          Runnable::class.java,
+          String::class.java,
+          java.lang.Long.TYPE,
+          java.lang.Boolean.TYPE,
+        )
+    constructor.newInstance(null, UnmanagedWorkerRunnable(), "unmanaged-worker", 0L, false)
+  }
+
+  override fun checkGetClassLoader() {
+    RenderSandboxTransformTrampoline::class.java.classLoader
+  }
+
+  override fun checkGetParent(cl: ClassLoader) {
+    cl.parent
+  }
+
+  override fun checkGetContextClassLoader() {
+    Thread.currentThread().contextClassLoader
+  }
+
   override fun checkUnreflect() {
-    val lookup = java.lang.invoke.MethodHandles.lookup()
+    val lookup = MethodHandles.lookup()
     val method = System::class.java.getMethod("exit", Int::class.javaPrimitiveType)
     lookup.unreflect(method)
   }
 
   override fun tryDeserialization(bytes: ByteArray) {
-    val ois = java.io.ObjectInputStream(java.io.ByteArrayInputStream(bytes))
+    val ois = ObjectInputStream(ByteArrayInputStream(bytes))
     ois.readObject()
   }
 
   override fun tryConnect() {
-    val socket = java.net.Socket()
-    socket.connect(java.net.InetSocketAddress("localhost", 8080), 100)
+    val socket = Socket()
+    socket.connect(InetSocketAddress("localhost", 8080), 100)
   }
 
   // Suppressed because we want to test that the sandbox intercepts implicit executors.
@@ -449,6 +896,185 @@ class ClassToCheckImpl : ClassToCheck {
   override fun checkThreadPoolExecutor() {
     ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
   }
+
+  override fun checkFileSystemProviderOutputStream(path: Path) {
+    FileSystems.getDefault().provider().newOutputStream(path)
+  }
+
+  override fun checkFileSystemProviderDelete(path: Path) {
+    FileSystems.getDefault().provider().delete(path)
+  }
+
+  override fun checkStatementExecute() {
+    Statement(Runtime.getRuntime(), "exec", arrayOf("ls")).execute()
+  }
+
+  override fun checkStatementNew() {
+    Statement(FileOutputStream::class.java, "new", arrayOf(disallowedFilePath)).execute()
+  }
+
+  override fun checkExpressionGetValue() {
+    Expression(Runtime.getRuntime(), "exec", arrayOf("ls")).value
+  }
+
+  override fun checkSubclassStatementExecute() {
+    MaliciousToctouStatement(Runtime.getRuntime(), "exec").execute()
+  }
+
+  override fun checkScriptEngineManager() {
+    ScriptEngineManager()
+  }
+
+  override fun checkServiceLoaderLoad() {
+    ServiceLoader.load(String::class.java)
+  }
+
+  override fun checkURLSetFactory() {
+    URL.setURLStreamHandlerFactory(null)
+  }
+
+  override fun checkMethodHandlesFindVirtual() {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Process::class.java)
+    lookup.findVirtual(ProcessBuilder::class.java, "start", type)
+  }
+
+  override fun checkMethodHandlesFindConstructor() {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Void.TYPE)
+    lookup.findConstructor(ClassLoader::class.java, type)
+  }
+
+  override fun checkMethodHandlesFindGetter() {
+    val lookup = MethodHandles.lookup()
+    lookup.findGetter(File::class.java, "path", String::class.java)
+  }
+
+  override fun checkMethodHandlesUnreflectGetter() {
+    val lookup = MethodHandles.lookup()
+    val field = File::class.java.getDeclaredField("path")
+    lookup.unreflectGetter(field)
+  }
+
+  override fun checkMethodHandlesFindVarHandle() {
+    val lookup = MethodHandles.lookup()
+    lookup.findVarHandle(File::class.java, "path", String::class.java)
+  }
+
+  override fun checkMethodHandlesSandboxInternalField() {
+    val lookup = MethodHandles.lookup()
+    lookup.findGetter(RenderSandboxTransformTrampoline::class.java, "defaultInterceptors", List::class.java)
+  }
+
+  override fun checkSubclassFileDelete() {
+    val evil = SubclassFile(disallowedFilePath)
+    evil.delete()
+  }
+
+  override fun checkSubclassFileSuperDelete() {
+    val evil = SubclassFile(disallowedFilePath)
+    evil.customDelete()
+  }
+
+  override fun checkSubclassFileCreateNewFile() {
+    val evil = SubclassFile(disallowedFilePath)
+    evil.createNewFile()
+  }
+
+  override fun checkConstructorSetAccessible() {
+    val ctor = FileOutputStream::class.java.getDeclaredConstructor(String::class.java)
+    ctor.isAccessible = true
+  }
+
+  override fun checkFileChannelOpenWrite() {
+    FileChannel.open(Path.of(disallowedFilePath), StandardOpenOption.WRITE)
+  }
+
+  override fun checkBenignReflection(): String {
+    val model = BenignModel()
+    val m1 = BenignModel::class.java.getMethod("getName")
+    val m2 = BenignModel::class.java.getMethod("getValue")
+    val m3 = BenignModel::class.java.getMethod("execute")
+    return "${m1.invoke(model)}_${m2.invoke(model)}_${m3.invoke(model)}"
+  }
+
+  override fun checkBenignMethodHandles(): String {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(String::class.java)
+    val handle = lookup.findVirtual(BenignModel::class.java, "getName", type)
+    return handle.invoke(BenignModel()) as String
+  }
+
+  override fun checkBenignFieldAccess(): String {
+    val lookup = MethodHandles.lookup()
+    val handle = lookup.findGetter(BenignModel::class.java, "modelField", String::class.java)
+    val model = BenignModel()
+    return handle.invoke(model) as String
+  }
+
+  override fun checkFileChannelOpenDeleteOnClose() {
+    FileChannel.open(Path.of(disallowedFilePath), StandardOpenOption.READ, StandardOpenOption.DELETE_ON_CLOSE)
+  }
+
+  override fun checkFilesNewInputStreamDeleteOnClose() {
+    Files.newInputStream(Path.of(disallowedFilePath), StandardOpenOption.DELETE_ON_CLOSE)
+  }
+
+  override fun checkMethodHandlesDummyClassLoader() {
+    val lookup = MethodHandles.lookup()
+    val type = MethodType.methodType(Process::class.java)
+    lookup.findVirtual(ProcessBuilder::class.java, "start", type)
+  }
+
+  override fun checkMethodHandlesFindGetterDummyClassLoader() {
+    val lookup = MethodHandles.lookup()
+    lookup.findGetter(File::class.java, "path", String::class.java)
+  }
+
+  override fun checkXmlDecoderDirect() {
+    XMLDecoder(ByteArrayInputStream(ByteArray(0)))
+  }
+
+  override fun checkXmlDecoderReflection() {
+    val m = XMLDecoder::class.java.getMethod("readObject")
+    m.isAccessible = true
+  }
+
+  override fun checkXmlDecoderConstructorNewInstance() {
+    val ctor = XMLDecoder::class.java.getConstructor(InputStream::class.java)
+    ctor.newInstance(ByteArrayInputStream(ByteArray(0)))
+  }
+
+  override fun checkProcessImplStartReflection(clazz: Class<*>) {
+    val m = clazz.declaredMethods.first { it.name == "start" }
+    m.isAccessible = true
+  }
+
+  override fun checkMethodHandlesBind() {
+    val pb = ProcessBuilder("echo")
+    MethodHandles.lookup().bind(pb, "start", MethodType.methodType(Process::class.java))
+  }
+
+  override fun checkFileSystemProviderGetFileAttributeView() {
+    val path = Paths.get(disallowedFilePath)
+    path.fileSystem.provider().getFileAttributeView(path, BasicFileAttributeView::class.java)
+  }
+
+  override fun checkMethodHandlesPrivateLookupIn() {
+    MethodHandles.privateLookupIn(ProcessBuilder::class.java, MethodHandles.lookup())
+  }
+
+  override fun checkProcessBuilderStartPipeline() {
+    ProcessBuilder.startPipeline(listOf(ProcessBuilder("echo")))
+  }
+
+  override fun checkFilesCreateLink(link: Path, existing: Path) {
+    Files.createLink(link, existing)
+  }
+
+  override fun checkFileSystemProviderCreateLink(link: Path, existing: Path) {
+    link.fileSystem.provider().createLink(link, existing)
+  }
 }
 
 class RenderSandboxTest {
@@ -457,7 +1083,8 @@ class RenderSandboxTest {
   @Before
   fun setUp() {
     testClassLoader =
-      setupTestClassLoaderWithTransformation(mapOf("Test" to ClassToCheckImpl::class.java)) { visitor ->
+      setupTestClassLoaderWithTransformation(mapOf("Test" to ClassToCheckImpl::class.java, "SubclassFile" to SubclassFile::class.java)) {
+        visitor ->
         RenderSandbox.getClassTransform(visitor)
       }
     RenderSandbox.setRenderSandbox(DenyAllRenderSandbox)
@@ -718,23 +1345,29 @@ class RenderSandboxTest {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
 
     val baseSandbox = RenderSandbox.getRenderSandbox()
-    val testSandbox = PreCheckRenderSandboxDelegate(DenyAllRenderSandbox, { RenderSecurityManager.sEnabled })
+    val testSandbox = PreCheckRenderSandboxDelegate(DenyAllRenderSandbox, { RenderSecurityManager.isEnabled() })
+
+    val credential = Any()
+    val rsm = RenderSecurityManager.createForTests(null, null, false) { true }
+    rsm.setUseSandbox(true)
+    rsm.setActive(true, credential)
 
     RenderSandbox.setRenderSandbox(testSandbox)
     try {
-      // By default sEnabled is true, so it should fail in DenyAll
+      // By default isEnabled is true, so it should fail in DenyAll
       verifyThrowsSecurityException("checkPropertyRead property.test") { methodIntercept.checkPropertyRead() }
 
-      // Enter safe region (disables sEnabled)
-      val token = RenderSecurityManager.enterSafeRegion(null)
+      // Enter safe region (disables isEnabled)
+      val token = RenderSecurityManager.enterSafeRegion(credential)
       try {
-        // Now it should succeed because sEnabled is false!
+        // Now it should succeed because isEnabled is false!
         methodIntercept.checkPropertyRead()
       } finally {
         RenderSecurityManager.exitSafeRegion(token)
       }
     } finally {
       RenderSandbox.setRenderSandbox(baseSandbox)
+      rsm.dispose(credential)
     }
   }
 
@@ -787,8 +1420,8 @@ class RenderSandboxTest {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
 
     val obj = MaliciousSerializable()
-    val baos = java.io.ByteArrayOutputStream()
-    val oos = java.io.ObjectOutputStream(baos)
+    val baos = ByteArrayOutputStream()
+    val oos = ObjectOutputStream(baos)
     oos.writeObject(obj)
     val bytes = baos.toByteArray()
 
@@ -822,5 +1455,827 @@ class RenderSandboxTest {
   fun `check ThreadPoolExecutor creation fails`() {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     verifyThrowsSecurityException("checkConcurrency") { methodIntercept.checkThreadPoolExecutor() }
+  }
+
+  @Test
+  fun `check PrintServiceLookup register fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkPrintJob") { methodIntercept.checkPrintServiceLookupRegister() }
+  }
+
+  @Test
+  fun `check PrintServiceLookup lookup fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkPrintJob") { methodIntercept.checkPrintServiceLookup() }
+  }
+
+  @Test
+  fun `check PrinterJob lookupPrintServices fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkPrintJob") { methodIntercept.checkPrinterJobLookup() }
+  }
+
+  @Test
+  fun `check IIORegistry getDefaultInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkIIORegistryGetDefault() }
+  }
+
+  @Test
+  fun `check ServiceRegistry registerServiceProvider fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkServiceRegistry() }
+  }
+
+  @Test
+  fun `check ServiceRegistry deregisterAll fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkIIORegistryDeregisterAll() }
+  }
+
+  @Test
+  fun `check ServiceRegistry lookupProviders fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkServiceRegistryLookupProviders() }
+  }
+
+  @Test
+  fun `check ImageIO scanForPlugins fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkImageIo") { methodIntercept.checkImageIOScanForPlugins() }
+  }
+
+  @Test
+  fun `check JEditorPane registerEditorKitForContentType fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkJEditorPaneRegisterEditorKit() }
+  }
+
+  @Test
+  fun `check reflection invoke on PrintServiceLookup fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: javax/print/PrintServiceLookup#lookupDefaultPrintService") {
+      methodIntercept.checkReflectionInvokePrintServiceLookup()
+    }
+  }
+
+  @Test
+  fun `check reflection invoke on IIORegistry fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: javax/imageio/spi/IIORegistry#getDefaultInstance") {
+      methodIntercept.checkReflectionInvokeIIORegistry()
+    }
+  }
+
+  @Test
+  fun `check KeyboardFocusManager addKeyEventDispatcher fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkKeyboardFocusManager() }
+  }
+
+  @Test
+  fun `check Keymap setDefaultAction fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkKeymapDefaultAction() }
+  }
+
+  @Test
+  fun `check PopupFactory setSharedInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkPopupFactory() }
+  }
+
+  @Test
+  fun `check LayoutStyle setInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkLayoutStyle() }
+  }
+
+  @Test
+  fun `check UIManager put fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkUIManagerPut() }
+  }
+
+  @Test
+  fun `check RepaintManager setCurrentManager fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkRepaintManager() }
+  }
+
+  @Test
+  fun `check Window getWindows fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkWindowGetWindows() }
+  }
+
+  @Test
+  fun `check Frame getFrames fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkFrameGetFrames() }
+  }
+
+  @Test
+  fun `check KeyboardFocusManager setCurrentKeyboardFocusManager fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkKeyboardFocusManagerSetCurrent() }
+  }
+
+  @Test
+  fun `check UIManager setLookAndFeel fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkUIManagerSetLookAndFeel() }
+  }
+
+  @Test
+  fun `check UIDefaults put fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkUIDefaultsPut() }
+  }
+
+  @Test
+  fun `check DragSource getDefaultDragSource fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkDragSourceGetDefault() }
+  }
+
+  @Test
+  fun `check DragSource addDragSourceListener fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val unsafeField = Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }
+    val unsafe = unsafeField.get(null) as Unsafe
+    val dragSource = unsafe.allocateInstance(DragSource::class.java) as DragSource
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkDragSourceAddListener(dragSource) }
+  }
+
+  @Test
+  fun `check MenuSelectionManager addChangeListener fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkMenuSelectionManager() }
+  }
+
+  @Test
+  fun `check FileSystemProvider newOutputStream fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val path = Paths.get(disallowedFilePath)
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFileSystemProviderOutputStream(path)
+    }
+  }
+
+  @Test
+  fun `check Cleaner create fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkCleaner") { methodIntercept.checkCleanerCreate() }
+  }
+
+  @Test
+  fun `check Cleaner register fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val cleaner = Cleaner.create()
+    verifyThrowsSecurityException("checkCleaner") { methodIntercept.checkCleanerRegister(cleaner) }
+  }
+
+  @Test
+  fun `check Signal handle fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkSignal") { methodIntercept.checkSignalHandle() }
+  }
+
+  @Test
+  fun `check Signal raise fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkSignal") { methodIntercept.checkSignalRaise() }
+  }
+
+  @Test
+  fun `check Swing Timer start fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkSwingTimerStart() }
+  }
+
+  @Test
+  fun `check java util Timer fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkConcurrency") { methodIntercept.checkJavaUtilTimer() }
+  }
+
+  @Test
+  fun `check java util Timer schedule fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val timer = java.util.Timer()
+    try {
+      verifyThrowsSecurityException("checkConcurrency") { methodIntercept.checkJavaUtilTimerSchedule(timer) }
+    } finally {
+      timer.cancel()
+    }
+  }
+
+  @Test
+  fun `check FileSystemProvider delete fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val path = Paths.get(disallowedFilePath)
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFileSystemProviderDelete(path)
+    }
+  }
+
+  @Test
+  fun `check LayoutQueue fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkLayoutQueue() }
+  }
+
+  @Test
+  fun `check LayoutQueue addTask fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val queue = LayoutQueue.getDefaultQueue()
+    verifyThrowsSecurityException("checkEventQueue") { methodIntercept.checkLayoutQueueAddTask(queue) }
+  }
+
+  @Test
+  fun `check RenderService initializeRenderExecutor fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkRenderExecutor") { methodIntercept.checkRenderServiceInitialize() }
+  }
+
+  @Test
+  fun `check unmanaged thread exec fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkProcessExec") { methodIntercept.checkUnmanagedThreadExec() }
+  }
+
+  @Test
+  fun `check findVirtual Cleaner register fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ref/Cleaner#register") {
+      methodIntercept.checkFindVirtual()
+    }
+  }
+
+  @Test
+  fun `check findConstructor Thread fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/Thread#<init>") {
+      methodIntercept.checkFindConstructor()
+    }
+  }
+
+  @Test
+  fun `check java beans Statement execute fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/beans/Statement#execute") {
+      methodIntercept.checkStatementExecute()
+    }
+  }
+
+  @Test
+  fun `check java beans Statement new constructor fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/beans/Statement#execute") {
+      methodIntercept.checkStatementNew()
+    }
+  }
+
+  @Test
+  fun `check java beans Expression getValue fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/beans/Expression#getValue") {
+      methodIntercept.checkExpressionGetValue()
+    }
+  }
+
+  @Test
+  fun `check subclass java beans Statement execute fails to prevent TOCTOU bypass`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/beans/Statement#execute") {
+      methodIntercept.checkSubclassStatementExecute()
+    }
+  }
+
+  @Test
+  fun `check invokedynamic method reference fails`() {
+    val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, "TestIndy", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    val bsm =
+      Handle(
+        Opcodes.H_INVOKESTATIC,
+        "java/lang/invoke/LambdaMetafactory",
+        "metafactory",
+        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+        false,
+      )
+    val targetHandle =
+      Handle(
+        Opcodes.H_INVOKEVIRTUAL,
+        "java/lang/ProcessBuilder",
+        "start",
+        "()Ljava/lang/Process;",
+        false,
+      )
+    mv.visitInsn(Opcodes.ACONST_NULL)
+    mv.visitInvokeDynamicInsn(
+      "get",
+      "(Ljava/lang/ProcessBuilder;)Ljava/util/function/Supplier;",
+      bsm,
+      Type.getMethodType("()Ljava/lang/Object;"),
+      targetHandle,
+      Type.getMethodType("()Ljava/lang/Process;"),
+    )
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 1)
+    mv.visitEnd()
+    cw.visitEnd()
+    val originalBytes = cw.toByteArray()
+
+    val transformedWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    val transform = RenderSandbox.getClassTransform(transformedWriter)
+    ClassReader(originalBytes).accept(transform, 0)
+    val transformedBytes = transformedWriter.toByteArray()
+
+    val loader =
+      object : ClassLoader(RenderSandboxTest::class.java.classLoader) {
+        fun define(name: String, bytes: ByteArray): Class<*> = defineClass(name, bytes, 0, bytes.size)
+      }
+    val loadedClass = loader.define("TestIndy", transformedBytes)
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#start") {
+      try {
+        loadedClass.getMethod("test").invoke(null)
+      } catch (e: java.lang.reflect.InvocationTargetException) {
+        throw e.targetException
+      }
+    }
+  }
+
+  @Test
+  fun `check ScriptEngineManager fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkScriptEngine") {
+      methodIntercept.checkScriptEngineManager()
+    }
+  }
+
+  @Test
+  fun `check ServiceLoader load fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkServiceLoader") {
+      methodIntercept.checkServiceLoaderLoad()
+    }
+  }
+
+  @Test
+  fun `check URL setURLStreamHandlerFactory fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkSetFactory") {
+      methodIntercept.checkURLSetFactory()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findVirtual fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#start") {
+      methodIntercept.checkMethodHandlesFindVirtual()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findConstructor fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ClassLoader#<init>") {
+      methodIntercept.checkMethodHandlesFindConstructor()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findGetter fails on restricted class`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
+      methodIntercept.checkMethodHandlesFindGetter()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles unreflectGetter fails on restricted class`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
+      methodIntercept.checkMethodHandlesUnreflectGetter()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findVarHandle fails on restricted class`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
+      methodIntercept.checkMethodHandlesFindVarHandle()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findGetter fails on sandbox internals`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException(
+      "Reflection access to restricted field: com/android/tools/rendering/security/RenderSandboxTransformTrampoline#defaultInterceptors"
+    ) {
+      methodIntercept.checkMethodHandlesSandboxInternalField()
+    }
+  }
+
+  @Test
+  fun `check subclass File delete fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkSubclassFileDelete()
+    }
+  }
+
+  @Test
+  fun `check subclass File createNewFile fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkSubclassFileCreateNewFile()
+    }
+  }
+
+  @Test
+  fun `check benign reflection succeeds`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    assertEquals("name_val_ok", methodIntercept.checkBenignReflection())
+  }
+
+  @Test
+  fun `check benign MethodHandles findVirtual succeeds`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    assertEquals("name", methodIntercept.checkBenignMethodHandles())
+  }
+
+  @Test
+  fun `check benign field access succeeds`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    assertEquals("test_val", methodIntercept.checkBenignFieldAccess())
+  }
+
+  @Test
+  fun `check subclass File super delete fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkSubclassFileSuperDelete()
+    }
+  }
+
+  @Test
+  fun `check Constructor setAccessible fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/io/FileOutputStream#<init>") {
+      methodIntercept.checkConstructorSetAccessible()
+    }
+  }
+
+  @Test
+  fun `check FileChannel open write fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFileChannelOpenWrite()
+    }
+  }
+
+  @Test
+  fun `check ldc field MethodHandle fails`() {
+    val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, "TestLdcFieldHandle", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    val targetHandle =
+      Handle(
+        Opcodes.H_GETFIELD,
+        "java/io/File",
+        "path",
+        "Ljava/lang/String;",
+        false,
+      )
+    mv.visitLdcInsn(targetHandle)
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 1)
+    mv.visitEnd()
+    cw.visitEnd()
+    val originalBytes = cw.toByteArray()
+
+    val transformedWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    val transform = RenderSandbox.getClassTransform(transformedWriter)
+    ClassReader(originalBytes).accept(transform, 0)
+    val transformedBytes = transformedWriter.toByteArray()
+
+    val loader =
+      object : ClassLoader(RenderSandboxTest::class.java.classLoader) {
+        fun define(name: String, bytes: ByteArray): Class<*> = defineClass(name, bytes, 0, bytes.size)
+      }
+    val loadedClass = loader.define("TestLdcFieldHandle", transformedBytes)
+    verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
+      try {
+        loadedClass.getMethod("test").invoke(null)
+      } catch (e: java.lang.reflect.InvocationTargetException) {
+        throw e.targetException
+      }
+    }
+  }
+
+  @Test
+  fun `verify couldIntercept detects virtual method calls in subclasses`() {
+    val implBytes =
+      RenderSandboxTest::class
+        .java
+        .classLoader
+        .getResourceAsStream(ClassToCheckImpl::class.java.name.replace('.', '/') + ".class")
+        ?.readBytes()
+    assertNotNull(implBytes)
+    assertTrue(RenderSandboxTransformTrampoline.couldIntercept(implBytes!!))
+  }
+
+  @Test
+  fun `check FileChannel open with DELETE_ON_CLOSE fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFileChannelOpenDeleteOnClose()
+    }
+  }
+
+  @Test
+  fun `check Files newInputStream with DELETE_ON_CLOSE fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFilesNewInputStreamDeleteOnClose()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findVirtual with dummy classloader fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val dummyLoader = URLClassLoader(emptyArray())
+    val oldLoader = Thread.currentThread().contextClassLoader
+    try {
+      Thread.currentThread().contextClassLoader = dummyLoader
+      verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#start") {
+        methodIntercept.checkMethodHandlesDummyClassLoader()
+      }
+    } finally {
+      Thread.currentThread().contextClassLoader = oldLoader
+    }
+  }
+
+  @Test
+  fun `check MethodHandles findGetter with dummy classloader fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val dummyLoader = URLClassLoader(emptyArray())
+    val oldLoader = Thread.currentThread().contextClassLoader
+    try {
+      Thread.currentThread().contextClassLoader = dummyLoader
+      verifyThrowsSecurityException("Reflection access to restricted field: java/io/File#path") {
+        methodIntercept.checkMethodHandlesFindGetterDummyClassLoader()
+      }
+    } finally {
+      Thread.currentThread().contextClassLoader = oldLoader
+    }
+  }
+
+  @Test
+  fun `check XMLDecoder direct instantiation fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkXmlDecoder") {
+      methodIntercept.checkXmlDecoderDirect()
+    }
+  }
+
+  @Test
+  fun `check XMLDecoder reflection invocation fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/beans/XMLDecoder#readObject") {
+      methodIntercept.checkXmlDecoderReflection()
+    }
+  }
+
+  @Test
+  fun `check XMLDecoder Constructor newInstance fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/beans/XMLDecoder#<init>") {
+      methodIntercept.checkXmlDecoderConstructorNewInstance()
+    }
+  }
+
+  @Test
+  fun `check ProcessImpl start reflection fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val processImplClass = RenderSandbox.computeWithoutSandbox {
+      Class.forName("java.lang.ProcessImpl")
+    }
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessImpl#start") {
+      methodIntercept.checkProcessImplStartReflection(processImplClass)
+    }
+  }
+
+  @Test
+  fun `check MethodHandles bind with restricted receiver fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#start") {
+      methodIntercept.checkMethodHandlesBind()
+    }
+  }
+
+  @Test
+  fun `check FileSystemProvider getFileAttributeView on disallowed file fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkFileRead ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFileSystemProviderGetFileAttributeView()
+    }
+  }
+
+  @Test
+  fun `check MethodHandles privateLookupIn with restricted class fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("Reflection access to restricted method: java/lang/ProcessBuilder#<privateLookup>") {
+      methodIntercept.checkMethodHandlesPrivateLookupIn()
+    }
+  }
+
+  @Test
+  fun `check ProcessBuilder startPipeline fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkProcessExec") {
+      methodIntercept.checkProcessBuilderStartPipeline()
+    }
+  }
+
+  @Test
+  fun `check Constructor newInstance Thread with unmanaged worker fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkProcessExec") {
+      methodIntercept.checkConstructorNewInstanceThread()
+    }
+  }
+
+  @Test
+  fun `check Files createLink checks write on link and read on existing`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val link = Paths.get(disallowedFilePath)
+    val existing = Paths.get(allowedFilePath)
+
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFilesCreateLink(link, existing)
+    }
+
+    val baseSandbox = RenderSandbox.getRenderSandbox()
+    val allowWriteSandbox =
+      object : RenderSandboxDelegate(DenyAllRenderSandbox) {
+        override fun checkFileWrite(absolutePath: String) {}
+      }
+    RenderSandbox.setRenderSandbox(allowWriteSandbox)
+    try {
+      verifyThrowsSecurityException("checkFileRead ${removeTestingDirPrefix(disallowedFilePath)}") {
+        methodIntercept.checkFilesCreateLink(existing, link)
+      }
+    } finally {
+      RenderSandbox.setRenderSandbox(baseSandbox)
+    }
+  }
+
+  @Test
+  fun `check getClassLoader fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkGetClassLoader") {
+      methodIntercept.checkGetClassLoader()
+    }
+  }
+
+  @Test
+  fun `check FileSystemProvider createLink checks write on link and read on existing`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    val link = Paths.get(disallowedFilePath)
+    val existing = Paths.get(allowedFilePath)
+
+    verifyThrowsSecurityException("checkFileWrite ${removeTestingDirPrefix(disallowedFilePath)}") {
+      methodIntercept.checkFileSystemProviderCreateLink(link, existing)
+    }
+
+    val baseSandbox = RenderSandbox.getRenderSandbox()
+    val allowWriteSandbox =
+      object : RenderSandboxDelegate(DenyAllRenderSandbox) {
+        override fun checkFileWrite(absolutePath: String) {}
+      }
+    RenderSandbox.setRenderSandbox(allowWriteSandbox)
+    try {
+      verifyThrowsSecurityException("checkFileRead ${removeTestingDirPrefix(disallowedFilePath)}") {
+        methodIntercept.checkFileSystemProviderCreateLink(existing, link)
+      }
+    } finally {
+      RenderSandbox.setRenderSandbox(baseSandbox)
+    }
+  }
+
+  @Test
+  fun `check getParent fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkClassLoaderAccess") {
+      methodIntercept.checkGetParent(javaClass.classLoader)
+    }
+  }
+
+  @Test
+  fun `verify couldIntercept detects restricted reflection prefixes`() {
+    val cw = ClassWriter(0)
+    cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, "TestUnsafeRef", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    mv.visitInsn(Opcodes.ACONST_NULL)
+    mv.visitTypeInsn(Opcodes.CHECKCAST, "sun/misc/Unsafe")
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 0)
+    mv.visitEnd()
+    cw.visitEnd()
+    val classBytes = cw.toByteArray()
+
+    assertTrue(RenderSandboxTransformTrampoline.couldIntercept(classBytes))
+  }
+
+  @Test
+  fun `check MethodHandle LDC targeting Unsafe fails`() {
+    val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, "TestUnsafeLdc", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    val handle = Handle(Opcodes.H_INVOKEVIRTUAL, "sun/misc/Unsafe", "allocateMemory", "(J)J", false)
+    mv.visitLdcInsn(handle)
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 0)
+    mv.visitEnd()
+    cw.visitEnd()
+    val originalBytes = cw.toByteArray()
+
+    val transformedWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    val transform = RenderSandbox.getClassTransform(transformedWriter)
+    ClassReader(originalBytes).accept(transform, 0)
+    val transformedBytes = transformedWriter.toByteArray()
+
+    val loader =
+      object : ClassLoader(RenderSandboxTest::class.java.classLoader) {
+        fun define(name: String, bytes: ByteArray): Class<*> = defineClass(name, bytes, 0, bytes.size)
+      }
+    val loadedClass = loader.define("TestUnsafeLdc", transformedBytes)
+    verifyThrowsSecurityException("Reflection access to restricted method: sun/misc/Unsafe#allocateMemory") {
+      try {
+        loadedClass.getMethod("test").invoke(null)
+      } catch (e: InvocationTargetException) {
+        throw e.cause ?: e
+      }
+    }
+  }
+
+  @Test
+  fun `check ClassTransform with couldIntercept transforms and blocks Unsafe MethodHandle LDC`() {
+    val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    cw.visit(Opcodes.V11, Opcodes.ACC_PUBLIC, "TestUnsafeTransform", null, "java/lang/Object", null)
+    val mv = cw.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "test", "()V", null, null)
+    mv.visitCode()
+    val handle = Handle(Opcodes.H_INVOKEVIRTUAL, "sun/misc/Unsafe", "allocateMemory", "(J)J", false)
+    mv.visitLdcInsn(handle)
+    mv.visitInsn(Opcodes.POP)
+    mv.visitInsn(Opcodes.RETURN)
+    mv.visitMaxs(1, 0)
+    mv.visitEnd()
+    cw.visitEnd()
+    val originalBytes = cw.toByteArray()
+
+    val classTransform = RenderSandbox.getClassTransform()
+    assertTrue(classTransform.shouldRewrite(originalBytes))
+
+    val transformedWriter = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+    val transform = classTransform.invoke(transformedWriter, originalBytes)
+    ClassReader(originalBytes).accept(transform, 0)
+    val transformedBytes = transformedWriter.toByteArray()
+
+    val loader =
+      object : ClassLoader(RenderSandboxTest::class.java.classLoader) {
+        fun define(name: String, bytes: ByteArray): Class<*> = defineClass(name, bytes, 0, bytes.size)
+      }
+    val loadedClass = loader.define("TestUnsafeTransform", transformedBytes)
+    verifyThrowsSecurityException("Reflection access to restricted method: sun/misc/Unsafe#allocateMemory") {
+      try {
+        loadedClass.getMethod("test").invoke(null)
+      } catch (e: InvocationTargetException) {
+        throw e.cause ?: e
+      }
+    }
+  }
+
+  @Test
+  fun `check getContextClassLoader fails`() {
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkClassLoaderAccess") {
+      methodIntercept.checkGetContextClassLoader()
+    }
   }
 }

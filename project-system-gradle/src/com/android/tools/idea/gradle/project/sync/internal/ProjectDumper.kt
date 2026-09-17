@@ -89,10 +89,10 @@ class ProjectDumper(
   private val gradleLongHashPattern = Regex("[0-9a-f]{${gradleLongHashStub.length - 3},${gradleLongHashStub.length}}")
   private val gradleVersionPattern = Regex("gradle-[^/]*${SdkConstants.GRADLE_LATEST_VERSION}")
   private val kotlinVersionPattern = Regex("\\d+\\.\\d+\\.[0-9a-zA-Z\\-]+") // Examples: 1.7.0, 1.3.1-eap-23, 1.7.20-Beta
-  private val dotAndroidFolderPathPattern = Regex("^/([_/0-9a-z])+\\.android")
+  private val dotAndroidFolderPathPattern = Regex("/([_.\\-/0-9a-zA-Z])+\\.android")
   private val transformFolderPattern = Regex("/transforms-\\d/")
   private val gradleVersionWithoutPrefixPattern = Regex("/${SdkConstants.GRADLE_LATEST_VERSION}/")
-  private val konanFolderPathRegex = Regex("^/([_/0-9a-z])+\\.konan")
+  private val konanFolderPathRegex = Regex("/([_.\\-/0-9a-zA-Z])+\\.konan")
 
   fun File.normalizeCxxPath(variantName: String?): String {
     val cxxSegment = findCxxSegment(this) ?: return this.path
@@ -298,7 +298,6 @@ class ProjectDumper(
       EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jbr-next").toString() -> "<JDK_PATH-21>"
       EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk17").toString() -> "<JDK_PATH-17>"
       EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk11").toString() -> "<JDK_PATH-11>"
-      EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk8").toString() -> "<JDK_PATH-1_8>"
       else -> this
     }
   }

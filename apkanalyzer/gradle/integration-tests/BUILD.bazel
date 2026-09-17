@@ -1,8 +1,6 @@
 load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "generate_old_agp_tests_from_list")
 load(
     "//tools/adt/idea/old-agp-tests:agp_versions.bzl",
-    "AGP_7_0",
-    "AGP_7_1",
     "AGP_7_2",
     "AGP_7_3",
     "AGP_7_4",
@@ -10,9 +8,6 @@ load(
     "AGP_8_1",
     "AGP_8_2",
     "AGP_DATA",
-    "GRADLE_6_7_1",
-    "GRADLE_7_0_2",
-    "GRADLE_7_2",
     "GRADLE_7_3_3",
     "GRADLE_7_4",
     "GRADLE_7_5",
@@ -51,43 +46,6 @@ generate_old_agp_tests_from_list(
     name = "ApkAnalyzerGradleTokenIntegrationTest",
     iml_module = ":intellij.android.apkanalyzer.gradle.integration-tests",
     tests_list = [
-        dict(
-            agp_version = AGP_7_0,
-            data = [
-                "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
-                "//tools/adt/idea/apkanalyzer/gradle/integration-tests/projects/simpleApplication",
-            ] + AGP_DATA[AGP_7_0] + GRADLE_DISTRIBUTIONS[GRADLE_7_0_2],
-            # TODO(xof): what.
-            gradle_version = GRADLE_6_7_1,
-            ignore_other_tests = True,
-            maven_deps = [
-                "//tools/base/build-system/previous-versions:7.0.0",
-                "//tools/adt/idea/apkanalyzer/gradle/integration-tests/projects/simpleApplication:deps",
-            ],
-            tags = [
-                "block-network",
-                "noci:studio-win",
-            ],
-            test_class = "com.android.tools.idea.apk.viewer.gradle.ApkAnalyzerGradleIntegrationTestSuite",
-        ),
-        dict(
-            agp_version = AGP_7_1,
-            data = [
-                "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
-                "//tools/adt/idea/apkanalyzer/gradle/integration-tests/projects/simpleApplication",
-            ] + AGP_DATA[AGP_7_1] + GRADLE_DISTRIBUTIONS[GRADLE_7_2],
-            gradle_version = GRADLE_7_2,
-            ignore_other_tests = True,
-            maven_deps = [
-                "//tools/base/build-system/previous-versions:7.1.0",
-                "//tools/adt/idea/apkanalyzer/gradle/integration-tests/projects/simpleApplication:deps",
-            ],
-            tags = [
-                "block-network",
-                "noci:studio-win",
-            ],
-            test_class = "com.android.tools.idea.apk.viewer.gradle.ApkAnalyzerGradleIntegrationTestSuite",
-        ),
         dict(
             agp_version = AGP_7_2,
             data = [

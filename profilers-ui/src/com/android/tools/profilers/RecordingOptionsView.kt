@@ -53,18 +53,17 @@ constructor(
     private set
 
   @VisibleForTesting
-  val configComponents =
-    editConfig?.let {
-      ConfigComponentGroup(
-        JButton(EDIT_CONFIG).apply { addActionListener { editConfig(recordingModel.customConfigurationModel) } },
-        radioButton("").apply { addActionListener { recordingModel.selectCurrentCustomConfiguration() } },
-        ProfilerCombobox(recordingModel.customConfigurationModel).apply {
-          // Sets prototype value to minimum width option to compute width of dropdown.
-          // Now dropdown width is always constrained/overriden by parent width as parent is always wider.
-          prototypeDisplayValue = PrototypeDisplayRecordingOption
-        },
-      )
-    }
+  val configComponents = editConfig?.let {
+    ConfigComponentGroup(
+      JButton(EDIT_CONFIG).apply { addActionListener { editConfig(recordingModel.customConfigurationModel) } },
+      radioButton("").apply { addActionListener { recordingModel.selectCurrentCustomConfiguration() } },
+      ProfilerCombobox(recordingModel.customConfigurationModel).apply {
+        // Sets prototype value to minimum width option to compute width of dropdown.
+        // Now dropdown width is always constrained/overriden by parent width as parent is always wider.
+        prototypeDisplayValue = PrototypeDisplayRecordingOption
+      },
+    )
+  }
 
   @VisibleForTesting val startStopButton = JButton(START).apply { addActionListener { onStartStopButtonPressed() } }
 
@@ -304,8 +303,11 @@ class FlexibleGrid : JBPanel<FlexibleGrid>() {
     repaint()
   }
 
-  private fun makeWideView() =
-    makePanelWithRows { (ctrl, desc) -> UI.PanelFactory.panel(ctrl).withComment(desc).moveCommentRight() }.splitColumns().createPanel()
+  private fun makeWideView() = makePanelWithRows { (ctrl, desc) ->
+    UI.PanelFactory.panel(ctrl).withComment(desc).moveCommentRight()
+  }
+    .splitColumns()
+    .createPanel()
 
   private fun makeTallView() = makePanelWithRows { (ctrl, desc) -> UI.PanelFactory.panel(ctrl).withComment(desc) }.createPanel()
 

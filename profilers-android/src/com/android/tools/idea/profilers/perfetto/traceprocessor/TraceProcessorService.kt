@@ -41,18 +41,36 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /** See {@link TraceProcessorService} for API details. */
 @Service
-class TraceProcessorServiceImpl(
+class TraceProcessorServiceImpl
+@VisibleForTesting
+constructor(
   private val ticker: Ticker = Ticker.systemTicker(),
-  private val client: TraceProcessorDaemonClient = TraceProcessorDaemonClient(ticker),
+  private val clientFactory: (Ticker) -> TraceProcessorDaemonClient = { TraceProcessorDaemonClient(it) },
 ) : TraceProcessorService, Disposable {
-  private val loadedTraces = mutableMapOf<Long, File>()
+  private val loadedTraces = ConcurrentHashMap<Long, File>()
+  private val clients = ConcurrentHashMap<Long, TraceProcessorDaemonClient>()
 
-  init {
-    Disposer.register(this, client)
+  /** Terminates the Trace Processor Daemon associated with the given [traceId] and cleans up its resources. */
+  override fun unloadTrace(traceId: Long) {
+    loadedTraces.remove(traceId)
+    clients.remove(traceId)?.let { Disposer.dispose(it) }
+  }
+
+  /**
+   * Retrieves an existing daemon client for the given [traceId], or spawns a new isolated TraceProcessorDaemon process and registers it for
+   * lifecycle disposal.
+   */
+  private fun getClient(traceId: Long): TraceProcessorDaemonClient {
+    return clients.computeIfAbsent(traceId) {
+      val newClient = clientFactory(ticker)
+      Disposer.register(this, newClient)
+      newClient
+    }
   }
 
   companion object {
@@ -155,19 +173,21 @@ class TraceProcessorServiceImpl(
   override fun loadTrace(traceId: Long, traceFile: File, ideProfilerServices: IdeProfilerServices): Boolean {
     // load trace had no business logic in Java side, so we use a single stopwatch to track both query and method timings.
     val stopwatch = Stopwatch.createStarted(ticker)
-    val symbolPaths = ideProfilerServices.nativeSymbolsDirectories
     LOGGER.info("TPD Service: Loading trace $traceId: ${traceFile.absolutePath}")
-    val symbolsFile = File("${FileUtil.getTempDirectory()}${File.separator}$traceId.symbols")
-    symbolsFile.deleteOnExit()
-    val requestProto =
-      LoadTraceRequest.newBuilder()
-        .setTraceId(traceId)
-        .setTracePath(traceFile.absolutePath)
-        .addAllSymbolPath(symbolPaths)
-        .setSymbolizedOutputPath(symbolsFile.absolutePath)
-        .build()
+    val requestBuilder = LoadTraceRequest.newBuilder().setTraceId(traceId).setTracePath(traceFile.absolutePath)
 
-    val queryResult = client.loadTrace(requestProto, ideProfilerServices.featureTracker)
+    val isNativeAllocation = traceFile.name.endsWith(".heapprofd", ignoreCase = true)
+    if (!isNativeAllocation || !ideProfilerServices.featureConfig.isDeobfuscationForNativeAllocationsEnabled) {
+      val symbolPaths = ideProfilerServices.nativeSymbolsDirectories
+      val symbolsFile = File("${FileUtil.getTempDirectory()}${File.separator}$traceId.symbols")
+      symbolsFile.deleteOnExit()
+      requestBuilder.addAllSymbolPath(symbolPaths)
+      requestBuilder.setSymbolizedOutputPath(symbolsFile.absolutePath)
+    }
+
+    val requestProto = requestBuilder.build()
+
+    val queryResult = getClient(traceId).loadTrace(requestProto, ideProfilerServices.featureTracker)
     stopwatch.stop()
 
     val queryTimeMs = stopwatch.elapsed(TimeUnit.MILLISECONDS)
@@ -228,14 +248,25 @@ class TraceProcessorServiceImpl(
       }
       .build()
 
-  override fun loadMemoryData(traceId: Long, abi: String, memorySet: NativeMemoryHeapSet, ideProfilerServices: IdeProfilerServices) {
+  override fun loadNativeMemoryData(traceId: Long, abi: String, memorySet: NativeMemoryHeapSet, ideProfilerServices: IdeProfilerServices) {
     val converter = HeapProfdConverter(memorySet, WindowsNameDemangler())
     handleRequest(
       traceId,
       ideProfilerServices,
-      FeatureTracker::trackTraceProcessorMemoryData,
+      FeatureTracker::trackTraceProcessorNativeMemoryData,
       RequestBuilder({ memoryRequest = Memory.AllocationDataRequest.getDefaultInstance() }, { converter.populateHeapSet(it.memoryEvents) }),
     )
+  }
+
+  override fun loadHeapDumpData(traceId: Long, ideProfilerServices: IdeProfilerServices): TraceProcessor.HeapDumpResult {
+    var result: TraceProcessor.HeapDumpResult? = null
+    handleRequest(
+      traceId,
+      ideProfilerServices,
+      FeatureTracker::trackTraceProcessorHeapDumpData,
+      RequestBuilder({ heapDumpRequest = QueryParameters.HeapDumpParameters.getDefaultInstance() }, { result = it.heapDumpResult }),
+    )
+    return result!!
   }
 
   /**
@@ -252,7 +283,7 @@ class TraceProcessorServiceImpl(
     val methodStopwatch = Stopwatch.createStarted(ticker)
     val queryProto = buildBatchQuery(traceId, requestBuilders.asList())
 
-    LOGGER.info("TPD Service: Querying cpu data for trace $traceId.")
+    LOGGER.info("TPD Service: Querying data for trace $traceId.")
     val queryStopwatch = Stopwatch.createStarted(ticker)
     val queryResult = executeBatchQuery(traceId, queryProto, ideProfilerServices)
     queryStopwatch.stop()
@@ -268,8 +299,8 @@ class TraceProcessorServiceImpl(
         queryTimeMs,
       )
       val failureReason = queryResult.failure!!
-      LOGGER.info("TPD Service: Fail to get cpu data for trace $traceId: ${failureReason.message}")
-      throw RuntimeException("TPD Service: Fail to get cpu data for trace $traceId: ${failureReason.message}", failureReason)
+      LOGGER.info("TPD Service: Fail to get data for trace $traceId: ${failureReason.message}")
+      throw RuntimeException("TPD Service: Fail to get data for trace $traceId: ${failureReason.message}", failureReason)
     }
 
     val response = queryResult.response!!
@@ -277,7 +308,7 @@ class TraceProcessorServiceImpl(
     response.resultList.forEach {
       if (!it.ok) {
         queryError = true
-        LOGGER.warn("TPD Service: Load cpu data query error - ${it.failureReason} - ${it.error}")
+        LOGGER.warn("TPD Service: Load data query error - ${it.failureReason} - ${it.error}")
       }
     }
 
@@ -337,12 +368,137 @@ class TraceProcessorServiceImpl(
     return results
   }
 
+  override fun getInstances(
+    traceId: Long,
+    requestParams: TraceProcessor.QueryParameters.HeapDumpInstancesParameters,
+    ideProfilerServices: IdeProfilerServices,
+  ): TraceProcessor.HeapDumpInstancesResult {
+    val request =
+      QueryBatchRequest.newBuilder()
+        .addQuery(QueryParameters.newBuilder().setTraceId(traceId).setHeapDumpInstancesRequest(requestParams))
+        .build()
+
+    val queryResult = executeBatchQuery(traceId, request, ideProfilerServices)
+
+    if (queryResult.response == null) {
+      LOGGER.warn("TPD Service: Failed to get instances - ${queryResult.failure?.message}")
+      return TraceProcessor.HeapDumpInstancesResult.getDefaultInstance()
+    }
+
+    val result = queryResult.response.getResult(0)
+    if (!result.ok) {
+      LOGGER.warn("TPD Service: Failed to get instances - ${result.failureReason} - ${result.error}")
+    }
+
+    return result.heapDumpInstancesResult
+  }
+
+  override fun getInstancesForClasses(
+    traceId: Long,
+    classNames: List<String>,
+    ideProfilerServices: IdeProfilerServices,
+  ): TraceProcessor.HeapDumpInstancesResult {
+    if (classNames.isEmpty()) return TraceProcessor.HeapDumpInstancesResult.getDefaultInstance()
+
+    val requestParams = TraceProcessor.QueryParameters.HeapDumpInstancesParameters.newBuilder().addAllClassNames(classNames).build()
+
+    val request =
+      QueryBatchRequest.newBuilder()
+        .addQuery(QueryParameters.newBuilder().setTraceId(traceId).setHeapDumpInstancesRequest(requestParams))
+        .build()
+
+    val queryResult = executeBatchQuery(traceId, request, ideProfilerServices)
+
+    if (queryResult.response == null) {
+      LOGGER.warn("TPD Service: Failed to get instances for classes - ${queryResult.failure?.message}")
+      return TraceProcessor.HeapDumpInstancesResult.getDefaultInstance()
+    }
+
+    val result = queryResult.response.getResult(0)
+    if (!result.ok) {
+      LOGGER.warn("TPD Service: Failed getInstancesForClasses query - ${result.failureReason} - ${result.error}")
+    }
+
+    return result.heapDumpInstancesResult
+  }
+
+  override fun getPrimitiveFields(
+    traceId: Long,
+    instanceIds: List<Long>,
+    ideProfilerServices: IdeProfilerServices,
+  ): TraceProcessor.GetPrimitiveFieldsResult {
+    val request =
+      QueryBatchRequest.newBuilder()
+        .addQuery(
+          QueryParameters.newBuilder()
+            .setTraceId(traceId)
+            .setGetPrimitiveFieldsRequest(QueryParameters.GetPrimitiveFieldsParameters.newBuilder().addAllInstanceIds(instanceIds))
+        )
+        .build()
+
+    val queryResult = executeBatchQuery(traceId, request, ideProfilerServices)
+
+    if (queryResult.response == null) {
+      LOGGER.warn("TPD Service: Failed to get primitive fields for ${instanceIds.size} instances - ${queryResult.failure?.message}")
+      return TraceProcessor.GetPrimitiveFieldsResult.getDefaultInstance()
+    }
+
+    val result = queryResult.response.getResult(0)
+    if (!result.ok) {
+      LOGGER.warn(
+        "TPD Service: Failed to get primitive fields for ${instanceIds.size} instances - ${result.failureReason} - ${result.error}"
+      )
+    }
+
+    return result.getPrimitiveFieldsResult
+  }
+
+  override fun getReferences(
+    traceId: Long,
+    instanceIds: List<Long>,
+    fetchForward: Boolean,
+    fetchReverse: Boolean,
+    ideProfilerServices: IdeProfilerServices,
+  ): TraceProcessor.GetReferencesResult {
+    val request =
+      QueryBatchRequest.newBuilder()
+        .addQuery(
+          QueryParameters.newBuilder()
+            .setTraceId(traceId)
+            .setGetReferencesRequest(
+              QueryParameters.GetReferencesParameters.newBuilder()
+                .addAllInstanceIds(instanceIds)
+                .setFetchForward(fetchForward)
+                .setFetchReverse(fetchReverse)
+            )
+        )
+        .build()
+
+    val queryResult = executeBatchQuery(traceId, request, ideProfilerServices)
+
+    if (queryResult.response == null) {
+      LOGGER.warn("TPD Service: Failed to get references for ${instanceIds.size} instances - ${queryResult.failure?.message}")
+      return TraceProcessor.GetReferencesResult.getDefaultInstance()
+    }
+
+    val result = queryResult.response.getResult(0)
+    if (!result.ok) {
+      LOGGER.warn("TPD Service: Failed to get references for ${instanceIds.size} instances - ${result.failureReason} - ${result.error}")
+    }
+
+    return result.getReferencesResult
+  }
+
   /** Execute {@code query} on TPD, reloading the trace if has been unloaded (e.g. TPD crashed between loading and the query request). */
   private fun executeBatchQuery(
     traceId: Long,
     query: QueryBatchRequest,
     ideProfilerServices: IdeProfilerServices,
   ): TraceProcessorDaemonQueryResult<QueryBatchResponse> {
+    val client =
+      clients[traceId]
+        ?: return TraceProcessorDaemonQueryResult(IllegalStateException("Trace $traceId needs to be loaded before querying."))
+
     var queryResult = client.queryBatchRequest(query, ideProfilerServices.featureTracker)
 
     // If we got a response from TPD, we check if TPD could execute the query correctly or if there was any error we can try to

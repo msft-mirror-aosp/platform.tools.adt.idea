@@ -94,6 +94,10 @@ object TaskBasedUxStrings {
     "Profiler recordings are not preserved across Android Studio restarts. If the task supports " +
       "exporting you can export the recording to preserve it."
 
+  // Live task running in editor banner
+  const val LIVE_TASK_RUNNING_IN_EDITOR_MESSAGE = "%s task is running in the editor"
+  const val RETURN_TO_TASK_LINK_TEXT = "Return to task ↗"
+
   // Do not show again option text
   const val DONT_SHOW_AGAIN_TITLE = "Don't show again"
 
@@ -103,11 +107,22 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_GC_ROOT = "GC Root"
   const val LEAKCANARY_OCCURRENCES_HEADER_TEXT = "Occurrences"
   const val LEAKCANARY_TOTAL_LEAKED_HEADER_TEXT = "Total leaked"
+  const val LEAKCANARY_LEAK_TYPE_HEADER_TEXT = "Leak type"
+  const val LEAKCANARY_LEAK_TYPE_APP = "App"
+  const val LEAKCANARY_LEAK_TYPE_LIBRARY = "Library"
+  const val LEAKCANARY_FILTER_SCOPE_ALL = "All"
+  const val LEAKCANARY_FILTER_SEARCH_PLACEHOLDER = "Filter by class or variable..."
+  const val LEAKCANARY_FILTER_MATCH_CASE = "Match case"
+  const val LEAKCANARY_FILTER_REGEX = "Regex"
+  const val LEAKCANARY_FILTER_TYPE = "Leak type:"
+  const val LEAKCANARY_TOOLTIP_FILTER_TYPE = "Filter by leak type"
+  const val LEAKCANARY_CONTENT_DESCRIPTION_SEARCH = "Search"
+  const val LEAKCANARY_CONTENT_DESCRIPTION_CLEAR_SEARCH = "Clear search"
+
+  const val LEAKCANARY_NO_LEAK_MATCHING_FILTER_MESSAGE = "No leaks match the current filter."
   const val LEAKCANARY_LEAK_LIST_EMPTY_INITIAL_MESSAGE =
     "Try to reproduce leaks by triggering potentially " + "leaking actions within your app while the recording is ongoing."
   const val LEAKCANARY_NO_LEAK_FOUND_MESSAGE = "No leaks found."
-  const val LEAKCANARY_MISSING_MESSAGE =
-    "LeakCanary is missing. Retry after adding the dependency: debugImplementation " + "'com.squareup.leakcanary:leakcanary-android:2.14'."
   const val LEAKCANARY_CHECKING_PRESENCE = "Checking LeakCanary presence..."
   const val TASK_HAS_DEBUGGER_ATTACHED_MESSAGE = "Cannot start the selected task while a debugger is attached to the process."
 
@@ -134,8 +149,11 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_COLLAPSE_ALL = "Collapse all nodes"
   const val LEAKCANARY_EXPAND_ALL_SHORTCUT = "Ctrl+NumPad+"
   const val LEAKCANARY_COLLAPSE_ALL_SHORTCUT = "Ctrl+NumPad-"
-  const val LEAKCANARY_FIX_WITH_AGENT = "Fix with Agent"
   const val LEAKCANARY_COPY_TO_CLIPBOARD = "Copy trace to clipboard"
+  const val LEAKCANARY_UPVOTE_INSIGHT = "Upvote Insight"
+  const val LEAKCANARY_DOWNVOTE_INSIGHT = "Downvote Insight"
+  const val LEAKCANARY_COPY_INSIGHT = "Copy Insight"
+  const val LEAKCANARY_REGENERATE_INSIGHT = "Regenerate Insight"
   const val LEAKCANARY_ANALYSIS = "Analyzing results:"
   const val LEAKCANARY_WAITING_HEAP_DUMP = "Waiting to dump heap until"
   const val LEAKCANARY_RETAINED_OBJECT = "retained object"

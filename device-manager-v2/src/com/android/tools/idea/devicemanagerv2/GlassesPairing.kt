@@ -15,15 +15,25 @@
  */
 package com.android.tools.idea.devicemanagerv2
 
+import com.android.sdklib.deviceprovisioner.DeviceHandle
+import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.tools.adtui.actions.componentToRestoreFocusTo
 import com.android.tools.idea.deviceprovisioner.GlassesInteractivePairableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.deviceHandle
 import com.android.tools.idea.deviceprovisioner.launchCatchingDeviceActionException
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.wearpairing.WearPairingManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /** Launches the Glasses Pairing wizard. */
 class PairGlassesAction : DumbAwareAction("Pair Glasses") {
@@ -32,7 +42,11 @@ class PairGlassesAction : DumbAwareAction("Pair Glasses") {
   override fun update(e: AnActionEvent) {
     if (StudioFlags.AI_GLASSES_PHONE_EMULATOR_PAIRING_WIZARD_ENABLED.get()) {
       val handle = e.deviceHandle() as? GlassesInteractivePairableDeviceHandle
-      if (handle?.state?.properties?.deviceType == DeviceType.AI_GLASSES && handle.state.properties.pairedPhoneId == null) {
+      val properties = handle?.state?.properties
+      val isGlasses = properties?.deviceType == DeviceType.AI_GLASSES && properties.pairedPhoneId == null
+      val isCompatiblePhone =
+        properties?.deviceType == DeviceType.HANDHELD && (properties as? LocalEmulatorProperties)?.isAiGlassesCompatible == true
+      if (handle != null && (isGlasses || isCompatiblePhone)) {
         e.presentation.isVisible = true
         e.presentation.isEnabled = handle.isPairGlassesEnabled()
         return
@@ -70,5 +84,45 @@ class UnpairGlassesAction : DumbAwareAction("Unpair Glasses") {
     val deviceHandle = e.deviceHandle() as? GlassesInteractivePairableDeviceHandle ?: return
 
     deviceHandle.launchCatchingDeviceActionException(project = e.project) { deviceHandle.unpairGlasses(e.componentToRestoreFocusTo()) }
+  }
+}
+
+private fun createPairingStatus(pairedId: DeviceId, allDevices: List<DeviceHandle>): PairingStatus {
+  val pairedHandle = allDevices.find { it.id == pairedId }
+  val isOnline = pairedHandle?.state?.isOnline() == true
+  return PairingStatus(
+    id = pairedId.toString(),
+    displayName = pairedHandle?.state?.properties?.title ?: "Unknown Device",
+    state = if (isOnline) WearPairingManager.PairingState.CONNECTED else WearPairingManager.PairingState.OFFLINE,
+  )
+}
+
+private fun DeviceHandle.getGlassesPairings(allDevices: List<DeviceHandle>): List<PairingStatus> {
+  val props = state.properties
+  return when (props.deviceType) {
+    DeviceType.AI_GLASSES -> {
+      props.pairedPhoneId?.let { phoneId -> listOf(createPairingStatus(phoneId, allDevices)) } ?: emptyList()
+    }
+    DeviceType.HANDHELD -> {
+      val phoneId = id
+      val directPairings = props.pairedGlassesInfos.map { glassesInfo -> createPairingStatus(glassesInfo.id, allDevices) }
+      val indirectPairings =
+        allDevices
+          .filter { it.state.properties.deviceType == DeviceType.AI_GLASSES && it.state.properties.pairedPhoneId == phoneId }
+          .map { glasses -> createPairingStatus(glasses.id, allDevices) }
+      (directPairings + indirectPairings).distinctBy { it.id }
+    }
+    else -> emptyList()
+  }
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+internal fun Flow<List<DeviceHandle>>.glassesPairedDevicesFlow(): Flow<Map<String, List<PairingStatus>>> = flatMapLatest { allDevices ->
+  if (allDevices.isEmpty()) {
+    flowOf(emptyMap())
+  } else {
+    combine(allDevices.map { it.stateFlow }) { _ ->
+      allDevices.associate { device -> device.id.toString() to device.getGlassesPairings(allDevices) }.filterValues { it.isNotEmpty() }
+    }
   }
 }

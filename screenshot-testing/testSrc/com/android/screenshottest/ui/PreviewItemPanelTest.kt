@@ -21,9 +21,11 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import java.awt.Container
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -90,6 +92,91 @@ class PreviewItemPanelTest {
     assertNotNull("Match prefix label 'Match: ' should exist", matchTextLabel)
     assertNotNull("Match percentage label '99.00%' should exist", percentageLabel)
     assertNotNull("Name label 'MyPreview' should exist", nameLabel)
+  }
+
+  @Test
+  fun verifyDetailsLabels_whenNoReferenceImage_displaysNewTag() = runInEdtAndWait {
+    val details =
+      PreviewDetails(
+        testId = "test.id",
+        className = "TestClass",
+        methodName = "testMethod",
+        previewName = "MyPreview",
+        testResult = AndroidTestCaseResult.FAILED,
+        destImagePath = null,
+        diffPercent = null,
+      )
+    val panel = PreviewItemPanel(details, projectRule.project, showDetails = true)
+
+    val labels = findAllLabels(panel)
+
+    val matchTextLabel = labels.find { it.text == "Match: " }
+    val newTagLabel = labels.find { it.text == "New" }
+    val nameLabel = labels.find { it.text == "MyPreview" }
+
+    assertNull("Match prefix label 'Match: ' should not exist for new screenshot", matchTextLabel)
+    assertNotNull("New tag label 'New' should exist", newTagLabel)
+    assertEquals(JBColor.GREEN.darker(), newTagLabel?.foreground)
+    assertNotNull("Name label 'MyPreview' should exist", nameLabel)
+  }
+
+  @Test
+  fun verifyDetailsLabels_whenNonExistentDestImagePath_displaysNewTag() = runInEdtAndWait {
+    val details =
+      PreviewDetails(
+        testId = "test.id",
+        className = "TestClass",
+        methodName = "testMethod",
+        previewName = "MyPreview",
+        testResult = AndroidTestCaseResult.FAILED,
+        destImagePath = "non_existent_ref.png",
+        diffPercent = null,
+      )
+    val panel = PreviewItemPanel(details, projectRule.project, showDetails = true)
+
+    val labels = findAllLabels(panel)
+
+    val matchTextLabel = labels.find { it.text == "Match: " }
+    val newTagLabel = labels.find { it.text == "New" }
+
+    assertNull("Match prefix label 'Match: ' should not exist for new screenshot", matchTextLabel)
+    assertNotNull("New tag label 'New' should exist", newTagLabel)
+    assertEquals(JBColor.GREEN.darker(), newTagLabel?.foreground)
+  }
+
+  @Test
+  fun testUpdateData_toNewPreview_updatesToNewTag() = runInEdtAndWait {
+    val refFile = temporaryFolder.newFile("ref.png")
+    val details1 =
+      PreviewDetails(
+        testId = "id1",
+        className = "Class1",
+        methodName = "method1",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.FAILED,
+        destImagePath = refFile.absolutePath,
+        diffPercent = "0.05",
+      )
+    val panel = PreviewItemPanel(details1, projectRule.project)
+
+    val details2 =
+      PreviewDetails(
+        testId = "id2",
+        className = "Class2",
+        methodName = "method2",
+        previewName = "preview2",
+        testResult = AndroidTestCaseResult.FAILED,
+        destImagePath = null,
+        diffPercent = null,
+      )
+
+    panel.updateData(details2, ScreenshotViewType.NEW)
+
+    val labels = findAllLabels(panel)
+    assertNull(labels.find { it.text == "Match: " })
+    val newTagLabel = labels.find { it.text == "New" }
+    assertNotNull(newTagLabel)
+    assertEquals(JBColor.GREEN.darker(), newTagLabel?.foreground)
   }
 
   @Test
@@ -291,10 +378,22 @@ class PreviewItemPanelTest {
     var callbackCount = 0
     val executor = MoreExecutors.newDirectExecutorService()
     val path = temporaryFolder.newFile("image.png").absolutePath
-    val details = PreviewDetails(testId = "id", className = "Class", methodName = "m", previewName = "p", srcImagePath = path)
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "Class",
+        methodName = "m",
+        previewName = "p",
+        srcImagePath = path,
+      )
 
     val panel =
-      PreviewItemPanel(previewData = details, project = projectRule.project, appExecutorService = executor, createImageIcon = { mock() })
+      PreviewItemPanel(
+        previewData = details,
+        project = projectRule.project,
+        appExecutorService = executor,
+        createImageIcon = { mock() },
+      )
 
     panel.updateData(details, ScreenshotViewType.NEW) { callbackCount++ }
 
@@ -334,7 +433,10 @@ class PreviewItemPanelTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     assertEquals("Should load image the first time", 1, imageCreationCount)
     assertTrue("Flag should be true after successful load", panel.isLoadedSuccessfully)
-    assertNull("The placeholder label should be removed when an image is displayed", findLabel(panel))
+    assertNull(
+      "The placeholder label should be removed when an image is displayed",
+      findLabel(panel),
+    )
 
     // 2. Switch to Diff (which shows a placeholder for PASSED tests)
     panel.showImageForView(ScreenshotViewType.DIFF)
@@ -421,6 +523,73 @@ class PreviewItemPanelTest {
     val label = findLabel(panel)
     assertNotNull("Placeholder should be updated immediately upon panel reuse", label)
     assertEquals("No Difference", label?.text)
+  }
+
+  @Test
+  fun verifyOnImageLoadedInvokedWhenPanelReused() = runInEdtAndWait {
+    var callbackCount = 0
+    val path1 = temporaryFolder.newFile("image1.png").absolutePath
+    val path2 = temporaryFolder.newFile("image2.png").absolutePath
+
+    val details1 =
+      PreviewDetails(
+        testId = "id1",
+        className = "TestClass",
+        methodName = "testMethod1",
+        previewName = "preview1",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = path1,
+      )
+
+    val panel =
+      PreviewItemPanel(
+        previewData = details1,
+        project = projectRule.project,
+        appExecutorService = MoreExecutors.newDirectExecutorService(),
+        createImageIcon = { mock() },
+      )
+
+    // First request initiates loading
+    panel.loadImage(path1, "id1") { callbackCount++ }
+
+    // Simulate panel reuse before EDT invokeLater runs for path1:
+    // Calling loadImage with path2 updates currentImagePath and currentTestId
+    panel.loadImage(path2, "id2") { callbackCount++ }
+
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Callbacks should be invoked for both requests to allow parent repaint", 2, callbackCount)
+  }
+
+  @Test
+  fun verifyCorruptedImageFailsSafelyAndShowsError() = runInEdtAndWait {
+    val corruptFile = temporaryFolder.newFile("corrupt.png")
+    corruptFile.writeText("not a valid image content")
+
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "TestClass",
+        methodName = "testMethod",
+        previewName = "preview",
+        testResult = AndroidTestCaseResult.PASSED,
+        srcImagePath = corruptFile.absolutePath,
+      )
+    val panel =
+      PreviewItemPanel(
+        previewData = details,
+        project = projectRule.project,
+        showDetails = false,
+        appExecutorService = MoreExecutors.newDirectExecutorService(),
+      )
+
+    var callbackInvoked = false
+    panel.loadImage(corruptFile.absolutePath, "id") { callbackInvoked = true }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertTrue("Callback should be invoked on failure to allow repaint", callbackInvoked)
+    assertFalse("Corrupted image should fail to load", panel.isLoadedSuccessfully)
+    val label = findLabel(panel)
+    assertEquals("Couldn't load image", label?.text)
   }
 
   private fun findLabel(container: Container): JBLabel? {

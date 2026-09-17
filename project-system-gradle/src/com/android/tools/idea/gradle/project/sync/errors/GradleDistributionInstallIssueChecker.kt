@@ -23,11 +23,13 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent.GradleSyncFailur
 import com.intellij.build.FilePosition
 import com.intellij.build.events.BuildEvent
 import com.intellij.build.issue.BuildIssue
+import com.intellij.openapi.util.io.toCanonicalPath
+import java.net.ConnectException
+import java.net.UnknownHostException
 import java.util.function.Consumer
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
 import org.jetbrains.plugins.gradle.issue.quickfix.GradleWrapperSettingsOpenQuickFix
-import org.jetbrains.plugins.gradle.service.execution.GradleExecutionErrorHandler
 
 @JvmField val COULD_NOT_INSTALL_GRADLE_DISTRIBUTION_PREFIX = "Could not install Gradle distribution from "
 
@@ -35,22 +37,26 @@ class GradleDistributionInstallIssueChecker : GradleIssueChecker {
 
   override fun check(issueData: GradleIssueData): BuildIssue? {
     val message =
-      issueData.error.findCauseMessage { message?.startsWith(COULD_NOT_INSTALL_GRADLE_DISTRIBUTION_PREFIX) == true } ?: return null
+      issueData.failure.findCauseMessage { message?.startsWith(COULD_NOT_INSTALL_GRADLE_DISTRIBUTION_PREFIX) == true } ?: return null
 
     // Log metrics.
-    SyncFailureUsageReporter.getInstance().collectFailure(issueData.projectPath, GradleSyncFailure.GRADLE_DISTRIBUTION_INSTALL_ERROR)
+    SyncFailureUsageReporter.getInstance()
+      .collectFailure(issueData.projectRoot.toCanonicalPath(), GradleSyncFailure.GRADLE_DISTRIBUTION_INSTALL_ERROR)
 
     val buildIssueComposer = BuildIssueComposer(message)
-    val rootCause = GradleExecutionErrorHandler.getRootCauseAndLocation(issueData.error).first
-    if (issueData.error != rootCause) {
-      buildIssueComposer.addDescriptionOnNewLine("Reason: $rootCause")
+    val rootCause = issueData.failure.rootCause
+    val rootCauseClassName = rootCause.className ?: return null
+    if (issueData.failure != rootCause) {
+      buildIssueComposer.addDescriptionOnNewLine("Reason: ${rootCause.className}: ${rootCause.message}")
       buildIssueComposer.startNewParagraph()
-      if (rootCause is java.net.UnknownHostException || rootCause is java.net.ConnectException) {
+      if (
+        rootCauseClassName.contains(UnknownHostException::class.java.name) || rootCauseClassName.contains(ConnectException::class.java.name)
+      ) {
         buildIssueComposer.addQuickFix(
           "Please ensure ",
           "gradle distribution url",
           " is correct.",
-          GradleWrapperSettingsOpenQuickFix(issueData.projectPath, "distributionUrl"),
+          GradleWrapperSettingsOpenQuickFix(issueData.projectRoot.toCanonicalPath(), "distributionUrl"),
         )
         buildIssueComposer.addQuickFix(
           "If you are behind an HTTP proxy, please ",
@@ -60,7 +66,8 @@ class GradleDistributionInstallIssueChecker : GradleIssueChecker {
         )
       }
       if (
-        rootCause is java.lang.RuntimeException && rootCause.message?.startsWith("Could not create parent directory for lock file") == true
+        rootCauseClassName.contains(RuntimeException::class.java.name) &&
+          rootCause.message?.startsWith("Could not create parent directory for lock file") == true
       ) {
         buildIssueComposer.addDescriptionOnNewLine(
           """
@@ -71,7 +78,10 @@ class GradleDistributionInstallIssueChecker : GradleIssueChecker {
         )
         buildIssueComposer.startNewParagraph()
         buildIssueComposer.addQuickFix("Open Gradle Settings", UnsupportedGradleVersionIssueChecker.OpenGradleSettingsQuickFix())
-        buildIssueComposer.addQuickFix("Open Gradle wrapper settings", GradleWrapperSettingsOpenQuickFix(issueData.projectPath, null))
+        buildIssueComposer.addQuickFix(
+          "Open Gradle wrapper settings",
+          GradleWrapperSettingsOpenQuickFix(issueData.projectRoot.toCanonicalPath(), null),
+        )
       }
     }
 

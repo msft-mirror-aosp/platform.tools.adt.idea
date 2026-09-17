@@ -151,11 +151,6 @@ class SnapshotActionTest {
 
         override fun createFileChooser(descriptor: FileChooserDescriptor, project: Project?, parent: Component?): FileChooserDialog {
           return object : FileChooserDialog {
-            @Deprecated("Deprecated in Java")
-            override fun choose(toSelect: VirtualFile?, project: Project?): Array<VirtualFile> {
-              error("not implemented")
-            }
-
             override fun choose(project: Project?, vararg toSelect: VirtualFile?): Array<VirtualFile> {
               return arrayOf(fileToReturn!!.virtualFile!!)
             }

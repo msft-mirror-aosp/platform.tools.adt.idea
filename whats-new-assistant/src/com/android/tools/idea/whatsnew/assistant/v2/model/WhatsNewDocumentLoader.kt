@@ -17,21 +17,51 @@ package com.android.tools.idea.whatsnew.assistant.v2.model
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.repository.Revision
+import com.intellij.openapi.application.ApplicationInfo
+import com.intellij.openapi.diagnostic.thisLogger
+import java.io.InputStream
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** @property assetId Arbitrary identifier used for fast equals/hashCode in recomposition. */
+data class WhatsNewAssets(val assetId: String = "empty") {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as WhatsNewAssets
+
+    return assetId == other.assetId
+  }
+
+  override fun hashCode(): Int {
+    return assetId.hashCode()
+  }
+}
+
 /** Loads the list of [WhatsNewMarkdownDocument] to be displayed by the "What's New" window. */
 interface WhatsNewDocumentLoader {
   suspend fun loadDocuments(): List<WhatsNewMarkdownDocument>
+
+  suspend fun loadAssets(): WhatsNewAssets
 }
 
-internal class WhatsNewDocumentLoaderImpl : WhatsNewDocumentLoader {
+class WhatsNewDocumentLoaderImpl(
+  private val currentVersionSupplier: () -> Revision = {
+    runCatching { Revision.safeParseRevision(ApplicationInfo.getInstance().strictVersion) }.getOrDefault(Revision.NOT_SPECIFIED)
+  },
+  private val zipStreamSupplier: () -> InputStream? = {
+    WhatsNewDocumentLoaderImpl::class.java.getResourceAsStream("/whats-new.zip")
+  },
+) : WhatsNewDocumentLoader {
+
   override suspend fun loadDocuments(): List<WhatsNewMarkdownDocument> {
+    val currentVersion = currentVersionSupplier()
     return withContext(Dispatchers.IO) {
       val documents = mutableListOf<Pair<Revision, String>>()
 
-      val zipStream = this@WhatsNewDocumentLoaderImpl.javaClass.getResourceAsStream("/whats-new.zip")
+      val zipStream = zipStreamSupplier()
 
       zipStream?.use { stream ->
         ZipInputStream(stream).use { zipStream ->
@@ -42,9 +72,16 @@ internal class WhatsNewDocumentLoaderImpl : WhatsNewDocumentLoader {
             if (fileName.endsWith(".md")) {
               val revisionStr = fileName.substringAfterLast('/').substringBeforeLast('.')
               val revision = runCatching { Revision.parseRevision(revisionStr) }.getOrNull()
-              if (revision != null) {
+              // Since canaries and RCs have versions like 2026.2.1rc3, the normal comparison treats 2026.2.1 as newer. But the WNA content
+              // should still be displayed up to the same micro, so we ignore preview here
+              if (
+                revision != null &&
+                  (currentVersion == Revision.NOT_SPECIFIED || revision.compareTo(currentVersion, Revision.PreviewComparison.IGNORE) <= 0)
+              ) {
                 val content = zipStream.readBytes().toString(Charsets.UTF_8)
                 documents.add(Pair(revision, content))
+              } else {
+                thisLogger().info("Skipping $fileName because revision: $revision; currentVersion: $currentVersion")
               }
             }
           }
@@ -53,6 +90,10 @@ internal class WhatsNewDocumentLoaderImpl : WhatsNewDocumentLoader {
 
       documents.sortedByDescending { (revision, _) -> revision }.map { (revision, content) -> loadMarkdownDocument(revision, content) }
     }
+  }
+
+  override suspend fun loadAssets(): WhatsNewAssets {
+    return WhatsNewAssets("loaded")
   }
 
   @WorkerThread

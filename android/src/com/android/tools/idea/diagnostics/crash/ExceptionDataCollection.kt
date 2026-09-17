@@ -268,12 +268,11 @@ class ExceptionDataCollection {
     val handlers = rootLogger.handlers
     // If console or dialog appender level is set to lower than root logger then we cannot register our exception collection appender.
     // Any debug log enabled for exception collection would be added
-    val allHandlersAllowed =
-      handlers.all { handler ->
-        (handler is ConsoleHandler && (handler.level == null || handler.level.isGreaterThanOrEqual(rootLoggerLevel))) ||
-          (handler is FileHandler) ||
-          (handler is DialogAppender && (handler.level == null || handler.level.isGreaterThanOrEqual(rootLoggerLevel)))
-      }
+    val allHandlersAllowed = handlers.all { handler ->
+      (handler is ConsoleHandler && (handler.level == null || handler.level.isGreaterThanOrEqual(rootLoggerLevel))) ||
+        (handler is FileHandler) ||
+        (handler is DialogAppender && (handler.level == null || handler.level.isGreaterThanOrEqual(rootLoggerLevel)))
+    }
     if (!allHandlersAllowed) {
       LOG.info("Cannot register appenders: unknown appender on root logger or threshold already specified on appenders.")
       return false
@@ -294,7 +293,7 @@ class ExceptionDataCollection {
       val includeMessage =
         configs.values.any { it.action.includeExceptionMessage } ||
           forceExceptionMessage ||
-          THROWABLE_CLASSES_TO_TRACK_MESSAGES.stream().anyMatch { it.isInstance(t) }
+          THROWABLE_CLASSES_TO_TRACK_MESSAGES.any { it.isInstance(cause) }
       val includeFullStack = configs.values.any { it.action.includeFullStack }
       val logs =
         if (includeLogs) configs.mapValues { logCache.getLogAndClearFor(it.key) }.filterValues { it.isNotEmpty() }.toSortedMap()

@@ -16,17 +16,17 @@
 package com.google.idea.blaze.qsync
 
 import com.google.common.base.Suppliers
-import com.google.common.collect.ImmutableSet
 import com.google.common.truth.Truth
-import com.google.idea.blaze.common.vcs.VcsState
-import com.google.idea.blaze.common.vcs.WorkspaceFileChange
+import com.google.idea.blaze.common.Label
+import com.google.idea.blaze.qsync.project.BuildPackage
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
+import com.google.idea.blaze.qsync.project.ProjectStructureData
+import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
-import com.google.idea.blaze.qsync.query.Query
 import com.google.idea.blaze.qsync.query.QuerySpec
 import com.google.idea.blaze.qsync.query.QuerySummary
-import com.google.idea.blaze.qsync.query.QuerySummaryImpl.Companion.create
+import com.google.idea.blaze.qsync.query.QuerySummaryImpl
 import com.google.idea.blaze.qsync.query.QuerySummaryTestUtil
 import java.nio.file.Path
 import java.util.Optional
@@ -37,280 +37,120 @@ import org.junit.runners.JUnit4
 @RunWith(JUnit4::class)
 class ProjectRefresherTest {
   private fun createRefresher(existingSnapshot: QuerySyncProjectSnapshot? = QuerySyncProjectSnapshot.EMPTY): ProjectRefresher {
-    return createRefresher(QuerySyncTestUtils.noFilesChangedDiffer(), existingSnapshot)
-  }
-
-  private fun createRefresher(
-    vcsDiffer: VcsStateDiffer?,
-    existingSnapshot: QuerySyncProjectSnapshot? = QuerySyncProjectSnapshot.EMPTY,
-  ): ProjectRefresher {
     return ProjectRefresher(
-      vcsDiffer,
       Path.of("/"),
       QuerySpec.QueryStrategy.PLAIN,
       Suppliers.ofInstance(Optional.ofNullable(existingSnapshot)),
     )
   }
 
+  private val projectDef =
+    ProjectDefinition(
+      projectIncludes = setOf(Path.of("package")),
+      projectExcludes = emptySet(),
+      deriveTargetsFromDirectories = false,
+      targetPatterns = emptyList(),
+      isAndroidWorkspace = false,
+      languageClasses = setOf(QuerySyncLanguage.JVM),
+      testSources = emptySet(),
+      systemExcludes = emptySet(),
+    )
+
   @Test
   @Throws(Exception::class)
-  fun testStartPartialRefresh_pluginVersionChanged() {
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setVcsState(Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())))
-        .setQuerySummary(create(Query.Summary.newBuilder().setVersion(-1).build()))
-        .build()
-
+  fun testStartPartialRefresh_requireFullSync() {
+    val project = PostQuerySyncData.EMPTY
     val update =
       createRefresher()
         .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = ProjectDefinition.EMPTY,
+            projectStructureData = ProjectStructureData.EMPTY,
+            requestedPackages = emptySet(),
+            requireFullSync = { true },
+          ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          project.vcsState(),
-          project.bazelVersion(),
-          ProjectDefinition.EMPTY,
         )
     Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
   }
 
   @Test
   @Throws(Exception::class)
-  fun testStartPartialRefresh_vcsSnapshotUnchanged_existingProjectSnapshotWithVcsState() {
-    val vcsState = VcsState("workspaceId", "1", ImmutableSet.of(), Optional.of(Path.of("/my/workspace/.snapshot/1")))
-    val project: PostQuerySyncData =
-      PostQuerySyncData.EMPTY.toBuilder().setVcsState(Optional.of(vcsState)).setQuerySummary(QuerySummary.EMPTY).build()
+  fun testStartPartialRefresh_noChanges() {
+    val project: PostQuerySyncData = PostQuerySyncData.EMPTY
     val existingProject = QuerySyncProjectSnapshot.EMPTY
     val update =
-      createRefresher(QuerySyncTestUtils.NO_CHANGES_DIFFER)
+      createRefresher(existingProject)
         .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = ProjectDefinition.EMPTY,
+            projectStructureData = ProjectStructureData.EMPTY,
+            requestedPackages = emptySet(),
+            requireFullSync = { false },
+          ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          project.vcsState(),
-          project.bazelVersion(),
-          ProjectDefinition.EMPTY,
         )
     Truth.assertThat(update).isInstanceOf(NoopProjectRefresh::class.java)
-    Truth.assertThat(update.createPostQuerySyncData(QuerySummary.EMPTY))
-      .isEqualTo(existingProject.queryData.toBuilder().setVcsState(Optional.of(vcsState)).build())
+    Truth.assertThat(update.createPostQuerySyncData(QuerySummary.EMPTY)).isEqualTo(existingProject.queryData)
   }
 
   @Test
   @Throws(Exception::class)
-  fun testStartPartialRefresh_vcsSnapshotUnchanged_noExistingProjectSnapshot() {
-    val project: PostQuerySyncData =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setVcsState(Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.of(Path.of("/my/workspace/.snapshot/1")))))
-        .setQuerySummary(QuerySummary.EMPTY)
-        .build()
+  fun testStartPartialRefresh_noChanges_noExistingProjectSnapshot() {
+    val project = PostQuerySyncData.EMPTY
     val update =
       createRefresher(existingSnapshot = null)
         .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = ProjectDefinition.EMPTY,
+            projectStructureData = ProjectStructureData.EMPTY,
+            requestedPackages = emptySet(),
+            requireFullSync = { false },
+          ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          project.vcsState(),
-          project.bazelVersion(),
-          ProjectDefinition.EMPTY,
         )
-    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun testStartPartialRefresh_workspaceChange() {
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder().setVcsState(Optional.of(VcsState("workspace1", "1", ImmutableSet.of(), Optional.empty()))).build()
-
-    val update =
-      createRefresher()
-        .startPartialRefresh(
-          QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspace2", "1", ImmutableSet.of(), Optional.empty())),
-          project.bazelVersion(),
-          ProjectDefinition.EMPTY,
-        )
-    Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun testStartPartialRefresh_upstreamRevisionChange() {
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setVcsState(Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())))
-        .build()
-
-    val update =
-      createRefresher()
-        .startPartialRefresh(
-          QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspaceId", "2", ImmutableSet.of(), Optional.empty())),
-          project.bazelVersion(),
-          ProjectDefinition.EMPTY,
-        )
-    Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun testStartPartialRefresh_bazelVersionChanged() {
-    val projectDef =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("package")),
-        projectExcludes = emptySet(),
-        deriveTargetsFromDirectories = false,
-        targetPatterns = emptyList(),
-        isAndroidWorkspace = false,
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-        testSources = emptySet(),
-        systemExcludes = emptySet(),
-      )
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
-        .setVcsState(
-          Optional.of(
-            VcsState(
-              "workspaceId",
-              "1",
-              ImmutableSet.of(WorkspaceFileChange(WorkspaceFileChange.Operation.MODIFY, Path.of("package/path/BUILD"))),
-              Optional.empty(),
-            )
-          )
-        )
-        .setBazelVersion(Optional.of("1.0.0"))
-        .build()
-
-    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
-    val update =
-      createRefresher(VcsStateDiffer.NONE, existingSnapshot)
-        .startPartialRefresh(QuerySyncTestUtils.LOGGING_CONTEXT, project, project.vcsState(), Optional.of("2.0.0"), projectDef)
-
-    Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun testStartPartialRefresh_buildFileAddedThenReverted() {
-    val projectDef =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("package")),
-        projectExcludes = emptySet(),
-        deriveTargetsFromDirectories = false,
-        targetPatterns = emptyList(),
-        isAndroidWorkspace = false,
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-        testSources = emptySet(),
-        systemExcludes = emptySet(),
-      )
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
-        .setVcsState(
-          Optional.of(
-            VcsState(
-              "workspaceId",
-              "1",
-              ImmutableSet.of(WorkspaceFileChange(WorkspaceFileChange.Operation.ADD, Path.of("package/path/BUILD"))),
-              Optional.empty(),
-            )
-          )
-        )
-        .build()
-
-    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
-    val update =
-      createRefresher(VcsStateDiffer.NONE, existingSnapshot)
-        .startPartialRefresh(
-          QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())),
-          project.bazelVersion(),
-          projectDef,
-        )
-
     Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
     val partialQuery = update as PartialProjectRefresh
-    Truth.assertThat(partialQuery.deletedPackages).containsExactly(Path.of("package/path"))
+    Truth.assertThat(partialQuery.deletedPackages).isEmpty()
     Truth.assertThat(partialQuery.modifiedPackages).isEmpty()
   }
 
   @Test
   @Throws(Exception::class)
-  fun testStartPartialRefresh_buildFileDeletedThenReverted() {
-    val projectDef =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("package")),
-        projectExcludes = emptySet(),
-        deriveTargetsFromDirectories = false,
-        targetPatterns = emptyList(),
-        isAndroidWorkspace = false,
-        systemExcludes = emptySet(),
-        testSources = emptySet(),
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-      )
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setVcsState(
-          Optional.of(
-            VcsState(
-              "workspaceId",
-              "1",
-              ImmutableSet.of(WorkspaceFileChange(WorkspaceFileChange.Operation.DELETE, Path.of("package/path/BUILD"))),
-              Optional.empty(),
-            )
+  fun testStartPartialRefresh_packageModified() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule")).buildPackages)
+        .putPackageStamp(Label.of("//package/path:path"), 1L)
+        .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/path") to BuildPackage(Path.of("package/path"), emptyList(), stamp = 2L)),
           )
-        )
-        .build()
-
-    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
-    val update =
-      createRefresher(VcsStateDiffer.NONE, existingSnapshot)
-        .startPartialRefresh(
-          QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())),
-          project.bazelVersion(),
-          projectDef,
-        )
-
-    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
-    val partialQuery = update as PartialProjectRefresh
-    Truth.assertThat(partialQuery.deletedPackages).isEmpty()
-    Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/path"))
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun testStartPartialRefresh_buildFileModified() {
-    val workingSet = ImmutableSet.of(WorkspaceFileChange(WorkspaceFileChange.Operation.MODIFY, Path.of("package/path/BUILD")))
-    val projectDef =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("package")),
-        projectExcludes = emptySet(),
-        deriveTargetsFromDirectories = false,
-        targetPatterns = emptyList(),
-        isAndroidWorkspace = false,
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-        testSources = emptySet(),
-        systemExcludes = emptySet(),
+        ),
+        setOf(QuerySyncLanguage.JVM),
       )
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
-        .setVcsState(Optional.of(VcsState("workspaceId", "1", workingSet, Optional.empty())))
-        .build()
 
     val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
     val update =
-      createRefresher(QuerySyncTestUtils.differForFiles(Path.of("package/path/BUILD")), existingSnapshot)
+      createRefresher(existingSnapshot)
         .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("package/path")),
+            requireFullSync = { false },
+          ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspaceId", "1", workingSet, Optional.empty())),
-          project.bazelVersion(),
-          projectDef,
         )
 
     Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
@@ -321,38 +161,202 @@ class ProjectRefresherTest {
 
   @Test
   @Throws(Exception::class)
-  fun testStartPartialRefresh_buildFileInWorkingSet_unmodified() {
-    val workingSet =
-      ImmutableSet.of(
-        WorkspaceFileChange(WorkspaceFileChange.Operation.MODIFY, Path.of("package/path/BUILD")),
-        WorkspaceFileChange(WorkspaceFileChange.Operation.MODIFY, Path.of("package/path/Class.java")),
+  fun testStartPartialRefresh_packageAdded() {
+    val project = PostQuerySyncData.EMPTY
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/newpkg") to BuildPackage(Path.of("package/newpkg"), emptyList(), stamp = 100L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
       )
-    val projectDef =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("package")),
-        projectExcludes = emptySet(),
-        deriveTargetsFromDirectories = false,
-        targetPatterns = emptyList(),
-        isAndroidWorkspace = false,
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-        testSources = emptySet(),
-        systemExcludes = emptySet(),
-      )
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
-        .setVcsState(Optional.of(VcsState("workspaceId", "1", workingSet, Optional.empty())))
-        .build()
 
     val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
     val update =
-      createRefresher(QuerySyncTestUtils.differForFiles(Path.of("package/path/Class.java")), existingSnapshot)
+      createRefresher(existingSnapshot)
         .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("package/newpkg")),
+            requireFullSync = { false },
+          ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspaceId", "1", workingSet, Optional.empty())),
-          project.bazelVersion(),
-          projectDef,
+        )
+
+    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
+    val partialQuery = update as PartialProjectRefresh
+    Truth.assertThat(partialQuery.deletedPackages).isEmpty()
+    Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/newpkg"))
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_packageAdded_withParentPackage() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/parent:rule")).buildPackages)
+        .putPackageStamp(Label.of("//package/parent:parent"), 50L)
+        .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(
+              Path.of("package/parent") to BuildPackage(Path.of("package/parent"), emptyList(), stamp = 50L),
+              Path.of("package/parent/child") to BuildPackage(Path.of("package/parent/child"), emptyList(), stamp = 100L),
+            ),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
+    val update =
+      createRefresher(existingSnapshot)
+        .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("package/parent/child")),
+            requireFullSync = { false },
+          ),
+          QuerySyncTestUtils.LOGGING_CONTEXT,
+        )
+
+    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
+    val partialQuery = update as PartialProjectRefresh
+    Truth.assertThat(partialQuery.deletedPackages).isEmpty()
+    Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/parent/child"), Path.of("package/parent"))
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_packageDeleted() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/deleted:rule")).buildPackages)
+        .putPackageStamp(Label.of("//package/deleted:deleted"), 100L)
+        .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            emptyMap(),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
+    val update =
+      createRefresher(existingSnapshot)
+        .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = emptySet(),
+            requireFullSync = { false },
+          ),
+          QuerySyncTestUtils.LOGGING_CONTEXT,
+        )
+
+    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
+    val partialQuery = update as PartialProjectRefresh
+    Truth.assertThat(partialQuery.deletedPackages).containsExactly(Path.of("package/deleted"))
+    Truth.assertThat(partialQuery.modifiedPackages).isEmpty()
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_packagesModifiedAndDeleted() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(
+          QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/mod:rule", "//package/del:rule")).buildPackages
+        )
+        .putPackageStamp(Label.of("//package/mod:mod"), 100L)
+        .putPackageStamp(Label.of("//package/del:del"), 100L)
+        .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/mod") to BuildPackage(Path.of("package/mod"), emptyList(), stamp = 200L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
+    val update =
+      createRefresher(existingSnapshot)
+        .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("package/mod")),
+            requireFullSync = { false },
+          ),
+          QuerySyncTestUtils.LOGGING_CONTEXT,
+        )
+
+    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
+    val partialQuery = update as PartialProjectRefresh
+    Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/mod"))
+    Truth.assertThat(partialQuery.deletedPackages).containsExactly(Path.of("package/del"))
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_packageOutsideProjectScope_ignored() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//other/package:rule")).buildPackages)
+        .putPackageStamp(Label.of("//other/package:package"), 100L)
+        .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("other"),
+            emptyMap(),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
+    val update =
+      createRefresher(existingSnapshot)
+        .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("other/package")),
+            requireFullSync = { false },
+          ),
+          QuerySyncTestUtils.LOGGING_CONTEXT,
         )
 
     Truth.assertThat(update).isInstanceOf(NoopProjectRefresh::class.java)
@@ -360,47 +364,83 @@ class ProjectRefresherTest {
 
   @Test
   @Throws(Exception::class)
-  fun testStartPartialRefresh_buildFileModifiedThenReverted() {
-    val projectDef =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("package")),
-        projectExcludes = emptySet(),
-        deriveTargetsFromDirectories = false,
-        targetPatterns = emptyList(),
-        isAndroidWorkspace = false,
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-        testSources = emptySet(),
-        systemExcludes = emptySet(),
-      )
-    val project =
-      PostQuerySyncData.EMPTY.toBuilder()
-        .setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
-        .setVcsState(
-          Optional.of(
-            VcsState(
-              "workspaceId",
-              "1",
-              ImmutableSet.of(WorkspaceFileChange(WorkspaceFileChange.Operation.MODIFY, Path.of("package/path/BUILD"))),
-              Optional.empty(),
-            )
-          )
-        )
+  fun testStartPartialRefresh_packageUnchanged_returnsNoop() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule")).buildPackages)
+        .putPackageStamp(Label.of("//package/path:path"), 100L)
         .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/path") to BuildPackage(Path.of("package/path"), emptyList(), stamp = 100L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
 
     val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
     val update =
-      createRefresher(VcsStateDiffer.NONE, existingSnapshot)
+      createRefresher(existingSnapshot)
         .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("package/path")),
+            requireFullSync = { false },
+          ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
-          project,
-          Optional.of(VcsState("workspaceId", "1", ImmutableSet.of(), Optional.empty())),
-          project.bazelVersion(),
-          projectDef,
         )
 
-    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
-    val partialQuery = update as PartialProjectRefresh
-    Truth.assertThat(partialQuery.deletedPackages).isEmpty()
-    Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/path"))
+    Truth.assertThat(update).isInstanceOf(NoopProjectRefresh::class.java)
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_userRequiredPackageNotInProjectStructure_ignored() {
+    val project = PostQuerySyncData.EMPTY
+    val projectStructureData = ProjectStructureData.EMPTY
+    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
+    val update =
+      createRefresher(existingSnapshot)
+        .startPartialRefresh(
+          RefreshParameters(
+            lastQuery = project,
+            projectDefinition = projectDef,
+            projectStructureData = projectStructureData,
+            requestedPackages = setOf(Path.of("package/nonexistent")),
+            requireFullSync = { false },
+          ),
+          QuerySyncTestUtils.LOGGING_CONTEXT,
+        )
+
+    Truth.assertThat(update).isInstanceOf(NoopProjectRefresh::class.java)
+  }
+
+  @Test
+  fun testFullProjectUpdate_preservesAndUpdatesPackageStamps() {
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/path") to BuildPackage(Path.of("package/path"), emptyList(), stamp = 12345L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val update = createRefresher().startFullUpdate(QuerySyncTestUtils.LOGGING_CONTEXT, projectDef, projectStructureData)
+    Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
+
+    val querySummary = QuerySummaryTestUtil.createProtoForPackages("//package/path:rule")
+    val postQuerySyncData = update.createPostQuerySyncData(QuerySummaryImpl.create(querySummary))
+    val pkg = postQuerySyncData.querySummary().getBuildPackage(Label.of("//package/path:path"))
+    Truth.assertThat(pkg?.stamp).isEqualTo(12345L)
   }
 }

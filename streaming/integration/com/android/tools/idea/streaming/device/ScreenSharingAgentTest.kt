@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.device
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.sdklib.AndroidVersion
+import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.testutils.TestUtils.getBinPath
 import com.android.testutils.waitForCondition
@@ -25,6 +26,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.asdriver.tests.AndroidSystem
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.ANDROID_SCROLL_ADJUSTMENT_FACTOR
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.testlib.Adb
 import com.android.tools.testlib.Emulator
@@ -439,9 +441,15 @@ class ScreenSharingAgentTest {
         waitForLog("0", SHORT_DEVICE_OPERATION_TIMEOUT)
       }
 
-      val deviceClient = DeviceClient(emulator.serialNumber, emptyDeviceConfiguration, "x86_64")
+      val deviceClient =
+        DeviceClient(
+          DeviceId("PhysicalDevice", false, "serial=${emulator.serialNumber}"),
+          emulator.serialNumber,
+          emptyDeviceConfiguration,
+          "x86_64",
+        )
       Disposer.register(testRootDisposable, deviceClient)
-      deviceView = DeviceView(testRootDisposable, deviceClient, project, PRIMARY_DISPLAY_ID, 0)
+      deviceView = DeviceView(testRootDisposable, deviceClient, project, PRIMARY_DISPLAY_ID, DisplayType.INTERNAL, Dimension(), 0)
 
       fakeUi = FakeUi(deviceView.wrapInScrollPane(200, 300))
       fakeUi.render()

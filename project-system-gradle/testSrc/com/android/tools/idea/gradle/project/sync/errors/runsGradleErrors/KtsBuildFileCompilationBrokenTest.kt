@@ -44,7 +44,9 @@ class KtsBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest() {
         expect.that(buildEvents.finishEventFailures()).isEmpty()
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(AndroidStudioEvent.GradleSyncFailure.KTS_COMPILATION_ERROR)
+        expect
+          .that(it.gradleFailureDetails.detectedGradleSyncFailuresList)
+          .isEqualTo(listOf(AndroidStudioEvent.GradleSyncFailure.KTS_COMPILATION_ERROR))
         expect
           .that(it.buildOutputWindowStats.buildErrorMessagesList.map { it.errorShownType })
           .containsExactly(BuildErrorMessage.ErrorType.KOTLIN_COMPILER)
@@ -63,7 +65,7 @@ class KtsBuildFileCompilationBrokenTest : AbstractSyncFailureIntegrationTest() {
             failure {
               error {
                 exception: org.gradle.tooling.BuildActionFailureException
-                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
                 exception: org.gradle.api.ProjectConfigurationException
                   at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
                 exception: org.gradle.internal.exceptions.LocationAwareException

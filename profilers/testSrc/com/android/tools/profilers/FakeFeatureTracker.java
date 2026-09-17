@@ -489,10 +489,22 @@ public final class FakeFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackTraceProcessorMemoryData(
+  public void trackTraceProcessorNativeMemoryData(
     @NotNull TraceProcessorDaemonQueryStats.QueryReturnStatus queryStatus, long methodTimeMs, long queryTimeMs) {
     myTpdQueryMetrics.add(Pair.of(
       AndroidProfilerEvent.Type.TPD_QUERY_LOAD_MEMORY_DATA,
+      TraceProcessorDaemonQueryStats.newBuilder()
+        .setQueryStatus(queryStatus)
+        .setMethodDurationMs(methodTimeMs)
+        .setGrpcQueryDurationMs(queryTimeMs)
+        .build()));
+  }
+
+  @Override
+  public void trackTraceProcessorHeapDumpData(
+    @NotNull TraceProcessorDaemonQueryStats.QueryReturnStatus queryStatus, long methodTimeMs, long queryTimeMs) {
+    myTpdQueryMetrics.add(Pair.of(
+      AndroidProfilerEvent.Type.TPD_QUERY_LOAD_HEAP_DUMP_DATA,
       TraceProcessorDaemonQueryStats.newBuilder()
         .setQueryStatus(queryStatus)
         .setMethodDurationMs(methodTimeMs)
@@ -562,12 +574,12 @@ public final class FakeFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackTaskEntered(@NotNull com.android.tools.profilers.tasks.analytics.TaskMetadata taskMetadata) {
+  public void trackTaskEntered(@NotNull TaskMetadata taskMetadata, int profilerTabsCount) {
     myLastTaskMetadata = taskMetadata;
   }
 
   @Override
-  public void trackTaskFinished(@NotNull com.android.tools.profilers.tasks.analytics.TaskMetadata taskMetadata,
+  public void trackTaskFinished(@NotNull TaskMetadata taskMetadata,
                                 @NotNull TaskFinishedState taskFinishedState) {
     myLastTaskMetadata = taskMetadata;
     myLastTaskFinishedState = taskFinishedState;
@@ -595,14 +607,14 @@ public final class FakeFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackLeakCanaryEvent(@NotNull com.android.tools.profilers.tasks.analytics.TaskMetadata taskMetadata,
+  public void trackLeakCanaryEvent(@NotNull TaskMetadata taskMetadata,
                                    @NotNull LeakCanaryUiAction uiAction) {
     myLastTaskMetadata = taskMetadata;
     myLastLeakCanaryUiAction = uiAction;
   }
 
   @Override
-  public void trackLeakCanaryEvent(@NotNull com.android.tools.profilers.tasks.analytics.TaskMetadata taskMetadata,
+  public void trackLeakCanaryEvent(@NotNull TaskMetadata taskMetadata,
                                    @NotNull LeakCanaryLeakAnalysis leakAnalysis) {
     myLastTaskMetadata = taskMetadata;
     myLastLeakCanaryLeakAnalysis = leakAnalysis;

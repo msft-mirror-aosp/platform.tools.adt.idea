@@ -33,8 +33,12 @@ private class RenderSandboxTransform(delegate: ClassVisitor) :
       delegate,
       RenderSandboxTransformTrampoline::invoke.javaMethod!!,
       RenderSandboxTransformTrampoline::invokeStatic.javaMethod!!,
+      RenderSandboxTransformTrampoline::checkMemberAccess.javaMethod!!,
+      RenderSandboxTransformTrampoline::checkFieldAccessTrampoline.javaMethod!!,
       shouldInstrument = { _, _ -> true },
-      shouldIntercept = RenderSandboxTransformTrampoline::shouldIntercept,
+      shouldInterceptWithOpcode = RenderSandboxTransformTrampoline::shouldIntercept,
+      shouldInterceptField = RenderSandboxTransformTrampoline::shouldInterceptField,
+      shouldInterceptMember = RenderSandboxTransformTrampoline::shouldInterceptPolymorphic,
     ),
   ),
   ClassVisitorUniqueIdProvider {
@@ -107,6 +111,9 @@ interface RenderSandbox {
   /** Guards access to print jobs. */
   fun checkPrintJob()
 
+  /** Guards access to ImageIO SPI registries and plugin scanning. */
+  fun checkImageIo()
+
   /** Guards access to read individual system properties. */
   fun checkPropertyRead(propertyName: String)
 
@@ -115,6 +122,19 @@ interface RenderSandbox {
 
   /** Guards reflective access to restricted methods. */
   fun checkReflectionInvoke(owner: String, name: String)
+
+  /** Guards reflective access to restricted methods. */
+  fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    checkReflectionInvoke(clazz.name.replace('.', '/'), name)
+  }
+
+  /** Guards reflective access to restricted fields. */
+  fun checkFieldAccess(owner: String, name: String)
+
+  /** Guards reflective access to restricted fields. */
+  fun checkFieldAccess(clazz: Class<*>, name: String) {
+    checkFieldAccess(clazz.name.replace('.', '/'), name)
+  }
 
   /** Guards access to sun.misc.Unsafe. */
   fun checkUnsafeAccess()
@@ -127,6 +147,36 @@ interface RenderSandbox {
 
   /** Guards against concurrent/async execution (e.g. CompletableFuture, ForkJoinPool, Executors). */
   fun checkConcurrency()
+
+  /** Guards setting JVM-wide URLStreamHandlerFactory or similar factories. */
+  fun checkSetFactory()
+
+  /** Guards ScriptEngineManager instantiation and classloader access. */
+  fun checkScriptEngine()
+
+  /** Guards ServiceLoader service loading. */
+  fun checkServiceLoader()
+
+  /** Guards access to java.beans.XMLDecoder deserialization. */
+  fun checkXmlDecoder()
+
+  /** Guards registration of Cleaner actions. */
+  fun checkCleaner()
+
+  /** Guards registration and raising of OS/JVM signals. */
+  fun checkSignal()
+
+  /** Guards against modification of internal rendering service and executor state. */
+  fun checkRenderExecutor()
+
+  /** Guards access to a class's class loader via [Class.getClassLoader]. */
+  fun checkGetClassLoader(clazz: Class<*>)
+
+  /**
+   * Guards against navigating class loaders (e.g. [ClassLoader.getParent], [Thread.getContextClassLoader],
+   * [ClassLoader.getSystemClassLoader]).
+   */
+  fun checkClassLoaderAccess()
 
   companion object {
     /**
@@ -220,11 +270,19 @@ open class RenderSandboxDelegate(private val delegate: RenderSandbox) : RenderSa
 
   override fun checkPrintJob() = delegate.checkPrintJob()
 
+  override fun checkImageIo() = delegate.checkImageIo()
+
   override fun checkPropertyRead(propertyName: String) = delegate.checkPropertyRead(propertyName)
 
   override fun checkPropertyWrite(propertyName: String) = delegate.checkPropertyWrite(propertyName)
 
   override fun checkReflectionInvoke(owner: String, name: String) = delegate.checkReflectionInvoke(owner, name)
+
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) = delegate.checkReflectionInvoke(clazz, name)
+
+  override fun checkFieldAccess(owner: String, name: String) = delegate.checkFieldAccess(owner, name)
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) = delegate.checkFieldAccess(clazz, name)
 
   override fun checkUnsafeAccess() = delegate.checkUnsafeAccess()
 
@@ -233,6 +291,24 @@ open class RenderSandboxDelegate(private val delegate: RenderSandbox) : RenderSa
   override fun checkObjectInputStream(ois: java.io.ObjectInputStream) = delegate.checkObjectInputStream(ois)
 
   override fun checkConcurrency() = delegate.checkConcurrency()
+
+  override fun checkSetFactory() = delegate.checkSetFactory()
+
+  override fun checkScriptEngine() = delegate.checkScriptEngine()
+
+  override fun checkServiceLoader() = delegate.checkServiceLoader()
+
+  override fun checkXmlDecoder() = delegate.checkXmlDecoder()
+
+  override fun checkCleaner() = delegate.checkCleaner()
+
+  override fun checkSignal() = delegate.checkSignal()
+
+  override fun checkRenderExecutor() = delegate.checkRenderExecutor()
+
+  override fun checkGetClassLoader(clazz: Class<*>) = delegate.checkGetClassLoader(clazz)
+
+  override fun checkClassLoaderAccess() = delegate.checkClassLoaderAccess()
 }
 
 /** A [RenderSandbox] implementation that denies everything by default. */
@@ -297,6 +373,10 @@ object DenyAllRenderSandbox : RenderSandbox {
     throw SecurityException("checkPrintJob")
   }
 
+  override fun checkImageIo() {
+    throw SecurityException("checkImageIo")
+  }
+
   override fun checkPropertyRead(propertyName: String) {
     throw SecurityException("checkPropertyRead $propertyName")
   }
@@ -306,11 +386,26 @@ object DenyAllRenderSandbox : RenderSandbox {
   }
 
   override fun checkReflectionInvoke(owner: String, name: String) {
-    // By default we simply block any reflection access to any "suspicious" methods.
-    // In general it should be safe to do this since we do not expect reflection calls to things
-    // like File.
-    if (RenderSandboxTransformTrampoline.shouldIntercept(owner, name)) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptPolymorphic(owner, name)) {
       throw SecurityException("Reflection access to restricted method: $owner#$name")
+    }
+  }
+
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptPolymorphic(clazz, name)) {
+      throw SecurityException("Reflection access to restricted method: ${clazz.name.replace('.', '/')}#$name")
+    }
+  }
+
+  override fun checkFieldAccess(owner: String, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptField(owner, name)) {
+      throw SecurityException("Reflection access to restricted field: $owner#$name")
+    }
+  }
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {
+    if (RenderSandboxTransformTrampoline.shouldInterceptField(clazz, name)) {
+      throw SecurityException("Reflection access to restricted field: ${clazz.name.replace('.', '/')}#$name")
     }
   }
 
@@ -328,6 +423,42 @@ object DenyAllRenderSandbox : RenderSandbox {
 
   override fun checkConcurrency() {
     throw SecurityException("checkConcurrency")
+  }
+
+  override fun checkSetFactory() {
+    throw SecurityException("checkSetFactory")
+  }
+
+  override fun checkScriptEngine() {
+    throw SecurityException("checkScriptEngine")
+  }
+
+  override fun checkServiceLoader() {
+    throw SecurityException("checkServiceLoader")
+  }
+
+  override fun checkXmlDecoder() {
+    throw SecurityException("checkXmlDecoder")
+  }
+
+  override fun checkCleaner() {
+    throw SecurityException("checkCleaner")
+  }
+
+  override fun checkSignal() {
+    throw SecurityException("checkSignal")
+  }
+
+  override fun checkRenderExecutor() {
+    throw SecurityException("checkRenderExecutor")
+  }
+
+  override fun checkGetClassLoader(clazz: Class<*>) {
+    throw SecurityException("checkGetClassLoader")
+  }
+
+  override fun checkClassLoaderAccess() {
+    throw SecurityException("checkClassLoaderAccess")
   }
 }
 
@@ -363,11 +494,19 @@ object AllowAllRenderSandbox : RenderSandbox {
 
   override fun checkPrintJob() {}
 
+  override fun checkImageIo() {}
+
   override fun checkPropertyRead(propertyName: String) {}
 
   override fun checkPropertyWrite(propertyName: String) {}
 
   override fun checkReflectionInvoke(owner: String, name: String) {}
+
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {}
+
+  override fun checkFieldAccess(owner: String, name: String) {}
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {}
 
   override fun checkUnsafeAccess() {}
 
@@ -376,4 +515,22 @@ object AllowAllRenderSandbox : RenderSandbox {
   override fun checkObjectInputStream(ois: java.io.ObjectInputStream) {}
 
   override fun checkConcurrency() {}
+
+  override fun checkSetFactory() {}
+
+  override fun checkScriptEngine() {}
+
+  override fun checkServiceLoader() {}
+
+  override fun checkXmlDecoder() {}
+
+  override fun checkCleaner() {}
+
+  override fun checkSignal() {}
+
+  override fun checkRenderExecutor() {}
+
+  override fun checkGetClassLoader(clazz: Class<*>) {}
+
+  override fun checkClassLoaderAccess() {}
 }

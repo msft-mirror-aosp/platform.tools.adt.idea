@@ -54,7 +54,7 @@ class MaterialSymbolsLoader {
       materialIconsMetadataUrlProvider: MaterialIconsMetadataUrlProvider,
       scope: CoroutineScope,
       forceDownload: Boolean,
-      callback: @UiThread (MaterialIconsMetadata) -> Unit,
+      @UiThread callback: (MaterialIconsMetadata) -> Unit,
     ) {
       val symbolDownloadsToStart =
         Symbols.entries.filter {
@@ -137,18 +137,19 @@ class MaterialSymbolsLoader {
       iconMetadata: MaterialMetadataIcon,
       iconsMetadata: MaterialIconsMetadata,
       materialSymbolsUrlProvider: MaterialSymbolsUrlProvider,
-    ): VdIcon {
+    ): VdIcon? {
       val iconFileName = symbolConfiguration.toFileName(iconMetadata.name)
       val loader = MaterialVdIconsLoader(iconsMetadata, SdkMaterialIconsUrlProvider())
       val loadedIcon = loader.loadVdIcon(symbolConfiguration.type.localName, iconMetadata.name, iconFileName)
 
       if (loadedIcon != null) {
+        loadedIcon.setShowName(false)
         return loadedIcon
       }
 
       MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, iconMetadata.name, materialSymbolsUrlProvider)
 
-      return loader.loadVdIcon(symbolConfiguration.type.localName, iconMetadata.name, iconFileName)!!
+      return loader.loadVdIcon(symbolConfiguration.type.localName, iconMetadata.name, iconFileName)?.apply { setShowName(false) }
     }
   }
 }

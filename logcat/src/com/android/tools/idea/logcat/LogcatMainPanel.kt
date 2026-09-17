@@ -55,6 +55,7 @@ import com.android.tools.idea.logcat.actions.SetProguardMappingAction
 import com.android.tools.idea.logcat.actions.TerminateAppActions
 import com.android.tools.idea.logcat.actions.ToggleFilterAction
 import com.android.tools.idea.logcat.devices.Device
+import com.android.tools.idea.logcat.devices.Device.EmulatorDevice
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.DeviceItem
 import com.android.tools.idea.logcat.devices.DeviceComboBox.DeviceComboItem.FileItem
@@ -170,7 +171,6 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.BUTTON1
 import java.awt.event.MouseWheelEvent
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.time.ZoneId
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
@@ -882,10 +882,14 @@ constructor(
     sink[LOGCAT_PRESENTER_ACTION] = this
     sink[ScreenshotParameters.DATA_KEY] = device?.getScreenshotParameters()
 
-    sink[ScreenRecordingParameters.DATA_KEY] =
-      device?.let {
-        ScreenRecordingParameters(it.serialNumber, it.name, it.featureLevel, this, if (it.isEmulator) Paths.get(it.deviceId) else null)
-      }
+    sink[ScreenRecordingParameters.DATA_KEY] = device?.let {
+      val avdFolder =
+        when (it is EmulatorDevice) {
+          true -> Path.of(it.avdPath)
+          false -> null
+        }
+      ScreenRecordingParameters(it.serialNumber, it.name, it.featureLevel, this, avdFolder)
+    }
     sink[CONNECTED_DEVICE] = device
     // Using CommonDataKeys.EDITOR causes the IJ framework to interfere with some components in
     // the hierarchy
@@ -908,19 +912,19 @@ constructor(
 
     return coroutineScope.launch(Dispatchers.IO) {
       runCatching {
-          val logcatFlow = logcatService.readLogcat(device).map { LogcatMessagesEvent(it) }
-          val processMonitorFlow = projectAppMonitor.monitorDevice(device.serialNumber).map { LogcatMessagesEvent(listOf(it)) }
+        val logcatFlow = logcatService.readLogcat(device).map { LogcatMessagesEvent(it) }
+        val processMonitorFlow = projectAppMonitor.monitorDevice(device.serialNumber).map { LogcatMessagesEvent(listOf(it)) }
 
-          connectedDevice.set(device)
+        connectedDevice.set(device)
 
-          if (StudioFlags.LOGCAT_PANEL_MEMORY_SAVER.get()) {
-            val panelVisibilityFlow = trackVisibility().map { LogcatPanelVisibility(it) }
-            val flow = merge(logcatFlow, processMonitorFlow, panelVisibilityFlow)
-            flow.consume(this@LogcatMainPanel, device.serialNumber, logcatSettings.bufferSize)
-          } else {
-            merge(logcatFlow, processMonitorFlow).collect { processMessages(it.messages) }
-          }
+        if (StudioFlags.LOGCAT_PANEL_MEMORY_SAVER.get()) {
+          val panelVisibilityFlow = trackVisibility().map { LogcatPanelVisibility(it) }
+          val flow = merge(logcatFlow, processMonitorFlow, panelVisibilityFlow)
+          flow.consume(this@LogcatMainPanel, device.serialNumber, logcatSettings.bufferSize)
+        } else {
+          merge(logcatFlow, processMonitorFlow).collect { processMessages(it.messages) }
         }
+      }
         .onFailure { throwable ->
           val adbSession = AdbLibService.getSession(project)
           val logger = adbLogger(adbSession).withPrefix("$adbSession - ${device.serialNumber}")

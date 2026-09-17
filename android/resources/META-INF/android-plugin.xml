@@ -84,10 +84,6 @@
     </group>
 
     <action internal="true"
-            text="Validate Essential Plugins"
-            id="Android.ValidateEssentialPlugins"
-            class="com.android.tools.idea.actions.ValidateEssentialPluginsAction"/>
-    <action internal="true"
             text="Disable All Plugins"
             id="Android.DisableAllPlugins"
             class="com.android.tools.idea.actions.DisableAllPluginsAction"/>
@@ -240,7 +236,6 @@
     <applicationService serviceImplementation="com.android.tools.idea.res.ResourceUpdateTraceSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData" />
     <applicationService serviceImplementation="com.android.tools.idea.ui.designer.overlays.OverlayPersistentStateService"/>
-    <applicationService serviceImplementation="com.android.tools.idea.flags.StudioFlagSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.folding.AndroidFoldingSettings"/>
     <applicationService serviceImplementation="com.android.tools.idea.sdk.IdeSdks"/>
     <applicationService serviceInterface="com.android.tools.idea.sdk.AndroidSdks" serviceImplementation="com.android.tools.idea.sdk.AndroidSdksImpl"/>
@@ -339,6 +334,7 @@
                               order="first"/>
     <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidWatchFaceRunConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidTileRunConfigurationProducer"/>
+    <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidWearWidgetRunConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidComplicationRunConfigurationProducer"/>
     <runLineMarkerContributor language="JAVA" implementationClass="com.android.tools.idea.run.configuration.AndroidWearRunMarkerContributor"/>
     <runLineMarkerContributor language="kotlin" implementationClass="com.android.tools.idea.run.configuration.AndroidWearRunMarkerContributor"/>
@@ -348,6 +344,7 @@
     <configurationType implementation="com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfigurationType"/>
     <configurationType implementation="com.android.tools.idea.run.configuration.AndroidWatchFaceConfigurationType"/>
     <configurationType implementation="com.android.tools.idea.run.configuration.AndroidTileConfigurationType"/>
+    <configurationType implementation="com.android.tools.idea.run.configuration.AndroidWearWidgetConfigurationType"/>
     <configurationType implementation="com.android.tools.idea.run.configuration.AndroidComplicationConfigurationType"/>
     <configurationType implementation="com.android.tools.idea.run.configuration.AndroidDeclarativeWatchFaceConfigurationType"/>
     <programRunner implementation="com.android.tools.idea.run.DefaultStudioProgramRunner" order="first" id="DefaultStudioProgramRunner"/>
@@ -498,8 +495,7 @@
     <moduleService serviceImplementation="org.jetbrains.android.resourceManagers.ModuleResourceManagers" />
     <moduleService serviceImplementation="org.jetbrains.android.facet.ResourceFolderManager" />
     <moduleService serviceInterface="com.android.tools.res.ids.ResourceIdManager"
-                   serviceImplementation="com.android.tools.idea.res.StudioResourceIdManager"
-                   testServiceImplementation="com.android.tools.idea.res.TestResourceIdManager" />
+                   serviceImplementation="com.android.tools.idea.res.StudioResourceIdManager" />
     <moduleService serviceImplementation="com.android.tools.idea.model.MergedManifestManager" />
     <moduleService serviceImplementation="com.android.tools.idea.model.MergedManifestModificationTracker" />
     <moduleService serviceImplementation="com.android.tools.idea.databinding.DataBindingAnnotationsService" />
@@ -667,10 +663,14 @@
         serviceInterface="com.android.tools.idea.sdk.sources.SdkSourcePositionFinder"
         serviceImplementation="com.android.tools.idea.sdk.sources.SdkSourcePositionFinderImpl"/>
 
+    <applicationService
+        serviceImplementation="com.android.tools.idea.sdk.AndroidSdkWatcherService"/>
+
     <daemon.highlightInfoFilter implementation="com.android.tools.idea.sdk.SdkHighlightFilter"/>
 
     <writingAccessProvider implementation="com.android.tools.idea.sdk.SdkWritingAccessProvider"/>
     <postStartupActivity implementation="com.android.tools.idea.ndk.PageAlignProjectActivity"/>
+    <postStartupActivity implementation="com.android.tools.idea.sdk.AndroidSdkWatcherProjectActivity"/>
 
     <internalFileTemplate name="Version_Catalog_File.versions" />
 
@@ -779,6 +779,11 @@
     <rendering.tokens.buildSystemFilePreviewServices implementation="com.android.tools.idea.rendering.tokens.DefaultBuildSystemFilePreviewServices"/>
   </extensions>
 
+  <extensions defaultExtensionNs="com.android.ide">
+    <sdkEventListener implementation="com.android.tools.idea.avdmanager.AvdScannerSdkEventListener"/>
+    <sdkEventListener implementation="com.android.tools.idea.sdk.AndroidSdkWatcherEventListener"/>
+  </extensions>
+
   <applicationListeners>
     <listener class="com.android.tools.idea.stats.CompletionStats$MyCompletionPhaseListener"
               topic="com.intellij.codeInsight.completion.CompletionPhaseListener"/>
@@ -799,6 +804,7 @@
   </projectListeners>
 
   <xi:include href="/META-INF/android-common.xml"/>
+  <xi:include href="/META-INF/studio-flags.xml"/>
   <!-- Resource Explorer is included at the bottom since it has dependencies on the general Android Plugin declarations -->
   <xi:include href="/com/android/tools/idea/ui/resourcemanager/META-INF/resources-explorer.xml"/>
 </idea-plugin>

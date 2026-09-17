@@ -1005,7 +1005,7 @@ class LayoutInspectorTreePanelTest {
     waitForCondition(TIMEOUT, TIMEOUT_UNIT) { columnDataChanged == 2 }
 
     component.size = Dimension(800, 1000)
-    val ui = FakeUi(component, createFakeWindow = true)
+    val ui = FakeUi(component, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
     val treeColumnWidth = table.columnModel.getColumn(0).width
     updateSettingsLatch = ReportingCountDownLatch(1)
 
@@ -1057,7 +1057,7 @@ class LayoutInspectorTreePanelTest {
 
   @Test
   fun testListenersAreClearedOnDispose() {
-    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(2)
+    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(1)
     val disposable = Disposer.newDisposable(projectRule.fixture.testRootDisposable)
     val panel = runInEdtAndGet { LayoutInspectorTreePanel(disposable) }
 
@@ -1065,13 +1065,13 @@ class LayoutInspectorTreePanelTest {
 
     assertThat(inspectorRule.inspector.inspectorModel.selectionListeners.size()).isEqualTo(1)
     assertThat(inspectorRule.inspector.inspectorModel.connectionListeners.size()).isEqualTo(2)
-    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(4)
+    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(3)
 
     Disposer.dispose(disposable)
 
     assertThat(inspectorRule.inspector.inspectorModel.selectionListeners.size()).isEqualTo(0)
     assertThat(inspectorRule.inspector.inspectorModel.connectionListeners.size()).isEqualTo(0)
-    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(2)
+    assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(1)
   }
 
   @RunsInEdt

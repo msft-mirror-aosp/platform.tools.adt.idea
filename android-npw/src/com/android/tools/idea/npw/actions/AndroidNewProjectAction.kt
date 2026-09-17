@@ -16,8 +16,10 @@
 
 package com.android.tools.idea.npw.actions
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep
+import com.android.tools.idea.npw.templateengine.ui.TemplateEngineProjectWizard
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.android.tools.idea.wizard.model.ModelWizard.Builder
 import com.android.tools.idea.wizard.ui.SimpleStudioWizardLayout
@@ -27,6 +29,7 @@ import com.intellij.idea.ActionsBundle.actionText
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.wm.impl.welcomeScreen.NewWelcomeScreen
 import org.jetbrains.android.sdk.AndroidSdkUtils
@@ -50,8 +53,17 @@ class AndroidNewProjectAction @JvmOverloads constructor(text: String = actionTex
       SdkQuickfixUtils.showSdkMissingDialog()
       return
     }
-    val wizard = Builder().addStep(ChooseAndroidProjectStep(NewProjectModel())).build()!!
-    val wizardLayout = SimpleStudioWizardLayout()
-    StudioWizardDialogBuilder(wizard, actionText("WelcomeScreen.CreateNewProject")).build(wizardLayout).show()
+    if (StudioFlags.NPW_NEW_TEMPLATE_ENGINE.get()) {
+      TemplateEngineProjectWizard(e.project).show()
+    } else {
+      val initialTarget = e.getData(INITIAL_TARGET_KEY)
+      val wizard = Builder().addStep(ChooseAndroidProjectStep(NewProjectModel(), initialTarget)).build()!!
+      val wizardLayout = SimpleStudioWizardLayout()
+      StudioWizardDialogBuilder(wizard, actionText("WelcomeScreen.CreateNewProject")).build(wizardLayout).show()
+    }
+  }
+
+  companion object {
+    @JvmField val INITIAL_TARGET_KEY = DataKey.create<String>("NPW_INITIAL_TARGET_KEY")
   }
 }

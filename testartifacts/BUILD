@@ -25,7 +25,6 @@ iml_module(
         "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/base/sdklib:studio.android.sdktools.sdklib",
-        "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
         "//tools/adt/idea/.idea/libraries:test-result-proto",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
@@ -35,6 +34,7 @@ iml_module(
         "//tools/adt/idea/analytics",
         "@intellij//:intellij.java.execution.impl",
         "@intellij//:intellij.java",
+        "@intellij//:intellij.platform.testRunner",
     ],
 )
 
@@ -88,7 +88,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:test-result-proto",
         "//tools/base/lint:studio.android.sdktools.lint-api",
         "//tools/adt/idea/.idea/libraries:studio-proto",
-        "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
         "//tools/analytics-library/shared:analytics-shared",
@@ -102,6 +101,8 @@ iml_module(
         "//tools/adt/idea/testartifacts:libjourneys-java-proto",
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
+        "@intellij//:intellij.platform.smRunner",
+        "@intellij//:intellij.platform.testRunner",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

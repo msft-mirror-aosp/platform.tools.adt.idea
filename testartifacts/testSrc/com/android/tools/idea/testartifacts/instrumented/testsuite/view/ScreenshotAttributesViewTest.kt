@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,7 @@ class ScreenshotAttributesViewTest {
         purple = emptyList(),
         teal = emptyList(),
         rawMap = emptyMap(),
+        isIslands = false,
       )
 
     composeTestRule.setContent {
@@ -217,5 +220,21 @@ class ScreenshotAttributesViewTest {
     // Verify it is clickable by performing a click.
     composeTestRule.onNodeWithText(refFile.absolutePath).performClick()
     composeTestRule.waitForIdle()
+  }
+
+  @Test
+  fun screenshotAttributesUi_withNoReferenceImage_displaysNewMatch() {
+    view.updateData(
+      refImagePath = null,
+      newImagePath = "path/to/new.png",
+      testMethodName = "myMethod",
+      testClassName = "MyClass",
+      result = AndroidTestCaseResult.FAILED,
+      diffPercent = null,
+    )
+
+    composeTestRule.setContent { view.ScreenshotAttributesUi(view.state) }
+
+    composeTestRule.onNodeWithTag("match_status").assertIsDisplayed().assertTextEquals("New")
   }
 }
