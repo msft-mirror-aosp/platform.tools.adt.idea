@@ -1,11 +1,23 @@
 load("//tools/adt/idea/aswb:build-visibility.bzl", "DEFAULT_TEST_VISIBILITY")
 load("//tools/adt/idea/aswb/testing:test_defs.bzl", "aswb_test")
+load("//tools/base/bazel:repo_map.bzl", "repo_map_properties")
 
 package(default_visibility = DEFAULT_TEST_VISIBILITY)
+
+repo_map_properties(
+    name = "repo_map",
+    filename = "repo_map.properties",
+    repos = [
+        "intellij",
+        "maven",
+    ],
+)
 
 aswb_test(
     name = "BuildGraphDataImplTest",
     srcs = ["BuildGraphDataImplTest.kt"],
+    resource_strip_prefix = package_name(),
+    resources = [":repo_map"],
     deps = [
         "//tools/adt/idea/aswb/plugin_api",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
