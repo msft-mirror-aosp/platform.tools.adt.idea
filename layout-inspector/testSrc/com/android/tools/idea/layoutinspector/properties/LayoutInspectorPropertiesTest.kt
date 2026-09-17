@@ -17,7 +17,9 @@ package com.android.tools.idea.layoutinspector.properties
 
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.DEVICE_1
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle.message
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
 import com.android.tools.idea.layoutinspector.TestScopeRule
 import com.android.tools.idea.layoutinspector.createProcess
@@ -26,9 +28,13 @@ import com.android.tools.idea.layoutinspector.model.COMPOSE2
 import com.android.tools.idea.layoutinspector.model.ROOT
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorRule
+import com.android.tools.idea.layoutinspector.properties.backstack.BackStackPanel
 import com.android.tools.idea.layoutinspector.window
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ui.SearchTextField
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 import javax.swing.JPanel
 import org.junit.Rule
@@ -70,5 +76,61 @@ class LayoutInspectorPropertiesTest {
     inspectorRule.inspectorModel.setSelection(null, SelectionOrigin.INTERNAL)
     assertThat(infoText.isShowing).isTrue()
     assertThat(props.isShowing).isFalse()
+  }
+
+  @Test
+  fun testBackStackVisibilityWithFlagDisabled() {
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_BACK_STACK_VISUAL.overrideForTest(false, projectRule.testRootDisposable)
+    val properties = LayoutInspectorProperties(projectRule.testRootDisposable)
+    val backStackPanel = UIUtil.findComponentOfType(properties.component, BackStackPanel::class.java)
+    assertThat(backStackPanel).isNull()
+    assertThat(properties.supportsFiltering()).isTrue()
+    val searchField = UIUtil.findComponentOfType(properties.component, SearchTextField::class.java)
+    assertThat(searchField).isNull()
+
+    val panelDefinition = LayoutInspectorPropertiesPanelDefinition()
+    assertThat(panelDefinition.title).isEqualTo(ATTRIBUTES_TITLE)
+  }
+
+  @Test
+  fun testBackStackVisibilityWithFlagEnabled() {
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_BACK_STACK_VISUAL.overrideForTest(true, projectRule.testRootDisposable)
+    val properties = LayoutInspectorProperties(projectRule.testRootDisposable)
+    assertThat(properties.supportsFiltering()).isTrue()
+
+    val panelDefinition = LayoutInspectorPropertiesPanelDefinition()
+    assertThat(panelDefinition.title).isEqualTo(PROPERTIES_TITLE)
+
+    FakeUi(properties.component, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+    val backStackPanel = UIUtil.findComponentOfType(properties.component, BackStackPanel::class.java)
+    assertThat(backStackPanel).isNotNull()
+
+    // Verify header labels
+    val labels = UIUtil.findComponentsOfType(properties.component, JBLabel::class.java)
+    assertThat(labels.map { it.text }).contains(message("layout.inspector.backstack.panel.title"))
+    assertThat(labels.map { it.text }).contains(ATTRIBUTES_TITLE)
+
+    properties.setToolContext(inspectorRule.inspector)
+
+    val window =
+      window(ROOT, ROOT, 2, 4, 6, 8, rootViewQualifiedName = "rootType") {
+        compose(COMPOSE1, "Button", "button.kt") { compose(COMPOSE2, "NavDisplay", "nav.kt") }
+      }
+    inspectorRule.inspectorModel.update(window, listOf(ROOT), 0)
+
+    val button = inspectorRule.inspectorModel.get(COMPOSE1)!!
+    val navDisplay = inspectorRule.inspectorModel.get(COMPOSE2)!!
+
+    // Selecting Button should keep backstack hidden
+    inspectorRule.inspectorModel.setSelection(button, SelectionOrigin.COMPONENT_TREE)
+    assertThat(backStackPanel!!.isVisible).isFalse()
+
+    // Selecting NavDisplay should make backstack visible
+    inspectorRule.inspectorModel.setSelection(navDisplay, SelectionOrigin.COMPONENT_TREE)
+    assertThat(backStackPanel.isVisible).isTrue()
+
+    // Clearing selection should reset backstack visibility
+    inspectorRule.inspectorModel.setSelection(null, SelectionOrigin.INTERNAL)
+    assertThat(backStackPanel.isVisible).isFalse()
   }
 }

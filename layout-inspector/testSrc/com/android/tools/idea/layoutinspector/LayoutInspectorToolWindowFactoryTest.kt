@@ -21,6 +21,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findAllDescendants
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.concurrency.createCoroutineScope
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.VIEW2
@@ -37,6 +38,7 @@ import com.android.tools.idea.layoutinspector.util.pressAndReleaseCtrlPlus
 import com.android.tools.idea.layoutinspector.util.tab
 import com.android.tools.idea.sdk.AndroidProjectChecker
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.android.tools.idea.testing.ui.toolWindowBalloons
 import com.android.tools.property.panel.impl.ui.InspectorPanelImpl
@@ -89,6 +91,7 @@ class LayoutInspectorToolWindowFactoryTest {
   @Before
   fun setUp() {
     layoutInspectorRule.attachDevice(DEVICE_1)
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_BACK_STACK_VISUAL.overrideForTest(false, projectRule.testRootDisposable)
   }
 
   @Test
@@ -347,6 +350,16 @@ class LayoutInspectorToolWindowFactoryTest {
 
   @Test
   fun testFocusNavigation() {
+    checkFocusNavigation(backStackVisualEnabled = false)
+  }
+
+  @Test
+  fun testFocusNavigationWithBackStackVisualEnabled() {
+    checkFocusNavigation(backStackVisualEnabled = true)
+  }
+
+  private fun checkFocusNavigation(backStackVisualEnabled: Boolean) {
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_BACK_STACK_VISUAL.overrideForTest(backStackVisualEnabled, projectRule.testRootDisposable)
     val project = projectRule.project
     val disposable = projectRule.testRootDisposable
     layoutInspectorRule.inspector.treeSettings.hideSystemNodes = false
@@ -363,6 +376,9 @@ class LayoutInspectorToolWindowFactoryTest {
     layoutInspectorRule.inspectorModel.addModificationListener { _, _, _ -> modelUpdatedLatch.countDown() }
     layoutInspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     waitForCondition(20, TimeUnit.SECONDS) { layoutInspectorRule.inspectorModel.windows.isNotEmpty() }
+    // Wait for both initial tree layout events to complete so the component tree is fully populated (e.g. rowCount == 4)
+    // before creating UI components and verifying focus traversal.
+    modelUpdatedLatch.await(20, TimeUnit.SECONDS)
 
     runInEdtAndWait {
       LayoutInspectorToolWindowFactory().createToolWindowContent(project, toolWindow)

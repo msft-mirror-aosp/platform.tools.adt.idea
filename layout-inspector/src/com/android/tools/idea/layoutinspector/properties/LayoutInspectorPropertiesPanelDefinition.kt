@@ -19,8 +19,15 @@ import com.android.tools.adtui.workbench.AutoHide
 import com.android.tools.adtui.workbench.Side
 import com.android.tools.adtui.workbench.Split
 import com.android.tools.adtui.workbench.ToolWindowDefinition
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspector
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle.message
 import com.intellij.icons.AllIcons
+
+val PROPERTIES_TITLE: String
+  get() = message("layout.inspector.properties.title")
+val ATTRIBUTES_TITLE: String
+  get() = message("layout.inspector.attributes.title")
 
 class LayoutInspectorPropertiesPanelDefinition(
   side: Side = Side.RIGHT,
@@ -31,7 +38,8 @@ class LayoutInspectorPropertiesPanelDefinition(
   showHideAction: Boolean = true,
 ) :
   ToolWindowDefinition<LayoutInspector>(
-    "Attributes",
+    // When the back stack visual is enabled, title the tool window "Properties" since it contains both Back Stack and Attributes sections
+    if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_BACK_STACK_VISUAL.get()) PROPERTIES_TITLE else ATTRIBUTES_TITLE,
     AllIcons.Toolwindows.ToolWindowStructure,
     "PROPERTIES",
     side,
