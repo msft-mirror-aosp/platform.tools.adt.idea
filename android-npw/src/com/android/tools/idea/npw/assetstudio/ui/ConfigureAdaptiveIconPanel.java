@@ -2204,4 +2204,16 @@ public class ConfigureAdaptiveIconPanel extends JPanel implements Disposable, Co
   public JTextField getForegroundResizeValueTextField() {
     return myForegroundResizeValueTextField;
   }
+
+  @VisibleForTesting
+  @NotNull
+  public ImageAssetBrowser getMonochromeImageAssetBrowser() {
+    return myMonochromeImageAssetBrowser;
+  }
+
+  @VisibleForTesting
+  @NotNull
+  public ObjectProperty<Validator.Result> getMonochromeAssetValidityState() {
+    return myMonochromeAssetValidityState;
+  }
 }
