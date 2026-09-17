@@ -2576,6 +2576,11 @@ public final class StudioFlags {
                     "Use Smart Gradle Build Tool in Agent",
                     "When enabled, 'gradle_build' tool is replaced with a smarter version that can calculate required tasks from provided context.");
 
+  public static final Flag<Boolean> STUDIOBOT_GRADLE_BUILD_TOOL_OUTPUTS_V2 =
+    new BooleanFlag(STUDIOBOT, "gradle.build.tool.outputs.v2",
+                    "Use reworked Gradle build outputs based on session storage files.",
+                    "When enabled, 'gradle_build' tool response changes format to simple markdown summary with all heavy details and full gradle output available in files.");
+
 
   public static final Flag<Boolean> STUDIOBOT_GRADLE_PROJECT_INFO_TOOL =
     new BooleanFlag(STUDIOBOT, "include.gradle.project.info.tool",
