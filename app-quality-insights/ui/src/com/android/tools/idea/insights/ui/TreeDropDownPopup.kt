@@ -282,6 +282,12 @@ class TreeDropDownPopup<T, U : GroupAware<U>>(
       treeTable.tree,
       treeTable,
       object : CheckboxTree.CheckboxTreeCellRenderer(true) {
+        init {
+          // Node text is a backend value derived from end user controlled data such as Build.BRAND, so it must not be interpreted as HTML.
+          // JCheckBox is an AbstractButton, which is not covered by the disableHtml helper. See b/509617662.
+          myCheckbox.putClientProperty("html.disable", true)
+        }
+
         override fun customizeRenderer(
           tree: JTree,
           value: Any,

@@ -20,6 +20,7 @@ import com.android.tools.adtui.common.AdtUiUtils.ShrinkDirection.TRUNCATE_START
 import com.android.tools.idea.insights.icon
 import com.android.tools.idea.insights.model.issue.AppInsightsCrash
 import com.android.tools.idea.insights.model.issue.IssueState
+import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.scale.JBUIScale
@@ -121,7 +122,10 @@ object AppInsightsCrashesTableCellRenderer : AppInsightsTableCellRenderer {
       }
       renderer.append(methodText, methodAttrs)
     }
-    rendererPanel.toolTipText = "<html>${issue.issueDetails.title}<br>${issue.issueDetails.subtitle}</html>"
+    // The title and subtitle are backend values derived from the reported stack trace, so they must be escaped rather than interpolated
+    // into an HTML template. See b/509617662.
+    rendererPanel.toolTipText =
+      HtmlBuilder().append(issue.issueDetails.title).br().append(issue.issueDetails.subtitle).wrapWithHtmlBody().toString()
     rendererPanel.background = if (selected) table.selectionBackground else table.background
     renderer.border = JBUI.Borders.empty()
     return rendererPanel

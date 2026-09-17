@@ -23,16 +23,23 @@ import com.android.tools.idea.insights.model.issue.IssueId
 import com.android.tools.idea.insights.model.issue.SignalType
 import com.android.tools.idea.testing.ui.flatten
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.table.JBTable
 import icons.StudioIcons
 import javax.swing.Icon
+import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.table.TableColumn
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
 
+@RunsInEdt
 class AppInsightsCrashesTableCellRendererTest {
+
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun testIcons() {
@@ -98,5 +105,45 @@ class AppInsightsCrashesTableCellRendererTest {
         StudioIcons.AppQualityInsights.REGRESSED_SIGNAL,
         StudioIcons.AppQualityInsights.FRESH_SIGNAL,
       )
+  }
+
+  @Test
+  fun testTooltipIsEscaped() {
+    val table = JBTable()
+    table.columnModel.addColumn(TableColumn(0).apply { width = 200 })
+    // The title and subtitle are derived from the reported stack trace and must not be able to inject markup. See b/509617662.
+    val details =
+      IssueDetails(
+        IssueId("1"),
+        "<img src=x>",
+        "com.google.crash.<b>Crash</b>",
+        FailureType.FATAL,
+        "Sample Event",
+        "1.2.3",
+        "1.2.3",
+        12L,
+        14L,
+        5L,
+        10L,
+        emptySet(),
+        "https://url.for-crash.com",
+        0,
+        emptyList(),
+      )
+
+    val renderer =
+      AppInsightsCrashesTableCellRenderer.getTableCellRendererComponent(
+        table,
+        AppInsightsCrash(details, mock(), FakeInsightsProvider()),
+        selected = false,
+        focused = false,
+        viewRowIndex = 0,
+        viewColumnIndex = 0,
+      )
+
+    val toolTipText = (renderer as JComponent).toolTipText
+    assertThat(toolTipText).doesNotContain("<img")
+    assertThat(toolTipText).contains("&lt;img src=x&gt;")
+    assertThat(toolTipText).contains("&lt;b&gt;Crash&lt;/b&gt;")
   }
 }

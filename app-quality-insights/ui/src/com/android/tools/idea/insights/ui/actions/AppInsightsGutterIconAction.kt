@@ -28,6 +28,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.PopupChooserBuilder
+import com.intellij.openapi.util.text.HtmlBuilder
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.awt.RelativePoint
@@ -221,7 +222,8 @@ private class AppInsightsGutterListCellRenderer : ListCellRenderer<RenderInstruc
         leftComponent.apply {
           clear()
           formatListRenderer(issueDetails.fatality.getIcon(), list, hasFocus)
-          toolTipText = issueDetails.subtitle
+          // The subtitle is a backend value derived from the reported stack trace, so it is added as text. See b/509617662.
+          toolTipText = HtmlBuilder().append(issueDetails.subtitle).wrapWithHtmlBody().toString()
           append(className, SimpleTextAttributes.REGULAR_ATTRIBUTES)
           if (methodName.isNotEmpty()) {
             append(".", SimpleTextAttributes.REGULAR_ATTRIBUTES)

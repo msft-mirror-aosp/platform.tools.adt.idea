@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.insights.ui
 
+import com.android.tools.adtui.util.disableHtml
 import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
@@ -25,6 +26,9 @@ import javax.swing.JLabel
 
 class CursorFollowingTooltipLabel(parentDisposable: Disposable, icon: Icon, helpText: String) : JLabel(icon, LEFT), Disposable {
   init {
+    // The text of this label comes from the backend and can contain end user controlled values such as Build.BRAND, so it must never be
+    // interpreted as HTML by Swing. See b/509617662.
+    disableHtml()
     Disposer.register(parentDisposable, this)
     // This mouse listener needs to be added before the HelpTooltip is installed so that
     // the tooltip is hidden before HelpTooltip's mouse listeners act on it.

@@ -22,6 +22,7 @@ import com.android.tools.idea.insights.model.issue.IssueVariant
 import com.intellij.openapi.ui.getUserData
 import com.intellij.openapi.ui.putUserData
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
 import com.intellij.ui.components.JBLabel
@@ -198,10 +199,13 @@ class DetailsPanelHeader(private val variantComboBox: VariantComboBox? = null, o
         }
       } else ""
 
+    // The class and method names are backend values derived from the reported stack trace, so they must be escaped before being
+    // interpolated into the HTML below. Escaping happens after shrinkToFit so that the width calculations above measure the characters
+    // that are actually displayed. See b/509617662.
     val methodString =
       if (shrunkenMethodText.isNotEmpty()) {
-        "<B>$shrunkenMethodText</B>"
+        "<B>${StringUtil.escapeXmlEntities(shrunkenMethodText)}</B>"
       } else ""
-    return "<html>$shrunkenClassText$methodString</html>"
+    return "<html>${StringUtil.escapeXmlEntities(shrunkenClassText)}$methodString</html>"
   }
 }

@@ -91,6 +91,18 @@ class DetailsPanelHeaderTest {
   }
 
   @Test
+  fun `class and method names are escaped in title label`() {
+    val detailsPanelHeader = DetailsPanelHeader()
+
+    // The class and method names are derived from the reported stack trace and must not be able to inject markup. See b/509617662.
+    val title = detailsPanelHeader.generateTitleLabelText("<img src=x>", "<b>evil</b>", 10000, JBFont.label())
+
+    assertThat(title).doesNotContain("<img")
+    assertThat(title).contains("&lt;img src=x&gt;")
+    assertThat(title).contains("&lt;b&gt;evil&lt;/b&gt;")
+  }
+
+  @Test
   fun `header should not show variants if variants not supported`() {
     val detailsPanelHeader = DetailsPanelHeader()
     assertThat(detailsPanelHeader.variantPanel.isVisible).isFalse()
