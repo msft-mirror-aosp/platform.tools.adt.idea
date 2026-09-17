@@ -41,7 +41,6 @@ object JdkUtils {
         JavaSdkVersion.JDK_21 -> JdkConstants.JDK_21_PATH
         JavaSdkVersion.JDK_17 -> JdkConstants.JDK_17_PATH
         JavaSdkVersion.JDK_11 -> JdkConstants.JDK_11_PATH
-        JavaSdkVersion.JDK_1_8 -> JdkConstants.JDK_1_8_PATH
         else -> error("Unsupported JavaSdkVersion: $version")
       }
     return File(embeddedJdkPath)
