@@ -116,6 +116,7 @@ import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
+import com.intellij.util.ui.UIUtil
 import java.awt.Rectangle
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JComponent
@@ -611,10 +612,20 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       return CompletableDeferred(Unit)
     }
 
+    if (Disposer.isDisposed(this)) {
+      return CompletableDeferred<Unit>().also { it.completeExceptionally(IllegalStateException("Already disposed")) }
+    }
+
     val startTime = System.nanoTime()
     val refreshProgressIndicator = BackgroundableProcessIndicator(project, message("refresh.progress.indicator.title"), "", "", true)
-    if (!Disposer.tryRegister(this, refreshProgressIndicator)) {
-      refreshProgressIndicator.processFinish()
+    // ProgressWindow.dispose() asserts that it is called on the EDT. Wrap its disposal in a Disposable
+    // that schedules disposal on the EDT so that if `this` is already disposed (or disposed later from a
+    // background thread), ObjectTree never invokes ProgressWindow.dispose() off-EDT (see b/562876887).
+    val indicatorDisposable = Disposable {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
+    }
+    if (!Disposer.tryRegister(this, indicatorDisposable)) {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
       return CompletableDeferred<Unit>().also { it.completeExceptionally(IllegalStateException("Already disposed")) }
     }
 
@@ -622,7 +633,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     refreshJob.invokeOnCompletion {
       LOG.debug("Completed")
       // Progress indicators must be disposed in the ui thread
-      launch(Dispatchers.EDT) { Disposer.dispose(refreshProgressIndicator) }
+      launch(Dispatchers.EDT) { Disposer.dispose(indicatorDisposable) }
       previewViewModel.refreshCompleted(it is CancellationException, System.nanoTime() - startTime)
     }
     return refreshJob

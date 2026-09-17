@@ -31,10 +31,13 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -193,6 +196,7 @@ class PreviewRefreshManager private constructor(private val scope: CoroutineScop
     scope.launch(Dispatchers.Default) {
       requestsFlow.collect {
         val lazyWrapperJob: Job
+        val requestSupervisorJob: CompletableJob
         var currentRefreshJob: Job? = null
         val currentRequest: PreviewRefreshRequest
         requestsLock.withLock {
@@ -204,8 +208,13 @@ class PreviewRefreshManager private constructor(private val scope: CoroutineScop
           pendingRequestsPerClient.remove(currentRequest.clientId)
           // Don't start the refresh inside the requestsLock to avoid
           // a potential deadlock with the UI thread.
+          // Use SupervisorJob and a no-op CoroutineExceptionHandler so that an uncaught exception
+          // thrown by currentRequest.doRefresh() marks the request as FAILED via invokeOnCompletion
+          // (where it is logged as a warning) rather than propagating up through structured
+          // concurrency and killing the application-scoped requestsFlow.collect loop (see b/562876887).
+          requestSupervisorJob = SupervisorJob(coroutineContext[Job])
           lazyWrapperJob =
-            launch(start = CoroutineStart.LAZY) {
+            launch(requestSupervisorJob + CoroutineExceptionHandler { _, _ -> }, start = CoroutineStart.LAZY) {
               currentRefreshJob = currentRequest.doRefresh()
               currentRefreshJob!!.join()
             }
@@ -217,6 +226,7 @@ class PreviewRefreshManager private constructor(private val scope: CoroutineScop
         try {
           _refreshingTypeFlow.value = currentRequest.refreshType
           lazyWrapperJob.invokeOnCompletion {
+            requestSupervisorJob.complete()
             if (it != null) {
               currentRefreshJob?.cancel(if (it is CancellationException) it else null)
             }

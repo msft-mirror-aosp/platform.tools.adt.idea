@@ -27,15 +27,18 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator
 import com.intellij.openapi.util.Disposer
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiFile
 import com.intellij.refactoring.rename.inplace.InplaceRefactoring
 import java.time.Duration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.job
 import kotlinx.coroutines.time.withTimeout
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
@@ -63,29 +66,41 @@ internal suspend fun fastCompile(
   fastPreviewManager: FastPreviewManager = FastPreviewManager.getInstance(files.first().project),
   requestTracker: FastPreviewTrackerManager.Request = FastPreviewTrackerManager.getInstance(files.first().project).trackRequest(),
 ): Pair<CompilationResult, String> = coroutineScope {
+  if (Disposer.isDisposed(parentDisposable)) {
+    return@coroutineScope CompilationResult.CompilationAborted() to ""
+  }
   val project = files.first().project
 
-  val compileProgressIndicator = BackgroundableProcessIndicator(project, message("notification.compiling"), "", "", false)
-  compileProgressIndicator.isIndeterminate = true
-  Disposer.register(parentDisposable, compileProgressIndicator)
-  try {
-    compileProgressIndicator.start()
+  // Cancel the compilation coroutine if parentDisposable is disposed while running.
+  // Note: withBackgroundProgress is used instead of BackgroundableProcessIndicator to avoid
+  // ProgressWindow.dispose() off-EDT assertion issues when disposed off-EDT (see b/562876887).
+  val cancellationJob = Job(coroutineContext.job)
+  val cancellationDisposable = Disposable {
+    cancellationJob.cancel()
+  }
+  if (!Disposer.tryRegister(parentDisposable, cancellationDisposable)) {
+    cancellationJob.cancel()
+    return@coroutineScope CompilationResult.CompilationAborted() to ""
+  }
+  return@coroutineScope try {
+    withContext(cancellationJob) {
+      withBackgroundProgress(project, message("notification.compiling"), cancellable = false) {
+        files.forEach { it.saveIfNeeded() }
 
-    files.forEach { it.saveIfNeeded() }
+        val (result, outputAbsolutePath) =
+          withTimeout(Duration.ofSeconds(FAST_PREVIEW_COMPILE_TIMEOUT)) {
+            fastPreviewManager.compileRequest(files, contextBuildTargetReference, tracker = requestTracker)
+          }
 
-    val (result, outputAbsolutePath) =
-      withTimeout(Duration.ofSeconds(FAST_PREVIEW_COMPILE_TIMEOUT)) {
-        fastPreviewManager.compileRequest(files, contextBuildTargetReference, tracker = requestTracker)
+        result to outputAbsolutePath
       }
-
-    return@coroutineScope result to outputAbsolutePath
+    }
   } catch (_: CancellationException) {
-    return@coroutineScope CompilationResult.CompilationAborted() to ""
+    CompilationResult.CompilationAborted() to ""
   } catch (_: ProcessCanceledException) {
-    return@coroutineScope CompilationResult.CompilationAborted() to ""
+    CompilationResult.CompilationAborted() to ""
   } finally {
-    compileProgressIndicator.stop()
-    compileProgressIndicator.processFinish()
+    Disposer.dispose(cancellationDisposable)
   }
 }
 

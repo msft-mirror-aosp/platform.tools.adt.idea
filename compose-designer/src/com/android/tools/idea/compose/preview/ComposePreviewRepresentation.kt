@@ -120,6 +120,7 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ComposePreviewLiteModeEvent
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.ide.ActivityTracker
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
@@ -1322,9 +1323,12 @@ constructor(
       RenderUtils.clearCache(surface.configurations)
     }
 
+    if (Disposer.isDisposed(this)) {
+      return CompletableDeferred<Unit>().also { it.completeAlreadyDisposed() }
+    }
+
     val startTime = System.nanoTime()
-    // Start a progress indicator so users are aware that a long task is running. Stop it by calling
-    // processFinish() if returning early.
+    // Start a progress indicator so users are aware that a long task is running.
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(
         project,
@@ -1333,9 +1337,15 @@ constructor(
         "",
         true,
       )
+    // ProgressWindow.dispose() asserts that it is called on the EDT. Wrap its disposal in a Disposable
+    // that schedules disposal on the EDT so that if `this` is already disposed (or disposed later from a
+    // background thread), ObjectTree never invokes ProgressWindow.dispose() off-EDT (see b/562876887).
+    val indicatorDisposable = Disposable {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
+    }
     _refreshIndicatorCallback()
-    if (!Disposer.tryRegister(this, refreshProgressIndicator)) {
-      refreshProgressIndicator.processFinish()
+    if (!Disposer.tryRegister(this, indicatorDisposable)) {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
       return CompletableDeferred<Unit>().also { it.completeAlreadyDisposed() }
     }
 
@@ -1429,7 +1439,7 @@ constructor(
 
     refreshJob.invokeOnCompletion {
       requestLogger.debug("Completed")
-      launch(Dispatchers.EDT) { Disposer.dispose(refreshProgressIndicator) }
+      launch(Dispatchers.EDT) { Disposer.dispose(indicatorDisposable) }
       if (it is CancellationException) {
         composeWorkBench.onRefreshCancelledByTheUser()
       } else {
