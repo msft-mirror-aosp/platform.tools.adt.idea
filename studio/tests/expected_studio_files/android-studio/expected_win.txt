@@ -808,6 +808,7 @@ android-studio/lib/intellij.platform.jewel.foundation.jar
 android-studio/lib/intellij.platform.jewel.ideLafBridge.jar
 android-studio/lib/intellij.platform.jewel.markdown.core.jar
 android-studio/lib/intellij.platform.jewel.markdown.extensions.autolink.jar
+android-studio/lib/intellij.platform.jewel.markdown.extensions.frontMatter.jar
 android-studio/lib/intellij.platform.jewel.markdown.extensions.gfmAlerts.jar
 android-studio/lib/intellij.platform.jewel.markdown.extensions.gfmStrikethrough.jar
 android-studio/lib/intellij.platform.jewel.markdown.extensions.gfmTables.jar
@@ -1028,12 +1029,15 @@ android-studio/plugins/Kotlin/kotlinc/bin/kotlinc-js
 android-studio/plugins/Kotlin/kotlinc/bin/kotlinc-js.bat
 android-studio/plugins/Kotlin/kotlinc/bin/kotlinc-jvm
 android-studio/plugins/Kotlin/kotlinc/bin/kotlinc-jvm.bat
+android-studio/plugins/Kotlin/kotlinc/bin/kotlinc-wasm
+android-studio/plugins/Kotlin/kotlinc/bin/kotlinc-wasm.bat
 android-studio/plugins/Kotlin/kotlinc/bin/kotlinc.bat
 android-studio/plugins/Kotlin/kotlinc/build.txt
 android-studio/plugins/Kotlin/kotlinc/lib/allopen-compiler-plugin.jar
 android-studio/plugins/Kotlin/kotlinc/lib/annotations-13.0.jar
 android-studio/plugins/Kotlin/kotlinc/lib/assignment-compiler-plugin.jar
 android-studio/plugins/Kotlin/kotlinc/lib/compose-compiler-plugin.jar
+android-studio/plugins/Kotlin/kotlinc/lib/jklib-compiler.jar
 android-studio/plugins/Kotlin/kotlinc/lib/jvm-abi-gen.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-cli.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-runtime.jar
@@ -1064,6 +1068,7 @@ android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-jdk8.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js-sources.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js.klib
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-sources.jar
+android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-wasm-js.klib
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-test-js-sources.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-test-js.klib
@@ -2755,7 +2760,6 @@ android-studio/plugins/html-tools/lib/html-tools.jar
 android-studio/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.maven.resolver.provider.jar
 android-studio/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.plexus.utils.jar
 android-studio/plugins/java-aetherDependencyResolver-plugin/lib/java-aetherDependencyResolver-plugin.jar
-android-studio/plugins/java-aetherDependencyResolver-plugin/lib/maven-artifact.jar
 android-studio/plugins/java-aetherDependencyResolver-plugin/lib/maven-builder-support.jar
 android-studio/plugins/java-aetherDependencyResolver-plugin/lib/maven-model-builder.jar
 android-studio/plugins/java-aetherDependencyResolver-plugin/lib/maven-model.jar
@@ -2898,6 +2902,7 @@ android-studio/plugins/markdown/lib/modules/intellij.markdown.backend.jar
 android-studio/plugins/markdown/lib/modules/intellij.markdown.compose.preview.jar
 android-studio/plugins/markdown/lib/modules/intellij.markdown.fenceInjection.jar
 android-studio/plugins/markdown/lib/modules/intellij.markdown.fenceInjector.textMate.jar
+android-studio/plugins/markdown/lib/modules/intellij.markdown.figmaAdvertiser.jar
 android-studio/plugins/markdown/lib/modules/intellij.markdown.frontend.jar
 android-studio/plugins/markdown/lib/modules/intellij.markdown.frontmatter.jar
 android-studio/plugins/markdown/lib/modules/intellij.markdown.frontmatter.toml.jar

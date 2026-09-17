@@ -748,6 +748,7 @@ Android Studio Preview.app/Contents/lib/intellij.platform.jewel.foundation.jar
 Android Studio Preview.app/Contents/lib/intellij.platform.jewel.ideLafBridge.jar
 Android Studio Preview.app/Contents/lib/intellij.platform.jewel.markdown.core.jar
 Android Studio Preview.app/Contents/lib/intellij.platform.jewel.markdown.extensions.autolink.jar
+Android Studio Preview.app/Contents/lib/intellij.platform.jewel.markdown.extensions.frontMatter.jar
 Android Studio Preview.app/Contents/lib/intellij.platform.jewel.markdown.extensions.gfmAlerts.jar
 Android Studio Preview.app/Contents/lib/intellij.platform.jewel.markdown.extensions.gfmStrikethrough.jar
 Android Studio Preview.app/Contents/lib/intellij.platform.jewel.markdown.extensions.gfmTables.jar
@@ -963,12 +964,15 @@ Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc-js
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc-js.bat
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc-jvm
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc-jvm.bat
+Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc-wasm
+Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc-wasm.bat
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc.bat
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/build.txt
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/allopen-compiler-plugin.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/annotations-13.0.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/assignment-compiler-plugin.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/compose-compiler-plugin.jar
+Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/jklib-compiler.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/jvm-abi-gen.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-cli.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-runtime.jar
@@ -999,6 +1003,7 @@ Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-jdk
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js-sources.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js.klib
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-sources.jar
+Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-wasm-js.klib
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-test-js-sources.jar
 Android Studio Preview.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-test-js.klib
@@ -3233,7 +3238,6 @@ Android Studio Preview.app/Contents/plugins/html-tools/lib/html-tools.jar
 Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.maven.resolver.provider.jar
 Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.plexus.utils.jar
 Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/java-aetherDependencyResolver-plugin.jar
-Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/maven-artifact.jar
 Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/maven-builder-support.jar
 Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/maven-model-builder.jar
 Android Studio Preview.app/Contents/plugins/java-aetherDependencyResolver-plugin/lib/maven-model.jar
@@ -3376,6 +3380,7 @@ Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdo
 Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.compose.preview.jar
 Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.fenceInjection.jar
 Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.fenceInjector.textMate.jar
+Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.figmaAdvertiser.jar
 Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.frontend.jar
 Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.frontmatter.jar
 Android Studio Preview.app/Contents/plugins/markdown/lib/modules/intellij.markdown.frontmatter.toml.jar
