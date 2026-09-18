@@ -113,7 +113,7 @@ public class RenderTask {
   /**
    * Indicates whether the size of the hardware used for rendering has changed.
    */
-  private boolean isSizeChanged = false;
+  private final AtomicBoolean isSizeChanged = new AtomicBoolean(false);
 
   /**
    * Listener that receives call before and after relevant {@link RenderTask} events.
@@ -363,8 +363,9 @@ public class RenderTask {
    * Release rendered image without closing render session.
    */
   public void releaseRender() {
-    if (myRenderSession != null) {
-      myRenderSession.releaseRender();
+    RenderSession session = myRenderSession;
+    if (session != null) {
+      runAsyncRenderAction(session::releaseRender);
     }
   }
 
@@ -396,10 +397,15 @@ public class RenderTask {
       myRenderSecurity = null;
     }
 
+    CompletableFuture<?> releaseFuture = null;
     if (renderSessionToDispose != null) {
-      renderSessionToDispose.releaseRender();
+      releaseFuture = RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingTopic.CLEAN, () -> {
+        renderSessionToDispose.releaseRender();
+        return null;
+      });
     }
 
+    CompletableFuture<?> finalReleaseFuture = releaseFuture;
     return ourDisposeService.submit(() -> {
       try {
         // Wait for all current running operations to complete
@@ -408,6 +414,14 @@ public class RenderTask {
       catch (Exception e) {
         // We do not care about these exceptions since we are disposing the task anyway
         LOG.debug(e);
+      }
+      if (finalReleaseFuture != null) {
+        try {
+          finalReleaseFuture.get(5, TimeUnit.SECONDS);
+        }
+        catch (Exception e) {
+          LOG.debug(e);
+        }
       }
       try {
         if (renderSessionToDispose != null) {
@@ -458,9 +472,11 @@ public class RenderTask {
    * This method should be called whenever the size of the hardware used for rendering has changed.
    */
   private void updateHardwareConfiguration() {
-    if (myRenderSession != null) {
-      myRenderSession.updateHardwareConfiguration(myHardwareConfigHelper.getConfig());
-      isSizeChanged = true;
+    RenderSession session = myRenderSession;
+    if (session != null) {
+      HardwareConfig config = myHardwareConfigHelper.getConfig();
+      runAsyncRenderAction(() -> session.updateHardwareConfiguration(config));
+      isSizeChanged.set(true);
     }
   }
 
@@ -921,6 +937,14 @@ public class RenderTask {
     return runAsyncRenderAction(callable, 0, TimeUnit.SECONDS);
   }
 
+  @NotNull
+  private CompletableFuture<Void> runAsyncRenderAction(@NotNull Runnable runnable) {
+    return runAsyncRenderAction(() -> {
+      runnable.run();
+      return null;
+    });
+  }
+
   /**
    * Inflates the layout but does not render it.
    *
@@ -1194,9 +1218,8 @@ public class RenderTask {
   public CompletableFuture<RenderResult> render() {
     // If a re-render is happening after changing the quality up, then we need to re-measure
     // to avoid the rendered image to show things out of place. Also if size has changed, we need to re-measure.
-    boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged;
+    boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged.getAndSet(false);
     myCurrentQuality = myTargetQuality;
-    isSizeChanged = false;
     return renderInner(forceMeasure);
   }
 
@@ -1205,8 +1228,9 @@ public class RenderTask {
    * the current system nanos time.
    */
   public void setElapsedFrameTimeNanos(long nanos) {
-    if (myRenderSession != null) {
-      myRenderSession.setElapsedFrameTimeNanos(nanos);
+    RenderSession session = myRenderSession;
+    if (session != null) {
+      runAsyncRenderAction(() -> session.setElapsedFrameTimeNanos(nanos));
     }
   }
 
