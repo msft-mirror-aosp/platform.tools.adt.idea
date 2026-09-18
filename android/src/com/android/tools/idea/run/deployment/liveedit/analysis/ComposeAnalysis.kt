@@ -16,6 +16,7 @@
 package com.android.tools.idea.run.deployment.liveedit.analysis
 
 import com.android.SdkConstants
+import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrAccessFlag
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrClass
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrMethod
 import com.intellij.openapi.util.TextRange
@@ -164,7 +165,7 @@ private fun analyzeMethod(analyzer: ComposeAnalyzer, method: IrMethod, classesBy
   val frames = analyzer.analyze(method.clazz.name, method.node)
 
   val keyMeta = method.annotations.singleOrNull { it.desc == "Landroidx/compose/runtime/internal/FunctionKeyMeta;" }
-  if (keyMeta != null) {
+  if (keyMeta != null && IrAccessFlag.BRIDGE !in method.access) {
     if (method !in groupTable.groups) {
       val key = keyMeta.values["key"] as Int
       val startOffset = keyMeta.values["startOffset"] as Int
