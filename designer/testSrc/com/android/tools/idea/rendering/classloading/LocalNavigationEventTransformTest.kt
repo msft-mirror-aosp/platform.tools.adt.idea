@@ -182,7 +182,7 @@ class LocalNavigationEventTransformTest {
     DelegatingClassLoader(
       object : ClassLoader(this.javaClass.classLoader) {
         override fun loadClass(name: String, resolve: Boolean): Class<*> {
-          if (name.startsWith("androidx.compose.runtime")) {
+          if (name.startsWith("androidx.compose.runtime") || name.startsWith("androidx.navigationevent.compose")) {
             throw ClassNotFoundException(name)
           }
           return super.loadClass(name, resolve)
