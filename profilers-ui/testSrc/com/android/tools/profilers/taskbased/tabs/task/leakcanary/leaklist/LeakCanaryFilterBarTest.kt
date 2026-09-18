@@ -82,6 +82,7 @@ class LeakCanaryFilterBarTest : WithFakeTimer {
     composeTestRule.setContent { LeakCanaryFilterBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithContentDescription("Clear search").performClick()
 
+    composeTestRule.waitForIdle()
     assertEquals("", leakCanaryModel.searchQuery.value)
   }
 
