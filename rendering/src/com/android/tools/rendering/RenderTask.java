@@ -1243,7 +1243,7 @@ public class RenderTask {
           return CompletableFuture.completedFuture((BufferedImage)data);
         }
         else {
-          if (result.getStatus() == Result.Status.ERROR_NOT_A_DRAWABLE) {
+          if (result != null && result.getStatus() == Result.Status.ERROR_NOT_A_DRAWABLE) {
             LOG.debug("renderDrawable called with a non-drawable resource" + drawableResourceValue);
             return CompletableFuture.completedFuture(null);
           }
