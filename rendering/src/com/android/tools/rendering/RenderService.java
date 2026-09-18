@@ -561,100 +561,110 @@ final public class RenderService implements Disposable {
           getLogger().warn("Module was already disposed");
           return null;
         }
-        IAndroidTarget target = myContext.getConfiguration().getTarget();
-
-        if (module.getAndroidPlatform() == null) {
-          myContext.getModule().getEnvironment().reportMissingSdkDependency(myLogger);
-          return null;
-        }
-
-        if (target == null) {
-          myLogger.addMessage(RenderProblem.createPlain(ERROR, "No render target was chosen"));
-          return null;
-        }
-
-        LayoutLibrary layoutLib;
-        try {
-          if (disposable.isDisposed()) {
-            return null;
-          }
-          layoutLib = LayoutlibFactory.getLayoutLibrary(target, module.getAndroidPlatform(), module.getEnvironment().getLayoutlibContext());
-        }
-        catch (UnsupportedJavaRuntimeException e) {
-          RenderProblem.Html javaVersionProblem = RenderProblem.create(ERROR);
-          javaVersionProblem.getHtmlBuilder()
-            .add(e.getPresentableMessage())
-            .newline()
-            .addLink("Install a supported JDK", JDK_INSTALL_URL);
-          myLogger.addMessage(javaVersionProblem);
-          return null;
-        }
-        catch (RenderingException e) {
-          String message = e.getPresentableMessage();
-          message = message != null ? message : RenderingBundle.message("android.layout.preview.default.error.message");
-          myLogger.addMessage(
-            RenderProblem.createHtml(
-              ERROR, message, myLogger.getLinkManager(), e, module.getEnvironment().getActionFixFactory()));
-          return null;
-        }
-        if (disposable.isDisposed()) {
-          return null;
-        }
+        boolean taskCreated = false;
         RenderTask task = null;
         try {
-          task =
-            new RenderTask(myContext, myLogger, layoutLib,
-                           myCredential, myContext.getModule().getEnvironment().getCrashReporter(),
-                           myParserFactory, isSecurityManagerEnabled, myQuality, stackTraceCaptureElement, tracker,
-                           privateClassLoader, myAdditionalProjectTransform, myAdditionalNonProjectTransform, myOnNewModuleClassLoader,
-                           classesToPreload, reportOutOfDateUserClasses, myTopic, useCustomInflater, useLoadViewFallbacks,
-                           myTestEventListener, animationDurationScale);
-          if (myXmlFile != null) {
-            task.setXmlFile(myXmlFile);
-          }
+          IAndroidTarget target = myContext.getConfiguration().getTarget();
 
-          task
-            .setDecorations(showDecorations)
-            .setShowWithToolsVisibilityAndPosition(showWithToolsVisibilityAndPosition)
-            .setEnableLayoutScanner(enableLayoutScanner)
-            .setForceMonochromeIcon(forceMonochromeIcon);
-
-          if (myMaxRenderWidth != -1 && myMaxRenderHeight != -1) {
-            task.setMaxRenderSize(myMaxRenderWidth, myMaxRenderHeight);
-          }
-
-          if (useTransparentBackground) {
-            task.setTransparentBackground();
-          }
-
-          if (myRenderingMode != null) {
-            task.setRenderingMode(myRenderingMode);
-          }
-
-          if (myCustomContentHierarchyParser != null) {
-            task.setCustomContentHierarchyParser(myCustomContentHierarchyParser);
-          }
-          if (disposable.isDisposed()) {
-            task.disposeAsync();
+          if (module.getAndroidPlatform() == null) {
+            myContext.getModule().getEnvironment().reportMissingSdkDependency(myLogger);
             return null;
           }
 
-          return task;
-        } catch (NoDeviceException e) {
-          myLogger.addMessage(RenderProblem.createPlain(ERROR, "No device selected"));
+          if (target == null) {
+            myLogger.addMessage(RenderProblem.createPlain(ERROR, "No render target was chosen"));
+            return null;
+          }
+
+          LayoutLibrary layoutLib;
+          try {
+            if (disposable.isDisposed()) {
+              return null;
+            }
+            layoutLib = LayoutlibFactory.getLayoutLibrary(target, module.getAndroidPlatform(), module.getEnvironment().getLayoutlibContext());
+          }
+          catch (UnsupportedJavaRuntimeException e) {
+            RenderProblem.Html javaVersionProblem = RenderProblem.create(ERROR);
+            javaVersionProblem.getHtmlBuilder()
+              .add(e.getPresentableMessage())
+              .newline()
+              .addLink("Install a supported JDK", JDK_INSTALL_URL);
+            myLogger.addMessage(javaVersionProblem);
+            return null;
+          }
+          catch (RenderingException e) {
+            String message = e.getPresentableMessage();
+            message = message != null ? message : RenderingBundle.message("android.layout.preview.default.error.message");
+            myLogger.addMessage(
+              RenderProblem.createHtml(
+                ERROR, message, myLogger.getLinkManager(), e, module.getEnvironment().getActionFixFactory()));
+            return null;
+          }
+          if (disposable.isDisposed()) {
+            return null;
+          }
+          try {
+            task =
+              new RenderTask(myContext, myLogger, layoutLib,
+                             myCredential, myContext.getModule().getEnvironment().getCrashReporter(),
+                             myParserFactory, isSecurityManagerEnabled, myQuality, stackTraceCaptureElement, tracker,
+                             privateClassLoader, myAdditionalProjectTransform, myAdditionalNonProjectTransform, myOnNewModuleClassLoader,
+                             classesToPreload, reportOutOfDateUserClasses, myTopic, useCustomInflater, useLoadViewFallbacks,
+                             myTestEventListener, animationDurationScale);
+            if (myXmlFile != null) {
+              task.setXmlFile(myXmlFile);
+            }
+
+            task
+              .setDecorations(showDecorations)
+              .setShowWithToolsVisibilityAndPosition(showWithToolsVisibilityAndPosition)
+              .setEnableLayoutScanner(enableLayoutScanner)
+              .setForceMonochromeIcon(forceMonochromeIcon);
+
+            if (myMaxRenderWidth != -1 && myMaxRenderHeight != -1) {
+              task.setMaxRenderSize(myMaxRenderWidth, myMaxRenderHeight);
+            }
+
+            if (useTransparentBackground) {
+              task.setTransparentBackground();
+            }
+
+            if (myRenderingMode != null) {
+              task.setRenderingMode(myRenderingMode);
+            }
+
+            if (myCustomContentHierarchyParser != null) {
+              task.setCustomContentHierarchyParser(myCustomContentHierarchyParser);
+            }
+            if (disposable.isDisposed()) {
+              return null;
+            }
+
+            taskCreated = true;
+            return task;
+          } catch (NoDeviceException e) {
+            myLogger.addMessage(RenderProblem.createPlain(ERROR, "No device selected"));
+            return null;
+          }
+          catch (IllegalStateException | IncorrectOperationException | AssertionError e) {
+            // Ignore the exception if it was generated when the facet is being disposed (project is being closed)
+            if (!module.isDisposed()) {
+              throw e;
+            }
+          }
+
           return null;
         }
-        catch (IllegalStateException | IncorrectOperationException | AssertionError e) {
-          if (task != null) {
-            task.disposeAsync();
-          }
-          // Ignore the exception if it was generated when the facet is being disposed (project is being closed)
-          if (!module.isDisposed()) {
-            throw e;
+        finally {
+          if (!taskCreated) {
+            if (task != null) {
+              task.disposeAsync();
+            }
+            else {
+              module.dispose();
+            }
           }
         }
-
-        return null;
       }, AppExecutorUtil.getAppExecutorService());
     }
   }

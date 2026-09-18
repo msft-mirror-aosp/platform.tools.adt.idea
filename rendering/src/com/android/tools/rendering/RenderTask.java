@@ -77,8 +77,10 @@ import com.android.utils.HtmlBuilder;
 import com.android.utils.SdkUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Futures;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.serviceContainer.AlreadyDisposedException;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.awt.event.KeyEvent;
@@ -384,9 +386,13 @@ public class RenderTask {
       myRunningFutures.clear();
     }
     myLayoutlibCallback.setLogger(IRenderLogger.NULL_LOGGER);
-    RenderSession renderSessionToDispose = myRenderSession;
-    myRenderSession = null;
+    if (myLayoutlibCallback instanceof Disposable) {
+      Disposer.dispose((Disposable) myLayoutlibCallback);
+    }
+    RenderSession renderSessionToDispose;
     synchronized (this) {
+      renderSessionToDispose = myRenderSession;
+      myRenderSession = null;
       myRenderSecurity = null;
     }
 
@@ -399,24 +405,28 @@ public class RenderTask {
         // Wait for all current running operations to complete
         CompletableFuture.allOf(currentRunningFutures).get(5, TimeUnit.SECONDS);
       }
-      catch (InterruptedException | ExecutionException e) {
+      catch (Exception e) {
         // We do not care about these exceptions since we are disposing the task anyway
         LOG.debug(e);
       }
-      if (renderSessionToDispose != null) {
-        try {
-          disposeRenderSession(renderSessionToDispose)
-            .whenComplete((result, ex) -> clearClassLoader())
-            .orTimeout(2, TimeUnit.SECONDS)
-            .join(); // This is running on the dispose thread so wait for the full dispose to happen.
+      try {
+        if (renderSessionToDispose != null) {
+          try {
+            disposeRenderSession(renderSessionToDispose)
+              .whenComplete((result, ex) -> clearClassLoader())
+              .orTimeout(2, TimeUnit.SECONDS)
+              .join(); // This is running on the dispose thread so wait for the full dispose to happen.
+          }
+          catch (Exception ignored) {
+          }
         }
-        catch (Exception ignored) {
+        else {
+          clearClassLoader();
         }
       }
-      else {
-        clearClassLoader();
+      finally {
+        myContext.getModule().dispose();
       }
-      myContext.getModule().dispose();
 
       return null;
     });
@@ -754,13 +764,20 @@ public class RenderTask {
         session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
       }
 
-      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
-      RenderSession oldRenderSession = myRenderSession;
-      myRenderSession = session;
-      RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
+      RenderSession oldRenderSession;
+      synchronized (this) {
+        if (isDisposed.get()) {
+          disposeRenderSession(session);
+          return null;
+        }
+        oldRenderSession = myRenderSession;
+        myRenderSession = session;
+        RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
+      }
       if (oldRenderSession != null) {
         disposeRenderSession(oldRenderSession);
       }
+      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
       addDiagnostics(result.getRenderResult());
       return result;
     }
