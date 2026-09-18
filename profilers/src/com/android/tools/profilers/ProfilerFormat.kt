@@ -25,10 +25,20 @@ sealed interface ProfilerFormat {
   fun matches(extension: String?, traceTypeProvider: Lazy<TraceType?>): Boolean
 
   object Hprof : ProfilerFormat {
-    override val extensions = listOf("hprof", "prof", "perfetto-java-heap-dump")
+    /** Extension of an ART heap dump, and the format assumed when a capture's own format is unknown. */
+    const val DEFAULT_EXTENSION = "hprof"
+
+    override val extensions = listOf(DEFAULT_EXTENSION, "prof", "perfetto-java-heap-dump")
     override val taskType = ProfilerTaskType.HEAP_DUMP
 
     override fun matches(extension: String?, traceTypeProvider: Lazy<TraceType?>) = extension?.lowercase() in extensions
+
+    /**
+     * Returns [extension] when it names a heap dump format, and [DEFAULT_EXTENSION] otherwise. For callers that have to recover the format
+     * from a string that is not guaranteed to be one, such as the name of an imported recording.
+     */
+    @JvmStatic
+    fun extensionOrDefault(extension: String?) = extensions.firstOrNull { it.equals(extension, ignoreCase = true) } ?: DEFAULT_EXTENSION
   }
 
   object NativeAllocations : ProfilerFormat {

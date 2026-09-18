@@ -109,7 +109,8 @@ class UnifiedTraceOpener(private val profilers: StudioProfilers) {
     return artifacts
       .firstNotNullOfOrNull {
         when (it) {
-          is HprofSessionArtifact -> Pair(it.artifactProto.startTime, "hprof")
+          // A heap dump is not always an ART HPROF, so ask the artifact rather than assuming the extension.
+          is HprofSessionArtifact -> Pair(it.artifactProto.startTime, it.exportExtension)
           is LegacyAllocationsSessionArtifact -> Pair(it.artifactProto.startTime, "alloc")
           is HeapProfdSessionArtifact -> Pair(it.artifactProto.fromTimestamp, "heapprofd")
           else -> null

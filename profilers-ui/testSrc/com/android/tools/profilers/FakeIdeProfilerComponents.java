@@ -52,6 +52,8 @@ import org.jetbrains.annotations.Nullable;
 public final class FakeIdeProfilerComponents implements IdeProfilerComponents {
   @NotNull private Map<JComponent, Supplier<CodeLocation>> myComponentNavigations = new HashMap<>();
   @NotNull private Map<JComponent, List<ContextMenuItem>> myComponentContextMenus = new HashMap<>();
+  @Nullable private String myExportedFileName;
+  @Nullable private String myExportedExtension;
 
   @NotNull
   @Override
@@ -119,8 +121,22 @@ public final class FakeIdeProfilerComponents implements IdeProfilerComponents {
                        @NotNull Supplier<String> fileNameSupplier,
                        @NotNull Supplier<String> extensionSupplier,
                        @NotNull Consumer<File> saveToFile) {
+        myExportedFileName = fileNameSupplier.get();
+        myExportedExtension = extensionSupplier.get();
       }
     };
+  }
+
+  /** Name the last export was offered under, or null if nothing has been exported. */
+  @Nullable
+  public String getExportedFileName() {
+    return myExportedFileName;
+  }
+
+  /** Extension the last export was offered under, or null if nothing has been exported. */
+  @Nullable
+  public String getExportedExtension() {
+    return myExportedExtension;
   }
 
   @NotNull
