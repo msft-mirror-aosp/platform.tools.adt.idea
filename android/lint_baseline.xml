@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 9.5.0-alpha05" type="baseline" client="" dependencies="true" name="" variant="all" version="9.5.0-alpha05">
+<issues format="6" by="lint 9.5.0-dev" type="baseline" client="" dependencies="true" name="" variant="all" version="9.5.0-dev">
 
     <issue
         id="JbUiStored"
@@ -421,6 +421,17 @@
 
     <issue
         id="WrongThread"
+        message="Argument must allow calling `run()` from `@UiThread`, but that call has an unsatisfiable thread requirement"
+        errorLine1="        AccelerationErrorSolution.getActionForFix(code, project, { changeWasMade.complete(true) }, { changeWasMade.complete(false) })"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/avdmanager/AvdManagerConnection.kt"
+            line="390"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
         message="Call must be from `@{Slow,WorkerThread}`, but context is allowing `@UiThread`"
         errorLine1="      SourceFilePosition location = ManifestUtils.getActionLocation(myFacet.getModule(), record);"
         errorLine2="                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
@@ -516,6 +527,17 @@
             file="src/org/jetbrains/android/refactoring/renaming/RenameResourceReference.kt"
             line="290"
             column="31"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `BaseRefactoringProcessor.performRefactoring(…)` is allowing `@UiThread`"
+        errorLine1="          performRefactoringForLayoutFile(refactoring);"
+        errorLine2="          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/refactoring/rtl/RtlSupportProcessor.java"
+            line="193"
+            column="11"/>
     </issue>
 
     <issue

@@ -371,7 +371,7 @@
         errorLine2="                                             ~~~~~">
         <location
             file="src/com/android/tools/idea/uibuilder/handlers/constraint/WidgetConstraintPanel.java"
-            line="298"
+            line="299"
             column="46"/>
     </issue>
 
@@ -382,7 +382,7 @@
         errorLine2="                                      ~~~~~">
         <location
             file="src/com/android/tools/idea/uibuilder/handlers/constraint/WidgetConstraintPanel.java"
-            line="299"
+            line="300"
             column="39"/>
     </issue>
 
@@ -393,7 +393,7 @@
         errorLine2="                                           ~~~~~">
         <location
             file="src/com/android/tools/idea/uibuilder/handlers/constraint/WidgetConstraintPanel.java"
-            line="300"
+            line="301"
             column="44"/>
     </issue>
 
@@ -461,6 +461,17 @@
             file="src/com/android/tools/idea/actions/LocaleMenuAction.java"
             line="251"
             column="7"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
+        errorLine1="          myModification.commit();"
+        errorLine2="                         ~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/uibuilder/handlers/constraint/WidgetConstraintModel.java"
+            line="327"
+            column="26"/>
     </issue>
 
 </issues>
