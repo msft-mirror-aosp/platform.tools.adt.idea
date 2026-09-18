@@ -1098,6 +1098,13 @@ public class RenderTask {
     }
 
     return inflateCompletableResult.thenCompose(inflateResult -> {
+      if (inflateResult != null && !inflateResult.getRenderResult().isSuccess()) {
+        return CompletableFuture.completedFuture(inflateResult);
+      }
+      if (myRenderSession == null) {
+        return CompletableFuture.completedFuture(
+          RenderResult.createErrorRenderResult(Result.Status.ERROR_RENDER, myContext.getModule(), xmlFile, null, myLogger));
+      }
       try {
         long startRenderTimeMs = System.currentTimeMillis();
         return runAsyncRenderAction(() -> {
