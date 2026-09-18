@@ -32,25 +32,31 @@ class LiveEditDesugarResponse(val compilerOutput: LiveEditCompilerOutput) {
   val hasNonComposeChanges = compilerOutput.hasNonComposeChanges
 
   private fun getClasses(classNames: Set<String>, apiLevel: MinApiLevel): MutableMap<String, ByteArray> {
-    if (!apiToClasses.containsKey(apiLevel)) {
-      throw desugarFailure("No desugared classes for api=$apiLevel")
-    }
+    val desugaredClasses = apiToClasses[apiLevel] ?: throw desugarFailure("No desugared classes for api=$apiLevel")
 
-    val classes: MutableMap<String, ByteArray> = java.util.HashMap()
+    val classes = mutableMapOf<String, ByteArray>()
     for (className in classNames) {
-      if (!apiToClasses[apiLevel]!!.containsKey(className)) {
-        throw desugarFailure("Desugared classes api $apiLevel does not contain $className")
-      }
-      classes[className] = apiToClasses[apiLevel]!![className]!!
+      val classData = desugaredClasses[className] ?: throw desugarFailure("Desugared classes api $apiLevel does not contain $className")
+      classes[className] = classData
     }
     return classes
+  }
+
+  /** Synthetics D8 generated but the compiler never emitted, such as backports for APIs newer than the app min API. */
+  private fun desugaringGeneratedClasses(apiLevel: MinApiLevel): Map<String, ByteArray> {
+    val desugaredClasses = apiToClasses[apiLevel] ?: throw desugarFailure("No desugared classes for api=$apiLevel")
+    val compiledClassNames = compilerOutput.classesMap.keys + compilerOutput.supportClassesMap.keys
+    return desugaredClasses.filterKeys { it !in compiledClassNames }
   }
 
   fun classes(apiLevel: MinApiLevel): MutableMap<String, ByteArray> {
     return getClasses(compilerOutput.classesMap.keys, apiLevel)
   }
 
+  /** Classes missing from the APK, sent as interpreted proxies. Desugaring's synthetics are missing too, so they ride along. */
   fun supportClasses(apiLevel: MinApiLevel): MutableMap<String, ByteArray> {
-    return getClasses(compilerOutput.supportClassesMap.keys, apiLevel)
+    val classes = getClasses(compilerOutput.supportClassesMap.keys, apiLevel)
+    classes.putAll(desugaringGeneratedClasses(apiLevel))
+    return classes
   }
 }
