@@ -26,14 +26,7 @@ import com.android.tools.idea.insights.model.issue.IssueVariant
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.panels.HorizontalLayout
 import com.intellij.util.ui.JBFont
-import com.intellij.util.ui.JBUI
-import java.awt.Component
-import javax.swing.DefaultListCellRenderer
-import javax.swing.JList
-import javax.swing.JPanel
 import kotlin.math.max
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -55,17 +48,27 @@ class VariantComboBox(flow: Flow<AppInsightsCrashState>, parentDisposable: Dispo
   private var currentVariantSelection: Selection<IssueVariant>? = null
   private val scope = AndroidCoroutineScope(this, Dispatchers.EDT)
 
+  private val cellRenderer = VariantComboBoxListCellRenderer()
+
   override fun getMinimumPopupWidth(): Int {
     var popupWidth = 100
     for (i in 0 until model.size) {
-      popupWidth = max(popupWidth, model.getElementAt(i).getRendererComponent().preferredSize.width)
+      popupWidth =
+        max(popupWidth, cellRenderer.getListCellRendererComponent(null, model.getElementAt(i), i, false, false).preferredSize.width)
     }
     return popupWidth
+  }
+
+  override fun updateUI() {
+    super.updateUI()
+    // This can be called from the superclass's constructor before cellRenderer is initialized.
+    @Suppress("UNNECESSARY_SAFE_CALL") cellRenderer?.updateUI()
   }
 
   init {
     Disposer.register(parentDisposable, this)
     font = font.deriveFont(JBFont.BOLD).deriveFont(JBFont.ITALIC)
+    renderer = cellRenderer
     flow
       .mapNotNull { (it.issues as? LoadingState.Ready)?.value?.value?.selected?.let { issue -> issue to it.currentIssueVariants } }
       .distinctUntilChanged()
@@ -109,37 +112,6 @@ class VariantComboBox(flow: Flow<AppInsightsCrashState>, parentDisposable: Dispo
         }
       }
       .launchIn(scope)
-    renderer =
-      object : DefaultListCellRenderer() {
-        override fun getListCellRendererComponent(
-          list: JList<*>,
-          value: Any?,
-          index: Int,
-          isSelected: Boolean,
-          cellHasFocus: Boolean,
-        ): Component {
-          // index == -1 means it's trying to render the title of the combo box
-          if (index == -1 && value is VariantRow) {
-            return JPanel(HorizontalLayout(5)).apply {
-              add(JBLabel("Variant: ").apply { font = font.deriveFont(JBFont.ITALIC) }, HorizontalLayout.LEFT)
-              add(
-                JBLabel(value.name).apply {
-                  font = font.deriveFont(JBFont.BOLD or JBFont.ITALIC)
-                  border = JBUI.Borders.emptyRight(2)
-                },
-                HorizontalLayout.RIGHT,
-              )
-              border = JBUI.Borders.empty()
-            }
-          }
-          return when (value) {
-            is Row -> {
-              value.getRendererComponent()
-            }
-            else -> super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-          }
-        }
-      }
   }
 
   // Disable selection on header row

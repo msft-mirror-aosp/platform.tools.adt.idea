@@ -26,7 +26,9 @@ import com.android.tools.idea.insights.Timed
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.EDT
+import com.intellij.ui.components.JBLabel
 import java.time.Instant
+import javax.swing.JPanel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
@@ -200,4 +202,39 @@ class VariantComboBoxTest {
 
       delayUntilCondition(200) { (comboBox.model.selectedItem as? VariantRow)?.name == "All (2 variants)" }
     }
+
+  @Test
+  fun `variant list cell renderer renders rows correctly and uses per-instance components`() {
+    val renderer = VariantComboBoxListCellRenderer()
+
+    // 1. Header row
+    val headerComponent = renderer.getListCellRendererComponent(null, HeaderRow, 0, false, false) as JPanel
+    assertThat(headerComponent.components.map { (it as JBLabel).text }).containsExactly("Variants", "Impact").inOrder()
+
+    // 2. Variant row in popup list
+    val variantRow = VariantRow("ant1", 1200, 10, ISSUE_VARIANT)
+    val variantComponent = renderer.getListCellRendererComponent(null, variantRow, 1, false, false) as JPanel
+    assertThat(variantComponent.components.map { (it as JBLabel).text }).containsExactly("Variant ant1", "1,200", "10").inOrder()
+
+    val allVariantsRow = VariantRow("All (2 variants)", 2500, 20, null)
+    val allVariantsComponent = renderer.getListCellRendererComponent(null, allVariantsRow, 1, false, false) as JPanel
+    assertThat(allVariantsComponent).isSameAs(variantComponent)
+    assertThat(allVariantsComponent.components.map { (it as JBLabel).text }).containsExactly("All (2 variants)", "2,500", "20").inOrder()
+
+    // 3. Variant row title (index == -1)
+    val titleComponent = renderer.getListCellRendererComponent(null, variantRow, -1, false, false) as JPanel
+    assertThat(titleComponent.components.map { (it as JBLabel).text }).containsExactly("Variant: ", "ant1").inOrder()
+
+    // 4. Disabled text row
+    val disabledRow = DisabledTextRow("No variants available.")
+    val disabledComponent = renderer.getListCellRendererComponent(null, disabledRow, 0, false, false) as JBLabel
+    assertThat(disabledComponent.text).isEqualTo("No variants available.")
+
+    // 5. Distinct renderer instances return distinct component instances
+    val otherRenderer = VariantComboBoxListCellRenderer()
+    assertThat(otherRenderer.getListCellRendererComponent(null, HeaderRow, 0, false, false)).isNotSameAs(headerComponent)
+    assertThat(otherRenderer.getListCellRendererComponent(null, variantRow, 1, false, false)).isNotSameAs(variantComponent)
+    assertThat(otherRenderer.getListCellRendererComponent(null, variantRow, -1, false, false)).isNotSameAs(titleComponent)
+    assertThat(otherRenderer.getListCellRendererComponent(null, disabledRow, 0, false, false)).isNotSameAs(disabledComponent)
+  }
 }

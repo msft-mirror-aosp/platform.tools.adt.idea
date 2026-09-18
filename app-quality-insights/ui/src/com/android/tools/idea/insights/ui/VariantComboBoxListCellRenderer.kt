@@ -19,93 +19,141 @@ import com.android.tools.idea.insights.model.issue.IssueVariant
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.HorizontalLayout
 import com.intellij.util.ui.JBFont
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Font
 import javax.swing.Icon
-import javax.swing.JComponent
+import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.ListCellRenderer
 import javax.swing.SwingConstants
+import javax.swing.SwingUtilities
 
-/** Represents a row to be rendered in the variants dropdown. */
-sealed interface Row {
-  fun getRendererComponent(): Component
-}
+/** Represents a row in the variants dropdown. */
+sealed interface Row
+
+/** A row containing variant information. */
+data class VariantRow(val name: String, val eventCount: Long, val userCount: Long, val issueVariant: IssueVariant?) : Row
+
+/** Shown when the dropdown has no variant information. */
+data class DisabledTextRow(val text: String) : Row
+
+/** Represents the header of the variants list. */
+object HeaderRow : Row
 
 private val labelFont: Font
   get() = UIUtil.getLabelFont()
 
-/** A row containing variant information. */
-data class VariantRow(val name: String, val eventCount: Long, val userCount: Long, val issueVariant: IssueVariant?) : Row {
-  override fun getRendererComponent(): Component {
-    textLabel.update(if (issueVariant == null) name else "Variant $name", null)
-    eventCountLabel.update(eventCount.formatNumberToPrettyString(), StudioIcons.AppQualityInsights.ISSUE)
-    userCountLabel.update(userCount.formatNumberToPrettyString(), StudioIcons.LayoutEditor.Palette.QUICK_CONTACT_BADGE)
-    rendererComponent.invalidate()
-    return rendererComponent
+class VariantComboBoxListCellRenderer : ListCellRenderer<Row> {
+  // Components for rendering a VariantRow inside the dropdown list
+  private val textLabel = JBLabel()
+  private val eventCountLabel = JBLabel()
+  private val userCountLabel = JBLabel()
+  private val variantPanel =
+    JPanel(HorizontalLayout(5)).apply {
+      isOpaque = false
+      add(textLabel, HorizontalLayout.LEFT)
+      add(eventCountLabel, HorizontalLayout.RIGHT)
+      add(userCountLabel, HorizontalLayout.RIGHT)
+    }
+
+  // Components for rendering the combo box title when a VariantRow is selected (index == -1)
+  private val titleLabel = JBLabel("Variant: ")
+  private val titleNameLabel =
+    JBLabel().apply {
+      border = JBUI.Borders.emptyRight(2)
+    }
+  private val titlePanel =
+    JPanel(HorizontalLayout(5)).apply {
+      add(titleLabel, HorizontalLayout.LEFT)
+      add(titleNameLabel, HorizontalLayout.RIGHT)
+      border = JBUI.Borders.empty()
+    }
+
+  // Component for rendering DisabledTextRow
+  private val disabledTextLabel =
+    JBLabel().apply {
+      isEnabled = false
+      isOpaque = false
+    }
+
+  // Component for rendering HeaderRow
+  private val variantsHeaderLabel = JBLabel("Variants").apply { isOpaque = false }
+  private val impactHeaderLabel =
+    JBLabel("Impact").apply {
+      isOpaque = false
+      horizontalAlignment = SwingConstants.RIGHT
+    }
+  private val headerPanel =
+    JPanel(BorderLayout()).apply {
+      add(variantsHeaderLabel, BorderLayout.WEST)
+      add(impactHeaderLabel, BorderLayout.EAST)
+    }
+
+  init {
+    updateFonts()
   }
 
-  companion object {
-    private val textLabel = JBLabel()
-    private val eventCountLabel = JBLabel()
-    private val userCountLabel = JBLabel()
-    private val rendererComponent =
-      JPanel(HorizontalLayout(5)).apply {
-        isOpaque = false
-        add(textLabel, HorizontalLayout.LEFT)
-        add(eventCountLabel, HorizontalLayout.RIGHT)
-        add(userCountLabel, HorizontalLayout.RIGHT)
-      }
+  fun updateUI() {
+    SwingUtilities.updateComponentTreeUI(variantPanel)
+    SwingUtilities.updateComponentTreeUI(titlePanel)
+    SwingUtilities.updateComponentTreeUI(disabledTextLabel)
+    SwingUtilities.updateComponentTreeUI(headerPanel)
+    updateFonts()
+  }
 
-    private fun JBLabel.update(value: String, icon: Icon?) {
-      removeAll()
-      this.icon = icon
-      toolTipText = value
-      text = value
-      font = labelFont
+  private fun updateFonts() {
+    val baseFont = labelFont
+    textLabel.font = baseFont
+    eventCountLabel.font = baseFont
+    userCountLabel.font = baseFont
+    disabledTextLabel.font = baseFont
+    titleLabel.font = baseFont.deriveFont(JBFont.ITALIC)
+    titleNameLabel.font = baseFont.deriveFont(JBFont.BOLD or JBFont.ITALIC)
+    variantsHeaderLabel.font = baseFont.deriveFont(JBFont.BOLD)
+    impactHeaderLabel.font = baseFont.deriveFont(JBFont.BOLD)
+  }
+
+  override fun getListCellRendererComponent(
+    list: JList<out Row>?,
+    value: Row?,
+    index: Int,
+    isSelected: Boolean,
+    cellHasFocus: Boolean,
+  ): Component {
+    if (index == -1 && value is VariantRow) {
+      titleLabel.font = labelFont.deriveFont(JBFont.ITALIC)
+      titleNameLabel.font = labelFont.deriveFont(JBFont.BOLD or JBFont.ITALIC)
+      titleNameLabel.text = value.name
+      return titlePanel
+    }
+
+    return when (value) {
+      is VariantRow -> configureVariantRow(value)
+      is DisabledTextRow -> {
+        disabledTextLabel.text = value.text
+        disabledTextLabel
+      }
+      is HeaderRow -> headerPanel
+      null -> disabledTextLabel.apply { text = "" }
     }
   }
-}
 
-/** Shown when the dropdown has no variant information. */
-data class DisabledTextRow(val text: String) : Row {
-  override fun getRendererComponent(): Component {
-    textComponent.text = text
-    return textComponent
+  private fun configureVariantRow(row: VariantRow): Component {
+    textLabel.update(if (row.issueVariant == null) row.name else "Variant ${row.name}", null)
+    eventCountLabel.update(row.eventCount.formatNumberToPrettyString(), StudioIcons.AppQualityInsights.ISSUE)
+    userCountLabel.update(row.userCount.formatNumberToPrettyString(), StudioIcons.LayoutEditor.Palette.QUICK_CONTACT_BADGE)
+    variantPanel.invalidate()
+    return variantPanel
   }
 
-  companion object {
-    private val textComponent =
-      JBLabel().apply {
-        isEnabled = false
-        isOpaque = false
-      }
+  private fun JBLabel.update(value: String, icon: Icon?) {
+    this.icon = icon
+    toolTipText = value
+    text = value
+    font = labelFont
   }
-}
-
-/** Represents the header of the variants list. */
-object HeaderRow : Row {
-  private val component: JComponent
-    get() =
-      JPanel(BorderLayout()).apply {
-        add(
-          JBLabel("Variants").apply {
-            isOpaque = false
-            font = labelFont.deriveFont(JBFont.BOLD)
-          },
-          BorderLayout.WEST,
-        )
-        add(
-          JBLabel("Impact").apply {
-            isOpaque = false
-            horizontalAlignment = SwingConstants.RIGHT
-            font = labelFont.deriveFont(JBFont.BOLD)
-          },
-          BorderLayout.EAST,
-        )
-      }
-
-  override fun getRendererComponent() = component
 }
