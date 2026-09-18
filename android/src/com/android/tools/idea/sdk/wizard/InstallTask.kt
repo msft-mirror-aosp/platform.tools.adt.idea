@@ -161,20 +161,17 @@ class InstallTask(
     }
 
     try {
-      while (operations.isNotEmpty()) {
-        progress.fraction = 0.0
-        preparePackages(operations, failures, progress)
-        prepareCompleteCallback?.invoke()
-        progress.checkCanceled()
-        if (!isBackgrounded) {
-          completePackages(operations, failures, progress.createSubProgress(0.9), progress)
-          progress.fraction = 0.9
-        } else {
-          progress.fraction = 1.0
-          showPrepareCompleteNotification(operations.keys)
-          return failures
-        }
+      progress.fraction = 0.0
+      preparePackages(operations, failures, progress)
+      prepareCompleteCallback?.invoke()
+      progress.checkCanceled()
+      if (isBackgrounded) {
+        progress.fraction = 1.0
+        showPrepareCompleteNotification(operations.keys)
+        return failures
       }
+      completePackages(operations, failures, progress.createSubProgress(0.9), progress)
+      progress.fraction = 0.9
     } finally {
       if (failures.isNotEmpty()) {
         logger.logInfo("Failed packages:")
@@ -193,9 +190,7 @@ class InstallTask(
 
   /**
    * Complete installation of the given packages using the given operations. If a package is completed successfully, it is removed from
-   * {@code operations}. If a package fails to be installed and has a fallback operation, the fallback is added to {@code operations}, and
-   * it is the responsibility of the caller to retry. If a package fails to be installed and has no fallback, it is added to {@code
-   * failures}.
+   * {@code operations}. If a package fails to be installed, it is removed from {@code operations} and added to {@code failures}.
    */
   @VisibleForTesting
   fun completePackages(
@@ -216,14 +211,8 @@ class InstallTask(
       if (!installer.complete(progress.createSubProgress(progressMax))) {
         taskProgressIndicator.checkCanceled()
         progress.fraction = progressMax
-        val fallback = installer.fallbackOperation
-        if (fallback != null) {
-          progress.logWarning("Failed to complete operation using ${installer.javaClass.name}, retrying with ${fallback.javaClass.name}")
-          operations[p] = fallback
-        } else {
-          failures.add(p)
-          operations.remove(p)
-        }
+        failures.add(p)
+        operations.remove(p)
       } else {
         operations.remove(p)
         progress.fraction = progressMax
@@ -255,8 +244,7 @@ class InstallTask(
   }
 
   /**
-   * Prepare the given packages using the given operations. If preparation for a package fails, it is retried with the {@link
-   * PackageOperation#getFallbackOperation() fallback operation}. If fallbacks also fail, the package is removed from {@code
+   * Prepare the given packages using the given operations. If preparation for a package fails, it is removed from {@code
    * packageOperationMap} and added to {@code failures}.
    */
   @VisibleForTesting
@@ -265,44 +253,31 @@ class InstallTask(
     failures: MutableList<RepoPackage>,
     progress: ProgressIndicator,
   ) {
-    val packages = packageOperationMap.keys.toList()
-    var progressIncrement = 1.0 / (packages.size * 2.0)
+    var progressIncrement = 1.0 / (packageOperationMap.size * 2.0)
     var wasBackgrounded = false
 
-    for (pack in packages) {
+    for ((pack, op) in packageOperationMap.entries.toList()) {
       progress.checkCanceled()
-      var op = packageOperationMap[pack]
       var success = false
 
-      while (op != null) {
-        if (isBackgrounded && !wasBackgrounded) {
-          progressIncrement *= 2.0
-          progress.fraction = progress.fraction * 2.0
-          wasBackgrounded = isBackgrounded
-        }
-        val currentProgress = progress.fraction
-        try {
-          val progressMax = currentProgress + progressIncrement
-          success = op.prepare(progress.createSubProgress(progressMax))
-          progress.checkCanceled()
-          progress.fraction = progressMax
-        } catch (e: ProcessCanceledException) {
-          throw e
-        } catch (e: CancellationException) {
-          throw e
-        } catch (e: Exception) {
-          log.warn(e)
-        }
-
-        if (success) {
-          packageOperationMap[pack] = op
-          break
-        }
-        op = op.fallbackOperation
-        if (op != null) {
-          progress.fraction = currentProgress
-        }
+      if (isBackgrounded && !wasBackgrounded) {
+        progressIncrement *= 2.0
+        progress.fraction = progress.fraction * 2.0
+        wasBackgrounded = isBackgrounded
       }
+      try {
+        val progressMax = progress.fraction + progressIncrement
+        success = op.prepare(progress.createSubProgress(progressMax))
+        progress.checkCanceled()
+        progress.fraction = progressMax
+      } catch (e: ProcessCanceledException) {
+        throw e
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        log.warn(e)
+      }
+
       if (!success) {
         failures.add(pack)
         packageOperationMap.remove(pack)

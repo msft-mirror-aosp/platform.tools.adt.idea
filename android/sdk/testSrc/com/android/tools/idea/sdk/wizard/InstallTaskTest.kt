@@ -132,47 +132,6 @@ class InstallTaskTest : AndroidTestCase() {
     assertTrue(failures.isEmpty())
   }
 
-  fun testPrepareWithFallback() {
-    val fallback = mock<Installer>()
-    whenever(fallback.prepare(any())).thenReturn(true)
-    whenever(installer2.prepare(any())).thenReturn(false)
-    whenever(installer2.fallbackOperation).thenReturn(fallback)
-
-    val failures = mutableListOf<RepoPackage>()
-    installTask.preparePackages(operations, failures, FakeProgressIndicator())
-
-    verify(installer).prepare(any())
-    verify(installer2).prepare(any())
-    verify(uninstaller).prepare(any())
-    verify(fallback).prepare(any())
-
-    assertTrue(failures.isEmpty())
-    assertEquals(fallback, operations[available2])
-  }
-
-  fun testPrepareWithDoubleFallback() {
-    val fallback = mock<Installer>()
-    whenever(fallback.prepare(any())).thenReturn(false)
-    val fallback2 = mock<Installer>()
-    whenever(fallback2.prepare(any())).thenReturn(true)
-
-    whenever(installer2.prepare(any())).thenReturn(false)
-    whenever(installer2.fallbackOperation).thenReturn(fallback)
-    whenever(fallback.fallbackOperation).thenReturn(fallback2)
-
-    val failures = mutableListOf<RepoPackage>()
-    installTask.preparePackages(operations, failures, FakeProgressIndicator())
-
-    verify(installer).prepare(any())
-    verify(installer2).prepare(any())
-    verify(uninstaller).prepare(any())
-    verify(fallback).prepare(any())
-    verify(fallback2).prepare(any())
-
-    assertTrue(failures.isEmpty())
-    assertEquals(fallback2, operations[available2])
-  }
-
   fun testPrepareWithErrors() {
     whenever(installer2.prepare(any())).thenReturn(false)
 
@@ -202,28 +161,6 @@ class InstallTaskTest : AndroidTestCase() {
 
     assertTrue(failures.isEmpty())
     assertTrue(operations.isEmpty())
-  }
-
-  fun testCompleteWithFallback() {
-    val fallback = mock<Installer>()
-    whenever(installer.fallbackOperation).thenReturn(fallback)
-    whenever(installer.complete(any())).thenReturn(false)
-
-    val failures = mutableListOf<RepoPackage>()
-    installTask.completePackages(
-      operations,
-      failures,
-      FakeProgressIndicator(true),
-      FakeProgressIndicator(),
-    )
-
-    verify(installer).complete(any())
-    verify(installer2).complete(any())
-    verify(uninstaller).complete(any())
-
-    assertTrue(failures.isEmpty())
-    assertEquals(fallback, operations[available1])
-    assertEquals(1, operations.size)
   }
 
   fun testCompleteWithErrors() {
@@ -272,44 +209,6 @@ class InstallTaskTest : AndroidTestCase() {
     callbackCalls.verify(prepareComplete).invoke()
     callbackCalls.verify(installer).complete(any())
     callbackCalls.verify(complete).invoke(emptyList())
-  }
-
-  fun testRunWithFallbackOnPrepare() {
-    val fallback = mock<Installer>()
-    whenever(fallback.prepare(any())).thenReturn(true)
-    whenever(installer2.prepare(any())).thenReturn(false)
-    whenever(installer2.fallbackOperation).thenReturn(fallback)
-
-    installTask.run(progressIndicator)
-
-    verify(installer).prepare(any())
-    verify(installer2).prepare(any())
-    verify(uninstaller).prepare(any())
-    verify(fallback).prepare(any())
-
-    verify(installer).complete(any())
-    verify(uninstaller).complete(any())
-    verify(fallback).complete(any())
-    verify(installer2, never()).complete(any())
-  }
-
-  fun testRunWithFallbackOnComplete() {
-    val fallback = mock<Installer>()
-    whenever(fallback.prepare(any())).thenReturn(true)
-    whenever(installer2.complete(any())).thenReturn(false)
-    whenever(installer2.fallbackOperation).thenReturn(fallback)
-
-    installTask.run(progressIndicator)
-
-    verify(installer).prepare(any())
-    verify(installer2).prepare(any())
-    verify(uninstaller).prepare(any())
-    verify(fallback).prepare(any())
-
-    verify(installer).complete(any())
-    verify(uninstaller).complete(any())
-    verify(fallback).complete(any())
-    verify(installer2).complete(any())
   }
 
   fun testBackground() {
