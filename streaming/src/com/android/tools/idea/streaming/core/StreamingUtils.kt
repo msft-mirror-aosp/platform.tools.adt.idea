@@ -162,8 +162,8 @@ internal fun Int.scaledUp(scale: Double): Int = ceil(this * scale).roundToInt()
 internal fun Int.scaledDown(numerator: Int, denominator: Int): Int = ((this.toLong() * numerator) / denominator).toInt()
 
 /**
- * Converts this value from the `[0, fromRange-1]` interval to the `[0, toRange - 1]`interval by scaling by the [toRange]/[fromRange] factor
- * while maintaining symmetry with respect to the centers of the two intervals.
+ * Converts this value from the `[0, fromRange-1]` interval to the `[0, toRange - 1]`interval by scaling by the `[toRange]/[fromRange]`
+ * factor while maintaining symmetry with respect to the centers of the two intervals.
  *
  * The conversion is reversible, i.e. if `fromRange <= toRange`, then for every `i` in the `[0, fromRange-1]` interval
  * `i.scaledUnbiased(fromRange, toRange).scaledUnbiased(toRange, fromRange) = i`.
