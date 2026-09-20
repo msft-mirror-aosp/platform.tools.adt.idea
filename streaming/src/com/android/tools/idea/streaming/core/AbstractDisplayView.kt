@@ -93,9 +93,7 @@ import javax.swing.JComponent
 import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkListener
-import kotlin.math.log2
 import kotlin.math.max
-import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -264,18 +262,8 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   internal fun findNotificationHolderPanel(): NotificationHolderPanel? = getParentOfType<NotificationHolderPanel>()
 
-  /**
-   * Rounds the given value down to an integer if it is above 1, or to the nearest multiple of a small fraction that is close to `value/128`
-   * and has the form of `1/2^n`.
-   */
-  protected fun roundScale(value: Double): Double {
-    if (value >= 1) {
-      return roundDownIfNecessary(value)
-    }
-    val logScale = -log2(value).roundToInt() + 7
-    val multiplier = 2 shl logScale + 7
-    return round(value * multiplier) / multiplier
-  }
+  protected fun computeRoundedScale(value: Double): Double =
+    if (value >= 1) roundDownIfNecessary(value) else roundDownToNaturalNumberOrNearestSmallFraction(value)
 
   protected fun notifyFrameListeners(displayRectangle: Rectangle, frame: BufferedImage) {
     for (listener in frameListeners) {

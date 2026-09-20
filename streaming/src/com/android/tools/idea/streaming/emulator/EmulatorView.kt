@@ -675,21 +675,21 @@ internal class EmulatorView(
       val scale =
         if (framing == Framing.INNER) {
           val environmentSize = checkNotNull(emulatorConfig.environmentSize)
-          roundScale(
+          computeRoundedScale(
             min(
               maxWidth / deviceDisplaySize.width * environmentSize.width / w,
               maxHeight / deviceDisplaySize.height * environmentSize.height / h,
             )
           )
         } else {
-          roundScale(min(maxWidth / w, maxHeight / h))
+          computeRoundedScale(min(maxWidth / w, maxHeight / h))
         }
       w = w.scaled(scale)
       h = h.scaled(scale)
       Rectangle((physicalWidth - w) / 2, (physicalHeight - h) / 2, w, h)
     } else {
       val frameRectangle = skin.frameRectangle
-      val scale = roundScale(min(maxWidth / frameRectangle.width, maxHeight / frameRectangle.height))
+      val scale = computeRoundedScale(min(maxWidth / frameRectangle.width, maxHeight / frameRectangle.height))
       val fw = frameRectangle.width.scaled(scale)
       val fh = frameRectangle.height.scaled(scale)
       w = w.scaled(scale)

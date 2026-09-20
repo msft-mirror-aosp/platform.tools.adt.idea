@@ -60,8 +60,11 @@ import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 import kotlin.math.roundToInt
 
 fun ByteBuffer.getUInt(): UInt = getInt().toUInt()
@@ -127,6 +130,23 @@ internal val AvdInfo.icon: Icon
       else -> StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_PHONE
     }
   }
+
+/**
+ * Rounds the given value down to an integer if it is above 1, or to the nearest multiple of a small fraction that is close to `value/128`
+ * and has the form of `1/2^n`.
+ */
+internal fun roundDownToNaturalNumberOrNearestSmallFraction(value: Double): Double {
+  require(value >= 0.0)
+  if (value == 0.0) {
+    return value
+  }
+  if (value >= 1.0) {
+    return floor(value)
+  }
+  val n = (-log2(value)).roundToInt() + 7
+  val multiplier = (1 shl n.coerceIn(0, 30)).toDouble()
+  return round(value * multiplier) / multiplier
+}
 
 /** Returns this integer multiplied by [scale] and rounded down towards zero. */
 internal fun Int.scaledDown(scale: Double): Int = (this * scale).toInt()
