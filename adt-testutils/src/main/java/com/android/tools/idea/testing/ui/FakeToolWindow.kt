@@ -18,11 +18,14 @@ package com.android.tools.idea.testing.ui
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowBalloonShowOptions
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
@@ -30,6 +33,7 @@ import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType
 import com.intellij.openapi.wm.impl.InternalDecorator
+import com.intellij.openapi.wm.impl.content.ToolWindowContentUi
 import com.intellij.testFramework.replaceService
 import com.intellij.toolWindow.InternalDecoratorImpl
 import com.intellij.ui.components.JBPanelWithEmptyText
@@ -39,8 +43,10 @@ import com.intellij.ui.content.ContentManagerListener
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.util.SmartList
 import com.intellij.util.ui.EmptyIcon
+import com.intellij.util.ui.UIUtil
 import java.awt.Component
 import java.awt.Container
+import java.awt.Dimension
 import java.beans.PropertyChangeSupport
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -100,8 +106,15 @@ internal constructor(
   private var visible = false
   private var active = false
   private var focused = false
+  private var anchor = ToolWindowAnchor.RIGHT
   private var type = ToolWindowType.DOCKED
-  private val decorator = mock<InternalDecorator>()
+
+  val contentManager: FakeContentManager
+    get() = super.contentManager as FakeContentManager
+
+  init {
+    contentManager.toolWindow = this
+  }
 
   override fun setToHideOnEmptyContent(value: Boolean) {
     hideOnEmptyContext = value
@@ -115,7 +128,7 @@ internal constructor(
 
   override fun isAvailable(): Boolean = available
 
-  override fun getDecorator(): InternalDecorator = decorator
+  override fun getDecorator(): InternalDecorator = contentManager.decorator
 
   override fun show(runnable: Runnable?) {
     if (!visible) {
@@ -155,11 +168,30 @@ internal constructor(
     titleActions = actions
   }
 
+  override fun getAnchor(): ToolWindowAnchor = anchor
+
+  override fun setAnchor(anchor: ToolWindowAnchor, runnable: Runnable?) {
+    this.anchor = anchor
+    runnable?.run()
+  }
+
   override fun getType(): ToolWindowType = type
 
   override fun setType(type: ToolWindowType, runnable: Runnable?) {
     this.type = type
     runnable?.run()
+  }
+
+  override fun stretchWidth(value: Int) {
+    val minWidth = (decorator.minimumSize?.width ?: 0).coerceAtLeast(1)
+    val newWidth = (decorator.width + value).coerceAtLeast(minWidth)
+    decorator.size = Dimension(newWidth, decorator.height)
+  }
+
+  override fun stretchHeight(value: Int) {
+    val minHeight = (decorator.minimumSize?.height ?: 0).coerceAtLeast(1)
+    val newHeight = (decorator.height + value).coerceAtLeast(minHeight)
+    decorator.size = Dimension(decorator.width, newHeight)
   }
 
   override fun getIcon(): Icon = icon
@@ -217,10 +249,16 @@ private class FakeToolWindowManager(windowFactory: ToolWindowFactory, toolWindow
 class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
   private val nestedManagers = SmartList<FakeContentManager>()
   private var parent: FakeContentManager? = null
+  internal var toolWindow: FakeToolWindow? = null
+    get() = field ?: parent?.toolWindow
+
   private var splitUnsplitInProgress = false
   private val internalDecorator: InternalDecoratorImpl
-  private var splitter: Splitter? = null
-  private val panel: JComponent = JBPanelWithEmptyText()
+  internal var splitter: Splitter? = null
+  internal val panel: JComponent =
+    object : JBPanelWithEmptyText() {
+      override fun contains(x: Int, y: Int): Boolean = false
+    }
   private val treeLock: Any = JPanel().treeLock
 
   init {
@@ -255,7 +293,7 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
     return result.toTypedArray<Content>()
   }
 
-  override fun getDecorator(): InternalDecorator = internalDecorator
+  public override fun getDecorator(): InternalDecorator = internalDecorator
 
   fun splitWithContent(content: Content, dropSide: Int, dropIndex: Int) {
     if (dropSide == -1 || dropSide == SwingConstants.CENTER || dropIndex >= 0) {
@@ -281,8 +319,8 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
     splitter = Splitter(isVertical, 0.5f)
     internalDecorator.remove(panel)
     internalDecorator.add(splitter)
-    splitter!!.setFirstComponent(firstChild.internalDecorator)
-    splitter!!.setSecondComponent(secondChild.internalDecorator)
+    splitter!!.firstComponent = firstChild.internalDecorator
+    splitter!!.secondComponent = secondChild.internalDecorator
   }
 
   fun unsplit(toSelect: Content?) {
@@ -302,6 +340,8 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
           return
         }
       }
+      splitter?.let { internalDecorator.remove(it) }
+      internalDecorator.add(panel)
       for (child in nestedManagers) {
         for (c in child.contents) {
           child.moveContent(c, this)
@@ -360,13 +400,39 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
       field = Component::class.java.getDeclaredField("objectLock")
       field.isAccessible = true
       field.set(mockDecorator, Any())
+      field = InternalDecoratorImpl::class.java.getDeclaredField("contentUi")
+      field.isAccessible = true
+      field.set(mockDecorator, mock<ToolWindowContentUi>())
     } catch (e: Exception) {
       throw RuntimeException(e)
     }
+    doAnswer {
+        val activeComponent = contentManager.splitter ?: contentManager.selectedContent?.component
+        for (i in 0 until mockDecorator.componentCount) {
+          val child = mockDecorator.getComponent(i)
+          if (child === contentManager.panel || child === activeComponent) {
+            child.setBounds(0, 0, mockDecorator.width, mockDecorator.height)
+            UIUtil.uiTraverser(child).forEach { it.doLayout() }
+          } else {
+            child.setBounds(0, 0, 0, 0)
+          }
+        }
+      }
+      .whenever(mockDecorator)
+      .doLayout()
+    doAnswer { mockDecorator.doLayout() }.whenever(mockDecorator).validate()
     doAnswer { "" }.whenever(mockDecorator).toString() // To avoid NPE while debugging.
+    doAnswer { Dimension(0, 0) }.whenever(mockDecorator).minimumSize
     doAnswer { treeLock }.whenever(mockDecorator).treeLock
     doAnswer { contentManager }.whenever(mockDecorator).contentManager
     doAnswer { true }.whenever(mockDecorator).isVisible
+    doAnswer {
+        val sink = it.getArgument<DataSink>(0)
+        contentManager.toolWindow?.let { toolWindow -> sink[PlatformDataKeys.TOOL_WINDOW] = toolWindow }
+        sink[PlatformDataKeys.CONTENT_MANAGER] = contentManager
+      }
+      .whenever(mockDecorator)
+      .uiDataSnapshot(any())
 
     doAnswer { contentManager.unsplit(it.getArgument(0)) }.whenever(mockDecorator).unsplit(any())
 

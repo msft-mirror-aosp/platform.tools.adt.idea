@@ -145,7 +145,7 @@ import org.jetbrains.annotations.VisibleForTesting
 internal class DeviceView(
   disposableParent: Disposable,
   val deviceClient: DeviceClient,
-  override val project: Project,
+  project: Project,
   displayId: Int,
   val displayType: DisplayType,
   displaySize: Dimension,

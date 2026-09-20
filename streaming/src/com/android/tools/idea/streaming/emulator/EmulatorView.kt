@@ -425,7 +425,7 @@ internal class EmulatorView(
     get() {
       if (field == null) {
         if (emulator.connectionState == ConnectionState.CONNECTED && emulatorConfig.deviceType == DeviceType.XR_HEADSET) {
-          project?.let { project -> field = EmulatorXrInputController.getInstance(project, emulator) }
+          field = EmulatorXrInputController.getInstance(project, emulator)
         }
       }
       return field
@@ -663,6 +663,21 @@ internal class EmulatorView(
     }
   }
 
+  override fun computeContentRectangle(): Rectangle? {
+    val displayRect = projectionRectangle ?: return null
+    val skin = if (deviceFrameVisible) lastScreenshot?.skinLayout else null
+    return if (skin == null) displayRect else computeScaledFrameRectangle(skin)
+  }
+
+  private fun computeScaledFrameRectangle(skin: SkinLayout): Rectangle {
+    val frameRectangle = skin.frameRectangle
+    val maxSize = computeMaxImageSize()
+    val scale = computeRoundedScale(min(maxSize.width.toDouble() / frameRectangle.width, maxSize.height.toDouble() / frameRectangle.height))
+    val fw = frameRectangle.width.scaled(scale)
+    val fh = frameRectangle.height.scaled(scale)
+    return Rectangle((physicalWidth - fw) / 2, (physicalHeight - fh) / 2, fw, fh)
+  }
+
   private fun computeDisplayRectangle(skin: SkinLayout?): Rectangle {
     // The roundScale call below is used to avoid scaling by a fractional factor larger than 1 or
     // by a factor that is only slightly below 1.
@@ -689,12 +704,11 @@ internal class EmulatorView(
       Rectangle((physicalWidth - w) / 2, (physicalHeight - h) / 2, w, h)
     } else {
       val frameRectangle = skin.frameRectangle
+      val frameRect = computeScaledFrameRectangle(skin)
       val scale = computeRoundedScale(min(maxWidth / frameRectangle.width, maxHeight / frameRectangle.height))
-      val fw = frameRectangle.width.scaled(scale)
-      val fh = frameRectangle.height.scaled(scale)
       w = w.scaled(scale)
       h = h.scaled(scale)
-      Rectangle((physicalWidth - fw) / 2 - frameRectangle.x.scaled(scale), (physicalHeight - fh) / 2 - frameRectangle.y.scaled(scale), w, h)
+      Rectangle(frameRect.x - frameRectangle.x.scaled(scale), frameRect.y - frameRectangle.y.scaled(scale), w, h)
     }
   }
 

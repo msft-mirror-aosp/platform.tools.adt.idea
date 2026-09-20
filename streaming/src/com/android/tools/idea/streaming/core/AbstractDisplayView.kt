@@ -26,12 +26,10 @@ import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.actions.StreamingHardwareInputAction
 import com.android.tools.idea.streaming.xr.AbstractXrInputController
 import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
-import com.intellij.ide.DataManager
 import com.intellij.ide.KeyboardAwareFocusOwner
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.keymap.KeymapUtil
@@ -78,6 +76,7 @@ import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_META
 import java.awt.event.KeyEvent.VK_SHIFT
 import java.awt.event.KeyEvent.VK_TAB
+import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.font.TextHitInfo
@@ -101,8 +100,11 @@ import kotlinx.coroutines.launch
  * Common base class for [com.android.tools.idea.streaming.emulator.EmulatorView] and [com.android.tools.idea.streaming.device.DeviceView].
  */
 @Suppress("UseJBColor")
-internal abstract class AbstractDisplayView(project: Project, override val displayId: Int, contextMenuActionGroupId: String) :
-  ZoomablePanel(), DisplayView, KeyboardAwareFocusOwner {
+internal abstract class AbstractDisplayView(
+  protected val project: Project,
+  override val displayId: Int,
+  contextMenuActionGroupId: String,
+) : ZoomablePanel(), DisplayView, KeyboardAwareFocusOwner {
 
   /** Serial number of the device shown in the view. */
   override val deviceSerialNumber: String
@@ -144,14 +146,21 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   protected val deviceInputListenerManager = project.service<DeviceInputListenerManager>()
 
-  protected open val project: Project?
-    get() = CommonDataKeys.PROJECT.getData(DataManager.getInstance().getDataContext(this))
-
   init {
     background = primaryPanelBackground
     addToCenter(disconnectedStatePanel)
     initializeFocusHandling()
     addInputMethodListener(MyInputMethodListener())
+    addMouseListener(
+      object : MouseAdapter() {
+        override fun mouseClicked(event: MouseEvent) {
+          if (event.clickCount == 2 && event.button == MouseEvent.BUTTON1) {
+            event.consume()
+            handleDoubleClick(event)
+          }
+        }
+      }
+    )
   }
 
   /** Sends the given text to the device as if it was typed. */
@@ -264,6 +273,19 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   protected fun computeRoundedScale(value: Double): Double =
     if (value >= 1) roundDownIfNecessary(value) else roundDownToNaturalNumberOrNearestSmallFraction(value)
+
+  /** Returns the rectangle occupied by the display image and the device frame (if visible) in physical pixels. */
+  protected open fun computeContentRectangle(): Rectangle? = projectionRectangle
+
+  private fun handleDoubleClick(event: MouseEvent) {
+    if (!isConnected) {
+      return
+    }
+    val contentRect = computeContentRectangle() ?: return
+    if (!contentRect.contains(event.x * screenScalingFactor, event.y * screenScalingFactor)) {
+      ToolWindowSizeOptimizer(this).resizeToolWindowToRemoveEmptySpace()
+    }
+  }
 
   protected fun notifyFrameListeners(displayRectangle: Rectangle, frame: BufferedImage) {
     for (listener in frameListeners) {
