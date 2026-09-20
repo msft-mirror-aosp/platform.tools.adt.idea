@@ -2515,6 +2515,11 @@ public final class StudioFlags {
                     "Enable the replace text tool",
                     "When enabled, adds the replace text tool to a set of default tools");
 
+  public static final Flag<Boolean> STUDIOBOT_INTERACTIVE_SHELL_TOOL_ENABLED =
+    new BooleanFlag(STUDIOBOT, "interactive.shell.tool.enabled",
+                    "Enable the interactive shell tool",
+                    "When enabled, replaces the standard RunShellCommandTool with InteractiveRunShellCommandTool and InteractShellTool");
+
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_TOOL_ENABLED =
     new BooleanFlag(STUDIOBOT, "ask.user.tool.enabled",
                     "Enable the AskUserTool",

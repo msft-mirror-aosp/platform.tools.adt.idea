@@ -226,6 +226,7 @@ studiobot.include.ui.state.tools=COMPLETE:2025
 studiobot.include.wait.tool=PREVIEW
 studiobot.inline.code.completion.file.context.enabled=PREVIEW
 studiobot.inline.code.completion.include.last.action=PREVIEW
+studiobot.interactive.shell.tool.enabled=INTERNAL
 studiobot.knowledge.base.rag=COMPLETE:2025
 studiobot.layout.inspector.state.inspection.agent=COMPLETE:2026
 studiobot.layout.to.compose.migration.enabled=PREVIEW
