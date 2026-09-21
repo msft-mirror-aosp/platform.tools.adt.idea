@@ -217,4 +217,62 @@ class TraceProcessorHeapDumpInstanceObjectTest {
     assertThat(fields[2].valueText).isEqualTo("300")
     assertThat(fields[2].value).isEqualTo(300)
   }
+
+  /** Builds an array instance holding [refs] as its elements, and returns the label shown for each element. */
+  private fun arrayElementLabels(vararg refs: TraceProcessor.GetReferencesResult.ReferenceData): List<String> {
+    val arrayClassEntry = ClassEntry(30L, 0L, "java.lang.Object[]", 1)
+    val arrayInstanceData =
+      TraceProcessor.HeapDumpInstancesResult.InstanceData.newBuilder()
+        .setId(700L)
+        .setTypeId(30L)
+        .setHeapName("app")
+        .setArrayLength(refs.size.toLong())
+        .build()
+
+    `when`(mockCaptureObject.getInstancesByIds(anyList())).thenReturn(emptyList())
+
+    val arrayInstanceObject =
+      TraceProcessorHeapDumpInstanceObject(
+        arrayClassEntry,
+        arrayInstanceData,
+        ValueObject.ValueType.ARRAY,
+        mockCaptureObject,
+        forwardReferences = refs.toList(),
+      )
+    return arrayInstanceObject.fields.map { it.fieldName }
+  }
+
+  private fun arrayElement(ownedId: Long, fieldName: String, arrayIndex: Long) =
+    TraceProcessor.GetReferencesResult.ReferenceData.newBuilder()
+      .setOwnerId(700L)
+      .setOwnedId(ownedId)
+      .setFieldName(fieldName)
+      .setArrayIndex(arrayIndex)
+      .build()
+
+  @Test
+  fun testArrayElementsLabelledByReportedIndex() {
+    // Elements arrive unnamed and out of order, each carrying its own slot.
+    val labels =
+      arrayElementLabels(
+        arrayElement(ownedId = 12L, fieldName = "", arrayIndex = 2),
+        arrayElement(ownedId = 10L, fieldName = "", arrayIndex = 0),
+        arrayElement(ownedId = 11L, fieldName = "", arrayIndex = 1),
+      )
+
+    assertThat(labels).containsExactly("0", "1", "2").inOrder()
+  }
+
+  @Test
+  fun testArrayElementsLabelledByIndexNotationInFieldName() {
+    // Elements arrive named with index notation and without a reported slot.
+    val labels =
+      arrayElementLabels(
+        arrayElement(ownedId = 12L, fieldName = "[2]", arrayIndex = -1),
+        arrayElement(ownedId = 10L, fieldName = "[0]", arrayIndex = -1),
+        arrayElement(ownedId = 11L, fieldName = "[1]", arrayIndex = -1),
+      )
+
+    assertThat(labels).containsExactly("0", "1", "2").inOrder()
+  }
 }

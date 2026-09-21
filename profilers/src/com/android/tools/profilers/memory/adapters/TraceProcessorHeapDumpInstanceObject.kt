@@ -27,7 +27,7 @@ class TraceProcessorHeapDumpInstanceObject(
   private val valueType: ValueObject.ValueType = ValueObject.ValueType.OBJECT,
   private val captureObject: HeapDumpCaptureObject,
   private val reverseReferences: List<TraceProcessor.GetReferencesResult.ReferenceData> = emptyList(),
-  internal val forwardReferences: List<TraceProcessor.GetReferencesResult.ReferenceData> = emptyList(),
+  private val forwardReferences: List<TraceProcessor.GetReferencesResult.ReferenceData> = emptyList(),
 ) : InstanceObject {
   override fun getHeapId() = instance.heapName.standardHeapId()
 
@@ -99,15 +99,7 @@ class TraceProcessorHeapDumpInstanceObject(
     fetchedForwardReferences = true
 
     if (forwardReferences.isNotEmpty()) {
-      forwardReferences.forEach { ref ->
-        forwardReferencesList.add(
-          TraceProcessor.GetReferencesResult.ReferenceData.newBuilder()
-            .setOwnerId(ref.ownerId)
-            .setOwnedId(ref.ownedId)
-            .setFieldName(ref.fieldName)
-            .build()
-        )
-      }
+      forwardReferencesList.addAll(forwardReferences)
       return
     }
 
@@ -125,15 +117,7 @@ class TraceProcessorHeapDumpInstanceObject(
     fetchedReverseReferences = true
 
     if (reverseReferences.isNotEmpty()) {
-      reverseReferences.forEach { ref ->
-        reverseReferencesList.add(
-          TraceProcessor.GetReferencesResult.ReferenceData.newBuilder()
-            .setOwnerId(ref.ownerId)
-            .setOwnedId(ref.ownedId)
-            .setFieldName(ref.fieldName)
-            .build()
-        )
-      }
+      reverseReferencesList.addAll(reverseReferences)
       return
     }
 
@@ -188,7 +172,7 @@ class TraceProcessorHeapDumpInstanceObject(
           if (ownerInst != null) {
             val fieldNames = refs.map { ref ->
               if (ownerInst.valueType == ValueObject.ValueType.ARRAY) {
-                ref.fieldName.substringAfter("[").substringBefore("]")
+                ref.arrayIndexLabel()
               } else {
                 ref.fieldName.substringAfterLast('.')
               }
@@ -318,7 +302,8 @@ class TraceProcessorHeapDumpInstanceObject(
 
     val refsToProcess =
       if (valueType == ValueObject.ValueType.ARRAY) {
-        forwardReferencesList.sortedBy { ref -> ref.fieldName.substringAfter("[").substringBefore("]").toIntOrNull() ?: 0 }
+        // List elements in slot order rather than the order the daemon returned them.
+        forwardReferencesList.sortedBy { ref -> ref.arrayIndexLabel().toIntOrNull() ?: 0 }
       } else {
         forwardReferencesList
       }
@@ -330,7 +315,7 @@ class TraceProcessorHeapDumpInstanceObject(
       val targetInstance = captureObject.findInstanceObjectById(ref.ownedId)
       val simpleName =
         if (valueType == ValueObject.ValueType.ARRAY) {
-          ref.fieldName.substringAfter("[").substringBefore("]")
+          ref.arrayIndexLabel()
         } else {
           ref.fieldName.substringAfterLast(".")
         }
@@ -411,3 +396,12 @@ class TraceProcessorHeapDumpInstanceObject(
     return null
   }
 }
+
+/**
+ * The slot this reference occupies in its owning array, as shown in the Fields and References tabs.
+ *
+ * Falls back to the index notation carried in the field name, e.g. "[0]", when the reference does not report an index of its own. A field
+ * name without that notation is returned unchanged.
+ */
+private fun TraceProcessor.GetReferencesResult.ReferenceData.arrayIndexLabel(): String =
+  if (arrayIndex >= 0) arrayIndex.toString() else fieldName.substringAfter("[").substringBefore("]")
