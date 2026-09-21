@@ -107,11 +107,17 @@ class UpdateScreenshotTestResultsListener(
    * Parses raw strings like "[{provider=com.example.MyProvider}]" into "MyProvider", extracting simple class names for providers.
    */
   private fun cleanPreviewName(name: String): String {
-    if (name.startsWith("[{") && name.contains("}]")) {
-      return name.substringAfter("[{").substringBefore("}]").split(", ").joinToString("_") { part ->
-        if (part.startsWith("provider=")) part.substringAfter("provider=").substringAfterLast('.') else part
-      } + name.substringAfter("}]")
+    if (name.startsWith(PARAM_START) && name.contains(PARAM_END)) {
+      return name.substringAfter(PARAM_START).substringBefore(PARAM_END).split(", ").joinToString("_") { part ->
+        if (part.startsWith(PROVIDER_KEY)) part.substringAfter(PROVIDER_KEY).substringAfterLast('.') else part
+      } + name.substringAfter(PARAM_END)
     }
     return name
+  }
+
+  companion object {
+    private const val PARAM_START = "[{"
+    private const val PARAM_END = "}]"
+    private const val PROVIDER_KEY = "provider="
   }
 }

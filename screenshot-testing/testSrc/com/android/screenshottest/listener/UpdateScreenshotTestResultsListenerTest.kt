@@ -135,6 +135,40 @@ class UpdateScreenshotTestResultsListenerTest {
     assertEquals("com.example.TestClass.testMethod.MyProvider", details.testId)
   }
 
+  /** Verifies that cleanPreviewName handles multiple parameters correctly. */
+  @Test
+  fun testOnTestCaseFinished_cleansMultipleParameters() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val mockDevice = mock(AndroidDevice::class.java)
+    val mockSuite = mock(AndroidTestSuite::class.java)
+
+    val artifacts =
+      mutableMapOf(
+        "PreviewScreenshot.methodName" to "testMethod",
+        "PreviewScreenshot.previewName" to "[{provider=com.example.ProviderA, provider=com.example.ProviderB}]_0",
+      )
+
+    val testCase =
+      AndroidTestCase(
+        id = "test_multi_param",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.PASSED,
+        additionalTestArtifacts = artifacts,
+      )
+
+    listener.onTestCaseFinished(mockDevice, mockSuite, testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+
+    val details = captor.value
+    assertEquals("ProviderA_ProviderB_0", details.previewName)
+  }
+
   /**
    * Verifies that the listener handles cases where the artifacts map is empty, providing safe default values instead of crashing or
    * returning nulls where strings are expected.
