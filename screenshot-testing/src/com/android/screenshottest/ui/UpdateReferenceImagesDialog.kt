@@ -75,11 +75,6 @@ import org.jetbrains.jewel.ui.component.SegmentedControl
 import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
 
-private const val CARD_PLACEHOLDER = "placeholder"
-private const val CARD_DETAILS = "details"
-private const val CARD_CONTENT = "content"
-private const val CARD_LOADING = "Loading"
-
 /**
  * A dialog for selecting and viewing screenshot test previews. It features a two-pane layout with a tree of previews on the left and a
  * live-updating image viewer on the right.
