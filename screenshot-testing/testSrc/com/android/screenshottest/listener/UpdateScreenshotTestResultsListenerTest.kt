@@ -27,6 +27,9 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentCaptor
@@ -255,6 +258,67 @@ class UpdateScreenshotTestResultsListenerTest {
     // Flush EDT to ensure invokeLater block from listener runs before verification.
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     verify(dialog).onTestSuiteFinished()
+  }
+
+  /** Verifies that size mismatch errors in the stack trace are detected and parsed correctly. */
+  @Test
+  fun testOnTestCaseFinished_extractsSizeMismatch() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val mockDevice = mock(AndroidDevice::class.java)
+    val mockSuite = mock(AndroidTestSuite::class.java)
+
+    val testCase =
+      AndroidTestCase(
+        id = "test_size_mismatch",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        additionalTestArtifacts = mutableMapOf(),
+        errorStackTrace =
+          "java.lang.AssertionError: Size Mismatch: Expected 100x100 but was 200x200\n\tat com.example.TestClass.test(TestClass.kt:42)",
+      )
+
+    listener.onTestCaseFinished(mockDevice, mockSuite, testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+
+    val details = captor.value
+    assertTrue(details.isSizeMismatch)
+    assertEquals("Size Mismatch: Expected 100x100 but was 200x200", details.sizeMismatchMessage)
+  }
+
+  /** Verifies that ordinary failure stack traces without size mismatch do not flag isSizeMismatch. */
+  @Test
+  fun testOnTestCaseFinished_noSizeMismatchForOtherErrors() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val mockDevice = mock(AndroidDevice::class.java)
+    val mockSuite = mock(AndroidTestSuite::class.java)
+
+    val testCase =
+      AndroidTestCase(
+        id = "test_other_failure",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        additionalTestArtifacts = mutableMapOf(),
+        errorStackTrace = "java.lang.AssertionError: Images differ by 5.2%\n\tat com.example.TestClass.test(TestClass.kt:42)",
+      )
+
+    listener.onTestCaseFinished(mockDevice, mockSuite, testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+
+    val details = captor.value
+    assertFalse(details.isSizeMismatch)
+    assertNull(details.sizeMismatchMessage)
   }
 
   /**

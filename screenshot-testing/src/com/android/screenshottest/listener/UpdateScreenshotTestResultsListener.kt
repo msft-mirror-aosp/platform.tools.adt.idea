@@ -32,6 +32,7 @@ private const val ARTIFACT_KEY_REF_IMAGE_PATH = "PreviewScreenshot.refImagePath"
 private const val ARTIFACT_KEY_NEW_IMAGE_PATH = "PreviewScreenshot.newImagePath"
 private const val ARTIFACT_KEY_DIFF_IMAGE_PATH = "PreviewScreenshot.diffImagePath"
 private const val ARTIFACT_KEY_DIFF_PERCENT = "PreviewScreenshot.diffPercent"
+private const val SIZE_MISMATCH_PREFIX = "Size Mismatch"
 
 /**
  * A listener that receives screenshot test results and passes them to the UI dialog.
@@ -74,6 +75,7 @@ class UpdateScreenshotTestResultsListener(
 
       ApplicationManager.getApplication().invokeLater {
         val errorTrace = (testCase.errorStackTrace as? String) ?: ""
+        val sizeMismatchLine = errorTrace.lineSequence().firstOrNull { it.contains(SIZE_MISMATCH_PREFIX) }
         val previewDetails =
           PreviewDetails(
             testId = testId,
@@ -85,12 +87,8 @@ class UpdateScreenshotTestResultsListener(
             srcImagePath = srcPath,
             diffImagePath = diffPath,
             diffPercent = artifacts[ARTIFACT_KEY_DIFF_PERCENT],
-            isSizeMismatch = errorTrace.contains("Size Mismatch"),
-            sizeMismatchMessage =
-              errorTrace
-                .lineSequence()
-                .firstOrNull { it.contains("Size Mismatch") }
-                ?.let { line -> line.substring(line.indexOf("Size Mismatch")).trim() },
+            isSizeMismatch = sizeMismatchLine != null,
+            sizeMismatchMessage = sizeMismatchLine?.let { line -> line.substring(line.indexOf(SIZE_MISMATCH_PREFIX)).trim() },
           )
         dialog.updateDialogWithTestResult(previewDetails, true)
       }
