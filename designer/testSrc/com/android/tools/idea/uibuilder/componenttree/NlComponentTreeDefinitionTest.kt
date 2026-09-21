@@ -530,7 +530,10 @@ class NlComponentTreeDefinitionTest {
 
     // A dialog should be shown on the actual insert:
     tableModel.insert(linear, data, before = null, isMove = true, listOf())
-    waitForCondition(10.seconds) { linear.childCount == 2 }
+    waitForCondition(10.seconds) {
+      TreeUtil.expandAll(table.tree)
+      dumpTree(table.tree).contains("<com.google.android.gms.maps.MapView>")
+    }
     assertThat(dialogCount).isEqualTo(1)
     assertThat(dialogMessage)
       .isEqualTo(
