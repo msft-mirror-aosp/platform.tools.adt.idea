@@ -25,6 +25,7 @@ class ClassStore(private val classes: Long2ObjectOpenHashMap<ClassDefinition>) {
 
   val softReferenceClass: ClassDefinition
   val weakReferenceClass: ClassDefinition
+  val phantomReferenceClass: ClassDefinition?
 
   val classClass: ClassDefinition
 
@@ -73,6 +74,7 @@ class ClassStore(private val classes: Long2ObjectOpenHashMap<ClassDefinition>) {
     // Every heap dump should have definitions of Soft/WeakReference and java.lang.Class
     softReferenceClass = stringToClassDefinition["java.lang.ref.SoftReference"]!!
     weakReferenceClass = stringToClassDefinition["java.lang.ref.WeakReference"]!!
+    phantomReferenceClass = stringToClassDefinition["java.lang.ref.PhantomReference"]
     classClass = stringToClassDefinition["java.lang.Class"]!!
 
     Type.values().forEach { type ->

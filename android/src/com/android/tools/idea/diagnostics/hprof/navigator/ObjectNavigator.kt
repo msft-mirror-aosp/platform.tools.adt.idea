@@ -59,6 +59,8 @@ abstract class ObjectNavigator(val classStore: ClassStore, val instanceCount: Lo
 
   abstract fun getWeakReferenceId(): Long
 
+  abstract fun getPhantomReferenceId(): Long
+
   abstract fun getSoftWeakReferenceIndex(): Int
 
   fun goToInstanceField(className: String?, fieldName: String) {

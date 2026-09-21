@@ -52,6 +52,7 @@ class ObjectNavigatorOnAuxFiles(
     Strong,
     Weak,
     Soft,
+    Phantom,
   }
 
   private var referenceType = ReferenceType.Strong
@@ -165,15 +166,17 @@ class ObjectNavigatorOnAuxFiles(
     var c = classDefinition
     var isSoftReference = false
     var isWeakReference = false
+    var isPhantomReference = false
     val includeSoftWeakReferences = referenceResolution == ReferenceResolution.ALL_REFERENCES
     val includeInnerClassRefs = referenceResolution != ReferenceResolution.STRONG_EXCLUDING_INNER_CLASS
     do {
       isSoftReference = isSoftReference || classStore.softReferenceClass == c
       isWeakReference = isWeakReference || classStore.weakReferenceClass == c
+      isPhantomReference = isPhantomReference || classStore.phantomReferenceClass == c
       val fields = c.refInstanceFields
       fields.forEach {
         val reference = aux.readId()
-        if (!(isSoftReference || isWeakReference) || it.name != "referent") {
+        if (!(isSoftReference || isWeakReference || isPhantomReference) || it.name != "referent") {
           if (it.name == "this$0" && !includeInnerClassRefs) {
             references.add(0L)
           } else {
@@ -182,8 +185,13 @@ class ObjectNavigatorOnAuxFiles(
         } else {
           softWeakReferenceId = reference.toLong()
           softWeakReferenceIndex = references.count() // current index in references list
-          referenceType = if (isSoftReference) ReferenceType.Soft else ReferenceType.Weak
-          // Soft/weak reference
+          referenceType =
+            when {
+              isSoftReference -> ReferenceType.Soft
+              isWeakReference -> ReferenceType.Weak
+              else -> ReferenceType.Phantom
+            }
+          // Soft/weak/phantom reference
           if (includeSoftWeakReferences) {
             references.add(reference.toLong())
           } else {
@@ -219,6 +227,10 @@ class ObjectNavigatorOnAuxFiles(
 
   override fun getWeakReferenceId(): Long {
     return if (referenceType == ReferenceType.Weak) softWeakReferenceId else 0
+  }
+
+  override fun getPhantomReferenceId(): Long {
+    return if (referenceType == ReferenceType.Phantom) softWeakReferenceId else 0
   }
 
   override fun getSoftWeakReferenceIndex(): Int {
