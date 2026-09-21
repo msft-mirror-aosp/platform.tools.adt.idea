@@ -26,6 +26,13 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.Executor
 
+private const val ARTIFACT_KEY_METHOD_NAME = "PreviewScreenshot.methodName"
+private const val ARTIFACT_KEY_PREVIEW_NAME = "PreviewScreenshot.previewName"
+private const val ARTIFACT_KEY_REF_IMAGE_PATH = "PreviewScreenshot.refImagePath"
+private const val ARTIFACT_KEY_NEW_IMAGE_PATH = "PreviewScreenshot.newImagePath"
+private const val ARTIFACT_KEY_DIFF_IMAGE_PATH = "PreviewScreenshot.diffImagePath"
+private const val ARTIFACT_KEY_DIFF_PERCENT = "PreviewScreenshot.diffPercent"
+
 /**
  * A listener that receives screenshot test results and passes them to the UI dialog.
  *
@@ -42,8 +49,9 @@ class UpdateScreenshotTestResultsListener(
     testCase: AndroidTestCase,
   ) {
     val className = testCase.className
-    val methodName = testCase.additionalTestArtifacts["PreviewScreenshot.methodName"] ?: " "
-    val rawPreviewName = testCase.additionalTestArtifacts["PreviewScreenshot.previewName"] ?: " "
+    val artifacts = testCase.additionalTestArtifacts
+    val methodName = artifacts[ARTIFACT_KEY_METHOD_NAME] ?: " "
+    val rawPreviewName = artifacts[ARTIFACT_KEY_PREVIEW_NAME] ?: " "
     val previewName = cleanPreviewName(rawPreviewName)
     val testId = "$className.$methodName.$previewName"
 
@@ -51,17 +59,17 @@ class UpdateScreenshotTestResultsListener(
       val destPath =
         ScreenshotTestUtils.resolvePath(
           dialog.project,
-          testCase.additionalTestArtifacts["PreviewScreenshot.refImagePath"],
+          artifacts[ARTIFACT_KEY_REF_IMAGE_PATH],
         )
       val srcPath =
         ScreenshotTestUtils.resolvePath(
           dialog.project,
-          testCase.additionalTestArtifacts["PreviewScreenshot.newImagePath"],
+          artifacts[ARTIFACT_KEY_NEW_IMAGE_PATH],
         )
       val diffPath =
         ScreenshotTestUtils.resolvePath(
           dialog.project,
-          testCase.additionalTestArtifacts["PreviewScreenshot.diffImagePath"],
+          artifacts[ARTIFACT_KEY_DIFF_IMAGE_PATH],
         )
 
       ApplicationManager.getApplication().invokeLater {
@@ -76,7 +84,7 @@ class UpdateScreenshotTestResultsListener(
             destImagePath = destPath,
             srcImagePath = srcPath,
             diffImagePath = diffPath,
-            diffPercent = testCase.additionalTestArtifacts["PreviewScreenshot.diffPercent"],
+            diffPercent = artifacts[ARTIFACT_KEY_DIFF_PERCENT],
             isSizeMismatch = errorTrace.contains("Size Mismatch"),
             sizeMismatchMessage =
               errorTrace
