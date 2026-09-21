@@ -443,7 +443,7 @@ internal class AndroidSourceRootSyncSourceSetPhaseContributor : GradleSyncContri
           createAndroidFacet(this)
           attachModelsToHolderModule(this)
           // There seems to be a bug in workspace model implementation that requires doing this to update list of changed props
-          this.facets = facets
+          this.moduleSettings = moduleSettings
         }
         (knownArtifactsModuleEntities + testSuiteSourceSetModules).forEach { newModuleEntity -> updatedStorage addEntity newModuleEntity }
       }
