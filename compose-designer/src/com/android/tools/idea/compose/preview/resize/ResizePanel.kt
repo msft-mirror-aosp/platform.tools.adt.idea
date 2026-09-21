@@ -70,7 +70,6 @@ import java.awt.FlowLayout
 import java.awt.event.ActionListener
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
-import java.util.Objects
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -121,12 +120,11 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
    */
   private val resizePanelUiUpdaterListener = ConfigurationListener { flags ->
     if ((flags and ConfigurationListener.CFG_DEVICE) != 0) {
-      if (currentConfiguration != null) {
+      val config = currentConfiguration
+      if (config != null) {
         // Check if the current device or state differs from the original snapshot,
         // indicating that the preview has been resized.
-        hasBeenResized =
-          !Objects.equals(currentConfiguration?.device, originalDeviceSnapshot) ||
-            !Objects.equals(currentConfiguration?.deviceState, originalDeviceStateSnapshot)
+        hasBeenResized = config.cachedDevice != originalDeviceSnapshot || config.cachedDeviceState != originalDeviceStateSnapshot
       }
       updatePanelFromConfiguration()
     }
@@ -282,7 +280,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   private fun updatePanelFromConfiguration() {
     val config = currentConfiguration
     invokeLaterIfNeeded {
-      if (config == null || config.deviceState == null) {
+      // cachedDeviceState is already populated by setSceneManager (on BGT) and updated in-place on resize.
+      if (config == null || config.cachedDeviceState == null) {
         isEnabled = false
         return@invokeLaterIfNeeded
       }

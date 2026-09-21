@@ -612,4 +612,19 @@ class ResizePanelTest {
     pressEnter(widthTextField)
     assertNotEquals(0, configuration.deviceSizeDp().width)
   }
+
+  @Test
+  fun `panel is enabled even when cachedDeviceState is initially null`() {
+    val resizePanel = ResizePanel(projectRule.testRootDisposable)
+    configuration.startBulkEditing()
+    configuration.setEffectiveDevice(null, null)
+    assertNull(configuration.cachedDevice)
+    assertNull(configuration.cachedDeviceState)
+
+    resizePanel.setSceneManager(sceneManager)
+    configuration.finishBulkEditing()
+
+    assertNotNull(configuration.cachedDeviceState)
+    assertTrue(resizePanel.isEnabled)
+  }
 }

@@ -161,7 +161,7 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
 
   private fun logResizeSaved(e: AnActionEvent, previewElement: PreviewElement<*>, configuration: Configuration) {
     val showDecorations = previewElement.displaySettings.showDecoration
-    configuration.deviceState ?: error("Device state should not be null")
+    configuration.cachedDeviceState ?: error("Device state should not be null")
     val (widthDp, heightDp) = configuration.deviceSizeDp()
     val mode =
       if (showDecorations) ResizeComposePreviewEvent.ResizeMode.DEVICE_RESIZE else ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE
