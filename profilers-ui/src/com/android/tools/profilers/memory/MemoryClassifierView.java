@@ -251,11 +251,10 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       textGetter, v -> null, SwingConstants.RIGHT,
       node -> {
         MemoryObjectTreeNode<ClassifierSet> parent = node.getParent();
-        if (parent == null) {
+        if (parent == null || myTreeRoot == null) {
           return 0;
         }
         else {
-          assert myTreeRoot != null;
           // Compute relative contribution with respect to top-most parent. Draw no bar when either the row's value or the total is
           // unavailable, which is what the "-" text and its tooltip already convey.
           // Clamp to 100 as a guard, since a row's value should never exceed the total.
@@ -399,7 +398,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
     myTree.addFocusListener(new FocusAdapter() {
       @Override
       public void focusGained(FocusEvent e) {
-        if (myTree.getSelectionCount() == 0) {
+        if (myTree != null && e.getComponent() == myTree && myTree.getSelectionCount() == 0) {
           myTree.setSelectionRow(0);
         }
       }
