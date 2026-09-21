@@ -19,11 +19,13 @@ import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceValue
 import com.android.ide.common.rendering.api.ResourceValueImpl
 import com.android.resources.ResourceType
+import com.android.testutils.waitForCondition
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.ui.resourcemanager.plugin.DesignAssetRenderer
 import com.google.common.truth.Truth
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -42,6 +44,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import javax.swing.DefaultListModel
 import javax.swing.Icon
+import javax.swing.ImageIcon
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -116,7 +119,14 @@ class DrawableGridTest {
 
     renderer.simulateRender(image)
 
-    UIUtil.invokeAndWaitIfNeeded(Runnable { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() })
+    waitForCondition(5, TimeUnit.SECONDS) {
+      invokeAndWaitIfNeeded {
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        val component = grid.cellRenderer.getListCellRendererComponent(grid, resourceValue, 0, false, false) as JComponent
+        val list = UIUtil.findComponentsOfType(component, JLabel::class.java)
+        list.isNotEmpty() && list[0].icon is ImageIcon
+      }
+    }
 
     val component1 = grid.cellRenderer.getListCellRendererComponent(grid, resourceValue, 0, false, false) as JComponent
     val list = UIUtil.findComponentsOfType(component1, JLabel::class.java)
