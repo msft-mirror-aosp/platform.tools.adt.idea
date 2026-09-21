@@ -233,7 +233,7 @@ private fun createLayoutInspectorWorkbench(
   if (centerPanel != null) {
     workbench.init(centerPanel, layoutInspector, toolsDefinition, false)
   } else {
-    // Use a workbench] that only contains the side panels.
+    // Use a workbench that only contains the side panels.
     workbench.init(layoutInspector, toolsDefinition, false)
   }
 
