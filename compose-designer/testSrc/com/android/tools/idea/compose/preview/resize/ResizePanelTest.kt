@@ -627,4 +627,52 @@ class ResizePanelTest {
     assertNotNull(configuration.cachedDeviceState)
     assertTrue(resizePanel.isEnabled)
   }
+
+  @Test
+  fun `selecting tv or automotive device clears phone cutout and updates uiMode`() = runInEdtAndGet {
+    val pixel9 = configuration.settings.devices.first { it.id == "pixel_9" }
+    configuration.setDevice(pixel9, false)
+    configuration.useDeviceForCutout("pixel_9")
+    configuration.cutoutOverlay = com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE
+    configuration.uiMode = com.android.resources.UiMode.NORMAL
+
+    setupAndShowPanel()
+    assertTrue(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
+    assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE, configuration.cutoutOverlay)
+    assertEquals(com.android.resources.UiMode.NORMAL, configuration.uiMode)
+
+    // Switch from Phone (Pixel 9) to Television
+    sceneManager.sceneRenderConfiguration.needsInflation.set(false)
+    val tvDevice = configuration.settings.devices.first { Device.isTv(it) }
+    findAndPerformDeviceMenuAction { action -> (action as? SetDeviceAction)?.device?.id == tvDevice.id }
+
+    assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
+    assertEquals(tvDevice.id, configuration.device!!.id)
+    assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_NONE, configuration.cutoutOverlay)
+    assertFalse(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
+    assertEquals(com.android.resources.UiMode.TELEVISION, configuration.uiMode)
+    assertEquals(com.android.resources.UiMode.TELEVISION, configuration.fullConfig.uiModeQualifier?.value)
+
+    // Switch to Automotive
+    sceneManager.sceneRenderConfiguration.needsInflation.set(false)
+    val autoDevice = configuration.settings.devices.first { Device.isAutomotive(it) }
+    findAndPerformDeviceMenuAction { action -> (action as? SetDeviceAction)?.device?.id == autoDevice.id }
+
+    assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
+    assertEquals(autoDevice.id, configuration.device!!.id)
+    assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_NONE, configuration.cutoutOverlay)
+    assertFalse(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
+    assertEquals(com.android.resources.UiMode.CAR, configuration.uiMode)
+    assertEquals(com.android.resources.UiMode.CAR, configuration.fullConfig.uiModeQualifier?.value)
+
+    // Revert to Original (Pixel 9) and verify cutout and uiMode are restored
+    sceneManager.sceneRenderConfiguration.needsInflation.set(false)
+    revert()
+    assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
+    assertEquals("pixel_9", configuration.device!!.id)
+    assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE, configuration.cutoutOverlay)
+    assertTrue(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
+    assertEquals(com.android.resources.UiMode.NORMAL, configuration.uiMode)
+    assertEquals(com.android.resources.UiMode.NORMAL, configuration.fullConfig.uiModeQualifier?.value)
+  }
 }

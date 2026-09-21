@@ -740,7 +740,9 @@ open class SetDeviceAction(
     }
     configuration.setDevice(device, true)
     configuration.deviceState = getMatchingState(device, wantedStateName)
-    deviceChangeListener.onDeviceChanged(prevDevice, device)
+    if (commit) {
+      deviceChangeListener.onDeviceChanged(prevDevice, device)
+    }
   }
 
   private fun hasBetterMatchingLayoutFile(configuration: Configuration, device: Device, stateName: String): Boolean {
@@ -810,7 +812,9 @@ private class SetWearDeviceAction(
       configuration.settings.selectDevice(device)
     }
     configuration.setDevice(device, true)
-    deviceChangeListener.onDeviceChanged(prevDevice, device)
+    if (commit) {
+      deviceChangeListener.onDeviceChanged(prevDevice, device)
+    }
   }
 }
 
@@ -827,12 +831,15 @@ private class SetAvdAction(
   }
 
   override fun updateConfiguration(configuration: Configuration, commit: Boolean) {
+    val prevDevice = configuration.cachedDevice
     if (commit) {
       configuration.settings.selectDevice(device)
     }
     // TODO: force set orientation for virtual wear os device
     configuration.setDevice(device, false)
-    deviceChangeListener.onDeviceChanged(configuration.cachedDevice, device)
+    if (commit) {
+      deviceChangeListener.onDeviceChanged(prevDevice, device)
+    }
   }
 }
 
