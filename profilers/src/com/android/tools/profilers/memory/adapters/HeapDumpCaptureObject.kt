@@ -604,9 +604,13 @@ open class HeapDumpCaptureObject(
       }
     return (instanceIndex.get(inst.id) as? TraceProcessorHeapDumpInstanceObject)
       ?: run {
+        // `inst.typeId` is the synthetic `java.lang.Class<T>` class, unlike `cls`, which callers may already have resolved to the
+        // represented class. Without this, the class object of an array type matches `endsWith("[]")` below and is typed as an ARRAY.
+        val isClassObject = syntheticToRepresentedClassMap.containsKey(inst.typeId)
         val valueType =
           when {
             inst.id == finalCls.classId -> ValueObject.ValueType.CLASS
+            isClassObject -> ValueObject.ValueType.CLASS
             finalCls.className == "java.lang.String" -> ValueObject.ValueType.STRING
             finalCls.className.endsWith("[]") -> ValueObject.ValueType.ARRAY
             else -> ValueObject.ValueType.OBJECT

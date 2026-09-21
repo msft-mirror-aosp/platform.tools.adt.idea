@@ -359,6 +359,58 @@ class HeapDumpCaptureObjectTest {
   }
 
   /**
+   * Validates that the class object of an *array* type is typed as CLASS rather than ARRAY.
+   *
+   * The synthetic `java.lang.Class<Foo[]>` entry is resolved to its represented class `Foo[]`, whose name ends in "[]", so deriving the
+   * value type from that name alone used to misclassify the class object as an array. That made its genuine named fields render as array
+   * slots in the References tab, e.g. "Index java.lang.Class.classLoader" instead of "classLoader".
+   */
+  @Test
+  fun testArrayTypeClassObjectIsTypedAsClass() {
+    val testService = FakeTraceProcessorService()
+    val capture = createTraceProcessorCaptureObject(testService)
+
+    val arrayOverview =
+      TraceProcessor.HeapDumpResult.ClassOverview.newBuilder()
+        .setClassId(20L)
+        .setClassName("android.graphics.Bitmap[]")
+        .setHeapName("app")
+        .setInstanceCount(3)
+        .setShallowSize(120)
+        .setRetainedSize(600)
+        .build()
+
+    val arrayClassObjectOverview =
+      TraceProcessor.HeapDumpResult.ClassOverview.newBuilder()
+        .setClassId(21L)
+        .setClassName("java.lang.Class<android.graphics.Bitmap[]>")
+        .setHeapName("app")
+        .setInstanceCount(1)
+        .setShallowSize(64)
+        .setRetainedSize(64)
+        .build()
+
+    testService.javaHeapDumpResult =
+      TraceProcessor.HeapDumpResult.newBuilder().addClassOverview(arrayOverview).addClassOverview(arrayClassObjectOverview).build()
+
+    val classObjectInstData =
+      TraceProcessor.HeapDumpInstancesResult.InstanceData.newBuilder().setId(600L).setTypeId(21L).setHeapName("app").build()
+    testService.instancesResult = TraceProcessor.HeapDumpInstancesResult.newBuilder().addInstance(classObjectInstData).build()
+
+    capture.load(null, null)
+
+    Truth.assertThat(capture.syntheticToRepresentedClassMap[21L]).isEqualTo(20L)
+
+    // Resolve the class object by id, the way walking a reference chain does. Deliberately avoid getClassObjectInstances(), which
+    // populates the lazy classObjectToRepresentedClassMap and would let getValueType() short-circuit to CLASS, masking the value type
+    // the instance was actually constructed with.
+    val classObj = capture.findInstanceObjectById(600L)
+    Truth.assertThat(classObj).isNotNull()
+    Truth.assertThat(capture.getRepresentedClassId(600L)).isNull()
+    Truth.assertThat(classObj!!.valueType).isEqualTo(ValueObject.ValueType.CLASS)
+  }
+
+  /**
    * Verifies that batch-loading instances by ID caches objects in the instance index, and that primitive field bulk requests correctly map
    * back to the requested instance IDs.
    */
