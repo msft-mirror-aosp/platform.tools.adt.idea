@@ -2729,12 +2729,6 @@
 +++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_10a/back.webp
 +++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_10a/layout
 +++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_10a/mask.webp
-+++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/closed/back.webp
-+++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/closed/layout
-+++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/closed/mask.webp
-+++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/default/back.webp
-+++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/default/layout
-+++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/default/mask.webp
 +++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_2/land_back.webp
 +++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_2/land_fore.webp
 +++Android Studio Nightly.app/Contents/plugins/android/resources/device-art-resources/pixel_2/layout
@@ -6773,12 +6767,6 @@
 ---Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_10a/back.webp
 ---Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_10a/layout
 ---Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_10a/mask.webp
----Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/closed/back.webp
----Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/closed/layout
----Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/closed/mask.webp
----Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/default/back.webp
----Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/default/layout
----Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_11_pro_fold/default/mask.webp
 ---Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_2/land_back.webp
 ---Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_2/land_fore.webp
 ---Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/pixel_2/layout
