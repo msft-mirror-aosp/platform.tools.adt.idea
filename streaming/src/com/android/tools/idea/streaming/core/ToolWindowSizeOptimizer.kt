@@ -98,7 +98,7 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
             canResizeToolWindowHeight,
           )
         if (!canResizeToolWindowHeight && imageHeight == availableHeight && toolbarHeightDelta > 0 && devicePanel != null) {
-          val shareRatio = computeVerticalShareRatio(viewport, rootContainer)
+          val shareRatio = computeVerticalShareRatio(viewport, devicePanel)
           val effectiveHeight = (availableHeight - (toolbarHeightDelta * shareRatio).roundToInt()).coerceAtLeast(1)
           val effectivePhysicalHeight = effectiveHeight.scaled(screenScalingFactor)
           val adjustedMaxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(effectivePhysicalHeight.toDouble() / actualSize.height)
@@ -133,8 +133,7 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
             canResizeToolWindowHeight,
           )
         if (toolbarHeightDelta != 0 && devicePanel != null) {
-          val shareRatio = computeVerticalShareRatio(viewport, rootContainer)
-          val effectiveHeight = (availableHeight - (toolbarHeightDelta * shareRatio).roundToInt()).coerceAtLeast(1)
+          val effectiveHeight = (availableHeight - toolbarHeightDelta).coerceAtLeast(1)
           val effectivePhysicalHeight = effectiveHeight.scaled(screenScalingFactor)
           val adjustedMaxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(effectivePhysicalHeight.toDouble() / actualSize.height)
           val adjustedFitScale = min(maxScaleX, adjustedMaxScaleY)
@@ -327,6 +326,7 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
             targetHeight,
             canResizeToolWindowHeight,
             updateSplitters,
+            toolbarHeightDelta,
           )
       } else {
         targetHeight += p.height - c.height
@@ -345,8 +345,17 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     targetChildSize: Int,
     canResizeRoot: Boolean,
     updateSplitter: Boolean,
+    toolbarHeightDelta: Int = 0,
   ): Int {
-    val currentSplitterSize = if (splitter.isVertical) splitter.height else splitter.width
+    val heightAdjustment =
+      if (splitter.isVertical && !canResizeRoot && toolbarHeightDelta != 0) {
+        splitter.findAncestor<AbstractDevicePanel<*>>()?.let {
+          -(toolbarHeightDelta * computeVerticalShareRatio(splitter, it)).roundToInt()
+        } ?: 0
+      } else {
+        0
+      }
+    val currentSplitterSize = (if (splitter.isVertical) splitter.height else splitter.width) + heightAdjustment
     val other = if (isFirstComponent) splitter.secondComponent else splitter.firstComponent
     val otherVisible = other != null && other.isVisible
     val otherSize = if (otherVisible) (if (splitter.isVertical) other.height else other.width) else 0

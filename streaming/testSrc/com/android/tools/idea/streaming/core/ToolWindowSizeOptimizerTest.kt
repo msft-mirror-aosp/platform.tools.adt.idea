@@ -424,11 +424,15 @@ class ToolWindowSizeOptimizerTest {
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, phoneView)
 
+    val splitter = phoneView.findAncestor<Splitter>()!!
+    val initialProportion = splitter.proportion
     val initialImageWidth = phoneView.width
     doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
 
     // Display image downscales to preserve the split pane boundary.
     assertThat(phoneView.width).isLessThan(initialImageWidth)
+    assertThat(splitter.proportion).isEqualTo(initialProportion)
+    assertMatchesAspectRatio(phoneView)
 
     FakeToolWindow.unsplit(phoneContent.manager!!, phoneContent)
     dispatchAllEventsInIdeEventQueue()
