@@ -202,6 +202,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../base/lint/libs/lint-api/android.sdktools.lint-api.iml" filepath="$PROJECT_DIR$/../../base/lint/libs/lint-api/android.sdktools.lint-api.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/lint/libs/lint-checks/android.sdktools.lint-checks.iml" filepath="$PROJECT_DIR$/../../base/lint/libs/lint-checks/android.sdktools.lint-checks.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/lint/libs/lint-model/android.sdktools.lint-model.iml" filepath="$PROJECT_DIR$/../../base/lint/libs/lint-model/android.sdktools.lint-model.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../base/visual-lint/android.sdktools.visual-lint.iml" filepath="$PROJECT_DIR$/../../base/visual-lint/android.sdktools.visual-lint.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/lint/cli/android.sdktools.lint.cli.iml" filepath="$PROJECT_DIR$/../../base/lint/cli/android.sdktools.lint.cli.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/lint/cli/android.sdktools.lint.cli.uast.test.iml" filepath="$PROJECT_DIR$/../../base/lint/cli/android.sdktools.lint.cli.uast.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/lint/libs/lint-gradle/android.sdktools.lint.gradle.iml" filepath="$PROJECT_DIR$/../../base/lint/libs/lint-gradle/android.sdktools.lint.gradle.iml" />

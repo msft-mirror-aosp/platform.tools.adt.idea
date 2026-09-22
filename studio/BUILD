@@ -627,6 +627,7 @@ studio_plugin(
             "//tools/adt/idea/preview-designer:intellij.android.preview-designer",
             "//tools/adt/idea/wear-designer:intellij.android.wear-designer",
             "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
+            "//tools/base/visual-lint:studio.android.sdktools.visual-lint",
         ],
     },
     resources = {
