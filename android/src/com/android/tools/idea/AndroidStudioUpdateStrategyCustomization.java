@@ -25,7 +25,10 @@ public class AndroidStudioUpdateStrategyCustomization extends UpdateStrategyCust
 
   @Override
   public boolean haveSameMajorVersion(@NotNull BuildNumber build1, @NotNull BuildNumber build2) {
-    return androidStudioVersion(build1) == androidStudioVersion(build2);
+    // JetBrains has some logic to prefer updates with the same major IDE version, even if a
+    // newer major version is available. However, for Android Studio we always want to update to
+    // the latest version available within a given update channel. So, we return 'true' here.
+    return true;
   }
 
   @Override
