@@ -402,6 +402,9 @@ class WearHealthServicesStateManagerTest {
     assertThat(result.isSuccess).isTrue()
     assertThat(deviceManager.triggeredEvents).hasSize(1)
     assertThat(deviceManager.triggeredEvents[0].eventKey).isEqualTo("key")
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.TRIGGER_EVENT_SUCCESS)
   }
 
   @Test
@@ -412,6 +415,9 @@ class WearHealthServicesStateManagerTest {
 
     assertThat(result.isSuccess).isFalse()
     stateManager.status.waitForValue(WhsStateManagerStatus.ConnectionLost)
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.TRIGGER_EVENT_FAILURE)
   }
 
   @Test
@@ -423,6 +429,9 @@ class WearHealthServicesStateManagerTest {
 
     assertThat(result.isSuccess).isTrue()
     stateManager.getState(heartRateBpmCapability).mapState { it is UpToDateCapabilityUIState }.waitForValue(true)
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.RESET_SUCCESS)
   }
 
   @Test
@@ -438,6 +447,9 @@ class WearHealthServicesStateManagerTest {
       stateManager.getState(heartRateBpmCapability).mapState { it is UpToDateCapabilityUIState }.waitForValue(true)
       fail("Value should not reset if the communication with the device is lost")
     } catch (_: AssertionError) {}
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.RESET_FAILURE)
   }
 
   @Test

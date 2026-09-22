@@ -37,6 +37,22 @@ class WearHealthServicesEventLogger(private val logFunction: (AndroidStudioEvent
     logFunction(newEventOfKind(WearHealthServicesEvent.EventKind.CONNECTION_ERROR))
   }
 
+  fun logResetSuccess() {
+    logFunction(newEventOfKind(WearHealthServicesEvent.EventKind.RESET_SUCCESS))
+  }
+
+  fun logResetFailure() {
+    logFunction(newEventOfKind(WearHealthServicesEvent.EventKind.RESET_FAILURE))
+  }
+
+  fun logTriggerEventSuccess() {
+    logFunction(newEventOfKind(WearHealthServicesEvent.EventKind.TRIGGER_EVENT_SUCCESS))
+  }
+
+  fun logTriggerEventFailure() {
+    logFunction(newEventOfKind(WearHealthServicesEvent.EventKind.TRIGGER_EVENT_FAILURE))
+  }
+
   private fun newEventOfKind(kind: WearHealthServicesEvent.EventKind): AndroidStudioEvent.Builder =
     AndroidStudioEvent.newBuilder()
       .setKind(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
