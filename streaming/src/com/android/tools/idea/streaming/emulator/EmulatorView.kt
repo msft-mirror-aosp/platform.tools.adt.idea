@@ -673,6 +673,10 @@ internal class EmulatorView(
     val frameRectangle = skin.frameRectangle
     val maxSize = computeMaxImageSize()
     val scale = computeRoundedScale(min(maxSize.width.toDouble() / frameRectangle.width, maxSize.height.toDouble() / frameRectangle.height))
+    return computeScaledFrameRectangle(frameRectangle, scale)
+  }
+
+  private fun computeScaledFrameRectangle(frameRectangle: Rectangle, scale: Double): Rectangle {
     val fw = frameRectangle.width.scaled(scale)
     val fh = frameRectangle.height.scaled(scale)
     return Rectangle((physicalWidth - fw) / 2, (physicalHeight - fh) / 2, fw, fh)
@@ -704,8 +708,8 @@ internal class EmulatorView(
       Rectangle((physicalWidth - w) / 2, (physicalHeight - h) / 2, w, h)
     } else {
       val frameRectangle = skin.frameRectangle
-      val frameRect = computeScaledFrameRectangle(skin)
       val scale = computeRoundedScale(min(maxWidth / frameRectangle.width, maxHeight / frameRectangle.height))
+      val frameRect = computeScaledFrameRectangle(frameRectangle, scale)
       w = w.scaled(scale)
       h = h.scaled(scale)
       Rectangle(frameRect.x - frameRectangle.x.scaled(scale), frameRect.y - frameRectangle.y.scaled(scale), w, h)
