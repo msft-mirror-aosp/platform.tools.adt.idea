@@ -2167,11 +2167,11 @@ public final class StudioFlags {
 
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
-  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART =
-    new BooleanFlag(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup");
-  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET =
-    new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup",
-                    "Reset the results cache before running filters on startup");
+  public static final Flag<Boolean> TSDKVUA_NO_FILTERS_ONSTART =
+    new BooleanFlag(TSDKVUA, "filters.onstart", "Don't run filters on assistant startup", "Don't run filters on assistant startup");
+  public static final Flag<Boolean> TSDKVUA_NO_FILTERS_ONSTART_RESET =
+    new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Don't reset the results cache before running filters on startup",
+                    "Don't reset the results cache before running filters on startup");
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP =
     new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters");
   public static final Flag<Integer> TSDKVUA_API_NEXT =
