@@ -67,7 +67,7 @@ class AvdManagerConnectionTest : AndroidTestCase() {
       )
 
     avdFolder = AvdInfo.getDefaultAvdFolder(avdManager, name, false)
-    systemImage = androidSdkHandler.getSystemImageManager(FakeProgressIndicator()).getImages().iterator().next()
+    systemImage = androidSdkHandler.getSystemImageManager(FakeProgressIndicator()).images.iterator().next()
 
     // We use Dispatchers.Unconfined to show dialogs: this causes MessageDialog to be invoked on the
     // calling thread. We don't simulate

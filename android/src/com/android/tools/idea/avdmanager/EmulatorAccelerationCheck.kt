@@ -107,7 +107,7 @@ private fun AndroidSdkHandler.hasPlatformToolsForQemu2Installed(): Boolean {
 
 private fun AndroidSdkHandler.hasSystemImagesForQemu2Installed(): Boolean {
   val emulator = getEmulatorPackage(progressIndicator, StudioFlags.EMULATOR_PREVIEW_ENABLED.get()) ?: return false
-  val images = getSystemImageManager(progressIndicator).getImages()
+  val images = getSystemImageManager(progressIndicator).images
   return images.stream().noneMatch(emulator.getSystemImageUpdateRequiredPredicate())
 }
 
