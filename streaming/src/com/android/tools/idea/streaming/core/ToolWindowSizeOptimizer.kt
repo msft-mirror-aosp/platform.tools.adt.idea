@@ -62,8 +62,11 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     val maxScaleX = roundDownToNaturalNumberOrNearestSmallFraction(availablePhysicalWidth.toDouble() / actualSize.width)
     val maxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(availablePhysicalHeight.toDouble() / actualSize.height)
     val fitScale = min(maxScaleX, maxScaleY)
-    val imageWidth = computeLogicalWidthForScale(fitScale).coerceAtMost(availableWidth)
-    val imageHeight = computeLogicalHeightForScale(fitScale).coerceAtMost(availableHeight)
+    val imageWidth =
+      if (fitScale < 1.0 && maxScaleX <= maxScaleY) availableWidth else computeLogicalWidthForScale(fitScale).coerceAtMost(availableWidth)
+    val imageHeight =
+      if (fitScale < 1.0 && maxScaleY <= maxScaleX) availableHeight
+      else computeLogicalHeightForScale(fitScale).coerceAtMost(availableHeight)
 
     val rootContainer = findRootContainer()
     val isUndocked = toolWindow.type == ToolWindowType.WINDOWED || toolWindow.type == ToolWindowType.FLOATING
@@ -100,8 +103,12 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
           val effectivePhysicalHeight = effectiveHeight.scaled(screenScalingFactor)
           val adjustedMaxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(effectivePhysicalHeight.toDouble() / actualSize.height)
           val adjustedFitScale = min(maxScaleX, adjustedMaxScaleY)
-          desiredWidth = computeLogicalWidthForScale(adjustedFitScale).coerceAtMost(availableWidth)
-          desiredHeight = computeLogicalHeightForScale(adjustedFitScale).coerceAtMost(effectiveHeight)
+          desiredWidth =
+            if (adjustedFitScale < 1.0 && maxScaleX <= adjustedMaxScaleY) availableWidth
+            else computeLogicalWidthForScale(adjustedFitScale).coerceAtMost(availableWidth)
+          desiredHeight =
+            if (adjustedFitScale < 1.0 && adjustedMaxScaleY <= maxScaleX) effectiveHeight
+            else computeLogicalHeightForScale(adjustedFitScale).coerceAtMost(effectiveHeight)
           toolbarHeightDelta =
             updateToolbarHeightForWidth(
               viewport,
@@ -131,7 +138,9 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
           val effectivePhysicalHeight = effectiveHeight.scaled(screenScalingFactor)
           val adjustedMaxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(effectivePhysicalHeight.toDouble() / actualSize.height)
           val adjustedFitScale = min(maxScaleX, adjustedMaxScaleY)
-          val adjustedImageWidth = computeLogicalWidthForScale(adjustedFitScale).coerceAtMost(availableWidth)
+          val adjustedImageWidth =
+            if (adjustedFitScale < 1.0 && maxScaleX <= adjustedMaxScaleY) availableWidth
+            else computeLogicalWidthForScale(adjustedFitScale).coerceAtMost(availableWidth)
           desiredWidth = if (adjustedImageWidth < availableWidth) adjustedImageWidth else computeLogicalWidthForScale(adjustedMaxScaleY)
           toolbarHeightDelta =
             updateToolbarHeightForWidth(

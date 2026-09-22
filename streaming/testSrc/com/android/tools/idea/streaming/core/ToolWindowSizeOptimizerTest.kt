@@ -148,6 +148,15 @@ class ToolWindowSizeOptimizerTest {
     assertThat(toolWindow.decorator.height).isEqualTo(500)
     assertMatchesAspectRatio(phoneView)
 
+    // Docked RIGHT with width=385 (where quantized fitScale rounds down to 384px < 385px): should still expand width, not shrink by 1px.
+    toolWindow.decorator.size = Dimension(385, 925)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    doubleClickInView(ui, phoneView, phoneView.width / 2, 2)
+    assertThat(toolWindow.decorator.width).isGreaterThan(385)
+    assertThat(toolWindow.decorator.height).isEqualTo(925)
+    assertMatchesAspectRatio(phoneView)
+
     // 4. Docked LEFT: shrink and expand width.
     toolWindow.setAnchor(ToolWindowAnchor.LEFT, null)
     toolWindow.decorator.size = Dimension(500, 500)
@@ -182,6 +191,16 @@ class ToolWindowSizeOptimizerTest {
     doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
     assertThat(toolWindow.decorator.height).isGreaterThan(300)
     assertThat(toolWindow.decorator.width).isEqualTo(300)
+    assertMatchesAspectRatio(phoneView)
+
+    // Docked BOTTOM with availableHeight=772 (where quantized fitScale rounds down to 769px < 772px): should still expand height.
+    val toolbarHeight = toolWindow.decorator.height - phoneView.height
+    toolWindow.decorator.size = Dimension(500, 772 + toolbarHeight)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.height).isGreaterThan(772 + toolbarHeight)
+    assertThat(toolWindow.decorator.width).isEqualTo(500)
     assertMatchesAspectRatio(phoneView)
 
     // 6. Docked TOP: shrink height.
