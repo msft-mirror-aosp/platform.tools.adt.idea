@@ -197,10 +197,25 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       .transform(appName -> format("%s.%s", basePackage, nameToJavaPackage(appName)));
     TextProperty packageNameText = new TextProperty(myPackageName);
     BoolProperty isPackageNameSynced = new BoolValueProperty(true);
-    myBindings.bind(myProjectModel.getPackageName(), packageNameText);
+
+    String initialPackage = myProjectModel.getPackageName().get();
+    if (!initialPackage.isEmpty()) {
+      packageNameText.set(initialPackage);
+      isPackageNameSynced.set(initialPackage.equals(computedPackageName.get()));
+    }
 
     myBindings.bind(packageNameText, computedPackageName, isPackageNameSynced);
+    myBindings.bind(myProjectModel.getPackageName(), packageNameText);
     myListeners.listen(packageNameText, value -> isPackageNameSynced.set(value.equals(computedPackageName.get())));
+    myListeners.listen(myProjectModel.getPackageName(), value -> {
+      String targetPackage = value.isEmpty() ? computedPackageName.get() : value;
+      isPackageNameSynced.set(targetPackage.equals(computedPackageName.get()));
+      if (!targetPackage.equals(packageNameText.get())) {
+        packageNameText.set(targetPackage);
+      } else if (value.isEmpty() && !targetPackage.isEmpty()) {
+        myProjectModel.getPackageName().set(targetPackage);
+      }
+    });
 
     Expression<String> computedLocation = myProjectModel.getApplicationName().transform(ConfigureAndroidProjectStep::findProjectLocation);
     TextProperty locationText = new TextProperty(myProjectLocation.getTextField());
