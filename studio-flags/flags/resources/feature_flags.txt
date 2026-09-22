@@ -192,6 +192,7 @@ settingssync.onboarding.wizard.enable=COMPLETE:2026
 studio.diagnostic.adb.host.logs.diagnostic.report.enable=PREVIEW
 studio.diagnostic.studio.tracing.enable=INTERNAL
 studiobot.acp.client.enabled=INTERNAL
+studiobot.acp.codex.override=INTERNAL
 studiobot.agent.editor.tab.enabled=PREVIEW
 studiobot.agent.experimental.build.prompt=PREVIEW
 studiobot.agent.permission.modes=PREVIEW
