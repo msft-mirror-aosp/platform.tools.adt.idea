@@ -29,12 +29,13 @@ private val WORKSPACE_FILE_NAMES = setOf("MODULE.bazel", "WORKSPACE", "WORKSPACE
 fun bazelProjectFilteringProcessor(
   workspaceRoot: Path,
   excludeAbsolute: Set<Path>,
+  supportsNestedWorkspaces: Boolean,
   context: Context<*>,
   processContents: (rootDir: Path, currentDir: Path, contents: DirectoryContents) -> DirectoryContents?,
 ): (rootDir: Path, currentDir: Path, contents: DirectoryContents) -> DirectoryContents? = { rootDir, currentDir, contents ->
   if (excludeAbsolute.any { currentDir.startsWith(it) }) {
     null
-  } else if (contents.files.any { it.path.fileName.toString() in WORKSPACE_FILE_NAMES }) {
+  } else if (supportsNestedWorkspaces && contents.files.any { it.path.fileName.toString() in WORKSPACE_FILE_NAMES }) {
     context.output(PrintOutput.log("Skipping nested workspace at $currentDir"))
     null
   } else {
@@ -65,7 +66,17 @@ suspend fun traverseProjectDirectories(
   val excludeAbsolute = projectDefinition.projectExcludes.map { workspaceRoot.resolve(it) }.toSet()
 
   val processor =
-    directoryProcessor(context, processContents = bazelProjectFilteringProcessor(workspaceRoot, excludeAbsolute, context, processContents))
+    directoryProcessor(
+      context,
+      processContents =
+        bazelProjectFilteringProcessor(
+          workspaceRoot = workspaceRoot,
+          excludeAbsolute = excludeAbsolute,
+          supportsNestedWorkspaces = projectDefinition.supportsNestedWorkspaces,
+          context = context,
+          processContents = processContents,
+        ),
+    )
 
   val initialTasks =
     if (startDirs == null) {

@@ -45,6 +45,7 @@ class SnapshotSerializationTest {
         languageClasses = setOf(QuerySyncLanguage.JVM),
         testSources = setOf("javatests/*"),
         systemExcludes = setOf(Path.of(".aswb")),
+        supportsNestedWorkspaces = true,
       )
     val vcsState =
       VcsState(
@@ -110,6 +111,7 @@ class SnapshotSerializationTest {
         languageClasses = setOf(QuerySyncLanguage.JVM),
         testSources = setOf("javatests/*"),
         systemExcludes = emptySet(),
+        supportsNestedWorkspaces = true,
       )
     val original = PostQuerySyncData.builder().setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path")).build()
     val serialized =
@@ -133,6 +135,7 @@ class SnapshotSerializationTest {
         languageClasses = setOf(QuerySyncLanguage.JVM),
         testSources = setOf("javatests/*"),
         systemExcludes = emptySet(),
+        supportsNestedWorkspaces = true,
       )
     val original = PostQuerySyncData.builder().setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path")).build()
     val serialized = SnapshotSerializer(-1).visit(projectDefinition).visit(original).toProto().toByteArray()
@@ -142,22 +145,25 @@ class SnapshotSerializationTest {
   @Test
   @Throws(IOException::class)
   fun testSerialization_projectDefinition() {
-    val projectDefinition =
-      ProjectDefinition(
-        projectIncludes = setOf(Path.of("project/path")),
-        projectExcludes = setOf(Path.of("project/path/excluded")),
-        deriveTargetsFromDirectories = true,
-        targetPatterns = listOf(parse("//some/pattern:all"), parse("-//some/negative/pattern")),
-        isAndroidWorkspace = true,
-        languageClasses = setOf(QuerySyncLanguage.JVM),
-        testSources = setOf("javatests/*"),
-        systemExcludes = setOf(Path.of(".aswb")),
-      )
-    val original = PostQuerySyncData.builder().setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path")).build()
-    val serialized =
-      SnapshotSerializer().visit(projectDefinition).visit(original).visit(createDefaultProjectStructureData()).toProto().toByteArray()
-    val deserialized = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
-    Truth.assertThat(deserialized?.projectDefinition).isEqualTo(projectDefinition)
+    for (supportsNestedWorkspaces in listOf(true, false)) {
+      val projectDefinition =
+        ProjectDefinition(
+          projectIncludes = setOf(Path.of("project/path")),
+          projectExcludes = setOf(Path.of("project/path/excluded")),
+          deriveTargetsFromDirectories = true,
+          targetPatterns = listOf(parse("//some/pattern:all"), parse("-//some/negative/pattern")),
+          isAndroidWorkspace = true,
+          languageClasses = setOf(QuerySyncLanguage.JVM),
+          testSources = setOf("javatests/*"),
+          systemExcludes = setOf(Path.of(".aswb")),
+          supportsNestedWorkspaces = supportsNestedWorkspaces,
+        )
+      val original = PostQuerySyncData.builder().setQuerySummary(QuerySummaryTestUtil.createProtoForPackages("//project/path:path")).build()
+      val serialized =
+        SnapshotSerializer().visit(projectDefinition).visit(original).visit(createDefaultProjectStructureData()).toProto().toByteArray()
+      val deserialized = SnapshotDeserializer.readFrom(ByteArrayInputStream(serialized), QuerySyncTestUtils.NOOP_CONTEXT)
+      Truth.assertThat(deserialized?.projectDefinition).isEqualTo(projectDefinition)
+    }
   }
 
   @Test

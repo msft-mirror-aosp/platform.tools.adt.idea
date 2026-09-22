@@ -68,7 +68,12 @@ class BazelProjectFilteringProcessorTest {
       directoryProcessor(
         context,
         processContents =
-          bazelProjectFilteringProcessor(workspaceRoot, excludes, context) { _, _, c ->
+          bazelProjectFilteringProcessor(
+            workspaceRoot = workspaceRoot,
+            excludeAbsolute = excludes,
+            supportsNestedWorkspaces = true,
+            context = context,
+          ) { _, _, c ->
             outerOutput = c
             c
           },
@@ -87,7 +92,18 @@ class BazelProjectFilteringProcessorTest {
     val excludes = setOf(workspaceRoot.resolve("dir1/excluded"))
 
     val processor =
-      directoryProcessor(context, processContents = bazelProjectFilteringProcessor(workspaceRoot, excludes, context) { _, _, c -> c })
+      directoryProcessor(
+        context,
+        processContents =
+          bazelProjectFilteringProcessor(
+            workspaceRoot = workspaceRoot,
+            excludeAbsolute = excludes,
+            supportsNestedWorkspaces = true,
+            context = context,
+          ) { _, _, c ->
+            c
+          },
+      )
 
     val result = processor.processDirectory(workspaceRoot, workspaceRoot.resolve("dir1/excluded"))
 
@@ -100,7 +116,18 @@ class BazelProjectFilteringProcessorTest {
     createFile("dir1/nested/file2.txt")
 
     val processor =
-      directoryProcessor(context, processContents = bazelProjectFilteringProcessor(workspaceRoot, emptySet(), context) { _, _, c -> c })
+      directoryProcessor(
+        context,
+        processContents =
+          bazelProjectFilteringProcessor(
+            workspaceRoot = workspaceRoot,
+            excludeAbsolute = emptySet(),
+            supportsNestedWorkspaces = true,
+            context = context,
+          ) { _, _, c ->
+            c
+          },
+      )
 
     val result = processor.processDirectory(workspaceRoot, workspaceRoot.resolve("dir1/nested"))
 
@@ -113,11 +140,55 @@ class BazelProjectFilteringProcessorTest {
     createFile("dir1/nested/file2.txt")
 
     val processor =
-      directoryProcessor(context, processContents = bazelProjectFilteringProcessor(workspaceRoot, emptySet(), context) { _, _, c -> c })
+      directoryProcessor(
+        context,
+        processContents =
+          bazelProjectFilteringProcessor(
+            workspaceRoot = workspaceRoot,
+            excludeAbsolute = emptySet(),
+            supportsNestedWorkspaces = true,
+            context = context,
+          ) { _, _, c ->
+            c
+          },
+      )
 
     val result = processor.processDirectory(workspaceRoot, workspaceRoot.resolve("dir1/nested"))
 
     assertThat(result).isNull()
+  }
+
+  @Test
+  fun testProcessContents_nestedWorkspace_ignoredWhenSupportsNestedWorkspacesFalse() {
+    createFile("dir1/nested/MODULE.bazel")
+    createFile("dir1/nested/WORKSPACE")
+    createFile("dir1/nested/WORKSPACE.bazel")
+    createFile("dir1/nested/file2.txt")
+
+    val processor =
+      directoryProcessor(
+        context,
+        processContents =
+          bazelProjectFilteringProcessor(
+            workspaceRoot = workspaceRoot,
+            excludeAbsolute = emptySet(),
+            supportsNestedWorkspaces = false,
+            context = context,
+          ) { _, _, c ->
+            c
+          },
+      )
+
+    val result = processor.processDirectory(workspaceRoot, workspaceRoot.resolve("dir1/nested"))
+
+    assertThat(result).isNotNull()
+    assertThat(result?.files?.map { it.path })
+      .containsExactly(
+        workspaceRoot.resolve("dir1/nested/MODULE.bazel"),
+        workspaceRoot.resolve("dir1/nested/WORKSPACE"),
+        workspaceRoot.resolve("dir1/nested/WORKSPACE.bazel"),
+        workspaceRoot.resolve("dir1/nested/file2.txt"),
+      )
   }
 
   @Test

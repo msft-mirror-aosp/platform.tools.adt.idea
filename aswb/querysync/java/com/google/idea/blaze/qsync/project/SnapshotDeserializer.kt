@@ -86,6 +86,7 @@ class SnapshotDeserializer private constructor() {
         languageClasses = proto.languageClassesList.mapNotNull { it.toQuerySyncLanguage() }.toSet(),
         testSources = proto.testSourcesList.toSet(),
         systemExcludes = proto.systemExcludesList.map { Path.of(it) }.toSet(),
+        supportsNestedWorkspaces = proto.supportsNestedWorkspaces,
       )
   }
 

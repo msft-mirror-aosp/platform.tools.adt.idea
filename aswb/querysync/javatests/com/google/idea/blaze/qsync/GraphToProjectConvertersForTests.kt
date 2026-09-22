@@ -42,6 +42,7 @@ object GraphToProjectConvertersForTests {
           languageClasses = languageClasses,
           testSources = testSources,
           systemExcludes = systemExcludes,
+          supportsNestedWorkspaces = true,
         ),
     )
   }

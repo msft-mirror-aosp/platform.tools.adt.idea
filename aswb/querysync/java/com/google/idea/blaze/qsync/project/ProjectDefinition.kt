@@ -70,6 +70,12 @@ data class ProjectDefinition(
    * files before ignoring them in the query invocation.
    */
   val systemExcludes: Set<Path>,
+
+  /**
+   * Whether nested workspace marker files (`MODULE.bazel`, `WORKSPACE`, `WORKSPACE.bazel`) define nested workspace boundaries that should
+   * be skipped during directory traversal. True for Bazel workspaces; false for Blaze (`google3`) workspaces.
+   */
+  val supportsNestedWorkspaces: Boolean,
 ) {
 
   val effectiveTargetPatterns: TargetPatternCollection by
@@ -153,6 +159,7 @@ data class ProjectDefinition(
         languageClasses = emptySet(),
         testSources = emptySet(),
         systemExcludes = emptySet(),
+        supportsNestedWorkspaces = true,
       )
 
     /**

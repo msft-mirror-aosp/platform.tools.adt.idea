@@ -54,6 +54,7 @@ class ProjectRefresherTest {
       languageClasses = setOf(QuerySyncLanguage.JVM),
       testSources = emptySet(),
       systemExcludes = emptySet(),
+      supportsNestedWorkspaces = true,
     )
 
   @Test

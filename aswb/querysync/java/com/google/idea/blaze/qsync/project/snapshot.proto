@@ -28,6 +28,7 @@ message ProjectDefinition {
   repeated string test_sources = 4;
   // TODO(b/382333575): improve excluding system folders
   repeated string system_excludes = 5;
+  bool supports_nested_workspaces = 9;
 }
 
 message VcsState {

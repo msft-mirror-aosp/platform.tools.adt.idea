@@ -35,6 +35,7 @@ class ProjectDefinitionTest {
         languageClasses = emptySet(),
         testSources = emptySet(),
         systemExcludes = emptySet(),
+        supportsNestedWorkspaces = true,
       )
     Truth.assertThat(projectDefinition.getIncludingContentRoot(Path.of("contentroot1/some/path"))).isEqualTo(Path.of("contentroot1"))
     Truth.assertThat(projectDefinition.getIncludingContentRoot(Path.of("contentroot2"))).isEqualTo(Path.of("contentroot2"))
@@ -52,6 +53,7 @@ class ProjectDefinitionTest {
         languageClasses = emptySet(),
         testSources = emptySet(),
         systemExcludes = emptySet(),
+        supportsNestedWorkspaces = true,
       )
     Truth.assertThat(projectDefinition.getIncludingContentRoot(Path.of("anotherRoot/some/path"))).isNull()
   }
@@ -68,6 +70,7 @@ class ProjectDefinitionTest {
         languageClasses = emptySet(),
         testSources = emptySet(),
         systemExcludes = emptySet(),
+        supportsNestedWorkspaces = true,
       )
     Truth.assertThat(projectDefinition.getIncludingContentRoot(Path.of("contentroot1/excluded/path"))).isNull()
   }
