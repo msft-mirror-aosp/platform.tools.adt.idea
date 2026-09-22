@@ -179,8 +179,8 @@ open class HeapDumpCaptureObject(
   private var supportedClassTypeFilters =
     setOf(AllClassTypeFilter, ProjectClassesInstanceFilter(ideProfilerServices), SystemClassesInstanceFilter(ideProfilerServices))
   private lateinit var supportedIssueTypeFilters: Set<CaptureObjectInstanceFilter> // To be initialized after activity and bitmap filters
-  var classTypeFilter: CaptureObjectInstanceFilter? = null
-  var issueTypeFilter: CaptureObjectInstanceFilter? = null
+  @Volatile var classTypeFilter: CaptureObjectInstanceFilter? = null
+  @Volatile var issueTypeFilter: CaptureObjectInstanceFilter? = null
 
   private val executorService =
     MoreExecutors.listeningDecorator(
@@ -398,6 +398,23 @@ open class HeapDumpCaptureObject(
 
     // Now process the class objects we saved, grouping by represented name to avoid double-counting
     processClassObjectOverviews(classObjectOverviews, classNameToEntries, representedInstanceCounts, superHeap, heapSetMappings)
+
+    if (result.heapOverviewList.isNotEmpty()) {
+      heapSetMappings.values.forEach { it.setHeapRetainedSizes(0L, 0L) }
+      var totalHeapRetainedNativeSize = 0L
+      var totalHeapRetainedSize = 0L
+      result.heapOverviewList.forEach { heapOverview ->
+        val heapName = heapOverview.heapName.standardHeapName()
+        val heapSet = heapSetMappings[heapName]
+        heapSet?.setHeapRetainedSizes(
+          heapSet.heapRetainedNativeSize + heapOverview.retainedNativeSize,
+          heapSet.heapRetainedSize + heapOverview.retainedSize,
+        )
+        totalHeapRetainedNativeSize += heapOverview.retainedNativeSize
+        totalHeapRetainedSize += heapOverview.retainedSize
+      }
+      superHeap.setHeapRetainedSizes(totalHeapRetainedNativeSize, totalHeapRetainedSize)
+    }
 
     heapSetMappings.forEach { (name, heapSet) ->
       if ("default" != name || heapSetMappings.size == 1 || heapSet.totalObjectSetCount > 0) {
@@ -680,6 +697,14 @@ open class HeapDumpCaptureObject(
   override fun getSupportedClassTypeFilters() = supportedClassTypeFilters
 
   override fun getSupportedIssueTypeFilters() = supportedIssueTypeFilters
+
+  /** Whether a non-default class filter (e.g. Project/System classes) or issue filter (e.g. Leaks/Duplicates) is currently active. */
+  val hasActiveFilter: Boolean
+    get() {
+      val hasClassFilter = classTypeFilter != null && classTypeFilter !is AllClassTypeFilter && classTypeFilter !is NoneFilter
+      val hasIssueFilter = issueTypeFilter != null && issueTypeFilter !is NoneFilter
+      return hasClassFilter || hasIssueFilter
+    }
 
   override fun getSelectedInstanceFilters(): Set<CaptureObjectInstanceFilter> = setOfNotNull(classTypeFilter, issueTypeFilter)
 

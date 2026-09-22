@@ -23,11 +23,14 @@ import java.util.function.Function
 import javax.swing.Icon
 import javax.swing.JTree
 
-internal class PercentColumnRenderer<T : MemoryObject>(
+internal class PercentColumnRenderer<T : MemoryObject>
+@JvmOverloads
+constructor(
   textGetter: Function<MemoryObjectTreeNode<T>, String>,
   iconGetter: Function<MemoryObjectTreeNode<T>, Icon>,
   alignment: Int,
   private val percentGetter: Function<MemoryObjectTreeNode<T>, Int>,
+  private val tooltipGetter: Function<MemoryObjectTreeNode<T>, String?>? = null,
 ) : SimpleColumnRenderer<T>(textGetter, iconGetter, alignment) {
 
   private var percent = 0
@@ -71,7 +74,9 @@ internal class PercentColumnRenderer<T : MemoryObject>(
     super.customizeCellRenderer(tree, value, selected, expanded, leaf, row, hasFocus)
     if (value is MemoryObjectTreeNode<*>) {
       this.hasFocus = hasFocus
-      percent = percentGetter.apply(value as MemoryObjectTreeNode<T>)
+      @Suppress("UNCHECKED_CAST") val typedNode = value as MemoryObjectTreeNode<T>
+      percent = percentGetter.apply(typedNode)
+      toolTipText = tooltipGetter?.apply(typedNode)
     }
   }
 

@@ -18,6 +18,7 @@ package com.android.tools.profilers.memory.adapters.classifiers;
 import com.android.tools.adtui.model.filter.Filter;
 import com.android.tools.profilers.memory.ClassGrouping;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
+import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject;
 import com.android.tools.profilers.memory.adapters.InstanceObject;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,7 +29,9 @@ public class HeapSet extends ClassifierSet {
   @NotNull private final CaptureObject myCaptureObject;
   @NotNull protected ClassGrouping myClassGrouping = ClassGrouping.ARRANGE_BY_CLASS;
   private final int myId;
-  @NotNull private Filter myFilter;
+  @NotNull protected volatile Filter myFilter;
+  private volatile long myHeapRetainedNativeSize = -1L;
+  private volatile long myHeapRetainedSize = -1L;
 
   public HeapSet(@NotNull CaptureObject captureObject, @NotNull String heapName, int id) {
     super(heapName);
@@ -36,6 +39,104 @@ public class HeapSet extends ClassifierSet {
     myId = id;
     myFilter = Filter.EMPTY_FILTER;
     setClassGrouping(ClassGrouping.ARRANGE_BY_CLASS);
+  }
+
+  /**
+   * Sets precomputed heap-level retained sizes (used by Trace Processor captures to avoid double-counting across classes).
+   */
+  public void setHeapRetainedSizes(long retainedNativeSize, long retainedSize) {
+    myHeapRetainedNativeSize = retainedNativeSize;
+    myHeapRetainedSize = retainedSize;
+  }
+
+  public long getHeapRetainedNativeSize() {
+    return myHeapRetainedNativeSize;
+  }
+
+  public long getHeapRetainedSize() {
+    return myHeapRetainedSize;
+  }
+
+  private boolean isTraceProcessorCapture() {
+    return myCaptureObject instanceof HeapDumpCaptureObject && ((HeapDumpCaptureObject)myCaptureObject).isTraceProcessor();
+  }
+
+  /**
+   * Returns true if this capture uses Trace Processor and has an active text, class, or issue filter.
+   */
+  public boolean isFilteredInTraceProcessor() {
+    if (!isTraceProcessorCapture()) {
+      return false;
+    }
+    return !myFilter.isEmpty() || ((HeapDumpCaptureObject)myCaptureObject).getHasActiveFilter();
+  }
+
+  @Override
+  public long getTotalRetainedSize() {
+    if (isTraceProcessorCapture()) {
+      if (isFilteredInTraceProcessor()) {
+        return NOT_APPLICABLE_SIZE;
+      }
+      if (myHeapRetainedSize >= 0L) {
+        return myHeapRetainedSize;
+      }
+    }
+    return super.getTotalRetainedSize();
+  }
+
+  @Override
+  public long getTotalRetainedNativeSize() {
+    if (isTraceProcessorCapture()) {
+      if (isFilteredInTraceProcessor()) {
+        return NOT_APPLICABLE_SIZE;
+      }
+      if (myHeapRetainedNativeSize >= 0L) {
+        return myHeapRetainedNativeSize;
+      }
+    }
+    return super.getTotalRetainedNativeSize();
+  }
+
+  @Override
+  public boolean isRetainedSizeCached() {
+    if (isTraceProcessorCapture() && (isFilteredInTraceProcessor() || myHeapRetainedSize >= 0L)) {
+      return true;
+    }
+    return super.isRetainedSizeCached();
+  }
+
+  @Override
+  public boolean isRetainedNativeSizeCached() {
+    if (isTraceProcessorCapture() && (isFilteredInTraceProcessor() || myHeapRetainedNativeSize >= 0L)) {
+      return true;
+    }
+    return super.isRetainedNativeSizeCached();
+  }
+
+  @Override
+  public long getRetainedSizeCache() {
+    if (isTraceProcessorCapture()) {
+      if (isFilteredInTraceProcessor()) {
+        return NOT_APPLICABLE_SIZE;
+      }
+      if (myHeapRetainedSize >= 0L) {
+        return myHeapRetainedSize;
+      }
+    }
+    return super.getRetainedSizeCache();
+  }
+
+  @Override
+  public long getRetainedNativeSizeCache() {
+    if (isTraceProcessorCapture()) {
+      if (isFilteredInTraceProcessor()) {
+        return NOT_APPLICABLE_SIZE;
+      }
+      if (myHeapRetainedNativeSize >= 0L) {
+        return myHeapRetainedNativeSize;
+      }
+    }
+    return super.getRetainedNativeSizeCache();
   }
 
   public ClassGrouping getClassGrouping() {

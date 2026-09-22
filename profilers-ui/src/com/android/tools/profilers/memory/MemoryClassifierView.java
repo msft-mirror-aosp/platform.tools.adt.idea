@@ -66,6 +66,7 @@ import java.awt.Graphics;
 import java.awt.RenderingHints;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -85,6 +86,7 @@ import javax.swing.JPanel;
 import javax.swing.JTree;
 import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
+import javax.swing.ToolTipManager;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.tree.DefaultTreeModel;
@@ -222,12 +224,26 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       if (useColdCache && val == -1L) {
         return "...";
       }
+      if (val == ClassifierSet.NOT_APPLICABLE_SIZE) {
+        return "-";
+      }
       return NumberFormatter.formatInteger(val);
     };
 
     ToLongFunction<ClassifierSet> safeProp = set -> {
       long val = prop.applyAsLong(set);
-      return (useColdCache && val == -1L) ? 0 : val;
+      return ((useColdCache && val == -1L) || val == ClassifierSet.NOT_APPLICABLE_SIZE) ? 0 : val;
+    };
+
+    Function<MemoryObjectTreeNode<ClassifierSet>, String> tooltipGetter = node -> {
+      long val = prop.applyAsLong(node.getAdapter());
+      if (val != ClassifierSet.NOT_APPLICABLE_SIZE) {
+        return null;
+      }
+      if (node.getAdapter() instanceof PackageSet && (myHeapSet == null || !myHeapSet.isFilteredInTraceProcessor())) {
+        return "Retained Size is not available when arranged by package";
+      }
+      return "Retained Size is not available when a filter is applied";
     };
 
     // Progress-bar style background that reflects percentage contribution
@@ -240,13 +256,15 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
         }
         else {
           assert myTreeRoot != null;
-          // Compute relative contribution with respect to top-most parent
+          // Compute relative contribution with respect to top-most parent. Draw no bar when either the row's value or the total is
+          // unavailable, which is what the "-" text and its tooltip already convey.
+          // Clamp to 100 as a guard, since a row's value should never exceed the total.
           long myVal = prop.applyAsLong(node.getAdapter());
-          ClassifierSet root = myTreeRoot.getAdapter();
-          long parentVal = prop.applyAsLong(root);
-          return parentVal == 0 ? 0 : (int)(myVal * 100 / parentVal);
+          long parentVal = prop.applyAsLong(myTreeRoot.getAdapter());
+          return myVal <= 0 || parentVal <= 0 ? 0 : (int)Math.min(100L, myVal * 100 / parentVal);
         }
-      }
+      },
+      tooltipGetter
     );
 
     int preferredWidth = Math.max(SimpleColumnRenderer.DEFAULT_COLUMN_WIDTH, width);
@@ -259,7 +277,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       preferredWidth,
       maxWidth,
       SortOrder.DESCENDING,
-      createTreeNodeComparator(comp, Comparator.comparingLong(prop))
+      createTreeNodeComparator(comp, Comparator.comparingLong(safeProp))
     );
   }
 
@@ -280,7 +298,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
   private AttributeColumn<ClassifierSet> makeColumn(String name, int width, ToLongFunction<ClassifierSet> prop, boolean useColdCache) {
     ToLongFunction<ClassifierSet> safeProp = set -> {
       long val = prop.applyAsLong(set);
-      return (useColdCache && val == -1L) ? 0 : val;
+      return ((useColdCache && val == -1L) || val == ClassifierSet.NOT_APPLICABLE_SIZE) ? 0 : val;
     };
     return makeColumn(name, width, prop, Comparator.comparingLong(safeProp), useColdCache);
   }
@@ -362,7 +380,16 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
 
     // Use JTree instead of IJ's tree, because IJ's tree does not happen border's Insets.
     //noinspection UndesirableClassUsage
-    myTree = new JTree();
+    myTree = new JTree() {
+      // Resolve per column: the name column always contributes a row tooltip (leak counts), which would otherwise win over the size ones.
+      @Override
+      public String getToolTipText(MouseEvent event) {
+        String tooltip = myTableColumnModel == null ? null : ColumnTreeBuilder.getColumnToolTipText(this, myTableColumnModel, event);
+        return tooltip != null ? tooltip : super.getToolTipText(event);
+      }
+    };
+    // Renderer tooltips are only shown for trees registered with the ToolTipManager, and this tree never sets a tooltip on itself.
+    ToolTipManager.sharedInstance().registerComponent(myTree);
     int defaultFontHeight = myTree.getFontMetrics(myTree.getFont()).getHeight();
     myTree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
     myTree.setBorder(TABLE_ROW_BORDER);

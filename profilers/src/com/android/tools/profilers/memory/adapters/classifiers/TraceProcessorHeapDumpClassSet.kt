@@ -57,6 +57,18 @@ class TraceProcessorHeapDumpClassSet(classEntry: ClassDb.ClassEntry, val heapId:
     return if (target.classEntry.classId == this.classEntry.classId) this else null
   }
 
+  override val isRetainedSizeCached: Boolean
+    get() = true
+
+  override val isRetainedNativeSizeCached: Boolean
+    get() = true
+
+  override val retainedSizeCache: Long
+    get() = totalRetainedSize
+
+  override val retainedNativeSizeCache: Long
+    get() = totalRetainedNativeSize
+
   override val isClassFilterMatch: Boolean
     get() {
       val cFilter = captureObject.classTypeFilter

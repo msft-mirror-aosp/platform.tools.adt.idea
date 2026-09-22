@@ -16,6 +16,7 @@
 package com.android.tools.profilers.memory.adapters.classifiers;
 
 import com.android.tools.profilers.memory.adapters.CaptureObject;
+import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject;
 import com.android.tools.profilers.memory.adapters.InstanceObject;
 import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
@@ -43,6 +44,43 @@ public class PackageSet extends ClassifierSet {
     myCaptureObject = captureObject;
     myPackageNameIndex = packageNameIndex;
     myHeapId = heapId;
+  }
+
+  /**
+   * In Trace Processor captures, class-level retained sizes cannot be summed across classes in a package without overcounting.
+   */
+  private boolean isTraceProcessorCapture() {
+    return myCaptureObject instanceof HeapDumpCaptureObject && ((HeapDumpCaptureObject)myCaptureObject).isTraceProcessor();
+  }
+
+  @Override
+  public long getTotalRetainedSize() {
+    return isTraceProcessorCapture() ? NOT_APPLICABLE_SIZE : super.getTotalRetainedSize();
+  }
+
+  @Override
+  public long getTotalRetainedNativeSize() {
+    return isTraceProcessorCapture() ? NOT_APPLICABLE_SIZE : super.getTotalRetainedNativeSize();
+  }
+
+  @Override
+  public boolean isRetainedSizeCached() {
+    return isTraceProcessorCapture() || super.isRetainedSizeCached();
+  }
+
+  @Override
+  public boolean isRetainedNativeSizeCached() {
+    return isTraceProcessorCapture() || super.isRetainedNativeSizeCached();
+  }
+
+  @Override
+  public long getRetainedSizeCache() {
+    return isTraceProcessorCapture() ? NOT_APPLICABLE_SIZE : super.getRetainedSizeCache();
+  }
+
+  @Override
+  public long getRetainedNativeSizeCache() {
+    return isTraceProcessorCapture() ? NOT_APPLICABLE_SIZE : super.getRetainedNativeSizeCache();
   }
 
   @NotNull

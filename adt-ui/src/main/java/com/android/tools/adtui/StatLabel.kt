@@ -60,6 +60,13 @@ constructor(
       numLabel.icon = newIcon
     }
 
+  /** Forwards tooltip text to child labels so hovering over either the number or description triggers the tooltip. */
+  override fun setToolTipText(text: String?) {
+    super.setToolTipText(text)
+    numLabel.toolTipText = text
+    descLabel.toolTipText = text
+  }
+
   init {
     numValue = num
     layout = BoxLayout(this, BoxLayout.Y_AXIS)

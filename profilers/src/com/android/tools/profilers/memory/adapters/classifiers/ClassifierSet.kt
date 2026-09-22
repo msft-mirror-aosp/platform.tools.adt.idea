@@ -721,12 +721,15 @@ abstract class ClassifierSet(supplyName: () -> String) : MemoryObject {
   }
 
   companion object {
+    /** Sentinel value indicating that a size metric is not applicable (e.g. retained size of a filtered or package-grouped set). */
+    const val NOT_APPLICABLE_SIZE = -2L
+
     private fun overlaps(set1: Set<InstanceObject>, set2: Set<InstanceObject>): Boolean {
       val iter = if (set1.size < set2.size) set1 else set2
       val test = if (iter === set1) set2 else set1
       return iter.any(test::contains)
     }
 
-    private fun Long.validOrZero(): Long = if (this == MemoryObject.INVALID_VALUE.toLong()) 0L else this
+    private fun Long.validOrZero(): Long = if (this < 0L) 0L else this
   }
 }
