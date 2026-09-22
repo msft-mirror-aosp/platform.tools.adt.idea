@@ -50,6 +50,7 @@ import com.android.tools.adtui.compose.IntUiPaletteDefaults
 import com.android.tools.adtui.compose.rememberColor
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.whatsnew.assistant.v2.ui.composeutils.ImagePainterLoaderMarkdownRendererExtension
+import com.intellij.ide.ui.LafManager
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.modifier.onHover
 import org.jetbrains.jewel.foundation.modifier.thenIf
@@ -111,7 +112,7 @@ internal class WhatsNewMarkdownBlockRenderer(
             }
             .thenIf(isHovered) { zIndex(1f) }
 
-        val cardColor = JewelTheme.globalColors.borders.normal
+        val cardColor = cardColor()
         popupModifier
           .clip(RoundedCornerShape(20.dp))
           .background(cardColor)
@@ -233,6 +234,9 @@ internal class WhatsNewMarkdownBlockRenderer(
 
   @Composable
   private fun cardBorderColor(): Color {
+    if (isHighContrast()) {
+      return JewelTheme.globalColors.borders.normal
+    }
     return rememberColor(
       key = "WNACard.borderColor",
       darkFallbackKey = "ColorPalette.Gray3",
@@ -240,6 +244,15 @@ internal class WhatsNewMarkdownBlockRenderer(
       lightFallbackKey = "ColorPalette.Gray11",
       lightDefault = Color(IntUiPaletteDefaults.Light.Gray11),
     )
+  }
+
+  @Composable
+  private fun cardColor(): Color {
+    return if (isHighContrast()) JewelTheme.globalColors.panelBackground else JewelTheme.globalColors.borders.normal
+  }
+
+  private fun isHighContrast(): Boolean {
+    return LafManager.getInstance().currentUIThemeLookAndFeel.id == "JetBrainsHighContrastTheme"
   }
 
   private fun collectNextCells(markdownGroup: MarkdownGroup.Cell, groupIterator: ListIterator<MarkdownGroup>): List<MarkdownGroup.Cell> {
@@ -264,7 +277,7 @@ internal class WhatsNewMarkdownBlockRenderer(
       /** A row of the grid, to render in a single row spanning the entire grid */
       class Rows(val blocks: List<MarkdownBlock>) : MarkdownGroup()
 
-      /** A single cell of the grid, to render in a columns */
+      /** A single cell of the grid, to render in a column */
       class Cell(val blocks: List<MarkdownBlock>) : MarkdownGroup()
     }
 
