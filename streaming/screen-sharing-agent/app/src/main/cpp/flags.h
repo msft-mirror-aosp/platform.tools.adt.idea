@@ -25,5 +25,6 @@ constexpr int32_t USE_UINPUT = 0x08;
 constexpr int32_t DEVICE_IS_XR = 0x10;
 constexpr int32_t MIRROR_GLASSES_DISPLAY = 0x20;
 constexpr int32_t TRACE_CLIPBOARD_SYNCHRONIZATION = 0x40;
+constexpr int32_t ALLOW_AVC_ENCODING = 0x80;
 
 }  // namespace screensharing

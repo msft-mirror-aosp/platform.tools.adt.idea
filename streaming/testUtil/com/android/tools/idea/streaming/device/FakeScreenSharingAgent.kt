@@ -100,6 +100,7 @@ import org.bytedeco.ffmpeg.global.avcodec.av_packet_alloc
 import org.bytedeco.ffmpeg.global.avcodec.av_packet_free
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_encoder
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_encoder_by_name
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_receive_packet
@@ -108,6 +109,7 @@ import org.bytedeco.ffmpeg.global.avutil.AVERROR_EAGAIN
 import org.bytedeco.ffmpeg.global.avutil.AVERROR_EOF
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24
+import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUV420P
 import org.bytedeco.ffmpeg.global.avutil.AV_SAMPLE_FMT_S16
 import org.bytedeco.ffmpeg.global.avutil.av_frame_alloc
 import org.bytedeco.ffmpeg.global.avutil.av_frame_free
@@ -146,8 +148,13 @@ class FakeScreenSharingAgent(
   private val cameraStreamers = Int2ObjectOpenHashMap<CameraStreamer>()
   private var audioStreamer: AudioStreamer? = null
 
-  private val codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
+  private var codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
   private val videoEncoder: AVCodec by lazy {
+    if (codecName == "av01") {
+      avcodec_find_encoder_by_name("libsvtav1")?.let {
+        return@lazy it
+      }
+    }
     // Use avcodec_find_encoder instead of avcodec_find_encoder_by_name because the names of encoders and decoders don't match.
     val codecId =
       when (codecName) {
@@ -400,6 +407,7 @@ class FakeScreenSharingAgent(
   }
 
   private fun parseArgs(command: String) {
+    codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
     val args = command.split(Regex("\\s+"))
     for (arg in args) {
       when {
@@ -416,6 +424,10 @@ class FakeScreenSharingAgent(
 
         arg.startsWith("--flags=") -> {
           agentFlags = arg.substring("--flags=".length).toInt()
+        }
+
+        arg.startsWith("--codec=") -> {
+          codecName = arg.substring("--codec=".length)
         }
       }
     }
@@ -830,8 +842,10 @@ class FakeScreenSharingAgent(
           time_base(av_make_q(1, 1000))
           framerate(av_make_q(VIDEO_FRAME_RATE, 1))
           gop_size(2)
-          max_b_frames(1)
-          pix_fmt(videoEncoder.pix_fmts().get())
+          if (codecName == "vp8") {
+            max_b_frames(1)
+          }
+          pix_fmt(AV_PIX_FMT_YUV420P)
           width(videoSize.width)
           height(videoSize.height)
         } ?: throw RuntimeException("Could not allocate video encoder context")
@@ -1057,8 +1071,10 @@ class FakeScreenSharingAgent(
           time_base(av_make_q(1, 1000))
           framerate(av_make_q(VIDEO_FRAME_RATE, 1))
           gop_size(2)
-          max_b_frames(1)
-          pix_fmt(videoEncoder.pix_fmts().get())
+          if (codecName == "vp8") {
+            max_b_frames(1)
+          }
+          pix_fmt(AV_PIX_FMT_YUV420P)
           width(videoSize.width)
           height(videoSize.height)
         } ?: throw RuntimeException("Could not allocate video encoder context")

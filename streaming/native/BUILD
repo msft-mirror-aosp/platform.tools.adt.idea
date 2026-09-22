@@ -1,3 +1,5 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "objc_library")
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//tools/adt/idea/studio:studio.bzl", "studio_data")
 
 config_setting(
@@ -18,6 +20,9 @@ config_setting(
 
 studio_data(
     name = "native_lib",
+    files = [
+        "//prebuilts/tools:streaming-bundle",
+    ],
     files_linux = glob(["linux/*"]),
     files_mac = glob(["mac/*"]),
     files_mac_arm = glob(["mac_arm/*"]),
@@ -112,4 +117,56 @@ sh_binary(
         "@platforms//os:windows": ["tools/adt/idea/streaming/native/win"],
     }),
     data = [":libimage_converter"],
+)
+
+objc_library(
+    name = "video_decoder_mac",
+    srcs = ["VideoDecoderMac.mm"],
+    copts = [
+        "-O2",
+        "-std=c++17",
+    ],
+    defines = ["NDEBUG"],
+    sdk_frameworks = [
+        "VideoToolbox",
+        "CoreMedia",
+        "CoreVideo",
+        "CoreFoundation",
+    ],
+    target_compatible_with = ["@platforms//os:macos"],
+    deps = ["//prebuilts/studio/jdk:jni_headers"],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libvideo_decoder.dylib",
+    linkshared = True,
+    stamp = 0,
+    target_compatible_with = ["@platforms//os:macos"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":video_decoder_mac",
+    ],
+)
+
+filegroup(
+    name = "libvideo_decoder.prebuilt",
+    srcs = ["//prebuilts/tools:libvideo_decoder.prebuilt"],
+    visibility = ["//visibility:public"],
+)
+
+# bazel run :update_libvideo_decoder
+sh_binary(
+    name = "update_libvideo_decoder",
+    srcs = ["//tools/base/bazel/shell:workspace-cp.sh"],
+    args = [
+        "-f",
+        "$(execpath :libvideo_decoder.dylib)",
+    ] + select({
+        ":macos": ["prebuilts/tools/darwin-x86_64/streaming"],
+        ":macos_arm": ["prebuilts/tools/darwin-arm64/streaming"],
+        "//conditions:default": [],
+    }),
+    data = [":libvideo_decoder.dylib"],
+    target_compatible_with = ["@platforms//os:macos"],
 )

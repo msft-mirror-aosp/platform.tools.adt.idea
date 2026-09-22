@@ -104,6 +104,8 @@ internal constructor(
 
   private val decodingContexts = ConcurrentHashMap<Int, DecodingContext>()
   private val codec = CompletableDeferred<AVCodec>()
+  @Volatile private var codecName = ""
+  @Volatile private var useMacDecoder = false
   @Volatile private var endOfVideoStream = false
   private val logger
     get() = thisLogger()
@@ -179,7 +181,9 @@ internal constructor(
     val header = ByteBuffer.allocate(CHANNEL_HEADER_LENGTH)
     videoChannel.readFully(header)
     val codecName = String(header.array(), UTF_8).trim()
+    this.codecName = codecName
     logger.debug { "Receiving $codecName video stream" }
+    useMacDecoder = VideoDecoderMac.isSupported(codecName)
     val ffmpegCodecName =
       when (codecName) {
         "av01" -> "av1"
@@ -420,6 +424,10 @@ internal constructor(
     }
 
     private inner class StreamDecoder(val isForCamera: Boolean) : AutoCloseable {
+      @GuardedBy("this") private var macDecoder: VideoDecoderMac? = null
+      @GuardedBy("this") private var pixelBuffer: ByteBuffer? = null
+      private val dimensions = IntArray(2)
+
       @GuardedBy("this") private var codecContext: AVCodecContext? = null
       @GuardedBy("this") private var decodingFrame: AVFrame? = null
       @GuardedBy("this") private var renderingFrame: AVFrame? = null
@@ -437,6 +445,23 @@ internal constructor(
           null -> return false
           else -> {}
         }
+        if (useMacDecoder) {
+          try {
+            macDecoder = VideoDecoderMac(codecName)
+            initialized = true
+            return true
+          } catch (e: Throwable) {
+            logger.warn("Failed to initialize VideoDecoderMac for $codecName, falling back to FFmpeg", e)
+            macDecoder = null
+            useMacDecoder = false
+          }
+        }
+        initFfmpegDecoder(codec)
+        initialized = true
+        return true
+      }
+
+      private fun initFfmpegDecoder(codec: AVCodec) {
         var codecContext: AVCodecContext? = null
         var parserContext: AVCodecParserContext? = null
         try {
@@ -449,23 +474,24 @@ internal constructor(
             throw VideoDecoderException("Display $displayId: could not open codec ${codec.name()}")
           }
         } catch (e: VideoDecoderException) {
-          av_parser_close(parserContext)
-          avcodec_free_context(codecContext)
+          parserContext?.let { av_parser_close(it) }
+          codecContext?.let { avcodec_free_context(it) }
           throw e
         }
 
         this.codecContext = codecContext
         this.parserContext = parserContext
         decodingFrame = av_frame_alloc()
-        initialized = true
-        return true
       }
 
       @Synchronized
       override fun close() {
         if (initialized == true) {
-          av_parser_close(parserContext)
-          avcodec_free_context(codecContext)
+          macDecoder?.close()
+          macDecoder = null
+          pixelBuffer = null
+          parserContext?.let { av_parser_close(it) }
+          codecContext?.let { avcodec_free_context(it) }
           decodingFrame?.let { av_frame_free(it) }
           renderingFrame?.let { av_frame_free(it) }
           swsContext?.let { sws_freeContext(it) }
@@ -547,6 +573,18 @@ internal constructor(
       }
 
       private fun processDataPacket(packet: AVPacket, header: VideoPacketHeader) {
+        val macDecoder = macDecoder
+        if (macDecoder != null) {
+          if (processFrameMac(macDecoder, packet, header)) {
+            return
+          }
+          logger.warn("VideoDecoderMac failed to decode $codecName stream, falling back to FFmpeg")
+          macDecoder.close()
+          this.macDecoder = null
+          useMacDecoder = false
+          @Suppress("OPT_IN_USAGE") initFfmpegDecoder(codec.getCompleted())
+        }
+
         val parserContext = parserContext ?: return
         val codecContext = codecContext ?: return
         val outData = BytePointer()
@@ -560,6 +598,45 @@ internal constructor(
         }
 
         processFrame(packet, header)
+      }
+
+      private fun processFrameMac(macDecoder: VideoDecoderMac, packet: AVPacket, header: VideoPacketHeader): Boolean {
+        val maxDim = maxOf(header.displaySize.width, header.displaySize.height)
+        val alignedDim = (maxDim + 63) and 63.inv()
+        val neededCapacity = alignedDim * alignedDim * 4
+        var buf = pixelBuffer
+        if (buf == null || buf.capacity() < neededCapacity) {
+          buf = ByteBuffer.allocateDirect(neededCapacity).order(LITTLE_ENDIAN).also { pixelBuffer = it }
+        }
+
+        val packetBuffer = packet.data().asByteBufferOfSize(packet.size())
+        val status =
+          macDecoder.decodeFrame(
+            packetBuffer,
+            0,
+            packet.size(),
+            buf,
+            buf.capacity(),
+            dimensions,
+          )
+        if (status < 0) {
+          return false
+        }
+        if (status == 0) {
+          return true
+        }
+
+        val frameWidth = dimensions[0]
+        val frameHeight = dimensions[1]
+        val framePixels = buf.asIntBuffer()
+        val rotatedDisplaySize = header.displaySize.rotatedByQuadrants(header.displayOrientation - header.displayOrientationCorrection)
+        val imageHeight = frameWidth.scaled(rotatedDisplaySize.height.toDouble() / rotatedDisplaySize.width).coerceAtMost(frameHeight)
+        val startY = (frameHeight - imageHeight) / 2
+        framePixels.position(startY * frameWidth)
+
+        val image = createDecodedImage(header, frameWidth, imageHeight, framePixels)
+        onFrameDecoded(image, header)
+        return true
       }
 
       private fun processFrame(packet: AVPacket, header: VideoPacketHeader) {

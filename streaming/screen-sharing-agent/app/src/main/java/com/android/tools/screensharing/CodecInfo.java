@@ -35,6 +35,8 @@ import java.util.List;
  */
 @SuppressWarnings("unused") // Called through JNI.
 public class CodecInfo {
+  private static final MediaCodecInfo[] CODEC_INFOS = new MediaCodecList(REGULAR_CODECS).getCodecInfos();
+
   public final String name;
   public final int maxWidth;
   public final int maxHeight;
@@ -60,7 +62,7 @@ public class CodecInfo {
    * @return a CodecInfo object, or null if the given mime type is not supported by any encoder
    */
   public static CodecInfo selectVideoEncoderForType(String mimeType) {
-    for (MediaCodecInfo codecInfo : new MediaCodecList(REGULAR_CODECS).getCodecInfos()) {
+    for (MediaCodecInfo codecInfo : CODEC_INFOS) {
       if (!codecInfo.isEncoder()) {
         continue;
       }
@@ -89,7 +91,7 @@ public class CodecInfo {
    * Returns diagnostic information for the specified video encoder and video dimensions.
    */
   public static String getVideoEncoderDetails(String codecName, String mimeType, int width, int height) {
-    for (MediaCodecInfo codecInfo : new MediaCodecList(REGULAR_CODECS).getCodecInfos()) {
+    for (MediaCodecInfo codecInfo : CODEC_INFOS) {
       if (codecInfo.getName().equals(codecName)) {
         VideoCapabilities videoCapabilities = codecInfo.getCapabilitiesForType(mimeType).getVideoCapabilities();
         if (videoCapabilities == null) {
