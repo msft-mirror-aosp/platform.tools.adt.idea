@@ -354,7 +354,10 @@ class NavigationControlsPanelUiTest {
   fun testVisualStackRenderingWithMultiScreenEntry() {
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
     val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val historyList = listOf(listOf("com.example.Home@23434242", "Product(id=1)"))
+    // A non-data class inherits Object.toString() ("...Home@hex"), verifying reflection extracts the simple class name.
+    class Home
+    data class Product(val id: Int)
+    val historyList = listOf(listOf(Home(), Product(id = 1)))
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -371,8 +374,8 @@ class NavigationControlsPanelUiTest {
     }
 
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.visualStack).assertIsDisplayed()
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.navkey", "com.example.Home@23434242")).assertIsDisplayed()
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.navkey", "Product(id=1)")).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Home").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Product(id=1)").assertIsDisplayed()
   }
 
   @Test
@@ -380,8 +383,22 @@ class NavigationControlsPanelUiTest {
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
     val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    data class FakeNavigationInfo(val key: Any)
-    val historyList = listOf(FakeNavigationInfo("ScreenReflected1"), FakeNavigationInfo(listOf("ScreenA", "ScreenB")))
+    class FakeNavEntry(@Suppress("unused") private val key: Any)
+    class FakeScene(@Suppress("unused") val entries: List<FakeNavEntry>)
+    open class FakeSceneInfo(private val backingScene: FakeScene) {
+      var sceneReadCount = 0
+      @Suppress("unused")
+      val scene: FakeScene
+        get() {
+          sceneReadCount++
+          return backingScene
+        }
+    }
+
+    val firstSceneInfo = FakeSceneInfo(FakeScene(listOf(FakeNavEntry("ScreenReflected1"))))
+    val secondSceneInfo = FakeSceneInfo(FakeScene(listOf(FakeNavEntry("ScreenA"), FakeNavEntry("ScreenB"))))
+    val thirdSceneInfo = FakeSceneInfo(FakeScene(listOf(FakeNavEntry("ScreenReflected3"))))
+    var historyList = listOf(firstSceneInfo, secondSceneInfo)
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -398,9 +415,21 @@ class NavigationControlsPanelUiTest {
     }
 
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.visualStack).assertIsDisplayed()
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.navkey", "ScreenReflected1")).assertIsDisplayed()
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.navkey", "ScreenA")).assertIsDisplayed()
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.navkey", "ScreenB")).assertIsDisplayed()
+    composeTestRule.onNodeWithText("ScreenReflected1").assertIsDisplayed()
+    composeTestRule.onNodeWithText("ScreenA").assertIsDisplayed()
+    composeTestRule.onNodeWithText("ScreenB").assertIsDisplayed()
+    assertEquals(1, firstSceneInfo.sceneReadCount)
+    assertEquals(1, secondSceneInfo.sceneReadCount)
+
+    // Push a third item and trigger recomposition via fpsUpdater; existing items must not be re-parsed via reflection.
+    historyList = listOf(firstSceneInfo, secondSceneInfo, thirdSceneInfo)
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithText("ScreenReflected3").assertIsDisplayed()
+    assertEquals(1, firstSceneInfo.sceneReadCount)
+    assertEquals(1, secondSceneInfo.sceneReadCount)
+    assertEquals(1, thirdSceneInfo.sceneReadCount)
   }
 
   @Test

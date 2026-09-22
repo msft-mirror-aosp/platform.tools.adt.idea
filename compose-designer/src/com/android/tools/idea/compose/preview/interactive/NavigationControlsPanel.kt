@@ -53,6 +53,7 @@ import com.android.tools.idea.compose.preview.InteractivePreviewNavigationContro
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
 import icons.StudioIconsCompose
+import java.util.WeakHashMap
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -247,6 +248,9 @@ fun NavigationControlsPanel(
 
 @Composable
 private fun BackStack(navigationHistory: List<Any>, onBackToState: (Any) -> Unit) {
+  // Cache parsed navigation keys per history item so reflection is only executed once when a new
+  // item enters the back stack, rather than on every recomposition or when items shift position.
+  val parsedNavigationItemsCache = remember { WeakHashMap<Any, List<NavigationItemInfo>>() }
   Column(
     modifier = Modifier.padding(vertical = DEFAULT_SPACING).fillMaxWidth().testTag(NavigationControlsPanelTestTags.visualStack),
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -271,8 +275,13 @@ private fun BackStack(navigationHistory: List<Any>, onBackToState: (Any) -> Unit
         // Display in reverse order so the newest/active item is on top of the stack.
         navigationHistory.asReversed().forEachIndexed { index, navigationInfoItem ->
           val isCurrentActiveNavigationItem = index == 0
+          val navKeys =
+            parsedNavigationItemsCache.getOrPut(navigationInfoItem) {
+              parseNavigationItem(navigationInfoItem)
+            }
           BackStackItem(
             navigationInfoItem = navigationInfoItem,
+            navKeys = navKeys,
             isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
             onItemClick = onBackToState,
           )
@@ -285,6 +294,7 @@ private fun BackStack(navigationHistory: List<Any>, onBackToState: (Any) -> Unit
 @Composable
 private fun BackStackItem(
   navigationInfoItem: Any,
+  navKeys: List<NavigationItemInfo>,
   isCurrentActiveNavigationItem: Boolean,
   onItemClick: (Any) -> Unit,
 ) {
@@ -293,7 +303,6 @@ private fun BackStackItem(
   val backGroundColor = if (isCurrentActiveNavigationItem) activeAccent.copy(alpha = 0.12f) else JewelTheme.globalColors.panelBackground
   val textColor = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.text.normal
 
-  val navKeys = parseNavigationItems(navigationInfoItem)
   Row(
     modifier =
       Modifier.border(width = 1.dp, color = borderColors, shape = RoundedCornerShape(8.dp))
@@ -308,8 +317,8 @@ private fun BackStackItem(
       // In adaptive layouts on larger screens (such as foldables, tablets, or desktop displaying two-pane or list-detail
       // scenes), a single back stack entry can contain multiple active navigation keys displayed side by side.
       // We render each navigation key on its own line for clarity.
-      navKeys.forEach { navKey ->
-        Text(text = message("action.navigate.back.stack.navkey", navKey), fontWeight = FontWeight.Bold, color = textColor)
+      navKeys.forEach { (navKey) ->
+        Text(text = navKey, fontWeight = FontWeight.Bold, color = textColor)
       }
     }
     if (isCurrentActiveNavigationItem) {
@@ -405,37 +414,4 @@ object NavigationControlsPanelTestTags {
 
   /** Tag for the visual stack. */
   const val visualStack = "$base.visualStack"
-}
-
-/**
- * Extracts the value of `key=...` from string representations of navigation objects (e.g., `NavigationInfo(key=HomeScreen, ...)` or
- * `NavEntry(key=[Pane1, Pane2], ...)`), capturing until the next named property or closing parenthesis/end-of-string.
- */
-private val KEY_REGEX = Regex("""\bkey\s*=\s*(.+?)(?:,\s*\w+\s*=|\)$|$)""")
-
-/**
- * Matches commas that are at the top level (i.e. not enclosed within nested parentheses, square brackets, or curly braces) via negative
- * lookahead, allowing compound navigation keys like `Home, Product(id=1, name=foo)` to split only at top-level separators.
- */
-private val TOP_LEVEL_COMMA_REGEX = Regex(""",\s*(?![^()\[\]{}]*[)\]}])""")
-
-/**
- * Parses a navigation info object into a list of navigation key names.
- *
- * In adaptive layouts (e.g. on bigger screens like tablets, foldables, or desktop using two-pane, supporting pane, or list-detail
- * patterns), multiple screens can be displayed simultaneously. In Navigation3, these are represented as compound entries (such as a Pair,
- * List, or tuple) in the back stack history.
- *
- * @param navigationInfoItem The navigation history item object or string.
- * @return A list of parsed navigation keys.
- */
-private fun parseNavigationItems(navigationInfoItem: Any): List<String> {
-  // Extract the `key` property value from the toString() output if present (e.g. "NavigationInfo(key=...)"), otherwise use the full string.
-  val key = KEY_REGEX.find(navigationInfoItem.toString())?.groupValues?.get(1)?.trim() ?: navigationInfoItem.toString()
-  // Remove enclosing parentheses or brackets for compound entries (e.g. tuples or lists like "(ScreenA, ScreenB)").
-  val unwrapped = key.trim().removeSurrounding("(", ")").removeSurrounding("[", "]").trim()
-  // Guard against empty strings to avoid returning a single-element list with an empty string.
-  if (unwrapped.isEmpty()) return emptyList()
-  // Split on top-level commas (ignoring commas inside nested brackets/parens) and trim whitespace from each key.
-  return unwrapped.split(TOP_LEVEL_COMMA_REGEX).map { it.trim() }.filter { it.isNotEmpty() }
 }
