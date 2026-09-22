@@ -62,6 +62,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito.CALLS_REAL_METHODS
+import org.mockito.Mockito.doNothing
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
@@ -183,12 +184,18 @@ internal constructor(
   }
 
   override fun stretchWidth(value: Int) {
+    if (type == ToolWindowType.WINDOWED || type == ToolWindowType.FLOATING) {
+      return
+    }
     val minWidth = (decorator.minimumSize?.width ?: 0).coerceAtLeast(1)
     val newWidth = (decorator.width + value).coerceAtLeast(minWidth)
     decorator.size = Dimension(newWidth, decorator.height)
   }
 
   override fun stretchHeight(value: Int) {
+    if (type == ToolWindowType.WINDOWED || type == ToolWindowType.FLOATING) {
+      return
+    }
     val minHeight = (decorator.minimumSize?.height ?: 0).coerceAtLeast(1)
     val newHeight = (decorator.height + value).coerceAtLeast(minHeight)
     decorator.size = Dimension(decorator.width, newHeight)
@@ -255,10 +262,7 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
   private var splitUnsplitInProgress = false
   private val internalDecorator: InternalDecoratorImpl
   internal var splitter: Splitter? = null
-  internal val panel: JComponent =
-    object : JBPanelWithEmptyText() {
-      override fun contains(x: Int, y: Int): Boolean = false
-    }
+  internal val panel: JComponent = JBPanelWithEmptyText()
   private val treeLock: Any = JPanel().treeLock
 
   init {
@@ -408,9 +412,10 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
     }
     doAnswer {
         val activeComponent = contentManager.splitter ?: contentManager.selectedContent?.component
+        val componentToLayout = activeComponent ?: contentManager.panel
         for (i in 0 until mockDecorator.componentCount) {
           val child = mockDecorator.getComponent(i)
-          if (child === contentManager.panel || child === activeComponent) {
+          if (child === componentToLayout) {
             child.setBounds(0, 0, mockDecorator.width, mockDecorator.height)
             UIUtil.uiTraverser(child).forEach { it.doLayout() }
           } else {
@@ -425,7 +430,16 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
     doAnswer { Dimension(0, 0) }.whenever(mockDecorator).minimumSize
     doAnswer { treeLock }.whenever(mockDecorator).treeLock
     doAnswer { contentManager }.whenever(mockDecorator).contentManager
-    doAnswer { true }.whenever(mockDecorator).isVisible
+    var isVisible = true
+    doAnswer { isVisible }.whenever(mockDecorator).isVisible
+    doAnswer {
+        isVisible = it.getArgument(0)
+        null
+      }
+      .whenever(mockDecorator)
+      .setVisible(any())
+    doNothing().whenever(mockDecorator).addNotify()
+    doNothing().whenever(mockDecorator).removeNotify()
     doAnswer {
         val sink = it.getArgument<DataSink>(0)
         contentManager.toolWindow?.let { toolWindow -> sink[PlatformDataKeys.TOOL_WINDOW] = toolWindow }

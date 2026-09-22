@@ -41,6 +41,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.content.ContentManager
 import icons.StudioIcons
 import java.awt.BorderLayout
+import java.awt.Component
 import java.awt.Dimension
 import java.awt.Rectangle
 import java.awt.event.MouseEvent
@@ -253,7 +254,7 @@ class ToolWindowSizeOptimizerTest {
     toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
     toolWindow.setType(ToolWindowType.DOCKED, null)
     toolWindow.decorator.size = Dimension(500, 550)
-    val ui = FakeUi(toolWindow.decorator)
+    val ui = createFakeUi(toolWindow.decorator)
     val watchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, watchView) > 0u }
     assertThat(watchView.naturalContentSize).isEqualTo(Dimension(320, 320))
@@ -304,7 +305,7 @@ class ToolWindowSizeOptimizerTest {
     FakeToolWindow.split(watchContent, SwingConstants.RIGHT)
     dispatchAllEventsInIdeEventQueue()
     toolWindow.decorator.size = Dimension(1000, 550)
-    val ui = FakeUi(toolWindow.decorator)
+    val ui = createFakeUi(toolWindow.decorator)
     val splitWatchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, splitWatchView) > 0u }
     doubleClickInView(ui, splitWatchView, 2, splitWatchView.height / 2)
@@ -353,7 +354,7 @@ class ToolWindowSizeOptimizerTest {
     toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
     toolWindow.setType(ToolWindowType.DOCKED, null)
     toolWindow.decorator.size = Dimension(1500, 600)
-    val ui = FakeUi(toolWindow.decorator)
+    val ui = createFakeUi(toolWindow.decorator)
     val glassesView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == glasses.serialNumber }
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, glassesView) > 0u }
     assertThat(glassesView.framing).isEqualTo(ZoomablePanel.Framing.INNER)
@@ -447,6 +448,8 @@ class ToolWindowSizeOptimizerTest {
     return displayView.frameNumber
   }
 
+  private fun createFakeUi(root: Component): FakeUi = FakeUi(root, createFakeWindow = true, parentDisposable = testRootDisposable)
+
   private fun startPhone(initialSize: Dimension = Dimension(500, 500)): PhoneTestContext {
     val tempFolder = emulatorRule.avdRoot
     val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
@@ -463,7 +466,7 @@ class ToolWindowSizeOptimizerTest {
     dispatchAllEventsInIdeEventQueue()
 
     toolWindow.decorator.size = initialSize
-    val ui = FakeUi(toolWindow.decorator)
+    val ui = createFakeUi(toolWindow.decorator)
     val phoneView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, phoneView) > 0u }
     return PhoneTestContext(phone, phoneView, ui)

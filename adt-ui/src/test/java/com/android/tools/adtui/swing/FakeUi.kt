@@ -69,27 +69,33 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   private var lastActivityTrackerCount: Int = ActivityTracker.getInstance().count
 
+  private val createdRootPane: JRootPane?
+
   init {
-    if (root.parent == null && createFakeWindow) {
-      val rootPane =
-        root as? JRootPane
-          ?: JRootPane().apply {
-            glassPane = IdeGlassPaneImpl(this, false)
-            isFocusCycleRoot = true
-            bounds = root.bounds
-            add(root)
-          }
-      val application = ApplicationManager.getApplication()
-      // Use an exact class comparison so that the check fails if the TestWindowManager class stops
-      // being final in future and a subclass is introduced.
-      @Suppress("UnstableApiUsage")
-      if (application != null && WindowManager.getInstance()?.javaClass == TestWindowManager::class.java) {
-        // Replace TestWindowManager with a more lenient version.
-        application.registerServiceInstance(WindowManager::class.java, FakeUiWindowManager())
+    createdRootPane =
+      if (root.parent == null && createFakeWindow) {
+        val rootPane =
+          root as? JRootPane
+            ?: JRootPane().apply {
+              glassPane = IdeGlassPaneImpl(this, false)
+              isFocusCycleRoot = true
+              bounds = root.bounds
+              add(root)
+            }
+        val application = ApplicationManager.getApplication()
+        // Use an exact class comparison so that the check fails if the TestWindowManager class stops
+        // being final in future and a subclass is introduced.
+        @Suppress("UnstableApiUsage")
+        if (application != null && WindowManager.getInstance()?.javaClass == TestWindowManager::class.java) {
+          // Replace TestWindowManager with a more lenient version.
+          application.registerServiceInstance(WindowManager::class.java, FakeUiWindowManager())
+        }
+        checkNotNull(parentDisposable) { "FakeUi parent disposable is required when createFakeWindow=true" }
+        createFakeWindow<Window>(rootPane, parentDisposable)
+        rootPane
+      } else {
+        null
       }
-      checkNotNull(parentDisposable) { "FakeUi parent disposable is required when createFakeWindow=true" }
-      createFakeWindow<Window>(rootPane, parentDisposable)
-    }
     glassPane = (getTopLevelComponent(root) as? JRootPane)?.glassPane as? IdeGlassPaneImpl
 
     if (!root.isPreferredSizeSet) {
@@ -106,6 +112,9 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
    */
   fun layout() {
     val layoutRoot = UIUtil.getParentOfType(JRootPane::class.java, root) ?: root
+    if (layoutRoot === createdRootPane && layoutRoot.size != root.size) {
+      layoutRoot.size = root.size
+    }
     doLayout(layoutRoot)
     layoutRoot.revalidate()
     doLayout(layoutRoot)
