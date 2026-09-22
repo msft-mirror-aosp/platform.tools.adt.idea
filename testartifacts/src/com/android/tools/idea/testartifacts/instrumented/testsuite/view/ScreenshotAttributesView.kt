@@ -64,6 +64,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.intellij.accessibility.AccessibilityUtils
 import com.intellij.ide.actions.RevealFileAction
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.util.ColorProgressBar
 import com.intellij.openapi.util.Disposer
@@ -516,6 +517,12 @@ private fun RedText(text: String, modifier: Modifier = Modifier) {
  */
 @Composable
 private fun GreenText(text: String, modifier: Modifier = Modifier) {
-  val green7 = JewelTheme.colorPalette.greenOrNull(7) ?: Color(ColorProgressBar.GREEN.rgb)
+  val fallbackGreen =
+    if (ApplicationManager.getApplication() != null) {
+      ColorProgressBar.GREEN
+    } else {
+      JBColor.GREEN
+    }
+  val green7 = JewelTheme.colorPalette.greenOrNull(7) ?: Color(fallbackGreen.rgb)
   Text(text = text, color = green7, modifier = modifier)
 }
