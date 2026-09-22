@@ -404,8 +404,9 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myProjectModel.getLaunchFirebaseWizard().set(isFirebaseTemplate);
     myLaunchFirebasePanel.setVisible(isFirebaseTemplate);
 
-    myBuildConfigurationLanguageCombo.setVisible(true);
-    myBuildConfigurationLanguageLabel.setVisible(true);
+    boolean showBuildConfigurationLanguage = myBuildConfigurationLanguageCombo.getItemCount() > 1;
+    myBuildConfigurationLanguageCombo.setVisible(showBuildConfigurationLanguage);
+    myBuildConfigurationLanguageLabel.setVisible(showBuildConfigurationLanguage);
 
     if (isWatchFace) {
       myProjectModel.getApplicationName().set("My Watch Face");
