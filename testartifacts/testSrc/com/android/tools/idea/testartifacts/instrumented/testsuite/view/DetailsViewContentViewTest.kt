@@ -615,6 +615,30 @@ class DetailsViewContentViewTest {
     assertThat(view.myErrorStackTrace).isEmpty()
   }
 
+  /** Regression test for b/446684393: the view must not retain an unbounded amount of log text. */
+  @Test
+  fun logsAreTruncatedToMaxRetainedLogChars() {
+    val view = DetailsViewContentView(disposableRule.disposable, projectRule.project, mockLogger, headerActions, maxRetainedLogChars = 10)
+    createdViews.add(view)
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getLogcat(testDevice)).thenReturn("0123456789abcdefghij")
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("0123456789abcdefghij")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+    view.myLogsView.waitAllRequests()
+
+    // The tail of the logcat is kept: that is the most recent output and the part the console shows.
+    assertThat(view.myLogcat).endsWith("abcdefghij")
+    assertThat(view.myLogcat).doesNotContain("0123456789a")
+    // The head of the stack trace is kept: its first line is displayed in the test result label.
+    assertThat(view.myErrorStackTrace).startsWith("0123456789")
+    assertThat(view.myErrorStackTrace).doesNotContain("abcdefghij")
+    assertThat(view.myLogsView.text).doesNotContain("0123456789a")
+  }
+
   /** Verifies that the "Logs" tab doesn't contain a redundant internal heading label. The tab title itself is sufficient. */
   @Test
   fun logsTabShouldNotHaveRedundantHeadingLabel() {
