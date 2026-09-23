@@ -41,6 +41,7 @@ import com.android.sdklib.SystemImageTags
 import com.android.sdklib.internal.avd.AvdNames
 import com.android.sdklib.internal.avd.EmulatorPackage
 import com.android.sdklib.internal.avd.UserSettingsKey
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.sdklib.repository.targets.SystemImage
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
@@ -48,6 +49,7 @@ import com.android.tools.idea.adddevicedialog.LoadingState
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils.DownloadResult
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
@@ -407,7 +409,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
         )
 
       with(ConfigurationPageFixture(this, context = context)) {
@@ -429,7 +431,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
           onDownload = {
             setLocalPackages(localImage)
           },
@@ -461,7 +463,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
         )
 
       with(ConfigurationPageFixture(this, context = context)) {
@@ -492,7 +494,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
           onDownload = {
             setLocalPackages(localImage, localQemuNext)
           },
@@ -527,7 +529,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
         )
 
       with(ConfigurationPageFixture(this, context = context)) {
@@ -558,7 +560,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
         )
 
       with(ConfigurationPageFixture(this, context = context)) {
@@ -635,7 +637,7 @@ class ConfigurationPageTest {
           image = remoteImage
         }
 
-      val context = FakeConfigurationPageContext(promptYesNoResult = true, downloadPackagesResult = false)
+      val context = FakeConfigurationPageContext(promptYesNoResult = true, downloadPackagesResult = DownloadResult.CANCELED)
       val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), emptyList())
 
       assertThat(result).isFalse()
@@ -662,7 +664,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
           onDownload = { setLocalPackages(localPkg) },
         )
       val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), emptyList())
@@ -692,7 +694,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
           onDownload = { /* do not install local package */ },
         )
       val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), emptyList())
@@ -725,7 +727,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
           onDownload = {
             setLocalPackages(localImage, extraLocalPkg)
           },
@@ -761,7 +763,7 @@ class ConfigurationPageTest {
       val context =
         FakeConfigurationPageContext(
           promptYesNoResult = true,
-          downloadPackagesResult = true,
+          downloadPackagesResult = DownloadResult.SUCCEEDED,
           onDownload = {
             setLocalPackages(localImage, extraLocalPkg)
           },
@@ -774,11 +776,96 @@ class ConfigurationPageTest {
       assertThat(device.image).isInstanceOf(SystemImage::class.java)
     }
   }
+
+  @Test
+  fun ensureNeededPackagesArePresent_remoteImage_backgrounded_proceeds() {
+    with(SdkFixture()) {
+      val remotePkg = remoteApi34()
+      repoPackages.setRemotePkgInfos(listOf(remotePkg))
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
+      val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
+      val device =
+        VirtualDevice(pixel8).apply {
+          initializeFromProfile()
+          image = remoteImage
+        }
+
+      val context =
+        FakeConfigurationPageContext(
+          promptYesNoResult = true,
+          downloadPackagesResult = DownloadResult.BACKGROUNDED,
+        )
+      val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), emptyList())
+
+      assertThat(result).isTrue()
+      assertThat(context.recordedPrompts).containsExactly("Confirm Download" to "Download $remoteImage?")
+      assertThat(context.recordedDownloadPaths).containsExactly(remotePkg.path)
+      assertThat(device.image).isEqualTo(remoteImage)
+    }
+  }
+
+  @Test
+  fun ensureNeededPackagesArePresent_bothRemoteImageAndRequiredPackages_backgrounded_proceeds() {
+    with(SdkFixture()) {
+      val remotePkg = remoteApi34()
+      repoPackages.setRemotePkgInfos(listOf(remotePkg))
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
+      val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
+      val device =
+        VirtualDevice(pixel8).apply {
+          initializeFromProfile()
+          image = remoteImage
+        }
+
+      val extraRemotePkg =
+        FakeRemotePackage("emulator_preview").apply {
+          setDisplayName("Emulator Preview (latest)")
+        }
+
+      val context =
+        FakeConfigurationPageContext(
+          promptYesNoResult = true,
+          downloadPackagesResult = DownloadResult.BACKGROUNDED,
+        )
+      val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), listOf(extraRemotePkg))
+
+      assertThat(result).isTrue()
+      assertThat(context.recordedPrompts).containsExactly("Confirm Download" to "Download Emulator Preview and $remoteImage?")
+      assertThat(context.recordedDownloadPaths).containsExactly("emulator_preview", remotePkg.path)
+      assertThat(device.image).isEqualTo(remoteImage)
+    }
+  }
+
+  /** Backgrounding the download doesn't hold up the AVD: it's created now and picks up its image once the install finishes. */
+  @Test
+  fun finishWizard_withBackgroundedDownload_createsAvd() {
+    with(SdkFixture()) {
+      repoPackages.setRemotePkgInfos(listOf(remoteApi34()))
+
+      with(
+        ConfigurationPageFixture(
+          this,
+          context =
+            FakeConfigurationPageContext(
+              promptYesNoResult = true,
+              downloadPackagesResult = DownloadResult.BACKGROUNDED,
+            ),
+        )
+      ) {
+        wizard.performAction(wizard.nextAction)
+        composeTestRule.waitForIdle()
+        wizard.awaitClose()
+
+        val files = Files.list(avdRoot).map { it.fileName.toString() }.toList()
+        assertThat(files).containsAllOf("Pixel_8.avd", "Pixel_8.ini")
+      }
+    }
+  }
 }
 
 private class FakeConfigurationPageContext(
   var promptYesNoResult: Boolean = true,
-  var downloadPackagesResult: Boolean = true,
+  var downloadPackagesResult: DownloadResult = DownloadResult.SUCCEEDED,
   var onDownload: ((paths: List<String>) -> Unit)? = null,
 ) : ConfigurationPageContext {
   val recordedPrompts = mutableListOf<Pair<String, String>>()
@@ -790,7 +877,12 @@ private class FakeConfigurationPageContext(
     return promptYesNoResult
   }
 
-  override fun downloadPackages(parent: Component, paths: List<String>): Boolean {
+  override fun downloadPackages(
+    parent: Component,
+    paths: List<String>,
+    sdkHandler: AndroidSdkHandler,
+    backgroundable: Boolean,
+  ): DownloadResult {
     recordedDownloadPaths.addAll(paths)
     onDownload?.invoke(paths)
     return downloadPackagesResult

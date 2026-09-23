@@ -53,6 +53,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
+import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils.DownloadResult
 import com.intellij.ide.nls.NlsMessages
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.logger
@@ -164,7 +165,11 @@ internal fun WizardPageScope.ConfigurationPage(
         state,
         filteredImageState,
         packageToDownload = EmulatorPackage.QEMU_NEXT_PACKAGE_NAME.takeIf { qemuNextIsNeeded },
-        onDownloadButtonClick = { coroutineScope.launch { downloadPackages(parent, listOf(it)) } },
+        onDownloadButtonClick = {
+          // Not backgroundable: the wizard's Finish would then have to reconcile with an install that's still running or has just
+          // finished, and it doesn't handle either case well.
+          coroutineScope.launch { downloadPackages(parent, listOf(it), sdkHandler) }
+        },
         onSystemImageTableRowClick = {
           state.setSystemImageSelection(it)
           state.setSkin(resolve(sdkHandler, defaultDeviceSkin(state.device.deviceProfile, fileSystem), it.skins))
@@ -257,10 +262,10 @@ private suspend fun ConfigurationPageContext.finish(
 }
 
 /**
- * Prompts the user to download the system image if it is not present. If a new image is downloaded, then device.image will be updated from
- * a [RemoteSystemImage] to a [SystemImage].
+ * Prompts the user to download the system image and any extra required packages if they are not present. If a new image is downloaded, then
+ * device.image will be updated from a [RemoteSystemImage] to a [SystemImage].
  *
- * @return true if the system image is present (either because it was already there or it was downloaded successfully).
+ * @return true if the system image is present or being downloaded in the background.
  */
 @UiThread
 internal fun ConfigurationPageContext.ensureNeededPackagesArePresent(
@@ -290,23 +295,32 @@ internal fun ConfigurationPageContext.ensureNeededPackagesArePresent(
     return false
   }
 
-  if (!downloadPackages(parent, paths)) return false
-
-  // The dialog returns false if the user canceled, but if there's a download error, it can still return true,
-  // so we need to check if the packages are actually there. Also, update device's package from a remote one to a local one.
-  val progress = StudioLoggerProgressIndicator(AvdConfigurationPage::class.java)
-  for (path in paths) {
-    val localPackage = sdkHandler.getLocalPackage(path, progress) ?: return false
-    if (path == imageDownloadPackagePath) {
-      device.image = sdkHandler.getSystemImageManager(progress).images.firstOrNull { it.`package` == localPackage } ?: return false
+  return when (downloadPackages(parent, paths, sdkHandler, backgroundable = true)) {
+    DownloadResult.SUCCEEDED -> {
+      // The dialog returns false if the user canceled, but if there's a download error, it can still return true,
+      // so we need to check if the packages are actually there. Also, update device's package from a remote one to a local one.
+      val progress = StudioLoggerProgressIndicator(AvdConfigurationPage::class.java)
+      for (path in paths) {
+        val localPackage = sdkHandler.getLocalPackage(path, progress) ?: return false
+        if (path == imageDownloadPackagePath) {
+          device.image = sdkHandler.getSystemImageManager(progress).images.firstOrNull { it.`package` == localPackage } ?: return false
+        }
+      }
+      true
     }
+    // The install keeps running after the wizard closes, and already reports its own progress, so there's nothing left to do here.
+    DownloadResult.BACKGROUNDED -> true
+    DownloadResult.CANCELED -> false
   }
-
-  return true
 }
 
 internal interface ConfigurationPageContext {
-  fun downloadPackages(parent: Component, paths: List<String>): Boolean
+  fun downloadPackages(
+    parent: Component,
+    paths: List<String>,
+    sdkHandler: AndroidSdkHandler,
+    backgroundable: Boolean = false,
+  ): DownloadResult
 
   fun promptYesNo(parent: Component, title: String, message: String): Boolean
 
@@ -314,21 +328,19 @@ internal interface ConfigurationPageContext {
 }
 
 internal object DefaultConfigurationPageContext : ConfigurationPageContext {
-  override fun downloadPackages(parent: Component, paths: List<String>): Boolean {
+  override fun downloadPackages(
+    parent: Component,
+    paths: List<String>,
+    sdkHandler: AndroidSdkHandler,
+    backgroundable: Boolean,
+  ): DownloadResult {
     catchAndShowErrors<AvdConfigurationPage>(
       parent = parent,
       message = "An unexpected error occurred downloading the package. See idea.log for details.",
     ) {
-      val dialog = SdkQuickfixUtils.createDialogForPaths(parent, paths, false)
-
-      if (dialog == null) {
-        logger<AvdConfigurationPage>().warn("Could not create the SDK Quickfix Installation dialog")
-        return false
-      }
-
-      return dialog.showAndGet()
+      return SdkQuickfixUtils.downloadPackages(parent, paths, backgroundable, sdkHandler)
     }
-    return false
+    return DownloadResult.CANCELED
   }
 
   override fun promptYesNo(parent: Component, title: String, message: String): Boolean {

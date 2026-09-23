@@ -16,6 +16,7 @@
 package com.android.tools.idea.sdk.wizard
 
 import com.android.annotations.concurrency.Slow
+import com.android.annotations.concurrency.UiThread
 import com.android.repository.api.LocalPackage
 import com.android.repository.api.ProgressIndicator
 import com.android.repository.api.ProgressIndicatorAdapter
@@ -27,6 +28,7 @@ import com.android.repository.util.InstallerUtil
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.progress.StudioProgressRunner
+import com.android.tools.idea.progress.loadPackages
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
@@ -42,6 +44,7 @@ import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
@@ -76,10 +79,63 @@ object SdkQuickfixUtils {
    * @param parent The component to use as a parent for the wizard dialog.
    * @param requestedPaths The package paths to install. See [RepoPackage.getPath]. Callers should make reasonably sure that there is a
    *   package with the given path available.
+   * @param backgroundable Whether the dialog should show a "background" button on the progress step.
    */
   @JvmStatic
   fun createDialogForPaths(parent: Component?, requestedPaths: Collection<String>, backgroundable: Boolean): ModelWizardDialog? =
     createDialog(null, parent, requestedPaths, null, null, sdkHandler, null, backgroundable)
+
+  /** What became of the dialog shown by [downloadPackages]. */
+  enum class DownloadResult {
+    /** The packages were installed, although the install may have reported errors of its own. */
+    SUCCEEDED,
+    /** The install was sent to the background, where it keeps running and reporting its progress. */
+    BACKGROUNDED,
+    /** The user cancelled the install, or there was no dialog to show them. */
+    CANCELED,
+  }
+
+  /**
+   * Installs [requestedPaths] using an SdkQuickFix dialog, which presents the license agreements, the download progress and any errors.
+   *
+   * @param parent The component to use as a parent for the wizard dialog.
+   * @param backgroundable Whether the dialog should show a "background" button on the progress step.
+   * @param sdkHandler The [AndroidSdkHandler] to install into, or null to use the default one.
+   */
+  @UiThread
+  @JvmStatic
+  @JvmOverloads
+  fun downloadPackages(
+    parent: Component?,
+    requestedPaths: Collection<String>,
+    backgroundable: Boolean,
+    sdkHandler: AndroidSdkHandler? = null,
+  ): DownloadResult = showQuickfixDialog(createQuickfixDialog(null, parent, requestedPaths, sdkHandler ?: this.sdkHandler, backgroundable))
+
+  /**
+   * Installs [requestedPaths] using an SdkQuickFix dialog, which presents the license agreements, the download progress and any errors.
+   *
+   * @param project The [Project] to use as a parent for the wizard dialog.
+   * @param backgroundable Whether the dialog should show a "background" button on the progress step.
+   */
+  @UiThread
+  @JvmStatic
+  fun downloadPackages(project: Project?, requestedPaths: Collection<String>, backgroundable: Boolean): DownloadResult =
+    showQuickfixDialog(createQuickfixDialog(project, null, requestedPaths, sdkHandler, backgroundable))
+
+  @UiThread
+  private fun showQuickfixDialog(quickfixDialog: QuickfixDialog?): DownloadResult {
+    if (quickfixDialog == null) {
+      // Whatever stopped us from building a dialog has already been reported to the user by createQuickfixDialog().
+      thisLogger().warn("Could not create the SDK Quickfix Installation dialog")
+      return DownloadResult.CANCELED
+    }
+    return when {
+      quickfixDialog.dialog.showAndGet() -> DownloadResult.SUCCEEDED
+      quickfixDialog.installStep.isBackgrounded -> DownloadResult.BACKGROUNDED
+      else -> DownloadResult.CANCELED
+    }
+  }
 
   /**
    * Create an SdkQuickFix dialog.
@@ -143,7 +199,23 @@ object SdkQuickfixUtils {
     sdkHandler: AndroidSdkHandler?,
     noOpMessage: String?,
     backgroundable: Boolean,
-  ): ModelWizardDialog? {
+  ): ModelWizardDialog? =
+    createQuickfixDialog(project, parent, requestedPaths, sdkHandler, backgroundable, requestedPackages, requestedUninstalls, noOpMessage)
+      ?.dialog
+
+  /** An SdkQuickFix dialog, together with the install step it shows, which knows whether the install was sent to the background. */
+  private class QuickfixDialog(val dialog: ModelWizardDialog, val installStep: InstallSelectedPackagesStep)
+
+  private fun createQuickfixDialog(
+    project: Project?,
+    parent: Component?,
+    requestedPaths: Collection<String>?,
+    sdkHandler: AndroidSdkHandler?,
+    backgroundable: Boolean,
+    requestedPackages: Collection<UpdatablePackage>? = null,
+    requestedUninstalls: Collection<LocalPackage>? = null,
+    noOpMessage: String? = null,
+  ): QuickfixDialog? {
     if (sdkHandler == null) {
       return null
     }
@@ -160,12 +232,13 @@ object SdkQuickfixUtils {
       if (!requestedPackages.isNullOrEmpty() || !requestedPaths.isNullOrEmpty()) {
         // This is an expensive call involving a number of manifest download operations,
         // so make it only when some installations are requested.
-        repoManager.loadSynchronously(
-          cacheExpirationMs = RepoManager.DEFAULT_EXPIRATION_PERIOD_MS,
-          runner = StudioProgressRunner(false, "Finding Available SDK Components", project),
-          downloader = StudioDownloader(),
-          settings = StudioSettingsController.getInstance(),
-        )
+        StudioProgressRunner(false, "Finding Available SDK Components", project)
+          .loadPackages(
+            repoManager = repoManager,
+            cacheExpirationMs = RepoManager.DEFAULT_EXPIRATION_PERIOD_MS,
+            downloader = StudioDownloader(),
+            settings = StudioSettingsController.getInstance(),
+          )
         val packages = repoManager.packages
         val packagesToResolve = (requestedPackages ?: emptyList()) + lookupPaths(requestedPaths, packages, unknownPaths)
         try {
@@ -210,19 +283,22 @@ object SdkQuickfixUtils {
       return null
     }
     val installRequests = availablePackages.mapNotNull { it.remote }
+    val installStep = InstallSelectedPackagesStep(availablePackages, resolvedUninstalls, { sdkHandler }, backgroundable, JBUI.emptyInsets())
     val wizard =
       ModelWizard.Builder()
         .apply {
           addStep(LicenseAgreementStep(LicenseAgreementModel(localPath)) { installRequests })
-          addStep(InstallSelectedPackagesStep(availablePackages, resolvedUninstalls, { sdkHandler }, backgroundable, JBUI.emptyInsets()))
+          addStep(installStep)
         }
         .build()
 
-    return StudioWizardDialogBuilder(wizard, "SDK Quickfix Installation", parent)
-      .setProject(project)
-      .setModalityType(DialogWrapper.IdeModalityType.IDE)
-      .setCancellationPolicy(ModelWizardDialog.CancellationPolicy.CAN_CANCEL_UNTIL_CAN_FINISH)
-      .build()
+    val dialog =
+      StudioWizardDialogBuilder(wizard, "SDK Quickfix Installation", parent)
+        .setProject(project)
+        .setModalityType(DialogWrapper.IdeModalityType.IDE)
+        .setCancellationPolicy(ModelWizardDialog.CancellationPolicy.CAN_CANCEL_UNTIL_CAN_FINISH)
+        .build()
+    return QuickfixDialog(dialog, installStep)
   }
 
   private fun lookupPaths(
