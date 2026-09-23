@@ -28,8 +28,10 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.progress.PerformInBackgroundOption
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
@@ -41,6 +43,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.io.URLUtil
 import java.io.File
+import java.io.IOException
 import java.io.StringWriter
 import java.time.Duration
 import javax.swing.event.HyperlinkEvent
@@ -50,6 +53,11 @@ import javax.xml.transform.sax.SAXTransformerFactory
 import javax.xml.transform.sax.TransformerHandler
 import javax.xml.transform.stream.StreamResult
 import javax.xml.transform.stream.StreamSource
+
+private val LOG = Logger.getInstance("com.android.tools.idea.testartifacts.instrumented.testsuite.export.ExportUtils")
+
+/** JAXP feature controlling whether XSLT extension functions may be used. It defaults to false since JBR/JDK 25. */
+private const val ENABLE_EXTENSION_FUNCTIONS_FEATURE = "jdk.xml.enableExtensionFunctions"
 
 /** Exports a given [rootResultsNode] into a AndroidTestMatrix XML file. */
 @AnyThread
@@ -76,7 +84,16 @@ fun exportAndroidTestMatrixResultXmlFile(
         override fun run(indicator: ProgressIndicator) {
           indicator.isIndeterminate = true
           val outputText =
-            createOutputText(exportConfig, executionDuration, rootResultsNode, runConfiguration, devices, toolWindowId) ?: return
+            try {
+              createOutputText(exportConfig, executionDuration, rootResultsNode, runConfiguration, devices, toolWindowId) ?: return
+            } catch (e: ProcessCanceledException) {
+              throw e
+            } catch (e: Exception) {
+              // Without this, any failure while generating the report (e.g. a failing XSL transformation) would abort
+              // this background task silently and the user would be left without any output nor error message.
+              reportExportFailure(project, toolWindowId, e)
+              return
+            }
           val (resultFile, errorMessage) =
             invokeAndWaitIfNeeded {
               runWriteAction {
@@ -87,10 +104,15 @@ fun exportAndroidTestMatrixResultXmlFile(
                   return@runWriteAction Pair(null, AndroidTestBundle.message("failed.to.create.output.file", exportFile.path))
                 }
 
-                val resultFile = parent.findChild(exportFile.name) ?: parent.createChildData(this, exportFile.name)
-                VfsUtil.saveText(resultFile, outputText)
+                try {
+                  val resultFile = parent.findChild(exportFile.name) ?: parent.createChildData(this, exportFile.name)
+                  VfsUtil.saveText(resultFile, outputText)
 
-                Pair(resultFile, null)
+                  Pair(resultFile, null)
+                } catch (e: IOException) {
+                  LOG.warn("Failed to write the exported test results into ${exportFile.path}", e)
+                  Pair(null, e.message ?: AndroidTestBundle.message("failed.to.create.output.file", exportFile.path))
+                }
               }
             }
 
@@ -167,6 +189,9 @@ private fun createTransformerHandler(
     }
     ExportTestResultsConfiguration.ExportFormat.BundledTemplate -> {
       val xslSource = StreamSource(URLUtil.openStream(ExportTestResultsAction::class.java.getResource("intellij-export.xsl")))
+      // The platform's bundled template calls the EXSLT extension function `str:tokenize`. Extension functions are
+      // disabled by default since JBR/JDK 25, so they have to be enabled explicitly.
+      transformerFactory.setFeature(ENABLE_EXTENSION_FUNCTIONS_FEATURE, true)
       transformerFactory.newTransformerHandler(xslSource).apply {
         transformer.apply {
           setParameter(
@@ -198,6 +223,19 @@ private fun createTransformerHandler(
       }
     }
   }
+}
+
+/** Logs [error] and notifies the user that the test results could not be exported. */
+@AnyThread
+private fun reportExportFailure(project: Project, toolWindowId: String?, error: Throwable) {
+  LOG.warn("Failed to export Android test results", error)
+  showBalloon(
+    project,
+    toolWindowId,
+    MessageType.ERROR,
+    AndroidTestBundle.message("export.test.results.failed", error.message ?: error.javaClass.name),
+    null,
+  )
 }
 
 @AnyThread
