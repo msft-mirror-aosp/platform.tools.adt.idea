@@ -42,11 +42,13 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
 
   fun resizeToolWindowToRemoveEmptySpace() {
     val toolWindow = DataManager.getInstance().getDataContext(displayView).getData(PlatformDataKeys.TOOL_WINDOW) as? ToolWindowEx ?: return
-    displayView.resetZoom()
-    (displayView.parent as? JViewport)?.let { viewport ->
-      (viewport.parent as? JScrollPane)?.validate()
+    val currentScale = displayView.scale
+    val scrollPane = (displayView.parent as? JViewport)?.parent as? JScrollPane
+    if (currentScale <= 1.0) {
+      displayView.resetZoom()
+      scrollPane?.validate()
     }
-    val viewport = (displayView.parent as? JViewport) ?: displayView
+    val viewport = scrollPane ?: (displayView.parent as? JViewport) ?: displayView
     val availableWidth = viewport.width
     val availableHeight = viewport.height
     if (availableWidth <= 0 || availableHeight <= 0) {
@@ -71,6 +73,17 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     val canAdjustHeight = canResizeToolWindowHeight || hasVerticalSplitter
 
     fun computeDesiredSizeForHeight(targetAvailableHeight: Int): Dimension {
+      if (currentScale > 1.0) {
+        val imageWidth = computeLogicalSizeForScale(actualSize.width, currentScale)
+        val imageHeight = computeLogicalSizeForScale(actualSize.height, currentScale)
+        val vsbWidth =
+          if (!canAdjustHeight && targetAvailableHeight < imageHeight) scrollPane?.verticalScrollBar?.preferredSize?.width ?: 0 else 0
+        val hsbHeight =
+          if (!canAdjustWidth && availableWidth < imageWidth) scrollPane?.horizontalScrollBar?.preferredSize?.height ?: 0 else 0
+        val width = if (canAdjustWidth) imageWidth + vsbWidth else availableWidth
+        val height = if (canAdjustHeight) imageHeight + hsbHeight else availableHeight
+        return Dimension(width, height)
+      }
       val physicalHeight = targetAvailableHeight.scaled(screenScalingFactor)
       val maxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(physicalHeight.toDouble() / actualSize.height)
       val fitScale = min(maxScaleX, maxScaleY)
@@ -191,6 +204,14 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
       }
     }
     rootContainer.validate()
+    if (currentScale > 1.0 && displayView.scale != currentScale) {
+      displayView.preferredSize =
+        Dimension(
+          computeLogicalSizeForScale(actualSize.width, currentScale),
+          computeLogicalSizeForScale(actualSize.height, currentScale),
+        )
+      scrollPane?.validate()
+    }
     toolWindow.component.revalidate()
     toolWindow.component.repaint()
   }
@@ -370,7 +391,12 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
   private fun computeLogicalSizeForScale(actualSize: Int, targetScale: Double): Int {
     val screenScalingFactor = displayView.screenScalingFactor
     var size = ceil(actualSize * targetScale / screenScalingFactor).toInt()
-    while (roundDownToNaturalNumberOrNearestSmallFraction(size.scaled(screenScalingFactor).toDouble() / actualSize) < targetScale) {
+    while (true) {
+      val rawScale = size.scaled(screenScalingFactor).toDouble() / actualSize
+      val effectiveScale = if (targetScale >= 1.0) rawScale else roundDownToNaturalNumberOrNearestSmallFraction(rawScale)
+      if (effectiveScale >= targetScale) {
+        break
+      }
       size++
     }
     return size

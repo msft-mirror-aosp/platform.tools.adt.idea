@@ -306,6 +306,80 @@ class ToolWindowSizeOptimizerTest {
   }
 
   @Test
+  fun testPreserveZoomLevelGreaterThanOne() {
+    val tempFolder = emulatorRule.avdRoot
+    val watch = emulatorRule.newEmulator(FakeEmulator.createWatchAvd(tempFolder, skinFolder = null))
+    toolWindow.show()
+    watch.start()
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+    waitForCondition(10.seconds) { contentManager.contents.size == 1 }
+    val watchContent = contentManager.contents.first()
+    contentManager.setSelectedContent(watchContent)
+    dispatchAllEventsInIdeEventQueue()
+
+    toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    toolWindow.decorator.size = Dimension(500, 550)
+    val ui = createFakeUi(toolWindow.decorator)
+    val watchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
+    waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, watchView) > 0u }
+    assertThat(watchView.naturalContentSize).isEqualTo(Dimension(320, 320))
+
+    // Docked mode with fractional scale > 1 (from ZoomType.FIT): preserves fractional scale > 1 while shrinking width.
+    val toolbarHeight = toolWindow.decorator.height - watchView.height
+    toolWindow.decorator.size = Dimension(600, 500 + toolbarHeight)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, watchView)
+    watchView.zoom(ZoomType.FIT)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, watchView)
+    val fractionalScale = watchView.scale
+    assertThat(fractionalScale).isEqualTo(500.0 / 320)
+    doubleClickInView(ui, watchView, 2, watchView.height / 2)
+    assertThat(watchView.scale).isEqualTo(fractionalScale)
+    assertThat(watchView.width).isEqualTo(500)
+
+    // Docked mode with explicit ZoomType.IN (scale = 2.0) and vertical scrollbar: shrinks width to fit 2x image + vertical scrollbar.
+    toolWindow.decorator.size = Dimension(800, 500 + toolbarHeight)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, watchView)
+    watchView.zoom(ZoomType.IN)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, watchView)
+    assertThat(watchView.scale).isEqualTo(2.0)
+    val scrollPane = (watchView.parent as JViewport).parent as JScrollPane
+    assertThat(scrollPane.verticalScrollBar.isVisible).isTrue()
+    doubleClickInView(ui, watchView, 2, watchView.height / 2)
+    assertThat(watchView.scale).isEqualTo(2.0)
+    assertThat(watchView.width).isEqualTo(640)
+    assertThat(scrollPane.verticalScrollBar.isVisible).isTrue()
+    assertThat(scrollPane.horizontalScrollBar.isVisible).isFalse()
+
+    // Windowed mode with preserved ZoomType.IN (scale = 2.0) and vertical scrollbar: shrinks width and expands height to 640x640.
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    toolWindow.decorator.size = Dimension(800, 500 + toolbarHeight)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, watchView)
+    assertThat(watchView.scale).isEqualTo(2.0)
+    doubleClickInView(ui, watchView, 2, watchView.height / 2)
+    assertThat(watchView.scale).isEqualTo(2.0)
+    assertThat(watchView.size).isEqualTo(Dimension(640, 640))
+    assertThat(scrollPane.verticalScrollBar.isVisible).isFalse()
+    assertThat(scrollPane.horizontalScrollBar.isVisible).isFalse()
+
+    // Docked mode with scale = 2.0 and extra vertical space (height >= 3x): double-clicking vertical empty space preserves scale = 2.0.
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
+    toolWindow.decorator.size = Dimension(640, 1050)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, watchView)
+    assertThat(watchView.scale).isEqualTo(2.0)
+    doubleClickInView(ui, watchView, watchView.width / 2, 2)
+    assertThat(watchView.scale).isEqualTo(2.0)
+    assertThat(watchView.width).isEqualTo(640)
+  }
+
+  @Test
   fun testSplitLayout() {
     val tempFolder = emulatorRule.avdRoot
     val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
