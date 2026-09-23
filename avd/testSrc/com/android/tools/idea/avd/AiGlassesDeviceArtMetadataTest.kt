@@ -104,19 +104,13 @@ class AiGlassesDeviceArtMetadataTest {
       assertWithMessage("File $file does not contain exactly one dc:title element").that(titles.length).isEqualTo(1)
       val titleNode = titles.item(0)
 
-      val rdfLis = (titleNode as Element).getElementsByTagNameNS("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "li")
-      assertWithMessage("File $file dc:title does not contain a rdf:li element").that(rdfLis.length).isAtLeast(1)
-      val titleText = rdfLis.item(0).textContent.trim()
+      val rdfNodes = (titleNode as Element).getElementsByTagNameNS("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "li")
+      assertWithMessage("File $file dc:title does not contain a rdf:li element").that(rdfNodes.length).isAtLeast(1)
+      val titleText = rdfNodes.item(0).textContent.trim()
       assertWithMessage("File $file has empty title").that(titleText).isNotEmpty()
 
       val isDefaultList = document.getElementsByTagNameNS("urn:androidemulator:metadata:private:1.0", "isDefault")
-      val isDefault =
-        if (isDefaultList.length > 0) {
-          isDefaultList.item(0).textContent.trim().toBoolean()
-        } else {
-          false
-        }
-      if (isDefault) {
+      if (isDefaultList.length > 0 && isDefaultList.item(0).textContent.trim().toBoolean()) {
         defaultCount++
       }
 
