@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.avd
 
+import com.android.io.readImage
 import com.android.testutils.TestUtils
 import com.google.common.truth.Truth.assertWithMessage
 import java.io.ByteArrayInputStream
@@ -27,7 +28,8 @@ import org.w3c.dom.Element
 
 /**
  * Tests to validate that all image files in `artwork/resources/device-art-resources/ai_glasses_device` contain valid XMP metadata with a
- * title, that exactly one of them is set as default, and that any images that have 360-degree metadata have cyclic boundary continuity.
+ * title, that exactly one of them is set as default, and that any images that have 360-degree metadata have at least a 2:1 aspect ratio and
+ * cyclic boundary continuity.
  *
  * To recreate the XMP metadata from scratch, you can use the following commands:
  * ```bash
@@ -114,9 +116,13 @@ class AiGlassesDeviceArtMetadataTest {
         defaultCount++
       }
 
+      val image = file.readImage()
       if (EnvironmentFileAnalyzer.is360Image(file)) {
+        assertWithMessage("File $file has 360-degree metadata but has a wrong aspect ratio, ${image.width}:${image.height}")
+          .that(image.width)
+          .isAtLeast(image.height * 2)
         assertWithMessage("File $file has 360-degree metadata but failed cyclic boundary continuity check")
-          .that(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(file, threshold = 0.8))
+          .that(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(image, threshold = 0.8))
           .isTrue()
       }
     }
