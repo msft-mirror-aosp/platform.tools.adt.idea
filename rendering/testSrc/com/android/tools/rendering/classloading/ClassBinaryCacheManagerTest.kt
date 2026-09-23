@@ -65,6 +65,30 @@ class ClassBinaryCacheManagerTest {
   }
 
   @Test
+  fun testInvalidateWholeLibraryWhenOneClassIsStale() {
+    val cacheKey = Any()
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 1000, 1)
+
+    val moduleCache = manager.getCache(cacheKey)
+    moduleCache.setDependencies(listOf("A"))
+
+    moduleCache.put("a.b.c", "trans1", "A", "hello".toByteArray())
+    moduleCache.put("a.b.d", "trans1", "A", "world".toByteArray())
+
+    // Dependencies change to B (library A is no longer a dependency)
+    moduleCache.setDependencies(listOf("B"))
+
+    // Reading a.b.c detects that library A is stale and must invalidate all classes from library A in the cache
+    assertNull(moduleCache.get("a.b.c", "trans1"))
+
+    // Dependencies change back to A
+    moduleCache.setDependencies(listOf("A"))
+
+    // a.b.d was also from library A, so it must have been evicted when library A was invalidated
+    assertNull(moduleCache.get("a.b.d", "trans1"))
+  }
+
+  @Test
   fun testInvalidateWhenOverweight() {
     val cacheKey = Any()
     val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 100, 1)
@@ -75,10 +99,13 @@ class ClassBinaryCacheManagerTest {
     moduleCache.put("a.b.c", "A", ByteArray(80))
 
     assertNotNull(moduleCache.get("a.b.c"))
+    assertEquals(setOf(":a.b.c"), manager.getCachedKeysForLibrary("A"))
 
     moduleCache.put("a.b.d", "A", ByteArray(80))
 
     assertNull(moduleCache.get("a.b.c"))
+    // Ensure the removal listener cleaned up the evicted entry from the library mapping.
+    assertEquals(setOf(":a.b.d"), manager.getCachedKeysForLibrary("A"))
   }
 
   @Test

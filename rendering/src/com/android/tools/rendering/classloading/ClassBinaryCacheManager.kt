@@ -32,12 +32,12 @@ private const val EXPIRE_MINUTES = 30L // We will store cached classes for no lo
 class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Long, expireMinutes: Long) {
   @GuardedBy("this") private val scopeCaches = WeakHashMap<Any, ModuleClassCache>()
   private val lock = ReentrantLock()
-  /** A mapping from a library path to all the classes (fqcn) cached from this library. */
-  @GuardedBy("lock") private val libraryPath2ClassFqns = mutableMapOf<String, MutableSet<String>>()
-  /** A mapping from a fqcn to a library (path) that contains the class. */
-  @GuardedBy("lock") private val classFqn2LibraryPath = mutableMapOf<String, String>()
+  /** A mapping from a library path to the caching keys of all the classes cached from this library. */
+  @GuardedBy("lock") private val libraryPath2CachingKeys = mutableMapOf<String, MutableSet<String>>()
+  /** A mapping from a caching key to a library (path) that contains the class. */
+  @GuardedBy("lock") private val cachingKey2LibraryPath = mutableMapOf<String, String>()
 
-  /** A binary representation class cache (fqcn -> bytes). */
+  /** A binary representation class cache ($transformationId:$fqcn -> bytes). */
   private val globalCache =
     CacheBuilder.newBuilder()
       .ticker(ticker)
@@ -46,7 +46,7 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
       .weigher { _: String, value: ByteArray -> value.size }
       .expireAfterAccess(Duration.ofMinutes(expireMinutes))
       .removalListener<String, ByteArray> {
-        lock.withLock { classFqn2LibraryPath.remove(it.key)?.let { url -> libraryPath2ClassFqns[url]?.remove(it.key) } }
+        lock.withLock { cachingKey2LibraryPath.remove(it.key)?.let { url -> libraryPath2CachingKeys[url]?.remove(it.key) } }
       }
       .build<String, ByteArray>()
 
@@ -60,6 +60,11 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
     return scopeCaches.computeIfAbsent(scope) { ModuleClassCache() }
   }
 
+  @TestOnly
+  fun getCachedKeysForLibrary(libraryPath: String): Set<String> = lock.withLock {
+    libraryPath2CachingKeys[libraryPath]?.toSet() ?: emptySet()
+  }
+
   private inner class ModuleClassCache : ClassBinaryCache {
     @GuardedBy("this") private var libraryPaths = setOf<String>()
 
@@ -69,11 +74,11 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
     // @LayoutlibRenderThread
     override fun get(fqcn: String, transformationId: String): ByteArray? {
       val key = getCachingKey(fqcn, transformationId)
-      // If the url for the class is not in this module dependencies we should invalidate the whole
-      // library (url) and make
-      val libraryPath = lock.withLock { classFqn2LibraryPath[key] }
+      // If the library the class was cached from is not among the current dependencies of this module, the whole library is stale, so all
+      // the classes cached from it are dropped.
+      val libraryPath = lock.withLock { cachingKey2LibraryPath[key] }
       if (notCurrentDependency(libraryPath)) {
-        libraryPath?.let { lock.withLock { libraryPath2ClassFqns.remove(libraryPath) }?.forEach { globalCache.invalidate(it) } }
+        libraryPath?.let { lock.withLock { libraryPath2CachingKeys.remove(libraryPath) }?.forEach { globalCache.invalidate(it) } }
         return null
       }
 
@@ -86,8 +91,8 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
     override fun put(fqcn: String, transformationId: String, libraryPath: String, data: ByteArray) {
       val key = getCachingKey(fqcn, transformationId)
       lock.withLock {
-        classFqn2LibraryPath[key] = libraryPath
-        libraryPath2ClassFqns.computeIfAbsent(libraryPath) { mutableSetOf() }.add(fqcn)
+        cachingKey2LibraryPath[key] = libraryPath
+        libraryPath2CachingKeys.computeIfAbsent(libraryPath) { mutableSetOf() }.add(key)
       }
       globalCache.put(key, data)
     }
