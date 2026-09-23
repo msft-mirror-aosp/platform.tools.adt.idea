@@ -6,6 +6,7 @@ import "acquisitions.proto";
 import "engagement.proto";
 import "first_opens.proto";
 import "impressions.proto";
+import "promo_content_events.proto";
 import "ratings.proto";
 import "releases.proto";
 import "retention.proto";
@@ -52,6 +53,10 @@ service ReportingService {
       returns (StoreListingMetricSet) {}
   rpc QueryStoreListingMetricSet(QueryStoreListingMetricSetRequest)
       returns (QueryStoreListingMetricSetResponse) {}
+  rpc GetPromoContentEventMetricSet(GetPromoContentEventMetricSetRequest)
+      returns (PromoContentEventMetricSet) {}
+  rpc QueryPromoContentEventMetricSet(QueryPromoContentEventMetricSetRequest)
+      returns (QueryPromoContentEventMetricSetResponse) {}
 }
 message FetchReleaseFilterOptionsRequest {
   string name = 1;
