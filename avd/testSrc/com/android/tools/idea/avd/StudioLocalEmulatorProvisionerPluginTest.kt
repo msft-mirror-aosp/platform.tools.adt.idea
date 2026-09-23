@@ -19,8 +19,13 @@ import com.android.adblib.testing.FakeAdbSession
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.utils.createChildScope
+import com.android.repository.api.PackageOperation
+import com.android.repository.testframework.FakePackage.FakeLocalPackage
+import com.android.repository.testframework.FakePackage.FakeRemotePackage
+import com.android.repository.testframework.FakePackageOperation
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
+import com.android.sdklib.deviceprovisioner.AvdDeviceError
 import com.android.sdklib.deviceprovisioner.DeviceAction
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
@@ -35,6 +40,7 @@ import com.android.sdklib.deviceprovisioner.makeAvdInfo
 import com.android.sdklib.deviceprovisioner.testContext
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus
+import com.android.sdklib.internal.avd.ConfigKey
 import com.android.sdklib.internal.avd.QuickBoot
 import com.android.sdklib.internal.avd.UserSettingsKey
 import com.android.sdklib.repository.AndroidSdkHandler
@@ -46,6 +52,8 @@ import com.android.tools.idea.avd.glassespairing.WizardController
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.sdk.AndroidSdks
+import com.android.tools.idea.sdk.SdkDownloadState
+import com.android.tools.idea.sdk.SdkDownloadTracker
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.application.ApplicationManager
@@ -58,6 +66,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndWait
 import icons.StudioIcons
 import java.nio.file.Files
+import java.nio.file.Path
 import javax.swing.Icon
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
@@ -700,6 +709,87 @@ class StudioLocalEmulatorProvisionerPluginTest {
     yieldUntil { handle.isDuplicateEnabled() }
     assertThat(handle.isDuplicateEnabled()).isTrue()
   }
+
+  /**
+   * A backgrounded SDK Quickfix install keeps running after the wizard closes, so the device stays in progress from the start of the
+   * download until the image is installed, reporting which of the two it's doing.
+   */
+  @Test
+  fun testDeviceWithBackgroundDownloadThatFinishesDownloading() =
+    runTest(UnconfinedTestDispatcher()) {
+      val avdRoot = temporaryDirectoryRule.newPath()
+      val packagePath = "system-images;android-34;google_apis;x86_64"
+
+      val downloadTracker = SdkDownloadTracker()
+      ApplicationManager.getApplication().replaceService(SdkDownloadTracker::class.java, downloadTracker, projectRule.project)
+
+      val handleScope = createChildScope()
+      val baseHandle =
+        LocalEmulatorDeviceHandle(
+          context = testContext(this),
+          avdScanner = NullAvdScanner(handleScope),
+          scope = handleScope,
+          extensions = emptyList(),
+          initialAvdInfo = missingImageAvdInfo(avdRoot, AvdStatus.ERROR_IMAGE_MISSING),
+        )
+      val handle =
+        StudioLocalEmulatorDeviceHandle(
+          projectRule.project,
+          baseDeviceHandle = baseHandle,
+          context = testContext(this),
+          deviceHandleFlow = MutableStateFlow(emptyList()),
+          edtDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+
+      // Before the download starts, the image is missing and the device can be repaired.
+      assertThat(handle.state.isTransitioning).isFalse()
+      assertThat((handle.state.error as? AvdDeviceError)?.status).isEqualTo(AvdStatus.ERROR_IMAGE_MISSING)
+      assertThat(handle.repairDeviceAction.presentation.value.enabled).isTrue()
+
+      // Simulate an SDK Quickfix install that the user sent to the background.
+      val sdkFixture = SdkFixture()
+      val operation = FakePackageOperation(FakeRemotePackage(packagePath), sdkFixture.repoManager)
+      operation.setInstallStatus(PackageOperation.InstallStatus.PREPARING)
+      downloadTracker.track(operation)
+
+      assertThat(handle.state.isTransitioning).isTrue()
+      assertThat(handle.state.status).isEqualTo("Downloading system image...")
+      assertThat(handle.repairDeviceAction.presentation.value.enabled).isFalse()
+
+      // The download finishes and the image starts being installed into the SDK.
+      operation.setInstallStatus(PackageOperation.InstallStatus.PREPARED)
+
+      assertThat(handle.state.isTransitioning).isTrue()
+      assertThat(handle.state.status).isEqualTo("Installing system image...")
+      assertThat(handle.repairDeviceAction.presentation.value.enabled).isFalse()
+
+      // The install finishes without any further action from the user, and the device picks up its new image.
+      sdkFixture.repoManager.setLocalPackages(FakeLocalPackage(packagePath))
+      assertThat(downloadTracker.downloadStates.value[packagePath]).isEqualTo(SdkDownloadState.Completed)
+
+      // AvdScannerService rescans on the same local package change; feed the updated AvdInfo to the handle.
+      baseHandle.updateAvdInfo(missingImageAvdInfo(avdRoot, AvdStatus.OK))
+
+      assertThat(handle.state.error).isNull()
+      assertThat(handle.state.isTransitioning).isFalse()
+
+      handleScope.cancel()
+    }
+
+  private fun missingImageAvdInfo(avdRoot: Path, status: AvdStatus) =
+    AvdInfo(
+      iniFile = avdRoot.resolve("missing_avd.ini"),
+      dataFolderPath = avdRoot.resolve("missing_avd.avd"),
+      systemImage = null,
+      properties =
+        mapOf(
+          ConfigKey.DEVICE_MANUFACTURER to "Google",
+          ConfigKey.DEVICE_NAME to "Pixel",
+          ConfigKey.DISPLAY_NAME to "Missing Image Device",
+          ConfigKey.IMAGES_1 to "system-images/android-34/google_apis/x86_64/".replace('/', java.io.File.separatorChar),
+        ),
+      status = status,
+    )
 
   private fun getPairedGlassesInfos(handle: StudioLocalEmulatorDeviceHandle) =
     (handle.state.properties as LocalEmulatorProperties).pairedGlassesInfos

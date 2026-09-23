@@ -71,6 +71,8 @@ import com.android.tools.idea.deviceprovisioner.NotificationBannersExtension
 import com.android.tools.idea.deviceprovisioner.ShowableOnDiskDeviceHandle
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
 import com.android.tools.idea.sdk.AndroidSdks
+import com.android.tools.idea.sdk.SdkDownloadState
+import com.android.tools.idea.sdk.SdkDownloadTracker
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.google.wireless.android.sdk.stats.EmulatorWindowsHypervisorMigrationEvent
 import com.google.wireless.android.sdk.stats.GlassesPairingEvent
@@ -78,6 +80,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.RevealFileAction
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.thisLogger
@@ -222,6 +226,28 @@ class StudioLocalEmulatorDeviceHandle(
   ShowableOnDiskDeviceHandle,
   DeletableDeviceHandle {
 
+  private val avdInfo by baseDeviceHandle::avdInfo
+  private val onDiskAvdInfo by baseDeviceHandle::onDiskAvdInfo
+
+  private val downloadTracker
+    get() = SdkDownloadTracker.instance
+
+  override val stateFlow: StateFlow<DeviceState> =
+    combine(baseDeviceHandle.stateFlow, downloadTracker.downloadStates) { baseState, downloadStates ->
+        val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo)
+        val downloadState = path?.let { downloadStates[it] }
+        if (baseState is Disconnected && downloadState is SdkDownloadState.InProgress) {
+          baseState.copy(isTransitioning = true, status = downloadState.systemImageMessage())
+        } else {
+          baseState
+        }
+      }
+      .stateIn(scope, SharingStarted.Eagerly, baseDeviceHandle.state)
+
+  // This override is necessary to avoid delegating to baseDeviceHandle
+  override val state: DeviceState
+    get() = stateFlow.value
+
   // Do not cache this; getDefaultAvdManagerConnection() changes when the local SDK path changes.
   private val avdManagerConnection
     get() = AvdManagerConnection.getDefaultAvdManagerConnection()
@@ -234,9 +260,6 @@ class StudioLocalEmulatorDeviceHandle(
 
   private val adbLogger
     get() = context.logger
-
-  private val avdInfo by baseDeviceHandle::avdInfo
-  private val onDiskAvdInfo by baseDeviceHandle::onDiskAvdInfo
 
   private suspend fun refreshDevices() {
     baseDeviceHandle.avdScanner.rescan()
@@ -365,13 +388,30 @@ class StudioLocalEmulatorDeviceHandle(
   override val repairDeviceAction =
     object : RepairDeviceAction {
       override val presentation =
-        DeviceAction.Presentation(label = "Download system image", icon = AllIcons.Actions.Download, enabled = false).enabledIf {
-          (it.error as? AvdDeviceError)?.status == AvdStatus.ERROR_IMAGE_MISSING
-        }
+        combine(stateFlow, downloadTracker.downloadStates) { deviceState, downloadStates ->
+            val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo)
+            val downloadState = path?.let { downloadStates[it] }
+            val isDownloading = downloadState is SdkDownloadState.InProgress
+            val isMissing = (deviceState.error as? AvdDeviceError)?.status == AvdStatus.ERROR_IMAGE_MISSING
+            DeviceAction.Presentation(
+              label = if (isDownloading) "Downloading system image" else "Download system image",
+              icon = AllIcons.Actions.Download,
+              enabled = isMissing && !isDownloading,
+            )
+          }
+          .stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            DeviceAction.Presentation(label = "Download system image", icon = AllIcons.Actions.Download, enabled = false),
+          )
 
       override suspend fun repair() {
         val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo) ?: return
-        withContext(edtDispatcher) { SdkQuickfixUtils.createDialogForPaths(project, listOf(path))?.showAndGet() }
+        // The SDK Quickfix dialog presents the license agreements, the download progress and any errors. If the user sends it to the
+        // background, the install keeps running and keeps reporting its progress on the device.
+        withContext(edtDispatcher + ModalityState.any().asContextElement()) {
+          SdkQuickfixUtils.downloadPackages(project, listOf(path), backgroundable = true)
+        }
         refreshDevices()
       }
     }
@@ -672,3 +712,10 @@ class StudioLocalEmulatorDeviceHandle(
     it.isStopped() && it.error?.severity != DeviceError.Severity.ERROR
   }
 }
+
+/** How a system image install in each phase is described on the device it belongs to. */
+private fun SdkDownloadState.InProgress.systemImageMessage() =
+  when (this) {
+    SdkDownloadState.Downloading -> "Downloading system image..."
+    SdkDownloadState.Installing -> "Installing system image..."
+  }
