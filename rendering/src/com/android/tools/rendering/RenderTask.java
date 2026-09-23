@@ -98,6 +98,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -191,7 +192,7 @@ public class RenderTask {
   @NotNull private CrashReporter myCrashReporter;
   private final List<CompletableFuture<?>> myRunningFutures = new LinkedList<>();
   @NotNull private final AtomicBoolean isDisposed = new AtomicBoolean(false);
-  @Nullable private RenderXmlFile myXmlFile;
+  @Nullable private volatile RenderXmlFile myXmlFile;
   @NotNull private String myDefaultForegroundColor = "#333333";
   @NotNull private final ModuleClassLoaderManager.Reference<?> myModuleClassLoaderReference;
   @NotNull private final TestEventListener myTestEventListener;
@@ -399,10 +400,15 @@ public class RenderTask {
 
     CompletableFuture<?> releaseFuture = null;
     if (renderSessionToDispose != null) {
-      releaseFuture = RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingTopic.CLEAN, () -> {
-        renderSessionToDispose.releaseRender();
-        return null;
-      });
+      try {
+        releaseFuture = RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingTopic.CLEAN, () -> {
+          renderSessionToDispose.releaseRender();
+          return null;
+        });
+      }
+      catch (RejectedExecutionException e) {
+        LOG.debug(e);
+      }
     }
 
     CompletableFuture<?> finalReleaseFuture = releaseFuture;
@@ -439,6 +445,7 @@ public class RenderTask {
         }
       }
       finally {
+        myXmlFile = null;
         myContext.getModule().dispose();
       }
 
@@ -631,12 +638,12 @@ public class RenderTask {
       return null;
     }
 
+    if (isDisposed.get()) {
+      return null;
+    }
     RenderXmlFile xmlFile = getXmlFile();
     if (xmlFile == null) {
       throw new IllegalStateException("createRenderSession shouldn't be called on RenderTask without PsiFile");
-    }
-    if (isDisposed.get()) {
-      return null;
     }
 
     Configuration configuration = context.getConfiguration();
@@ -954,6 +961,9 @@ public class RenderTask {
   public CompletableFuture<@Nullable RenderResult> inflate() {
     // During development only:
     //assert !ApplicationManager.getApplication().isReadAccessAllowed() : "Do not hold read lock during inflate!";
+    if (isDisposed.get()) {
+      return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+    }
 
     RenderXmlFile xmlFile = getXmlFile();
     if (xmlFile == null) {
@@ -1006,7 +1016,7 @@ public class RenderTask {
    */
   @NotNull
   public CompletableFuture<RenderResult> layout() {
-    if (myRenderSession == null) {
+    if (isDisposed.get() || myRenderSession == null) {
       return CompletableFuture.completedFuture(null);
     }
 
@@ -1114,6 +1124,9 @@ public class RenderTask {
   private CompletableFuture<RenderResult> renderInner(boolean forceMeasure) {
     // During development only:
     //assert !ApplicationManager.getApplication().isReadAccessAllowed() : "Do not hold read lock during render!";
+    if (isDisposed.get()) {
+      return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+    }
 
     RenderXmlFile xmlFile = getXmlFile();
     assert xmlFile != null;

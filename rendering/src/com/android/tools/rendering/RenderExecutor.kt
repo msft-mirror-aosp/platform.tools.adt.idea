@@ -27,6 +27,7 @@ import java.util.concurrent.Callable
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ScheduledThreadPoolExecutor
@@ -87,6 +88,14 @@ private constructor(
   fun shutdown() {
     scheduledExecutorService.shutdownNow()
     renderingExecutorService.shutdownNow()
+    val pendingActions = pendingActionsQueueLock.withLock {
+      val actions = allPendingActionsQueue.toList()
+      allPendingActionsQueue.clear()
+      pendingActionsQueueByTopic.clear()
+      actions
+    }
+    pendingActions.forEach { it.cancel(false) }
+    runningRenderLock.withLock { runningRender }?.cancel(true)
   }
 
   fun currentStackTrace() = renderingExecutorService.stackTrace()
@@ -129,6 +138,10 @@ private constructor(
     renderingTopic: RenderingTopic,
     callable: Callable<T>,
   ): CompletableFuture<T> {
+    if (renderingExecutorService.isShutdown) {
+      return CompletableFuture.failedFuture(RejectedExecutionException("RenderExecutor is already shut down"))
+    }
+
     val future =
       object : PriorityCompletableFuture<T>(renderingTopic) {
         override fun cancel(mayInterruptIfRunning: Boolean): Boolean =
@@ -141,15 +154,19 @@ private constructor(
 
     val queueTimeoutFuture =
       if (queueingTimeout > 0) {
-        scheduleTimeoutAction(queueingTimeout, queueingTimeoutUnit) {
-          val message =
-            """
-        Preview timed out (${queueingTimeoutUnit.toMillis(queueingTimeout)}ms).
-        This typically happens when there is an infinite loop or unbounded recursion in one of the custom views.
-      """
-              .trimIndent()
-          future.completeExceptionally(createRenderTimeoutException(message))
-          accumulatedTimeoutExceptions.incrementAndGet()
+        try {
+          scheduleTimeoutAction(queueingTimeout, queueingTimeoutUnit) {
+            val message =
+              """
+          Preview timed out (${queueingTimeoutUnit.toMillis(queueingTimeout)}ms).
+          This typically happens when there is an infinite loop or unbounded recursion in one of the custom views.
+        """
+                .trimIndent()
+            future.completeExceptionally(createRenderTimeoutException(message))
+            accumulatedTimeoutExceptions.incrementAndGet()
+          }
+        } catch (e: RejectedExecutionException) {
+          return CompletableFuture.failedFuture(e)
         }
       } else {
         // No queue timeout. This will wait indefinitely unless is evicted by other actions being
@@ -171,50 +188,60 @@ private constructor(
       }
     }
     evictedTasks.forEach { (task, exception) -> task.completeExceptionally(exception) }
-    renderingExecutorService.execute(
-      PriorityRunnable(renderingTopic) {
-        runningRenderLock.withLock { runningRender = future }
-        try {
-          executedRenderActions.increment()
-          // Clear the interrupted state
-          Thread.interrupted()
-          queueTimeoutFuture?.cancel(false)
-          val isPending = pendingActionsQueueLock.withLock {
-            pendingActionsQueueByTopic[renderingTopic]?.remove(future)
-            allPendingActionsQueue.remove(future)
-          }
-
-          if (!isPending || future.isDone) return@PriorityRunnable
-
-          val actionTimeoutFuture =
-            scheduleTimeoutAction(actionTimeout, actionTimeoutUnit) {
-              if (!future.isDone) {
-                interrupt()
-              }
-              future.completeExceptionally(
-                createRenderTimeoutException("The render action was too slow to execute (${actionTimeoutUnit.toMillis(actionTimeout)}ms)")
-              )
-            }
-          future.whenComplete { _, _ -> actionTimeoutFuture.cancel(false) }
-
-          // The request got called, so reset the timeout counter.
-          accumulatedTimeoutExceptions.set(0)
+    try {
+      renderingExecutorService.execute(
+        PriorityRunnable(renderingTopic) {
+          runningRenderLock.withLock { runningRender = future }
           try {
-            val result = callable.call()
-            if (!future.complete(result)) {
-              if (result is Disposable) {
-                Disposer.dispose(result)
-              }
+            executedRenderActions.increment()
+            // Clear the interrupted state
+            Thread.interrupted()
+            queueTimeoutFuture?.cancel(false)
+            val isPending = pendingActionsQueueLock.withLock {
+              pendingActionsQueueByTopic[renderingTopic]?.remove(future)
+              allPendingActionsQueue.remove(future)
             }
-          } catch (t: Throwable) {
-            future.completeExceptionally(t)
+
+            if (!isPending || future.isDone) return@PriorityRunnable
+
+            val actionTimeoutFuture =
+              scheduleTimeoutAction(actionTimeout, actionTimeoutUnit) {
+                if (!future.isDone) {
+                  interrupt()
+                }
+                future.completeExceptionally(
+                  createRenderTimeoutException("The render action was too slow to execute (${actionTimeoutUnit.toMillis(actionTimeout)}ms)")
+                )
+              }
+            future.whenComplete { _, _ -> actionTimeoutFuture.cancel(false) }
+
+            // The request got called, so reset the timeout counter.
+            accumulatedTimeoutExceptions.set(0)
+            try {
+              val result = callable.call()
+              if (!future.complete(result)) {
+                if (result is Disposable) {
+                  Disposer.dispose(result)
+                }
+              }
+            } catch (t: Throwable) {
+              future.completeExceptionally(t)
+            }
+          } finally {
+            runningRenderLock.withLock { runningRender = null }
           }
-        } finally {
-          runningRenderLock.withLock { runningRender = null }
         }
+      )
+    } catch (e: RejectedExecutionException) {
+      pendingActionsQueueLock.withLock {
+        pendingActionsQueueByTopic[renderingTopic]?.remove(future)
+        allPendingActionsQueue.remove(future)
       }
-    )
-    return future.whenComplete { _, _ -> queueTimeoutFuture?.cancel(true) }
+      queueTimeoutFuture?.cancel(false)
+      future.completeExceptionally(e)
+    }
+    future.whenComplete { _, _ -> queueTimeoutFuture?.cancel(true) }
+    return future
   }
 
   override fun cancelActionsByTopic(topicsToCancel: List<RenderingTopic>, mayInterruptIfRunning: Boolean): Int {

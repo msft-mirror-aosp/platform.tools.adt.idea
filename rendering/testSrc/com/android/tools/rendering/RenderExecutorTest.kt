@@ -28,6 +28,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -571,6 +572,41 @@ class RenderExecutorTest {
       assertFalse(lockHeldDuringCompletion.get())
     } finally {
       executor.shutdown()
+    }
+  }
+
+  @Test
+  fun testShutdownCancelsPendingActionsAndRejectsNewActions() {
+    val actionExecutor = OnDemandExecutorService()
+    val timeoutExecutorProvider = VirtualTimeScheduler()
+    val executor =
+      RenderExecutor.createForTests(
+        executorService = TestSingleThreadExecutorService(actionExecutor),
+        scheduledExecutorService = timeoutExecutorProvider,
+      )
+
+    val pendingFuture1 = executor.runAsyncActionWithTestDefault(topic = RenderingTopic.CLEAN) {}
+    val pendingFuture2 = executor.runAsyncActionWithTestDefault(topic = RenderingTopic.NOT_SPECIFIED) {}
+    assertEquals(2, executor.numPendingActions)
+    assertFalse(pendingFuture1.isDone)
+    assertFalse(pendingFuture2.isDone)
+
+    executor.shutdown()
+
+    assertEquals(0, executor.numPendingActions)
+    assertTrue(pendingFuture1.isCancelled)
+    assertTrue(pendingFuture2.isCancelled)
+
+    // Submitting a new action after shutdown should complete exceptionally with
+    // RejectedExecutionException without leaving orphan entries in the pending queue.
+    val postShutdownFuture = executor.runAsyncActionWithTestDefault(topic = RenderingTopic.CLEAN) {}
+    assertEquals(0, executor.numPendingActions)
+    assertTrue(postShutdownFuture.isCompletedExceptionally)
+    try {
+      postShutdownFuture.get()
+      fail("Expected ExecutionException caused by RejectedExecutionException")
+    } catch (e: ExecutionException) {
+      assertTrue(e.cause is RejectedExecutionException)
     }
   }
 }
