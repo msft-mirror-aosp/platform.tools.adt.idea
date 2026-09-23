@@ -36,12 +36,15 @@ import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.progress.StudioProgressIndicatorAdapter
+import com.android.tools.idea.sdk.SdkDownloadTracker
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.model.ModelWizard.WizardListener
 import com.android.tools.idea.wizard.model.ModelWizard.WizardResult
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.replaceService
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import org.jetbrains.android.AndroidTestCase
@@ -70,6 +73,7 @@ class InstallTaskTest : AndroidTestCase() {
   private lateinit var operations: MutableMap<RepoPackage, PackageOperation>
   private lateinit var installTask: InstallTask
   private lateinit var sdkHandler: AndroidSdkHandler
+  private lateinit var repoManager: FakeRepoManager
   private lateinit var factory: InstallerFactory
   private lateinit var existing1: LocalPackage
 
@@ -79,19 +83,15 @@ class InstallTaskTest : AndroidTestCase() {
     available1 = spy(FakeRemotePackage("p2"))
     available2 = spy(FakeRemotePackage("p3"))
     factory = mock()
-    installer = mock()
-    installer2 = mock()
     uninstaller = mock()
 
     val repoPackages = RepositoryPackages(listOf(existing1), listOf(available1, available2))
-    val repoManager = FakeRepoManager(sdkRoot, repoPackages)
+    repoManager = FakeRepoManager(sdkRoot, repoPackages)
     sdkHandler = AndroidSdkHandler(sdkRoot, sdkRoot, repoManager)
 
-    whenever(installer.prepare(any())).thenReturn(true)
-    whenever(installer2.prepare(any())).thenReturn(true)
+    installer = mockInstaller(available1)
+    installer2 = mockInstaller(available2)
     whenever(uninstaller.prepare(any())).thenReturn(true)
-    whenever(installer.complete(any())).thenReturn(true)
-    whenever(installer2.complete(any())).thenReturn(true)
     whenever(uninstaller.complete(any())).thenReturn(true)
 
     operations =
@@ -105,8 +105,24 @@ class InstallTaskTest : AndroidTestCase() {
     whenever(factory.createInstaller(eq(available2), eq(repoManager), any())).thenReturn(installer2)
     whenever(factory.createUninstaller(existing1, repoManager)).thenReturn(uninstaller)
 
+    // Each test gets its own tracker, so that installs from one don't turn up in another.
+    ApplicationManager.getApplication().replaceService(SdkDownloadTracker::class.java, SdkDownloadTracker(), testRootDisposable)
+
     installTask = createInstallTask()
   }
+
+  /**
+   * An [Installer] mock that prepares and completes successfully, and that knows the things every real operation knows: its package, its
+   * [FakeRepoManager] and its status. [InstallTask] hands its operations to the [SdkDownloadTracker], which reads all three.
+   */
+  private fun mockInstaller(forPackage: RemotePackage): Installer =
+    mock<Installer>().also {
+      whenever(it.prepare(any())).thenReturn(true)
+      whenever(it.complete(any())).thenReturn(true)
+      whenever(it.getPackage()).thenReturn(forPackage)
+      whenever(it.repoManager).thenReturn(repoManager)
+      whenever(it.installStatus).thenReturn(PackageOperation.InstallStatus.NOT_STARTED)
+    }
 
   private fun createInstallTask(completeCallback: ((List<RepoPackage>) -> Unit)? = null): InstallTask =
     InstallTask(
@@ -299,9 +315,9 @@ class InstallTaskTest : AndroidTestCase() {
     val p4 = spy(FakeRemotePackage("p5"))
     whenever(factory.createInstaller(eq(available1), any(), any())).thenReturn(installer)
     whenever(factory.createInstaller(eq(available2), any(), any())).thenReturn(installer2)
-    val installer3 = mock<Installer>()
+    val installer3 = mockInstaller(p3)
     whenever(factory.createInstaller(eq(p3), any(), any())).thenReturn(installer3)
-    val installer4 = mock<Installer>()
+    val installer4 = mockInstaller(p4)
     whenever(factory.createInstaller(eq(p4), any(), any())).thenReturn(installer4)
 
     val installStep =

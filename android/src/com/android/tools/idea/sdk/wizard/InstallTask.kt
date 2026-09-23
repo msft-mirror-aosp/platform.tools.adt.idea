@@ -33,6 +33,7 @@ import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.progress.RawProgressReporterAdapter
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
+import com.android.tools.idea.sdk.SdkDownloadTracker
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
 import com.google.common.annotations.VisibleForTesting
@@ -122,7 +123,10 @@ class InstallTask(
         val remote = install.remote
         if (remote != null) {
           logger.logInfo("- ${remote.displayName} (${remote.path})")
-          operations[remote] = getOrCreateInstaller(remote)
+          val installer = getOrCreateInstaller(remote)
+          operations[remote] = installer
+          // Let anything interested in this package, such as a device waiting on its system image, follow the install.
+          SdkDownloadTracker.instance.track(installer)
         }
       }
       logger.logInfo("\n")

@@ -783,6 +783,7 @@
   <extensions defaultExtensionNs="com.android.ide">
     <sdkEventListener implementation="com.android.tools.idea.avdmanager.AvdScannerSdkEventListener"/>
     <sdkEventListener implementation="com.android.tools.idea.sdk.AndroidSdkWatcherEventListener"/>
+    <sdkEventListener implementation="com.android.tools.idea.sdk.SdkDownloadTrackerEventListener"/>
   </extensions>
 
   <applicationListeners>
