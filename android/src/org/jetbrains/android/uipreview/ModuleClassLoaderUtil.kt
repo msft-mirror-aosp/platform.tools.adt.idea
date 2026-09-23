@@ -322,15 +322,16 @@ internal class ModuleClassLoaderImpl(
    * Note that light R classes are defined by the parent `LibraryResourceClassLoader` without going through [_projectLoadedClassNames]. That
    * does not affect this check, because Fast Preview only ever compiles edited source files into the overlay, never resources.
    */
-  private fun isOverlayUpToDate(): Boolean = synchronized(overlayManager) {
-    val currentStamp = overlayManager.modificationStamp
-    if (currentStamp == initialOverlayModificationStamp) return@synchronized true
-    if (usesOverlayLoader && _projectLoadedClassNames.isEmpty()) {
-      initialOverlayModificationStamp = currentStamp
-      return@synchronized true
+  private fun isOverlayUpToDate(): Boolean =
+    synchronized(overlayManager) {
+      val currentStamp = overlayManager.modificationStamp
+      if (currentStamp == initialOverlayModificationStamp) return@synchronized true
+      if (usesOverlayLoader && _projectLoadedClassNames.isEmpty()) {
+        initialOverlayModificationStamp = currentStamp
+        return@synchronized true
+      }
+      return@synchronized false
     }
-    return@synchronized false
-  }
 
   private val isUserCodeUpToDateCached: ChangeTrackerCachedValue<Boolean> = ChangeTrackerCachedValue.softReference()
 
@@ -363,10 +364,9 @@ internal class ModuleClassLoaderImpl(
    * PSI modification happens.
    *
    * This is intentionally not a pure function: [isOverlayUpToDate] may advance [initialOverlayModificationStamp].
-   * [ChangeTrackerCachedValue] gives no guarantee about how often or on how many threads it invokes its provider. That is fine here
-   * because the side effect is idempotent, happens under the [overlayManager] monitor, and can only move the stamp forward to a value it
-   * has already observed. Leaving the stamp behind is always the conservative direction, so a lost update just makes the next check
-   * stricter.
+   * [ChangeTrackerCachedValue] gives no guarantee about how often or on how many threads it invokes its provider. That is fine here because
+   * the side effect is idempotent, happens under the [overlayManager] monitor, and can only move the stamp forward to a value it has
+   * already observed. Leaving the stamp behind is always the conservative direction, so a lost update just makes the next check stricter.
    */
   private fun isUserCodeUpToDateNonCached() = projectSystemLoader.isUpToDate() && isOverlayUpToDate()
 }
