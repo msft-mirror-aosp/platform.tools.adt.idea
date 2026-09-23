@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.AnyThread
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.util.PathUtilRt
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,5 +36,12 @@ object DeviceExplorerFilesUtils {
       val file = localPath.toFile().apply { if (inReadOnly) setReadOnly() }
       VfsUtil.findFileByIoFile(file, true) ?: throw RuntimeException("Unable to locate file \"$localPath\"")
     }
+  }
+
+  fun mapName(name: String): String {
+    // suggestFileName is per-char only; explicitly neutralize the whole-string
+    // traversal tokens that it lets through.
+    val safe = PathUtilRt.suggestFileName(name, /*allowDots*/ true, /*allowSpaces*/ true)
+    return if (safe.isEmpty() || safe == "." || safe == "..") "_$safe" else safe
   }
 }

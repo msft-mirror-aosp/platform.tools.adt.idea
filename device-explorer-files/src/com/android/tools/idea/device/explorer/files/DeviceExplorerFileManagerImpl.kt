@@ -20,6 +20,7 @@ import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.concurrency.runWriteActionAndWait
 import com.android.tools.idea.device.explorer.common.DeviceExplorerSettings
 import com.android.tools.idea.device.explorer.files.DeviceExplorerFilesUtils.findFile
+import com.android.tools.idea.device.explorer.files.DeviceExplorerFilesUtils.mapName
 import com.android.tools.idea.device.explorer.files.fs.DeviceFileEntry
 import com.android.tools.idea.device.explorer.files.fs.DeviceFileSystem
 import com.android.tools.idea.device.explorer.files.fs.DownloadProgress
@@ -41,7 +42,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.serviceContainer.NonInjectable
-import com.intellij.util.PathUtilRt
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -162,10 +162,9 @@ constructor(private val project: Project, private val defaultDownloadPathSupplie
     // user-chosen directory). Every `entry.name` above is derived from the connected
     // ADB device's `ls -al` output (and, for external-services callers like the
     // Database Inspector's offline-mode download, from a device-supplied gRPC path
-    // string). `mapName()` -> `PathUtilRt.suggestFileName(allowDots=true)` is *per-char*
-    // and therefore returns ".." unchanged, so a malicious device can drive
-    // `resolve("..")` here and write outside `destinationPath`.
-    // Normalise after resolving and assert containment.
+    // string). Even though `mapName()` sanitizes path separators and traversal tokens
+    // ("." and ".."), normalize after resolving and assert containment as
+    // defense-in-depth so a malicious device cannot write outside `destinationPath`.
     val normalizedDestination = destinationPath.toAbsolutePath().normalize()
     var entryDestinationPath = destinationPath
     for (name in entryPathComponents) {
@@ -176,13 +175,6 @@ constructor(private val project: Project, private val defaultDownloadPathSupplie
       throw SecurityException("Device-supplied path '${file.fullPath}' resolves outside '$normalizedDestination'")
     }
     return result
-  }
-
-  private fun mapName(name: String): String {
-    // suggestFileName is per-char only; explicitly neutralise the whole-string
-    // traversal tokens that it lets through.
-    val safe = PathUtilRt.suggestFileName(name, /*allowDots*/ true, /*allowSpaces*/ true)
-    return if (safe.isEmpty() || safe == "." || safe == "..") "_$safe" else safe
   }
 
   private fun deleteTemporaryFile(localPath: Path) {

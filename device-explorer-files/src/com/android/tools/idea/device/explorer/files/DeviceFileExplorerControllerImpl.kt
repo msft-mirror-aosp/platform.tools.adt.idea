@@ -27,6 +27,7 @@ import com.android.tools.idea.device.explorer.common.DeviceExplorerControllerLis
 import com.android.tools.idea.device.explorer.common.DeviceExplorerSettings
 import com.android.tools.idea.device.explorer.common.DeviceExplorerTab
 import com.android.tools.idea.device.explorer.common.DeviceExplorerTabController
+import com.android.tools.idea.device.explorer.files.DeviceExplorerFilesUtils.mapName
 import com.android.tools.idea.device.explorer.files.adbimpl.AdbDeviceFileSystem
 import com.android.tools.idea.device.explorer.files.adbimpl.AdbPathUtil
 import com.android.tools.idea.device.explorer.files.fs.DeviceFileEntry
@@ -448,7 +449,7 @@ class DeviceFileExplorerControllerImpl(
         { tracker: FileTransferOperationTracker -> addDownloadOperationWork(tracker, treeNodes) },
         { tracker: FileTransferOperationTracker ->
           for (treeNode in treeNodes) {
-            val nodePath = localDirectory.resolve(treeNode.entry.name)
+            val nodePath = localDirectory.resolve(mapName(treeNode.entry.name))
             downloadSingleNode(treeNode, nodePath, tracker)
           }
         },
@@ -490,8 +491,9 @@ class DeviceFileExplorerControllerImpl(
         tracker.summary
       }
 
-    suspend fun addUploadOperationWork(tracker: FileTransferOperationTracker, files: List<Path>) =
-      files.forEach { addUploadOperationWork(tracker, it) }
+    suspend fun addUploadOperationWork(tracker: FileTransferOperationTracker, files: List<Path>) = files.forEach {
+      addUploadOperationWork(tracker, it)
+    }
 
     suspend fun addUploadOperationWork(tracker: FileTransferOperationTracker, path: Path) {
       val progress = createFileTransferEstimatorProgress(tracker)
@@ -565,7 +567,7 @@ class DeviceFileExplorerControllerImpl(
       try {
         loadNodeChildren(treeNode)
         for (node in treeNode.childEntryNodes) {
-          val nodePath = localDirectoryPath.resolve(node.entry.name)
+          val nodePath = localDirectoryPath.resolve(mapName(node.entry.name))
           downloadSingleNode(node, nodePath, tracker)
         }
       } catch (t: Throwable) {
