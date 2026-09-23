@@ -15,11 +15,13 @@
  */
 package com.android.tools.rendering.classloading
 
+import com.android.tools.rendering.security.RenderSandbox
 import java.io.PrintWriter
 import java.io.StringWriter
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.util.TraceClassVisitor
 
@@ -41,6 +43,49 @@ class RepackageTransformTest {
     val classOutputWriter = TraceClassVisitor(ClassWriter(ClassWriter.COMPUTE_MAXS), PrintWriter(outputTrace))
     val repackageTransform = RepackageTransform(classOutputWriter, listOf("com.android.tools.rendering.classloading."), "internal.test.")
     classReader.accept(repackageTransform, ClassReader.EXPAND_FRAMES)
+
+    // Find all references to the class name and make sure they've been transformed.
+    val referenceRegex = Regex("([a-z./]+com/android/tools/[a-z./]+)")
+
+    assertEquals(
+      "internal/test/com/android/tools/rendering/classloading/",
+      referenceRegex.findAll(outputTrace.toString()).map { it.value }.distinct().joinToString("\n"),
+    )
+
+    assertEquals(
+      """
+      LDC "com.android.tools.rendering.classloading.TestClass"
+      LDC "internal.test.com.android.tools.rendering.classloading.TestClass"
+      INVOKESTATIC internal/test/com/android/tools/rendering/classloading/ClassForNameHandler.forName (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Class;
+      """
+        .trimIndent(),
+      outputTrace
+        .toString()
+        .lines()
+        .filter { it.trimStart().startsWith("LDC") || it.trimStart().startsWith("INVOKESTATIC") }
+        .map { it.trim() }
+        .joinToString("\n"),
+    )
+  }
+
+  @Test
+  fun testRepackagingWithRenderSandbox() {
+    val testClassBytes = loadClassBytes(ToBeRepackaged::class.java)
+
+    val classReader = ClassReader(testClassBytes)
+    val outputTrace = StringWriter()
+    val classOutputWriter = TraceClassVisitor(ClassWriter(ClassWriter.COMPUTE_MAXS), PrintWriter(outputTrace))
+
+    // Match the StudioModuleClassLoader ordering: RenderSandbox.getClassTransform() + RepackageTransform
+    val chainedTransform =
+      toClassTransform(RenderSandbox::getClassTransform) +
+        listOf(
+          java.util.function.Function { visitor: ClassVisitor ->
+            RepackageTransform(visitor, listOf("com.android.tools.rendering.classloading."), "internal.test.")
+          }
+        )
+    val classVisitor = chainedTransform(classOutputWriter)
+    classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES)
 
     // Find all references to the class name and make sure they've been transformed.
     val referenceRegex = Regex("([a-z./]+com/android/tools/[a-z./]+)")

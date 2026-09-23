@@ -16,6 +16,7 @@
 package com.android.tools.rendering.security
 
 import com.android.tools.rendering.RenderService
+import com.android.tools.rendering.classloading.ModuleClassLoader
 import java.awt.DefaultKeyboardFocusManager
 import java.awt.Frame
 import java.awt.KeyboardFocusManager
@@ -44,6 +45,7 @@ import java.net.HttpURLConnection
 import java.net.MulticastSocket
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.URI
 import java.net.URL
 import java.net.URLConnection
 import java.nio.channels.AsynchronousFileChannel
@@ -115,6 +117,27 @@ private fun checkCreateTemp(owner: String, args: Array<Any>?) {
 
 private fun checkConnection() {
   RenderSandbox.getRenderSandbox().checkConnection()
+}
+
+private fun checkUrlConnection(url: URL, args: Array<Any>?) {
+  if (!args.isNullOrEmpty() && args[0] is java.net.Proxy) {
+    checkConnection()
+    return
+  }
+  val targetFileUri =
+    when (url.protocol) {
+      "file" -> runCatching { url.toURI() }.getOrNull()
+      "jar" -> runCatching { URI(url.file.substringBefore("!/")) }.getOrNull()?.takeIf { it.scheme.equals("file", ignoreCase = true) }
+      else -> null
+    }
+  if (targetFileUri != null && targetFileUri.host.isNullOrEmpty()) {
+    val path = runCatching { Paths.get(targetFileUri).toString() }.getOrElse { targetFileUri.path ?: "" }
+    if (path.isNotEmpty()) {
+      checkFileRead(path)
+      return
+    }
+  }
+  checkConnection()
 }
 
 private fun checkProcessExec() {
@@ -294,6 +317,19 @@ private fun checkScriptEngine() {
 }
 
 private fun checkServiceLoader() {
+  RenderSandbox.getRenderSandbox().checkServiceLoader()
+}
+
+@Suppress("UNUSED_PARAMETER")
+private fun checkServiceLoaderLoad(desc: String, args: Array<Any>?) {
+  // Allow ServiceLoader.load(service, classLoader) when both the requested service interface
+  // and the explicit ClassLoader belong to the user/preview ModuleClassLoader (e.g. kotlin-reflect
+  // BuiltInsLoader or kotlinx-coroutines MainDispatcherFactory), while blocking system/IDE services.
+  val serviceClass = args?.firstOrNull { it is Class<*> } as? Class<*>
+  val explicitLoader = args?.firstOrNull { it is ClassLoader } as? ClassLoader
+  if (explicitLoader is ModuleClassLoader && serviceClass?.classLoader is ModuleClassLoader) {
+    return
+  }
   RenderSandbox.getRenderSandbox().checkServiceLoader()
 }
 
@@ -659,8 +695,8 @@ object RenderSandboxTransformTrampoline {
       Intercept.static<RandomAccessFile>("<init>", ::checkRandomAccessFileInit),
 
       // URI/URL operations
-      Intercept.instance<URL>("openConnection", checkInstanceCallIgnoreArgs(::checkConnection)),
-      Intercept.instance<URL>("getContent", checkInstanceCallIgnoreArgs(::checkConnection)),
+      Intercept.instance<URL>("openConnection", ::checkUrlConnection),
+      Intercept.instance<URL>("getContent", ::checkUrlConnection),
 
       // Socket operations
       Intercept.instance<Socket>(Socket::bind, checkInstanceCallIgnoreArgs(::checkConnection)),
@@ -865,7 +901,7 @@ object RenderSandboxTransformTrampoline {
       Intercept.static<ZipFile>("<init>", checkFirstFileOrStringArgument(::checkFileRead)),
 
       // URL.openStream
-      Intercept.instance<URL>("openStream", checkInstanceCallIgnoreArgs(::checkConnection)),
+      Intercept.instance<URL>("openStream", ::checkUrlConnection),
 
       // Concurrency/Async operations
       Intercept.static<CompletableFuture<*>>("supplyAsync", checkStaticNoArgsCall(::checkConcurrency)),
@@ -993,7 +1029,7 @@ object RenderSandboxTransformTrampoline {
       // ScriptEngineManager & ServiceLoader operations (b/557285779)
       Intercept.static<ScriptEngineManager>("<init>", checkStaticNoArgsCall(::checkScriptEngine)),
       Intercept.instance<ScriptEngineManager>("getClassLoader", checkInstanceCallIgnoreArgs(::checkScriptEngine)),
-      Intercept.static<ServiceLoader<*>>("load", checkStaticNoArgsCall(::checkServiceLoader)),
+      Intercept.static<ServiceLoader<*>>("load", ::checkServiceLoaderLoad),
       Intercept.static<ServiceLoader<*>>("loadInstalled", checkStaticNoArgsCall(::checkServiceLoader)),
 
       // URL.setURLStreamHandlerFactory (b/557286705)
