@@ -116,7 +116,7 @@ class AiGlassesDeviceArtMetadataTest {
 
       if (EnvironmentFileAnalyzer.is360Image(file)) {
         assertWithMessage("File $file has 360-degree metadata but failed cyclic boundary continuity check")
-          .that(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(file, threshold = 0.6))
+          .that(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(file, threshold = 0.8))
           .isTrue()
       }
     }
