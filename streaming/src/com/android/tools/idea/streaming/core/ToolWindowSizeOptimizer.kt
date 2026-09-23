@@ -75,21 +75,22 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
       val maxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(physicalHeight.toDouble() / actualSize.height)
       val fitScale = min(maxScaleX, maxScaleY)
       val imageWidth =
-        if (fitScale < 1.0 && maxScaleX <= maxScaleY) availableWidth else computeLogicalWidthForScale(fitScale).coerceAtMost(availableWidth)
+        if (fitScale < 1.0 && maxScaleX <= maxScaleY) availableWidth
+        else computeLogicalSizeForScale(actualSize.width, fitScale).coerceAtMost(availableWidth)
       val imageHeight =
         if (fitScale < 1.0 && maxScaleY <= maxScaleX) targetAvailableHeight
-        else computeLogicalHeightForScale(fitScale).coerceAtMost(targetAvailableHeight)
+        else computeLogicalSizeForScale(actualSize.height, fitScale).coerceAtMost(targetAvailableHeight)
       val width =
         when {
           !canAdjustWidth -> availableWidth
           canAdjustHeight || imageWidth < availableWidth -> imageWidth
-          else -> computeLogicalWidthForScale(maxScaleY)
+          else -> computeLogicalSizeForScale(actualSize.width, maxScaleY)
         }
       val height =
         when {
           !canAdjustHeight -> availableHeight
           canAdjustWidth || imageHeight < targetAvailableHeight -> imageHeight
-          else -> computeLogicalHeightForScale(maxScaleX)
+          else -> computeLogicalSizeForScale(actualSize.height, maxScaleX)
         }
       return Dimension(width, height)
     }
@@ -366,24 +367,13 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     return (newTotal + dividerWidth).coerceAtLeast(0)
   }
 
-  private fun computeLogicalWidthForScale(targetScale: Double): Int {
+  private fun computeLogicalSizeForScale(actualSize: Int, targetScale: Double): Int {
     val screenScalingFactor = displayView.screenScalingFactor
-    val actualWidth = displayView.computeActualSize(displayView.framing).width
-    var w = ceil(actualWidth * targetScale / screenScalingFactor).toInt()
-    if (roundDownToNaturalNumberOrNearestSmallFraction(w.scaled(screenScalingFactor).toDouble() / actualWidth) < targetScale) {
-      w++
+    var size = ceil(actualSize * targetScale / screenScalingFactor).toInt()
+    while (roundDownToNaturalNumberOrNearestSmallFraction(size.scaled(screenScalingFactor).toDouble() / actualSize) < targetScale) {
+      size++
     }
-    return w
-  }
-
-  private fun computeLogicalHeightForScale(targetScale: Double): Int {
-    val screenScalingFactor = displayView.screenScalingFactor
-    val actualHeight = displayView.computeActualSize(displayView.framing).height
-    var h = ceil(actualHeight * targetScale / screenScalingFactor).toInt()
-    if (roundDownToNaturalNumberOrNearestSmallFraction(h.scaled(screenScalingFactor).toDouble() / actualHeight) < targetScale) {
-      h++
-    }
-    return h
+    return size
   }
 
   private fun findRootContainer(): Component {
