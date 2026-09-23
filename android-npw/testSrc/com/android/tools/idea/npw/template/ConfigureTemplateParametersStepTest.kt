@@ -136,7 +136,7 @@ class ConfigureTemplateParametersStepTest {
 
     // Create and show the wizard
     var modelWizard = createTemplateWizard(templateModel, moduleTemplates)
-    var fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
+    var fakeUI = FakeUi(modelWizard.contentPanel, parentDisposable = projectRule.fixture.testRootDisposable)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
 
@@ -158,7 +158,7 @@ class ConfigureTemplateParametersStepTest {
 
     // Re-create and show the wizard with the new template model
     modelWizard = createTemplateWizard(newTemplateModel, moduleTemplates)
-    fakeUI = FakeUi(modelWizard.contentPanel, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
+    fakeUI = FakeUi(modelWizard.contentPanel, parentDisposable = projectRule.fixture.testRootDisposable)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
     myInvokeStrategy.updateAllSteps()

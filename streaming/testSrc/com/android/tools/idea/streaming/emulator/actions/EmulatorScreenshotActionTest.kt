@@ -93,7 +93,7 @@ class EmulatorScreenshotActionTest {
   private val emulator: FakeEmulator by lazy { emulatorRule.newEmulator(avdFolder) }
   private val panel: EmulatorToolWindowPanel by lazy { createWindowPanel() }
   // Fake window is necessary for the toolbars to be rendered.
-  private val fakeUi: FakeUi by lazy { FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable) }
+  private val fakeUi: FakeUi by lazy { FakeUi(panel, parentDisposable = testRootDisposable) }
   private val project
     get() = projectRule.project
 

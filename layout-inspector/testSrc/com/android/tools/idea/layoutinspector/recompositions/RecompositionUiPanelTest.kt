@@ -222,7 +222,7 @@ class RecompositionUiPanelTest {
       assertThat(button.isEnabled).isTrue()
 
       panel.size = Dimension(600, 800)
-      val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = disposable)
+      val ui = FakeUi(panel, parentDisposable = disposable)
       val point = SwingUtilities.convertPoint(button, 8, 8, panel)
       ui.mouse.focus = button
       ui.mouse.click(point.x, point.y)
@@ -256,7 +256,7 @@ class RecompositionUiPanelTest {
       val editor = panel.getDescendant<JTextComponent>()
 
       container.size = Dimension(800, 600)
-      val ui = FakeUi(container, createFakeWindow = true, parentDisposable = disposable)
+      val ui = FakeUi(container, parentDisposable = disposable)
       val focusManager = FakeKeyboardFocusManager(disposable)
       button.requestFocus()
 
@@ -330,7 +330,7 @@ class RecompositionUiPanelTest {
 
       // Pressing space button on prev action causes the action to be performed:
       panel.size = Dimension(800, 600)
-      val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = disposable)
+      val ui = FakeUi(panel, parentDisposable = disposable)
       val focusManager = FakeKeyboardFocusManager(disposable)
       prev.requestFocus()
       assertThat(focusManager.focusOwner).isSameAs(prev)

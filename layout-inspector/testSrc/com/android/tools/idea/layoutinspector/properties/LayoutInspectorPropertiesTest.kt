@@ -54,7 +54,7 @@ class LayoutInspectorPropertiesTest {
   @Test
   fun testInfoPanelVisibility() {
     val properties = LayoutInspectorProperties(projectRule.testRootDisposable)
-    FakeUi(properties.component, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+    FakeUi(properties.component, parentDisposable = projectRule.testRootDisposable)
     val infoText = UIUtil.findComponentsOfType(properties.component, JPanel::class.java).single { it.name == INFO_TEXT }
     val props = UIUtil.findComponentsOfType(properties.component, JPanel::class.java).single { it.name == PROPERTIES_COMPONENT_NAME }
     assertThat(infoText.isShowing).isTrue()
@@ -101,7 +101,7 @@ class LayoutInspectorPropertiesTest {
     val panelDefinition = LayoutInspectorPropertiesPanelDefinition()
     assertThat(panelDefinition.title).isEqualTo(PROPERTIES_TITLE)
 
-    FakeUi(properties.component, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+    FakeUi(properties.component, parentDisposable = projectRule.testRootDisposable)
     val backStackPanel = UIUtil.findComponentOfType(properties.component, BackStackPanel::class.java)
     assertThat(backStackPanel).isNotNull()
 

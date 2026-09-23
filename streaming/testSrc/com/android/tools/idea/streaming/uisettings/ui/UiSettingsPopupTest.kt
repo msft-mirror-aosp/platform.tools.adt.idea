@@ -75,11 +75,11 @@ class UiSettingsPopupTest {
     model = createModel()
     val parent = JPanel()
     parent.size = JBDimension(800, 800)
-    FakeUi(parent, createFakeWindow = true, parentDisposable = disposable)
+    FakeUi(parent, parentDisposable = disposable)
     showUiSettingsPopup(model, deviceTypeFromTestName, parent, disposable)
     val popup = popupRule.fakePopupFactory.getNextPopup()
     panel = popup.content
-    ui = FakeUi(popup.content, createFakeWindow = true, parentDisposable = disposable)
+    ui = FakeUi(popup.content, parentDisposable = disposable)
     focusManager = FakeKeyboardFocusManager(disposable)
     focusManager.focusOwner = panel
     panel.transferFocus()

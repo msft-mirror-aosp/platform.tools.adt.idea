@@ -256,7 +256,7 @@ class AppInspectionInspectorClientTest {
 
     // Make sure all UI events are done and update actions
     runInEdtAndWait {
-      FakeUi(rootPanel, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+      FakeUi(rootPanel, parentDisposable = projectRule.testRootDisposable)
       UIUtil.dispatchAllInvocationEvents()
       enabledActions = 0
       panel.additionalActions.forEach {

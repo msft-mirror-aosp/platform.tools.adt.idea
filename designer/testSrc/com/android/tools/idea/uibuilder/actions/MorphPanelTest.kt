@@ -43,7 +43,7 @@ class MorphPanelTest {
     }
     withContext(Dispatchers.EDT) {
       val fakeUi =
-        FakeUi(morphPanel, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable).apply {
+        FakeUi(morphPanel, parentDisposable = projectRule.testRootDisposable).apply {
           root.size = Dimension(400, 400)
           layout()
           render()

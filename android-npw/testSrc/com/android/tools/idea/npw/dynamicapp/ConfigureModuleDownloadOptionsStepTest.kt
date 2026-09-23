@@ -101,7 +101,7 @@ class ConfigureModuleDownloadOptionsStepTest {
       )
     val step = ConfigureModuleDownloadOptionsStep(model)
     Disposer.register(projectRule.fixture.testRootDisposable, step)
-    val fakeUi = FakeUi(step.component, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
+    val fakeUi = FakeUi(step.component, parentDisposable = projectRule.fixture.testRootDisposable)
 
     val helpLabel =
       fakeUi.findAllComponents<ContextHelpLabel>().firstOrNull {

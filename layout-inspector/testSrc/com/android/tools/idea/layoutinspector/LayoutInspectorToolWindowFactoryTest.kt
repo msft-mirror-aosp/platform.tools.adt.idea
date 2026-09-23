@@ -385,7 +385,7 @@ class LayoutInspectorToolWindowFactoryTest {
       val standaloneUi = toolWindow.contentManager.contents.first().component
       standaloneUi.parent.remove(standaloneUi)
       standaloneUi.size = Dimension(800, 600)
-      val ui = FakeUi(standaloneUi, createFakeWindow = true, parentDisposable = disposable)
+      val ui = FakeUi(standaloneUi, parentDisposable = disposable)
       val focusManager = FakeKeyboardFocusManager(disposable)
       focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(standaloneUi))
       val settings = layoutInspectorRule.inspector.renderSettings

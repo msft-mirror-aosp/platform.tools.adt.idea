@@ -149,7 +149,7 @@ class DeviceToolWindowPanelTest {
   private lateinit var device: FakeDevice
   private val panel: DeviceToolWindowPanel by lazy { createToolWindowPanel() }
   // Fake window is necessary for the toolbars to be rendered.
-  private val fakeUi: FakeUi by lazy { FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable) }
+  private val fakeUi: FakeUi by lazy { FakeUi(panel, parentDisposable = testRootDisposable) }
   private val project
     get() = agentRule.project
 
@@ -772,7 +772,7 @@ class DeviceToolWindowPanelTest {
     assertThat(zoomToolbarDefault.width).isLessThan(zoomToolbarDefault.height)
 
     val panelWithFlag = createToolWindowPanel()
-    val fakeUiWithFlag = FakeUi(panelWithFlag, createFakeWindow = true, parentDisposable = testRootDisposable)
+    val fakeUiWithFlag = FakeUi(panelWithFlag, parentDisposable = testRootDisposable)
     panelWithFlag.createContent(false)
     fakeUiWithFlag.layoutAndDispatchEvents()
     waitForCondition(10.seconds) { device.agent.isRunning && panelWithFlag.isConnected }

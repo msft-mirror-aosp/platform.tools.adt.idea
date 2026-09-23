@@ -203,7 +203,7 @@ class AppInspectionSnapshotSupportTest {
       val settings = layoutInspector.renderSettings
       model.setSelection(model[VIEW2], SelectionOrigin.INTERNAL)
       editorComponent.size = Dimension(800, 600)
-      val ui = FakeUi(editorComponent, createFakeWindow = true, parentDisposable = disposable)
+      val ui = FakeUi(editorComponent, parentDisposable = disposable)
       val focusManager = FakeKeyboardFocusManager(disposable)
       focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(editorComponent))
 

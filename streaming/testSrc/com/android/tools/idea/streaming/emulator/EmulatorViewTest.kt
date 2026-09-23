@@ -707,7 +707,7 @@ class EmulatorViewTest {
   fun testMouseMoveNotSendWhenCameraOperating() {
     val container = createRootContainer()
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     fakeUi.layoutAndDispatchEvents()
     getStreamScreenshotCallAndWaitForFrame()
@@ -926,7 +926,7 @@ class EmulatorViewTest {
   fun testHideCameraNotificationDuringHardwareInput() {
     val container = createRootContainer()
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     // Activate the virtual scene camera
     focusManager.focusOwner = view
@@ -950,7 +950,7 @@ class EmulatorViewTest {
   fun testCameraNotificationHasOperatingMessageWhenHardwareInputDisabledWithShift() {
     val container = createRootContainer()
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     // Enable hardware input
     emulatorViewRule.executeAction("android.streaming.hardware.input", view)
@@ -973,7 +973,7 @@ class EmulatorViewTest {
   fun testAudioGlassesCameraRotation360() {
     val container = createRootContainer { path -> FakeEmulator.createAudioGlassesAvd(path) }
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     // Initially, environment is empty, no prompt.
     focusManager.focusOwner = view
@@ -1000,7 +1000,7 @@ class EmulatorViewTest {
   fun testAudioGlassesCameraTranslation360Disabled() {
     val container = createRootContainer { path -> FakeEmulator.createAudioGlassesAvd(path) }
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     focusManager.focusOwner = view
     val environmentTracker = EnvironmentTracker.forEmulator(view.emulator)!!
@@ -1030,7 +1030,7 @@ class EmulatorViewTest {
   fun testAudioGlassesCameraRotationAndTranslation3d() {
     val container = createRootContainer { path -> FakeEmulator.createAudioGlassesAvd(path) }
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     // Initially, environment is empty, no prompt.
     focusManager.focusOwner = view
@@ -1060,7 +1060,7 @@ class EmulatorViewTest {
   fun testAudioGlassesCameraTranslation3dEnabled() {
     val container = createRootContainer { path -> FakeEmulator.createAudioGlassesAvd(path) }
     container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
 
     focusManager.focusOwner = view
     val environmentTracker = EnvironmentTracker.forEmulator(view.emulator)!!

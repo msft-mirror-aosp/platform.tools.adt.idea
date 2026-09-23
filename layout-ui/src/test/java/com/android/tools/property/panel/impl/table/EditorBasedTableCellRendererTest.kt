@@ -79,7 +79,7 @@ class EditorBasedTableCellRendererTest {
     val renderer = createRenderer(items, performLayout = true)
     val table = createTable(items, renderer)
     table.component.setSize(200, 5000)
-    val ui = FakeUi(table.component, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val ui = FakeUi(table.component, parentDisposable = disposableRule.disposable)
 
     // A Text Editor should expand when hovering over the text:
     assertThat(isExpansionHotZone(ui, items, ControlType.TEXT_EDITOR, 50)).isTrue()

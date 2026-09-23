@@ -388,7 +388,7 @@ class PropertiesPageTest {
     page!!.addEditor(makeEditor(editor), title)
     val editorAfter = JPanel().apply { preferredSize = Dimension(200, 2000) }
     page!!.addEditor(makeEditor(editorAfter), title)
-    val ui = FakeUi(page!!.component, createFakeWindow = true, parentDisposable = disposable)
+    val ui = FakeUi(page!!.component, parentDisposable = disposable)
 
     // Set focus on editor and scroll the editor in view:
     FakeKeyboardFocusManager(disposable).setFocusOwner(editor)

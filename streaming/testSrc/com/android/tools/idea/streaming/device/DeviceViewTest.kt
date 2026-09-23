@@ -1358,7 +1358,7 @@ internal class DeviceViewTest {
       )
     displayPanel.size = Dimension(width, height)
     view = displayPanel.displayView
-    fakeUi = FakeUi(displayPanel, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(displayPanel, parentDisposable = testRootDisposable)
   }
 
   private fun assertAppearance(goldenImageName: String, maxPercentDifferent: Double = 0.0) {

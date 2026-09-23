@@ -57,7 +57,7 @@ class FloatingToolbarContainerTest {
 
   @get:Rule val rule = RuleChain(ApplicationRule(), disposableRule, goldenImageRule, EdtRule())
   private val panel by lazy { createHostPanel() }
-  private val fakeUi by lazy { FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable) }
+  private val fakeUi by lazy { FakeUi(panel, parentDisposable = disposableRule.disposable) }
 
   @Before
   fun setUp() {

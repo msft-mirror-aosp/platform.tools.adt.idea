@@ -119,7 +119,6 @@ class ComposePreviewFakeUiGradleRule(
             size = Dimension(1000, 800)
             add(previewView, BorderLayout.CENTER)
           },
-          createFakeWindow = true,
           parentDisposable = fixture.testRootDisposable,
         )
       fakeUi.root.validate()

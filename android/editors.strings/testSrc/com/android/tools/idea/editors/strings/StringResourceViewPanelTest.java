@@ -17,7 +17,6 @@ package com.android.tools.idea.editors.strings;
 
 import static com.android.testutils.AsyncTestUtils.waitForCondition;
 import static com.google.common.truth.Truth.assertThat;
-import static com.intellij.util.ui.UIUtil.dispatchAllInvocationEvents;
 import static org.mockito.Mockito.when;
 
 import com.android.ide.common.resources.ResourceItem;
@@ -317,7 +316,7 @@ public final class StringResourceViewPanelTest extends AndroidTestCase {
     myPanel.stopLoading();
 
     myPanel.getLoadingPanel().setSize(1200, 2000);
-    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), true, getTestRootDisposable());
+    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), getTestRootDisposable());
 
     FakeKeyboardFocusManager focusManager = new FakeKeyboardFocusManager(getTestRootDisposable());
     focusManager.setFocusOwner(myTable.getFrozenTable());
@@ -413,7 +412,7 @@ public final class StringResourceViewPanelTest extends AndroidTestCase {
     myTable.getFrozenTable().setUI(new HeadlessTableUI());
     myTable.getScrollableTable().setUI(new HeadlessTableUI());
     myPanel.getLoadingPanel().setSize(1200, 2000);
-    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), true, getTestRootDisposable());
+    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), getTestRootDisposable());
 
     // The translation field is enabled in all columns of the scrollable table:
     clickCell(ui, 0, 4);
@@ -445,7 +444,7 @@ public final class StringResourceViewPanelTest extends AndroidTestCase {
     myPanel.getTable().getFrozenTable().setUI(new HeadlessTableUI());
     myPanel.getTable().getScrollableTable().setUI(new HeadlessTableUI());
     myPanel.getLoadingPanel().setSize(1200, 2000);
-    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), true, getTestRootDisposable());
+    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), getTestRootDisposable());
 
     // The translation field is enabled in all columns of the scrollable table:
     clickCell(ui, 0, 4);
@@ -476,7 +475,7 @@ public final class StringResourceViewPanelTest extends AndroidTestCase {
     myTable.getModel().setValueAt(benglaText, 1, 5);
 
     myPanel.getLoadingPanel().setSize(1200, 2000);
-    new FakeUi(myPanel.getLoadingPanel(), true, getTestRootDisposable());
+    new FakeUi(myPanel.getLoadingPanel(), getTestRootDisposable());
 
     TextFieldWithBrowseButton textField = myPanel.myTranslationTextField;
     int width = textField.getWidth();

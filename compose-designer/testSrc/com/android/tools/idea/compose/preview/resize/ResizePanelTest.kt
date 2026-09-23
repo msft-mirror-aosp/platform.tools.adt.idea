@@ -100,7 +100,7 @@ class ResizePanelTest {
           size = Dimension(500, 100)
           add(resizePanel)
         }
-      fakeUi = FakeUi(panel, true, parentDisposable = projectRule.testRootDisposable)
+      fakeUi = FakeUi(panel, parentDisposable = projectRule.testRootDisposable)
     }
   }
 

@@ -92,7 +92,7 @@ class LayoutInspectorMainToolbarTest {
     assertThat(toolbars).hasSize(1)
     val toolbar = toolbars.first()
 
-    FakeUi(toolbarPanel, createFakeWindow = true, parentDisposable = androidProjectRule.testRootDisposable)
+    FakeUi(toolbarPanel, parentDisposable = androidProjectRule.testRootDisposable)
 
     waitForCondition(5.seconds) { toolbar.component.components.isNotEmpty() }
     return toolbar

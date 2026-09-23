@@ -72,7 +72,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 
@@ -102,7 +101,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 
@@ -145,7 +143,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 
@@ -184,7 +181,7 @@ class InformationPopupImplTest {
         add(popup.popupComponent, BorderLayout.CENTER)
       }
 
-    val fakeUi = FakeUi(parent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val fakeUi = FakeUi(parent, parentDisposable = disposableRule.disposable)
     popup.showPopup(disposableRule.disposable, parent)
 
     assertEquals("Action 1, Action 2", fakeUi.findAllComponents<AnActionLink>().joinToString(", ") { it.text })
@@ -231,7 +228,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 
@@ -260,7 +256,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 
@@ -286,7 +281,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 
@@ -319,7 +313,6 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = disposableRule.disposable,
       )
 

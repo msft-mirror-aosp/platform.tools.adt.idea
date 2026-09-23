@@ -916,7 +916,6 @@ class ComposePreviewRepresentationGradleTest {
           size = Dimension(1000, 800)
           add(testPreviewView, BorderLayout.CENTER)
         },
-        createFakeWindow = true,
         parentDisposable = projectRule.fixture.testRootDisposable,
       )
     }

@@ -1400,7 +1400,7 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
 
     val container = HeadlessRootPaneContainer(panel)
-    fakeUi = FakeUi(container.rootPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
     val glassPane = container.glassPane
 
     val initialMousePosition = Point(glassPane.x + glassPane.width / 2, glassPane.y + glassPane.height / 2)
@@ -1591,7 +1591,7 @@ class EmulatorToolWindowPanelTest {
     panel.zoomToolbarVisible = true
     waitForCondition(5.seconds) { emulatorController.connectionState == EmulatorController.ConnectionState.CONNECTED }
     // Fake window is necessary for the toolbars to be rendered.
-    fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(panel, parentDisposable = testRootDisposable)
     return panel
   }
 
