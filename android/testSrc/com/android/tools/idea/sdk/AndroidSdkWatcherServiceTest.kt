@@ -126,4 +126,31 @@ class AndroidSdkWatcherServiceTest {
     // Verify that a new scan emission was triggered by the watch event
     waitForCondition(10.seconds) { scanCount.get() > initialCount }
   }
+
+  @Test
+  fun testRegistrationIsRetriedAfterUnusableSdkPath() {
+    val sdkDir = FileUtil.createTempDirectory("sdk", null).canonicalFile.toPath().resolve("not-created-yet")
+
+    val watcherService = AndroidSdkWatcherService(testScope)
+    disposableRule.register { watcherService.dispose() }
+
+    // There's no SDK here yet, so there's nothing to watch.
+    watcherService.registerProject(projectRule.project, sdkDir)
+
+    Files.createDirectories(sdkDir.resolve("platforms"))
+    watcherService.registerProject(projectRule.project, sdkDir)
+
+    val sdkHandler = AndroidSdkData.getSdkData(sdkDir)!!.sdkHandler
+    val repoManager = sdkHandler.getRepoManager(StudioLoggerProgressIndicator(AndroidSdkWatcherServiceTest::class.java))
+    val listenerFired = AtomicBoolean(false)
+    repoManager.addLocalChangeListener { listenerFired.set(true) }
+
+    val pkgDir = Files.createDirectories(sdkDir.resolve("platforms").resolve("android-34"))
+    Files.writeString(
+      pkgDir.resolve(LocalRepoLoaderImpl.PACKAGE_XML_FN),
+      createPackageXml("platforms;android-34", "Android SDK Platform 34", 34),
+    )
+
+    waitForCondition(10.seconds) { listenerFired.get() }
+  }
 }

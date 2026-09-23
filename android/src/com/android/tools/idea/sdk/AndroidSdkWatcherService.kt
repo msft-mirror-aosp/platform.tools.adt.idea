@@ -66,21 +66,19 @@ class AndroidSdkWatcherService(private val coroutineScope: CoroutineScope) : Dis
   private val projectSdkPaths = mutableMapOf<Project, Path>()
   private val activeWatchers = mutableMapOf<Path, AndroidSdkWatcher>()
 
+  /**
+   * Starts watching [sdkPath] on behalf of [project], if it isn't watched already. May be called repeatedly for the same project, e.g.
+   * whenever its SDK path changes; the caller is responsible for calling [unregisterProject] when the project closes.
+   */
   fun registerProject(project: Project, sdkPath: Path) {
     val sdkHandler = AndroidSdkData.getSdkData(sdkPath)?.sdkHandler
     synchronized(this) {
-      val previousPath = projectSdkPaths[project]
-      if (previousPath == sdkPath) return
-      if (previousPath != null) {
-        unregisterProject(project)
-      }
+      if (projectSdkPaths[project] == sdkPath) return
+      unregisterProject(project)
+      if (sdkHandler == null) return
+
       projectSdkPaths[project] = sdkPath
-      Disposer.register(AndroidPluginDisposable.getProjectInstance(project)) { unregisterProject(project) }
-      if (!activeWatchers.containsKey(sdkPath)) {
-        if (sdkHandler != null) {
-          activeWatchers[sdkPath] = AndroidSdkWatcher(coroutineScope + Dispatchers.IO, sdkHandler, sdkPath)
-        }
-      }
+      activeWatchers.getOrPut(sdkPath) { AndroidSdkWatcher(coroutineScope + Dispatchers.IO, sdkHandler, sdkPath) }
     }
   }
 
@@ -154,10 +152,14 @@ class AndroidSdkWatcherProjectActivity : ProjectActivity {
   }
 
   override suspend fun execute(project: Project) {
+    val service = AndroidSdkWatcherService.instance
+    // Do this before anything that might return early: the project can also be registered later, by AndroidSdkWatcherEventListener.
+    Disposer.register(AndroidPluginDisposable.getProjectInstance(project)) { service.unregisterProject(project) }
+
     if (!CommonAndroidUtil.getInstance().isAndroidProject(project)) return
     val sdkPath = IdeSdks.getInstance().getAndroidSdkPath()?.toPath()
     if (sdkPath != null) {
-      AndroidSdkWatcherService.instance.registerProject(project, sdkPath)
+      service.registerProject(project, sdkPath)
     }
   }
 }
