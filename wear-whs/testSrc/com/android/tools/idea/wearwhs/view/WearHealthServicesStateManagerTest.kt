@@ -31,7 +31,6 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.WearHealthServicesEvent
 import com.intellij.openapi.util.Disposer
 import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.fail
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -437,19 +436,28 @@ class WearHealthServicesStateManagerTest {
   @Test
   fun `when there is no connection reset does not clear the state`(): Unit = runBlocking {
     stateManager.setCapabilityEnabled(heartRateBpmCapability, false)
+    // apply to ensure the capability stores "false" as the up-to-date value
+    stateManager.applyChanges()
 
-    stateManager.getState(heartRateBpmCapability).mapState { it is PendingUserChangesCapabilityUIState }.waitForValue(true)
     deviceManager.failState = true
+
+    stateManager.setCapabilityEnabled(heartRateBpmCapability, true)
+    stateManager.getState(heartRateBpmCapability).mapState { it is PendingUserChangesCapabilityUIState }.waitForValue(true)
     val result = stateManager.reset()
 
     assertThat(result.isSuccess).isFalse()
-    try {
+    // The state is expected to stay on "pending" as the change was not able to be pushed to the device.
+    val exception = runCatching {
       stateManager.getState(heartRateBpmCapability).mapState { it is UpToDateCapabilityUIState }.waitForValue(true)
-      fail("Value should not reset if the communication with the device is lost")
-    } catch (_: AssertionError) {}
-    assertThat(loggedEvents).hasSize(2)
-    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
-    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.RESET_FAILURE)
+    }
+      .exceptionOrNull()
+    // Verify that the wait timed out and threw an exception
+    assertThat(exception).isNotNull()
+    assertThat(exception).isInstanceOf(AssertionError::class.java)
+
+    assertThat(loggedEvents).hasSize(3) // emulator bound, apply changes, reset failure
+    assertThat(loggedEvents.last().kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents.last().wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.RESET_FAILURE)
   }
 
   @Test
