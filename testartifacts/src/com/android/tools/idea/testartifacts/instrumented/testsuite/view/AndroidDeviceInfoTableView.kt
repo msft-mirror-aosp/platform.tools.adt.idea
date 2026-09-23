@@ -24,6 +24,8 @@ import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import javax.swing.JComponent
+import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.table.TableCellRenderer
 
 /** A table view to display properties of Android device. */
 class AndroidDeviceInfoTableView {
@@ -66,12 +68,26 @@ private class AndroidDeviceInfoTableViewModel : ListTableModel<AndroidDeviceInfo
   }
 }
 
+/**
+ * Renders cell values as plain text.
+ *
+ * Values shown in this table originate from the device (`adb shell getprop ro.product.*`, `/proc/cpuinfo`, the serial number) or from an
+ * imported `test-result.pb`, and are therefore untrusted. `DefaultTableCellRenderer` extends `JLabel`, so a value starting with `<html>`
+ * would be parsed by Swing and an embedded `<img src=...>` would make the IDE fetch that URL — an SMB authentication probe on Windows, or a
+ * blind SSRF anywhere else. Disabling HTML makes such a value render as the literal text it is.
+ */
+private val PLAIN_TEXT_RENDERER = DefaultTableCellRenderer().apply { putClientProperty("html.disable", true) }
+
 /** A column for displaying a device property name. */
 private object DevicePropertyNameColumn : ColumnInfo<AndroidDeviceInfoItem, String>("Property") {
   override fun valueOf(item: AndroidDeviceInfoItem): String = item.propertyName
+
+  override fun getRenderer(item: AndroidDeviceInfoItem?): TableCellRenderer = PLAIN_TEXT_RENDERER
 }
 
 /** A column for displaying a device property value. */
 private object DevicePropertyValueColumn : ColumnInfo<AndroidDeviceInfoItem, String>("Description") {
   override fun valueOf(item: AndroidDeviceInfoItem): String = item.propertyValue
+
+  override fun getRenderer(item: AndroidDeviceInfoItem?): TableCellRenderer = PLAIN_TEXT_RENDERER
 }
