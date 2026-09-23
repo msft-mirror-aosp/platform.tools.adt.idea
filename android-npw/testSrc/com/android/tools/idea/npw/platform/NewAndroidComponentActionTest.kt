@@ -48,7 +48,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.util.ui.UIUtil
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.test.assertNotNull
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Before
@@ -209,21 +208,17 @@ class NewAndroidComponentActionTest {
 
     ApplicationManager.getApplication().invokeAndWait { action.actionPerformed(myActionEvent) }
     val modelWizard = checkNotNull(modelWizardReference.get())
-
-    UIUtil.invokeAndWaitIfNeeded {
-      modelWizard.contentPanel.setSize(640, 480)
-      val fakeUi = FakeUi(modelWizard.contentPanel, parentDisposable = projectRule.testRootDisposable)
-      try {
-        fakeUi.layoutAndDispatchEvents()
-      } catch (_: InterruptedException) {}
-
-      // There should only be 3 compatible templates (_main_, debug, release) since the file is in
-      // the "app/src" directory and the templates without source roots are filtered out.
-      val comboBox = fakeUi.findComponent(ComboBox::class.java) { combo: ComboBox<*> -> "ModuleTemplateCombo" == combo.getName() }
-      assertNotNull(comboBox)
-      assertThat(comboBox.itemCount).isEqualTo(3)
+    try {
+      UIUtil.invokeAndWaitIfNeeded {
+        modelWizard.contentPanel.setSize(640, 480)
+        val fakeUi = FakeUi(modelWizard.contentPanel)
+        // There should only be 3 compatible templates (_main_, debug, release) since the file is in
+        // the "app/src" directory and the templates without source roots are filtered out.
+        val comboBox = fakeUi.getComponent<ComboBox<*>> { it.name == "ModuleTemplateCombo" }
+        assertThat(comboBox.itemCount).isEqualTo(3)
+      }
+    } finally {
+      Disposer.dispose(modelWizard)
     }
-
-    Disposer.dispose(modelWizard)
   }
 }

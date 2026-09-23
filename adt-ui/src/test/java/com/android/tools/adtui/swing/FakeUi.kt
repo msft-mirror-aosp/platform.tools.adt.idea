@@ -57,7 +57,11 @@ import kotlin.time.Duration.Companion.seconds
  * @param root the top-level component
  * @param parentDisposable if provided, FakeUi will use it to clean up
  */
-class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Boolean = false, parentDisposable: Disposable? = null) {
+class FakeUi(val root: Component, createFakeWindow: Boolean, parentDisposable: Disposable?) {
+
+  constructor(root: Component) : this(root, false, null)
+
+  constructor(root: Component, parentDisposable: Disposable) : this(root, true, parentDisposable)
 
   @JvmField val keyboard: FakeKeyboard = FakeKeyboard()
 
