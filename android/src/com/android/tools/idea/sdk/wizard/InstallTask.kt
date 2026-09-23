@@ -87,7 +87,10 @@ class InstallTask(
             DelegatingProgressIndicator(logger).apply {
               addDelegate(progressAdapter)
             }
-          execute(combinedProgress)
+          // The install blocks for as long as the download takes, so keep it off withBackgroundProgress's dispatcher.
+          withContext(ioDispatcher) {
+            execute(combinedProgress)
+          }
         }
       }
     } else {
@@ -140,6 +143,12 @@ class InstallTask(
       progress.checkCanceled()
       completePackages(operations, failures, progress.createSubProgress(0.9), progress)
       progress.fraction = 0.9
+    } catch (e: ProcessCanceledException) {
+      abandon(operations, progress)
+      throw e
+    } catch (e: CancellationException) {
+      abandon(operations, progress)
+      throw e
     } finally {
       if (failures.isNotEmpty()) {
         logger.logInfo("Failed packages:")
@@ -245,6 +254,18 @@ class InstallTask(
         failures.add(pack)
         packageOperationMap.remove(pack)
       }
+    }
+  }
+
+  /**
+   * Gives up on the operations we aren't going to finish, which happens when the install is cancelled. Their packages stay prepared on
+   * disk, so a later install can pick up where this one left off, but nothing is working on them now and whatever is watching them needs to
+   * know that.
+   */
+  private fun abandon(operations: Map<RepoPackage, PackageOperation>, progress: ProgressIndicator) {
+    for ((pack, operation) in operations) {
+      logger.logInfo("Abandoning the installation of ${pack.displayName} (${pack.path}).")
+      operation.abandon(progress)
     }
   }
 

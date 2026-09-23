@@ -40,6 +40,7 @@ import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.model.ModelWizard.WizardListener
 import com.android.tools.idea.wizard.model.ModelWizard.WizardResult
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Disposer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -363,6 +364,57 @@ class InstallTaskTest : AndroidTestCase() {
     } finally {
       wizard?.let { Disposer.dispose(it) }
     }
+  }
+
+  /** Operations that we're never going to finish have to be abandoned, or they look like they're still being installed. */
+  fun testCancellationAbandonsUnfinishedOperations() {
+    val canceledProgress = FakeProgressIndicator().apply { cancel() }
+
+    try {
+      installTask.execute(canceledProgress)
+      fail("Expected the canceled install to throw")
+    } catch (expected: ProcessCanceledException) {}
+
+    verify(installer).abandon(any())
+    verify(installer2).abandon(any())
+    verify(uninstaller).abandon(any())
+    verify(installer, never()).complete(any())
+  }
+
+  /**
+   * The install runs blocking code, which notices that the task was cancelled the way the downloader and file I/O do: through
+   * [ProgressManager.checkCanceled], which sees the cancellation of the coroutine running it.
+   */
+  fun testCancellingTheTaskCancelsTheInstall() {
+    val prepareStarted = CompletableFuture<Boolean>()
+    val sawCancellation = CompletableFuture<Boolean>()
+    whenever(installer.prepare(any())).thenAnswer {
+      prepareStarted.complete(true)
+      val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+      try {
+        while (System.nanoTime() < deadline) {
+          ProgressManager.checkCanceled()
+          Thread.sleep(10)
+        }
+      } catch (e: ProcessCanceledException) {
+        sawCancellation.complete(true)
+        throw e
+      }
+      false
+    }
+
+    val job = installTask.runAsync()
+    val finished = CompletableFuture<Boolean>()
+    job.invokeOnCompletion { finished.complete(true) }
+
+    pumpEventsAndWaitForFuture(prepareStarted, 5, TimeUnit.SECONDS)
+    job.cancel()
+
+    pumpEventsAndWaitForFuture(sawCancellation, 10, TimeUnit.SECONDS)
+    pumpEventsAndWaitForFuture(finished, 10, TimeUnit.SECONDS)
+    // The install never got to the packages it hadn't started on, so nothing is working on them any more.
+    verify(installer2, never()).prepare(any())
+    verify(installer2).abandon(any())
   }
 
   private inline fun <reified T : Any> mock(): T = Mockito.mock(T::class.java)
