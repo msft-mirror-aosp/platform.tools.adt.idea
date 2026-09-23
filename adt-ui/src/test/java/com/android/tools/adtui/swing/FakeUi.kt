@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmName("FakeUiUtil")
-
 package com.android.tools.adtui.swing
 
 import com.android.testutils.waitForCondition
@@ -51,20 +49,19 @@ import javax.swing.JRootPane
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * A utility class to interact with Swing components in unit tests.
- *
- * @param root the top-level component
- * @param parentDisposable if provided, FakeUi will use it to clean up
- */
+/** Simulates some UI functionality in headless tests. */
 class FakeUi private constructor(val root: Component, parentDisposable: Disposable?, unused: Int) {
 
-  constructor(root: Component) : this(root, null, 0)
-
+  /**
+   * Creates a `FakeUI` object wrapping [root].
+   *
+   * @param root the top-level component
+   * @param parentDisposable used to trigger cleanup
+   */
   constructor(root: Component, parentDisposable: Disposable) : this(root, parentDisposable, 0)
 
-  @Deprecated("Use the two-argument constructor", replaceWith = ReplaceWith("FakeUi(root, parentDisposable)"))
-  constructor(root: Component, createFakeWindow: Boolean, parentDisposable: Disposable) : this(root, parentDisposable)
+  /** `FakeUi` created using this constructor supports only a subset of functionality. Prefer `FakeUi(root, parentDisposable)`. */
+  constructor(root: Component) : this(root, null, 0)
 
   @JvmField val keyboard: FakeKeyboard = FakeKeyboard()
 
@@ -185,8 +182,7 @@ class FakeUi private constructor(val root: Component, parentDisposable: Disposab
   fun getPosition(component: Component): Point {
     var comp: Component? = component
     if (component.width == 0 && component.height == 0) {
-      layout() // The component has zero size. Force layout to give it a chance to acquire non-zero
-      // dimensions.
+      layout() // The component has zero size. Force layout to give it a chance to acquire non-zero dimensions.
     }
     var rx = 0
     var ry = 0
