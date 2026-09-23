@@ -386,14 +386,31 @@ class ToolWindowSizeOptimizerTest {
     val (_, phoneView, ui) = startPhone(Dimension(500, 500))
     val devicePanel = phoneView.findAncestor<AbstractDevicePanel<*>>()!!
 
-    // Create a toolbar whose height wraps from 25 to 60 when width <= 300.
-    val wrappingToolbar =
+    // Create a toolbar whose height wraps from 25 to 60 when width <= wrapThreshold,
+    // and from 60 to 85 when width <= wrapThreshold2.
+    var wrapThreshold = 300
+    var wrapThreshold2 = 0
+    var lastChildLayoutWidth = 0
+    val childToolbar =
       object : JPanel() {
+        override fun doLayout() {
+          super.doLayout()
+          lastChildLayoutWidth = width
+        }
+      }
+    val wrappingToolbar =
+      object : JPanel(BorderLayout()) {
         override fun getPreferredSize(): Dimension {
-          val h = if (width in 1..300) 60 else 25
+          val h =
+            when {
+              width in 1..wrapThreshold2 -> 85
+              width in 1..wrapThreshold -> 60
+              else -> 25
+            }
           return Dimension(width, h)
         }
       }
+    wrappingToolbar.add(childToolbar, BorderLayout.CENTER)
     wrappingToolbar.size = Dimension(500, 25)
     devicePanel.add(wrappingToolbar, BorderLayout.NORTH)
 
@@ -411,6 +428,7 @@ class ToolWindowSizeOptimizerTest {
     assertThat(toolWindow.decorator.width).isLessThan(500)
     // The height expands to accommodate the wrapped toolbar without downscaling the display image.
     assertThat(toolWindow.decorator.height).isGreaterThan(initialHeight)
+    assertThat(lastChildLayoutWidth).isEqualTo(wrappingToolbar.width)
 
     // 2. In DOCKED mode with a vertical splitter:
     // Display image downscales to preserve the split pane boundary.
@@ -433,6 +451,37 @@ class ToolWindowSizeOptimizerTest {
     assertThat(phoneView.width).isLessThan(initialImageWidth)
     assertThat(splitter.proportion).isEqualTo(initialProportion)
     assertMatchesAspectRatio(phoneView)
+
+    // In DOCKED mode with a vertical splitter and small vertical slack (0 < availableHeight - imageHeight < toolbarHeightDelta):
+    // Display image still downscales to fit effectiveHeight and preserve the split pane boundary.
+    val naturalSize = phoneView.naturalContentSize
+    wrapThreshold = naturalSize.width
+    val topPaneTargetHeight = naturalSize.height + 25 + 10 // 10px of vertical slack (< 35px toolbarHeightDelta)
+    toolWindow.decorator.size = Dimension(naturalSize.width + 100, topPaneTargetHeight * 2 + splitter.dividerWidth)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    assertThat(phoneView.height).isEqualTo(naturalSize.height + 10)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    val singleWrapWidth = phoneView.width
+    assertThat(singleWrapWidth).isLessThan(naturalSize.width)
+    assertThat(splitter.proportion).isEqualTo(initialProportion)
+    assertMatchesAspectRatio(phoneView)
+
+    // 4. Cascading toolbar wrapping: narrowing to singleWrapWidth triggers a second wrap (to 95px),
+    // which further reduces effectiveHeight and narrows phoneView again.
+    wrapThreshold2 = singleWrapWidth
+    wrappingToolbar.size = Dimension(naturalSize.width + 100, 25)
+    toolWindow.decorator.size = Dimension(naturalSize.width + 100, topPaneTargetHeight * 2 + splitter.dividerWidth)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    assertThat(phoneView.height).isEqualTo(naturalSize.height + 10)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(phoneView.width).isLessThan(singleWrapWidth)
+    assertThat(splitter.proportion).isEqualTo(initialProportion)
+    assertMatchesAspectRatio(phoneView)
+    assertThat(lastChildLayoutWidth).isEqualTo(wrappingToolbar.width)
 
     FakeToolWindow.unsplit(phoneContent.manager!!, phoneContent)
     dispatchAllEventsInIdeEventQueue()

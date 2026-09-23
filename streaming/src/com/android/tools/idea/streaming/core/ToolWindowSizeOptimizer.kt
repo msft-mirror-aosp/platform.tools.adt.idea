@@ -58,15 +58,7 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
 
     val screenScalingFactor = displayView.screenScalingFactor
     val availablePhysicalWidth = availableWidth.scaled(screenScalingFactor)
-    val availablePhysicalHeight = availableHeight.scaled(screenScalingFactor)
     val maxScaleX = roundDownToNaturalNumberOrNearestSmallFraction(availablePhysicalWidth.toDouble() / actualSize.width)
-    val maxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(availablePhysicalHeight.toDouble() / actualSize.height)
-    val fitScale = min(maxScaleX, maxScaleY)
-    val imageWidth =
-      if (fitScale < 1.0 && maxScaleX <= maxScaleY) availableWidth else computeLogicalWidthForScale(fitScale).coerceAtMost(availableWidth)
-    val imageHeight =
-      if (fitScale < 1.0 && maxScaleY <= maxScaleX) availableHeight
-      else computeLogicalHeightForScale(fitScale).coerceAtMost(availableHeight)
 
     val rootContainer = findRootContainer()
     val isUndocked = toolWindow.type == ToolWindowType.WINDOWED || toolWindow.type == ToolWindowType.FLOATING
@@ -77,93 +69,76 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     val canAdjustWidth = canResizeToolWindowWidth || hasHorizontalSplitter
     val canAdjustHeight = canResizeToolWindowHeight || hasVerticalSplitter
 
-    var desiredWidth: Int
-    var desiredHeight: Int
+    fun computeDesiredSizeForHeight(targetAvailableHeight: Int): Dimension {
+      val physicalHeight = targetAvailableHeight.scaled(screenScalingFactor)
+      val maxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(physicalHeight.toDouble() / actualSize.height)
+      val fitScale = min(maxScaleX, maxScaleY)
+      val imageWidth =
+        if (fitScale < 1.0 && maxScaleX <= maxScaleY) availableWidth else computeLogicalWidthForScale(fitScale).coerceAtMost(availableWidth)
+      val imageHeight =
+        if (fitScale < 1.0 && maxScaleY <= maxScaleX) targetAvailableHeight
+        else computeLogicalHeightForScale(fitScale).coerceAtMost(targetAvailableHeight)
+      val width =
+        when {
+          !canAdjustWidth -> availableWidth
+          canAdjustHeight || imageWidth < availableWidth -> imageWidth
+          else -> computeLogicalWidthForScale(maxScaleY)
+        }
+      val height =
+        when {
+          !canAdjustHeight -> availableHeight
+          canAdjustWidth || imageHeight < targetAvailableHeight -> imageHeight
+          else -> computeLogicalHeightForScale(maxScaleX)
+        }
+      return Dimension(width, height)
+    }
+
+    var desiredSize = computeDesiredSizeForHeight(availableHeight)
+    val initialImageHeight = desiredSize.height
     val devicePanel = displayView.findAncestor<AbstractDevicePanel<*>>()
     val toolbarPanel = (devicePanel?.layout as? BorderLayout)?.getLayoutComponent(BorderLayout.NORTH)
     val originalToolbarBounds = toolbarPanel?.bounds?.let { Rectangle(it) }
     val originalToolbarHeight = toolbarPanel?.height ?: 0
     var toolbarHeightDelta = 0
-    when {
-      canAdjustWidth && canAdjustHeight -> {
-        desiredWidth = imageWidth
-        desiredHeight = imageHeight
-        toolbarHeightDelta =
-          updateToolbarHeightForWidth(
-            viewport,
-            desiredWidth,
-            originalToolbarHeight,
-            originalToolbarBounds,
-            canResizeToolWindowWidth,
-            canResizeToolWindowHeight,
-          )
-        if (!canResizeToolWindowHeight && imageHeight == availableHeight && toolbarHeightDelta > 0 && devicePanel != null) {
-          val shareRatio = computeVerticalShareRatio(viewport, devicePanel)
+    if (canAdjustWidth) {
+      toolbarHeightDelta =
+        updateToolbarHeightForWidth(
+          viewport,
+          desiredSize.width,
+          originalToolbarHeight,
+          originalToolbarBounds,
+          canResizeToolWindowWidth,
+          canResizeToolWindowHeight,
+        )
+      if (!canResizeToolWindowHeight && toolbarHeightDelta != 0 && devicePanel != null) {
+        val shareRatio = if (canAdjustHeight) computeVerticalShareRatio(viewport, devicePanel) else 1.0
+        for (i in 0 until 5) {
           val effectiveHeight = (availableHeight - (toolbarHeightDelta * shareRatio).roundToInt()).coerceAtLeast(1)
-          val effectivePhysicalHeight = effectiveHeight.scaled(screenScalingFactor)
-          val adjustedMaxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(effectivePhysicalHeight.toDouble() / actualSize.height)
-          val adjustedFitScale = min(maxScaleX, adjustedMaxScaleY)
-          desiredWidth =
-            if (adjustedFitScale < 1.0 && maxScaleX <= adjustedMaxScaleY) availableWidth
-            else computeLogicalWidthForScale(adjustedFitScale).coerceAtMost(availableWidth)
-          desiredHeight =
-            if (adjustedFitScale < 1.0 && adjustedMaxScaleY <= maxScaleX) effectiveHeight
-            else computeLogicalHeightForScale(adjustedFitScale).coerceAtMost(effectiveHeight)
-          toolbarHeightDelta =
+          if (canAdjustHeight && initialImageHeight <= effectiveHeight) {
+            break
+          }
+          desiredSize = computeDesiredSizeForHeight(effectiveHeight)
+          val newToolbarHeightDelta =
             updateToolbarHeightForWidth(
               viewport,
-              desiredWidth,
+              desiredSize.width,
               originalToolbarHeight,
               originalToolbarBounds,
               canResizeToolWindowWidth,
               canResizeToolWindowHeight,
             )
+          if (newToolbarHeightDelta == toolbarHeightDelta) {
+            break
+          }
+          toolbarHeightDelta = newToolbarHeightDelta
         }
-      }
-      canAdjustWidth -> {
-        // Only width can be adjusted (e.g., docked LEFT or RIGHT without a vertical splitter).
-        desiredWidth = if (imageWidth < availableWidth) imageWidth else computeLogicalWidthForScale(maxScaleY)
-        toolbarHeightDelta =
-          updateToolbarHeightForWidth(
-            viewport,
-            desiredWidth,
-            originalToolbarHeight,
-            originalToolbarBounds,
-            canResizeToolWindowWidth,
-            canResizeToolWindowHeight,
-          )
-        if (toolbarHeightDelta != 0 && devicePanel != null) {
-          val effectiveHeight = (availableHeight - toolbarHeightDelta).coerceAtLeast(1)
-          val effectivePhysicalHeight = effectiveHeight.scaled(screenScalingFactor)
-          val adjustedMaxScaleY = roundDownToNaturalNumberOrNearestSmallFraction(effectivePhysicalHeight.toDouble() / actualSize.height)
-          val adjustedFitScale = min(maxScaleX, adjustedMaxScaleY)
-          val adjustedImageWidth =
-            if (adjustedFitScale < 1.0 && maxScaleX <= adjustedMaxScaleY) availableWidth
-            else computeLogicalWidthForScale(adjustedFitScale).coerceAtMost(availableWidth)
-          desiredWidth = if (adjustedImageWidth < availableWidth) adjustedImageWidth else computeLogicalWidthForScale(adjustedMaxScaleY)
-          toolbarHeightDelta =
-            updateToolbarHeightForWidth(
-              viewport,
-              desiredWidth,
-              originalToolbarHeight,
-              originalToolbarBounds,
-              canResizeToolWindowWidth,
-              canResizeToolWindowHeight,
-            )
-        }
-        desiredHeight = availableHeight
-      }
-      else -> {
-        // Only height can be adjusted (e.g., docked TOP or BOTTOM without a horizontal splitter).
-        desiredWidth = availableWidth
-        desiredHeight = if (imageHeight < availableHeight) imageHeight else computeLogicalHeightForScale(maxScaleX)
       }
     }
 
-    if (desiredWidth == availableWidth && desiredHeight == availableHeight) {
+    if (desiredSize.width == availableWidth && desiredSize.height == availableHeight) {
       if (toolbarPanel != null && originalToolbarBounds != null) {
         toolbarPanel.bounds = Rectangle(originalToolbarBounds)
-        toolbarPanel.doLayout()
+        layoutToolbarPanel(toolbarPanel)
       }
       return
     }
@@ -172,8 +147,8 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
       computeAncestorSize(
         viewport,
         rootContainer,
-        desiredWidth,
-        desiredHeight,
+        desiredSize.width,
+        desiredSize.height,
         toolbarHeightDelta,
         canResizeToolWindowWidth,
         canResizeToolWindowHeight,
@@ -255,19 +230,24 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
         .width
         .coerceAtLeast(0)
     toolbarPanel.setSize(newDevicePanelWidth, originalToolbarHeight)
-    toolbarPanel.doLayout()
-    for (child in (toolbarPanel as? Container)?.components.orEmpty()) {
-      child.doLayout()
-    }
+    layoutToolbarPanel(toolbarPanel)
     val newToolbarHeight = toolbarPanel.preferredSize.height
     val heightDelta = newToolbarHeight - originalToolbarHeight
     if (heightDelta != 0) {
       toolbarPanel.setSize(newDevicePanelWidth, newToolbarHeight)
+      layoutToolbarPanel(toolbarPanel)
     } else if (originalToolbarBounds != null) {
       toolbarPanel.bounds = Rectangle(originalToolbarBounds)
-      toolbarPanel.doLayout()
+      layoutToolbarPanel(toolbarPanel)
     }
     return heightDelta
+  }
+
+  private fun layoutToolbarPanel(toolbarPanel: Component) {
+    toolbarPanel.doLayout()
+    for (child in (toolbarPanel as? Container)?.components.orEmpty()) {
+      child.doLayout()
+    }
   }
 
   private fun computeVerticalShareRatio(startComponent: Component, stopAncestor: Component): Double {
