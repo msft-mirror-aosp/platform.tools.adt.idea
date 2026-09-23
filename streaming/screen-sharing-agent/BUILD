@@ -41,10 +41,6 @@ android_cc_binary(
     name = "native",
     binary = ":screen-sharing-agent.so.stripped",
     filename = "libscreen-sharing-agent.so",
-    target_compatible_with = select({
-        "@platforms//os:windows": ["@platforms//:incompatible"],
-        "//conditions:default": [],
-    }),
     visibility = ["//visibility:public"],
 )
 
@@ -56,10 +52,6 @@ android_library(
     ),
     idl_import_root = "app/src/main/aidl",
     idl_srcs = glob(["app/src/main/aidl/**/*.aidl"]),
-    target_compatible_with = select({
-        "@platforms//os:windows": ["@platforms//:incompatible"],
-        "//conditions:default": [],
-    }),
     deps = [
         "//prebuilts/studio/sdk:platforms/latest_jar",
         "//tools/base/annotations",
@@ -77,23 +69,13 @@ dex_library(
 
 studio_data(
     name = "bundle",
-    files = select({
-        "@platforms//os:linux": [
-            "native/arm64-v8a/libscreen-sharing-agent.so",
-            "native/armeabi-v7a/libscreen-sharing-agent.so",
-            "native/x86/libscreen-sharing-agent.so",
-            "native/x86_64/libscreen-sharing-agent.so",
-            "screen-sharing-agent.jar",
-        ],
-        "@platforms//os:macos": [
-            "native/arm64-v8a/libscreen-sharing-agent.so",
-            "native/armeabi-v7a/libscreen-sharing-agent.so",
-            "native/x86/libscreen-sharing-agent.so",
-            "native/x86_64/libscreen-sharing-agent.so",
-            "screen-sharing-agent.jar",
-        ],
-        "@platforms//os:windows": [],
-    }),
+    files = [
+        "native/arm64-v8a/libscreen-sharing-agent.so",
+        "native/armeabi-v7a/libscreen-sharing-agent.so",
+        "native/x86/libscreen-sharing-agent.so",
+        "native/x86_64/libscreen-sharing-agent.so",
+        "screen-sharing-agent.jar",
+    ],
     mappings = {
         "tools/adt/idea/streaming/screen-sharing-agent/native/": "screen-sharing-agent/",
         "tools/adt/idea/streaming/screen-sharing-agent/": "screen-sharing-agent/",
