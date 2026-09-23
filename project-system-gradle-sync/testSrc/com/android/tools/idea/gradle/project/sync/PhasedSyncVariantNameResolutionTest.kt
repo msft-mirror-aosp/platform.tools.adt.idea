@@ -19,6 +19,8 @@ import com.android.builder.model.v2.dsl.BuildType
 import com.android.builder.model.v2.dsl.ProductFlavor
 import com.android.builder.model.v2.ide.BasicVariant
 import com.android.builder.model.v2.ide.ProjectType
+import com.android.builder.model.v2.ide.SourceProvider
+import com.android.builder.model.v2.ide.SourceSetContainer
 import com.android.builder.model.v2.ide.TestedTargetVariant
 import com.android.builder.model.v2.ide.Variant
 import com.android.builder.model.v2.models.AndroidDsl
@@ -1141,6 +1143,130 @@ class PhasedSyncVariantNameResolutionTest {
   }
 
   @Test
+  fun testVariantPropagationFilteredByActiveConfigurations() {
+    // App depends on lib via "debugImplementation" configuration.
+    // If we switch App to "debug" variant, the active configurations include "debugImplementation",
+    // so variant propagation SHOULD happen (lib is synced with debug).
+    // If we switch App to "release" variant, the active configurations does not include "debugImplementation",
+    // so variant propagation SHOULD NOT happen.
+
+    val setup =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = listOf(":lib"),
+          dependenciesToConfigurations = mapOf(":lib" to setOf("debugImplementation")),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+          buildTypeConfigs = mapOf("debug" to setOf("implementation"), "release" to setOf("implementation")),
+          mainConfigs = setOf("implementation", "api"),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    // Case 1: Switch to "debug". Propagation happens, so both get "debug"
+    setSwitchVariantRequest(":app", "debug")
+    val selectedDebug = sortProjectsAndGetSelectedVariants(setup)
+    assertThat(selectedDebug[":app"]).isEqualTo("debug")
+    assertThat(selectedDebug[":lib"]).isEqualTo("debug")
+
+    // Case 2: Switch to "release". Since "debugImplementation" is not active, propagation does NOT happen,
+    // so Lib stays at its default/initial variant "debug", while App switches to "release".
+    setSwitchVariantRequest(":app", "release")
+    val selectedRelease = sortProjectsAndGetSelectedVariants(setup)
+    assertThat(selectedRelease[":app"]).isEqualTo("release")
+    assertThat(selectedRelease[":lib"]).isEqualTo("debug") // No propagation!
+  }
+
+  @Test
+  fun testVariantPropagationWithProductFlavorsAndBuildTypes() {
+    // App has:
+    // - productFlavors: "free", "paid"
+    // - buildTypes: "debug", "release"
+    // - variants: "freeDebug", "freeRelease", "paidDebug", "paidRelease"
+    // App depends on lib via "freeDebugImplementation" configuration, and on lib2 via "implementation", and on lib3 ia "runtimeOnly".
+    //
+    // Case 1: Switch App to "freeDebug". Propagation SHOULD happen to lib1 and lib2, but NOT to lib3.
+    // Case 2: Switch App to "paidDebug". Propagation SHOULD happen to lib1 and lib2, but NOT to lib3. (lib and lib2 remains debug).
+    // Case 3: Switch App to "freeRelease". Propagation SHOULD NOT happen to lib1, nor to lib3, but SHOULD happen to lib2.
+
+    val setup =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = listOf(":lib"),
+          dependenciesToConfigurations =
+            mapOf(":lib" to setOf("freeDebugImplementation"), ":lib2" to setOf("implementation"), ":lib3" to setOf("runtimeOnly")),
+          defaultVariant = "freeDebug",
+          variants = listOf("freeDebug", "freeRelease", "paidDebug", "paidRelease"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+          productFlavors = listOf(TestProductFlavor("free", "brand"), TestProductFlavor("paid", "brand")),
+          buildTypeConfigs = mapOf("debug" to setOf("implementation"), "release" to setOf("implementation")),
+          productFlavorConfigs = mapOf("free" to setOf("implementation"), "paid" to setOf("implementation")),
+          mainConfigs = setOf("implementation", "api"),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":lib2",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":lib3",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    // Case 1: Switch to "freeDebug"
+    setSwitchVariantRequest(":app", "freeDebug")
+    val selectedFreeDebug = sortProjectsAndGetSelectedVariants(setup)
+    assertThat(selectedFreeDebug[":app"]).isEqualTo("freeDebug")
+    assertThat(selectedFreeDebug[":lib"]).isEqualTo("debug")
+    assertThat(selectedFreeDebug[":lib2"]).isEqualTo("debug")
+    assertThat(selectedFreeDebug[":lib3"]).isEqualTo("debug")
+
+    // Case 2: Switch to "paidDebug".
+    setSwitchVariantRequest(":app", "paidDebug")
+    val selectedPaidDebug = sortProjectsAndGetSelectedVariants(setup)
+    assertThat(selectedPaidDebug[":app"]).isEqualTo("paidDebug")
+    assertThat(selectedPaidDebug[":lib"]).isEqualTo("debug") // No propagation
+    assertThat(selectedPaidDebug[":lib2"]).isEqualTo("debug") // Propagation as expected
+    assertThat(selectedFreeDebug[":lib3"]).isEqualTo("debug") // No propagation
+
+    // Case 3: Switch to "freeRelease".
+    setSwitchVariantRequest(":app", "freeRelease")
+    val selectedFreeRelease = sortProjectsAndGetSelectedVariants(setup)
+    assertThat(selectedFreeRelease[":app"]).isEqualTo("freeRelease")
+    assertThat(selectedFreeRelease[":lib"]).isEqualTo("debug") // No propagation
+    assertThat(selectedFreeRelease[":lib2"]).isEqualTo("release") // Propagation as expected
+    assertThat(selectedFreeDebug[":lib3"]).isEqualTo("debug") // No propagation
+  }
+
+  @Test
   fun testTopologicalOrderWithMixedPriorityEntryPoints() {
     // This test enforces the sorting logic (found when a a bug was introduced) where a P2 project (LibA) gets processed before a P1 project
     // (App) could cause a shared dep (LibB) to be incorrectly assigned to a lower batch.
@@ -1292,7 +1418,7 @@ class PhasedSyncVariantNameResolutionTest {
     val androidProject = Mockito.mock(AndroidProject::class.java)
     val androidDsl = Mockito.mock(AndroidDsl::class.java)
     val declaredDependencies = Mockito.mock(DeclaredDependencies::class.java)
-    val modelVersions = ModelVersions(agp = AgpVersion.parse("9.0.0"), modelVersion = ModelVersion(21, 0), minimumModelConsumer = null)
+    val modelVersions = ModelVersions(agp = AgpVersion.parse("9.0.0"), modelVersion = ModelVersion(24, 0), minimumModelConsumer = null)
     val legacyAndroidGradlePluginPropertiesImpl =
       LegacyAndroidGradlePluginPropertiesImpl(
         emptyMap(),
@@ -1354,6 +1480,75 @@ class PhasedSyncVariantNameResolutionTest {
         flavor
       }
 
+    if (project.mainConfigs.isNotEmpty()) { // TODO: make tests use these
+      val mainSourceSet = Mockito.mock(SourceSetContainer::class.java)
+      val mainSourceProvider = Mockito.mock(SourceProvider::class.java)
+      whenever(basicAndroidProject.mainSourceSet).thenReturn(mainSourceSet)
+      whenever(mainSourceSet.sourceProvider).thenReturn(mainSourceProvider)
+      if (project.mainConfigs.contains("implementation")) {
+        whenever(mainSourceProvider.implementationConfigurationName).thenReturn("implementation")
+      }
+      if (project.mainConfigs.contains("api")) {
+        whenever(mainSourceProvider.apiConfigurationName).thenReturn("api")
+      }
+      if (project.mainConfigs.contains("annotationProcessor")) {
+        whenever(mainSourceProvider.annotationProcessorConfigurationName).thenReturn("annotationProcessor")
+      }
+      if (project.mainConfigs.contains("kapt")) {
+        whenever(mainSourceProvider.kaptConfigurationName).thenReturn("kapt")
+      }
+    }
+
+    if (project.buildTypeConfigs.isNotEmpty()) {
+      val buildTypeSourceSets =
+        project.buildTypes.map { testBuildType ->
+          val container = Mockito.mock(SourceSetContainer::class.java)
+          val provider = Mockito.mock(SourceProvider::class.java)
+          whenever(container.sourceProvider).thenReturn(provider)
+          whenever(provider.name).thenReturn(testBuildType.name)
+          val configs = project.buildTypeConfigs[testBuildType.name].orEmpty()
+          if (configs.contains("implementation")) {
+            whenever(provider.implementationConfigurationName).thenReturn("${testBuildType.name}Implementation")
+          }
+          if (configs.contains("api")) {
+            whenever(provider.apiConfigurationName).thenReturn("${testBuildType.name}Api")
+          }
+          if (configs.contains("annotationProcessor")) {
+            whenever(provider.annotationProcessorConfigurationName).thenReturn("${testBuildType.name}AnnotationProcessor")
+          }
+          if (configs.contains("kapt")) {
+            whenever(provider.kaptConfigurationName).thenReturn("${testBuildType.name}Kapt")
+          }
+          container
+        }
+      whenever(basicAndroidProject.buildTypeSourceSets).thenReturn(buildTypeSourceSets)
+    }
+
+    if (project.productFlavorConfigs.isNotEmpty()) {
+      val productFlavorSourceSets =
+        project.productFlavors.map { testFlavor ->
+          val container = Mockito.mock(SourceSetContainer::class.java)
+          val provider = Mockito.mock(SourceProvider::class.java)
+          whenever(container.sourceProvider).thenReturn(provider)
+          whenever(provider.name).thenReturn(testFlavor.name)
+          val configs = project.productFlavorConfigs[testFlavor.name].orEmpty()
+          if (configs.contains("implementation")) {
+            whenever(provider.implementationConfigurationName).thenReturn("${testFlavor.name}Implementation")
+          }
+          if (configs.contains("api")) {
+            whenever(provider.apiConfigurationName).thenReturn("${testFlavor.name}Api")
+          }
+          if (configs.contains("annotationProcessor")) {
+            whenever(provider.annotationProcessorConfigurationName).thenReturn("${testFlavor.name}AnnotationProcessor")
+          }
+          if (configs.contains("kapt")) {
+            whenever(provider.kaptConfigurationName).thenReturn("${testFlavor.name}Kapt")
+          }
+          container
+        }
+      whenever(basicAndroidProject.productFlavorSourceSets).thenReturn(productFlavorSourceSets)
+    }
+
     whenever(gradleProject.path).thenReturn(project.moduleId)
     whenever(gradleProject.projectIdentifier).thenReturn(projectIdentifier)
     whenever(projectIdentifier.buildIdentifier).thenReturn(buildIdentifier)
@@ -1372,7 +1567,7 @@ class PhasedSyncVariantNameResolutionTest {
     whenever(androidDsl.productFlavors).thenReturn(productFlavors)
     whenever(androidDsl.flavorDimensions).thenReturn(dimensions)
     whenever(declaredDependencies.allOutgoingProjectsDependenciesToConfigurations)
-      .thenReturn(project.dependencies.associateWith { setOf("implementation") })
+      .thenReturn(project.dependenciesToConfigurations ?: project.dependencies.associateWith { setOf("implementation") })
 
     return Parameters(
       gradleProject,
@@ -1395,6 +1590,10 @@ class PhasedSyncVariantNameResolutionTest {
     val productFlavors: List<TestProductFlavor> = emptyList(),
     val missingDimensionStrategy: Map<String, List<String>> = emptyMap(),
     val testedTargetProject: String? = null,
+    val dependenciesToConfigurations: Map<String, Set<String>>? = null,
+    val mainConfigs: Set<String> = setOf("implementation"),
+    val buildTypeConfigs: Map<String, Set<String>> = emptyMap(),
+    val productFlavorConfigs: Map<String, Set<String>> = emptyMap(),
   )
 
   private data class TestAndroidBuildType(val name: String, val matchingFallbacks: List<String> = emptyList())

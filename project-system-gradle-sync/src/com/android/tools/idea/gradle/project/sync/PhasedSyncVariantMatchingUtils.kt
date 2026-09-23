@@ -19,6 +19,8 @@ import com.android.builder.model.v2.dsl.BuildType
 import com.android.builder.model.v2.dsl.ProductFlavor
 import com.android.builder.model.v2.ide.BasicVariant
 import com.android.builder.model.v2.ide.ProjectType
+import com.android.builder.model.v2.ide.SourceProvider
+import com.android.builder.model.v2.ide.SourceSetContainer
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
@@ -26,7 +28,6 @@ import com.android.builder.model.v2.models.Versions
 import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
-import com.android.ide.gradle.model.dependencies.DeclaredDependenciesModelBuilder
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
@@ -266,26 +267,17 @@ fun sortProjectsByPriority(
   val headProjectsToBatch = mutableMapOf<String, Int>() // This will get fed Apps, and Libraries with no incoming dependencies.
   val queue = ArrayDeque<String>()
 
-  val filteredDependencies = mutableMapOf<String, MutableList<String>>()
+  val dependenciesByModuleIds = mutableMapOf<String, MutableList<String>>()
   projectsNodes.forEach { (gradleProject, node) ->
-    node.declaredDependencies?.allOutgoingProjectsDependenciesToConfigurations?.forEach { (dependencyProject, configuration) ->
+    node.declaredDependencies?.allOutgoingProjectsDependenciesToConfigurations?.forEach { (dependencyProject, _) ->
       val producerModuleId = Modules.createUniqueModuleId(gradleProject.projectIdentifier.buildIdentifier.rootDir, dependencyProject)
-      val producerNode = projectNodesByGradlePaths[producerModuleId]?.second ?: return@forEach
-      // Dynamic feature project dependencies are special case and are not represented in the project dependencies configuration as a
-      // configuration of interest, but we do want to propagate variants to them regardless of this.
-      val isDynamicFeature = producerNode.basicAndroidProject.projectType == ProjectType.DYNAMIC_FEATURE
-      // For the rest of the projects, we only care about variant propagation if the dependency configuration has an impact on the compile
-      // classpath.
-      // TODO(b/467047467): figure out list of actual configurations that we care about here.
-      val isInterestingConfig = configuration.any { DeclaredDependenciesModelBuilder.CONFIGURATIONS_OF_INTEREST.contains(it) }
+      val dependencyNode = projectNodesByGradlePaths[producerModuleId]?.second ?: return@forEach
       // Only ignore edges targeting an APP module to prevent Graph Inversion.
       // This preserves dependencies on libraries (e.g. Test -> SharedLib) while ensuring Apps resolve first.
-      val isTargetingApp = producerNode.basicAndroidProject.projectType == ProjectType.APPLICATION
+      val isTargetingApp = dependencyNode.basicAndroidProject.projectType == ProjectType.APPLICATION
 
-      // Do the filtering for the projects that we won't handle in prioritisation and variant propagation logic,
-      // so we save the cost of doing the processing later when sorting.
-      if ((isDynamicFeature || isInterestingConfig) && !isTargetingApp) {
-        filteredDependencies.getOrPut(node.moduleId) { mutableListOf() }.add(producerModuleId)
+      if (!isTargetingApp) {
+        dependenciesByModuleIds.getOrPut(node.moduleId) { mutableListOf() }.add(producerModuleId)
         inWeight[producerModuleId] = (inWeight[producerModuleId] ?: 0) + 1
       }
     }
@@ -320,7 +312,7 @@ fun sortProjectsByPriority(
     val consumerBatch = headProjectsToBatch[consumerPath]!!
     val node = projectNodesByGradlePaths[consumerPath] ?: continue
 
-    filteredDependencies[node.second.moduleId]?.forEach { producerModuleId ->
+    dependenciesByModuleIds[node.second.moduleId]?.forEach { producerModuleId ->
       val producerNode = projectNodesByGradlePaths[producerModuleId] ?: return@forEach
       // Skip edges to the switch target (already pinned)
       if (producerNode.second.moduleId == switchId) return@forEach
@@ -718,12 +710,15 @@ private fun setUpExpectedVariantForDependantProjects(
     )
 
   // Now we set the expectations for projects dependencies.
+  val currentProjectActiveConfigurations = getActiveConfigurationNames(androidProjectContext, variantToSync)
   declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.forEach { (dependency, configurations) ->
-    // TODO(b/467047467): figure out list of actual configurations that we care about here.
-    if (
-      configurations.any { DeclaredDependenciesModelBuilder.CONFIGURATIONS_OF_INTEREST.contains(it) } ||
-        androidProjectContext.androidProject?.dynamicFeatures?.contains(dependency) == true
-    ) {
+    // Check if the projectDependency configuration is "interesting". i.e. needs the projects variants to be synced.
+    val isInterestingConfig =
+      if (currentProjectActiveConfigurations.isNotEmpty()) {
+        configurations.any { currentProjectActiveConfigurations.contains(it) }
+      } else false
+
+    if (isInterestingConfig || androidProjectContext.androidProject?.dynamicFeatures?.contains(dependency) == true) {
       // The outgoing project dependencies represent those within the same Build, so we can use the given Gradle project's build ID for the
       // dependencies.
       val dependencyId = Modules.createUniqueModuleId(gradleProject.projectIdentifier.buildIdentifier.rootDir.path, dependency)
@@ -794,3 +789,108 @@ data class MissingDimensionStrategies(
 )
 
 data class VariantAndPriority(val variant: BasicVariant, val priority: Int)
+
+/**
+ * Return the list of Active configurations for the given sourceProvider. We are only interested in configurations that impact variant
+ * propagation, so these are: api, implementation, anootationProcessor, and kapt.
+ */
+private fun SourceProvider.activeConfigs(): Set<String> {
+  return buildSet {
+    apiConfigurationName?.takeIf { it.isNotBlank() }?.let { add(it) }
+    implementationConfigurationName?.takeIf { it.isNotBlank() }?.let { add(it) }
+    annotationProcessorConfigurationName?.takeIf { it.isNotBlank() }?.let { add(it) }
+    kaptConfigurationName?.takeIf { it.isNotBlank() }?.let { add(it) }
+  }
+}
+
+/**
+ * Retrieve the active configurations for the given sourceProvider through the legacyAndroidGradlePluginProperties model that stores These
+ * as a map.
+ */
+private fun activeConfigsLegacyAgp(sourceProvidersConfigurationNames: Map<String, String?>): Set<String> {
+  return buildSet {
+    sourceProvidersConfigurationNames["apiConfigurationName"]?.takeIf { it.isNotBlank() }?.let { add(it) }
+    sourceProvidersConfigurationNames["implementationConfigurationName"]?.takeIf { it.isNotBlank() }?.let { add(it) }
+    sourceProvidersConfigurationNames["annotationProcessorConfigurationName"]?.takeIf { it.isNotBlank() }?.let { add(it) }
+    sourceProvidersConfigurationNames["kaptConfigurationName"]?.takeIf { it.isNotBlank() }?.let { add(it) }
+  }
+}
+
+/** Get all the active sourceProviders for the current variant */
+private fun getSourceProvidersForContainer(
+  container: SourceSetContainer,
+  hasUnitTest: Boolean,
+  hasAndroidTest: Boolean,
+  hasTestFixtures: Boolean,
+  hasTestArtifactsInMap: Boolean,
+): List<SourceProvider> {
+  // Get the main sourceProvider.
+  val providers = mutableListOf<SourceProvider>()
+  container.sourceProvider?.let { providers.add(it) }
+
+  // Get the tests sourceProviders if tests components are enabled for the current variant.
+  if (hasUnitTest) {
+    if (hasTestArtifactsInMap) container.hostTestSourceProviders.values.forEach { providers.add(it) }
+    else container.unitTestSourceProvider?.let { providers.add(it) }
+  }
+  if (hasAndroidTest) {
+    if (hasTestArtifactsInMap) container.deviceTestSourceProviders.values.forEach { providers.add(it) }
+    else container.androidTestSourceProvider?.let { providers.add(it) }
+  }
+
+  if (hasTestFixtures) {
+    container.testFixturesSourceProvider?.let { providers.add(it) }
+  }
+
+  return providers
+}
+
+private fun getActiveConfigurationNames(
+  node: AndroidProjectDataMappingNode,
+  variantToSync: BasicVariant,
+): Set<String> {
+  val basicProject = node.basicAndroidProject
+  val activeContainers = mutableListOf<SourceSetContainer>()
+  val hasTestArtifactsInMap = node.modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]
+
+  basicProject.mainSourceSet?.let { activeContainers.add(it) }
+
+  variantToSync.buildType?.let { buildTypeName ->
+    basicProject.buildTypeSourceSets
+      .find {
+        it.sourceProvider?.name == buildTypeName
+      }
+      ?.let {
+        activeContainers.add(it)
+      }
+  }
+
+  basicProject.productFlavorSourceSets
+    .filter {
+      variantToSync.productFlavors.contains(it.sourceProvider?.name)
+    }
+    .forEach {
+      activeContainers.add(it)
+    }
+
+  val hasUnitTest = if (hasTestArtifactsInMap) variantToSync.hostTestArtifacts.isNotEmpty() else variantToSync.unitTestArtifact != null
+  val hasAndroidTest =
+    if (hasTestArtifactsInMap) variantToSync.deviceTestArtifacts.isNotEmpty() else variantToSync.androidTestArtifact != null
+  val hasTestFixtures = variantToSync.testFixturesArtifact != null
+
+  val activeSourceProviders = activeContainers.flatMap {
+    getSourceProvidersForContainer(it, hasUnitTest, hasAndroidTest, hasTestFixtures, hasTestArtifactsInMap)
+  }
+
+  val configNames = mutableSetOf<String>()
+
+  activeSourceProviders.forEach { provider ->
+    if (node.modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) configNames.addAll(provider.activeConfigs())
+    else
+      node.legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.let {
+        configNames.addAll(activeConfigsLegacyAgp(it))
+      }
+  }
+
+  return configNames
+}
