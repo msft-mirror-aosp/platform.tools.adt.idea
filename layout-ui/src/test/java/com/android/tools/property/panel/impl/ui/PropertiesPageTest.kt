@@ -37,7 +37,6 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
@@ -63,7 +62,9 @@ class PropertiesPageTest {
 
   @get:Rule val chain = RuleChain(ApplicationRule(), disposableRule, EdtRule())
 
-  private var disposable: Disposable? = null
+  private val disposable: Disposable
+    get() = disposableRule.disposable
+
   private var page: PropertiesPage? = null
   private var tableModel: PTableModel? = null
   private var tableUI: TableUIProvider? = null
@@ -73,21 +74,18 @@ class PropertiesPageTest {
   fun setUp() {
     val controlTypeProvider = mock(ControlTypeProvider::class.java) as ControlTypeProvider<PropertyItem>
     val editorProvider = mock(EditorProvider::class.java) as EditorProvider<PropertyItem>
-    disposable = disposableRule.disposable
     ApplicationManager.getApplication()
-      .registerOrReplaceServiceInstance(PropertiesComponent::class.java, PropertiesComponentMock(), disposable!!)
+      .registerOrReplaceServiceInstance(PropertiesComponent::class.java, PropertiesComponentMock(), disposable)
     tableUI = TableUIProvider(controlTypeProvider, editorProvider)
     tableModel = mock(PTableModel::class.java)
-    page = PropertiesPage(disposable!!)
+    page = PropertiesPage(disposable)
     page!!.clear()
   }
 
   @After
   fun tearDown() {
-    Disposer.dispose(disposable!!)
     tableUI = null
     tableModel = null
-    disposable = null
     page = null
   }
 
@@ -99,7 +97,7 @@ class PropertiesPageTest {
     assertThat(page!!.nameColumnFraction.value).isEqualTo(0.4f)
 
     PropertiesComponent.getInstance().setValue(LEFT_FRACTION_KEY, 0.8f, 0.4f)
-    val other = PropertiesPage(disposable!!)
+    val other = PropertiesPage(disposable)
     assertThat(other.nameColumnFraction.value).isEqualTo(0.8f)
   }
 
@@ -393,7 +391,7 @@ class PropertiesPageTest {
     val ui = FakeUi(page!!.component, createFakeWindow = true, parentDisposable = disposable)
 
     // Set focus on editor and scroll the editor in view:
-    FakeKeyboardFocusManager(disposable!!).setFocusOwner(editor)
+    FakeKeyboardFocusManager(disposable).setFocusOwner(editor)
     scrollPane.viewport.viewPosition = Point(0, 1800)
     val yPosInViewPort = editor.y - scrollPane.viewport.viewPosition.y
 

@@ -57,11 +57,14 @@ import kotlin.time.Duration.Companion.seconds
  * @param root the top-level component
  * @param parentDisposable if provided, FakeUi will use it to clean up
  */
-class FakeUi(val root: Component, createFakeWindow: Boolean, parentDisposable: Disposable?) {
+class FakeUi private constructor(val root: Component, parentDisposable: Disposable?, unused: Int) {
 
-  constructor(root: Component) : this(root, false, null)
+  constructor(root: Component) : this(root, null, 0)
 
-  constructor(root: Component, parentDisposable: Disposable) : this(root, true, parentDisposable)
+  constructor(root: Component, parentDisposable: Disposable) : this(root, parentDisposable, 0)
+
+  @Deprecated("Use the two-argument constructor", replaceWith = ReplaceWith("FakeUi(root, parentDisposable)"))
+  constructor(root: Component, createFakeWindow: Boolean, parentDisposable: Disposable) : this(root, parentDisposable)
 
   @JvmField val keyboard: FakeKeyboard = FakeKeyboard()
 
@@ -73,7 +76,7 @@ class FakeUi(val root: Component, createFakeWindow: Boolean, parentDisposable: D
 
   private var lastActivityTrackerCount: Int = ActivityTracker.getInstance().count
 
-  private val createdRootPane: JRootPane? = if (root.parent == null && createFakeWindow) createRootPane(parentDisposable) else null
+  private val createdRootPane: JRootPane? = if (root.parent == null && parentDisposable != null) createRootPane(parentDisposable) else null
 
   init {
     glassPane = (getTopLevelComponent(root) as? JRootPane)?.glassPane as? IdeGlassPaneImpl
@@ -83,15 +86,15 @@ class FakeUi(val root: Component, createFakeWindow: Boolean, parentDisposable: D
     doUpdateToolbars()
   }
 
-  private fun createRootPane(parentDisposable: Disposable?): JRootPane {
+  private fun createRootPane(parentDisposable: Disposable): JRootPane {
     val rootPane =
       root as? JRootPane
-      ?: JRootPane().apply {
-        glassPane = IdeGlassPaneImpl(this, false)
-        isFocusCycleRoot = true
-        bounds = root.bounds
-        add(root)
-      }
+        ?: JRootPane().apply {
+          glassPane = IdeGlassPaneImpl(this, false)
+          isFocusCycleRoot = true
+          bounds = root.bounds
+          add(root)
+        }
     val application = ApplicationManager.getApplication()
     // Use an exact class comparison so that the check fails if the TestWindowManager class stops
     // being final in future and a subclass is introduced.
