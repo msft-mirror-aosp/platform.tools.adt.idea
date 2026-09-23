@@ -27,7 +27,7 @@ import org.w3c.dom.Element
 
 /**
  * Tests to validate that all image files in `artwork/resources/device-art-resources/ai_glasses_device` contain valid XMP metadata with a
- * title, and that exactly one of them is set as default.
+ * title, that exactly one of them is set as default, and that any images that have 360-degree metadata have cyclic boundary continuity.
  *
  * To recreate the XMP metadata from scratch, you can use the following commands:
  * ```bash
@@ -118,6 +118,12 @@ class AiGlassesDeviceArtMetadataTest {
         }
       if (isDefault) {
         defaultCount++
+      }
+
+      if (EnvironmentFileAnalyzer.is360Image(file)) {
+        assertWithMessage("File $file has 360-degree metadata but failed cyclic boundary continuity check")
+          .that(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(file, threshold = 0.6))
+          .isTrue()
       }
     }
 
