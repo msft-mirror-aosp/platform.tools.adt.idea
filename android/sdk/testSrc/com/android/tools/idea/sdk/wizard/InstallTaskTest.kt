@@ -35,7 +35,6 @@ import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
-import com.android.tools.idea.observable.InvalidationListener
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.model.ModelWizard.WizardListener
 import com.android.tools.idea.wizard.model.ModelWizard.WizardResult
@@ -47,7 +46,6 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito
 import org.mockito.Mockito.inOrder
-import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when` as whenever
 
@@ -106,10 +104,7 @@ class InstallTaskTest : AndroidTestCase() {
     installTask = createInstallTask()
   }
 
-  private fun createInstallTask(
-    prepareCompleteCallback: (() -> Unit)? = null,
-    completeCallback: ((List<RepoPackage>) -> Unit)? = null,
-  ): InstallTask =
+  private fun createInstallTask(completeCallback: ((List<RepoPackage>) -> Unit)? = null): InstallTask =
     InstallTask(
       installerFactory = factory,
       sdkHandler = sdkHandler,
@@ -117,7 +112,6 @@ class InstallTaskTest : AndroidTestCase() {
       logger = progressIndicator,
       installRequests = listOf(UpdatablePackage(available1), UpdatablePackage(available2)),
       uninstallRequests = listOf(existing1),
-      prepareCompleteCallback = prepareCompleteCallback,
       completeCallback = completeCallback,
     )
 
@@ -184,7 +178,7 @@ class InstallTaskTest : AndroidTestCase() {
   }
 
   fun testRunBasic() {
-    installTask.run(progressIndicator)
+    installTask.execute(progressIndicator)
 
     val installer1Calls = inOrder(installer)
     installer1Calls.verify(installer).prepare(any())
@@ -197,16 +191,14 @@ class InstallTaskTest : AndroidTestCase() {
     uninstallerCalls.verify(uninstaller).complete(any())
   }
 
-  fun testRunCallbacks() {
-    val prepareComplete = mock<() -> Unit>()
+  fun testRunCompleteCallback() {
     val complete = mock<(List<RepoPackage>) -> Unit>()
-    val installTask = createInstallTask(prepareCompleteCallback = prepareComplete, completeCallback = complete)
+    val installTask = createInstallTask(completeCallback = complete)
 
-    installTask.run(progressIndicator)
+    installTask.execute(progressIndicator)
 
-    val callbackCalls = inOrder(installer, prepareComplete, complete)
+    val callbackCalls = inOrder(installer, complete)
     callbackCalls.verify(installer).prepare(any())
-    callbackCalls.verify(prepareComplete).invoke()
     callbackCalls.verify(installer).complete(any())
     callbackCalls.verify(complete).invoke(emptyList())
   }
@@ -230,44 +222,29 @@ class InstallTaskTest : AndroidTestCase() {
       installStep.extraAction?.actionPerformed(null)
       true
     }
+    val completedInstall = CompletableFuture<Boolean>()
+    whenever(installer.complete(any())).thenAnswer {
+      completedInstall.complete(true)
+      true
+    }
     assertNotNull(installStep.extraAction)
-    var wizard = ModelWizard.Builder().addStep(installStep).build()
-    val completed = CompletableFuture<Boolean>()
+    val wizard = ModelWizard.Builder().addStep(installStep).build()
+    val completedWizard = CompletableFuture<Boolean>()
     wizard.addResultListener(
       object : WizardListener {
         override fun onWizardFinished(result: WizardResult) {
-          completed.complete(true)
+          completedWizard.complete(true)
         }
       }
     )
     listenerAdded.complete(true)
-    pumpEventsAndWaitForFuture(completed, 5, TimeUnit.SECONDS)
+    pumpEventsAndWaitForFuture(completedWizard, 5, TimeUnit.SECONDS)
 
-    // Wizard will complete after prepare and without running complete.
+    // Backgrounding closes the wizard, but the install runs to completion on its own.
+    assertTrue(wizard.isFinished)
+    pumpEventsAndWaitForFuture(completedInstall, 5, TimeUnit.SECONDS)
     verify(installer).prepare(any())
-    verify(installer, never()).complete(any())
-    assertTrue(wizard.isFinished)
-    // This would normally be done by the wizard frame
-    Disposer.dispose(wizard)
-
-    whenever(factory.createInstaller(eq(available1), any(), any())).thenReturn(installer2)
-    val installStep2 =
-      InstallSelectedPackagesStep(
-        installRequests = listOf(UpdatablePackage(available1)),
-        sdkHandler = sdkHandler,
-        backgroundable = true,
-        factory = factory,
-      )
-    val completed2 = CompletableFuture<Boolean>()
-    installStep2.canGoForward().addListener(InvalidationListener { completed2.complete(true) })
-    wizard = ModelWizard.Builder(installStep2).build()
-    pumpEventsAndWaitForFuture(completed2, 5, TimeUnit.SECONDS)
-    wizard.goForward()
-
-    assertTrue(wizard.isFinished)
-    // now both prepare and complete will run.
-    verify(installer2).prepare(any())
-    verify(installer2).complete(any())
+    verify(installer).complete(any())
     // This would normally be done by the wizard frame
     Disposer.dispose(wizard)
   }
@@ -318,9 +295,12 @@ class InstallTaskTest : AndroidTestCase() {
       true
     }
     whenever(installer4.prepare(any())).thenAnswer {
-      // When we background the max progress for preparing will go from 0.5 to 1.0, and we're 3/4 done so far.
-      assertEquals(0.75, capturedProgress?.fraction)
+      // Backgrounding doesn't change what's left to do, so the progress scale is unaffected: we're still 3/8 done.
+      assertEquals(0.375, capturedProgress?.fraction)
       true
+    }
+    for (i in listOf(installer, installer2, installer3, installer4)) {
+      whenever(i.complete(any())).thenReturn(true)
     }
     var wizard: ModelWizard? = null
     try {

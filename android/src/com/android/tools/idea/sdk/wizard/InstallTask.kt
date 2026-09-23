@@ -36,12 +36,6 @@ import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
 import com.google.common.annotations.VisibleForTesting
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationListener
-import com.intellij.notification.NotificationType
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -50,7 +44,6 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportRawProgress
-import javax.swing.event.HyperlinkEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -72,23 +65,9 @@ class InstallTask(
   val installRequests: Collection<UpdatablePackage> = emptyList(),
   val uninstallRequests: Collection<LocalPackage> = emptyList(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-  val prepareCompleteCallback: (() -> Unit)? = null,
   val completeCallback: ((List<RepoPackage>) -> Unit)? = null,
 ) {
   private val repoManager: RepoManager = sdkHandler.getRepoManagerAndLoadSynchronously(logger)
-  private var isBackgrounded: Boolean = false
-
-  fun onCancel() {
-    logger.cancel()
-  }
-
-  /**
-   * This task is always run in the background, but there's another progress indicator shown in the foreground. This should be called when
-   * the foreground progress is closed, thus making it look like we're in the background.
-   */
-  fun foregroundIndicatorClosed() {
-    isBackgrounded = true
-  }
 
   /** Runs the installation with IntelliJ's [withBackgroundProgress] if a project is available. */
   suspend fun run(
@@ -129,11 +108,6 @@ class InstallTask(
     run(project, title, cancellable)
   }
 
-  /** Synchronous / non-coroutine execution entry point. */
-  fun run(indicator: ProgressIndicator): List<RepoPackage> {
-    return execute(indicator)
-  }
-
   @VisibleForTesting
   fun execute(progress: ProgressIndicator): List<RepoPackage> {
     val failures = mutableListOf<RepoPackage>()
@@ -163,13 +137,7 @@ class InstallTask(
     try {
       progress.fraction = 0.0
       preparePackages(operations, failures, progress)
-      prepareCompleteCallback?.invoke()
       progress.checkCanceled()
-      if (isBackgrounded) {
-        progress.fraction = 1.0
-        showPrepareCompleteNotification(operations.keys)
-        return failures
-      }
       completePackages(operations, failures, progress.createSubProgress(0.9), progress)
       progress.fraction = 0.9
     } finally {
@@ -253,18 +221,13 @@ class InstallTask(
     failures: MutableList<RepoPackage>,
     progress: ProgressIndicator,
   ) {
-    var progressIncrement = 1.0 / (packageOperationMap.size * 2.0)
-    var wasBackgrounded = false
+    // Preparing is half of the work; completing the operations is the other half.
+    val progressIncrement = 1.0 / (packageOperationMap.size * 2.0)
 
     for ((pack, op) in packageOperationMap.entries.toList()) {
       progress.checkCanceled()
       var success = false
 
-      if (isBackgrounded && !wasBackgrounded) {
-        progressIncrement *= 2.0
-        progress.fraction = progress.fraction * 2.0
-        wasBackgrounded = isBackgrounded
-      }
       try {
         val progressMax = progress.fraction + progressIncrement
         success = op.prepare(progress.createSubProgress(progressMax))
@@ -283,47 +246,6 @@ class InstallTask(
         packageOperationMap.remove(pack)
       }
     }
-  }
-
-  private fun showPrepareCompleteNotification(packages: Collection<RepoPackage>) {
-    val notificationListener =
-      object : NotificationListener.Adapter() {
-        override fun hyperlinkActivated(notification: Notification, event: HyperlinkEvent) {
-          if (event.description == "install") {
-            val dialogForPaths = SdkQuickfixUtils.createDialogForPackages(null, installRequests, uninstallRequests, true)
-            dialogForPaths?.show()
-          }
-          notification.expire()
-        }
-      }
-
-    val group = NotificationGroupManager.getInstance().getNotificationGroup("SDK Install")
-    val openProjects = ProjectManager.getInstance().openProjects
-    val openProjectsOrNull = openProjects.ifEmpty { arrayOf<Project?>(null) }
-
-    ApplicationManager.getApplication()
-      .invokeLater(
-        {
-          for (p in openProjectsOrNull) {
-            val message =
-              if (packages.size == 1) {
-                val pack = packages.first()
-                val op = repoManager.getInProgressInstallOperation(pack)
-                val opName = if (op == null || op is Installer) "Install" else "Uninstall"
-                "${opName}ation of '${pack.displayName}' is ready to continue<br/><a href=\"install\">$opName Now</a>"
-              } else {
-                "${packages.size} packages are ready to install or uninstall<br/><a href=\"install\">Continue</a>"
-              }
-            group.createNotification("SDK Install", message, NotificationType.INFORMATION).setListener(notificationListener).notify(p)
-          }
-        },
-        ModalityState.nonModal(),
-        {
-          packages.none { pack ->
-            repoManager.getInProgressInstallOperation(pack)?.installStatus == PackageOperation.InstallStatus.PREPARED
-          }
-        },
-      )
   }
 
   private fun ProgressIndicator.checkCanceled() {

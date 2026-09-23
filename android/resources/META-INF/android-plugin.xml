@@ -626,6 +626,7 @@
     <notificationGroup id="Render error panel notifications" displayType="BALLOON" isLogByDefault="false"/>
     <notificationGroup id="Convert to WebP" displayType="BALLOON"/>
     <notificationGroup id="SDK Install" displayType="STICKY_BALLOON" isLogByDefault="false"/>
+    <notificationGroup id="SDK Install (Info)" displayType="BALLOON" isLogByDefault="false"/>
     <notificationGroup id="Gradle Initializer" displayType="STICKY_BALLOON"/>
     <notificationGroup id="Emulator" displayType="BALLOON" bundle="messages.AndroidBundle" key="android.emulator"/>
     <notificationGroup id="Android Autogeneration" displayType="BALLOON" bundle="messages.AndroidBundle" key="android.autogeneration.notification.group"/>
