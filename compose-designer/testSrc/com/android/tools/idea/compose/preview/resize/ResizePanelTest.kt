@@ -631,7 +631,14 @@ class ResizePanelTest {
   @Test
   fun `selecting tv or automotive device clears phone cutout and updates uiMode`() = runInEdtAndGet {
     val pixel9 = configuration.settings.devices.first { it.id == "pixel_9" }
-    configuration.setDevice(pixel9, false)
+    val customPixel9 =
+      Device.Builder(pixel9)
+        .apply {
+          setId(Configuration.CUSTOM_DEVICE_ID)
+          setName("Custom")
+        }
+        .build()
+    configuration.setDevice(customPixel9, false)
     configuration.useDeviceForCutout("pixel_9")
     configuration.cutoutOverlay = com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE
     configuration.uiMode = com.android.resources.UiMode.NORMAL
@@ -652,6 +659,7 @@ class ResizePanelTest {
     assertFalse(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
     assertEquals(com.android.resources.UiMode.TELEVISION, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.TELEVISION, configuration.fullConfig.uiModeQualifier?.value)
+    assertTrue(resizePanel.hasBeenResized)
 
     // Switch to Automotive
     sceneManager.sceneRenderConfiguration.needsInflation.set(false)
@@ -664,15 +672,17 @@ class ResizePanelTest {
     assertFalse(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
     assertEquals(com.android.resources.UiMode.CAR, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.CAR, configuration.fullConfig.uiModeQualifier?.value)
+    assertTrue(resizePanel.hasBeenResized)
 
-    // Revert to Original (Pixel 9) and verify cutout and uiMode are restored
+    // Revert to Original (Custom Pixel 9) and verify cutout and uiMode are restored
     sceneManager.sceneRenderConfiguration.needsInflation.set(false)
     revert()
     assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
-    assertEquals("pixel_9", configuration.device!!.id)
+    assertEquals(Configuration.CUSTOM_DEVICE_ID, configuration.device!!.id)
     assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE, configuration.cutoutOverlay)
     assertTrue(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.fullConfig.uiModeQualifier?.value)
+    assertFalse(resizePanel.hasBeenResized)
   }
 }

@@ -607,6 +607,15 @@ public class Configuration {
     return mySystemUiPrefs.getCutoutOverlay();
   }
 
+  public void setDeviceOverlay(@Nullable FrameworkOverlay overlay) {
+    mySystemUiPrefs.setDeviceOverlay(overlay);
+  }
+
+  @Nullable
+  public FrameworkOverlay getDeviceOverlay() {
+    return mySystemUiPrefs.getDeviceOverlay();
+  }
+
   /**
    * Sets the consumer that applies a transformation function to the rendered image.
    *

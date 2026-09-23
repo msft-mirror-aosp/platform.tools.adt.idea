@@ -25,6 +25,7 @@ import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.ConversionUtil
 import com.android.tools.configurations.deviceSizeDp
+import com.android.tools.configurations.dpi
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.actions.CONFIGURATIONS
 import com.android.tools.idea.actions.DeviceChangeListener
@@ -39,8 +40,6 @@ import com.android.tools.idea.preview.Colors
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.preview.MAX_DIMENSION_DP
 import com.android.tools.preview.MIN_DIMENSION_DP
-import com.android.tools.preview.applyTo
-import com.android.tools.preview.config.getDefaultPreviewDevice
 import com.android.tools.preview.getUiModeForDevice
 import com.android.tools.res.FrameworkOverlay
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
@@ -59,7 +58,6 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
@@ -99,7 +97,6 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
 
   private val log = Logger.getInstance(ResizePanel::class.java)
 
-  private var currentModuleForList: Module? = null
   private var currentFocusedPreviewElement: PsiComposePreviewElementInstance? = null
   private var currentSceneManager: LayoutlibSceneManager? = null
 
@@ -108,7 +105,9 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   private var originalDeviceSnapshot: Device? = null
   private var originalDeviceStateSnapshot: State? = null
   private var originalCutoutOverlaySnapshot: FrameworkOverlay = FrameworkOverlay.CUTOUT_NONE
+  private var originalDeviceOverlaySnapshot: FrameworkOverlay? = null
   private var originalUiModeSnapshot: UiMode = UiMode.NORMAL
+  private var originalThemeSnapshot: String? = null
 
   /** Indicates whether the preview has been resized using this panel at least once since the panel was last cleared or initialized. */
   @Volatile
@@ -219,10 +218,11 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     currentConfiguration?.let { config ->
       config.startBulkEditing()
       config.cutoutOverlay = originalCutoutOverlaySnapshot
+      config.setDevice(originalDeviceSnapshot, false)
       config.setEffectiveDevice(originalDeviceSnapshot, originalDeviceStateSnapshot)
+      config.deviceOverlay = originalDeviceOverlaySnapshot
       config.uiMode = originalUiModeSnapshot
-      config.setTheme(config.preferredTheme)
-      currentFocusedPreviewElement?.applyTo(config) { it.settings.getDefaultPreviewDevice() }
+      config.setTheme(originalThemeSnapshot)
       config.updated(ConfigurationListener.CFG_DEVICE)
       config.finishBulkEditing()
     }
@@ -244,7 +244,12 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     currentSceneManager = null
     currentConfiguration = null
     currentFocusedPreviewElement = null
-    currentModuleForList = null
+    originalDeviceSnapshot = null
+    originalDeviceStateSnapshot = null
+    originalCutoutOverlaySnapshot = FrameworkOverlay.CUTOUT_NONE
+    originalDeviceOverlaySnapshot = null
+    originalUiModeSnapshot = UiMode.NORMAL
+    originalThemeSnapshot = null
     hasBeenResized = false
   }
 
@@ -262,7 +267,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
       config.cutoutOverlay = FrameworkOverlay.CUTOUT_NONE
       config.setEffectiveDevice(selectedItem, selectedItem.defaultState)
       config.uiMode = getUiModeForDevice(selectedItem)
-      config.setTheme(config.preferredTheme)
+      config.setTheme(null)
       config.updated(ConfigurationListener.CFG_DEVICE)
       config.finishBulkEditing()
     }
@@ -287,13 +292,14 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     currentSceneManager = sceneManager
     val model = sceneManager?.model
     currentConfiguration = model?.configuration
-    currentModuleForList = model?.module
     currentFocusedPreviewElement = model?.dataProvider?.previewElement()
 
     originalDeviceSnapshot = currentConfiguration?.device
     originalDeviceStateSnapshot = currentConfiguration?.deviceState
     originalCutoutOverlaySnapshot = currentConfiguration?.cutoutOverlay ?: FrameworkOverlay.CUTOUT_NONE
+    originalDeviceOverlaySnapshot = currentConfiguration?.deviceOverlay
     originalUiModeSnapshot = currentConfiguration?.uiMode ?: UiMode.NORMAL
+    originalThemeSnapshot = currentConfiguration?.theme
     currentConfiguration?.addListener(resizePanelUiUpdaterListener)
     currentConfiguration?.let { configuration ->
       currentSceneManager?.let { sceneManager ->
@@ -413,8 +419,11 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     }
 
     override fun update(e: AnActionEvent) {
-      val isEnabled = this@ResizePanel.isEnabled
-      e.presentation.isEnabled = isEnabled
+      e.presentation.isEnabled = this@ResizePanel.isEnabled
+    }
+
+    override fun updateCustomComponent(component: JComponent, presentation: Presentation) {
+      val isEnabled = presentation.isEnabled
       widthTextField.isEnabled = isEnabled
       heightTextField.isEnabled = isEnabled
       if (!widthTextField.hasFocus() && !heightTextField.hasFocus()) {
@@ -530,7 +539,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
       if (newWidthDp == currentConfigWidthDp && newHeightDp == currentConfigHeightDp) {
         return
       }
-      val dpi = config.density.dpiValue
+      val dpi = config.dpi()
       if (dpi <= 0) {
         log.warn("Cannot update screen size, invalid DPI: $dpi")
         return

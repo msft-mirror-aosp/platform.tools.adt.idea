@@ -27,6 +27,7 @@ import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConversionUtil
 import com.android.tools.configurations.UiModeState
 import com.android.tools.configurations.Wallpaper
+import com.android.tools.configurations.dpi
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.preview.config.DEVICE_BY_SPEC_PREFIX
 import com.android.tools.preview.config.DeviceConfig
@@ -120,7 +121,7 @@ fun ConfigurablePreviewElement<*>.applyTo(
   )
 
   // Backgrounds only apply to AI Glasses for now.
-  if (Device.isAiGlasses(renderConfiguration.device)) {
+  if (Device.isAiGlasses(renderConfiguration.cachedDevice)) {
     // Backgrounds need to be handled separately since they are rendered by Studio (and not
     // layoutlib).
     // The background is composited in studio by using an image transformation as opposed to giving
@@ -225,7 +226,7 @@ private fun PreviewConfiguration.applyTo(
     // we want to apply those to the
     // device itself.
     // This is to match the intuition that those sizes always determine the size of the composable.
-    renderConfiguration.device?.let { device ->
+    renderConfiguration.cachedDevice?.let { device ->
       val xDimension = getCustomDimensionInPx(it.width, device, renderConfiguration) { size -> size.width }
       val yDimension = getCustomDimensionInPx(it.height, device, renderConfiguration) { size -> size.height }
       if (xDimension != UNDEFINED_DIMENSION && yDimension != UNDEFINED_DIMENSION) {
@@ -252,10 +253,10 @@ private fun getCustomDimensionInPx(
   getDeviceDimension: (Dimension) -> Int,
 ): Int =
   if (customDim == UNDEFINED_DIMENSION) {
-    val orientation = renderConfiguration.deviceState?.orientation ?: device.defaultState.orientation ?: ScreenOrientation.PORTRAIT
+    val orientation = renderConfiguration.cachedDeviceState?.orientation ?: device.defaultState.orientation ?: ScreenOrientation.PORTRAIT
     device.getScreenSize(orientation)?.let(getDeviceDimension) ?: UNDEFINED_DIMENSION
   } else {
-    ConversionUtil.dpToPx(customDim, renderConfiguration.density.dpiValue)
+    ConversionUtil.dpToPx(customDim, renderConfiguration.dpi())
   }
 
 @TestOnly
