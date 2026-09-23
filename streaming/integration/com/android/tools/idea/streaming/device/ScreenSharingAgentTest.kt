@@ -36,7 +36,6 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
@@ -178,7 +177,7 @@ class ScreenSharingAgentTest {
         KeyEvent.VK_TAB to AKEYCODE_TAB,
         KeyEvent.VK_ESCAPE to AKEYCODE_ESCAPE,
         KeyEvent.VK_BACK_SPACE to AKEYCODE_DEL,
-        KeyEvent.VK_DELETE to if (SystemInfo.isMac) AKEYCODE_DEL else AKEYCODE_FORWARD_DEL,
+        KeyEvent.VK_DELETE to AKEYCODE_FORWARD_DEL,
       )
 
     runEventLogger {
