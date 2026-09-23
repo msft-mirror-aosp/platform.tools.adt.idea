@@ -33,6 +33,7 @@ import javax.swing.JScrollPane
 import javax.swing.JViewport
 import javax.swing.SwingUtilities
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -198,7 +199,10 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     while (c !== stopAncestor) {
       val p = c.parent ?: break
       if (p is Splitter && p.isVertical == isVertical) {
-        return true
+        val other = if (c === p.firstComponent) p.secondComponent else p.firstComponent
+        if (other != null && other.isVisible) {
+          return true
+        }
       }
       c = p
     }
@@ -284,12 +288,13 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
       if (targetWidth == c.width) {
         targetWidth = p.width
       } else if (p is Splitter && !p.isVertical) {
+        val canResizeSplitter = canResizeToolWindowWidth || hasSplitterAncestor(p, stopAncestor, isVertical = false)
         targetWidth =
           computeSplitterSizeAndUpdateProportion(
             p,
             c === p.firstComponent,
             targetWidth,
-            canResizeToolWindowWidth,
+            canResizeSplitter,
             updateSplitters,
           )
       } else {
@@ -299,12 +304,13 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
       if (targetHeight == c.height) {
         targetHeight = p.height
       } else if (p is Splitter && p.isVertical) {
+        val canResizeSplitter = canResizeToolWindowHeight || hasSplitterAncestor(p, stopAncestor, isVertical = true)
         targetHeight =
           computeSplitterSizeAndUpdateProportion(
             p,
             c === p.firstComponent,
             targetHeight,
-            canResizeToolWindowHeight,
+            canResizeSplitter,
             updateSplitters,
             toolbarHeightDelta,
           )
@@ -338,13 +344,24 @@ internal class ToolWindowSizeOptimizer(private val displayView: ZoomablePanel) {
     val currentSplitterSize = (if (splitter.isVertical) splitter.height else splitter.width) + heightAdjustment
     val other = if (isFirstComponent) splitter.secondComponent else splitter.firstComponent
     val otherVisible = other != null && other.isVisible
-    val otherSize = if (otherVisible) (if (splitter.isVertical) other.height else other.width) else 0
-    val dividerWidth = if (otherVisible) splitter.dividerWidth else 0
-    val newTotal = if (canResizeRoot) otherSize + targetChildSize else currentSplitterSize - dividerWidth
-    if (newTotal > 0 && updateSplitter) {
+    if (!otherVisible) {
+      return (if (canResizeRoot) targetChildSize else currentSplitterSize).coerceAtLeast(0)
+    }
+    val otherSize = if (splitter.isVertical) other.height else other.width
+    val dividerWidth = splitter.dividerWidth
+    var newTotal = if (canResizeRoot) otherSize + targetChildSize else currentSplitterSize - dividerWidth
+    if (newTotal > 0) {
       val desiredFirstSize = if (isFirstComponent) targetChildSize else newTotal - targetChildSize
       val newProportion = ((desiredFirstSize + 0.25f) / newTotal).coerceIn(splitter.minimumProportion, splitter.maximumProportion)
-      splitter.proportion = newProportion
+      if (canResizeRoot) {
+        val childShare = if (isFirstComponent) newProportion.toDouble() else 1.0 - newProportion.toDouble()
+        if (childShare > 0.0) {
+          newTotal = max(newTotal, ceil(targetChildSize / childShare).toInt())
+        }
+      }
+      if (updateSplitter) {
+        splitter.proportion = newProportion
+      }
     }
     return (newTotal + dividerWidth).coerceAtLeast(0)
   }

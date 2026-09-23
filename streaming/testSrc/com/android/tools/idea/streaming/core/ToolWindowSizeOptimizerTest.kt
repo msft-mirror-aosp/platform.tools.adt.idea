@@ -330,8 +330,9 @@ class ToolWindowSizeOptimizerTest {
     doubleClickInView(ui, splitWatchView, 2, splitWatchView.height / 2)
     assertThat(splitWatchView.width).isEqualTo(320)
 
-    // Splitter with a single visible child should not include dividerWidth.
+    // Splitter with a single visible child should not include dividerWidth or overwrite splitter.proportion.
     val splitter = splitWatchView.findAncestor<Splitter>()!!
+    splitter.proportion = 0.4f
     val other = if (splitter.firstComponent.isAncestorOf(splitWatchView)) splitter.secondComponent else splitter.firstComponent
     other.isVisible = false
     toolWindow.decorator.size = Dimension(1000, 550)
@@ -339,6 +340,7 @@ class ToolWindowSizeOptimizerTest {
     renderAndGetFrameNumber(ui, splitWatchView)
     doubleClickInView(ui, splitWatchView, 2, splitWatchView.height / 2)
     assertThat(splitWatchView.width).isEqualTo(320)
+    assertThat(splitter.proportion).isEqualTo(0.4f)
     other.isVisible = true
 
     FakeToolWindow.unsplit(watchContent.manager!!, watchContent)
@@ -351,6 +353,27 @@ class ToolWindowSizeOptimizerTest {
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, topWatchView) > 0u }
     doubleClickInView(ui, topWatchView, topWatchView.width / 2, 2)
     assertThat(topWatchView.size).isEqualTo(Dimension(320, 320))
+
+    // Nested vertical splitter with clamped maximumProportion inside a vertically non-resizable tool window
+    // adjusts both inner and outer splitters without clipping the target view.
+    val outerSplitter = topWatchView.findAncestor<Splitter>()!!
+    val topComponent = outerSplitter.firstComponent
+    val nestedSplitter =
+      object : Splitter(true, 0.8f) {
+          override fun getMaximumProportion(): Float = 0.85f
+        }
+        .apply {
+          firstComponent = topComponent
+          secondComponent = JPanel().apply { size = Dimension(320, 100) }
+        }
+    outerSplitter.firstComponent = nestedSplitter
+    outerSplitter.proportion = 0.6f
+    toolWindow.decorator.size = Dimension(350, 900)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, topWatchView)
+    doubleClickInView(ui, topWatchView, topWatchView.width / 2, 2)
+    assertThat(topWatchView.size).isEqualTo(Dimension(320, 320))
+    outerSplitter.firstComponent = topComponent
 
     FakeToolWindow.unsplit(watchContent.manager!!, watchContent)
     dispatchAllEventsInIdeEventQueue()
