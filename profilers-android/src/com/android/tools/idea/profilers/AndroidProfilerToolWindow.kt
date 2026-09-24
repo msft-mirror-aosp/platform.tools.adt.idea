@@ -398,7 +398,8 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
         if (sessionsManager.isSessionAlive) return@invokeLater
 
         if (isLiveTaskInEditor) {
-          liveTaskVirtualFile = null
+          // Keep [liveTaskVirtualFile] after the session ends: the editor tab still shows the completed task, and the next
+          // [createTaskTab] relies on this reference to close it before the shared profilers panel is moved to a new tab.
           updateLiveTaskBanner()
         }
 
