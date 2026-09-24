@@ -50,10 +50,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -337,14 +334,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
 
   @Override
   public boolean areDependenciesUpToDate() {
-    Module module = myBuildTargetReference.getModuleIfNotDisposed();
-    if (module == null) return true;
-
-    Set<Path> currentlyLoadedLibraries = new HashSet<>(myImpl.getExternalLibraries());
-    List<Path> moduleLibraries = ModuleClassLoaderUtil.getExternalLibraries(myBuildTargetReference);
-
-    return currentlyLoadedLibraries.size() == moduleLibraries.size() &&
-           currentlyLoadedLibraries.containsAll(moduleLibraries);
+    return myImpl.areDependenciesUpToDate(myBuildTargetReference);
   }
 
   /**
