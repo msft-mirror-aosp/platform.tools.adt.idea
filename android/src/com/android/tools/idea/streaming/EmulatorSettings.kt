@@ -20,7 +20,6 @@ import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.util.NlsContexts
-import com.intellij.util.ui.UIUtil.invokeLaterIfNeeded
 import com.intellij.util.xmlb.XmlSerializerUtil
 import kotlin.reflect.KProperty
 import org.jetbrains.android.util.AndroidBundle
@@ -62,12 +61,7 @@ class EmulatorSettings : PersistentStateComponent<EmulatorSettings> {
   private fun notifyListeners() {
     // Notify listeners if this is the main EmulatorSettings instance, and it has been already initialized.
     if (initialized && this == getInstance()) {
-      invokeLaterIfNeeded {
-        val app = ApplicationManager.getApplication()
-        if (app != null && !app.isDisposed) {
-          app.messageBus.syncPublisher(EmulatorSettingsListener.TOPIC).settingsChanged(this)
-        }
-      }
+      ApplicationManager.getApplication().messageBus.syncPublisher(EmulatorSettingsListener.TOPIC).settingsChanged(this)
     }
   }
 
