@@ -19,6 +19,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.rendering.errors.ui.MessageTip
 import com.android.tools.idea.uibuilder.error.RenderIssueProvider.NlRenderIssueWrapper
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -146,7 +147,8 @@ private class DesignerCommonIssueDetailPanel(
 
     // Not a visual lint issue.
     val contentPanel = JPanel(VerticalLayout(0))
-    if (issue is NlRenderIssueWrapper && StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get()) {
+    // Check the feature flag first before evaluating render issue type and ERROR severity.
+    if (StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get() && issue is NlRenderIssueWrapper && issue.severity == HighlightSeverity.ERROR) {
       addFixWithAiButton(contentPanel, offSetBottom = true)
     }
     contentPanel.add(descriptionPane)
