@@ -125,4 +125,90 @@ class ClassBinaryCacheManagerTest {
 
     assertNull(moduleCache.get("a.b.c"))
   }
+
+  @Test
+  fun testPutExistingKeyRetainsMetadataAndCanBeRetrieved() {
+    val cacheKey = Any()
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 100, 1)
+
+    val moduleCache = manager.getCache(cacheKey)
+    moduleCache.setDependencies(listOf("A"))
+
+    val fqcn = "com.example.MyClass"
+    val transformationId = "trans1"
+    val libraryPath = "A"
+
+    // First put: stores class data and registers key in metadata maps
+    moduleCache.put(fqcn, transformationId, libraryPath, "v1".toByteArray())
+    assertEquals("v1", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+    assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary(libraryPath))
+
+    // Second put for the exact same key (e.g. reload or across multiple class loaders / threads)
+    moduleCache.put(fqcn, transformationId, libraryPath, "v2".toByteArray())
+
+    // Replacing an existing key in the cache must not cause the removalListener to purge
+    // the entry's metadata from cachingKey2LibraryPath or libraryPath2CachingKeys.
+    assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary(libraryPath))
+    assertEquals("v2", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+
+    // Replacement when libraryPath changes (e.g. from "A" to "B"), verifying that "A"'s
+    // cached key set is emptied, "B" now owns the key, and the new value can be retrieved
+    moduleCache.setDependencies(listOf("B"))
+    moduleCache.put(fqcn, transformationId, "B", "v3".toByteArray())
+    assertEquals(emptySet(), manager.getCachedKeysForLibrary("A"))
+    assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary("B"))
+    assertEquals("v3", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+  }
+
+  @Test
+  fun testPutChangingLibraryPathCleansUpOldMetadata() {
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 100, 1)
+    val moduleCache = manager.getCache(Any())
+    moduleCache.setDependencies(listOf("A", "B"))
+
+    val fqcn = "com.example.MyClass"
+    val transformationId = "trans1"
+
+    moduleCache.put(fqcn, transformationId, "A", "v1".toByteArray())
+    moduleCache.put(fqcn, transformationId, "B", "v2".toByteArray())
+
+    assertEquals(emptySet(), manager.getCachedKeysForLibrary("A"))
+    assertEquals(setOf("trans1:com.example.MyClass"), manager.getCachedKeysForLibrary("B"))
+    assertEquals("v2", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+  }
+
+  @Test
+  fun testPutAfterEntryExpiresPreservesMetadata() {
+    val manualTicker = ManualTicker()
+    val manager = ClassBinaryCacheManager.getTestInstance(manualTicker, 100, 1)
+    val moduleCache = manager.getCache(Any())
+    moduleCache.setDependencies(listOf("A", "B"))
+
+    val fqcn = "com.example.MyClass"
+    val transformationId = "trans1"
+
+    // First put: stores class data and registers key in metadata maps
+    moduleCache.put(fqcn, transformationId, "A", "v1".toByteArray())
+    assertEquals("v1", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+    assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary("A"))
+
+    // Advance ticker beyond expiration (2 minutes > 1 minute expiration)
+    manualTicker.timeNanos += 2L * 60L * 1000_000_000L
+
+    // Second put for the same key after expiration: Guava's put triggers preWriteCleanup,
+    // evicting the expired entry with RemovalCause.EXPIRED before inserting the new entry.
+    moduleCache.put(fqcn, transformationId, "A", "v2".toByteArray())
+
+    // Metadata maps must reflect the newly inserted entry and the value must be retrievable
+    assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary("A"))
+    assertEquals("v2", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+
+    // Advance ticker again and put with a different library
+    manualTicker.timeNanos += 2L * 60L * 1000_000_000L
+    moduleCache.put(fqcn, transformationId, "B", "v3".toByteArray())
+
+    assertEquals(emptySet(), manager.getCachedKeysForLibrary("A"))
+    assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary("B"))
+    assertEquals("v3", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+  }
 }

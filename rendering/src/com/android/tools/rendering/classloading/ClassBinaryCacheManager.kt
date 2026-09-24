@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.GuardedBy
 import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
+import com.google.common.cache.RemovalCause
 import java.time.Duration
 import java.util.WeakHashMap
 import java.util.concurrent.locks.ReentrantLock
@@ -46,7 +47,15 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
       .weigher { _: String, value: ByteArray -> value.size }
       .expireAfterAccess(Duration.ofMinutes(expireMinutes))
       .removalListener<String, ByteArray> {
-        lock.withLock { cachingKey2LibraryPath.remove(it.key)?.let { url -> libraryPath2CachingKeys[url]?.remove(it.key) } }
+        lock.withLock {
+          if (it.cause == RemovalCause.REPLACED) return@removalListener
+          cachingKey2LibraryPath.remove(it.key)?.let { url ->
+            libraryPath2CachingKeys[url]?.let { keys ->
+              keys.remove(it.key)
+              if (keys.isEmpty()) libraryPath2CachingKeys.remove(url)
+            }
+          }
+        }
       }
       .build<String, ByteArray>()
 
@@ -91,10 +100,16 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
     override fun put(fqcn: String, transformationId: String, libraryPath: String, data: ByteArray) {
       val key = getCachingKey(fqcn, transformationId)
       lock.withLock {
-        cachingKey2LibraryPath[key] = libraryPath
+        globalCache.put(key, data)
+        val oldLibrary = cachingKey2LibraryPath.put(key, libraryPath)
+        if ((oldLibrary != null) && (oldLibrary != libraryPath)) {
+          libraryPath2CachingKeys[oldLibrary]?.let { keys ->
+            keys.remove(key)
+            if (keys.isEmpty()) libraryPath2CachingKeys.remove(oldLibrary)
+          }
+        }
         libraryPath2CachingKeys.computeIfAbsent(libraryPath) { mutableSetOf() }.add(key)
       }
-      globalCache.put(key, data)
     }
 
     @AnyThread
