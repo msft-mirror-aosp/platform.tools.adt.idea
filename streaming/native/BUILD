@@ -149,6 +149,50 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "video_decoder_win",
+    srcs = ["VideoDecoderWin.cc"],
+    copts = [
+        "/O2",
+        "/std:c++20",
+    ],
+    defines = ["NDEBUG"],
+    linkopts = [
+        "/DEFAULTLIB:mfplat.lib",
+        "/DEFAULTLIB:mfuuid.lib",
+        "/DEFAULTLIB:ole32.lib",
+        "/DEFAULTLIB:d3d11.lib",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["@platforms//os:windows"],
+    deps = ["//prebuilts/studio/jdk:jni_headers"],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "video_decoder.dll",
+    linkshared = True,
+    stamp = 0,
+    target_compatible_with = ["@platforms//os:windows"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":video_decoder_win",
+    ],
+)
+
+filegroup(
+    name = "libvideo_decoder",
+    srcs = select({
+        "@platforms//os:macos": [":libvideo_decoder.dylib"],
+        "@platforms//os:windows": [":video_decoder.dll"],
+    }),
+    target_compatible_with = select({
+        "@platforms//os:linux": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+)
+
 filegroup(
     name = "libvideo_decoder.prebuilt",
     srcs = ["//prebuilts/tools:libvideo_decoder.prebuilt"],
@@ -161,12 +205,16 @@ sh_binary(
     srcs = ["//tools/base/bazel/shell:workspace-cp.sh"],
     args = [
         "-f",
-        "$(execpath :libvideo_decoder.dylib)",
+        "$(execpath :libvideo_decoder)",
     ] + select({
         ":macos": ["prebuilts/tools/darwin-x86_64/streaming"],
         ":macos_arm": ["prebuilts/tools/darwin-arm64/streaming"],
+        "@platforms//os:windows": ["prebuilts/tools/windows-x86_64/streaming"],
         "//conditions:default": [],
     }),
-    data = [":libvideo_decoder.dylib"],
-    target_compatible_with = ["@platforms//os:macos"],
+    data = [":libvideo_decoder"],
+    target_compatible_with = select({
+        "@platforms//os:linux": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )

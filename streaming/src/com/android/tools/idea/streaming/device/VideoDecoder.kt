@@ -105,7 +105,7 @@ internal constructor(
   private val decodingContexts = ConcurrentHashMap<Int, DecodingContext>()
   private val codec = CompletableDeferred<AVCodec>()
   @Volatile private var codecName = ""
-  @Volatile private var useMacDecoder = false
+  @Volatile private var useOsDecoder = false
   @Volatile private var endOfVideoStream = false
   private val logger
     get() = thisLogger()
@@ -183,10 +183,10 @@ internal constructor(
     val codecName = String(header.array(), UTF_8).trim()
     this.codecName = codecName
     logger.debug { "Receiving $codecName video stream" }
-    useMacDecoder = VideoDecoderMac.isSupported(codecName)
+    useOsDecoder = OsVideoDecoder.isSupported(codecName)
     val ffmpegCodecName =
       when (codecName) {
-        "av01" -> "av1"
+        "av01" -> "libaom-av1"
         "avc",
         "h264" -> "h264"
         "hevc" -> "hevc"
@@ -424,7 +424,7 @@ internal constructor(
     }
 
     private inner class StreamDecoder(val isForCamera: Boolean) : AutoCloseable {
-      @GuardedBy("this") private var macDecoder: VideoDecoderMac? = null
+      @GuardedBy("this") private var osDecoder: OsVideoDecoder? = null
       @GuardedBy("this") private var pixelBuffer: ByteBuffer? = null
       private val dimensions = IntArray(2)
 
@@ -445,15 +445,15 @@ internal constructor(
           null -> return false
           else -> {}
         }
-        if (useMacDecoder) {
+        if (useOsDecoder) {
           try {
-            macDecoder = VideoDecoderMac(codecName)
+            osDecoder = OsVideoDecoder(codecName)
             initialized = true
             return true
           } catch (e: Throwable) {
-            logger.warn("Failed to initialize VideoDecoderMac for $codecName, falling back to FFmpeg", e)
-            macDecoder = null
-            useMacDecoder = false
+            logger.warn("Failed to initialize OsVideoDecoder for $codecName, falling back to FFmpeg", e)
+            osDecoder = null
+            useOsDecoder = false
           }
         }
         initFfmpegDecoder(codec)
@@ -487,8 +487,8 @@ internal constructor(
       @Synchronized
       override fun close() {
         if (initialized == true) {
-          macDecoder?.close()
-          macDecoder = null
+          osDecoder?.close()
+          osDecoder = null
           pixelBuffer = null
           parserContext?.let { av_parser_close(it) }
           codecContext?.let { avcodec_free_context(it) }
@@ -573,15 +573,15 @@ internal constructor(
       }
 
       private fun processDataPacket(packet: AVPacket, header: VideoPacketHeader) {
-        val macDecoder = macDecoder
-        if (macDecoder != null) {
-          if (processFrameMac(macDecoder, packet, header)) {
+        val osDecoder = osDecoder
+        if (osDecoder != null) {
+          if (processFrameOs(osDecoder, packet, header)) {
             return
           }
-          logger.warn("VideoDecoderMac failed to decode $codecName stream, falling back to FFmpeg")
-          macDecoder.close()
-          this.macDecoder = null
-          useMacDecoder = false
+          logger.warn("OsVideoDecoder failed to decode $codecName stream, falling back to FFmpeg")
+          osDecoder.close()
+          this.osDecoder = null
+          useOsDecoder = false
           @Suppress("OPT_IN_USAGE") initFfmpegDecoder(codec.getCompleted())
         }
 
@@ -600,7 +600,7 @@ internal constructor(
         processFrame(packet, header)
       }
 
-      private fun processFrameMac(macDecoder: VideoDecoderMac, packet: AVPacket, header: VideoPacketHeader): Boolean {
+      private fun processFrameOs(osDecoder: OsVideoDecoder, packet: AVPacket, header: VideoPacketHeader): Boolean {
         val maxDim = maxOf(header.displaySize.width, header.displaySize.height)
         val alignedDim = (maxDim + 63) and 63.inv()
         val neededCapacity = alignedDim * alignedDim * 4
@@ -611,7 +611,7 @@ internal constructor(
 
         val packetBuffer = packet.data().asByteBufferOfSize(packet.size())
         val status =
-          macDecoder.decodeFrame(
+          osDecoder.decodeFrame(
             packetBuffer,
             0,
             packet.size(),

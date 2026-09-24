@@ -1337,7 +1337,8 @@ internal class DeviceViewTest {
   }
 
   private fun checkEncoding(codec: String) {
-    assumeTrue(SystemInfo.isMac)
+    StudioFlags.DEVICE_MIRRORING_NATIVE_VIDEO_DECODER.overrideForTest(true, testRootDisposable)
+    assumeTrue(OsVideoDecoder.isSupported(codec))
     StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.overrideForTest(codec, testRootDisposable)
     createDeviceView(100, 90, retinaMode = true)
     assertThat(agent.commandLine)

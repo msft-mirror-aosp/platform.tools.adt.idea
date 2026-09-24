@@ -1000,7 +1000,7 @@ private:
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_com_android_tools_idea_streaming_device_VideoDecoderMac_createNativeDecoder(
+Java_com_android_tools_idea_streaming_device_OsVideoDecoder_createNativeDecoder(
     JNIEnv* env, jclass clazz, jint codecType) {
   CMVideoCodecType type = static_cast<CMVideoCodecType>(codecType);
   if (type != kCodecTypeAV1 && type != kCodecTypeAVC && type != kCodecTypeHEVC && type != kCodecTypeVP9) {
@@ -1010,7 +1010,7 @@ Java_com_android_tools_idea_streaming_device_VideoDecoderMac_createNativeDecoder
 }
 
 JNIEXPORT jint JNICALL
-Java_com_android_tools_idea_streaming_device_VideoDecoderMac_decodeFrame(
+Java_com_android_tools_idea_streaming_device_OsVideoDecoder_decodeFrame(
     JNIEnv* env, jclass clazz, jlong handle,
     jobject packetBuffer, jint packetOffset, jint packetSize,
     jobject outputPixelBuffer, jint outputCapacity,
@@ -1057,7 +1057,7 @@ Java_com_android_tools_idea_streaming_device_VideoDecoderMac_decodeFrame(
 }
 
 JNIEXPORT void JNICALL
-Java_com_android_tools_idea_streaming_device_VideoDecoderMac_destroyNativeDecoder(
+Java_com_android_tools_idea_streaming_device_OsVideoDecoder_destroyNativeDecoder(
     JNIEnv* env, jclass clazz, jlong handle) {
   auto* decoder = reinterpret_cast<MacVideoDecoder*>(handle);
   delete decoder;

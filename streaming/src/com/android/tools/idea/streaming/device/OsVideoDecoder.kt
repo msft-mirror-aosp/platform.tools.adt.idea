@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.device
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.util.StudioPathManager
 import com.android.tools.idea.util.StudioPathManager.isRunningFromSources
 import com.intellij.openapi.application.PathManager
@@ -25,18 +26,19 @@ import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.annotations.VisibleForTesting
 
-/** macOS hardware-accelerated video decoder using Apple's VideoToolbox. */
-internal class VideoDecoderMac(codecName: String) : AutoCloseable {
+/** OS-provided hardware-accelerated video decoder (VideoToolbox on macOS, Media Foundation on Windows). */
+internal class OsVideoDecoder(codecName: String) : AutoCloseable {
 
   private var nativeHandle: Long = 0
 
   init {
     val codecType = getCodecType(codecName)
-    check(isSupported() && codecType != 0) { "VideoDecoderMac is not supported for $codecName" }
+    check(isSupported(codecName)) { "OsVideoDecoder is not supported for $codecName" }
     nativeHandle = createNativeDecoder(codecType)
-    check(nativeHandle != 0L) { "Failed to create native VideoDecoderMac for $codecName" }
+    check(nativeHandle != 0L) { "Failed to create native OsVideoDecoder for $codecName" }
   }
 
   /**
@@ -59,7 +61,7 @@ internal class VideoDecoderMac(codecName: String) : AutoCloseable {
     outputCapacity: Int,
     outDimensions: IntArray,
   ): Int {
-    check(nativeHandle != 0L) { "VideoDecoderMac is closed" }
+    check(nativeHandle != 0L) { "OsVideoDecoder is closed" }
     return decodeFrame(nativeHandle, packetBuffer, packetOffset, packetSize, outputPixelBuffer, outputCapacity, outDimensions)
   }
 
@@ -78,6 +80,7 @@ internal class VideoDecoderMac(codecName: String) : AutoCloseable {
     private const val CODEC_TYPE_AV1 = 0x61763031 // 'av01'
     private const val CODEC_TYPE_AVC = 0x61766331 // 'avc1'
     private const val CODEC_TYPE_HEVC = 0x68766331 // 'hvc1'
+    private const val CODEC_TYPE_VP8 = 0x76703038 // 'vp08'
     private const val CODEC_TYPE_VP9 = 0x76703039 // 'vp09'
 
     private val isLoaded: Boolean by lazy {
@@ -90,21 +93,47 @@ internal class VideoDecoderMac(codecName: String) : AutoCloseable {
       }
     }
 
-    private fun getCodecType(codecName: String): Int =
-      when (codecName) {
-        "av01",
-        "av1" -> CODEC_TYPE_AV1
-        "avc",
-        "h264" -> CODEC_TYPE_AVC
-        "hevc",
-        "h265" -> CODEC_TYPE_HEVC
-        "vp9" -> CODEC_TYPE_VP9
-        else -> 0
+    private fun getCodecType(codecName: String): Int {
+      return if (SystemInfoRt.isMac || SystemInfoRt.isWindows) {
+        when (codecName) {
+          "av01",
+          "av1" -> CODEC_TYPE_AV1
+
+          "avc",
+          "h264" -> CODEC_TYPE_AVC
+
+          "hevc",
+          "h265" -> CODEC_TYPE_HEVC
+
+          "vp8" -> if (SystemInfoRt.isWindows) CODEC_TYPE_VP8 else 0
+          "vp9" -> CODEC_TYPE_VP9
+          else -> 0
+        }
+      } else {
+        0
       }
+    }
 
-    fun isSupported(codecName: String): Boolean = isSupported() && getCodecType(codecName) != 0
+    private val supportedCodecs = ConcurrentHashMap<Int, Boolean>()
 
-    fun isSupported(): Boolean = SystemInfoRt.isMac && isLoaded
+    fun isSupported(codecName: String): Boolean {
+      if (!StudioFlags.DEVICE_MIRRORING_NATIVE_VIDEO_DECODER.get()) {
+        return false
+      }
+      val codecType = getCodecType(codecName)
+      if (codecType == 0 || !isLoaded) {
+        return false
+      }
+      return supportedCodecs.computeIfAbsent(codecType) {
+        val handle = createNativeDecoder(it)
+        if (handle == 0L) {
+          false
+        } else {
+          destroyNativeDecoder(handle)
+          true
+        }
+      }
+    }
 
     @VisibleForTesting
     @Synchronized
@@ -122,7 +151,12 @@ internal class VideoDecoderMac(codecName: String) : AutoCloseable {
       }
 
       if (isRunningFromSources()) {
-        val hostSegment = if (CpuArch.isArm64()) "darwin-arm64" else "darwin-x86_64"
+        val hostSegment =
+          when {
+            SystemInfoRt.isMac -> if (CpuArch.isArm64()) "darwin-arm64" else "darwin-x86_64"
+            SystemInfoRt.isWindows -> "windows-x86_64"
+            else -> throw UnsatisfiedLinkError("Unsupported OS")
+          }
         val devLibFile = StudioPathManager.resolvePathFromSourcesRoot("prebuilts/tools/$hostSegment/streaming").resolve(libName)
         if (Files.exists(devLibFile)) {
           return devLibFile
