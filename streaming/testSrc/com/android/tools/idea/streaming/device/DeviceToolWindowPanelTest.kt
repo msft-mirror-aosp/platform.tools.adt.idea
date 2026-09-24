@@ -760,7 +760,6 @@ class DeviceToolWindowPanelTest {
 
   @Test
   fun testFloatingToolbarOrientation() {
-    StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.overrideForTest(false, testRootDisposable)
     device = agentRule.connectDevice("Pixel 4", 31, Dimension(1080, 2280))
     panel.createContent(false)
     fakeUi.layoutAndDispatchEvents()
@@ -770,9 +769,8 @@ class DeviceToolWindowPanelTest {
 
     val zoomToolbarDefault = fakeUi.getComponent<FloatingToolbarContainer>()
     assertThat(zoomToolbarDefault).isNotNull()
-    assertThat(zoomToolbarDefault.width).isGreaterThan(zoomToolbarDefault.height)
+    assertThat(zoomToolbarDefault.width).isLessThan(zoomToolbarDefault.height)
 
-    StudioFlags.RUNNING_DEVICES_VERTICAL_FLOATING_TOOLBARS.overrideForTest(true, testRootDisposable)
     val panelWithFlag = createToolWindowPanel()
     val fakeUiWithFlag = FakeUi(panelWithFlag, createFakeWindow = true, parentDisposable = testRootDisposable)
     panelWithFlag.createContent(false)

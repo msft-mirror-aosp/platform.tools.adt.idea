@@ -507,4 +507,33 @@ class PreviewRefreshManagerTest {
     val renderTopicWasCancelled = renderTopicCancelledLatch.await(5, TimeUnit.SECONDS)
     assertTrue(renderTopicWasCancelled)
   }
+
+  // Regression test for b/562876887
+  @Test
+  fun testFailedRequestDoesNotKillManager() = runBlocking {
+    TestPreviewRefreshRequest.expectedLogPrintCount = CountDownLatch(3)
+    refreshManager.requestRefreshSync(
+      TestPreviewRefreshRequest(
+        myScope,
+        "client1",
+        1,
+        "req1",
+        PreviewRefreshEventBuilder(testPreviewType, refreshTracker),
+        doBeforeLaunchingRefresh = { throw IllegalStateException("Simulated failure during refresh setup") },
+      )
+    )
+    refreshManager.requestRefreshSync(
+      TestPreviewRefreshRequest(myScope, "client2", 0, "req2", PreviewRefreshEventBuilder(testPreviewType, refreshTracker))
+    )
+    assertTrue(TestPreviewRefreshRequest.expectedLogPrintCount.await(5, TimeUnit.SECONDS))
+    assertEquals(
+      """
+      failed req1
+      start req2
+      finish req2
+      """
+        .trimIndent(),
+      TestPreviewRefreshRequest.log.toString().trimIndent(),
+    )
+  }
 }

@@ -20,6 +20,7 @@ import com.android.tools.idea.gemini.LlmChatInToolWindowResult
 import com.android.tools.idea.gemini.LlmModelSlot
 import com.android.tools.idea.gemini.LlmPrompt
 import com.android.tools.idea.gemini.buildLlmPrompt
+import com.android.tools.idea.profilers.ProfilerAiUtils
 import com.android.tools.idea.project.AndroidNotification
 import com.android.tools.leakcanarylib.data.Leak
 import com.intellij.notification.NotificationType
@@ -87,6 +88,8 @@ class LeakCanaryAiHandler(private val project: Project, private val scope: Corou
         val response = api.generate(project, prompt, LlmModelSlot.THINKING)
         if (!response.isNullOrEmpty()) {
           emit(response)
+        } else {
+          throw IllegalStateException("Failed to generate insight: No response received.")
         }
       } else {
         throw IllegalStateException("AI Assistant is not available.")
@@ -116,9 +119,15 @@ class LeakCanaryAiHandler(private val project: Project, private val scope: Corou
           appendLine("```")
         }
 
-        // Submit the query and focus the Tool Window on the Event Dispatch Thread (EDT).
-        val result =
-          withContext(Dispatchers.EDT) { GeminiPluginApiV2.getInstance().submitQueryInToolWindow(project = project, query = queryText) }
+        val apiV2 = GeminiPluginApiV2.getInstance()
+        if (!apiV2.isAvailable()) {
+          logger.warn("GeminiPluginApiV2 is not available. Prompting onboarding.")
+          ProfilerAiUtils.showAiOnboarding(project)
+          return@launch
+        }
+
+        // Submit the query to the tool window off the EDT so slow operations (like PasswordSafe access) are permitted.
+        val result = apiV2.submitQueryInToolWindow(project = project, query = queryText)
 
         if (result is LlmChatInToolWindowResult.RequestNotSubmitted) {
           val message = "Unable to send leak analysis request to AI Assistant: ${result.reason}"

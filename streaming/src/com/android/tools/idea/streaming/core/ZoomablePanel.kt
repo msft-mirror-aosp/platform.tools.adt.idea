@@ -62,7 +62,7 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
   private var fractionalScaleRange: Double = 0.0
 
   /** Indicates whether the view is scaled so that its inner part fits into the available space. */
-  protected open var framing: Framing = Framing.OUTER
+  internal open var framing: Framing = Framing.OUTER
 
   internal var zoomScrollState: ZoomScrollState
     get() = ZoomScrollState(framing, explicitlySetPreferredSize, findAncestor<CenterAnchoredViewport>()?.viewCenterOffset ?: Point())
@@ -75,7 +75,7 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
     }
 
   /** Returns the size of the content at 100% zoom. */
-  protected abstract fun computeActualSize(framing: Framing): Dimension
+  internal abstract fun computeActualSize(framing: Framing): Dimension
 
   /** Returns true if the panel contains zoomable content. */
   protected abstract fun canZoom(): Boolean

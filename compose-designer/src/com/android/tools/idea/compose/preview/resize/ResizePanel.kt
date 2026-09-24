@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.preview.resize
 
 import com.android.SdkConstants
+import com.android.resources.UiMode
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.State
 import com.android.tools.adtui.stdui.ERROR_VALUE
@@ -38,6 +39,10 @@ import com.android.tools.idea.preview.Colors
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.preview.MAX_DIMENSION_DP
 import com.android.tools.preview.MIN_DIMENSION_DP
+import com.android.tools.preview.applyTo
+import com.android.tools.preview.config.getDefaultPreviewDevice
+import com.android.tools.preview.getUiModeForDevice
+import com.android.tools.res.FrameworkOverlay
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
@@ -62,15 +67,14 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.fields.IntegerField
+import com.intellij.ui.scale.JBUIScale.scale
 import com.intellij.util.ui.JBEmptyBorder
-import com.intellij.util.ui.JBUI.scale
 import com.intellij.util.ui.UIUtil.invokeLaterIfNeeded
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.event.ActionListener
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
-import java.util.Objects
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -103,6 +107,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
 
   private var originalDeviceSnapshot: Device? = null
   private var originalDeviceStateSnapshot: State? = null
+  private var originalCutoutOverlaySnapshot: FrameworkOverlay = FrameworkOverlay.CUTOUT_NONE
+  private var originalUiModeSnapshot: UiMode = UiMode.NORMAL
 
   /** Indicates whether the preview has been resized using this panel at least once since the panel was last cleared or initialized. */
   @Volatile
@@ -121,12 +127,11 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
    */
   private val resizePanelUiUpdaterListener = ConfigurationListener { flags ->
     if ((flags and ConfigurationListener.CFG_DEVICE) != 0) {
-      if (currentConfiguration != null) {
+      val config = currentConfiguration
+      if (config != null) {
         // Check if the current device or state differs from the original snapshot,
         // indicating that the preview has been resized.
-        hasBeenResized =
-          !Objects.equals(currentConfiguration?.device, originalDeviceSnapshot) ||
-            !Objects.equals(currentConfiguration?.deviceState, originalDeviceStateSnapshot)
+        hasBeenResized = config.cachedDevice != originalDeviceSnapshot || config.cachedDeviceState != originalDeviceStateSnapshot
       }
       updatePanelFromConfiguration()
     }
@@ -211,7 +216,16 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   private fun revertResizing() {
     dimensionInputsAction.resetErrors()
     currentSceneManager?.sceneRenderConfiguration?.needsInflation?.set(true)
-    currentConfiguration?.setEffectiveDevice(originalDeviceSnapshot, originalDeviceStateSnapshot)
+    currentConfiguration?.let { config ->
+      config.startBulkEditing()
+      config.cutoutOverlay = originalCutoutOverlaySnapshot
+      config.setEffectiveDevice(originalDeviceSnapshot, originalDeviceStateSnapshot)
+      config.uiMode = originalUiModeSnapshot
+      config.setTheme(config.preferredTheme)
+      currentFocusedPreviewElement?.applyTo(config) { it.settings.getDefaultPreviewDevice() }
+      config.updated(ConfigurationListener.CFG_DEVICE)
+      config.finishBulkEditing()
+    }
     dimensionInputsAction.updateTextFieldsFromConfiguration()
     ComposeResizeToolingUsageTracker.logResizeReverted(
       currentSceneManager?.scene?.designSurface,
@@ -243,7 +257,15 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   private fun handleDeviceSelection(selectedItem: Device) {
     dimensionInputsAction.resetErrors()
     currentSceneManager?.sceneRenderConfiguration?.needsInflation?.set(true)
-    currentConfiguration?.setEffectiveDevice(selectedItem, selectedItem.defaultState)
+    currentConfiguration?.let { config ->
+      config.startBulkEditing()
+      config.cutoutOverlay = FrameworkOverlay.CUTOUT_NONE
+      config.setEffectiveDevice(selectedItem, selectedItem.defaultState)
+      config.uiMode = getUiModeForDevice(selectedItem)
+      config.setTheme(config.preferredTheme)
+      config.updated(ConfigurationListener.CFG_DEVICE)
+      config.finishBulkEditing()
+    }
     dimensionInputsAction.updateTextFieldsFromConfiguration()
     ComposeResizeToolingUsageTracker.logResizeStopped(
       currentSceneManager?.scene?.designSurface,
@@ -270,6 +292,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
 
     originalDeviceSnapshot = currentConfiguration?.device
     originalDeviceStateSnapshot = currentConfiguration?.deviceState
+    originalCutoutOverlaySnapshot = currentConfiguration?.cutoutOverlay ?: FrameworkOverlay.CUTOUT_NONE
+    originalUiModeSnapshot = currentConfiguration?.uiMode ?: UiMode.NORMAL
     currentConfiguration?.addListener(resizePanelUiUpdaterListener)
     currentConfiguration?.let { configuration ->
       currentSceneManager?.let { sceneManager ->
@@ -282,7 +306,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   private fun updatePanelFromConfiguration() {
     val config = currentConfiguration
     invokeLaterIfNeeded {
-      if (config == null || config.deviceState == null) {
+      // cachedDeviceState is already populated by setSceneManager (on BGT) and updated in-place on resize.
+      if (config == null || config.cachedDeviceState == null) {
         isEnabled = false
         return@invokeLaterIfNeeded
       }

@@ -25,9 +25,11 @@ import com.android.utils.PositionXmlParser;
 import com.android.utils.XmlUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.UsefulTestCase;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
@@ -396,6 +398,30 @@ public class DomPsiConverterTest extends UsefulTestCase {
     assertNotNull(comment);
     assertEquals(Node.COMMENT_NODE, comment.getNodeType());
     assertEquals(" my comment ", comment.getNodeValue());
+  }
+
+  public void testConversionSharedUntilPsiChanges() {
+    var xmlFile = (XmlFile)myFixture.configureByText("AndroidManifest.xml", MANIFEST);
+    var document = DomPsiConverter.convert(xmlFile);
+    assertNotNull(document);
+
+    // The tree is cached on the file, and every lookup hands out the same nodes
+    assertSame(document, DomPsiConverter.convert(xmlFile));
+    var root = document.getDocumentElement();
+    assertNotNull(root);
+    assertSame(root, document.getFirstChild());
+    var application = document.getElementsByTagName("application").item(0);
+    assertSame(application, DomPsiConverter.findNodeAt(document, MANIFEST.indexOf("<application") + 1));
+    assertSame(application.getAttributes(), application.getAttributes());
+
+    // A PSI change invalidates the tree
+    WriteCommandAction.runWriteCommandAction(getProject(), () -> {
+      myFixture.getEditor().getDocument().insertString(MANIFEST.indexOf("<application"), "<uses-sdk />\n");
+      PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+    });
+    var updated = DomPsiConverter.convert(xmlFile);
+    assertNotSame(document, updated);
+    assertEquals(1, updated.getElementsByTagName("uses-sdk").getLength());
   }
 
   public void testFindNodeAtExhaustive() {

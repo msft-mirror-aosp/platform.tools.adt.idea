@@ -65,7 +65,11 @@ class ProjectStructureReaderTest {
     workspaceRoot = temporaryFolder.root.toPath()
   }
 
-  private fun createProjectDefinition(includes: Set<String>, excludes: Set<String> = emptySet()): ProjectDefinition {
+  private fun createProjectDefinition(
+    includes: Set<String>,
+    excludes: Set<String> = emptySet(),
+    supportsNestedWorkspaces: Boolean = true,
+  ): ProjectDefinition {
     return ProjectDefinition(
       projectIncludes = includes.map { Path.of(it) }.toSet(),
       projectExcludes = excludes.map { Path.of(it) }.toSet(),
@@ -75,6 +79,7 @@ class ProjectStructureReaderTest {
       languageClasses = emptySet(),
       testSources = emptySet(),
       systemExcludes = emptySet(),
+      supportsNestedWorkspaces = supportsNestedWorkspaces,
     )
   }
 
@@ -829,5 +834,45 @@ class ProjectStructureReaderTest {
     assertThat(stamp2).isNotNull()
 
     assertThat(stamp2).isNotEqualTo(stamp1)
+  }
+
+  @Test
+  fun nestedWorkspace_ignoredWhenSupportsNestedWorkspacesFalse() {
+    createFile("java/com/example/astrea/MODULE.bazel")
+    createFile("java/com/example/astrea/WORKSPACE")
+    createFile("java/com/example/astrea/WORKSPACE.bazel")
+    createFile("java/com/example/astrea/BUILD")
+    createFile("java/com/example/astrea/AstreaMain.java")
+    createFile("java/com/example/astrea/sub/BUILD.bazel")
+    createFile("java/com/example/astrea/sub/SubClass.kt")
+
+    val projectDefinition = createProjectDefinition(includes = setOf("java/com/example/astrea"), supportsNestedWorkspaces = false)
+    val structure = reader.read(context, workspaceRoot, projectDefinition)
+
+    val expected =
+      expectedStructure(
+        roots =
+          mapOf(
+            "java/com/example/astrea" to
+              mapOf(
+                "java/com/example/astrea" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/astrea"),
+                    javaSourceFiles = listOf(Path.of("AstreaMain.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+                "java/com/example/astrea/sub" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/astrea/sub"),
+                    javaSourceFiles = listOf(Path.of("SubClass.kt")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
   }
 }

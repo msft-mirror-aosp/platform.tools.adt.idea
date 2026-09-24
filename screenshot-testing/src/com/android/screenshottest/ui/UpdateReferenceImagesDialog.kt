@@ -62,7 +62,6 @@ import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Dimension
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 import javax.accessibility.AccessibleContext
 import javax.accessibility.AccessibleRole
 import javax.swing.BorderFactory
@@ -89,7 +88,6 @@ class UpdateReferenceImagesDialog(
   private val centerPanel = JPanel(centerPanelCardLayout)
   private var isFirstTestDiscovered = false
   private var isTestSuiteFinished = false
-  private val successfulLoads = AtomicInteger(0)
   private lateinit var tree: CheckboxTree
   private val placeholderLabel = JBLabel("Select a node from the left to see its previews.", JBLabel.CENTER)
   private val classNodeMap = mutableMapOf<String, CheckedTreeNode>()
@@ -137,7 +135,11 @@ class UpdateReferenceImagesDialog(
 
   fun updateDialogWithTestResult(previewDetails: PreviewDetails, isChecked: Boolean) {
     ApplicationManager.getApplication().invokeLater {
-      val (testId, className, methodName, previewName, testResult, destImagePath, srcImagePath, diffImagePath, diffPercent) = previewDetails
+      val className = previewDetails.className
+      val methodName = previewDetails.methodName
+      val previewName = previewDetails.previewName
+      val testId = previewDetails.testId
+      val srcImagePath = previewDetails.srcImagePath
 
       if (methodName.isNotBlank() && previewName.isNotBlank()) {
         if (!isFirstTestDiscovered) {
@@ -240,9 +242,9 @@ class UpdateReferenceImagesDialog(
     rightPaneContent = JPanel(rightPaneCardLayout)
     previewDetailsPanel = PreviewDetailsPanel(project)
 
-    rightPaneContent.add(placeholderLabel, "placeholder")
-    rightPaneContent.add(previewDetailsPanel, "details")
-    rightPaneCardLayout.show(rightPaneContent, "placeholder")
+    rightPaneContent.add(placeholderLabel, CARD_PLACEHOLDER)
+    rightPaneContent.add(previewDetailsPanel, CARD_DETAILS)
+    rightPaneCardLayout.show(rightPaneContent, CARD_PLACEHOLDER)
 
     rightPaneWrapper = JPanel(BorderLayout())
     previewToolbar = createPreviewToolbar()
@@ -287,14 +289,14 @@ class UpdateReferenceImagesDialog(
 
     splitter.firstComponent = treeContainer
     splitter.secondComponent = rightPaneWrapper
-    centerPanel.add(splitter, "content")
-    centerPanelCardLayout.show(centerPanel, "content")
+    centerPanel.add(splitter, CARD_CONTENT)
+    centerPanelCardLayout.show(centerPanel, CARD_CONTENT)
   }
 
   override fun createCenterPanel(): JComponent {
     val loadingIcon = JBLabel("Generating screenshots", AnimatedIcon.Default(), JBLabel.CENTER)
-    centerPanel.add(loadingIcon, "Loading")
-    centerPanelCardLayout.show(centerPanel, "Loading")
+    centerPanel.add(loadingIcon, CARD_LOADING)
+    centerPanelCardLayout.show(centerPanel, CARD_LOADING)
     centerPanel.preferredSize = Dimension(800, 600)
     centerPanel.minimumSize = Dimension(550, 400)
     return centerPanel
@@ -408,7 +410,7 @@ class UpdateReferenceImagesDialog(
   private fun updateRightPane(tree: CheckboxTree) {
     val selectedNode = tree.selectionPath?.lastPathComponent as? CheckedTreeNode
     if (selectedNode == null) {
-      rightPaneCardLayout.show(rightPaneContent, "placeholder")
+      rightPaneCardLayout.show(rightPaneContent, CARD_PLACEHOLDER)
       previewToolbar.isVisible = false
       return
     }
@@ -418,7 +420,7 @@ class UpdateReferenceImagesDialog(
     previewToolbar.isVisible = previewsToShow.isNotEmpty()
 
     if (previewsToShow.isEmpty()) {
-      rightPaneCardLayout.show(rightPaneContent, "placeholder")
+      rightPaneCardLayout.show(rightPaneContent, CARD_PLACEHOLDER)
     } else {
       if (isLeafSelected) {
         rightPaneWrapper.remove(previewToolbar)
@@ -433,7 +435,7 @@ class UpdateReferenceImagesDialog(
         previewDetailsPanel.displayPreviews(previewsToShow, selectedViewType, null)
       }
 
-      rightPaneCardLayout.show(rightPaneContent, "details")
+      rightPaneCardLayout.show(rightPaneContent, CARD_DETAILS)
     }
     rightPaneWrapper.revalidate()
     rightPaneWrapper.repaint()
@@ -478,7 +480,7 @@ class UpdateReferenceImagesDialog(
 
     val imagesToCopy = checkedPreviews.map { previewDetails ->
       val sourceImageMap = mutableMapOf<String, String>()
-      val simpleClassName = previewDetails.testId.split('.', limit = 2).first()
+      val simpleClassName = previewDetails.className.substringAfterLast('.')
       previewDetails.srcImagePath?.let { sourceImageMap[it] = simpleClassName }
       ImageData(previewDetails, sourceImageMap)
     }

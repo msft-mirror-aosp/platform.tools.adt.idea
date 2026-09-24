@@ -17,7 +17,11 @@ package org.jetbrains.android.uipreview
 
 import com.android.tools.rendering.classloading.Preloader
 import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.Executor
 
-/** [Preloader] that uses [AppExecutorUtil.getAppExecutorService] as [Executor]. */
-class StudioPreloader(moduleClassLoader: StudioModuleClassLoader, classesToPreload: Collection<String> = emptyList()) :
-  Preloader<StudioModuleClassLoader>(moduleClassLoader, AppExecutorUtil.getAppExecutorService(), classesToPreload)
+/** [Preloader] that uses [AppExecutorUtil.getAppExecutorService] as [Executor] by default. */
+class StudioPreloader(
+  moduleClassLoader: StudioModuleClassLoader,
+  classesToPreload: Collection<String> = emptyList(),
+  executor: Executor = AppExecutorUtil.getAppExecutorService(),
+) : Preloader<StudioModuleClassLoader>(moduleClassLoader, executor, classesToPreload)

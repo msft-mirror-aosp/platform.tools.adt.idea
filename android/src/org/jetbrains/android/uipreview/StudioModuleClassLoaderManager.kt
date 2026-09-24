@@ -155,9 +155,9 @@ class StudioModuleClassLoaderManager : ModuleClassLoaderManager<StudioModuleClas
   ): ModuleClassLoaderManager.Reference<StudioModuleClassLoader> {
     val module: Module? = moduleRenderContext.buildTargetReference.moduleIfNotDisposed
     var moduleClassLoader = module?.getUserData(PRELOADER)?.getClassLoader()
-    val combinedProjectTransformations: ClassTransform by lazy { combine(PROJECT_DEFAULT_TRANSFORMS, additionalProjectTransformation) }
+    val combinedProjectTransformations: ClassTransform by lazy { combine(additionalProjectTransformation, PROJECT_DEFAULT_TRANSFORMS) }
     val combinedNonProjectTransformations: ClassTransform by lazy {
-      combine(NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS, additionalNonProjectTransformation)
+      combine(additionalNonProjectTransformation, NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS)
     }
 
     var oldClassLoader: StudioModuleClassLoader? = null
@@ -225,8 +225,8 @@ class StudioModuleClassLoaderManager : ModuleClassLoaderManager<StudioModuleClas
     val module: Module? = moduleRenderContext.buildTargetReference.moduleIfNotDisposed
     module?.project?.getService(ModuleClassLoaderProjectHelperService::class.java)
 
-    val combinedProjectTransformations = combine(PROJECT_DEFAULT_TRANSFORMS, additionalProjectTransformation)
-    val combinedNonProjectTransformations = combine(NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS, additionalNonProjectTransformation)
+    val combinedProjectTransformations = combine(additionalProjectTransformation, PROJECT_DEFAULT_TRANSFORMS)
+    val combinedNonProjectTransformations = combine(additionalNonProjectTransformation, NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS)
     val preloadedClassLoader: StudioModuleClassLoader? =
       module?.getOrCreateHatchery()?.requestClassLoader(parent, combinedProjectTransformations, combinedNonProjectTransformations)
     return (preloadedClassLoader

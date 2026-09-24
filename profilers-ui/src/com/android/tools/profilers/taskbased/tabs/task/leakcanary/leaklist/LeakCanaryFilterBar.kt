@@ -77,7 +77,11 @@ fun LeakCanaryFilterBar(leakCanaryModel: LeakCanaryModel, modifier: Modifier = M
   }
 
   LaunchedEffect(searchFieldTextState) {
-    snapshotFlow { searchFieldTextState.text.toString() }.collect { newText -> leakCanaryModel.setSearchQuery(newText) }
+    snapshotFlow { searchFieldTextState.text.toString() }.collect { newText ->
+      if (newText != leakCanaryModel.searchQuery.value) {
+        leakCanaryModel.setSearchQuery(newText)
+      }
+    }
   }
 
   Row(
@@ -123,7 +127,13 @@ fun LeakCanaryFilterBar(leakCanaryModel: LeakCanaryModel, modifier: Modifier = M
               AllIconsKeys.General.CloseSmall,
               contentDescription = TaskBasedUxStrings.LEAKCANARY_CONTENT_DESCRIPTION_CLEAR_SEARCH,
               modifier =
-                Modifier.clickable(onClick = { searchFieldTextState.setTextAndPlaceCursorAtEnd("") }).pointerHoverIcon(PointerIcon.Default),
+                Modifier.clickable(
+                    onClick = {
+                      searchFieldTextState.setTextAndPlaceCursorAtEnd("")
+                      leakCanaryModel.setSearchQuery("")
+                    }
+                  )
+                  .pointerHoverIcon(PointerIcon.Default),
             )
           })
           .takeIf { searchFieldTextState.text.isNotEmpty() },

@@ -23,10 +23,10 @@ import com.intellij.openapi.updateSettings.impl.BuildInfo;
 import com.intellij.openapi.updateSettings.impl.ChannelStatus;
 import com.intellij.openapi.updateSettings.impl.PlatformUpdates;
 import com.intellij.openapi.updateSettings.impl.UpdateData;
-import com.intellij.openapi.updateSettings.impl.UpdateStrategy;
 import com.intellij.openapi.updateSettings.impl.UpdateSettings;
+import com.intellij.openapi.updateSettings.impl.UpdateStrategy;
 import com.intellij.openapi.util.BuildNumber;
-import com.intellij.openapi.util.JDOMUtil;
+import java.util.stream.Collectors;
 import org.intellij.lang.annotations.Language;
 import org.junit.Test;
 
@@ -120,7 +120,9 @@ public final class AndroidStudioUpdateStrategyTest {
   }
 
   @Test
-  public void testUpdateStrategyUpdatesFromSameAndroidStudioVersionPreferred() throws Exception {
+  public void testUpdateStrategyPrefersNewestBuildInChannel() throws Exception {
+    // JetBrains prefers updates with the same "major" version, whereas we always prefer updating
+    // to the latest version in a given channel. See AndroidStudioUpdateStrategyCustomization.haveSameMajorVersion().
     @Language("XML") String updatesXml =
       "<products>" +
       "  <product name='Android Studio'>" +
@@ -128,7 +130,7 @@ public final class AndroidStudioUpdateStrategyTest {
       "    <channel id='AI-2-eap' status='eap'>" +
       "      <build number='AI-191.7480.19.35.5721732' version='3.6 Canary 5'/>" +
       "      <build number='AI-191.7480.19.35.5821739' version='3.6 Canary 6'/>" +
-      "      <build number='AI-191.7488.19.38.5821125' version='3.6 Canary 7'/>" +
+      "      <build number='AI-192.7488.20.38.5821125' version='3.6 Canary 7'/>" +
       "    </channel>" +
       "    <channel id='AI-2-beta' status='beta'>" +
       "      <build number='AI-191.7479.19.35.5763348' version='3.5 RC 2'/>" +
@@ -140,7 +142,7 @@ public final class AndroidStudioUpdateStrategyTest {
     when(settings.getSelectedChannelStatus()).thenReturn(ChannelStatus.EAP);
 
     assertThat(createBuild("AI-191.7479.19.35.5717577", updatesXml, settings).getNumber().asString())
-      .isEqualTo("AI-191.7480.19.35.5821739");
+      .isEqualTo("AI-192.7488.20.38.5821125");
   }
 
   @Test
@@ -161,15 +163,56 @@ public final class AndroidStudioUpdateStrategyTest {
     assertThat(createBuild("AI-191.7479.19.35.5717577", updatesXml, settings)).isNull();
   }
 
+  /**
+   * Regression test for b/564619952: a user on Rabbit 1 Canary 4 is offered Rabbit 1 Canary 5 instead of
+   * Rabbit 2 Canary 1, even though a patch chain is available (R1C4 -> R1C5 -> R2C1).
+   */
+  @Test
+  public void testUpdateChainingAcrossFeatureDrops() throws Exception {
+    // A trimmed copy of https://dl.google.com/android/studio/patches/updates.xml from September 2026.
+    @Language("XML") String updatesXml =
+      "<products>" +
+      "  <product name='Android Studio'>" +
+      "    <code>AI</code>" +
+      "    <channel id='AI-1-eap' status='eap'>" +
+      "      <build apiVersion='AI-262.10315.125' number='AI-262.10315.125.2622.16370930' version='Rabbit 2 | 2026.2.2 Canary 1'>" +
+      "        <patch from='262.9437.185.2621.16309011' size='90'/>" +
+      "      </build>" +
+      "      <build apiVersion='AI-262.9437.185' number='AI-262.9437.185.2621.16309011' version='Rabbit 1 | 2026.2.1 Canary 5'>" +
+      "        <patch from='262.9437.185.2621.16253642' size='68'/>" +
+      "        <patch from='262.9437.185.2621.16190720' size='89'/>" +
+      "      </build>" +
+      "      <build apiVersion='AI-262.9437.185' number='AI-262.9437.185.2621.16253642' version='Rabbit 1 | 2026.2.1 Canary 4'>" +
+      "        <patch from='262.9437.185.2621.16190720' size='76'/>" +
+      "      </build>" +
+      "    </channel>" +
+      "  </product>" +
+      "</products>";
+
+    UpdateSettings settings = mock(UpdateSettings.class);
+    when(settings.getSelectedChannelStatus()).thenReturn(ChannelStatus.EAP);
+
+    PlatformUpdates.Loaded result = checkForUpdates("AI-262.9437.185.2621.16253642", updatesXml, settings);
+    assertThat(result).isNotNull();
+    assertThat(result.getNewBuild().getNumber().asString()).isEqualTo("AI-262.10315.125.2622.16370930");
+    assertThat(result.getPatches()).isNotNull();
+    assertThat(result.getPatches().getChain().stream().map(BuildNumber::asStringWithoutProductCode).collect(Collectors.toList()))
+      .containsExactly("262.9437.185.2621.16253642", "262.9437.185.2621.16309011", "262.10315.125.2622.16370930")
+      .inOrder();
+  }
+
   private static BuildInfo createBuild(String version, String updatesXml, UpdateSettings settings) throws Exception {
+    PlatformUpdates.Loaded result = checkForUpdates(version, updatesXml, settings);
+    return result != null ? result.getNewBuild() : null;
+  }
+
+  private static PlatformUpdates.Loaded checkForUpdates(String version, String updatesXml, UpdateSettings settings) throws Exception {
     PlatformUpdates result = new UpdateStrategy(
       BuildNumber.fromString(version),
       UpdateData.parseUpdateData(updatesXml, "AI"),
       settings,
       new AndroidStudioUpdateStrategyCustomization())
       .checkForUpdates();
-    return (result instanceof PlatformUpdates.Loaded)
-           ? ((PlatformUpdates.Loaded)result).getNewBuild()
-           : null;
+    return (result instanceof PlatformUpdates.Loaded) ? (PlatformUpdates.Loaded)result : null;
   }
 }

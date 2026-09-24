@@ -41,5 +41,12 @@
     <issue id="TooManyViews">
         <option name="maxCount" value="20" />
     </issue>
+    <!-- Restrict suppression of an issue to specific annotations -->
+    <issue id="CompileTimeConstant">
+        <suppress-with annotation="com.example.AllowNonConstant" />
+        <suppress-with annotation="com.example.AllowNonConstantInTests" />
+    </issue>
+    <!-- Analyze test sources for this issue even when test checking is off -->
+    <issue id="IgnoreWithoutReason" tests="true" />
   <issue id="ThirdPartyCheck" severity="error" />
 </lint>

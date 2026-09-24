@@ -18,6 +18,7 @@ package com.android.tools.idea.compose.preview.animation.managers
 import androidx.compose.animation.tooling.ComposeAnimation
 import com.android.tools.idea.compose.preview.animation.AnimationClock
 import com.android.tools.idea.compose.preview.animation.ComposeAnimationTracker
+import com.android.tools.idea.compose.preview.animation.setClockTimes
 import com.android.tools.idea.compose.preview.animation.updateFromAndToStates
 import com.android.tools.idea.preview.animation.AnimationTabs
 import com.android.tools.idea.preview.animation.AnimationUnit
@@ -84,10 +85,16 @@ class FromToSupportedAnimationManager(
   override suspend fun syncAnimationWithState() {
     animationClock.apply {
       val (initial, target) = animationState.state.value
-      if (initial is AnimationUnit.Unit<*> && target is AnimationUnit.Unit<*>) {
-        executeInRenderSession(false, true) { updateFromAndToStates(animation, initial.components, target.components) }
-      } else {
-        executeInRenderSession(false, true) { updateFromAndToStates(animation, listOf(initial), listOf(target)) }
+      val time = if (frozenState.value.isFrozen) frozenState.value.frozenAt.toLong() else getCurrentTime().toLong()
+      val (fromState, toState) =
+        if (initial is AnimationUnit.Unit<*> && target is AnimationUnit.Unit<*>) {
+          initial.components to target.components
+        } else {
+          listOf(initial) to listOf(target)
+        }
+      executeInRenderSession(false, true) {
+        updateFromAndToStates(animation, fromState, toState)
+        setClockTimes(mapOf(animation to time))
       }
     }
   }

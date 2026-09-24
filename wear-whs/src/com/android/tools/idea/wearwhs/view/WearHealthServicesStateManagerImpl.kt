@@ -163,7 +163,12 @@ internal class WearHealthServicesStateManagerImpl(
   }
 
   override suspend fun triggerEvent(eventTrigger: EventTrigger) =
-    runWithStatus(WhsStateManagerStatus.Syncing, MAX_WAIT_TIME_FOR_MODIFICATION) { deviceManager.triggerEvent(eventTrigger) }
+    runWithStatus(WhsStateManagerStatus.Syncing, MAX_WAIT_TIME_FOR_MODIFICATION) {
+      deviceManager
+        .triggerEvent(eventTrigger)
+        .onSuccess { eventLogger.logTriggerEventSuccess() }
+        .onFailure { eventLogger.logTriggerEventFailure() }
+    }
 
   override fun loadPreset(preset: Preset): Job {
     this.preset.value = preset
@@ -290,11 +295,8 @@ internal class WearHealthServicesStateManagerImpl(
 
   override suspend fun reset() =
     runWithStatus(WhsStateManagerStatus.Syncing, MAX_WAIT_TIME_FOR_MODIFICATION) {
-      if (!ongoingExercise.value) {
-        resetCapabilities()
-      } else {
-        resetOverrides()
-      }
+      val result = if (!ongoingExercise.value) resetCapabilities() else resetOverrides()
+      result.onSuccess { eventLogger.logResetSuccess() }.onFailure { eventLogger.logResetFailure() }
     }
 
   override fun dispose() {}

@@ -239,13 +239,35 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
     StudioModuleClassLoaderManager.get().release(loaderReference);
   }
 
-  public void testNotUsedLoaderCouldBeOutOfDate() throws Exception {
+  public void testNotUsedLoaderSurvivesOverlayChange() throws Exception {
+    // This test relies on the class loader being built with an overlay loader in its pipeline, which only happens when Fast Preview is on.
+    assertTrue(FastPreviewConfiguration.Companion.getInstance().isEnabled());
     ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference =
       StudioModuleClassLoaderManager.get().getShared(null, StudioModuleRenderContext.forModule(myModule));
     StudioModuleClassLoader loader = loaderReference.getClassLoader();
     Path overlayTestDir = Files.createDirectories(Files.createTempDirectory("overlayTest"));
     assertTrue(loader.isUserCodeUpToDate());
-    // New overlay will make the code out-of-date, even if the class loader hasn't been used to load any class
+    // The class loader has not loaded any project class, so nothing it has already defined can be shadowed by the new overlay. It stays
+    // usable and any class loaded from now on is resolved against the new overlay contents.
+    ModuleClassLoaderOverlays.getInstance(BuildTargetReference.gradleOnly(myModule)).pushOverlayPath(overlayTestDir);
+    assertTrue(loader.isUserCodeUpToDate());
+    StudioModuleClassLoaderManager.get().release(loaderReference);
+  }
+
+  public void testLoaderBuiltWithoutOverlaySupportIsOutOfDateAfterOverlayChange() throws Exception {
+    // A class loader created while Fast Preview is disabled has no overlay loader in its pipeline, so it can never resolve the pushed
+    // classes. It must be discarded even though it has not loaded any project class, otherwise the preview would be permanently stale.
+    ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference;
+    FastPreviewConfiguration.Companion.getInstance().setEnabled(false);
+    try {
+      loaderReference = StudioModuleClassLoaderManager.get().getShared(null, StudioModuleRenderContext.forModule(myModule));
+    }
+    finally {
+      FastPreviewConfiguration.Companion.getInstance().resetDefault();
+    }
+    StudioModuleClassLoader loader = loaderReference.getClassLoader();
+    Path overlayTestDir = Files.createDirectories(Files.createTempDirectory("overlayTest"));
+    assertTrue(loader.isUserCodeUpToDate());
     ModuleClassLoaderOverlays.getInstance(BuildTargetReference.gradleOnly(myModule)).pushOverlayPath(overlayTestDir);
     assertFalse(loader.isUserCodeUpToDate());
     StudioModuleClassLoaderManager.get().release(loaderReference);

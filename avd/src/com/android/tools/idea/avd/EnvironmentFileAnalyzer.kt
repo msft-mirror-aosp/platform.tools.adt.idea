@@ -369,7 +369,21 @@ object EnvironmentFileAnalyzer {
 
   private fun hasAtLeastTwoToOneAspectRatio(width: Int, height: Int): Boolean = width > 0 && height > 0 && width >= height * 2
 
-  private fun hasCyclicBoundaryContinuity(image: BufferedImage, threshold: Double = 0.6): Boolean {
+  /** Checks if an image file has cyclic boundary continuity (left and right edges match seamlessly) using SSIM with the given threshold. */
+  fun hasCyclicBoundaryContinuity(path: Path, threshold: Double = 0.6): Boolean {
+    return try {
+      Files.newInputStream(path).use { inputStream ->
+        val image = ImageIO.read(inputStream) ?: return false
+        hasCyclicBoundaryContinuity(image, threshold)
+      }
+    } catch (e: Exception) {
+      thisLogger().warn("Failed to check cyclic boundary continuity: $path", e)
+      false
+    }
+  }
+
+  /** Checks if an image has cyclic boundary continuity (left and right edges match seamlessly) using SSIM with the given threshold. */
+  fun hasCyclicBoundaryContinuity(image: BufferedImage, threshold: Double = 0.6): Boolean {
     if (image.width < 2) return false
 
     val leftStrip = image.getSubimage(0, 0, 1, image.height)

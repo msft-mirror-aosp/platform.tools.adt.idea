@@ -22,9 +22,11 @@ import com.android.tools.idea.compose.preview.animation.AnimationClock
 import com.android.tools.idea.compose.preview.animation.NoopComposeAnimationTracker
 import com.android.tools.idea.compose.preview.animation.TestClock
 import com.android.tools.idea.compose.preview.animation.state.EmptyState
+import com.android.tools.idea.compose.preview.animation.state.FromToStateComboBox
 import com.android.tools.idea.preview.animation.AnimationTabs
 import com.android.tools.idea.preview.animation.AnimationUnit
 import com.android.tools.idea.preview.animation.PlaybackControls
+import com.android.tools.idea.preview.animation.SupportedAnimationManager
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import javax.swing.JPanel
@@ -75,6 +77,94 @@ internal class ComposeSupportedAnimationManagerTest {
       assertTrue { it.unit is AnimationUnit.DoubleUnit }
       assertEquals(listOf(1.0), it.unit.components)
     }
+  }
+
+  @Test
+  fun fromToSupportedAnimationManagerSyncsStateAndSetsClockTimes() = runTest {
+    var updatedFromTo = false
+    var clockTimeSet: Map<ComposeAnimation, Long>? = null
+    val clock =
+      object : TestClock() {
+        override fun updateFromAndToStates(animation: ComposeAnimation, fromState: Any, toState: Any) {
+          updatedFromTo = true
+        }
+
+        override fun setClockTimes(clockTimeMillis: Map<ComposeAnimation, Long>) {
+          clockTimeSet = clockTimeMillis
+        }
+      }
+
+    val manager =
+      FromToSupportedAnimationManager(
+        animation = animation,
+        tabTitle = "Title",
+        tracker = NoopComposeAnimationTracker,
+        animationClock = AnimationClock(clock),
+        maxDurationPerIteration = MutableStateFlow(100L),
+        getCurrentTime = { 150 },
+        executeInRenderSession = { _, _, job -> job() },
+        tabbedPane = AnimationTabs(projectRule.project, projectRule.testRootDisposable),
+        rootComponent = JPanel(),
+        playbackControls = mock<PlaybackControls>(),
+        updateTimelineElementsCallback = {},
+        scope = backgroundScope,
+        animationState = FromToStateComboBox(NoopComposeAnimationTracker, setOf(1, 2), 1),
+      )
+
+    manager.syncAnimationWithState()
+    assertTrue(updatedFromTo)
+    assertEquals(mapOf(animation to 150L), clockTimeSet)
+
+    manager.frozenState.value = SupportedAnimationManager.FrozenState(isFrozen = true, frozenAt = 80)
+    manager.syncAnimationWithState()
+    assertEquals(mapOf(animation to 80L), clockTimeSet)
+  }
+
+  @Test
+  fun animatedVisibilityAnimationManagerSyncsStateAndSetsClockTimes() = runTest {
+    var updatedVisibilityState = false
+    var clockTimeSet: Map<ComposeAnimation, Long>? = null
+    val clock =
+      object : TestClock() {
+        override fun updateAnimatedVisibilityState(animation: Any, state: Any) {
+          updatedVisibilityState = true
+        }
+
+        override fun setClockTimes(clockTimeMillis: Map<ComposeAnimation, Long>) {
+          clockTimeSet = clockTimeMillis
+        }
+      }
+
+    val visibilityAnimation: ComposeAnimation =
+      object : ComposeAnimation {
+        override val animationObject = Any()
+        override val type = ComposeAnimationType.ANIMATED_VISIBILITY
+        override val states = setOf("Enter", "Exit")
+      }
+
+    val manager =
+      AnimatedVisibilityAnimationManager(
+        animation = visibilityAnimation,
+        tabTitle = "Title",
+        tracker = NoopComposeAnimationTracker,
+        animationClock = AnimationClock(clock),
+        maxDurationPerIteration = MutableStateFlow(100L),
+        getCurrentTime = { 250 },
+        executeInRenderSession = { _, _, job -> job() },
+        tabbedPane = AnimationTabs(projectRule.project, projectRule.testRootDisposable),
+        rootComponent = JPanel(),
+        playbackControls = mock<PlaybackControls>(),
+        updateTimelineElementsCallback = {},
+        scope = backgroundScope,
+      )
+
+    manager.syncAnimationWithState()
+    assertTrue(updatedVisibilityState)
+    assertEquals(mapOf<ComposeAnimation, Long>(visibilityAnimation to 250L), clockTimeSet)
+
+    manager.frozenState.value = SupportedAnimationManager.FrozenState(isFrozen = true, frozenAt = 60)
+    manager.syncAnimationWithState()
+    assertEquals(mapOf<ComposeAnimation, Long>(visibilityAnimation to 60L), clockTimeSet)
   }
 
   private fun createManager(scope: CoroutineScope): ComposeSupportedAnimationManager {

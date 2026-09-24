@@ -16,8 +16,11 @@
 package com.android.tools.idea.diagnostics.hprof
 
 import com.android.tools.idea.diagnostics.hprof.analysis.AnalysisConfig
+import com.android.tools.idea.diagnostics.hprof.analysis.AnalysisReport
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
+import java.lang.ref.PhantomReference
+import java.lang.ref.ReferenceQueue
 import java.lang.ref.WeakReference
 import org.junit.After
 import org.junit.Assert
@@ -52,6 +55,44 @@ class HeapAnalysisTest {
         override fun mapClassName(clazz: Class<*>): String = classNameMapping?.invoke(clazz) ?: super.mapClassName(clazz)
       }
       .run(scenario, baselineFileName, nominatedClassNames, config = config, summaryBaselineFileName = summaryBaselineFileName)
+  }
+
+  private fun createReport(
+    scenario: HProfBuilder.() -> Unit,
+    nominatedClassNames: List<String>? = null,
+    classNameMapping: ((Class<*>) -> String)? = null,
+    config: AnalysisConfig? = null,
+  ): AnalysisReport {
+    return object : HProfScenarioRunner(tmpFolder, remapInMemory) {
+        override fun mapClassName(clazz: Class<*>): String = classNameMapping?.invoke(clazz) ?: super.mapClassName(clazz)
+      }
+      .createReport(scenario, nominatedClassNames, config = config)
+  }
+
+  @Test
+  fun testPhantomReferenceNotTreatedAsStrong() {
+    class TargetClass
+    class Holder(val phantomRef: PhantomReference<TargetClass>)
+
+    ReferenceStore().use { refStore ->
+      val scenario: HProfBuilder.() -> Unit = {
+        addObject(PhantomReference::class.java)
+        val target = TargetClass()
+        val phantomRef = refStore.createPhantomReference(target)
+        val holder = Holder(phantomRef)
+        addRootUnknown(holder)
+      }
+      val report = createReport(scenario, listOf("TargetClass", "Holder"))
+      val reportString = report.mainReport.toString()
+      // Holder should be reached from GC root
+      Assert.assertTrue(reportString.contains("CLASS: Holder"))
+      // TargetClass is nominated and present in report
+      Assert.assertTrue(reportString.contains("CLASS: TargetClass"))
+      // TargetClass is reached via (phantom) reference
+      Assert.assertTrue(reportString.contains("(phantom)"))
+      // Summary should count it under non-zero Finalizable size
+      Assert.assertFalse(reportString.contains("Finalizable size: 0B"))
+    }
   }
 
   @Test
@@ -397,6 +438,11 @@ private class ReferenceStore : AutoCloseable {
   fun <T> createWeakReference(obj: T): WeakReference<T> {
     set.add(obj)
     return WeakReference(obj)
+  }
+
+  fun <T> createPhantomReference(obj: T, queue: ReferenceQueue<in T> = ReferenceQueue()): PhantomReference<T> {
+    set.add(obj)
+    return PhantomReference(obj, queue)
   }
 
   override fun close() {

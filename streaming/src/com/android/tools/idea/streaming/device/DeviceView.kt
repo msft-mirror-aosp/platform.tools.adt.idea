@@ -145,7 +145,7 @@ import org.jetbrains.annotations.VisibleForTesting
 internal class DeviceView(
   disposableParent: Disposable,
   val deviceClient: DeviceClient,
-  override val project: Project,
+  project: Project,
   displayId: Int,
   val displayType: DisplayType,
   displaySize: Dimension,
@@ -604,14 +604,14 @@ internal class DeviceView(
     val scale =
       if (framing == Framing.INNER) {
         val environmentSize = checkNotNull(environmentSize)
-        roundScale(
+        computeRoundedScale(
           min(
             maxWidth / deviceDisplaySize.width * environmentSize.width / w,
             maxHeight / deviceDisplaySize.height * environmentSize.height / h,
           )
         )
       } else {
-        roundScale(min(maxWidth / w, maxHeight / h))
+        computeRoundedScale(min(maxWidth / w, maxHeight / h))
       }
     w = w.scaled(scale)
     h = h.scaled(scale)

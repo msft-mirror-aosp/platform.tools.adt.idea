@@ -161,6 +161,10 @@ class StudioRenderSandbox(val sdkPath: String?, val projectPath: String?, val ap
     throw SecurityException("Access to class loader via ${clazz.name} is denied during rendering")
   }
 
+  override fun checkResourceLoad(resourceName: String) {
+    // Allow resource loading
+  }
+
   override fun checkClassLoaderAccess() {
     throw SecurityException("Class loader navigation is denied during rendering")
   }
@@ -206,7 +210,8 @@ class StudioRenderSandbox(val sdkPath: String?, val projectPath: String?, val ap
     if (path.startsWith("#") && !path.contains(File.separator)) return true
 
     // Needed by layoutlib's class loader to load classes.
-    if (path.endsWith(".class") || path.endsWith(".jar")) return true
+    if (path.endsWith(".class") || path.endsWith(".jar") || path.endsWith(".kotlin_builtins") || path.endsWith(".kotlin_module"))
+      return true
 
     // Allow reading files in temp
     if (isTempDirPath(canonicalPath)) return true

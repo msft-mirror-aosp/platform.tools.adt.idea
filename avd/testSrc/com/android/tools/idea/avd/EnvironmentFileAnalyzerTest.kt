@@ -384,6 +384,43 @@ class EnvironmentFileAnalyzerTest {
   }
 
   @Test
+  fun testHasCyclicBoundaryContinuity_seamless() {
+    val w = 200
+    val h = 100
+    val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+    for (y in 0 until h) {
+      for (x in 0 until w) {
+        val v = (128 + 127 * sin(2 * PI * x / w)).toInt().coerceIn(0, 255)
+        val color = (v shl 16) or (v shl 8) or v
+        img.setRGB(x, y, color)
+      }
+    }
+    assertThat(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(img, threshold = 0.6)).isTrue()
+
+    val tempFile = Files.createTempFile("seamless", ".png")
+    ImageIO.write(img, "png", tempFile.toFile())
+    assertThat(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(tempFile, threshold = 0.6)).isTrue()
+  }
+
+  @Test
+  fun testHasCyclicBoundaryContinuity_discontinuous() {
+    val w = 200
+    val h = 100
+    val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+    for (y in 0 until h) {
+      for (x in 0 until w) {
+        val color = if (x < w / 2) 0x000000 else 0xFFFFFF
+        img.setRGB(x, y, color)
+      }
+    }
+    assertThat(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(img, threshold = 0.6)).isFalse()
+
+    val tempFile = Files.createTempFile("discontinuous", ".png")
+    ImageIO.write(img, "png", tempFile.toFile())
+    assertThat(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(tempFile, threshold = 0.6)).isFalse()
+  }
+
+  @Test
   fun testIs3dSceneFile() {
     val tempDir = Files.createTempDirectory("test")
     val objFile = tempDir.resolve("scene.obj")

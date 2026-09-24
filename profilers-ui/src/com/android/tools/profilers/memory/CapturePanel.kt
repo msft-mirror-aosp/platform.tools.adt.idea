@@ -223,7 +223,7 @@ private class CapturePanelUi(
 
       val totalClassLabel = mkLabel("Classes")
       val totalLeakLabel = mkLabel("Leaks")
-      val totalBitmapDuplicatesLabel = mkLabel("Duplicates")
+      val totalBitmapDuplicatesLabel = mkLabel("Duplicate Bitmaps")
       val totalCountLabel = mkLabel("Count")
       val totalNativeSizeLabel = mkLabel("Native Size")
       val totalShallowSizeLabel = mkLabel("Shallow Size")

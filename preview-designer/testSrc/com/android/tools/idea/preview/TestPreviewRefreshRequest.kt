@@ -78,8 +78,7 @@ internal class TestPreviewRefreshRequest(
         RefreshResult.SUCCESS -> log.appendLine("finish $name")
         RefreshResult.AUTOMATICALLY_CANCELLED -> log.appendLine("auto-cancel $name")
         RefreshResult.USER_CANCELLED -> log.appendLine("user-cancel $name")
-        // This should never happen, and if it does the test will fail when doing assertions about
-        // the content of 'log'
+        RefreshResult.FAILED -> log.appendLine("failed $name")
         else -> log.appendLine("unexpected result")
       }
       expectedLogPrintCount.countDown()

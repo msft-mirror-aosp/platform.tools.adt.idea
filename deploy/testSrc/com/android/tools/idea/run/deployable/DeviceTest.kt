@@ -197,6 +197,12 @@ class DeviceTest {
     assertInvalidClients()
   }
 
+  @Test
+  fun testInvalidApplicationId() {
+    myPreOBinder.setStatus(DeviceState.DeviceStatus.ONLINE)
+    assertThat(myApplicationIdResolver.resolve(myPreOBinder.iDevice, "com.example; rm -rf /")).isEmpty()
+  }
+
   private fun assertInvalidClients() {
     assertThat(myApplicationIdResolver.resolve(myPreOBinder.iDevice, INVALID_APP_ID)).isEmpty()
     assertThat(myApplicationIdResolver.resolve(myOBinder.iDevice, INVALID_APP_ID)).isEmpty()

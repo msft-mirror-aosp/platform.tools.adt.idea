@@ -48,6 +48,7 @@ class TestDataSyncRunner(private val context: Context<*>) {
         testSources = emptySet(),
         isAndroidWorkspace = true,
         languageClasses = emptySet(),
+        supportsNestedWorkspaces = true,
       )
     val querySummary = QuerySyncTestUtils.getQuerySummary(testProject)
     val pqsd = PostQuerySyncData.builder().setQuerySummary(querySummary).build()

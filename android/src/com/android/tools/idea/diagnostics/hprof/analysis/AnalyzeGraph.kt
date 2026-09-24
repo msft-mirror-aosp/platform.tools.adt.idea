@@ -292,9 +292,12 @@ class AnalyzeGraph(private val analysisContext: AnalysisContext, private val lis
 
     var phase = WalkGraphPhase.StrongReferencesNonLocalVariables // initial state
 
+    val phantomReferenceIdToParentMap = Int2IntOpenHashMap()
     val cleanerObjects = IntArrayList()
     val sunMiscCleanerClass = classStore.getClassIfExists("sun.misc.Cleaner")
     val jdkInternalRefCleanerClass = classStore.getClassIfExists("jdk.internal.ref.Cleaner")
+    val jdkInternalRefCleanerImplClass = classStore.getClassIfExists("jdk.internal.ref.CleanerImpl")
+    val javaLangRefCleanerClass = classStore.getClassIfExists("java.lang.ref.Cleaner")
     val finalizerClass = classStore.getClassIfExists("java.lang.ref.Finalizer")
 
     val disposedReferencedNonRootSet = IntOpenHashSet()
@@ -320,6 +323,8 @@ class AnalyzeGraph(private val analysisContext: AnalysisContext, private val lis
         if (
           (currentObjectClass == sunMiscCleanerClass ||
             currentObjectClass == jdkInternalRefCleanerClass ||
+            currentObjectClass == jdkInternalRefCleanerImplClass ||
+            currentObjectClass == javaLangRefCleanerClass ||
             currentObjectClass == finalizerClass) && phase < WalkGraphPhase.CleanerFinalizerReferences
         ) {
           if (!onlyStrongReferences) {
@@ -348,6 +353,14 @@ class AnalyzeGraph(private val analysisContext: AnalysisContext, private val lis
         if (phase < WalkGraphPhase.WeakReferences && nav.getWeakReferenceId() != 0L) {
           if (!onlyStrongReferences) {
             weakReferenceIdToParentMap.put(nav.getWeakReferenceId().toInt(), id)
+          }
+          references[nav.getSoftWeakReferenceIndex()] = 0L
+        }
+
+        // Postpone any phantom references encountered before the phase that handles them
+        if (phase < WalkGraphPhase.CleanerFinalizerReferences && nav.getPhantomReferenceId() != 0L) {
+          if (!onlyStrongReferences) {
+            phantomReferenceIdToParentMap.put(nav.getPhantomReferenceId().toInt(), id)
           }
           references[nav.getSoftWeakReferenceIndex()] = 0L
         }
@@ -434,6 +447,13 @@ class AnalyzeGraph(private val analysisContext: AnalysisContext, private val lis
           WalkGraphPhase.CleanerFinalizerReferences -> {
             toVisit.addAll(cleanerObjects)
             cleanerObjects.clear()
+            phantomReferenceIdToParentMap.forEach { (phantomId, parentId) ->
+              if (addIdToListAndSetParentIfOrphan(toVisit, phantomId, parentId)) {
+                refIndexList[phantomId] = RefIndexUtil.PHANTOM_REFERENCE
+              }
+            }
+            phantomReferenceIdToParentMap.clear()
+            phantomReferenceIdToParentMap.trim()
           }
           WalkGraphPhase.SoftReferences -> {
             softReferenceIdToParentMap.forEach { (softId, parentId) ->

@@ -172,9 +172,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     ThreadControllingTransform::new,
     CooperativeInterruptTransform::new,
     RenderActionAllocationLimiterTransform::new,
-    SdkIntReplacer::new,
-    // Leave this transformation as last so the rest of the transformations operate on the regular names.
-    visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE)
+    SdkIntReplacer::new
   ).plus(
     UtilKt.toClassTransform(
       ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
@@ -182,6 +180,9 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     )
   ).plus(
     (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
+  ).plus(
+    // Leave this transformation as last so the rest of the transformations operate on the regular names.
+    ImmutableList.of(visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE))
   );
 
   static final ClassTransform NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS = UtilKt.toClassTransform(
@@ -200,9 +201,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     SdkIntReplacer::new,
     // Because of the use of RepackageTransform, we also need to ensure that certain internal constants are correctly renamed
     // so they point to the new repackaged classes.
-    visitor -> new StringReplaceTransform(visitor, STRING_REPLACEMENTS),
-    // Leave this transformation as last so the rest of the transformations operate on the regular names.
-    visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE)
+    visitor -> new StringReplaceTransform(visitor, STRING_REPLACEMENTS)
   ).plus(
     UtilKt.toClassTransform(
       ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
@@ -210,6 +209,9 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     )
   ).plus(
     (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
+  ).plus(
+    // Leave this transformation as last so the rest of the transformations operate on the regular names.
+    ImmutableList.of(visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE))
   );
 
   private static final ExecutorService ourDisposeService =

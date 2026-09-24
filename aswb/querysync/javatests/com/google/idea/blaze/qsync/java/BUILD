@@ -19,6 +19,18 @@ aswb_test(
 )
 
 aswb_test(
+    name = "PackageReaderUtilsTest",
+    size = "small",
+    srcs = ["PackageReaderUtilsTest.kt"],
+    deps = [
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/java",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
+    ],
+)
+
+aswb_test(
     name = "AddCompiledJavaDepsTest",
     size = "small",
     srcs = ["AddCompiledJavaDepsTest.kt"],

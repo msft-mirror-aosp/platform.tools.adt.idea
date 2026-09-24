@@ -26,3 +26,9 @@ internal const val COULD_NOT_LOAD_IMAGE_TEXT = "Couldn't load image"
 internal const val DEFAULT_MATCH_PERCENTAGE = "0.00%"
 internal const val UNNAMED_FUNCTION_TEXT = "Unnamed Function"
 internal const val NEW_TAG_TEXT = "New"
+
+// Keys for CardLayout switching in screenshot UI dialogs and panels.
+internal const val CARD_PLACEHOLDER = "placeholder"
+internal const val CARD_DETAILS = "details"
+internal const val CARD_CONTENT = "content"
+internal const val CARD_LOADING = "Loading"

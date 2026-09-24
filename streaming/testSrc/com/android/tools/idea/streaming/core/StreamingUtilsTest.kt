@@ -51,4 +51,25 @@ class StreamingUtilsTest {
       }
     }
   }
+
+  @Test
+  fun testRoundDownToNaturalNumberOrNearestSmallFraction() {
+    // Scales >= 1.
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(1.0)).isEqualTo(1.0)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(1.5)).isEqualTo(1.0)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(2.0)).isEqualTo(2.0)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(3.9)).isEqualTo(3.0)
+
+    // Fractional scales < 1.
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(0.99)).isEqualTo(0.9921875)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(0.98)).isEqualTo(0.9765625)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(0.75)).isEqualTo(0.75)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(0.625)).isEqualTo(0.625)
+
+    // Power-of-two boundaries.
+    for (i in 1..10) {
+      val p = 1.0 / (1 shl i)
+      assertThat(roundDownToNaturalNumberOrNearestSmallFraction(p)).isEqualTo(p)
+    }
+  }
 }

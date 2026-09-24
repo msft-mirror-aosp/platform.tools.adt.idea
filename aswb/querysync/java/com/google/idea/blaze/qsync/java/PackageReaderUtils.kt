@@ -36,3 +36,27 @@ fun choosePackageCandidates(
     .filter { exists(it) }
     .take(limit)
 }
+
+/**
+ * Converts a Java package name to a safe relative [Path].
+ *
+ * Package delimiter dots (`.`) separate relative path components. Empty segments (such as from leading, trailing, or consecutive dots) are
+ * discarded. Within each segment, Unicode alphanumeric characters are preserved, while any unsafe or path-breaking symbols (e.g., '/',
+ * '\\', ':', whitespace, control characters) fall back to '_'. Literal underscores are also preserved as '_'.
+ *
+ * The resulting path is guaranteed to be strictly relative and contained within the root.
+ */
+fun packageNameToRelativePath(packageName: String): Path {
+  val segments =
+    packageName
+      .splitToSequence('.')
+      .map { segment ->
+        segment.map { c -> if (c.isLetterOrDigit()) c else '_' }.joinToString("")
+      }
+      .filter { it.isNotEmpty() }
+      .toList()
+  if (segments.isEmpty()) {
+    return Path.of("")
+  }
+  return segments.fold(Path.of("")) { acc, segment -> acc.resolve(segment) }.normalize()
+}

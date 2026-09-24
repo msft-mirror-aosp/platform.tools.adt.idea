@@ -15,6 +15,7 @@
  */
 package com.android.tools.preview
 
+import com.android.tools.rendering.classloading.ModuleClassLoader
 import com.android.tools.rendering.security.DenyAllRenderSandbox
 import com.android.tools.rendering.security.RenderSandboxDelegate
 import com.android.tools.rendering.security.RenderSandboxTransformTrampoline
@@ -98,6 +99,14 @@ internal object BasicRenderSandbox : RenderSandboxDelegate(DenyAllRenderSandbox)
 
   override fun checkClassLoad(classFqn: String) {
     // Allow class loading
+  }
+
+  override fun checkGetClassLoader(clazz: Class<*>) {
+    val cl = clazz.classLoader ?: return
+    if (cl is ModuleClassLoader) {
+      return
+    }
+    throw SecurityException("Access to class loader via ${clazz.name} is denied during rendering")
   }
 
   override fun checkResourceLoad(resourceName: String) {

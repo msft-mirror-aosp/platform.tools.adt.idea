@@ -84,6 +84,7 @@ class SnapshotSerializer() {
       setIsAndroidWorkspace(projectDefinition.isAndroidWorkspace)
       addAllLanguageClasses(projectDefinition.languageClasses.map { it.protoValue })
       addAllTestSources(projectDefinition.testSources)
+      setSupportsNestedWorkspaces(projectDefinition.supportsNestedWorkspaces)
     }
   }
 
@@ -133,7 +134,7 @@ class SnapshotSerializer() {
   }
 
   companion object {
-    const val PROTO_VERSION: Int = 10
+    const val PROTO_VERSION: Int = 11
 
     private fun Operation.toProto(): VcsOperation =
       when (this) {

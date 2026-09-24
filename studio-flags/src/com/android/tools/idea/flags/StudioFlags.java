@@ -1275,6 +1275,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_CHROME_DEVTOOLS_MENU = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.chrome.devtools.menu", "Supply a Chrome DevTools menu item for WebViews",
     "Add a menu item to the context menu in the Layout Inspector that will launch Chrome DevTools for WebViews.");
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_BACK_STACK_VISUAL = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.back.stack.visual", "Show the back stack in the Layout Inspector",
+    "When using navigation3, a visual UI of a back stack in Layout Inspector");
   //endregion
 
   //region Embedded Emulator
@@ -2163,15 +2167,15 @@ public final class StudioFlags {
 
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
-  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART =
-    new BooleanFlag(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup");
-  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET =
-    new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup",
-                    "Reset the results cache before running filters on startup");
+  public static final Flag<Boolean> TSDKVUA_NO_FILTERS_ONSTART =
+    new BooleanFlag(TSDKVUA, "filters.onstart", "Don't run filters on assistant startup", "Don't run filters on assistant startup");
+  public static final Flag<Boolean> TSDKVUA_NO_FILTERS_ONSTART_RESET =
+    new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Don't reset the results cache before running filters on startup",
+                    "Don't reset the results cache before running filters on startup");
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP =
     new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters");
   public static final Flag<Integer> TSDKVUA_API_NEXT =
-    new IntFlag(TSDKVUA, "api.next", "The version of the next API", "The version of the next API", 36);
+    new IntFlag(TSDKVUA, "api.next", "The version of the next API", "The version of the next API", 37);
   public static final Flag<Boolean> TSDKVUA_API_NEXT_ENABLE =
     new BooleanFlag(TSDKVUA, "api.next.enable", "Enable support for the next API", "Enable support for the next API");
   public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(

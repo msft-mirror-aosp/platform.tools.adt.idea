@@ -29,6 +29,7 @@ import com.google.idea.blaze.qsync.testdata.BuildGraphs
 import com.google.idea.blaze.qsync.testdata.TestData
 import java.io.IOException
 import java.nio.file.Path
+import java.util.Properties
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
@@ -199,7 +200,7 @@ class BuildGraphDataImplTest {
     assertThat(graph.getSourceFileOwners(Label.of("//$TESTDATA_ROOT/multitarget:TestClassMultiTarget.java")))
       .containsExactly(Label.of("//$TESTDATA_ROOT/multitarget:nodeps"), Label.of("//$TESTDATA_ROOT/multitarget:externaldep"))
     assertThat(getRequiredTargets(graph, listOf(Label.of("//" + TESTDATA_ROOT.resolve("multitarget:externaldep")))))
-      .contains(Label.of("@@+intellij+intellij//:intellij-sdk"))
+      .contains(Label.of("@@${repoMap.getProperty("intellij")}//:intellij-sdk"))
     assertThat(getRequiredTargets(graph, listOf(Label.of("//" + TESTDATA_ROOT.resolve("multitarget:nodeps"))))).isEmpty()
   }
 
@@ -218,7 +219,7 @@ class BuildGraphDataImplTest {
     val sourceFile: Path = TESTDATA_ROOT.resolve("exports/TestClassUsingExport.java")
     assertThat(graph.getJavaSourceFiles()).containsExactly(sourceFile)
     assertThat(getRequiredTargets(graph, listOf(Label.of("//" + TESTDATA_ROOT.resolve("exports:exports")))))
-      .containsExactly(Label.of("@@+intellij+intellij//:intellij-sdk"))
+      .containsExactly(Label.of("@@${repoMap.getProperty("intellij")}//:intellij-sdk"))
   }
 
   @Test
@@ -315,7 +316,7 @@ class BuildGraphDataImplTest {
     assertThat(graph.getSourceFileOwners(graph.sourceFileToLabel(subgroupSourceFile)!!))
       .containsExactly(Label.of("//$TESTDATA_ROOT/filegroup:filegroup"))
     assertThat(getRequiredTargets(graph, listOf(Label.of("//$TESTDATA_ROOT/filegroup:filegroup"))))
-      .containsExactly(Label.of("@@+intellij+intellij//:intellij-sdk"))
+      .containsExactly(Label.of("@@${repoMap.getProperty("intellij")}//:intellij-sdk"))
   }
 
   @Test
@@ -429,7 +430,7 @@ class BuildGraphDataImplTest {
         TestData.JAVA_LIBRARY_MULTI_TARGETS.assumedOnlyLabel.siblingWithName("externaldep"),
         TestData.JAVA_LIBRARY_MULTI_TARGETS.assumedOnlyLabel.siblingWithName("nodeps"),
       )
-    val expected = "@@+intellij+intellij//:intellij-sdk"
+    val expected = "@@${repoMap.getProperty("intellij")}//:intellij-sdk"
     val required = targets.requiredTargets(graph.getCodeAnalysisDependencyGraphProvider())
     assertThat(required).containsExactly(Label.of(expected))
   }
@@ -456,7 +457,7 @@ class BuildGraphDataImplTest {
       )
     assertThat(targets.targetsToBuild).containsExactly(TestData.JAVA_LIBRARY_NESTED_PACKAGE.assumedOnlyLabel)
     val required = targets.requiredTargets(graph.getCodeAnalysisDependencyGraphProvider())
-    assertThat(required).containsExactly(Label.of("@@+intellij+intellij//:intellij-sdk"))
+    assertThat(required).containsExactly(Label.of("@@${repoMap.getProperty("intellij")}//:intellij-sdk"))
   }
 
   @Test
@@ -486,7 +487,10 @@ class BuildGraphDataImplTest {
       )
     val required = targets.requiredTargets(graph.getCodeAnalysisDependencyGraphProvider())
     assertThat(required)
-      .containsExactly(Label.of("@@+intellij+intellij//:intellij-sdk"), Label.of("@@+_repo_rules2+maven//:com.google.code.gson.gson"))
+      .containsExactly(
+        Label.of("@@${repoMap.getProperty("intellij")}//:intellij-sdk"),
+        Label.of("@@${repoMap.getProperty("maven")}//:com.google.code.gson.gson"),
+      )
   }
 
   @Test
@@ -811,5 +815,10 @@ class BuildGraphDataImplTest {
     private val TEST_ROOT: Path = Path.of("tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync")
 
     private val TESTDATA_ROOT: Path = TEST_ROOT.resolve("testdata")
+
+    private val repoMap =
+      Properties().apply {
+        BuildGraphDataImplTest::class.java.getResourceAsStream("/repo_map.properties")!!.use { load(it) }
+      }
   }
 }

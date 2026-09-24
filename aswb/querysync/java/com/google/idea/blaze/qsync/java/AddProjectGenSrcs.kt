@@ -100,7 +100,7 @@ class AddProjectGenSrcs(
           if (javaPackage == null) {
             missingPackageArtifacts.add(genSrc)
           } else {
-            val finalDest = Path.of(javaPackage.replace('.', '/')).resolve(genSrc.artifactPath.fileName)
+            val finalDest = packageNameToRelativePath(javaPackage).resolve(genSrc.artifactPath.fileName)
             srcsByJavaPath.getOrPut(finalDest) { mutableListOf() }.add(ArtifactWithOrigin(genSrc, target.buildContext))
           }
         }

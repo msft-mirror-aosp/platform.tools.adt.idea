@@ -19,6 +19,7 @@ import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
+import com.intellij.xml.util.XmlStringUtil
 
 /** Provides any information to user in balloon while user starts configuration(deploy/launch/connect debugger). */
 object RunConfigurationNotifier {
@@ -28,28 +29,28 @@ object RunConfigurationNotifier {
   fun notifyWarning(project: Project, configurationName: String, text: String) {
     NotificationGroupManager.getInstance()
       .getNotificationGroup(ID)
-      .createNotification(title = "Run $configurationName", text, NotificationType.WARNING)
+      .createNotification(title = "Run $configurationName", XmlStringUtil.escapeString(text), NotificationType.WARNING)
       .notify(project)
   }
 
   fun notifyInfo(project: Project, configurationName: String, text: String) {
     NotificationGroupManager.getInstance()
       .getNotificationGroup(ID)
-      .createNotification(title = "Run $configurationName", text, NotificationType.INFORMATION)
+      .createNotification(title = "Run $configurationName", XmlStringUtil.escapeString(text), NotificationType.INFORMATION)
       .notify(project)
   }
 
   fun notifyError(project: Project, configurationName: String, text: String) {
     NotificationGroupManager.getInstance()
       .getNotificationGroup(ID)
-      .createNotification(title = "Run $configurationName", text, NotificationType.ERROR)
+      .createNotification(title = "Run $configurationName", XmlStringUtil.escapeString(text), NotificationType.ERROR)
       .notify(project)
   }
 
   fun notifyErrorWithAction(project: Project, configurationName: String, text: String, action: NotificationAction) {
     NotificationGroupManager.getInstance()
       .getNotificationGroup(ID)
-      .createNotification(title = "Run $configurationName", text, NotificationType.ERROR)
+      .createNotification(title = "Run $configurationName", XmlStringUtil.escapeString(text), NotificationType.ERROR)
       .addAction(action)
       .notify(project)
   }

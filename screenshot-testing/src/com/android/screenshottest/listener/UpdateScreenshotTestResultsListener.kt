@@ -26,6 +26,14 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.Executor
 
+private const val ARTIFACT_KEY_METHOD_NAME = "PreviewScreenshot.methodName"
+private const val ARTIFACT_KEY_PREVIEW_NAME = "PreviewScreenshot.previewName"
+private const val ARTIFACT_KEY_REF_IMAGE_PATH = "PreviewScreenshot.refImagePath"
+private const val ARTIFACT_KEY_NEW_IMAGE_PATH = "PreviewScreenshot.newImagePath"
+private const val ARTIFACT_KEY_DIFF_IMAGE_PATH = "PreviewScreenshot.diffImagePath"
+private const val ARTIFACT_KEY_DIFF_PERCENT = "PreviewScreenshot.diffPercent"
+private const val SIZE_MISMATCH_PREFIX = "Size Mismatch"
+
 /**
  * A listener that receives screenshot test results and passes them to the UI dialog.
  *
@@ -42,8 +50,9 @@ class UpdateScreenshotTestResultsListener(
     testCase: AndroidTestCase,
   ) {
     val className = testCase.className
-    val methodName = testCase.additionalTestArtifacts["PreviewScreenshot.methodName"] ?: " "
-    val rawPreviewName = testCase.additionalTestArtifacts["PreviewScreenshot.previewName"] ?: " "
+    val artifacts = testCase.additionalTestArtifacts
+    val methodName = artifacts[ARTIFACT_KEY_METHOD_NAME] ?: " "
+    val rawPreviewName = artifacts[ARTIFACT_KEY_PREVIEW_NAME] ?: " "
     val previewName = cleanPreviewName(rawPreviewName)
     val testId = "$className.$methodName.$previewName"
 
@@ -51,21 +60,22 @@ class UpdateScreenshotTestResultsListener(
       val destPath =
         ScreenshotTestUtils.resolvePath(
           dialog.project,
-          testCase.additionalTestArtifacts["PreviewScreenshot.refImagePath"],
+          artifacts[ARTIFACT_KEY_REF_IMAGE_PATH],
         )
       val srcPath =
         ScreenshotTestUtils.resolvePath(
           dialog.project,
-          testCase.additionalTestArtifacts["PreviewScreenshot.newImagePath"],
+          artifacts[ARTIFACT_KEY_NEW_IMAGE_PATH],
         )
       val diffPath =
         ScreenshotTestUtils.resolvePath(
           dialog.project,
-          testCase.additionalTestArtifacts["PreviewScreenshot.diffImagePath"],
+          artifacts[ARTIFACT_KEY_DIFF_IMAGE_PATH],
         )
 
       ApplicationManager.getApplication().invokeLater {
         val errorTrace = (testCase.errorStackTrace as? String) ?: ""
+        val sizeMismatchLine = errorTrace.lineSequence().firstOrNull { it.contains(SIZE_MISMATCH_PREFIX) }
         val previewDetails =
           PreviewDetails(
             testId = testId,
@@ -76,13 +86,9 @@ class UpdateScreenshotTestResultsListener(
             destImagePath = destPath,
             srcImagePath = srcPath,
             diffImagePath = diffPath,
-            diffPercent = testCase.additionalTestArtifacts["PreviewScreenshot.diffPercent"],
-            isSizeMismatch = errorTrace.contains("Size Mismatch"),
-            sizeMismatchMessage =
-              errorTrace
-                .lineSequence()
-                .firstOrNull { it.contains("Size Mismatch") }
-                ?.let { line -> line.substring(line.indexOf("Size Mismatch")).trim() },
+            diffPercent = artifacts[ARTIFACT_KEY_DIFF_PERCENT],
+            isSizeMismatch = sizeMismatchLine != null,
+            sizeMismatchMessage = sizeMismatchLine?.let { line -> line.substring(line.indexOf(SIZE_MISMATCH_PREFIX)).trim() },
           )
         dialog.updateDialogWithTestResult(previewDetails, true)
       }
@@ -101,11 +107,17 @@ class UpdateScreenshotTestResultsListener(
    * Parses raw strings like "[{provider=com.example.MyProvider}]" into "MyProvider", extracting simple class names for providers.
    */
   private fun cleanPreviewName(name: String): String {
-    if (name.startsWith("[{") && name.contains("}]")) {
-      return name.substringAfter("[{").substringBefore("}]").split(", ").joinToString("_") { part ->
-        if (part.startsWith("provider=")) part.substringAfter("provider=").substringAfterLast('.') else part
-      } + name.substringAfter("}]")
+    if (name.startsWith(PARAM_START) && name.contains(PARAM_END)) {
+      return name.substringAfter(PARAM_START).substringBefore(PARAM_END).split(", ").joinToString("_") { part ->
+        if (part.startsWith(PROVIDER_KEY)) part.substringAfter(PROVIDER_KEY).substringAfterLast('.') else part
+      } + name.substringAfter(PARAM_END)
     }
     return name
+  }
+
+  companion object {
+    private const val PARAM_START = "[{"
+    private const val PARAM_END = "}]"
+    private const val PROVIDER_KEY = "provider="
   }
 }

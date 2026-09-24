@@ -22,6 +22,7 @@ import com.android.tools.idea.device.explorer.files.fs.ThrottledProgress
 import com.intellij.openapi.application.EDT
 import java.io.File
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -54,7 +55,7 @@ import kotlinx.coroutines.withContext
  * The [.getFileContentsWorkUnits] returns the estimated cost (in work units) proportional to the amount of bytes to transfer.
  */
 class FileTransferWorkEstimator {
-  private val myThrottledProgress = ThrottledProgress(PROGRESS_REPORT_INTERVAL_MILLIS.toLong())
+  private val myThrottledProgress = ThrottledProgress(PROGRESS_REPORT_INTERVAL)
 
   suspend fun estimateDownloadWork(
     entry: DeviceFileEntry,
@@ -133,7 +134,7 @@ class FileTransferWorkEstimator {
   }
 
   companion object {
-    private const val PROGRESS_REPORT_INTERVAL_MILLIS = 50
+    private val PROGRESS_REPORT_INTERVAL = 50.milliseconds
 
     @JvmStatic val directoryWorkUnits = 64000L
 

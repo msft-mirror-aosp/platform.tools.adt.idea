@@ -81,14 +81,6 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
     modelVersion = ModelVersion.V1,
     compileSdk = "32",
   ),
-  AGP_72_V1(
-    agpVersion = "7.2.0",
-    gradleVersion = "7.3.3",
-    jdkVersion = JDK_17,
-    kotlinVersion = "1.9.23",
-    modelVersion = ModelVersion.V1,
-    compileSdk = "32",
-  ),
   AGP_72(
     agpVersion = "7.2.0",
     gradleVersion = "7.3.3",
@@ -288,7 +280,6 @@ private fun AgpVersionSoftwareEnvironmentDescriptor.agpSuffix(): String =
     AgpVersionSoftwareEnvironmentDescriptor.AGP_80 -> "_Agp_8.0_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_70 -> "_Agp_7.0_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_71 -> "_Agp_7.1_"
-    AgpVersionSoftwareEnvironmentDescriptor.AGP_72_V1 -> "_Agp_7.2_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_72 -> "_Agp_7.2_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_73 -> "_Agp_7.3_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_74 -> "_Agp_7.4_"

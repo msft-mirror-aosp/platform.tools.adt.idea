@@ -52,7 +52,11 @@ class LeakInsightModel(
       if (_isInsightVisible.value) {
         selectedLeak?.let { leak ->
           val cached = insightCache[leak.signature]
-          if (cached == null || (cached is LoadingState.Ready && cached.value == null)) {
+          if (
+            cached == null ||
+              (cached is LoadingState.Ready && cached.value == null) ||
+              (cached is LoadingState.Unauthorized && isAiAvailable())
+          ) {
             fetchInsight(leak)
           }
         }
@@ -66,7 +70,15 @@ class LeakInsightModel(
     selectedLeak = newLeak
     if (_isInsightVisible.value) {
       val cached = newLeak?.let { insightCache[it.signature] }
-      if (cached != null) {
+      if (cached is LoadingState.Unauthorized && isAiAvailable()) {
+        insightCache.remove(newLeak.signature)
+        _currentInsight.value = LoadingState.Ready(null)
+        if (isInsightAutoGenerateEnabled.value) {
+          fetchInsight(newLeak)
+        } else {
+          insightJob?.cancel()
+        }
+      } else if (cached != null) {
         _currentInsight.value = cached
         insightJob?.cancel()
       } else {
@@ -88,7 +100,13 @@ class LeakInsightModel(
       val selected = selectedLeak
       if (selected != null) {
         val cached = insightCache[selected.signature]
-        if (cached != null) {
+        if (cached is LoadingState.Unauthorized && isAiAvailable()) {
+          insightCache.remove(selected.signature)
+          _currentInsight.value = LoadingState.Ready(null)
+          if (isInsightAutoGenerateEnabled.value) {
+            fetchInsight(selected)
+          }
+        } else if (cached != null) {
           _currentInsight.value = cached
         } else {
           _currentInsight.value = LoadingState.Ready(null)
@@ -107,10 +125,18 @@ class LeakInsightModel(
 
   fun fetchInsight(leak: Leak) {
     trackUiAction(LeakCanaryUiAction.INSIGHT_FETCH_TRIGGERED)
+    _isInsightVisible.value = true
+    if (!isAiAvailable()) {
+      ideServices.showAiOnboarding()
+      val unauthorizedState = LoadingState.Unauthorized("AI Assistant is not available.")
+      _currentInsight.value = unauthorizedState
+      insightCache[leak.signature] = unauthorizedState
+      return
+    }
+
     val loadingState = LoadingState.Loading()
     _currentInsight.value = loadingState
     insightCache[leak.signature] = loadingState
-    _isInsightVisible.value = true
 
     insightJob?.cancel()
     insightJob = scope.launch {
@@ -147,13 +173,39 @@ class LeakInsightModel(
           if (isNetworkError(e)) {
             NETWORK_ERROR_MESSAGE
           } else {
-            e.message ?: "Unknown error"
+            e.message?.takeIf { it.isNotBlank() } ?: DEFAULT_ERROR_MESSAGE
           }
-        val failureState = LoadingState.Failure(errorMessage)
+        val failureState =
+          if (isUnauthorizedError(e)) {
+            ideServices.showAiOnboarding()
+            LoadingState.Unauthorized(errorMessage)
+          } else {
+            LoadingState.Failure(errorMessage)
+          }
         if (selectedLeak == leak) {
           _currentInsight.value = failureState
         }
         insightCache[leak.signature] = failureState
+      }
+    }
+  }
+
+  fun showOnboarding() {
+    if (isAiAvailable()) {
+      selectedLeak?.let { fetchInsight(it) }
+    } else {
+      ideServices.showAiOnboarding()
+    }
+  }
+
+  fun isAiAvailable(): Boolean = ideServices.isAiAvailable
+
+  fun onAiBecameAvailable() {
+    selectedLeak?.let { leak ->
+      val cached = insightCache[leak.signature]
+      if ((cached is LoadingState.Unauthorized || _currentInsight.value is LoadingState.Unauthorized) && isAiAvailable()) {
+        insightCache.remove(leak.signature)
+        fetchInsight(leak)
       }
     }
   }
@@ -175,9 +227,18 @@ class LeakInsightModel(
     selectedLeak?.let { leak -> insightCache[leak.signature] = newInsightState }
   }
 
+  private fun isUnauthorizedError(t: Throwable): Boolean {
+    val keywords = listOf("not available", "unauthorized", "unauthenticated", "permission_denied")
+    return generateSequence(t) { it.cause }
+      .any { cause ->
+        val message = cause.message.orEmpty()
+        keywords.any { message.contains(it, ignoreCase = true) }
+      }
+  }
+
   private fun isNetworkError(t: Throwable): Boolean {
     return generateSequence(t) { it.cause }
-      .any { it is java.net.UnknownHostException || it is java.net.SocketTimeoutException || it is java.net.SocketException }
+      .any { it is java.io.IOException }
   }
 
   fun clearInsights() {
@@ -189,5 +250,6 @@ class LeakInsightModel(
   companion object {
     private const val KEY_LEAKCANARY_INSIGHT_AUTO_GENERATE = "leakcanary.insight.auto.generate"
     const val NETWORK_ERROR_MESSAGE = "Network connection lost. Please check your internet connection and try again."
+    const val DEFAULT_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
   }
 }

@@ -15,20 +15,26 @@
  */
 package com.android.tools.idea.uibuilder.scene
 
+import android.view.ViewGroup
+import com.android.SdkConstants.FD_RES_LAYOUT
 import com.android.SdkConstants.FD_RES_MENU
 import com.android.SdkConstants.FD_RES_XML
+import com.android.SdkConstants.FRAME_LAYOUT
 import com.android.SdkConstants.PreferenceTags.PREFERENCE_SCREEN
 import com.android.SdkConstants.TAG_MENU
+import com.android.SdkConstants.VIEW
 import com.android.tools.idea.common.fixtures.ModelBuilder
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlScreenViewProvider
 import com.android.tools.idea.uibuilder.type.MenuFileType
 import com.android.tools.idea.uibuilder.type.PreferenceScreenFileType
+import com.android.tools.rendering.RenderService
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.utils.editor.saveToDisk
+import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotEquals
 import org.mockito.kotlin.whenever
@@ -180,6 +186,72 @@ class LayoutlibSceneManagerTest : SceneTest() {
       assertEquals(1, sceneManager.sceneViews.size)
     } finally {
       Disposer.dispose(menuModel)
+    }
+  }
+
+  fun testDynamicResizeInShrinkMode() = runBlocking {
+    val shrinkModel =
+      model(
+          FD_RES_LAYOUT,
+          "shrink_layout.xml",
+          component(FRAME_LAYOUT)
+            .withBounds(0, 0, 100, 100)
+            .wrapContentWidth()
+            .wrapContentHeight()
+            .children(component(VIEW).withBounds(0, 0, 100, 100).width("100px").height("100px")),
+        )
+        .build()
+
+    try {
+      val sceneManager = shrinkModel.surface.getSceneManager(shrinkModel) as LayoutlibSceneManager
+      sceneManager.sceneRenderConfiguration.useShrinkRendering = true
+      sceneManager.requestRenderAndWait()
+
+      val initialResult = sceneManager.renderResult!!
+      assertEquals(100, initialResult.rootViewDimensions.width)
+      assertEquals(100, initialResult.rootViewDimensions.height)
+
+      // Dynamically grow the underlying android.view.View inside the render session (simulating an animation frame)
+      RenderService.getRenderAsyncActionExecutor()
+        .runAsyncAction {
+          val rootView = sceneManager.renderResult!!.rootViews.first().viewObject as ViewGroup
+          val childView = rootView.getChildAt(0)
+          childView.layoutParams.width = 240
+          childView.layoutParams.height = 320
+          childView.requestLayout()
+        }
+        .join()
+
+      sceneManager.sceneRenderConfiguration.executeCallbacksAfterRender.set(true)
+      sceneManager.sceneRenderConfiguration.doubleRender.set(true)
+      sceneManager.requestRenderAndWait()
+      UIUtil.dispatchAllInvocationEvents()
+
+      val grownResult = sceneManager.renderResult!!
+      assertEquals(240, grownResult.rootViewDimensions.width)
+      assertEquals(320, grownResult.rootViewDimensions.height)
+
+      // Dynamically shrink the underlying android.view.View inside the render session
+      RenderService.getRenderAsyncActionExecutor()
+        .runAsyncAction {
+          val rootView = sceneManager.renderResult!!.rootViews.first().viewObject as ViewGroup
+          val childView = rootView.getChildAt(0)
+          childView.layoutParams.width = 60
+          childView.layoutParams.height = 80
+          childView.requestLayout()
+        }
+        .join()
+
+      sceneManager.sceneRenderConfiguration.executeCallbacksAfterRender.set(true)
+      sceneManager.sceneRenderConfiguration.doubleRender.set(true)
+      sceneManager.requestRenderAndWait()
+      UIUtil.dispatchAllInvocationEvents()
+
+      val shrunkResult = sceneManager.renderResult!!
+      assertEquals(60, shrunkResult.rootViewDimensions.width)
+      assertEquals(80, shrunkResult.rootViewDimensions.height)
+    } finally {
+      Disposer.dispose(shrinkModel)
     }
   }
 }

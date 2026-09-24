@@ -180,6 +180,9 @@ fun LeakCanaryScreen(leakCanaryModel: LeakCanaryModel, ideProfilerComponents: Id
               },
               onCopy = { leakCanaryModel.trackUiAction(LeakCanaryUiAction.INSIGHT_COPY_CLICKED) },
               onRefresh = { selectedLeak?.let { insightModel.fetchInsight(it) } },
+              onEnableInsights = { insightModel.showOnboarding() },
+              checkAiAvailable = { insightModel.isAiAvailable() },
+              onAiAvailable = { insightModel.onAiBecameAvailable() },
               modifier = Modifier.fillMaxSize(),
             )
           }

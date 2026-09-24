@@ -257,23 +257,23 @@ internal class DeviceViewTest {
           " --socket=screen-sharing-agent-\\d+ --max_size=400,600 --flags=\\d+"
       )
     waitForFrame()
-    assertThat(view.projectionRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(62, 0, 276, 599))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     // Check resizing.
     fakeUi.resizeRoot(100, 90)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetMaxVideoResolutionMessage(view.displayId, Dimension(200, 180)))
-    assertThat(view.projectionRectangle).isEqualTo(Rectangle(58, 0, 83, 180))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(58, 0, 83, 181))
 
     // Check mouse input in various orientations.
     val expectedCoordinates =
       listOf(
-        MotionEventMessage.Pointer(292, 786, 0),
-        MotionEventMessage.Pointer(813, 1436, 0),
+        MotionEventMessage.Pointer(292, 782, 0),
+        MotionEventMessage.Pointer(813, 1428, 0),
         MotionEventMessage.Pointer(898, 941, 0),
         MotionEventMessage.Pointer(311, 1409, 0),
-        MotionEventMessage.Pointer(800, 1566, 0),
-        MotionEventMessage.Pointer(279, 916, 0),
+        MotionEventMessage.Pointer(800, 1570, 0),
+        MotionEventMessage.Pointer(279, 924, 0),
         MotionEventMessage.Pointer(193, 1409, 0),
         MotionEventMessage.Pointer(780, 941, 0),
       )
@@ -324,21 +324,21 @@ internal class DeviceViewTest {
     // Check dragging over the edge of the device screen.
     fakeUi.mouse.press(40, 50)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(292, 1306, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(292, 1299, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
     fakeUi.mouse.dragTo(90, 60)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1566, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1557, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0, false))
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1566, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1079, 1557, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0, false))
     fakeUi.mouse.release()
 
     // Check mouse leaving the device view while dragging.
     fakeUi.mouse.press(50, 40)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(553, 1046, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(553, 1040, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
     fakeUi.mouse.dragTo(55, 10)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 265, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0, false))
     fakeUi.mouse.dragTo(60, -10)
     assertThat(agent.getNextControlMessage(2.seconds))
       .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_MOVE, 0, 0, 0, false))
@@ -349,9 +349,9 @@ internal class DeviceViewTest {
     // Check mouse leaving the device view while hovering.
     fakeUi.mouse.moveTo(55, 10)
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, true))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 265, 0)), MotionEventMessage.ACTION_HOVER_ENTER, 0, 0, 0, true))
     assertThat(agent.getNextControlMessage(2.seconds))
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 266, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, true))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(683, 265, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0, true))
     fakeUi.mouse.moveTo(60, -10)
     assertThat(agent.getNextControlMessage(2.seconds))
       .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(813, 0, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0, true))
@@ -361,7 +361,7 @@ internal class DeviceViewTest {
   fun testUpsideDownMouseInput() {
     createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
-    assertThat(view.projectionRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(62, 0, 276, 599))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     executeAction("android.device.rotate.right", view, project)
@@ -373,10 +373,10 @@ internal class DeviceViewTest {
 
     fakeUi.mouse.press(40, 30)
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1007, 2107, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1011, 2107, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
     fakeUi.mouse.release()
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1007, 2107, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(1011, 2107, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0, false))
 
     runBlocking { agent.setDisplayOrientationCorrection(PRIMARY_DISPLAY_ID, 2) }
     waitForFrame()
@@ -384,26 +384,26 @@ internal class DeviceViewTest {
     assertThat(view.displayOrientationCorrectionQuadrants).isEqualTo(2)
     fakeUi.mouse.press(40, 30)
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(235, 1008, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(236, 1009, 0)), MotionEventMessage.ACTION_DOWN, 0, 0, 0, false))
     fakeUi.mouse.release()
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(235, 1008, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(236, 1009, 0)), MotionEventMessage.ACTION_UP, 0, 0, 0, false))
   }
 
   @Test
   fun testRightClick() {
     createDeviceView(200, 300, retinaMode = true)
     waitForFrame()
-    assertThat(view.projectionRectangle).isEqualTo(Rectangle(61, 0, 277, 600))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(62, 0, 276, 599))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     view.rightClicksAreSentToDevice = true
     fakeUi.mouse.press(40, 30, button = FakeMouse.Button.RIGHT)
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(76, 235, 0)), MotionEventMessage.ACTION_DOWN, 2, 2, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(72, 236, 0)), MotionEventMessage.ACTION_DOWN, 2, 2, 0, false))
     fakeUi.mouse.release()
     assertThat(getNextControlMessageAndWaitForFrame())
-      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(76, 235, 0)), MotionEventMessage.ACTION_UP, 0, 2, 0, false))
+      .isEqualTo(MotionEventMessage(listOf(MotionEventMessage.Pointer(72, 236, 0)), MotionEventMessage.ACTION_UP, 0, 2, 0, false))
   }
 
   @Test
@@ -778,7 +778,7 @@ internal class DeviceViewTest {
   fun testAgentCrashAndReconnect() {
     createDeviceView(500, 1000)
     waitForFrame()
-    assertThat(view.projectionRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(20, 2, 460, 996))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
 
     // Simulate crash of the screen sharing agent.
@@ -936,7 +936,7 @@ internal class DeviceViewTest {
     fakeUi.clickOn(button)
     waitForCondition(15, SECONDS) { agent.isRunning }
     waitForFrame()
-    assertThat(view.projectionRectangle).isEqualTo(Rectangle(19, 0, 462, 1000))
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(20, 2, 460, 996))
     assertThat(view.displayOrientationQuadrants).isEqualTo(0)
   }
 

@@ -418,7 +418,8 @@ public class ProjectLoaderImpl implements ProjectLoader {
         ImmutableSet.<Path>builder()
             .addAll(importRoots.systemExcludes())
             .add(Path.of(BazelDependencyBuilder.INVOCATION_FILES_DIR))
-            .build());
+            .build(),
+        buildSystem == BuildSystemName.Bazel);
   }
 
   @Override

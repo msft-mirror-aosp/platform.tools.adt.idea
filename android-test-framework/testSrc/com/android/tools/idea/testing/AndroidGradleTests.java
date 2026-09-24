@@ -35,7 +35,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.intellij.ide.impl.NewProjectUtil.applyJdkToProject;
 import static com.intellij.openapi.application.ActionsKt.invokeAndWaitIfNeeded;
 import static com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction;
-import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8;
+import static com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_11;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.notNullize;
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -760,8 +760,8 @@ public class AndroidGradleTests {
 
     Sdk currentJdk = ideSdks.getJdk();
     TestCase.assertNotNull(currentJdk);
-    TestCase.assertTrue("JDK 8 is required. Found: " + currentJdk.getHomePath(),
-                        IdeSdks.getInstance().isJdkCompatible(currentJdk, JDK_1_8));
+    TestCase.assertTrue("JDK 11 is required. Found: " + currentJdk.getHomePath(),
+                        IdeSdks.getInstance().isJdkCompatible(currentJdk, JDK_11));
 
     // IntelliJ uses project jdk for gradle import by default, see GradleProjectSettings.myGradleJvm
     if (!IdeInfo.getInstance().isAndroidStudio()) {

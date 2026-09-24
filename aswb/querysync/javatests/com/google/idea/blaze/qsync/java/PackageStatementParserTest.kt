@@ -152,4 +152,82 @@ class PackageStatementParserTest {
     Truth.assertThat(outputs)
       .containsExactly(PrintOutput.error("Cannot read file '/file/indeed/not/found!': /file/indeed/not/found! (No such file or directory)"))
   }
+
+  @Test
+  @Throws(IOException::class)
+  fun malicious_single_line_generated_file_rejected() {
+    val psp = PackageStatementParser()
+    Truth.assertThat(
+        psp.readPackage(
+          ByteArrayInputStream(
+            ("/* This is a generated file */package /tmp/aswb_042_pwned;public final class Evil {}").toByteArray(StandardCharsets.UTF_8)
+          )
+        )
+      )
+      .isEqualTo("")
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun single_line_with_spaces_rejected() {
+    val psp = PackageStatementParser()
+    Truth.assertThat(
+        psp.readPackage(
+          ByteArrayInputStream(
+            ("/* generated */package com.myorg.some package;public final class Evil {}").toByteArray(StandardCharsets.UTF_8)
+          )
+        )
+      )
+      .isEqualTo("")
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun package_with_double_dots_rejected() {
+    val psp = PackageStatementParser()
+    Truth.assertThat(
+        psp.readPackage(
+          ByteArrayInputStream(
+            Joiner.on("\n").join("package com..myorg;", "", "public class MyClass {}").toByteArray(StandardCharsets.UTF_8)
+          )
+        )
+      )
+      .isEqualTo("")
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun package_with_leading_or_trailing_dots_rejected() {
+    val psp = PackageStatementParser()
+    Truth.assertThat(
+        psp.readPackage(
+          ByteArrayInputStream(
+            Joiner.on("\n").join("package .com.myorg;", "", "public class MyClass {}").toByteArray(StandardCharsets.UTF_8)
+          )
+        )
+      )
+      .isEqualTo("")
+    Truth.assertThat(
+        psp.readPackage(
+          ByteArrayInputStream(
+            Joiner.on("\n").join("package com.myorg.;", "", "public class MyClass {}").toByteArray(StandardCharsets.UTF_8)
+          )
+        )
+      )
+      .isEqualTo("")
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun package_with_traversal_rejected() {
+    val psp = PackageStatementParser()
+    Truth.assertThat(
+        psp.readPackage(
+          ByteArrayInputStream(
+            Joiner.on("\n").join("package ../../etc;", "", "public class MyClass {}").toByteArray(StandardCharsets.UTF_8)
+          )
+        )
+      )
+      .isEqualTo("")
+  }
 }

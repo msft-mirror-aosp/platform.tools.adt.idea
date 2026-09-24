@@ -283,8 +283,14 @@ internal fun <T> Benchmark.measureOperation(
   val metricSamples: LinkedListMultimap<String, MetricSample> = LinkedListMultimap.create()
   repeat(samplesCount) {
     sortedMeasures.forEach { it.before() }
-    val result = operation()
-    sortedMeasures.forEach { it.after(result)?.let { value -> metricSamples.put(it.metric.metricName, value) } }
+    var result: T? = operation()
+    sortedMeasures.forEach {
+      it.after(result!!)?.let { value -> metricSamples.put(it.metric.metricName, value) }
+    }
+    // Clear the variable to ensure the result can be garbage collected. If we don't do this,
+    // the reference will be kept until the next iteration of the loop, which might affect
+    // the memory measurements of subsequent runs.
+    result = null
     runGC()
   }
 

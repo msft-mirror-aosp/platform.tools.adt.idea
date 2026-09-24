@@ -159,6 +159,12 @@ internal class ModuleClassLoaderImpl(
   /** Modification count for the overlay when this [ModuleClassLoaderImpl] was created, used for out-of-date detection. */
   @GuardedBy("overlayManager") private var initialOverlayModificationStamp = overlayManager.modificationStamp
 
+  /**
+   * Whether this [ModuleClassLoaderImpl] resolves project classes through the Fast Preview overlay. Loaders created while Fast Preview is
+   * disabled never consult [overlayManager], see [createOptionalOverlayLoader].
+   */
+  private val usesOverlayLoader: Boolean
+
   private fun createProjectLoader(
     loader: DelegatingClassLoader.Loader,
     dependenciesLoader: DelegatingClassLoader.Loader?,
@@ -241,9 +247,10 @@ internal class ModuleClassLoaderImpl(
   init {
     val nonProjectLoader =
       createNonProjectLoader(nonProjectTransforms, binaryCache, { _nonProjectLoadedClassNames.add(it) }, onClassRewrite)
+    usesOverlayLoader = FastPreviewManager.getInstance(buildTargetReference.project).isEnabled
     // Project classes loading pipeline
     val projectLoader =
-      if (!FastPreviewManager.getInstance(buildTargetReference.project).isEnabled) {
+      if (!usesOverlayLoader) {
         createProjectLoader(projectSystemLoader, nonProjectLoader, onClassRewrite)
       } else {
         MultiLoader(
@@ -298,8 +305,32 @@ internal class ModuleClassLoaderImpl(
     projectSystemLoader.invalidateCaches()
   }
 
-  /** Returns if the overlay is up-to-date. */
-  private fun isOverlayUpToDate() = synchronized(overlayManager) { overlayManager.modificationStamp == initialOverlayModificationStamp }
+  /**
+   * Returns if the overlay is up-to-date, **rebasing [initialOverlayModificationStamp] onto the current stamp** when this loader cannot
+   * possibly be affected by the overlay change.
+   *
+   * [OverlayLoader] is only ever reachable through [createProjectLoader], so everything the overlay has ever served for this loader is
+   * recorded in [_projectLoadedClassNames]. An empty set therefore means this loader has defined nothing that a new overlay could shadow,
+   * and since the overlay is consulted at load time rather than snapshotted at construction, every class it loads from now on already comes
+   * from the new overlay. Such a loader is indistinguishable from a freshly created one, so the stamp is moved forward instead of reporting
+   * it out-of-date. This is what lets pre-loaded class loaders (see [ModuleClassLoaderHatchery]) and loaders that have not rendered yet
+   * survive a Fast Preview compilation instead of being rebuilt from scratch.
+   *
+   * The [usesOverlayLoader] guard is required: a loader created while Fast Preview was disabled has no [OverlayLoader] in its pipeline and
+   * would never see the pushed classes, so it must still be discarded.
+   *
+   * Note that light R classes are defined by the parent `LibraryResourceClassLoader` without going through [_projectLoadedClassNames]. That
+   * does not affect this check, because Fast Preview only ever compiles edited source files into the overlay, never resources.
+   */
+  private fun isOverlayUpToDate(): Boolean = synchronized(overlayManager) {
+    val currentStamp = overlayManager.modificationStamp
+    if (currentStamp == initialOverlayModificationStamp) return@synchronized true
+    if (usesOverlayLoader && _projectLoadedClassNames.isEmpty()) {
+      initialOverlayModificationStamp = currentStamp
+      return@synchronized true
+    }
+    return@synchronized false
+  }
 
   private val isUserCodeUpToDateCached: ChangeTrackerCachedValue<Boolean> = ChangeTrackerCachedValue.softReference()
 
@@ -330,6 +361,12 @@ internal class ModuleClassLoaderImpl(
    * Checks whether any of the .class files loaded by this loader have changed since the creation of this class loader. This method just
    * provides the non-cached version of {@link #isUserCodeUpToDate}. {@link #isUserCodeUpToDate} will cache the result of this call until a
    * PSI modification happens.
+   *
+   * This is intentionally not a pure function: [isOverlayUpToDate] may advance [initialOverlayModificationStamp].
+   * [ChangeTrackerCachedValue] gives no guarantee about how often or on how many threads it invokes its provider. That is fine here
+   * because the side effect is idempotent, happens under the [overlayManager] monitor, and can only move the stamp forward to a value it
+   * has already observed. Leaving the stamp behind is always the conservative direction, so a lost update just makes the next check
+   * stricter.
    */
   private fun isUserCodeUpToDateNonCached() = projectSystemLoader.isUpToDate() && isOverlayUpToDate()
 }

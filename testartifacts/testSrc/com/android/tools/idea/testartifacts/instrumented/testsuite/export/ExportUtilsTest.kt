@@ -80,7 +80,26 @@ class ExportUtilsTest {
     assertThat(fileContent).contains("<title>Test Results &mdash; testRunConfig</title>")
   }
 
-  private fun exportAndGetContent(format: ExportTestResultsConfiguration.ExportFormat): String {
+  @Test
+  fun exportToHtmlWithTestCaseOutput() {
+    val fileContent =
+      exportAndGetContent(
+        ExportTestResultsConfiguration.ExportFormat.BundledTemplate,
+        logcat = "logcat line 1\nlogcat line 2",
+        errorStackTrace = "error stack trace line",
+      )
+
+    assertThat(fileContent).contains("<title>Test Results &mdash; testRunConfig</title>")
+    assertThat(fileContent).contains("logcat line 1")
+    assertThat(fileContent).contains("logcat line 2")
+    assertThat(fileContent).contains("error stack trace line")
+  }
+
+  private fun exportAndGetContent(
+    format: ExportTestResultsConfiguration.ExportFormat,
+    logcat: String = "",
+    errorStackTrace: String = "",
+  ): String {
     lateinit var outputVirtualFile: VirtualFile
     runWriteAction {
       val inputDir = temporaryDirectoryRule.createVirtualDir("outputDir")
@@ -95,7 +114,7 @@ class ExportUtilsTest {
         whenever(name).thenReturn("testRunConfig")
         whenever(type).thenReturn(AndroidTestRunConfigurationType.getInstance())
       }
-    val (devices, resultsNode) = createDevicesAndResultsNode()
+    val (devices, resultsNode) = createDevicesAndResultsNode(logcat, errorStackTrace)
 
     val countDownLatch = CountDownLatch(1)
     var fileContent: String? = null
@@ -117,7 +136,10 @@ class ExportUtilsTest {
     return requireNotNull(fileContent)
   }
 
-  private fun createDevicesAndResultsNode(): Pair<List<AndroidDevice>, AndroidTestResultsTreeNode> {
+  private fun createDevicesAndResultsNode(
+    logcat: String = "",
+    errorStackTrace: String = "",
+  ): Pair<List<AndroidDevice>, AndroidTestResultsTreeNode> {
     val device1 =
       AndroidDevice(
         "testDeviceId1",
@@ -168,14 +190,14 @@ class ExportUtilsTest {
 
         whenever(getTestCaseResult(eq(device1))).thenReturn(AndroidTestCaseResult.PASSED)
         whenever(getDuration(eq(device1))).thenReturn(Duration.ofMillis(1234L))
-        whenever(getLogcat(eq(device1))).thenReturn("")
-        whenever(getErrorStackTrace(eq(device1))).thenReturn("")
+        whenever(getLogcat(eq(device1))).thenReturn(logcat)
+        whenever(getErrorStackTrace(eq(device1))).thenReturn(errorStackTrace)
         whenever(getBenchmark(eq(device1))).thenReturn(BenchmarkOutput.Empty)
 
         whenever(getTestCaseResult(eq(device2))).thenReturn(AndroidTestCaseResult.FAILED)
         whenever(getDuration(eq(device2))).thenReturn(Duration.ofMillis(7777L))
-        whenever(getLogcat(eq(device2))).thenReturn("")
-        whenever(getErrorStackTrace(eq(device2))).thenReturn("")
+        whenever(getLogcat(eq(device2))).thenReturn(logcat)
+        whenever(getErrorStackTrace(eq(device2))).thenReturn(errorStackTrace)
         whenever(getBenchmark(eq(device2))).thenReturn(BenchmarkOutput.Empty)
       }
 

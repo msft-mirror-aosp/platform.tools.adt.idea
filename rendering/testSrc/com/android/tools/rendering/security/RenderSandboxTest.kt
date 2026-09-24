@@ -16,8 +16,14 @@
 package com.android.tools.rendering.security
 
 import com.android.tools.rendering.RenderService
+import com.android.tools.rendering.classloading.ClassTransform
+import com.android.tools.rendering.classloading.ModuleClassLoader
+import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsRead
+import com.android.tools.rendering.classloading.NopModuleClassLoadedDiagnostics
 import com.android.tools.rendering.classloading.TestClassLoader
 import com.android.tools.rendering.classloading.fromBinaryNameToPackageName
+import com.android.tools.rendering.classloading.loadClassBytes
+import com.android.tools.rendering.classloading.loaders.StaticLoader
 import com.android.tools.rendering.classloading.setupTestClassLoaderWithTransformation
 import com.intellij.openapi.util.io.FileUtil
 import java.awt.Frame
@@ -125,6 +131,32 @@ class TestSupplier : Supplier<String> {
 
 class TestRunnable : Runnable {
   override fun run() {}
+}
+
+interface TestService
+
+private class FakeModuleClassLoader(
+  parent: ClassLoader? = null,
+  definedClasses: Map<String, ByteArray> = emptyMap(),
+  private val loadedClasses: Set<String> = definedClasses.keys,
+) : ModuleClassLoader(parent, StaticLoader(definedClasses)) {
+  override val stats: ModuleClassLoaderDiagnosticsRead = NopModuleClassLoadedDiagnostics
+  override val isDisposed: Boolean = false
+
+  override fun isCompatibleParentClassLoader(parent: ClassLoader?): Boolean = true
+
+  override fun areDependenciesUpToDate(): Boolean = true
+
+  override val isUserCodeUpToDate: Boolean = true
+
+  override fun hasLoadedClass(fqcn: String): Boolean = fqcn in loadedClasses
+
+  override val projectLoadedClasses: Set<String> = loadedClasses
+  override val nonProjectLoadedClasses: Set<String> = emptySet()
+  override val projectClassesTransform: ClassTransform = ClassTransform.identity
+  override val nonProjectClassesTransform: ClassTransform = ClassTransform.identity
+
+  override fun dispose() {}
 }
 
 open class SubclassFile(pathname: String) : File(pathname) {
@@ -378,6 +410,8 @@ interface ClassToCheck {
   fun checkScriptEngineManager()
 
   fun checkServiceLoaderLoad()
+
+  fun checkServiceLoaderLoadWithClassLoader(serviceClass: Class<*>, classLoader: ClassLoader)
 
   fun checkURLSetFactory()
 
@@ -927,6 +961,10 @@ class ClassToCheckImpl : ClassToCheck {
 
   override fun checkServiceLoaderLoad() {
     ServiceLoader.load(String::class.java)
+  }
+
+  override fun checkServiceLoaderLoadWithClassLoader(serviceClass: Class<*>, classLoader: ClassLoader) {
+    ServiceLoader.load(serviceClass, classLoader)
   }
 
   override fun checkURLSetFactory() {
@@ -1823,6 +1861,28 @@ class RenderSandboxTest {
     val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
     verifyThrowsSecurityException("checkServiceLoader") {
       methodIntercept.checkServiceLoaderLoad()
+    }
+  }
+
+  @Test
+  fun `check ServiceLoader load succeeds when service and loader are ModuleClassLoader`() {
+    val serviceBytes = loadClassBytes(TestService::class.java)
+    val moduleClassLoader =
+      FakeModuleClassLoader(
+        parent = null,
+        definedClasses = mapOf(TestService::class.java.name to serviceBytes),
+      )
+    val serviceClass = moduleClassLoader.loadClass(TestService::class.java.name)
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    methodIntercept.checkServiceLoaderLoadWithClassLoader(serviceClass, moduleClassLoader)
+  }
+
+  @Test
+  fun `check ServiceLoader load fails when service is loaded by non-ModuleClassLoader even if loader is ModuleClassLoader`() {
+    val moduleClassLoader = FakeModuleClassLoader()
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as ClassToCheck
+    verifyThrowsSecurityException("checkServiceLoader") {
+      methodIntercept.checkServiceLoaderLoadWithClassLoader(Runnable::class.java, moduleClassLoader)
     }
   }
 

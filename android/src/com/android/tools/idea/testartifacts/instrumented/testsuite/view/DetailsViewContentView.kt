@@ -78,6 +78,8 @@ open class DetailsViewContentView(
   logger: AndroidTestSuiteLogger,
   headerActions: List<AnAction>,
   messageBus: MessageBus = ApplicationManager.getApplication().messageBus,
+  /** Upper bound of the log text retained by this view. See [MAX_RETAINED_LOG_CHARS]. */
+  private val maxRetainedLogChars: Int = MAX_RETAINED_LOG_CHARS,
 ) : Disposable {
 
   /** Returns the root panel. */
@@ -295,8 +297,11 @@ open class DetailsViewContentView(
   }
 
   private fun setLogs(logcat: String?, errorStackTrace: String?) {
-    val nonNullLogcat = logcat.orEmpty()
-    val nonNullError = errorStackTrace.orEmpty()
+    // Keep only a bounded amount of text alive: a single test case can emit hundreds of megabytes of logcat output (b/446684393).
+    // The tail of the logcat is kept because that is the part the console displays, while the head of the stack trace is kept because
+    // its first line is shown in the test result label.
+    val nonNullLogcat = logcat.orEmpty().keepLastChars(maxRetainedLogChars)
+    val nonNullError = errorStackTrace.orEmpty().keepFirstChars(maxRetainedLogChars)
     val logcatChanged = myLogcat != nonNullLogcat
     val errorChanged = myErrorStackTrace != nonNullError
     if (needsRefreshLogsView || logcatChanged || errorChanged) {
@@ -548,3 +553,26 @@ private fun createAccessibleLabel(
 }
 
 private fun String.htmlEscape(): String = HtmlEscapers.htmlEscaper().escape(this)
+
+/**
+ * The maximum number of characters of logcat output and error stack trace a [DetailsViewContentView] keeps in memory.
+ *
+ * A single instrumentation test case can emit hundreds of megabytes of logcat output, and the details view used to retain all of it
+ * (b/446684393). The logs console can only render the tail of the output anyway (1MB by default, see the IDE console cycle buffer), so
+ * retaining more than this has no user visible benefit.
+ */
+const val MAX_RETAINED_LOG_CHARS: Int = 1024 * 1024
+
+private const val TRUNCATION_NOTICE = "[Android Studio omitted %,d characters of output to limit memory usage]"
+
+/** Returns this string reduced to its last [maxChars] characters, prefixed by a notice if anything was dropped. */
+private fun String.keepLastChars(maxChars: Int): String {
+  if (length <= maxChars) return this
+  return TRUNCATION_NOTICE.format(Locale.US, length - maxChars) + "\n" + substring(length - maxChars)
+}
+
+/** Returns this string reduced to its first [maxChars] characters, followed by a notice if anything was dropped. */
+private fun String.keepFirstChars(maxChars: Int): String {
+  if (length <= maxChars) return this
+  return substring(0, maxChars) + "\n" + TRUNCATION_NOTICE.format(Locale.US, length - maxChars)
+}

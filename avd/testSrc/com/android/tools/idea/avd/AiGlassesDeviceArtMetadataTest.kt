@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.avd
 
+import com.android.io.readImage
 import com.android.testutils.TestUtils
 import com.google.common.truth.Truth.assertWithMessage
 import java.io.ByteArrayInputStream
@@ -27,7 +28,8 @@ import org.w3c.dom.Element
 
 /**
  * Tests to validate that all image files in `artwork/resources/device-art-resources/ai_glasses_device` contain valid XMP metadata with a
- * title, and that exactly one of them is set as default.
+ * title, that exactly one of them is set as default, and that any images that have 360-degree metadata have at least a 2:1 aspect ratio and
+ * cyclic boundary continuity.
  *
  * To recreate the XMP metadata from scratch, you can use the following commands:
  * ```bash
@@ -104,20 +106,24 @@ class AiGlassesDeviceArtMetadataTest {
       assertWithMessage("File $file does not contain exactly one dc:title element").that(titles.length).isEqualTo(1)
       val titleNode = titles.item(0)
 
-      val rdfLis = (titleNode as Element).getElementsByTagNameNS("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "li")
-      assertWithMessage("File $file dc:title does not contain a rdf:li element").that(rdfLis.length).isAtLeast(1)
-      val titleText = rdfLis.item(0).textContent.trim()
+      val rdfNodes = (titleNode as Element).getElementsByTagNameNS("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "li")
+      assertWithMessage("File $file dc:title does not contain a rdf:li element").that(rdfNodes.length).isAtLeast(1)
+      val titleText = rdfNodes.item(0).textContent.trim()
       assertWithMessage("File $file has empty title").that(titleText).isNotEmpty()
 
       val isDefaultList = document.getElementsByTagNameNS("urn:androidemulator:metadata:private:1.0", "isDefault")
-      val isDefault =
-        if (isDefaultList.length > 0) {
-          isDefaultList.item(0).textContent.trim().toBoolean()
-        } else {
-          false
-        }
-      if (isDefault) {
+      if (isDefaultList.length > 0 && isDefaultList.item(0).textContent.trim().toBoolean()) {
         defaultCount++
+      }
+
+      val image = file.readImage()
+      if (EnvironmentFileAnalyzer.is360Image(file)) {
+        assertWithMessage("File $file has 360-degree metadata but has a wrong aspect ratio, ${image.width}:${image.height}")
+          .that(image.width)
+          .isAtLeast(image.height * 2)
+        assertWithMessage("File $file has 360-degree metadata but failed cyclic boundary continuity check")
+          .that(EnvironmentFileAnalyzer.hasCyclicBoundaryContinuity(image, threshold = 0.8))
+          .isTrue()
       }
     }
 

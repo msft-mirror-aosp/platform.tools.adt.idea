@@ -77,8 +77,10 @@ import com.android.utils.HtmlBuilder;
 import com.android.utils.SdkUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Futures;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.serviceContainer.AlreadyDisposedException;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.awt.event.KeyEvent;
@@ -96,6 +98,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -111,7 +114,7 @@ public class RenderTask {
   /**
    * Indicates whether the size of the hardware used for rendering has changed.
    */
-  private boolean isSizeChanged = false;
+  private final AtomicBoolean isSizeChanged = new AtomicBoolean(false);
 
   /**
    * Listener that receives call before and after relevant {@link RenderTask} events.
@@ -189,7 +192,7 @@ public class RenderTask {
   @NotNull private CrashReporter myCrashReporter;
   private final List<CompletableFuture<?>> myRunningFutures = new LinkedList<>();
   @NotNull private final AtomicBoolean isDisposed = new AtomicBoolean(false);
-  @Nullable private RenderXmlFile myXmlFile;
+  @Nullable private volatile RenderXmlFile myXmlFile;
   @NotNull private String myDefaultForegroundColor = "#333333";
   @NotNull private final ModuleClassLoaderManager.Reference<?> myModuleClassLoaderReference;
   @NotNull private final TestEventListener myTestEventListener;
@@ -361,8 +364,9 @@ public class RenderTask {
    * Release rendered image without closing render session.
    */
   public void releaseRender() {
-    if (myRenderSession != null) {
-      myRenderSession.releaseRender();
+    RenderSession session = myRenderSession;
+    if (session != null) {
+      runAsyncRenderAction(session::releaseRender);
     }
   }
 
@@ -384,39 +388,66 @@ public class RenderTask {
       myRunningFutures.clear();
     }
     myLayoutlibCallback.setLogger(IRenderLogger.NULL_LOGGER);
-    RenderSession renderSessionToDispose = myRenderSession;
-    myRenderSession = null;
+    if (myLayoutlibCallback instanceof Disposable) {
+      Disposer.dispose((Disposable) myLayoutlibCallback);
+    }
+    RenderSession renderSessionToDispose;
     synchronized (this) {
+      renderSessionToDispose = myRenderSession;
+      myRenderSession = null;
       myRenderSecurity = null;
     }
 
+    CompletableFuture<?> releaseFuture = null;
     if (renderSessionToDispose != null) {
-      renderSessionToDispose.releaseRender();
+      try {
+        releaseFuture = RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingTopic.CLEAN, () -> {
+          renderSessionToDispose.releaseRender();
+          return null;
+        });
+      }
+      catch (RejectedExecutionException e) {
+        LOG.debug(e);
+      }
     }
 
+    CompletableFuture<?> finalReleaseFuture = releaseFuture;
     return ourDisposeService.submit(() -> {
       try {
         // Wait for all current running operations to complete
         CompletableFuture.allOf(currentRunningFutures).get(5, TimeUnit.SECONDS);
       }
-      catch (InterruptedException | ExecutionException e) {
+      catch (Exception e) {
         // We do not care about these exceptions since we are disposing the task anyway
         LOG.debug(e);
       }
-      if (renderSessionToDispose != null) {
+      if (finalReleaseFuture != null) {
         try {
-          disposeRenderSession(renderSessionToDispose)
-            .whenComplete((result, ex) -> clearClassLoader())
-            .orTimeout(2, TimeUnit.SECONDS)
-            .join(); // This is running on the dispose thread so wait for the full dispose to happen.
+          finalReleaseFuture.get(5, TimeUnit.SECONDS);
         }
-        catch (Exception ignored) {
+        catch (Exception e) {
+          LOG.debug(e);
         }
       }
-      else {
-        clearClassLoader();
+      try {
+        if (renderSessionToDispose != null) {
+          try {
+            disposeRenderSession(renderSessionToDispose)
+              .whenComplete((result, ex) -> clearClassLoader())
+              .orTimeout(2, TimeUnit.SECONDS)
+              .join(); // This is running on the dispose thread so wait for the full dispose to happen.
+          }
+          catch (Exception ignored) {
+          }
+        }
+        else {
+          clearClassLoader();
+        }
       }
-      myContext.getModule().dispose();
+      finally {
+        myXmlFile = null;
+        myContext.getModule().dispose();
+      }
 
       return null;
     });
@@ -448,9 +479,11 @@ public class RenderTask {
    * This method should be called whenever the size of the hardware used for rendering has changed.
    */
   private void updateHardwareConfiguration() {
-    if (myRenderSession != null) {
-      myRenderSession.updateHardwareConfiguration(myHardwareConfigHelper.getConfig());
-      isSizeChanged = true;
+    RenderSession session = myRenderSession;
+    if (session != null) {
+      HardwareConfig config = myHardwareConfigHelper.getConfig();
+      runAsyncRenderAction(() -> session.updateHardwareConfiguration(config));
+      isSizeChanged.set(true);
     }
   }
 
@@ -605,12 +638,12 @@ public class RenderTask {
       return null;
     }
 
+    if (isDisposed.get()) {
+      return null;
+    }
     RenderXmlFile xmlFile = getXmlFile();
     if (xmlFile == null) {
       throw new IllegalStateException("createRenderSession shouldn't be called on RenderTask without PsiFile");
-    }
-    if (isDisposed.get()) {
-      return null;
     }
 
     Configuration configuration = context.getConfiguration();
@@ -754,13 +787,20 @@ public class RenderTask {
         session.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(500));
       }
 
-      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed());
-      RenderSession oldRenderSession = myRenderSession;
-      myRenderSession = session;
-      RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
+      RenderSession oldRenderSession;
+      synchronized (this) {
+        if (isDisposed.get()) {
+          disposeRenderSession(session);
+          return null;
+        }
+        oldRenderSession = myRenderSession;
+        myRenderSession = session;
+        RenderTaskPatcher.enableComposeHotReloadMode(myModuleClassLoaderReference.getClassLoader());
+      }
       if (oldRenderSession != null) {
         disposeRenderSession(oldRenderSession);
       }
+      RenderResult result = RenderResult.create(context, session, xmlFile, myLogger, toRecyclableImage(session), myLayoutlibCallback.isUsed(), myShowDecorations);
       addDiagnostics(result.getRenderResult());
       return result;
     }
@@ -904,6 +944,14 @@ public class RenderTask {
     return runAsyncRenderAction(callable, 0, TimeUnit.SECONDS);
   }
 
+  @NotNull
+  private CompletableFuture<Void> runAsyncRenderAction(@NotNull Runnable runnable) {
+    return runAsyncRenderAction(() -> {
+      runnable.run();
+      return null;
+    });
+  }
+
   /**
    * Inflates the layout but does not render it.
    *
@@ -913,6 +961,9 @@ public class RenderTask {
   public CompletableFuture<@Nullable RenderResult> inflate() {
     // During development only:
     //assert !ApplicationManager.getApplication().isReadAccessAllowed() : "Do not hold read lock during inflate!";
+    if (isDisposed.get()) {
+      return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+    }
 
     RenderXmlFile xmlFile = getXmlFile();
     if (xmlFile == null) {
@@ -965,7 +1016,7 @@ public class RenderTask {
    */
   @NotNull
   public CompletableFuture<RenderResult> layout() {
-    if (myRenderSession == null) {
+    if (isDisposed.get() || myRenderSession == null) {
       return CompletableFuture.completedFuture(null);
     }
 
@@ -976,7 +1027,7 @@ public class RenderTask {
       RenderXmlFile xmlFile = getXmlFile();
       return runAsyncRenderAction(() -> {
         myRenderSession.measure();
-        return RenderResult.create(myContext, renderSession, xmlFile, myLogger, RecyclableImage.NULL, myLayoutlibCallback.isUsed());
+        return RenderResult.create(myContext, renderSession, xmlFile, myLogger, RecyclableImage.NULL, myLayoutlibCallback.isUsed(), myShowDecorations);
       });
     }
     catch (Exception e) {
@@ -1073,6 +1124,9 @@ public class RenderTask {
   private CompletableFuture<RenderResult> renderInner(boolean forceMeasure) {
     // During development only:
     //assert !ApplicationManager.getApplication().isReadAccessAllowed() : "Do not hold read lock during render!";
+    if (isDisposed.get()) {
+      return immediateFailedFuture(new IllegalStateException("RenderTask was already disposed"));
+    }
 
     RenderXmlFile xmlFile = getXmlFile();
     assert xmlFile != null;
@@ -1098,13 +1152,20 @@ public class RenderTask {
     }
 
     return inflateCompletableResult.thenCompose(inflateResult -> {
+      if (inflateResult != null && !inflateResult.getRenderResult().isSuccess()) {
+        return CompletableFuture.completedFuture(inflateResult);
+      }
+      if (myRenderSession == null) {
+        return CompletableFuture.completedFuture(
+          RenderResult.createErrorRenderResult(Result.Status.ERROR_RENDER, myContext.getModule(), xmlFile, null, myLogger));
+      }
       try {
         long startRenderTimeMs = System.currentTimeMillis();
         return runAsyncRenderAction(() -> {
           myTestEventListener.onBeforeRender();
           myRenderSession.render(forceMeasure);
           RenderResult result =
-            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toRecyclableImage(myRenderSession), myLayoutlibCallback.isUsed());
+            RenderResult.create(myContext, myRenderSession, xmlFile, myLogger, toRecyclableImage(myRenderSession), myLayoutlibCallback.isUsed(), myShowDecorations);
           Result renderResult = result.getRenderResult();
           if (renderResult.getException() != null) {
             reportException(renderResult.getException());
@@ -1170,9 +1231,8 @@ public class RenderTask {
   public CompletableFuture<RenderResult> render() {
     // If a re-render is happening after changing the quality up, then we need to re-measure
     // to avoid the rendered image to show things out of place. Also if size has changed, we need to re-measure.
-    boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged;
+    boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged.getAndSet(false);
     myCurrentQuality = myTargetQuality;
-    isSizeChanged = false;
     return renderInner(forceMeasure);
   }
 
@@ -1181,8 +1241,9 @@ public class RenderTask {
    * the current system nanos time.
    */
   public void setElapsedFrameTimeNanos(long nanos) {
-    if (myRenderSession != null) {
-      myRenderSession.setElapsedFrameTimeNanos(nanos);
+    RenderSession session = myRenderSession;
+    if (session != null) {
+      runAsyncRenderAction(() -> session.setElapsedFrameTimeNanos(nanos));
     }
   }
 
@@ -1243,7 +1304,7 @@ public class RenderTask {
           return CompletableFuture.completedFuture((BufferedImage)data);
         }
         else {
-          if (result.getStatus() == Result.Status.ERROR_NOT_A_DRAWABLE) {
+          if (result != null && result.getStatus() == Result.Status.ERROR_NOT_A_DRAWABLE) {
             LOG.debug("renderDrawable called with a non-drawable resource" + drawableResourceValue);
             return CompletableFuture.completedFuture(null);
           }

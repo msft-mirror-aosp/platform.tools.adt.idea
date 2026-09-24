@@ -623,6 +623,17 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/lsp4ij/language/altlang.lsp4ij.language.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/lsp4ij/language/altlang.lsp4ij.language.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/exception-breakpoints/altlang.dap.exception-breakpoints.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/exception-breakpoints/altlang.dap.exception-breakpoints.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/android-jdwp-interop/altlang.dap.android-jdwp-interop.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/android-jdwp-interop/altlang.dap.android-jdwp-interop.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/android-jdwp-interop/altlang.dap.android-jdwp-interop.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/android-jdwp-interop/altlang.dap.android-jdwp-interop.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/cxx/altlang.dap.cxx.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/cxx/altlang.dap.cxx.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/rust/altlang.dap.rust.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/rust/altlang.dap.rust.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/targets/altlang.dap.targets.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/targets/altlang.dap.targets.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cpp/altlang.cpp.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cpp/altlang.cpp.iml" />
     </modules>
   </component>

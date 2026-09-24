@@ -54,6 +54,7 @@ class WhatsNewDocumentLoaderTest {
       WhatsNewDocumentLoaderImpl(
         currentVersionSupplier = { currentVersion },
         zipStreamSupplier = { createFakeZip(fakeFiles) },
+        shouldFilterNewerVersions = true,
       )
 
     val documents = loader.loadDocuments()
@@ -70,6 +71,7 @@ class WhatsNewDocumentLoaderTest {
       WhatsNewDocumentLoaderImpl(
         currentVersionSupplier = { currentVersion },
         zipStreamSupplier = { createFakeZip(fakeFiles) },
+        shouldFilterNewerVersions = true,
       )
 
     val documents = loader.loadDocuments()
@@ -87,6 +89,26 @@ class WhatsNewDocumentLoaderTest {
       WhatsNewDocumentLoaderImpl(
         currentVersionSupplier = { Revision.NOT_SPECIFIED },
         zipStreamSupplier = { createFakeZip(fakeFiles) },
+        shouldFilterNewerVersions = true,
+      )
+
+    val documents = loader.loadDocuments()
+
+    assertEquals(4, documents.size)
+    assertEquals(Revision.parseRevision("2026.2.1"), documents[0].productVersion)
+    assertEquals(Revision.parseRevision("2026.1.2"), documents[1].productVersion)
+    assertEquals(Revision.parseRevision("2026.1.1"), documents[2].productVersion)
+    assertEquals(Revision.parseRevision("2025.3.1"), documents[3].productVersion)
+  }
+
+  @Test
+  fun loadDocuments_includesAllVersionsWhenShouldFilterNewerVersionsIsFalse(): Unit = runBlocking {
+    val currentVersion = Revision.parseRevision("2026.1.1")
+    val loader =
+      WhatsNewDocumentLoaderImpl(
+        currentVersionSupplier = { currentVersion },
+        zipStreamSupplier = { createFakeZip(fakeFiles) },
+        shouldFilterNewerVersions = false,
       )
 
     val documents = loader.loadDocuments()

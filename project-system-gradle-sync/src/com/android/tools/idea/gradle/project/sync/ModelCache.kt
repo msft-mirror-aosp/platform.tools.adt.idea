@@ -17,7 +17,6 @@
 
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.builder.model.AndroidProject
 import com.android.builder.model.Library
 import com.android.builder.model.Variant
 import com.android.builder.model.v2.ide.BasicVariant
@@ -49,26 +48,6 @@ import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.jetbrains.annotations.SystemIndependent
 
 interface ModelCache {
-
-  interface V1 : ModelCache {
-    fun variantFrom(
-      androidProject: IdeAndroidProjectImpl,
-      variant: Variant,
-      legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-      modelVersions: ModelVersions,
-      androidModuleId: ModuleId,
-    ): ModelResult<IdeVariantWithPostProcessor>
-
-    fun androidProjectFrom(
-      rootBuildId: BuildId,
-      buildId: BuildId,
-      projectPath: String,
-      project: AndroidProject,
-      legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-      gradlePropertiesModel: GradlePropertiesModel,
-      defaultVariantName: String?,
-    ): ModelResult<IdeAndroidProjectImpl>
-  }
 
   interface V2 : ModelCache {
     /**

@@ -692,6 +692,27 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     return kotlinx.coroutines.flow.FlowKt.emptyFlow();
   }
 
+  private boolean myIsAiAvailable = true;
+  private boolean myShowAiOnboardingCalled = false;
+
+  public void setIsAiAvailable(boolean isAiAvailable) {
+    myIsAiAvailable = isAiAvailable;
+  }
+
+  @Override
+  public boolean isAiAvailable() {
+    return myIsAiAvailable;
+  }
+
+  @Override
+  public void showAiOnboarding() {
+    myShowAiOnboardingCalled = true;
+  }
+
+  public boolean isShowAiOnboardingCalled() {
+    return myShowAiOnboardingCalled;
+  }
+
   private boolean myTraceSymbolizedAndDeobfuscated = false;
   private boolean mySymbolizeAndDeobfuscateFails = false;
 
