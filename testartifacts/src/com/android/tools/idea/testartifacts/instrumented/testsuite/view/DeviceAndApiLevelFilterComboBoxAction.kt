@@ -19,6 +19,7 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidDevice
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidDeviceType
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.getName
+import com.google.common.html.HtmlEscapers
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
@@ -30,6 +31,7 @@ import icons.StudioIcons
 import java.util.TreeSet
 import javax.swing.Icon
 import javax.swing.JComponent
+import javax.swing.plaf.basic.BasicHTML
 import org.jetbrains.kotlin.utils.alwaysTrue
 
 private const val ALL_DEVICES: String = "All devices"
@@ -50,7 +52,9 @@ class DeviceAndApiLevelFilterComboBoxAction : ComboBoxAction(), DumbAware {
 
   override fun update(e: AnActionEvent) {
     super.update(e)
-    e.presentation.text = myText
+    // myText is device-supplied data, not a text-with-mnemonic literal: pass mayContainMnemonic =
+    // false so that '_' and '&' are displayed instead of being consumed as mnemonic markers.
+    e.presentation.setText(myText, false)
     e.presentation.icon = myIcon
     e.presentation.isVisible = (myAvailableDevices.size > 1)
   }
@@ -95,13 +99,17 @@ class DeviceAndApiLevelFilterComboBoxAction : ComboBoxAction(), DumbAware {
   }
 
   private fun createFilterAction(text: String, icon: Icon?, filter: (AndroidDevice) -> Boolean): DumbAwareAction {
-    return DumbAwareAction.create(text) {
-        myText = text
+    val label = text.asLiteralText()
+    return DumbAwareAction.create {
+        myText = label
         myIcon = icon
         myFilter = filter
         listener?.onFilterUpdated()
       }
-      .apply { templatePresentation.icon = icon }
+      .apply {
+        templatePresentation.setText(label, false)
+        templatePresentation.icon = icon
+      }
   }
 
   fun addDevice(device: AndroidDevice) {
@@ -109,6 +117,21 @@ class DeviceAndApiLevelFilterComboBoxAction : ComboBoxAction(), DumbAware {
     myAvailableDevices.add(device)
   }
 }
+
+/**
+ * Returns [this] in a form that a Swing label renders as literal text.
+ *
+ * A `JLabel`/`AbstractButton` switches into HTML rendering mode if - and only if - its text begins with a literal `<html>` tag; which is
+ * what Swing itself consults. Device names reach this class straight from the device under test, so a hostile device can name itself
+ * `<html><img src="http://attacker/">` and have the IDE fetch that URL as soon as the name is shown - a blind SSRF, or an arbitrary local
+ * file read with a `file:` URL.
+ *
+ * Only strings Swing would actually treat as markup are rewritten, as escaped HTML so that they still display as their literal source.
+ * Everything else is returned untouched, which keeps names such as `AT&T Phone` intact; escaping every name unconditionally would render
+ * that as `AT&amp;T Phone`.
+ */
+private fun String.asLiteralText(): String =
+  if (BasicHTML.isHTMLString(this)) "<html>${HtmlEscapers.htmlEscaper().escape(this)}</html>" else this
 
 /** An interface to observe an update of a [DeviceAndApiLevelFilterComboBoxAction] state. */
 interface DeviceAndApiLevelFilterComboBoxActionListener {
