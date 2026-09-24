@@ -71,6 +71,7 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.IntFunction
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -330,7 +331,7 @@ class DeviceClient(
   /** Similar to [withTimeout] but throws [TimeoutException] with the given message. */
   private suspend fun <T> withVerboseTimeout(timeMillis: Long, timeoutMessage: String, block: suspend CoroutineScope.() -> T): T {
     return try {
-      withTimeout(timeMillis, block)
+      withTimeout(timeMillis.milliseconds, block)
     } catch (_: TimeoutCancellationException) {
       throw TimeoutException(timeoutMessage)
     }
@@ -605,7 +606,7 @@ class DeviceClient(
                 for (listener in agentTerminationListeners) {
                   listener.agentTerminated(it.exitCode)
                 }
-                cancel()
+                this@launch.cancel()
               }
             }
           }
