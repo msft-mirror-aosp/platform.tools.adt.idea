@@ -31,7 +31,7 @@ private const val EXPIRE_MINUTES = 30L // We will store cached classes for no lo
 /** A class binary representation cache. */
 class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Long, expireMinutes: Long) {
   @GuardedBy("this") private val scopeCaches = WeakHashMap<Any, ModuleClassCache>()
-  private var lock = ReentrantLock()
+  private val lock = ReentrantLock()
   /** A mapping from a library path to all the classes (fqcn) cached from this library. */
   @GuardedBy("lock") private val libraryPath2ClassFqns = mutableMapOf<String, MutableSet<String>>()
   /** A mapping from a fqcn to a library (path) that contains the class. */
