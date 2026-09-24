@@ -124,29 +124,9 @@ def _lnzipper(ctx, desc, filemap, out, attrs = {}, deps = []):
         mnemonic = "lnzipper",
     )
 
-# Bazel does not support attributes of type 'dict of string -> list of labels',
-# and in order to support them we must 'unpack' the dictionary to two lists
-# of keys and value. The following two functions perform the mapping back and forth
-def _dict_to_lists(dict):
-    keys = []
-    values = []
-    for k, vs in dict.items():
-        keys += [k] * len(vs)
-        values += vs
-    return keys, values
-
-def _lists_to_dict(keys, values):
-    dict = {}
-    for k, v in zip(keys, values):
-        if k not in dict:
-            dict[k] = []
-        dict[k].append(v)
-    return dict
-
-def _pack_modules(ctx, jar_names, modules):
-    jars = _lists_to_dict(jar_names, modules)
+def _pack_modules(ctx, modules):
     res_files = []
-    for j, ms in jars.items():
+    for j, ms in modules.items():
         jar_file = ctx.actions.declare_file(j)
         modules_jars = [m[ImlModuleInfo].module_jars for m in ms]
         run_singlejar(ctx, modules_jars, jar_file)
@@ -197,14 +177,15 @@ WIN = struct(
     resource_path = "",
 )
 
-def _resource_deps(res_dirs, res, platform):
+def _resource_deps(resources, platform):
     files = []
-    for dir, dep in zip(res_dirs, res):
-        if StudioDataInfo in dep:
-            dep_data = dep[StudioDataInfo]
-            files += [(dir + "/" + dep_data.mappings[f], f) for f in platform.get(dep_data).to_list()]
-        else:
-            files += [(dir + "/" + f.basename, f) for f in dep.files.to_list()]
+    for dir, deps in resources.items():
+        for dep in deps:
+            if StudioDataInfo in dep:
+                dep_data = dep[StudioDataInfo]
+                files += [(dir + "/" + dep_data.mappings[f], f) for f in platform.get(dep_data).to_list()]
+            else:
+                files += [(dir + "/" + f.basename, f) for f in dep.files.to_list()]
     return files
 
 def _check_plugin(ctx, out, files, kind, id, allow_bundled_updates = False, verify_deps = None):
@@ -234,7 +215,7 @@ def _check_plugin(ctx, out, files, kind, id, allow_bundled_updates = False, veri
 def _studio_plugin_os(ctx, platform, plugin_jars, plugin_dir):
     files = {plugin_dir + "/lib/" + d: f for (d, f) in plugin_jars}
 
-    res = _resource_deps(ctx.attr.resources_dirs, ctx.attr.resources, platform)
+    res = _resource_deps(ctx.attr.resources, platform)
     files.update({plugin_dir + "/" + d: f for (d, f) in res})
 
     return files
@@ -253,7 +234,8 @@ def _label_str(label):
 def _studio_plugin_impl(ctx):
     plugin_id = ctx.attr.name
     plugin_dir = "plugins/" + ctx.attr.directory
-    plugin_jars = _pack_modules(ctx, ctx.attr.jars, ctx.attr.modules)
+    modules = [m for ms in ctx.attr.modules.values() for m in ms]
+    plugin_jars = _pack_modules(ctx, ctx.attr.modules)
     plugin_jars = plugin_jars + [(f.basename, f) for f in ctx.files.libs]
 
     # Ensure plugin id is known at build time
@@ -278,9 +260,9 @@ def _studio_plugin_impl(ctx):
 
     # Check that all modules needed by the modules in this plugin, are either present in the
     # plugin or in its dependencies.
-    need = depset(transitive = [depset(m[ImlModuleInfo].deps) for m in ctx.attr.modules])
+    need = depset(transitive = [depset(m[ImlModuleInfo].deps) for m in modules])
     have = depset(
-        direct = ctx.attr.modules + ctx.attr.libs + [ctx.attr._intellij_sdk],
+        direct = modules + ctx.attr.libs + [ctx.attr._intellij_sdk],
         transitive = [d[PluginInfo].modules for d in ctx.attr.deps] +
                      [d[PluginInfo].libs for d in ctx.attr.deps] +
                      [depset(ctx.attr.deps)],
@@ -302,7 +284,7 @@ def _studio_plugin_impl(ctx):
                 win = plugin_files_win,
             ),
             plugin_metadata = ctx.outputs.plugin_metadata,
-            modules = depset(ctx.attr.modules),
+            modules = depset(modules),
             libs = depset(ctx.attr.libs),
             license_files = depset(ctx.files.license_files),
             overwrite_plugin_version = True,
@@ -316,12 +298,10 @@ def _studio_plugin_impl(ctx):
 
 _studio_plugin = rule(
     attrs = {
-        "modules": attr.label_list(providers = [ImlModuleInfo], allow_empty = True),
+        "modules": attr.label_list_dict(providers = [ImlModuleInfo], allow_empty = True),
         "libs": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
-        "jars": attr.string_list(),
-        "resources": attr.label_list(allow_files = True),
-        "resources_dirs": attr.string_list(),
+        "resources": attr.label_list_dict(allow_files = True),
         "directory": attr.string(),
         "compress": attr.bool(),
         "deps": attr.label_list(providers = [PluginInfo]),
@@ -423,16 +403,11 @@ def studio_plugin(
         modules = {},
         resources = {},
         **kwargs):
-    jars, modules_list = _dict_to_lists(modules)
-    resources_dirs, resources_list = _dict_to_lists(resources)
-
     _studio_plugin(
         name = name,
         directory = directory,
-        modules = modules_list,
-        jars = jars,
-        resources = resources_list,
-        resources_dirs = resources_dirs,
+        modules = modules,
+        resources = resources,
         compress = is_release(),
         **kwargs
     )
@@ -1430,8 +1405,7 @@ _intellij_plugin_import = rule(
         "files": attr.label_list(allow_files = True),
         "strip_prefix": attr.string(),
         "target_dir": attr.string(),
-        "resources": attr.label_list(allow_files = True),
-        "resources_dirs": attr.string_list(),
+        "resources": attr.label_list_dict(allow_files = True),
         # buildifier: disable=native-java-info (@rules_java is not usable in this file yet)
         "exports": attr.label_list(providers = [JavaInfo], mandatory = True),
         "compress": attr.bool(),
@@ -1450,14 +1424,12 @@ _intellij_plugin_import = rule(
 
 def intellij_plugin_import(name, target_dir, exports, files = [], strip_prefix = "", resources = {}, overwrite_plugin_version = False, **kwargs):
     """This macro is for prebuilt IntelliJ plugins that are not already part of intellij-sdk."""
-    resources_dirs, resources_list = _dict_to_lists(resources)
     _intellij_plugin_import(
         name = name,
         files = files,
         strip_prefix = strip_prefix,
         target_dir = target_dir,
-        resources = resources_list,
-        resources_dirs = resources_dirs,
+        resources = resources,
         exports = exports,
         compress = is_release(),
         overwrite_plugin_version = overwrite_plugin_version,
