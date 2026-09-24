@@ -1,4 +1,13 @@
 {
+  "id": "com.android.studio.ml.AcpConfigurable",
+  "name": "Agents",
+  "entries": [
+    {
+      "hit": "Agents"
+    }
+  ]
+}
+{
   "id": "com.android.studio.ml.McpConfigurable",
   "name": "MCP Servers",
   "entries": [
@@ -27,9 +36,6 @@
       "hit": "Context Compression"
     },
     {
-      "hit": "Enable pre-bundled skills"
-    },
-    {
       "hit": "Gemini requires a signed-in Google account."
     },
     {
@@ -40,9 +46,6 @@
     },
     {
       "hit": "Sign in"
-    },
-    {
-      "hit": "Skills"
     },
     {
       "hit": "Tokens:"
