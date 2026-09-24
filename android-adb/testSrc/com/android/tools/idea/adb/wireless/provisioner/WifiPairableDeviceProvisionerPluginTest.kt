@@ -26,6 +26,7 @@ import com.android.adblib.MdnsTrackServiceInfo
 import com.android.adblib.ServerStatus
 import com.android.adblib.ServiceInstanceName
 import com.android.tools.idea.adb.AdbServerStatusRetriever
+import com.android.tools.idea.adb.ServerStatusState
 import com.android.tools.idea.adb.wireless.AdbCommandResult
 import com.android.tools.idea.adb.wireless.AdbOnlineDevice
 import com.android.tools.idea.adb.wireless.AdbServiceWrapper
@@ -76,7 +77,7 @@ class WifiPairableDeviceProvisionerPluginTest {
   private lateinit var notificationService: MockWiFiPairingNotificationService
   private val mockPersistentService = mock<WifiPairableDevicesPersistentStateComponent>()
   private val mockAdbServerStatusRetriever = mock<AdbServerStatusRetriever>()
-  private val serverStatusFlow = MutableStateFlow<ServerStatus?>(ServerStatus(version = "37.0.0"))
+  private val serverStatusFlow = MutableStateFlow<ServerStatusState>(ServerStatusState.Supported(ServerStatus(version = "37.0.0")))
 
   private val projectRule = ProjectRule()
   val project: Project
@@ -106,7 +107,7 @@ class WifiPairableDeviceProvisionerPluginTest {
     adbService.setMdnsTrackServicesFlow(mdnsFlow)
     adbService.setHostFeatures(listOf(AdbFeatures.TRACK_MDNS_SERVICE))
     doReturn(MutableStateFlow(emptySet<String>())).whenever(mockPersistentService).hiddenDevices
-    whenever(mockAdbServerStatusRetriever.serverStatus).thenReturn(serverStatusFlow)
+    whenever(mockAdbServerStatusRetriever.serverStatusState).thenReturn(serverStatusFlow)
   }
 
   @Test
@@ -121,7 +122,7 @@ class WifiPairableDeviceProvisionerPluginTest {
 
   @Test
   fun pluginDoesNothing_whenAdbVersionTooLow() = runTest {
-    serverStatusFlow.value = ServerStatus(version = "36.0.0")
+    serverStatusFlow.value = ServerStatusState.Supported(ServerStatus(version = "36.0.0"))
     mdnsFlow.value = createMdnsTlsService("service1")
     val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
@@ -131,14 +132,14 @@ class WifiPairableDeviceProvisionerPluginTest {
 
   @Test
   fun pluginStartsTracking_whenAdbIsUpdated() = runTest {
-    serverStatusFlow.value = ServerStatus(version = "36.0.0")
+    serverStatusFlow.value = ServerStatusState.Supported(ServerStatus(version = "36.0.0"))
     mdnsFlow.value = createMdnsTlsService("service1")
     val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).isEmpty()
 
-    serverStatusFlow.value = ServerStatus(version = "37.0.0")
+    serverStatusFlow.value = ServerStatusState.Supported(ServerStatus(version = "37.0.0"))
     advanceTimeBy(1000) // Past loop delay
 
     assertThat(plugin.devices.value).hasSize(1)

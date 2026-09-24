@@ -57,7 +57,7 @@ interface DiagnosticsSummaryFileProvider {
         StudioFlagsDiagnosticFileProvider,
         ThreadDumpProvider,
         UIFreezeProvider,
-        AdbHostLogFileProvider,
+        DefaultAdbHostLogFileProvider,
       )
 
     /*

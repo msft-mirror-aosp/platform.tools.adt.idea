@@ -44,6 +44,7 @@ import com.android.sdklib.deviceprovisioner.Resolution
 import com.android.sdklib.deviceprovisioner.awaitDisconnection
 import com.android.sdklib.devices.Abi
 import com.android.tools.idea.adb.AdbServerStatusRetriever
+import com.android.tools.idea.adb.ServerStatusState
 import com.android.tools.idea.adb.wireless.AdbServiceWrapper
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService
 import com.android.tools.idea.adb.wireless.TrackingMdnsService
@@ -129,8 +130,9 @@ class WifiPairableDeviceProvisionerPlugin(
     scope.launch {
       val mdnsTrackServicesFlow: Flow<Set<MdnsTlsService>> =
         AdbServerStatusRetriever.getInstance(project)
-          .serverStatus
-          .flatMapLatest { serverStatus ->
+          .serverStatusState
+          .flatMapLatest { state ->
+            val serverStatus = (state as? ServerStatusState.Supported)?.status
             if (serverStatus == null) {
               return@flatMapLatest flowOf(MdnsServices(emptyList(), emptyList(), emptyList()))
             }

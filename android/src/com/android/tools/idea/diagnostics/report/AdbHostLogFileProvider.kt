@@ -16,17 +16,17 @@
 package com.android.tools.idea.diagnostics.report
 
 import com.android.tools.idea.adb.AdbServerStatusRetriever
+import com.android.tools.idea.adb.ServerStatusState
 import com.android.tools.idea.flags.StudioFlags
-import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.project.Project
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.io.path.Path
 
-/** A [DiagnosticsSummaryFileProvider] for adb host log. */
-object AdbHostLogFileProvider : DiagnosticsSummaryFileProvider {
+private const val SERVER_STATUS_FILE: String = "server-status.log"
 
-  private const val SERVER_STATUS_FILE: String = "server-status.log"
+/** A [DiagnosticsSummaryFileProvider] for adb host log. */
+class AdbHostLogFileProvider(private val pathProvider: PathProvider) : DiagnosticsSummaryFileProvider {
 
   override val name: String
     get() = "Adb Host"
@@ -38,9 +38,9 @@ object AdbHostLogFileProvider : DiagnosticsSummaryFileProvider {
     if (project == null) {
       return emptyList()
     }
-    val serverStatus = AdbServerStatusRetriever.getInstance(project).serverStatus.value ?: return emptyList()
-    val serverStatusOutputFile =
-      DiagnosticsSummaryFileProvider.getDiagnosticsDirectoryPath(PathManager.getLogPath()).resolve(SERVER_STATUS_FILE)
+    val serverStatusState = AdbServerStatusRetriever.getInstance(project).serverStatusState.value
+    val serverStatus = (serverStatusState as? ServerStatusState.Supported)?.status ?: return emptyList()
+    val serverStatusOutputFile = DiagnosticsSummaryFileProvider.getDiagnosticsDirectoryPath(pathProvider.logDir).resolve(SERVER_STATUS_FILE)
     Files.writeString(serverStatusOutputFile, serverStatus.toString())
     return listOf(
       FileInfo(Path(serverStatus.absoluteLogPath), Path(serverStatus.absoluteLogPath).fileName),
@@ -48,3 +48,5 @@ object AdbHostLogFileProvider : DiagnosticsSummaryFileProvider {
     )
   }
 }
+
+val DefaultAdbHostLogFileProvider = AdbHostLogFileProvider(DefaultPathProvider)
