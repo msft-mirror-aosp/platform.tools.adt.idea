@@ -33,6 +33,14 @@ interface TemplateRendererStrategy<AdditionalUserSettingsT : TemplateRendererStr
   val id: String
   val displayName: String
 
+  /** Optional description for the build configuration language context help tooltip */
+  val helpDescription: String?
+    get() = null
+
+  /** Optional URL for the build configuration language context help tooltip "Learn more" link */
+  val helpUrl: String?
+    get() = null
+
   fun createRecipeExecutor(context: RenderingContext, additionalUserSettings: AdditionalUserSettingsT): RecipeExecutor
 
   fun createProject(projectName: String, projectBaseDirectory: File): Project
@@ -79,6 +87,16 @@ interface TemplateRendererStrategy<AdditionalUserSettingsT : TemplateRendererStr
     @JvmStatic
     fun getTemplateRendererStrategy(project: Project): TemplateRendererStrategy<*>? {
       return EP_NAME.extensions.firstOrNull { it.isProjectApplicable(project) }
+    }
+
+    @JvmStatic
+    fun getApplicableStrategy(template: Template): TemplateRendererStrategy<*>? {
+      return EP_NAME.extensions.firstOrNull { it.isTemplateApplicable(template) }
+    }
+
+    @JvmStatic
+    fun isStrategyApplicable(strategyId: String, template: Template): Boolean {
+      return EP_NAME.extensions.any { it.id == strategyId && it.isTemplateApplicable(template) }
     }
   }
 }

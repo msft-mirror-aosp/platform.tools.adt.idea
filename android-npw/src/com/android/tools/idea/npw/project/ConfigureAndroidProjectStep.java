@@ -79,6 +79,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.intellij.ide.BrowserUtil;
+import com.intellij.ide.HelpTooltip;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.util.BackgroundTaskUtil;
@@ -156,6 +157,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
   private JComboBox myMinSdkCombo;
   private JComboBox<Object> myBuildConfigurationLanguageCombo;
   private ContextHelpLabel myBuildConfigurationLanguageLabel;
+  private HelpTooltip myBuildConfigurationLanguageTooltip;
   private JBCheckBox myLaunchFirebaseCheckbox;
   private JPanel myLaunchFirebasePanel;
 
@@ -404,6 +406,9 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myProjectModel.getLaunchFirebaseWizard().set(isFirebaseTemplate);
     myLaunchFirebasePanel.setVisible(isFirebaseTemplate);
 
+    TemplateRendererStrategy<?> applicableStrategy = TemplateRendererStrategy.getApplicableStrategy(newTemplate);
+    updateBuildConfigurationLanguageTooltip(applicableStrategy);
+
     boolean showBuildConfigurationLanguage = myBuildConfigurationLanguageCombo.getItemCount() > 1;
     myBuildConfigurationLanguageCombo.setVisible(showBuildConfigurationLanguage);
     myBuildConfigurationLanguageLabel.setVisible(showBuildConfigurationLanguage);
@@ -556,11 +561,11 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myFormFactorSdkControls = new FormFactorSdkControls();
     myFormFactorSdkControlsPanel = myFormFactorSdkControls.getRoot();
     myMinSdkCombo = myFormFactorSdkControls.getMinSdkComboBox();
-    myBuildConfigurationLanguageLabel = ContextHelpLabel.createWithLink(
-      null,
-      AndroidBundle.message("android.wizard.project.help.buildconfigurationlanguage.description"),
-      "Learn more",
-      () -> BrowserUtil.browse(KOTLIN_DSL_LINK));
+    myBuildConfigurationLanguageTooltip = new HelpTooltip()
+      .setNeverHideOnTimeout(true)
+      .setLocation(HelpTooltip.Alignment.HELP_BUTTON);
+    updateBuildConfigurationLanguageTooltip(null);
+    myBuildConfigurationLanguageLabel = ContextHelpLabel.createFromTooltip(myBuildConfigurationLanguageTooltip);
     myBuildConfigurationLanguageLabel.setText("Build configuration language");
     myBuildConfigurationLanguageLabel.setHorizontalTextPosition(SwingConstants.LEFT);
     myAndroidGradlePluginLabel = ContextHelpLabel.create(
@@ -624,6 +629,19 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       }
       // Not applicable to this template, fall back to KTS
       myBuildConfigurationLanguageCombo.setSelectedItem(BuildConfigurationLanguageForNewProject.KTS);
+    }
+  }
+
+  private void updateBuildConfigurationLanguageTooltip(@Nullable TemplateRendererStrategy<?> strategy) {
+    if (strategy != null && strategy.getHelpDescription() != null && strategy.getHelpUrl() != null) {
+      myBuildConfigurationLanguageTooltip
+        .setDescription(strategy.getHelpDescription())
+        .setLink("Learn more", () -> BrowserUtil.browse(strategy.getHelpUrl()));
+    }
+    else {
+      myBuildConfigurationLanguageTooltip
+        .setDescription(AndroidBundle.message("android.wizard.project.help.buildconfigurationlanguage.description"))
+        .setLink("Learn more", () -> BrowserUtil.browse(KOTLIN_DSL_LINK));
     }
   }
 
