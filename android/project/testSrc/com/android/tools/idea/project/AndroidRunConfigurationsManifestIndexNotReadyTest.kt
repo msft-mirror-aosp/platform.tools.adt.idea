@@ -22,7 +22,6 @@ import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
 import com.intellij.testFramework.runInEdtAndWait
-import io.ktor.util.reflect.instanceOf
 import junit.framework.TestCase.assertFalse
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -41,7 +40,7 @@ class AndroidRunConfigurationsManifestIndexNotReadyTest {
 
       val runConfigurations = RunManager.getInstance(projectRule.project).allConfigurationsList
       assertThat(runConfigurations).hasSize(1)
-      assertThat(runConfigurations.single().type).instanceOf(AndroidRunConfigurationType::class)
+      assertThat(runConfigurations.single().type).isInstanceOf(AndroidRunConfigurationType::class.java)
 
       runInEdtAndWait {
         val selected = RunManager.getInstance(projectRule.project).selectedConfiguration
