@@ -15,16 +15,35 @@
  */
 package com.android.tools.idea.streaming.core
 
-import com.android.testutils.PropertySetterRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.EmulatorSettings
-import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.runInEdtAndWait
+import org.junit.rules.ExternalResource
 
 /**
- * Sets EmulatorSettings.synchronizeClipboard and DeviceMirroringSettings.synchronizeClipboard to false and restores them after the test.
+ * Sets [EmulatorSettings.synchronizeClipboard] and [DeviceMirroringSettings.synchronizeClipboard] to false and restores them after the
+ * test.
  */
-fun ClipboardSynchronizationDisablementRule() =
-  RuleChain(
-    PropertySetterRule(false) { EmulatorSettings.getInstance()::synchronizeClipboard },
-    PropertySetterRule(false) { DeviceMirroringSettings.getInstance()::synchronizeClipboard },
-  )
+class ClipboardSynchronizationDisablementRule : ExternalResource() {
+
+  private var savedEmulatorSynchronizeClipboard = false
+  private var savedDeviceMirroringSynchronizeClipboard = false
+
+  override fun before() {
+    runInEdtAndWait {
+      val emulatorSettings = EmulatorSettings.getInstance()
+      savedEmulatorSynchronizeClipboard = emulatorSettings.synchronizeClipboard
+      emulatorSettings.synchronizeClipboard = false
+      val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
+      savedDeviceMirroringSynchronizeClipboard = deviceMirroringSettings.synchronizeClipboard
+      deviceMirroringSettings.synchronizeClipboard = false
+    }
+  }
+
+  override fun after() {
+    runInEdtAndWait {
+      EmulatorSettings.getInstance().synchronizeClipboard = savedEmulatorSynchronizeClipboard
+      DeviceMirroringSettings.getInstance().synchronizeClipboard = savedDeviceMirroringSynchronizeClipboard
+    }
+  }
+}
