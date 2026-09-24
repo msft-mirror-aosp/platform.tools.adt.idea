@@ -3370,6 +3370,7 @@ Android Studio Preview.app/Contents/plugins/lume/lib/libjson-schema-validator-sh
 Android Studio Preview.app/Contents/plugins/lume/lib/liblightbuild-android-plugin.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/liblightbuild-jvm-plugin.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/liblightbuild-ksp-plugin.jar
+Android Studio Preview.app/Contents/plugins/lume/lib/liblightbuild-protobuf-plugin.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/liblume-ide-api-impl.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/lume-ide-api.jar
 Android Studio Preview.app/Contents/plugins/lume/lib/project-system-lightbuild.jar

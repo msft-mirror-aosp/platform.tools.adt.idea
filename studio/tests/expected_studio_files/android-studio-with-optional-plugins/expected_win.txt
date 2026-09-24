@@ -2892,6 +2892,7 @@ android-studio/plugins/lume/lib/libjson-schema-validator-shaded.jar
 android-studio/plugins/lume/lib/liblightbuild-android-plugin.jar
 android-studio/plugins/lume/lib/liblightbuild-jvm-plugin.jar
 android-studio/plugins/lume/lib/liblightbuild-ksp-plugin.jar
+android-studio/plugins/lume/lib/liblightbuild-protobuf-plugin.jar
 android-studio/plugins/lume/lib/liblume-ide-api-impl.jar
 android-studio/plugins/lume/lib/lume-ide-api.jar
 android-studio/plugins/lume/lib/project-system-lightbuild.jar
