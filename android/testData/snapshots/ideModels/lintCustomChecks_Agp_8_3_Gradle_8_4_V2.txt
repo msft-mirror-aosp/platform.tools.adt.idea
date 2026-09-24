@@ -542,6 +542,12 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -557,6 +563,12 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -571,6 +583,12 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -593,6 +611,12 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -608,6 +632,12 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -623,6 +653,12 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -644,6 +680,12 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -659,6 +701,12 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -875,6 +923,12 @@ MODULE                        : project.library
             JniLibsDirectories            : <ROOT>/library/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/library/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -890,6 +944,12 @@ MODULE                        : project.library
                     JniLibsDirectories            : <ROOT>/library/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -904,6 +964,12 @@ MODULE                        : project.library
                     JniLibsDirectories            : <ROOT>/library/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -926,6 +992,12 @@ MODULE                        : project.library
             JniLibsDirectories            : <ROOT>/library/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/library/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -941,6 +1013,12 @@ MODULE                        : project.library
                     JniLibsDirectories            : <ROOT>/library/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -956,6 +1034,12 @@ MODULE                        : project.library
                     JniLibsDirectories            : <ROOT>/library/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -977,6 +1061,12 @@ MODULE                        : project.library
             JniLibsDirectories            : <ROOT>/library/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/library/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -992,6 +1082,12 @@ MODULE                        : project.library
                     JniLibsDirectories            : <ROOT>/library/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1183,6 +1279,12 @@ MODULE                        : project.library-remote
             JniLibsDirectories            : <ROOT>/library-remote/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/library-remote/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library-remote/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1198,6 +1300,12 @@ MODULE                        : project.library-remote
                     JniLibsDirectories            : <ROOT>/library-remote/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library-remote/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library-remote/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1212,6 +1320,12 @@ MODULE                        : project.library-remote
                     JniLibsDirectories            : <ROOT>/library-remote/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library-remote/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library-remote/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -1234,6 +1348,12 @@ MODULE                        : project.library-remote
             JniLibsDirectories            : <ROOT>/library-remote/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/library-remote/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library-remote/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1249,6 +1369,12 @@ MODULE                        : project.library-remote
                     JniLibsDirectories            : <ROOT>/library-remote/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library-remote/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library-remote/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1264,6 +1390,12 @@ MODULE                        : project.library-remote
                     JniLibsDirectories            : <ROOT>/library-remote/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library-remote/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library-remote/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -1285,6 +1417,12 @@ MODULE                        : project.library-remote
             JniLibsDirectories            : <ROOT>/library-remote/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/library-remote/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library-remote/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1300,6 +1438,12 @@ MODULE                        : project.library-remote
                     JniLibsDirectories            : <ROOT>/library-remote/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library-remote/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library-remote/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug

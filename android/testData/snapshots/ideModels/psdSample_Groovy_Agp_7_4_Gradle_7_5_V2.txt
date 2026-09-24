@@ -1309,6 +1309,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1325,6 +1331,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1340,6 +1352,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -1363,6 +1381,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1379,6 +1403,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1395,6 +1425,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             ApplicationIdSuffix           : suffix
@@ -1422,6 +1458,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1438,6 +1480,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
         BuildType
             Name                          : specialRelease
             VersionNameSuffix             : vnsSpecial
@@ -1462,6 +1510,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/specialRelease/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/specialRelease/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/specialRelease/shaders [-]
+            ApiConfigurationName          : specialReleaseApi
+            CompileOnlyConfigurationName  : specialReleaseCompileOnly
+            CompileOnlyApiConfigurationName         : specialReleaseApi
+            ImplementationConfigurationName         : specialReleaseImplementation
+            RuntimeOnlyConfigurationName  : specialReleaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : specialReleaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1478,6 +1532,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testSpecialRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testSpecialRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testSpecialRelease/shaders [-]
+                    ApiConfigurationName          : testSpecialReleaseApi
+                    CompileOnlyConfigurationName  : testSpecialReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testSpecialReleaseApi
+                    ImplementationConfigurationName         : testSpecialReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testSpecialReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSpecialReleaseAnnotationProcessor
     ProductFlavors
         ProductFlavor
             Name                          : basic
@@ -1497,6 +1557,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/basic/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/basic/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/basic/shaders [-]
+            ApiConfigurationName          : basicApi
+            CompileOnlyConfigurationName  : basicCompileOnly
+            CompileOnlyApiConfigurationName         : basicApi
+            ImplementationConfigurationName         : basicImplementation
+            RuntimeOnlyConfigurationName  : basicRuntimeOnly
+            AnnotationProcessorConfigurationName    : basicAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1513,6 +1579,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestBasic/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBasic/shaders [-]
+                    ApiConfigurationName          : androidTestBasicApi
+                    CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicApi
+                    ImplementationConfigurationName         : androidTestBasicImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1528,6 +1600,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testBasic/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasic/shaders [-]
+                    ApiConfigurationName          : testBasicApi
+                    CompileOnlyConfigurationName  : testBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicApi
+                    ImplementationConfigurationName         : testBasicImplementation
+                    RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
         ProductFlavor
             Name                          : paid
             VersionNameSuffix             : vnsFoo
@@ -1563,6 +1641,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/paid/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/paid/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/paid/shaders [-]
+            ApiConfigurationName          : paidApi
+            CompileOnlyConfigurationName  : paidCompileOnly
+            CompileOnlyApiConfigurationName         : paidApi
+            ImplementationConfigurationName         : paidImplementation
+            RuntimeOnlyConfigurationName  : paidRuntimeOnly
+            AnnotationProcessorConfigurationName    : paidAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1579,6 +1663,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestPaid/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestPaid/shaders [-]
+                    ApiConfigurationName          : androidTestPaidApi
+                    CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestPaidApi
+                    ImplementationConfigurationName         : androidTestPaidImplementation
+                    RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1594,6 +1684,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testPaid/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testPaid/shaders [-]
+                    ApiConfigurationName          : testPaidApi
+                    CompileOnlyConfigurationName  : testPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : testPaidApi
+                    ImplementationConfigurationName         : testPaidImplementation
+                    RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
         ProductFlavor
             Name                          : bar
             ApplicationIdSuffix           : barSuffix
@@ -1612,6 +1708,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/bar/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/bar/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/bar/shaders [-]
+            ApiConfigurationName          : barApi
+            CompileOnlyConfigurationName  : barCompileOnly
+            CompileOnlyApiConfigurationName         : barApi
+            ImplementationConfigurationName         : barImplementation
+            RuntimeOnlyConfigurationName  : barRuntimeOnly
+            AnnotationProcessorConfigurationName    : barAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1628,6 +1730,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBar/shaders [-]
+                    ApiConfigurationName          : androidTestBarApi
+                    CompileOnlyConfigurationName  : androidTestBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBarApi
+                    ImplementationConfigurationName         : androidTestBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBarAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1643,6 +1751,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBar/shaders [-]
+                    ApiConfigurationName          : testBarApi
+                    CompileOnlyConfigurationName  : testBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBarApi
+                    ImplementationConfigurationName         : testBarImplementation
+                    RuntimeOnlyConfigurationName  : testBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBarAnnotationProcessor
         ProductFlavor
             Name                          : otherBar
             Dimension                     : bar
@@ -1666,6 +1780,12 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/otherBar/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/otherBar/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/otherBar/shaders [-]
+            ApiConfigurationName          : otherBarApi
+            CompileOnlyConfigurationName  : otherBarCompileOnly
+            CompileOnlyApiConfigurationName         : otherBarApi
+            ImplementationConfigurationName         : otherBarImplementation
+            RuntimeOnlyConfigurationName  : otherBarRuntimeOnly
+            AnnotationProcessorConfigurationName    : otherBarAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1682,6 +1802,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestOtherBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestOtherBar/shaders [-]
+                    ApiConfigurationName          : androidTestOtherBarApi
+                    CompileOnlyConfigurationName  : androidTestOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestOtherBarApi
+                    ImplementationConfigurationName         : androidTestOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestOtherBarAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1697,6 +1823,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testOtherBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testOtherBar/shaders [-]
+                    ApiConfigurationName          : testOtherBarApi
+                    CompileOnlyConfigurationName  : testOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testOtherBarApi
+                    ImplementationConfigurationName         : testOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : testOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testOtherBarAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1866,6 +1998,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/basicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/basicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/basicBarDebug/shaders [-]
+                    ApiConfigurationName          : basicBarDebugApi
+                    CompileOnlyConfigurationName  : basicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarDebugApi
+                    ImplementationConfigurationName         : basicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : basicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : basicBar
                     Manifest                      : <ROOT>/app/src/basicBar/AndroidManifest.xml [-]
@@ -1879,6 +2017,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/basicBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/basicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/basicBar/shaders [-]
+                    ApiConfigurationName          : basicBarApi
+                    CompileOnlyConfigurationName  : basicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarApi
+                    ImplementationConfigurationName         : basicBarImplementation
+                    RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2175,6 +2319,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestBasicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBasicBarDebug/shaders [-]
+                    ApiConfigurationName          : androidTestBasicBarDebugApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarDebugApi
+                    ImplementationConfigurationName         : androidTestBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : androidTestBasicBar
                     Manifest                      : <ROOT>/app/src/androidTestBasicBar/AndroidManifest.xml [-]
@@ -2188,6 +2338,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestBasicBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBasicBar/shaders [-]
+                    ApiConfigurationName          : androidTestBasicBarApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarApi
+                    ImplementationConfigurationName         : androidTestBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support.test.espresso:espresso-core:3.0.2@aar
@@ -2438,6 +2594,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testBasicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasicBarDebug/shaders [-]
+                    ApiConfigurationName          : testBasicBarDebugApi
+                    CompileOnlyConfigurationName  : testBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarDebugApi
+                    ImplementationConfigurationName         : testBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : testBasicBar
                     Manifest                      : <ROOT>/app/src/testBasicBar/AndroidManifest.xml [-]
@@ -2451,6 +2613,12 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testBasicBar/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasicBar/shaders [-]
+                    ApiConfigurationName          : testBasicBarApi
+                    CompileOnlyConfigurationName  : testBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarApi
+                    ImplementationConfigurationName         : testBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2842,6 +3010,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2858,6 +3032,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2873,6 +3053,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -2896,6 +3082,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2912,6 +3104,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2928,6 +3126,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -2950,6 +3154,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2966,6 +3176,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
         BuildType
             Name                          : specialRelease
             IsDebuggable                  : false
@@ -2988,6 +3204,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/specialRelease/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/specialRelease/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/specialRelease/shaders [-]
+            ApiConfigurationName          : specialReleaseApi
+            CompileOnlyConfigurationName  : specialReleaseCompileOnly
+            CompileOnlyApiConfigurationName         : specialReleaseApi
+            ImplementationConfigurationName         : specialReleaseImplementation
+            RuntimeOnlyConfigurationName  : specialReleaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : specialReleaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -3004,6 +3226,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testSpecialRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testSpecialRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testSpecialRelease/shaders [-]
+                    ApiConfigurationName          : testSpecialReleaseApi
+                    CompileOnlyConfigurationName  : testSpecialReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testSpecialReleaseApi
+                    ImplementationConfigurationName         : testSpecialReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testSpecialReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSpecialReleaseAnnotationProcessor
     ProductFlavors
         ProductFlavor
             Name                          : basic
@@ -3022,6 +3250,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/basic/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/basic/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/basic/shaders [-]
+            ApiConfigurationName          : basicApi
+            CompileOnlyConfigurationName  : basicCompileOnly
+            CompileOnlyApiConfigurationName         : basicApi
+            ImplementationConfigurationName         : basicImplementation
+            RuntimeOnlyConfigurationName  : basicRuntimeOnly
+            AnnotationProcessorConfigurationName    : basicAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3038,6 +3272,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestBasic/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBasic/shaders [-]
+                    ApiConfigurationName          : androidTestBasicApi
+                    CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicApi
+                    ImplementationConfigurationName         : androidTestBasicImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3053,6 +3293,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testBasic/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBasic/shaders [-]
+                    ApiConfigurationName          : testBasicApi
+                    CompileOnlyConfigurationName  : testBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicApi
+                    ImplementationConfigurationName         : testBasicImplementation
+                    RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
         ProductFlavor
             Name                          : paid
             Dimension                     : foo
@@ -3070,6 +3316,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/paid/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/paid/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/paid/shaders [-]
+            ApiConfigurationName          : paidApi
+            CompileOnlyConfigurationName  : paidCompileOnly
+            CompileOnlyApiConfigurationName         : paidApi
+            ImplementationConfigurationName         : paidImplementation
+            RuntimeOnlyConfigurationName  : paidRuntimeOnly
+            AnnotationProcessorConfigurationName    : paidAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3086,6 +3338,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestPaid/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestPaid/shaders [-]
+                    ApiConfigurationName          : androidTestPaidApi
+                    CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestPaidApi
+                    ImplementationConfigurationName         : androidTestPaidImplementation
+                    RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3101,6 +3359,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testPaid/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testPaid/shaders [-]
+                    ApiConfigurationName          : testPaidApi
+                    CompileOnlyConfigurationName  : testPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : testPaidApi
+                    ImplementationConfigurationName         : testPaidImplementation
+                    RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
         ProductFlavor
             Name                          : bar
             Dimension                     : bar
@@ -3118,6 +3382,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/bar/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/bar/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/bar/shaders [-]
+            ApiConfigurationName          : barApi
+            CompileOnlyConfigurationName  : barCompileOnly
+            CompileOnlyApiConfigurationName         : barApi
+            ImplementationConfigurationName         : barImplementation
+            RuntimeOnlyConfigurationName  : barRuntimeOnly
+            AnnotationProcessorConfigurationName    : barAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3134,6 +3404,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBar/shaders [-]
+                    ApiConfigurationName          : androidTestBarApi
+                    CompileOnlyConfigurationName  : androidTestBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBarApi
+                    ImplementationConfigurationName         : androidTestBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBarAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3149,6 +3425,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBar/shaders [-]
+                    ApiConfigurationName          : testBarApi
+                    CompileOnlyConfigurationName  : testBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBarApi
+                    ImplementationConfigurationName         : testBarImplementation
+                    RuntimeOnlyConfigurationName  : testBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBarAnnotationProcessor
         ProductFlavor
             Name                          : otherBar
             Dimension                     : bar
@@ -3166,6 +3448,12 @@ MODULE                        : project.dyn_feature
             AssetsDirectories             : <ROOT>/dyn_feature/src/otherBar/assets [-]
             JniLibsDirectories            : <ROOT>/dyn_feature/src/otherBar/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/otherBar/shaders [-]
+            ApiConfigurationName          : otherBarApi
+            CompileOnlyConfigurationName  : otherBarCompileOnly
+            CompileOnlyApiConfigurationName         : otherBarApi
+            ImplementationConfigurationName         : otherBarImplementation
+            RuntimeOnlyConfigurationName  : otherBarRuntimeOnly
+            AnnotationProcessorConfigurationName    : otherBarAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3182,6 +3470,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestOtherBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestOtherBar/shaders [-]
+                    ApiConfigurationName          : androidTestOtherBarApi
+                    CompileOnlyConfigurationName  : androidTestOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestOtherBarApi
+                    ImplementationConfigurationName         : androidTestOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestOtherBarAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3197,6 +3491,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testOtherBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testOtherBar/shaders [-]
+                    ApiConfigurationName          : testOtherBarApi
+                    CompileOnlyConfigurationName  : testOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testOtherBarApi
+                    ImplementationConfigurationName         : testOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : testOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testOtherBarAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -3302,6 +3602,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/basicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/basicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/basicBarDebug/shaders [-]
+                    ApiConfigurationName          : basicBarDebugApi
+                    CompileOnlyConfigurationName  : basicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarDebugApi
+                    ImplementationConfigurationName         : basicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : basicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : basicBar
                     Manifest                      : <ROOT>/dyn_feature/src/basicBar/AndroidManifest.xml [-]
@@ -3315,6 +3621,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/basicBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/basicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/basicBar/shaders [-]
+                    ApiConfigurationName          : basicBarApi
+                    CompileOnlyConfigurationName  : basicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarApi
+                    ImplementationConfigurationName         : basicBarImplementation
+                    RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3501,6 +3813,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestBasicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBarDebug/shaders [-]
+                    ApiConfigurationName          : androidTestBasicBarDebugApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarDebugApi
+                    ImplementationConfigurationName         : androidTestBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : androidTestBasicBar
                     Manifest                      : <ROOT>/dyn_feature/src/androidTestBasicBar/AndroidManifest.xml [-]
@@ -3514,6 +3832,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/androidTestBasicBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBar/shaders [-]
+                    ApiConfigurationName          : androidTestBasicBarApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarApi
+                    ImplementationConfigurationName         : androidTestBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3703,6 +4027,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testBasicBarDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBasicBarDebug/shaders [-]
+                    ApiConfigurationName          : testBasicBarDebugApi
+                    CompileOnlyConfigurationName  : testBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarDebugApi
+                    ImplementationConfigurationName         : testBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : testBasicBar
                     Manifest                      : <ROOT>/dyn_feature/src/testBasicBar/AndroidManifest.xml [-]
@@ -3716,6 +4046,12 @@ MODULE                        : project.dyn_feature
                     AssetsDirectories             : <ROOT>/dyn_feature/src/testBasicBar/assets [-]
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBasicBar/shaders [-]
+                    ApiConfigurationName          : testBasicBarApi
+                    CompileOnlyConfigurationName  : testBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarApi
+                    ImplementationConfigurationName         : testBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3994,6 +4330,12 @@ MODULE                        : project.lib
             AssetsDirectories             : <ROOT>/lib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/lib/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4010,6 +4352,12 @@ MODULE                        : project.lib
                     AssetsDirectories             : <ROOT>/lib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -4025,6 +4373,12 @@ MODULE                        : project.lib
                     AssetsDirectories             : <ROOT>/lib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -4048,6 +4402,12 @@ MODULE                        : project.lib
             AssetsDirectories             : <ROOT>/lib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/lib/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4064,6 +4424,12 @@ MODULE                        : project.lib
                     AssetsDirectories             : <ROOT>/lib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4080,6 +4446,12 @@ MODULE                        : project.lib
                     AssetsDirectories             : <ROOT>/lib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/lib/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-7.4.1 [-]
@@ -4105,6 +4477,12 @@ MODULE                        : project.lib
             AssetsDirectories             : <ROOT>/lib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/lib/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4121,6 +4499,12 @@ MODULE                        : project.lib
                     AssetsDirectories             : <ROOT>/lib/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5022,6 +5406,12 @@ MODULE                        : project.nested1
             AssetsDirectories             : <ROOT>/nested1/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/nested1/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5038,6 +5428,12 @@ MODULE                        : project.nested1
                     AssetsDirectories             : <ROOT>/nested1/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5053,6 +5449,12 @@ MODULE                        : project.nested1
                     AssetsDirectories             : <ROOT>/nested1/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -5076,6 +5478,12 @@ MODULE                        : project.nested1
             AssetsDirectories             : <ROOT>/nested1/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/nested1/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5092,6 +5500,12 @@ MODULE                        : project.nested1
                     AssetsDirectories             : <ROOT>/nested1/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5108,6 +5522,12 @@ MODULE                        : project.nested1
                     AssetsDirectories             : <ROOT>/nested1/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -5130,6 +5550,12 @@ MODULE                        : project.nested1
             AssetsDirectories             : <ROOT>/nested1/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/nested1/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5146,6 +5572,12 @@ MODULE                        : project.nested1
                     AssetsDirectories             : <ROOT>/nested1/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5341,6 +5773,12 @@ MODULE                        : project.nested1.deep
             AssetsDirectories             : <ROOT>/nested1/deep/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/nested1/deep/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/deep/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5357,6 +5795,12 @@ MODULE                        : project.nested1.deep
                     AssetsDirectories             : <ROOT>/nested1/deep/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5372,6 +5816,12 @@ MODULE                        : project.nested1.deep
                     AssetsDirectories             : <ROOT>/nested1/deep/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -5395,6 +5845,12 @@ MODULE                        : project.nested1.deep
             AssetsDirectories             : <ROOT>/nested1/deep/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/nested1/deep/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/deep/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5411,6 +5867,12 @@ MODULE                        : project.nested1.deep
                     AssetsDirectories             : <ROOT>/nested1/deep/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5427,6 +5889,12 @@ MODULE                        : project.nested1.deep
                     AssetsDirectories             : <ROOT>/nested1/deep/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -5449,6 +5917,12 @@ MODULE                        : project.nested1.deep
             AssetsDirectories             : <ROOT>/nested1/deep/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/nested1/deep/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/deep/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5465,6 +5939,12 @@ MODULE                        : project.nested1.deep
                     AssetsDirectories             : <ROOT>/nested1/deep/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5674,6 +6154,12 @@ MODULE                        : project.nested2
             AssetsDirectories             : <ROOT>/nested2/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5690,6 +6176,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5705,6 +6197,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -5728,6 +6226,12 @@ MODULE                        : project.nested2
             AssetsDirectories             : <ROOT>/nested2/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5744,6 +6248,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5760,6 +6270,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -5782,6 +6298,12 @@ MODULE                        : project.nested2
             AssetsDirectories             : <ROOT>/nested2/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5798,6 +6320,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     ProductFlavors
         ProductFlavor
             Name                          : basic
@@ -5816,6 +6344,12 @@ MODULE                        : project.nested2
             AssetsDirectories             : <ROOT>/nested2/src/basic/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/src/basic/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/basic/shaders [-]
+            ApiConfigurationName          : basicApi
+            CompileOnlyConfigurationName  : basicCompileOnly
+            CompileOnlyApiConfigurationName         : basicApi
+            ImplementationConfigurationName         : basicImplementation
+            RuntimeOnlyConfigurationName  : basicRuntimeOnly
+            AnnotationProcessorConfigurationName    : basicAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5832,6 +6366,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/androidTestBasic/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestBasic/shaders [-]
+                    ApiConfigurationName          : androidTestBasicApi
+                    CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicApi
+                    ImplementationConfigurationName         : androidTestBasicImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5847,6 +6387,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/testBasic/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testBasic/shaders [-]
+                    ApiConfigurationName          : testBasicApi
+                    CompileOnlyConfigurationName  : testBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicApi
+                    ImplementationConfigurationName         : testBasicImplementation
+                    RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
         ProductFlavor
             Name                          : paid
             Dimension                     : foo
@@ -5864,6 +6410,12 @@ MODULE                        : project.nested2
             AssetsDirectories             : <ROOT>/nested2/src/paid/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/src/paid/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/paid/shaders [-]
+            ApiConfigurationName          : paidApi
+            CompileOnlyConfigurationName  : paidCompileOnly
+            CompileOnlyApiConfigurationName         : paidApi
+            ImplementationConfigurationName         : paidImplementation
+            RuntimeOnlyConfigurationName  : paidRuntimeOnly
+            AnnotationProcessorConfigurationName    : paidAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5880,6 +6432,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/androidTestPaid/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestPaid/shaders [-]
+                    ApiConfigurationName          : androidTestPaidApi
+                    CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestPaidApi
+                    ImplementationConfigurationName         : androidTestPaidImplementation
+                    RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5895,6 +6453,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/testPaid/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testPaid/shaders [-]
+                    ApiConfigurationName          : testPaidApi
+                    CompileOnlyConfigurationName  : testPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : testPaidApi
+                    ImplementationConfigurationName         : testPaidImplementation
+                    RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5955,6 +6519,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/basicDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/basicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/basicDebug/shaders [-]
+                    ApiConfigurationName          : basicDebugApi
+                    CompileOnlyConfigurationName  : basicDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : basicDebugApi
+                    ImplementationConfigurationName         : basicDebugImplementation
+                    RuntimeOnlyConfigurationName  : basicDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicDebugAnnotationProcessor
                 Dependencies
                     compileClasspath
                     runtimeClasspath
@@ -5990,6 +6560,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/androidTestBasicDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestBasicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestBasicDebug/shaders [-]
+                    ApiConfigurationName          : androidTestBasicDebugApi
+                    CompileOnlyConfigurationName  : androidTestBasicDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicDebugApi
+                    ImplementationConfigurationName         : androidTestBasicDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicDebugAnnotationProcessor
                 Dependencies
                     compileClasspath
                         module                        : <ROOT>-:nested2-MAIN
@@ -6031,6 +6607,12 @@ MODULE                        : project.nested2
                     AssetsDirectories             : <ROOT>/nested2/src/testBasicDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/src/testBasicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testBasicDebug/shaders [-]
+                    ApiConfigurationName          : testBasicDebugApi
+                    CompileOnlyConfigurationName  : testBasicDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicDebugApi
+                    ImplementationConfigurationName         : testBasicDebugImplementation
+                    RuntimeOnlyConfigurationName  : testBasicDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicDebugAnnotationProcessor
                 Dependencies
                     compileClasspath
                         module                        : <ROOT>-:nested2-MAIN
@@ -6136,6 +6718,12 @@ MODULE                        : project.nested2.deep
             AssetsDirectories             : <ROOT>/nested2/deep/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/deep/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/deep/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6152,6 +6740,12 @@ MODULE                        : project.nested2.deep
                     AssetsDirectories             : <ROOT>/nested2/deep/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -6167,6 +6761,12 @@ MODULE                        : project.nested2.deep
                     AssetsDirectories             : <ROOT>/nested2/deep/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -6190,6 +6790,12 @@ MODULE                        : project.nested2.deep
             AssetsDirectories             : <ROOT>/nested2/deep/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/deep/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/deep/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6206,6 +6812,12 @@ MODULE                        : project.nested2.deep
                     AssetsDirectories             : <ROOT>/nested2/deep/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6222,6 +6834,12 @@ MODULE                        : project.nested2.deep
                     AssetsDirectories             : <ROOT>/nested2/deep/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -6244,6 +6862,12 @@ MODULE                        : project.nested2.deep
             AssetsDirectories             : <ROOT>/nested2/deep/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/deep/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/deep/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6260,6 +6884,12 @@ MODULE                        : project.nested2.deep
                     AssetsDirectories             : <ROOT>/nested2/deep/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -6466,6 +7096,12 @@ MODULE                        : project.nested2.trans.deep2
             AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6482,6 +7118,12 @@ MODULE                        : project.nested2.trans.deep2
                     AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -6497,6 +7139,12 @@ MODULE                        : project.nested2.trans.deep2
                     AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -6520,6 +7168,12 @@ MODULE                        : project.nested2.trans.deep2
             AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6536,6 +7190,12 @@ MODULE                        : project.nested2.trans.deep2
                     AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6552,6 +7212,12 @@ MODULE                        : project.nested2.trans.deep2
                     AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -6574,6 +7240,12 @@ MODULE                        : project.nested2.trans.deep2
             AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6590,6 +7262,12 @@ MODULE                        : project.nested2.trans.deep2
                     AssetsDirectories             : <ROOT>/nested2/trans/deep2/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug

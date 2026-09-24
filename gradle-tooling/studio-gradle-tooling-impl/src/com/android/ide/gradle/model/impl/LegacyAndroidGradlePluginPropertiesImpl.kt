@@ -28,4 +28,5 @@ data class LegacyAndroidGradlePluginPropertiesImpl(
   override val buildTypesMatchingFallbacks: Map<String, List<String>>,
   override val productFlavorsMatchingFallbacks: Map<String, List<String>>,
   override val missingDimensionStrategies: Map<String, Map<String, List<String>>>,
+  override val sourceProvidersConfigurationNames: Map<String, Map<String, String?>>,
 ) : LegacyAndroidGradlePluginProperties

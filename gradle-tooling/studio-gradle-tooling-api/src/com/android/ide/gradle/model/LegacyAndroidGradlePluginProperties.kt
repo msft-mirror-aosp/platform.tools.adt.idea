@@ -59,6 +59,12 @@ interface LegacyAndroidGradlePluginProperties {
    */
   val missingDimensionStrategies: Map<String, Map<String, List<String>>>
 
+  /**
+   * For AGP < 9.5 Canary8, we get information about the source providers configurations names from the DSL only. We store this data as
+   * mapping of: sourceProviderName -> mapOf(confgName -> configNameValue)
+   */
+  val sourceProvidersConfigurationNames: Map<String, Map<String, String?>>
+
   /** Exceptions caught from trying to read the additional information from the model, which should be reported as sync warnings. */
   val problems: List<Exception>
 }

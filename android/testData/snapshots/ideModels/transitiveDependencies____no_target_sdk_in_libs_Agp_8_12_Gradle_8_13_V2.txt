@@ -1022,6 +1022,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1037,6 +1044,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1051,6 +1065,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -1073,6 +1094,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1088,6 +1116,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1103,6 +1138,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-8.12.0 [-]
@@ -1126,6 +1168,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1141,6 +1190,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2115,6 +2171,13 @@ MODULE                        : project.library1
             JniLibsDirectories            : <ROOT>/library1/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/library1/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library1/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2130,6 +2193,13 @@ MODULE                        : project.library1
                     JniLibsDirectories            : <ROOT>/library1/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library1/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library1/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2144,6 +2214,13 @@ MODULE                        : project.library1
                     JniLibsDirectories            : <ROOT>/library1/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library1/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library1/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -2166,6 +2243,13 @@ MODULE                        : project.library1
             JniLibsDirectories            : <ROOT>/library1/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/library1/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library1/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2181,6 +2265,13 @@ MODULE                        : project.library1
                     JniLibsDirectories            : <ROOT>/library1/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library1/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library1/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2196,6 +2287,13 @@ MODULE                        : project.library1
                     JniLibsDirectories            : <ROOT>/library1/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library1/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library1/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/library1/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-8.12.0 [-]
@@ -2219,6 +2317,13 @@ MODULE                        : project.library1
             JniLibsDirectories            : <ROOT>/library1/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/library1/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library1/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2234,6 +2339,13 @@ MODULE                        : project.library1
                     JniLibsDirectories            : <ROOT>/library1/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library1/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library1/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -3192,6 +3304,13 @@ MODULE                        : project.library2
             JniLibsDirectories            : <ROOT>/library2/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/library2/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library2/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3207,6 +3326,13 @@ MODULE                        : project.library2
                     JniLibsDirectories            : <ROOT>/library2/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library2/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library2/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3221,6 +3347,13 @@ MODULE                        : project.library2
                     JniLibsDirectories            : <ROOT>/library2/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library2/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library2/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -3243,6 +3376,13 @@ MODULE                        : project.library2
             JniLibsDirectories            : <ROOT>/library2/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/library2/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library2/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3258,6 +3398,13 @@ MODULE                        : project.library2
                     JniLibsDirectories            : <ROOT>/library2/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library2/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library2/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -3273,6 +3420,13 @@ MODULE                        : project.library2
                     JniLibsDirectories            : <ROOT>/library2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library2/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library2/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/library2/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-8.12.0 [-]
@@ -3296,6 +3450,13 @@ MODULE                        : project.library2
             JniLibsDirectories            : <ROOT>/library2/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/library2/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/library2/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -3311,6 +3472,13 @@ MODULE                        : project.library2
                     JniLibsDirectories            : <ROOT>/library2/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/library2/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/library2/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug

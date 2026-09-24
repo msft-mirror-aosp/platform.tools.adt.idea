@@ -23,4 +23,5 @@ interface LegacyAndroidGradlePluginPropertiesModelParameters {
   var mappingFile: Boolean
   var matchingFallbacks: Boolean
   var missingDimensionStrategies: Boolean
+  var sourceProvidersConfigurationNames: Boolean
 }

@@ -158,7 +158,11 @@ fun modelCacheV2Impl(
   fun Collection<File>.deduplicateFiles() = map { it.deduplicateFile() }
 
   /** If AGP has absolute Gradle build path used in [ProjectInfo.buildId], or it uses the Gradle build name that we need to patch. */
-  fun sourceProviderFrom(provider: SourceProvider, buildFolder: File): IdeSourceProvider {
+  fun sourceProviderFrom(
+    provider: SourceProvider,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeSourceProvider {
     val folder: File? = provider.manifestFile?.let { it.parentFile?.deduplicateFile() }
     fun File.makeRelativeAndDeduplicate(): String = (if (folder != null) relativeToOrSelf(folder) else this).path.deduplicate()
     fun Collection<File>.makeRelativeAndDeduplicate(): List<String> = map { it.makeRelativeAndDeduplicate() }
@@ -199,30 +203,38 @@ fun modelCacheV2Impl(
           provider.aarKeepRulesDirectories?.makeRelativeAndDeduplicate() ?: mutableListOf()
         else mutableListOf(),
       apiConfigurationName =
-        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.apiConfigurationName?.deduplicate() else null,
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.apiConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("apiConfigurationName"),
       compileOnlyConfigurationName =
         if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.compileOnlyConfigurationName?.deduplicate()
-        else null,
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("compileOnlyConfigurationName"),
       compileOnlyApiConfigurationName =
         if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.compileOnlyApiConfigurationName?.deduplicate()
-        else null,
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("compileOnlyApiConfigurationName"),
       implementationConfigurationName =
         if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.implementationConfigurationName?.deduplicate()
-        else null,
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("implementationConfigurationName"),
       runtimeOnlyConfigurationName =
         if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.runtimeOnlyConfigurationName?.deduplicate()
-        else null,
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("runtimeOnlyConfigurationName"),
       annotationProcessorConfigurationName =
         if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES])
           provider.annotationProcessorConfigurationName?.deduplicate()
-        else null,
+        else
+          legacyAndroidGradlePluginProperties
+            ?.sourceProvidersConfigurationNames[provider.name]
+            ?.get("annotationProcessorConfigurationName"),
       kaptConfigurationName =
-        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.kaptConfigurationName?.deduplicate() else null,
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.kaptConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("kaptConfigurationName"),
     )
   }
 
-  fun sourceProviderFrom(provider: SourceProvider, assetContext: VariantAssetSourceProviderContext): IdeSourceProvider =
-    sourceProviderFrom(provider, assetContext.buildFolder)
+  fun sourceProviderFrom(
+    provider: SourceProvider,
+    assetContext: VariantAssetSourceProviderContext,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeSourceProvider = sourceProviderFrom(provider, assetContext.buildFolder, legacyAndroidGradlePluginProperties)
 
   fun sourceProviderFrom(source: HostJarTestSuiteSource): IdeSourceProvider {
     val topLevel: File =
@@ -299,7 +311,11 @@ fun modelCacheV2Impl(
   /**
    * We recombine all the test sources into a single collection since they can be disambiguated using the [IdeTestSuiteSource.type] field.
    */
-  fun collectAllTestSuiteSources(basicTestSuite: BasicTestSuite, buildFolder: File): List<IdeTestSuiteSourceImpl> {
+  fun collectAllTestSuiteSources(
+    basicTestSuite: BasicTestSuite,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): List<IdeTestSuiteSourceImpl> {
     return basicTestSuite.assets
       .map { source: AssetsTestSuiteSource ->
         IdeTestSuiteSourceImpl(source.name, IdeTestSuiteSource.SourceType.ASSETS, sourceProviderFrom(source))
@@ -314,7 +330,7 @@ fun modelCacheV2Impl(
           IdeTestSuiteSourceImpl(
             source.name,
             IdeTestSuiteSource.SourceType.TEST_APK,
-            sourceProviderFrom(source.sourceProvider, buildFolder),
+            sourceProviderFrom(source.sourceProvider, buildFolder, legacyAndroidGradlePluginProperties),
           )
         }
       )
@@ -481,7 +497,11 @@ fun modelCacheV2Impl(
     )
   }
 
-  fun sourceProviderContainerFrom(container: SourceProvider, buildFolder: File): IdeExtraSourceProviderImpl {
+  fun sourceProviderContainerFrom(
+    container: SourceProvider,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeExtraSourceProviderImpl {
     return IdeExtraSourceProviderImpl(
       // As we no longer have ArtifactMetaData, we use hardcoded values for androidTests, unitTests and testFixtures artifacts.
 
@@ -492,7 +512,7 @@ fun modelCacheV2Impl(
           container.name.startsWith("screenshotTest") -> "_screenshot_test_"
           else -> "_unit_test_"
         },
-      sourceProvider = sourceProviderFrom(container, buildFolder),
+      sourceProvider = sourceProviderFrom(container, buildFolder, legacyAndroidGradlePluginProperties),
     )
   }
 
@@ -504,42 +524,78 @@ fun modelCacheV2Impl(
   ): IdeProductFlavorContainerImpl {
     return IdeProductFlavorContainerImpl(
       productFlavor = productFlavorFrom(productFlavor, legacyAndroidGradlePluginProperties),
-      sourceProvider = container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder) },
+      sourceProvider =
+        container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder, legacyAndroidGradlePluginProperties) },
       extraSourceProviders =
         mutableListOf<IdeExtraSourceProviderImpl>().apply {
           if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
             container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
             container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
           } else {
-            container?.androidTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
-            container?.unitTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+            container?.androidTestSourceProvider?.let { it: SourceProvider ->
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
+            }
+            container?.unitTestSourceProvider?.let { it: SourceProvider ->
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
+            }
           }
-          container?.testFixturesSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+          container?.testFixturesSourceProvider?.let { it: SourceProvider ->
+            this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
+          }
         },
     )
   }
 
-  fun sourceProviderContainerFrom(container: SourceSetContainer?, buildFolder: File): IdeSourceProviderContainerImpl {
+  fun sourceProviderContainerFrom(
+    container: SourceSetContainer?,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeSourceProviderContainerImpl {
     return IdeSourceProviderContainerImpl(
-      sourceProvider = container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder) },
+      sourceProvider =
+        container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder, legacyAndroidGradlePluginProperties) },
       extraSourceProviders =
         mutableListOf<IdeExtraSourceProviderImpl>().apply {
           if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
             container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
             container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
           } else {
-            container?.androidTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
-            container?.unitTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+            container?.androidTestSourceProvider?.let { it: SourceProvider ->
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
+            container?.unitTestSourceProvider?.let { it: SourceProvider ->
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
           }
-          container?.testFixturesSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+          container?.testFixturesSourceProvider?.let { it: SourceProvider ->
+            this.add(
+              sourceProviderContainerFrom(
+                it,
+                buildFolder,
+                legacyAndroidGradlePluginProperties,
+              )
+            )
+          }
         },
     )
   }
@@ -585,21 +641,45 @@ fun modelCacheV2Impl(
   ): IdeBuildTypeContainerImpl {
     return IdeBuildTypeContainerImpl(
       buildType = buildTypeFrom(buildType, legacyAndroidGradlePluginProperties),
-      sourceProvider = container?.sourceProvider?.let { sourceProviderFrom(it, buildFolder) },
+      sourceProvider = container?.sourceProvider?.let { sourceProviderFrom(it, buildFolder, legacyAndroidGradlePluginProperties) },
       extraSourceProviders =
         mutableListOf<IdeExtraSourceProviderImpl>().apply {
           if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
             container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
             container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
           } else {
-            container?.androidTestSourceProvider?.let { this.add(sourceProviderContainerFrom(it, buildFolder)) }
-            container?.unitTestSourceProvider?.let { this.add(sourceProviderContainerFrom(it, buildFolder)) }
+            container?.androidTestSourceProvider?.let {
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
+            container?.unitTestSourceProvider?.let {
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
           }
-          container?.testFixturesSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+          container?.testFixturesSourceProvider?.let { it: SourceProvider ->
+            this.add(
+              sourceProviderContainerFrom(
+                it,
+                buildFolder,
+                legacyAndroidGradlePluginProperties,
+              )
+            )
+          }
         },
     )
   }
@@ -955,8 +1035,10 @@ fun modelCacheV2Impl(
       classesFolder = artifact.classesFolders.toList(),
       ideSetupTaskNames = artifact.ideSetupTaskNames.toList(),
       generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct(),
-      variantSourceProvider = basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext) },
-      multiFlavorSourceProvider = basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext) },
+      variantSourceProvider =
+        basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
+      multiFlavorSourceProvider =
+        basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
       compileClasspathCore = throwingIdeDependencies(),
       runtimeClasspathCore = throwingIdeDependencies(),
       unresolvedDependencies = emptyList(),
@@ -1041,6 +1123,7 @@ fun modelCacheV2Impl(
     basicArtifact: BasicArtifact,
     artifact: JavaArtifact,
     assetContext: VariantAssetSourceProviderContext,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ): IdeJavaArtifactCoreImpl {
     return IdeJavaArtifactCoreImpl(
       name = name,
@@ -1049,8 +1132,10 @@ fun modelCacheV2Impl(
       classesFolder = artifact.classesFolders.toList(),
       ideSetupTaskNames = artifact.ideSetupTaskNames.deduplicateStrings().toList(),
       generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct(),
-      variantSourceProvider = basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext) },
-      multiFlavorSourceProvider = basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext) },
+      variantSourceProvider =
+        basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
+      multiFlavorSourceProvider =
+        basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
       compileClasspathCore = throwingIdeDependencies(),
       runtimeClasspathCore = throwingIdeDependencies(),
       unresolvedDependencies = emptyList(),
@@ -1132,14 +1217,23 @@ fun modelCacheV2Impl(
     variant: Variant,
     basicVariant: BasicVariant,
     assetContext: VariantAssetSourceProviderContext,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ): List<IdeJavaArtifactCoreImpl> {
     return if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
       variant.hostTestArtifacts.map { (k, v) ->
-        javaArtifactFrom(convertArtifactName(k), basicVariant.hostTestArtifacts[k]!!, v, assetContext)
+        javaArtifactFrom(convertArtifactName(k), basicVariant.hostTestArtifacts[k]!!, v, assetContext, legacyAndroidGradlePluginProperties)
       }
     } else {
       variant.unitTestArtifact?.let { it: JavaArtifact ->
-        listOf(javaArtifactFrom(IdeArtifactName.UNIT_TEST, basicVariant.unitTestArtifact!!, it, assetContext))
+        listOf(
+          javaArtifactFrom(
+            IdeArtifactName.UNIT_TEST,
+            basicVariant.unitTestArtifact!!,
+            it,
+            assetContext,
+            legacyAndroidGradlePluginProperties,
+          )
+        )
       } ?: emptyList()
     }
   }
@@ -1247,7 +1341,7 @@ fun modelCacheV2Impl(
           projectType == IdeAndroidProjectType.PROJECT_TYPE_TEST,
         ),
       // If AndroidArtifact isn't null, then same goes for the ArtifactDependencies.
-      hostTestArtifacts = hostTestArtifactsFrom(variant, basicVariant, assetContext),
+      hostTestArtifacts = hostTestArtifactsFrom(variant, basicVariant, assetContext, legacyAndroidGradlePluginProperties),
       deviceTestArtifacts =
         deviceTestArtifactsFrom(
           variant,
@@ -1627,7 +1721,7 @@ fun modelCacheV2Impl(
   ): ModelResult<IdeAndroidProjectImpl> {
     val defaultConfigCopy: IdeProductFlavorImpl = productFlavorFrom(androidDsl.defaultConfig, legacyAndroidGradlePluginProperties)
     val defaultConfigSourcesCopy: IdeSourceProviderContainerImpl =
-      sourceProviderContainerFrom(basicProject.mainSourceSet, basicProject.buildFolder)
+      sourceProviderContainerFrom(basicProject.mainSourceSet, basicProject.buildFolder, legacyAndroidGradlePluginProperties)
     val buildTypesCopy: Collection<IdeBuildTypeContainerImpl> =
       zip(
         androidDsl.buildTypes,
@@ -1691,7 +1785,7 @@ fun modelCacheV2Impl(
       if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
         basicProject.testSuites.map { basicTestSuite ->
           val testSuite = project.testSuites.first { it.name == basicTestSuite.name }
-          val sources = collectAllTestSuiteSources(basicTestSuite, basicProject.buildFolder)
+          val sources = collectAllTestSuiteSources(basicTestSuite, basicProject.buildFolder, legacyAndroidGradlePluginProperties)
           IdeTestSuiteImpl(
             name = basicTestSuite.name,
             sources = sources,

@@ -32,6 +32,7 @@ import kotlin.collections.List
 import kotlin.collections.set
 import kotlin.getOrElse
 import kotlin.getOrThrow
+import kotlinx.html.emptyMap
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
@@ -74,6 +75,7 @@ class LegacyAndroidGradlePluginPropertiesModelBuilder(private val pluginType: Pl
     val buildTypesMatchingFallbacks = fetchBuildTypesMatchingFallbacks(parameters, project, problems)
     val productFlavorsMatchingFallbacks = fetchProductFlavorsMatchingFallbacks(parameters, project, problems)
     val missingDimensionStrategies = fetchMissingDimensionStrategies(parameters, project, problems)
+    val sourceProvidersConfigurationNames = populateSourceProvidersConfigurationNames(parameters, project, problems)
     return LegacyAndroidGradlePluginPropertiesImpl(
       applicationIdMap,
       namespace,
@@ -84,6 +86,7 @@ class LegacyAndroidGradlePluginPropertiesModelBuilder(private val pluginType: Pl
       buildTypesMatchingFallbacks,
       productFlavorsMatchingFallbacks,
       missingDimensionStrategies,
+      sourceProvidersConfigurationNames,
     )
   }
 
@@ -308,6 +311,43 @@ class LegacyAndroidGradlePluginPropertiesModelBuilder(private val pluginType: Pl
       return emptyMap()
     }
     return productFlavorsToStrategies
+  }
+
+  private fun populateSourceProvidersConfigurationNames(
+    parameters: LegacyAndroidGradlePluginPropertiesModelParameters,
+    project: Project,
+    problems: MutableList<Exception>,
+  ): Map<String, Map<String, String?>> {
+    if (!parameters.sourceProvidersConfigurationNames) return emptyMap()
+    val androidExtension = project.extensions.findByName("android") ?: return emptyMap()
+    val sourceProvidersConfigurationNames: MutableMap<String, Map<String, String?>> = mutableMapOf()
+    try {
+      val sourceProviders: Collection<*> = androidExtension.invokeMethod("getSourceSets")
+      for (sourceProvider in sourceProviders) {
+        val name = sourceProvider?.invokeMethod<String>("getName") ?: continue
+        val apiConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getApiConfigurationName")
+        val compileOnlyConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getCompileOnlyConfigurationName")
+        val compileOnlyApiConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getApiConfigurationName")
+        val implementationConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getImplementationConfigurationName")
+        val runtimeOnlyConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getRuntimeOnlyConfigurationName")
+        val annotationProcessorConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getAnnotationProcessorConfigurationName")
+        val kaptConfigurationName = sourceProvider?.invokeMethodIfPresent<String>("getKaptConfigurationName")
+        sourceProvidersConfigurationNames[name] =
+          mapOf(
+            "apiConfigurationName" to apiConfigurationName,
+            "compileOnlyConfigurationName" to compileOnlyConfigurationName,
+            "compileOnlyApiConfigurationName" to compileOnlyApiConfigurationName,
+            "implementationConfigurationName" to implementationConfigurationName,
+            "runtimeOnlyConfigurationName" to runtimeOnlyConfigurationName,
+            "annotationProcessorConfigurationName" to annotationProcessorConfigurationName,
+            "kaptConfigurationName" to kaptConfigurationName,
+          )
+      }
+    } catch (e: Exception) {
+      problems += RuntimeException("Failed to fetch configuration names ", e)
+      return emptyMap()
+    }
+    return sourceProvidersConfigurationNames
   }
 
   // Modelled from AGP's logic in OptionParsers.kt

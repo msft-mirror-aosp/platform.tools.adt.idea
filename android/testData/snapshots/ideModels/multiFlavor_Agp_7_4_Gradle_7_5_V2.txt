@@ -786,6 +786,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -802,6 +808,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -817,6 +829,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
     BuildTypes
         BuildType
             Name                          : debug
@@ -847,6 +865,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -863,6 +887,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -879,6 +909,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
         BuildType
             Name                          : release
             ApplicationIdSuffix           : .release
@@ -909,6 +945,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -925,6 +967,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
     ProductFlavors
         ProductFlavor
             Name                          : firstAbc
@@ -951,6 +999,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/firstAbc/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/firstAbc/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/firstAbc/shaders [-]
+            ApiConfigurationName          : firstAbcApi
+            CompileOnlyConfigurationName  : firstAbcCompileOnly
+            CompileOnlyApiConfigurationName         : firstAbcApi
+            ImplementationConfigurationName         : firstAbcImplementation
+            RuntimeOnlyConfigurationName  : firstAbcRuntimeOnly
+            AnnotationProcessorConfigurationName    : firstAbcAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -967,6 +1021,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestFirstAbc/shaders [-]
+                    ApiConfigurationName          : androidTestFirstAbcApi
+                    CompileOnlyConfigurationName  : androidTestFirstAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstAbcApi
+                    ImplementationConfigurationName         : androidTestFirstAbcImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstAbcAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -982,6 +1042,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testFirstAbc/shaders [-]
+                    ApiConfigurationName          : testFirstAbcApi
+                    CompileOnlyConfigurationName  : testFirstAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstAbcApi
+                    ImplementationConfigurationName         : testFirstAbcImplementation
+                    RuntimeOnlyConfigurationName  : testFirstAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstAbcAnnotationProcessor
         ProductFlavor
             Name                          : firstXyz
             Dimension                     : Dim1
@@ -999,6 +1065,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/firstXyz/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/firstXyz/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/firstXyz/shaders [-]
+            ApiConfigurationName          : firstXyzApi
+            CompileOnlyConfigurationName  : firstXyzCompileOnly
+            CompileOnlyApiConfigurationName         : firstXyzApi
+            ImplementationConfigurationName         : firstXyzImplementation
+            RuntimeOnlyConfigurationName  : firstXyzRuntimeOnly
+            AnnotationProcessorConfigurationName    : firstXyzAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1015,6 +1087,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstXyz/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstXyz/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestFirstXyz/shaders [-]
+                    ApiConfigurationName          : androidTestFirstXyzApi
+                    CompileOnlyConfigurationName  : androidTestFirstXyzCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstXyzApi
+                    ImplementationConfigurationName         : androidTestFirstXyzImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstXyzRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstXyzAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1030,6 +1108,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstXyz/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstXyz/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testFirstXyz/shaders [-]
+                    ApiConfigurationName          : testFirstXyzApi
+                    CompileOnlyConfigurationName  : testFirstXyzCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstXyzApi
+                    ImplementationConfigurationName         : testFirstXyzImplementation
+                    RuntimeOnlyConfigurationName  : testFirstXyzRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstXyzAnnotationProcessor
         ProductFlavor
             Name                          : secondAbc
             ApplicationIdSuffix           : .secondAbc
@@ -1060,6 +1144,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/secondAbc/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/secondAbc/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/secondAbc/shaders [-]
+            ApiConfigurationName          : secondAbcApi
+            CompileOnlyConfigurationName  : secondAbcCompileOnly
+            CompileOnlyApiConfigurationName         : secondAbcApi
+            ImplementationConfigurationName         : secondAbcImplementation
+            RuntimeOnlyConfigurationName  : secondAbcRuntimeOnly
+            AnnotationProcessorConfigurationName    : secondAbcAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1076,6 +1166,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestSecondAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestSecondAbc/shaders [-]
+                    ApiConfigurationName          : androidTestSecondAbcApi
+                    CompileOnlyConfigurationName  : androidTestSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestSecondAbcApi
+                    ImplementationConfigurationName         : androidTestSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : androidTestSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestSecondAbcAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1091,6 +1187,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testSecondAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testSecondAbc/shaders [-]
+                    ApiConfigurationName          : testSecondAbcApi
+                    CompileOnlyConfigurationName  : testSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : testSecondAbcApi
+                    ImplementationConfigurationName         : testSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : testSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSecondAbcAnnotationProcessor
         ProductFlavor
             Name                          : secondXyz
             ApplicationIdSuffix           : .secondXyz
@@ -1116,6 +1218,12 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/secondXyz/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/secondXyz/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/secondXyz/shaders [-]
+            ApiConfigurationName          : secondXyzApi
+            CompileOnlyConfigurationName  : secondXyzCompileOnly
+            CompileOnlyApiConfigurationName         : secondXyzApi
+            ImplementationConfigurationName         : secondXyzImplementation
+            RuntimeOnlyConfigurationName  : secondXyzRuntimeOnly
+            AnnotationProcessorConfigurationName    : secondXyzAnnotationProcessor
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1132,6 +1240,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestSecondXyz/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestSecondXyz/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestSecondXyz/shaders [-]
+                    ApiConfigurationName          : androidTestSecondXyzApi
+                    CompileOnlyConfigurationName  : androidTestSecondXyzCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestSecondXyzApi
+                    ImplementationConfigurationName         : androidTestSecondXyzImplementation
+                    RuntimeOnlyConfigurationName  : androidTestSecondXyzRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestSecondXyzAnnotationProcessor
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1147,6 +1261,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testSecondXyz/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testSecondXyz/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testSecondXyz/shaders [-]
+                    ApiConfigurationName          : testSecondXyzApi
+                    CompileOnlyConfigurationName  : testSecondXyzCompileOnly
+                    CompileOnlyApiConfigurationName         : testSecondXyzApi
+                    ImplementationConfigurationName         : testSecondXyzImplementation
+                    RuntimeOnlyConfigurationName  : testSecondXyzRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSecondXyzAnnotationProcessor
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1280,6 +1400,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/firstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/firstAbcSecondAbcDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/firstAbcSecondAbcDebug/shaders [-]
+                    ApiConfigurationName          : firstAbcSecondAbcDebugApi
+                    CompileOnlyConfigurationName  : firstAbcSecondAbcDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : firstAbcSecondAbcDebugApi
+                    ImplementationConfigurationName         : firstAbcSecondAbcDebugImplementation
+                    RuntimeOnlyConfigurationName  : firstAbcSecondAbcDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : firstAbcSecondAbcDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : firstAbcSecondAbc
                     Manifest                      : <ROOT>/app/src/firstAbcSecondAbc/AndroidManifest.xml [-]
@@ -1294,6 +1420,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/firstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/firstAbcSecondAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/firstAbcSecondAbc/shaders [-]
+                    ApiConfigurationName          : firstAbcSecondAbcApi
+                    CompileOnlyConfigurationName  : firstAbcSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : firstAbcSecondAbcApi
+                    ImplementationConfigurationName         : firstAbcSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : firstAbcSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : firstAbcSecondAbcAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : androidx.appcompat:appcompat:1.1.0@aar
@@ -1526,6 +1658,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/shaders [-]
+                    ApiConfigurationName          : androidTestFirstAbcSecondAbcDebugApi
+                    CompileOnlyConfigurationName  : androidTestFirstAbcSecondAbcDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstAbcSecondAbcDebugApi
+                    ImplementationConfigurationName         : androidTestFirstAbcSecondAbcDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstAbcSecondAbcDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstAbcSecondAbcDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : androidTestFirstAbcSecondAbc
                     Manifest                      : <ROOT>/app/src/androidTestFirstAbcSecondAbc/AndroidManifest.xml [-]
@@ -1539,6 +1677,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbc/shaders [-]
+                    ApiConfigurationName          : androidTestFirstAbcSecondAbcApi
+                    CompileOnlyConfigurationName  : androidTestFirstAbcSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstAbcSecondAbcApi
+                    ImplementationConfigurationName         : androidTestFirstAbcSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstAbcSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstAbcSecondAbcAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : androidx.test.ext:junit:1.1.2@aar
@@ -1774,6 +1918,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/shaders [-]
+                    ApiConfigurationName          : testFirstAbcSecondAbcDebugApi
+                    CompileOnlyConfigurationName  : testFirstAbcSecondAbcDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstAbcSecondAbcDebugApi
+                    ImplementationConfigurationName         : testFirstAbcSecondAbcDebugImplementation
+                    RuntimeOnlyConfigurationName  : testFirstAbcSecondAbcDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstAbcSecondAbcDebugAnnotationProcessor
                 MultiFlavorSourceProvider
                     Name                          : testFirstAbcSecondAbc
                     Manifest                      : <ROOT>/app/src/testFirstAbcSecondAbc/AndroidManifest.xml [-]
@@ -1787,6 +1937,12 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbc/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testFirstAbcSecondAbc/shaders [-]
+                    ApiConfigurationName          : testFirstAbcSecondAbcApi
+                    CompileOnlyConfigurationName  : testFirstAbcSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstAbcSecondAbcApi
+                    ImplementationConfigurationName         : testFirstAbcSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : testFirstAbcSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstAbcSecondAbcAnnotationProcessor
                 Dependencies
                     compileClasspath
                         androidLibrary                : androidx.appcompat:appcompat:1.1.0@aar

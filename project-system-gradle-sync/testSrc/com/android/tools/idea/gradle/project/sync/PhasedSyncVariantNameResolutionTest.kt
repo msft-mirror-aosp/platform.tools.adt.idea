@@ -1294,7 +1294,18 @@ class PhasedSyncVariantNameResolutionTest {
     val declaredDependencies = Mockito.mock(DeclaredDependencies::class.java)
     val modelVersions = ModelVersions(agp = AgpVersion.parse("9.0.0"), modelVersion = ModelVersion(21, 0), minimumModelConsumer = null)
     val legacyAndroidGradlePluginPropertiesImpl =
-      LegacyAndroidGradlePluginPropertiesImpl(emptyMap(), null, null, false, emptyList(), emptyMap(), emptyMap(), emptyMap(), emptyMap())
+      LegacyAndroidGradlePluginPropertiesImpl(
+        emptyMap(),
+        null,
+        null,
+        false,
+        emptyList(),
+        emptyMap(),
+        emptyMap(),
+        emptyMap(),
+        emptyMap(),
+        emptyMap(),
+      )
 
     val defaultConfig = Mockito.mock(ProductFlavor::class.java)
     whenever(androidDsl.defaultConfig).thenReturn(defaultConfig)
