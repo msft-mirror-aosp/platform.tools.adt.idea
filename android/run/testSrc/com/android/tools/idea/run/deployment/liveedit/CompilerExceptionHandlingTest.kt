@@ -17,6 +17,7 @@ package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import kotlin.test.assertEquals
 import org.junit.Assert
@@ -38,7 +39,7 @@ class CompilerExceptionHandlingTest {
   @Test
   fun notDropProcessCancelException() {
     val file = projectRule.fixture.configureByText("A.kt", "fun foo() = 1")
-    val input = LiveEditCompilerInput(file, getPsiValidationState(file))
+    val input = LiveEditCompilerInput(file, runReadAction { getPsiValidationState(file) })
     val cache = Mockito.spy(MutableIrClassCache())
     Mockito.`when`(cache["AKt"]).thenThrow(ProcessCanceledException())
     val output =
@@ -51,7 +52,7 @@ class CompilerExceptionHandlingTest {
   @Test
   fun syntaxError() {
     val file = projectRule.fixture.configureByText("A.kt", "fun foo() = 1")
-    val input = LiveEditCompilerInput(file, getPsiValidationState(file))
+    val input = LiveEditCompilerInput(file, runReadAction { getPsiValidationState(file) })
     val cache = Mockito.spy(MutableIrClassCache())
     Mockito.`when`(cache["AKt"])
       .thenThrow(LiveEditUpdateException.compilationError(listOf(CompilerErrorSource("ERROR", "some syntax error", file, 1))))
@@ -71,7 +72,7 @@ class CompilerExceptionHandlingTest {
   @Test
   fun unknownException() {
     val file = projectRule.fixture.configureByText("A.kt", "fun foo() = 1")
-    val input = LiveEditCompilerInput(file, getPsiValidationState(file))
+    val input = LiveEditCompilerInput(file, runReadAction { getPsiValidationState(file) })
     val cache = Mockito.spy(MutableIrClassCache())
     Mockito.`when`(cache["AKt"]).thenThrow(ExceptionUnknownToStudio())
 

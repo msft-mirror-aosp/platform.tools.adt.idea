@@ -18,8 +18,10 @@ package com.android.tools.idea.diagnostics.jfr.reports
 import com.android.tools.idea.diagnostics.jfr.reports.JfrTypingLatencyReports.MyLatencyListener
 import com.android.tools.idea.serverflags.protos.JfrTypingLatencyConfig
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.editor.Editor
+import com.intellij.testFramework.RunsInEdt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,10 +35,11 @@ import org.junit.runners.JUnit4
 import org.mockito.kotlin.mock
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunsInEdt
 @RunWith(JUnit4::class)
 class JfrTypingLatencyReportsTest {
 
-  @get:Rule val projectRule = AndroidProjectRule.onDisk()
+  @get:Rule val projectRule = AndroidProjectRule.onDisk().onEdt()
 
   private val mockEditor: Editor = mock()
 
