@@ -15,9 +15,11 @@
  */
 package com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark
 
+import com.android.tools.idea.project.AndroidNotification
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.browsers.BrowserLauncher
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -38,7 +40,9 @@ import org.junit.rules.RuleChain
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
@@ -51,13 +55,16 @@ class BenchmarkLinkListenerTest {
   @get:Rule val rules = checkNotNull(RuleChain.outerRule(projectRule).around(EdtRule()).around(temporaryDirectoryRule))
   private val mockEditorService = mock<FileEditorManager>()
   private val mockBrowserService = mock<BrowserLauncher>()
+  private lateinit var mockNotification: AndroidNotification
   private val fileCapture = ArgumentCaptor.forClass(FileEditorNavigatable::class.java)
   private lateinit var componentStack: ComponentStack
 
   @Before
   fun setup() {
+    mockNotification = mock()
     componentStack = ComponentStack(projectRule.project)
     componentStack.registerServiceInstance(FileEditorManager::class.java, mockEditorService)
+    componentStack.registerServiceInstance(AndroidNotification::class.java, mockNotification)
     ApplicationManager.getApplication().replaceService(BrowserLauncher::class.java, mockBrowserService, projectRule.testRootDisposable)
     whenever(mockEditorService.openEditor(any(), anyBoolean())).thenCallRealMethod()
     whenever(mockEditorService.openFileEditor(fileCapture.capture(), any())).thenReturn(ArrayList<FileEditor>())
@@ -127,19 +134,75 @@ class BenchmarkLinkListenerTest {
   }
 
   @Test
-  fun listenerOpensHttpUrl() {
-    listenerOpensWebLink("http://foo.bar.baz")
+  fun listenerOpensTrustedHttpsUrl() {
+    listenerOpensWebLink("https://developer.android.com/topic/performance/benchmarking/microbenchmark-overview")
+    listenerOpensWebLink("https://d.android.com/test#JIT_ACTIVITY")
   }
 
   @Test
-  fun listenerOpensHttpsUrl() {
-    listenerOpensWebLink("https://foo.bar.baz")
+  fun listenerOpensTrustedHttpsUrlIgnoringCase() {
+    listenerOpensWebLink("https://Developer.Android.COM/studio")
+    listenerOpensWebLink("HTTPS://d.android.com/test#JIT_ACTIVITY")
   }
 
   private fun listenerOpensWebLink(url: String) {
     val listener = BenchmarkLinkListener(projectRule.project)
     listener.hyperlinkClicked(url)
     verify(mockBrowserService).browse(URI.create(url))
+    verifyNoInteractions(mockNotification)
+  }
+
+  @Test
+  fun listenerDoesNotOpenUntrustedWebLinks() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val links =
+      listOf(
+        "http://foo.bar.baz",
+        "https://foo.bar.baz",
+        "HTTPS://foo.bar.baz",
+        "http://127.0.0.1:8000/aswb045",
+        "https://127.0.0.1/aswb045",
+        "http://developer.android.com/studio",
+        "https://ui.perfetto.dev",
+        "https://source.android.com/docs",
+        "https://developer.android.com.evil.example/studio",
+        "https://evil.example/#@developer.android.com",
+        "https://developer.android.com@evil.example/",
+        "https://user@developer.android.com/",
+        "https://developer.android.com:8443/",
+        "https://evil.example/?x=https://developer.android.com",
+        "https://developer.android.com/has space",
+      )
+    links.forEach { listener.hyperlinkClicked(it) }
+    verifyNoInteractions(mockBrowserService)
+    verifyNoInteractions(mockEditorService)
+    verify(mockNotification, times(links.size)).showBalloon(eq("Benchmark link not opened"), any<String>(), eq(NotificationType.WARNING))
+  }
+
+  @Test
+  fun rejectedWebLinkIsEscapedInNotification() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    listener.hyperlinkClicked("https://evil.example/<img src='x'>")
+    verify(mockNotification)
+      .showBalloon(
+        eq("Benchmark link not opened"),
+        eq("Only links to Android documentation can be opened (https://evil.example/&lt;img src=&#39;x&#39;&gt;)"),
+        eq(NotificationType.WARNING),
+      )
+  }
+
+  @Test
+  fun rejectedLongWebLinkIsTrimmedInNotification() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val longLink = "https://evil.example/" + "a".repeat(10_000)
+    listener.hyperlinkClicked(longLink)
+    val textCaptor = ArgumentCaptor.forClass(String::class.java)
+    verify(mockNotification).showBalloon(eq("Benchmark link not opened"), textCaptor.capture(), eq(NotificationType.WARNING))
+    val shownLink = textCaptor.value.substringAfter("(").removeSuffix(")")
+    assertThat(shownLink.length).isAtMost(200)
+    assertThat(shownLink).startsWith("https://evil.example/")
+    assertThat(shownLink).contains("…")
+    verifyNoInteractions(mockBrowserService)
   }
 
   @Test

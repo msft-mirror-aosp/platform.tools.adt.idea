@@ -30,10 +30,18 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 import java.net.URI
+import java.net.URISyntaxException
 import java.nio.file.Paths
+import java.util.Locale
 
 private val BENCHMARK_TRACE_FILE_PREFIX_V2 = BenchmarkOutput.BENCHMARK_TRACE_FILE_PREFIX
 private val BENCHMARK_TRACE_FILE_PREFIX_V3 = "uri://"
+
+/** Hosts of the Android documentation pages that androidx.benchmark links to from its output. */
+private val TRUSTED_WEB_LINK_HOSTS = setOf("d.android.com", "developer.android.com")
+
+/** Maximum number of characters of a rejected link shown in the warning notification. */
+private const val MAX_DISPLAYED_LINK_LENGTH = 200
 
 class BenchmarkLinkListener(
   private val project: Project,
@@ -88,14 +96,42 @@ class BenchmarkLinkListener(
           FileEditorManager.getInstance(project).openEditor(fd, true)
         }
       }
-      link.startsWith("http://") || link.startsWith("https://") -> {
-        BrowserLauncher.instance.browse(URI.create(link))
+      link.startsWith("http://", ignoreCase = true) || link.startsWith("https://", ignoreCase = true) -> {
+        val uri = toTrustedWebUri(link)
+        if (uri == null) {
+          val displayedLink = StringUtil.escapeXmlEntities(StringUtil.trimMiddle(link, MAX_DISPLAYED_LINK_LENGTH))
+          AndroidNotification.getInstance(project)
+            .showBalloon(
+              "Benchmark link not opened",
+              "Only links to Android documentation can be opened ($displayedLink)",
+              NotificationType.WARNING,
+            )
+          return
+        }
+        BrowserLauncher.instance.browse(uri)
       }
 
       else -> {
         /* ignore unrecognized links */
       }
     }
+  }
+
+  /**
+   * Benchmark output is produced on the device, so its links are untrusted. Returns the parsed [URI] only for plain `https` links (no user
+   * info or explicit port) to a host in [TRUSTED_WEB_LINK_HOSTS], or `null` otherwise.
+   */
+  private fun toTrustedWebUri(link: String): URI? {
+    val uri =
+      try {
+        URI(link)
+      } catch (e: URISyntaxException) {
+        return null
+      }
+    if (!"https".equals(uri.scheme, ignoreCase = true)) return null
+    if (uri.rawUserInfo != null || uri.port != -1) return null
+    val host = uri.host?.lowercase(Locale.US) ?: return null
+    return if (host in TRUSTED_WEB_LINK_HOSTS) uri else null
   }
 
   // TODO(b/b/376667704): confirm if perf traces are also supported (and add to supported extensions)
