@@ -101,6 +101,72 @@ class BenchmarkLinkListenerTest {
   }
 
   @Test
+  fun listenerDoesNotOpenNonTraceFiles() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val suffixes = listOf(".ttf", ".otf", ".apk", ".tflite", ".hprof", ".li", ".heapprofd", ".trace.ttf", "")
+    for (suffix in suffixes) {
+      val file = FileUtil.createTempFile("benchmarkFile", suffix)
+      file.deleteOnExit()
+      listener.hyperlinkClicked("file://${file.name}")
+      listener.hyperlinkClicked("uri://${file.name}?param=value")
+    }
+    verifyNoInteractions(mockEditorService)
+    verify(mockNotification, times(suffixes.size * 2))
+      .showBalloon(eq("Unsupported benchmark file"), any<String>(), eq(NotificationType.WARNING))
+  }
+
+  @Test
+  fun rejectedFileNameIsEscapedInNotification() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    listener.hyperlinkClicked("uri://a&b'c.ttf")
+    verify(mockNotification)
+      .showBalloon(
+        eq("Unsupported benchmark file"),
+        eq("Only trace files can be opened from benchmark results (a&amp;b&#39;c.ttf)"),
+        eq(NotificationType.WARNING),
+      )
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerRejectsLinkThatIsNotAValidPath() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    listener.hyperlinkClicked("uri://bad\u0000name.trace")
+    verify(mockNotification).showBalloon(eq("Invalid benchmark path"), any<String>(), eq(NotificationType.WARNING))
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerDoesNotOpenNonTraceFilesInPerfettoWeb() {
+    val fakePerfettoLoader = FakePerfettoLoader()
+    val listener =
+      BenchmarkLinkListener(projectRule.project, isPerfettoWebLoaderEnabled = true, openTraceInPerfettoWebLoader = fakePerfettoLoader::load)
+    val file = FileUtil.createTempFile("benchmarkFile", ".ttf")
+    file.deleteOnExit()
+    listener.hyperlinkClicked("uri://${file.name}")
+    assertThat(fakePerfettoLoader.callCount).isEqualTo(0)
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerOpensTraceFilesIgnoringExtensionCase() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val traceFile = FileUtil.createTempFile("traceFile", ".TRACE")
+    traceFile.deleteOnExit()
+    listener.hyperlinkClicked("file://${traceFile.name}")
+    assertThat(fileCapture.value.file.name).isEqualTo(traceFile.name)
+  }
+
+  @Test
+  fun listenerOpensPerfettoTraceFileInEditor() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val traceFile = FileUtil.createTempFile("traceFile", ".perfetto-trace")
+    traceFile.deleteOnExit()
+    listener.hyperlinkClicked("uri://${traceFile.name}")
+    assertThat(fileCapture.value.file.name).isEqualTo(traceFile.name)
+  }
+
+  @Test
   fun listenerOpensV2FileLinkInPerfettoWeb() {
     val fakePerfettoLoader = FakePerfettoLoader()
     assertThat(fakePerfettoLoader.callCount).isEqualTo(0)

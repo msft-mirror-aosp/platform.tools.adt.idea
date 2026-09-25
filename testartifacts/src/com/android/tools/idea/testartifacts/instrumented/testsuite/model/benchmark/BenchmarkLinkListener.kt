@@ -23,6 +23,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -31,6 +32,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 import java.net.URI
 import java.net.URISyntaxException
+import java.nio.file.InvalidPathException
 import java.nio.file.Paths
 import java.util.Locale
 
@@ -39,6 +41,12 @@ private val BENCHMARK_TRACE_FILE_PREFIX_V3 = "uri://"
 
 /** Hosts of the Android documentation pages that androidx.benchmark links to from its output. */
 private val TRUSTED_WEB_LINK_HOSTS = setOf("d.android.com", "developer.android.com")
+
+/**
+ * Extensions of the trace files that androidx.benchmark links to from its output. Benchmark links and the files they point to come from
+ * the device, so any other file type is not opened.
+ */
+private val BENCHMARK_TRACE_FILE_EXTENSIONS = setOf("trace", "perfetto-trace")
 
 /** Maximum number of characters of a rejected link shown in the warning notification. */
 private const val MAX_DISPLAYED_LINK_LENGTH = 200
@@ -62,12 +70,28 @@ class BenchmarkLinkListener(
           } catch (e: Exception) {
             Paths.get(FileUtil.getTempDirectory()).toAbsolutePath().normalize()
           }
-        val localPath = tempRoot.resolve(fileName).normalize()
-        if (!localPath.startsWith(tempRoot)) {
+        val localPath =
+          try {
+            tempRoot.resolve(fileName).normalize()
+          } catch (e: InvalidPathException) {
+            null
+          }
+        if (localPath == null || !localPath.startsWith(tempRoot)) {
           AndroidNotification.getInstance(project)
             .showBalloon(
               "Invalid benchmark path",
               "Rejected path traversal: ${StringUtil.escapeXmlEntities(fileName)}",
+              NotificationType.WARNING,
+            )
+          return
+        }
+        val localFileName = localPath.fileName?.toString().orEmpty()
+        if (!isBenchmarkTraceFile(localFileName)) {
+          val displayedFileName = StringUtil.escapeXmlEntities(StringUtil.trimMiddle(localFileName, MAX_DISPLAYED_LINK_LENGTH))
+          AndroidNotification.getInstance(project)
+            .showBalloon(
+              "Unsupported benchmark file",
+              "Only trace files can be opened from benchmark results ($displayedFileName)",
               NotificationType.WARNING,
             )
           return
@@ -136,6 +160,9 @@ class BenchmarkLinkListener(
 
   // TODO(b/b/376667704): confirm if perf traces are also supported (and add to supported extensions)
   private fun isUiPerfettoDevSupportedFile(fileName: String) = fileName.endsWith(".perfetto-trace")
+
+  private fun isBenchmarkTraceFile(fileName: String) =
+    FileUtilRt.getExtension(fileName).lowercase(Locale.ROOT) in BENCHMARK_TRACE_FILE_EXTENSIONS
 
   private fun convertLinkToV3Format(link: String): String =
     when {
