@@ -51,7 +51,8 @@ internal class OsVideoDecoder(codecName: String) : AutoCloseable {
    * @param outputCapacity capacity of [outputPixelBuffer] in bytes
    * @param outDimensions 2-element int array that receives [width, height] if a frame is produced
    * @return [DECODE_FRAME_PRODUCED] if a frame was decoded and written to [outputPixelBuffer], [DECODE_NO_FRAME] if the packet was
-   *   processed without producing a frame, or [DECODE_ERROR] if the decoder failed to initialize or decode
+   *   processed without producing a frame, [DECODE_INVALID_FRAME] if the packet was rejected after the decoder had already initialized, or
+   *   [DECODE_ERROR] if the decoder failed to initialize or decode
    */
   fun decodeFrame(
     packetBuffer: ByteBuffer,
@@ -73,6 +74,7 @@ internal class OsVideoDecoder(codecName: String) : AutoCloseable {
   }
 
   companion object {
+    const val DECODE_INVALID_FRAME = -2
     const val DECODE_ERROR = -1
     const val DECODE_NO_FRAME = 0
     const val DECODE_FRAME_PRODUCED = 1

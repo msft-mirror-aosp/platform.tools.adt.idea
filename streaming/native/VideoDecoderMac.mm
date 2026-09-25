@@ -32,22 +32,28 @@ constexpr CMVideoCodecType kCodecTypeAVC = kCMVideoCodecType_H264;
 constexpr CMVideoCodecType kCodecTypeHEVC = kCMVideoCodecType_HEVC;
 constexpr CMVideoCodecType kCodecTypeVP9 = 'vp09';
 
+constexpr jint DECODE_INVALID_FRAME = -2;
 constexpr jint DECODE_ERROR = -1;
 constexpr jint DECODE_NO_FRAME = 0;
 constexpr jint DECODE_FRAME_PRODUCED = 1;
 
 // H.264 (AVC) NAL unit constants.
 constexpr uint8_t AVC_NAL_UNIT_TYPE_MASK = 0x1F;
+constexpr uint8_t AVC_NAL_SLICE_MIN = 1;
+constexpr uint8_t AVC_NAL_SLICE_MAX = 5;
 constexpr uint8_t AVC_NAL_SPS = 7;
 constexpr uint8_t AVC_NAL_PPS = 8;
 constexpr uint8_t AVC_NAL_AUD = 9;
+constexpr uint8_t AVC_NAL_FILLER = 12;
 
 // H.265 (HEVC) NAL unit constants.
 constexpr uint8_t HEVC_NAL_UNIT_TYPE_MASK = 0x3F;
+constexpr uint8_t HEVC_NAL_VCL_MAX = 31;
 constexpr uint8_t HEVC_NAL_VPS = 32;
 constexpr uint8_t HEVC_NAL_SPS = 33;
 constexpr uint8_t HEVC_NAL_PPS = 34;
 constexpr uint8_t HEVC_NAL_AUD = 35;
+constexpr uint8_t HEVC_NAL_FILLER = 38;
 
 // AV1 OBU type constants.
 constexpr uint8_t AV1_OBU_SEQUENCE_HEADER = 1;
@@ -55,6 +61,7 @@ constexpr uint8_t AV1_OBU_TEMPORAL_DELIMITER = 2;
 constexpr uint8_t AV1_OBU_TILE_GROUP = 4;
 constexpr uint8_t AV1_OBU_FRAME = 6;
 constexpr uint8_t AV1_OBU_REDUNDANT_FRAME_HEADER = 7;
+constexpr uint8_t AV1_OBU_TILE_LIST = 8;
 constexpr uint8_t AV1_OBU_PADDING = 15;
 
 struct NalUnit {
@@ -64,12 +71,11 @@ struct NalUnit {
 };
 
 struct FrameDecodeContext {
-  std::mutex mutex;
-  jobject outputBufferRef = nullptr;
   uint8_t* outputPixels = nullptr;
   size_t outputCapacity = 0;
   int32_t decodedWidth = 0;
   int32_t decodedHeight = 0;
+  OSStatus callbackStatus = noErr;
   bool frameProduced = false;
 };
 
@@ -107,10 +113,13 @@ public:
   uint32_t ReadUvlc() {
     size_t leadingZeros = 0;
     while (!ReadBit()) {
-      ++leadingZeros;
-      if (overflow_ || leadingZeros >= 32) {
-        return 0xFFFFFFFF;
+      if (overflow_) {
+        return 0;
       }
+      ++leadingZeros;
+    }
+    if (leadingZeros >= 32) {
+      return 0xFFFFFFFF;
     }
     if (leadingZeros == 0) {
       return 0;
@@ -145,6 +154,36 @@ bool ReadLeb128(const uint8_t* data, size_t size, size_t* outValue, size_t* outB
   return false;
 }
 
+void AppendLeb128(std::vector<uint8_t>* dest, size_t value) {
+  do {
+    uint8_t byte = static_cast<uint8_t>(value & 0x7F);
+    value >>= 7;
+    if (value != 0) {
+      byte |= 0x80;
+    }
+    dest->push_back(byte);
+  } while (value != 0);
+}
+
+void AppendObuWithSizeField(
+    std::vector<uint8_t>* dest,
+    const uint8_t* obuStart,
+    size_t headerLen,
+    size_t payloadSize,
+    bool hasSizeField) {
+  if (hasSizeField) {
+    dest->insert(dest->end(), obuStart, obuStart + headerLen + payloadSize);
+    return;
+  }
+  dest->push_back(static_cast<uint8_t>(obuStart[0] | 0x02)); // Set obu_has_size_field = 1.
+  if (headerLen > 1) {
+    dest->push_back(obuStart[1]); // Copy obu_extension_header byte.
+  }
+  AppendLeb128(dest, payloadSize);
+  const uint8_t* payloadStart = obuStart + headerLen;
+  dest->insert(dest->end(), payloadStart, payloadStart + payloadSize);
+}
+
 // Finds all NAL units in an Annex B byte stream (for AVC and HEVC).
 std::vector<NalUnit> ParseAnnexBNalUnits(const uint8_t* data, size_t size, bool isHevc) {
   std::vector<NalUnit> units;
@@ -161,6 +200,7 @@ std::vector<NalUnit> ParseAnnexBNalUnits(const uint8_t* data, size_t size, bool 
       } else {
         startCodeOffsets.push_back(i);     // 3-byte start code
       }
+      i += 2;
     }
   }
 
@@ -188,7 +228,7 @@ std::vector<NalUnit> ParseAnnexBNalUnits(const uint8_t* data, size_t size, bool 
 }
 
 struct Vp9FrameHeaderInfo {
-  bool isKeyFrame = false;
+  bool hasConfig = false;
   int32_t width = 0;
   int32_t height = 0;
   uint8_t profile = 0;
@@ -199,7 +239,47 @@ struct Vp9FrameHeaderInfo {
   uint8_t colorRange = 0;
 };
 
-bool ParseVp9Header(const uint8_t* data, size_t size, Vp9FrameHeaderInfo* info) {
+bool ReadVp9ColorConfig(BitReader* reader, uint8_t profile, Vp9FrameHeaderInfo* info) {
+  uint8_t bitDepth = 8;
+  if (profile >= 2) {
+    bitDepth = reader->ReadBit() ? 12 : 10;
+  }
+  uint8_t colorSpace = static_cast<uint8_t>(reader->ReadBits(3));
+  uint8_t colorRange = 0;
+  uint8_t subsamplingX = 1;
+  uint8_t subsamplingY = 1;
+
+  if (colorSpace != 7) { // Not CS_RGB
+    colorRange = reader->ReadBit() ? 1 : 0;
+    if (profile == 1 || profile == 3) {
+      subsamplingX = reader->ReadBit() ? 1 : 0;
+      subsamplingY = reader->ReadBit() ? 1 : 0;
+      if (reader->ReadBit()) { // reserved_zero
+        return false;
+      }
+    }
+  } else {
+    colorRange = 1;
+    if (profile == 1 || profile == 3) {
+      subsamplingX = 0;
+      subsamplingY = 0;
+      if (reader->ReadBit()) { // reserved_zero
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  info->bitDepth = bitDepth;
+  info->subsamplingX = subsamplingX;
+  info->subsamplingY = subsamplingY;
+  info->colorSpace = colorSpace;
+  info->colorRange = colorRange;
+  return !reader->HasOverflow();
+}
+
+bool ParseVp9SingleFrameHeader(const uint8_t* data, size_t size, Vp9FrameHeaderInfo* info) {
   BitReader reader(data, size);
   if (reader.ReadBits(2) != 2) { // frame_marker must be 2
     return false;
@@ -211,64 +291,110 @@ bool ParseVp9Header(const uint8_t* data, size_t size, Vp9FrameHeaderInfo* info) 
     return false;
   }
   if (reader.ReadBit()) { // show_existing_frame
-    info->isKeyFrame = false;
+    reader.ReadBits(3); // frame_to_show_map_idx
+    info->hasConfig = false;
     return !reader.HasOverflow();
   }
 
   bool isKeyFrame = (reader.ReadBits(1) == 0);
-  reader.ReadBit(); // show_frame
-  reader.ReadBit(); // error_resilient_mode
+  bool showFrame = reader.ReadBit();
+  bool errorResilientMode = reader.ReadBit();
 
-  if (!isKeyFrame) {
-    info->isKeyFrame = false;
-    return !reader.HasOverflow();
+  if (isKeyFrame) {
+    if (reader.ReadBits(24) != 0x498342) { // frame_sync_code
+      return false;
+    }
+    if (!ReadVp9ColorConfig(&reader, profile, info)) {
+      return false;
+    }
+    int32_t width = static_cast<int32_t>(reader.ReadBits(16)) + 1;
+    int32_t height = static_cast<int32_t>(reader.ReadBits(16)) + 1;
+    if (reader.HasOverflow() || width <= 0 || height <= 0) {
+      return false;
+    }
+    info->hasConfig = true;
+    info->width = width;
+    info->height = height;
+    info->profile = profile;
+    return true;
   }
 
-  if (reader.ReadBits(24) != 0x498342) { // frame_sync_code
+  bool intraOnly = !showFrame ? reader.ReadBit() : false;
+  if (!errorResilientMode) {
+    reader.ReadBits(2); // reset_frame_context
+  }
+
+  if (intraOnly) {
+    if (reader.ReadBits(24) != 0x498342) { // frame_sync_code
+      return false;
+    }
+    if (profile > 0) {
+      if (!ReadVp9ColorConfig(&reader, profile, info)) {
+        return false;
+      }
+    } else {
+      info->bitDepth = 8;
+      info->colorSpace = 1; // CS_BT_601
+      info->colorRange = 0;
+      info->subsamplingX = 1;
+      info->subsamplingY = 1;
+    }
+    reader.ReadBits(8); // refresh_frame_flags
+    int32_t width = static_cast<int32_t>(reader.ReadBits(16)) + 1;
+    int32_t height = static_cast<int32_t>(reader.ReadBits(16)) + 1;
+    if (reader.HasOverflow() || width <= 0 || height <= 0) {
+      return false;
+    }
+    info->hasConfig = true;
+    info->width = width;
+    info->height = height;
+    info->profile = profile;
+    return true;
+  }
+
+  info->hasConfig = false;
+  return !reader.HasOverflow();
+}
+
+bool ParseVp9Header(const uint8_t* data, size_t size, Vp9FrameHeaderInfo* info) {
+  if (size == 0) {
     return false;
   }
-
-  uint8_t bitDepth = 8;
-  if (profile >= 2) {
-    bitDepth = reader.ReadBit() ? 12 : 10;
-  }
-  uint8_t colorSpace = static_cast<uint8_t>(reader.ReadBits(3));
-  uint8_t colorRange = 0;
-  uint8_t subsamplingX = 1;
-  uint8_t subsamplingY = 1;
-
-  if (colorSpace != 7) { // Not CS_RGB
-    colorRange = reader.ReadBit() ? 1 : 0;
-    if (profile == 1 || profile == 3) {
-      subsamplingX = reader.ReadBit() ? 1 : 0;
-      subsamplingY = reader.ReadBit() ? 1 : 0;
-      reader.ReadBit(); // reserved_zero
+  uint8_t marker = data[size - 1];
+  if ((marker & 0xE0) == 0xC0) {
+    size_t bytesPerFrameSize = ((marker >> 3) & 0x03) + 1;
+    size_t frameCount = (marker & 0x07) + 1;
+    size_t indexSize = 2 + frameCount * bytesPerFrameSize;
+    if (size >= indexSize && data[size - indexSize] == marker) {
+      const uint8_t* indexPtr = data + size - indexSize + 1;
+      size_t offset = 0;
+      bool validSuperframe = true;
+      Vp9FrameHeaderInfo combinedInfo;
+      for (size_t i = 0; i < frameCount; ++i) {
+        size_t frameSize = 0;
+        for (size_t b = 0; b < bytesPerFrameSize; ++b) {
+          frameSize |= static_cast<size_t>(*indexPtr++) << (b * 8);
+        }
+        if (frameSize == 0 || offset + frameSize > size - indexSize) {
+          validSuperframe = false;
+          break;
+        }
+        Vp9FrameHeaderInfo subInfo;
+        if (!ParseVp9SingleFrameHeader(data + offset, frameSize, &subInfo)) {
+          return false;
+        }
+        if (subInfo.hasConfig) {
+          combinedInfo = subInfo;
+        }
+        offset += frameSize;
+      }
+      if (validSuperframe && offset == size - indexSize) {
+        *info = combinedInfo;
+        return true;
+      }
     }
-  } else {
-    colorRange = 1;
-    if (profile == 1 || profile == 3) {
-      subsamplingX = 0;
-      subsamplingY = 0;
-      reader.ReadBit(); // reserved_zero
-    }
   }
-
-  int32_t width = static_cast<int32_t>(reader.ReadBits(16)) + 1;
-  int32_t height = static_cast<int32_t>(reader.ReadBits(16)) + 1;
-  if (reader.HasOverflow() || width <= 0 || height <= 0) {
-    return false;
-  }
-
-  info->isKeyFrame = true;
-  info->width = width;
-  info->height = height;
-  info->profile = profile;
-  info->bitDepth = bitDepth;
-  info->subsamplingX = subsamplingX;
-  info->subsamplingY = subsamplingY;
-  info->colorSpace = colorSpace;
-  info->colorRange = colorRange;
-  return true;
+  return ParseVp9SingleFrameHeader(data, size, info);
 }
 
 std::vector<uint8_t> BuildVpccAtom(const Vp9FrameHeaderInfo& info) {
@@ -451,6 +577,7 @@ bool ParseAv1SequenceHeader(const uint8_t* data, size_t size, Av1SequenceHeaderI
     info->chromaSubsamplingX = 0;
     info->chromaSubsamplingY = 0;
     info->chromaSamplePosition = 0;
+    reader.ReadBit(); // separate_uv_delta_q
   } else {
     reader.ReadBit(); // color_range
     if (info->seqProfile == 0) {
@@ -473,7 +600,10 @@ bool ParseAv1SequenceHeader(const uint8_t* data, size_t size, Av1SequenceHeaderI
     } else {
       info->chromaSamplePosition = 0;
     }
+    reader.ReadBit(); // separate_uv_delta_q
   }
+
+  reader.ReadBit(); // film_grain_params_present
 
   return !reader.HasOverflow() && info->width > 0 && info->height > 0;
 }
@@ -495,9 +625,11 @@ public:
   }
 
   // Decodes a video packet. Returns DECODE_FRAME_PRODUCED (1) if a decoded frame was written to
-  // outputPixels, DECODE_NO_FRAME (0) if no frame was produced, or DECODE_ERROR (-1) on failure.
+  // outputPixels, DECODE_NO_FRAME (0) if no frame was produced, DECODE_ERROR (-1) on decoder
+  // initialization failure, or DECODE_INVALID_FRAME (-2) if a packet was rejected after the
+  // decoder had already produced frames.
   jint Decode(const uint8_t* packetData, size_t packetSize,
-              jobject outputBufferRef, uint8_t* outputPixels, size_t outputCapacity,
+              uint8_t* outputPixels, size_t outputCapacity,
               int32_t* outWidth, int32_t* outHeight) {
     std::lock_guard<std::mutex> decodeLock(decodeMutex_);
     if (packetSize == 0) {
@@ -506,157 +638,186 @@ public:
 
     switch (codecType_) {
       case kCodecTypeAVC:
-        return DecodeAvc(packetData, packetSize, outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+        return DecodeAvc(packetData, packetSize, outputPixels, outputCapacity, outWidth, outHeight);
       case kCodecTypeHEVC:
-        return DecodeHevc(packetData, packetSize, outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+        return DecodeHevc(packetData, packetSize, outputPixels, outputCapacity, outWidth, outHeight);
       case kCodecTypeVP9:
-        return DecodeVp9(packetData, packetSize, outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+        return DecodeVp9(packetData, packetSize, outputPixels, outputCapacity, outWidth, outHeight);
       case kCodecTypeAV1:
-        return DecodeAv1(packetData, packetSize, outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+        return DecodeAv1(packetData, packetSize, outputPixels, outputCapacity, outWidth, outHeight);
       default:
         return DECODE_ERROR;
     }
   }
 
 private:
+  jint FailureResult() const {
+    return hasDecodedFrames_ ? DECODE_INVALID_FRAME : DECODE_ERROR;
+  }
+
   jint DecodeAvc(const uint8_t* packetData, size_t packetSize,
-                 jobject outputBufferRef, uint8_t* outputPixels, size_t outputCapacity,
+                 uint8_t* outputPixels, size_t outputCapacity,
                  int32_t* outWidth, int32_t* outHeight) {
     std::vector<NalUnit> nalUnits = ParseAnnexBNalUnits(packetData, packetSize, /*isHevc=*/false);
     if (nalUnits.empty()) {
-      return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+      return FailureResult();
     }
 
     bool paramsUpdated = false;
+    bool hasParameterSets = false;
+    bool hasSlice = false;
     std::vector<uint8_t> sampleData;
 
     for (const auto& unit : nalUnits) {
       if (unit.type == AVC_NAL_SPS) {
+        hasParameterSets = true;
         if (sps_.size() != unit.size || memcmp(sps_.data(), unit.data, unit.size) != 0) {
           sps_.assign(unit.data, unit.data + unit.size);
           paramsUpdated = true;
         }
       } else if (unit.type == AVC_NAL_PPS) {
+        hasParameterSets = true;
         if (pps_.size() != unit.size || memcmp(pps_.data(), unit.data, unit.size) != 0) {
           pps_.assign(unit.data, unit.data + unit.size);
           paramsUpdated = true;
         }
-      } else if (unit.type != AVC_NAL_AUD) {
+      } else if (unit.type != AVC_NAL_AUD && unit.type != AVC_NAL_FILLER) {
+        if (unit.type >= AVC_NAL_SLICE_MIN && unit.type <= AVC_NAL_SLICE_MAX) {
+          hasSlice = true;
+        }
         AppendLengthPrefixedNalUnit(&sampleData, unit);
       }
     }
 
-    if (paramsUpdated && !sps_.empty() && !pps_.empty()) {
+    if ((paramsUpdated || formatDesc_ == nullptr) && !sps_.empty() && !pps_.empty()) {
       if (!UpdateAvcFormatDescription()) {
-        return DECODE_ERROR;
+        return FailureResult();
       }
     }
 
-    if (sampleData.empty() || formatDesc_ == nullptr) {
-      return DECODE_NO_FRAME;
+    if (!hasSlice) {
+      return hasParameterSets ? DECODE_NO_FRAME : FailureResult();
+    }
+    if (formatDesc_ == nullptr) {
+      return FailureResult();
     }
 
-    return DecodeSampleBuffer(sampleData.data(), sampleData.size(), outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+    return DecodeSampleBuffer(sampleData.data(), sampleData.size(), outputPixels, outputCapacity, outWidth, outHeight);
   }
 
   jint DecodeHevc(const uint8_t* packetData, size_t packetSize,
-                  jobject outputBufferRef, uint8_t* outputPixels, size_t outputCapacity,
+                  uint8_t* outputPixels, size_t outputCapacity,
                   int32_t* outWidth, int32_t* outHeight) {
     std::vector<NalUnit> nalUnits = ParseAnnexBNalUnits(packetData, packetSize, /*isHevc=*/true);
     if (nalUnits.empty()) {
-      return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+      return FailureResult();
     }
 
     bool paramsUpdated = false;
+    bool hasParameterSets = false;
+    bool hasSlice = false;
     std::vector<uint8_t> sampleData;
 
     for (const auto& unit : nalUnits) {
       if (unit.type == HEVC_NAL_VPS) {
+        hasParameterSets = true;
         if (vps_.size() != unit.size || memcmp(vps_.data(), unit.data, unit.size) != 0) {
           vps_.assign(unit.data, unit.data + unit.size);
           paramsUpdated = true;
         }
       } else if (unit.type == HEVC_NAL_SPS) {
+        hasParameterSets = true;
         if (sps_.size() != unit.size || memcmp(sps_.data(), unit.data, unit.size) != 0) {
           sps_.assign(unit.data, unit.data + unit.size);
           paramsUpdated = true;
         }
       } else if (unit.type == HEVC_NAL_PPS) {
+        hasParameterSets = true;
         if (pps_.size() != unit.size || memcmp(pps_.data(), unit.data, unit.size) != 0) {
           pps_.assign(unit.data, unit.data + unit.size);
           paramsUpdated = true;
         }
-      } else if (unit.type != HEVC_NAL_AUD) {
+      } else if (unit.type != HEVC_NAL_AUD && unit.type != HEVC_NAL_FILLER) {
+        if (unit.type <= HEVC_NAL_VCL_MAX) {
+          hasSlice = true;
+        }
         AppendLengthPrefixedNalUnit(&sampleData, unit);
       }
     }
 
-    if (paramsUpdated && !vps_.empty() && !sps_.empty() && !pps_.empty()) {
+    if ((paramsUpdated || formatDesc_ == nullptr) && !vps_.empty() && !sps_.empty() && !pps_.empty()) {
       if (!UpdateHevcFormatDescription()) {
-        return DECODE_ERROR;
+        return FailureResult();
       }
     }
 
-    if (sampleData.empty() || formatDesc_ == nullptr) {
-      return DECODE_NO_FRAME;
+    if (!hasSlice) {
+      return hasParameterSets ? DECODE_NO_FRAME : FailureResult();
+    }
+    if (formatDesc_ == nullptr) {
+      return FailureResult();
     }
 
-    return DecodeSampleBuffer(sampleData.data(), sampleData.size(), outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+    return DecodeSampleBuffer(sampleData.data(), sampleData.size(), outputPixels, outputCapacity, outWidth, outHeight);
   }
 
   jint DecodeVp9(const uint8_t* packetData, size_t packetSize,
-                 jobject outputBufferRef, uint8_t* outputPixels, size_t outputCapacity,
+                 uint8_t* outputPixels, size_t outputCapacity,
                  int32_t* outWidth, int32_t* outHeight) {
     Vp9FrameHeaderInfo info;
     if (!ParseVp9Header(packetData, packetSize, &info)) {
-      return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+      return FailureResult();
     }
 
-    if (info.isKeyFrame) {
+    if (info.hasConfig) {
       std::vector<uint8_t> vpcc = BuildVpccAtom(info);
       if (formatDesc_ == nullptr || info.width != currentWidth_ || info.height != currentHeight_ || vpcc != codecConfig_) {
-        if (!UpdateFormatDescriptionWithAtom(kCodecTypeVP9, info.width, info.height, @"vpcC", vpcc)) {
-          return DECODE_ERROR;
+        if (!UpdateFormatDescriptionWithAtom(kCodecTypeVP9, info.width, info.height, CFSTR("vpcC"), vpcc)) {
+          return FailureResult();
         }
       }
     }
 
     if (formatDesc_ == nullptr) {
-      return DECODE_NO_FRAME;
+      return FailureResult();
     }
 
-    return DecodeSampleBuffer(packetData, packetSize, outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+    return DecodeSampleBuffer(packetData, packetSize, outputPixels, outputCapacity, outWidth, outHeight);
   }
 
   jint DecodeAv1(const uint8_t* packetData, size_t packetSize,
-                 jobject outputBufferRef, uint8_t* outputPixels, size_t outputCapacity,
+                 uint8_t* outputPixels, size_t outputCapacity,
                  int32_t* outWidth, int32_t* outHeight) {
     std::vector<uint8_t> sampleData;
+    bool hasSequenceHeader = false;
     bool hasFrameData = false;
     size_t offset = 0;
 
     while (offset < packetSize) {
       uint8_t header = packetData[offset];
       if ((header & 0x80) != 0) { // obu_forbidden_bit must be 0
-        return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+        return FailureResult();
       }
       uint8_t obuType = (header >> 3) & 0x0F;
+      if (obuType == 0 || (obuType > AV1_OBU_TILE_LIST && obuType != AV1_OBU_PADDING)) {
+        return FailureResult();
+      }
       bool hasExtension = (header & 0x04) != 0;
       bool hasSizeField = (header & 0x02) != 0;
       size_t headerLen = 1 + (hasExtension ? 1 : 0);
       if (offset + headerLen > packetSize) {
-        return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+        return FailureResult();
       }
 
       size_t payloadSize = 0;
       if (hasSizeField) {
         size_t lebBytes = 0;
         if (!ReadLeb128(packetData + offset + headerLen, packetSize - offset - headerLen, &payloadSize, &lebBytes)) {
-          return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+          return FailureResult();
         }
         headerLen += lebBytes;
         if (offset + headerLen + payloadSize > packetSize) {
-          return hasDecodedFrames_ ? DECODE_NO_FRAME : DECODE_ERROR;
+          return FailureResult();
         }
       } else {
         payloadSize = packetSize - offset - headerLen;
@@ -667,12 +828,13 @@ private:
       const uint8_t* payloadStart = obuStart + headerLen;
 
       if (obuType == AV1_OBU_SEQUENCE_HEADER) {
+        hasSequenceHeader = true;
         Av1SequenceHeaderInfo seqInfo;
         if (!ParseAv1SequenceHeader(payloadStart, payloadSize, &seqInfo)) {
-          return DECODE_ERROR;
+          return FailureResult();
         }
         std::vector<uint8_t> av1c;
-        av1c.reserve(4 + totalObuSize);
+        av1c.reserve(4 + totalObuSize + 8);
         av1c.push_back(0x81); // marker = 1, version = 1
         av1c.push_back(static_cast<uint8_t>(((seqInfo.seqProfile & 0x07) << 5) | (seqInfo.seqLevelIdx0 & 0x1F)));
         av1c.push_back(static_cast<uint8_t>(
@@ -684,11 +846,11 @@ private:
             ((seqInfo.chromaSubsamplingY & 0x01) << 2) |
             (seqInfo.chromaSamplePosition & 0x03)));
         av1c.push_back(0x00);
-        av1c.insert(av1c.end(), obuStart, obuStart + totalObuSize);
+        AppendObuWithSizeField(&av1c, obuStart, headerLen, payloadSize, hasSizeField);
 
         if (formatDesc_ == nullptr || seqInfo.width != currentWidth_ || seqInfo.height != currentHeight_ || av1c != codecConfig_) {
-          if (!UpdateFormatDescriptionWithAtom(kCodecTypeAV1, seqInfo.width, seqInfo.height, @"av1C", av1c)) {
-            return DECODE_ERROR;
+          if (!UpdateFormatDescriptionWithAtom(kCodecTypeAV1, seqInfo.width, seqInfo.height, CFSTR("av1C"), av1c)) {
+            return FailureResult();
           }
         }
       }
@@ -696,7 +858,7 @@ private:
       if (obuType != AV1_OBU_TEMPORAL_DELIMITER &&
           obuType != AV1_OBU_REDUNDANT_FRAME_HEADER &&
           obuType != AV1_OBU_PADDING) {
-        sampleData.insert(sampleData.end(), obuStart, obuStart + totalObuSize);
+        AppendObuWithSizeField(&sampleData, obuStart, headerLen, payloadSize, hasSizeField);
         if (obuType == AV1_OBU_FRAME || obuType == AV1_OBU_TILE_GROUP) {
           hasFrameData = true;
         }
@@ -705,11 +867,14 @@ private:
       offset += totalObuSize;
     }
 
-    if (!hasFrameData || sampleData.empty() || formatDesc_ == nullptr) {
-      return DECODE_NO_FRAME;
+    if (!hasFrameData) {
+      return hasSequenceHeader ? DECODE_NO_FRAME : FailureResult();
+    }
+    if (sampleData.empty() || formatDesc_ == nullptr) {
+      return FailureResult();
     }
 
-    return DecodeSampleBuffer(sampleData.data(), sampleData.size(), outputBufferRef, outputPixels, outputCapacity, outWidth, outHeight);
+    return DecodeSampleBuffer(sampleData.data(), sampleData.size(), outputPixels, outputCapacity, outWidth, outHeight);
   }
 
   static void AppendLengthPrefixedNalUnit(std::vector<uint8_t>* dest, const NalUnit& unit) {
@@ -720,11 +885,11 @@ private:
   }
 
   jint DecodeSampleBuffer(const uint8_t* sampleData, size_t sampleSize,
-                          jobject outputBufferRef, uint8_t* outputPixels, size_t outputCapacity,
+                          uint8_t* outputPixels, size_t outputCapacity,
                           int32_t* outWidth, int32_t* outHeight) {
     if (session_ == nullptr) {
       if (!CreateSession()) {
-        return DECODE_ERROR;
+        return FailureResult();
       }
     }
 
@@ -737,20 +902,16 @@ private:
         nullptr,
         0,
         sampleSize,
-        0,
+        kCMBlockBufferAssureMemoryNowFlag,
         &blockBuffer);
     if (status != noErr || blockBuffer == nullptr) {
-      return DECODE_ERROR;
+      return FailureResult();
     }
 
-    status = CMBlockBufferReplaceDataBytes(
-        sampleData,
-        blockBuffer,
-        0,
-        sampleSize);
+    status = CMBlockBufferReplaceDataBytes(sampleData, blockBuffer, 0, sampleSize);
     if (status != noErr) {
       CFRelease(blockBuffer);
-      return DECODE_ERROR;
+      return FailureResult();
     }
 
     CMSampleBufferRef sampleBuffer = nullptr;
@@ -768,7 +929,6 @@ private:
     jint result = DECODE_NO_FRAME;
     if (status == noErr && sampleBuffer != nullptr) {
       FrameDecodeContext frameContext;
-      frameContext.outputBufferRef = outputBufferRef;
       frameContext.outputPixels = outputPixels;
       frameContext.outputCapacity = outputCapacity;
 
@@ -782,21 +942,21 @@ private:
           decodeFlags,
           &frameContext,
           &flagOut);
-      VTDecompressionSessionWaitForAsynchronousFrames(session_);
+      if (status == noErr) {
+        VTDecompressionSessionWaitForAsynchronousFrames(session_);
+        status = frameContext.callbackStatus;
+      }
 
-      std::lock_guard<std::mutex> contextLock(frameContext.mutex);
-      frameContext.outputPixels = nullptr;
-      frameContext.outputCapacity = 0;
       if (status == noErr && frameContext.frameProduced) {
         hasDecodedFrames_ = true;
         *outWidth = frameContext.decodedWidth;
         *outHeight = frameContext.decodedHeight;
         result = DECODE_FRAME_PRODUCED;
-      } else if (status != noErr && !hasDecodedFrames_) {
-        result = DECODE_ERROR;
+      } else if (status != noErr || !hasDecodedFrames_) {
+        result = FailureResult();
       }
-    } else if (!hasDecodedFrames_) {
-      result = DECODE_ERROR;
+    } else {
+      result = FailureResult();
     }
 
     if (sampleBuffer != nullptr) {
@@ -854,13 +1014,32 @@ private:
 
   bool UpdateFormatDescriptionWithAtom(
       CMVideoCodecType codecType, int32_t width, int32_t height,
-      NSString* atomName, const std::vector<uint8_t>& atomData) {
-    NSData* data = [NSData dataWithBytes:atomData.data() length:atomData.size()];
-    NSDictionary* extensions = @{
-      (id)kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms: @{
-        atomName: data
-      }
-    };
+      CFStringRef atomKey, const std::vector<uint8_t>& atomData) {
+    CFDataRef data = CFDataCreate(
+        kCFAllocatorDefault, atomData.data(), static_cast<CFIndex>(atomData.size()));
+    if (data == nullptr) {
+      return false;
+    }
+
+    const void* atomKeys[] = { atomKey };
+    const void* atomValues[] = { data };
+    CFDictionaryRef atoms = CFDictionaryCreate(
+        kCFAllocatorDefault, atomKeys, atomValues, 1,
+        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFRelease(data);
+    if (atoms == nullptr) {
+      return false;
+    }
+
+    const void* extKeys[] = { kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms };
+    const void* extValues[] = { atoms };
+    CFDictionaryRef extensions = CFDictionaryCreate(
+        kCFAllocatorDefault, extKeys, extValues, 1,
+        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFRelease(atoms);
+    if (extensions == nullptr) {
+      return false;
+    }
 
     CMVideoFormatDescriptionRef newFormatDesc = nullptr;
     OSStatus status = CMVideoFormatDescriptionCreate(
@@ -868,8 +1047,9 @@ private:
         codecType,
         width,
         height,
-        (__bridge CFDictionaryRef)extensions,
+        extensions,
         &newFormatDesc);
+    CFRelease(extensions);
 
     if (status != noErr || newFormatDesc == nullptr) {
       return false;
@@ -895,10 +1075,27 @@ private:
   bool CreateSession() {
     ReleaseSession();
 
-    NSDictionary* destinationImageBufferAttributes = @{
-      (id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
-      (id)kCVPixelBufferMetalCompatibilityKey: @NO
+    int32_t pixelFormat = kCVPixelFormatType_32BGRA;
+    CFNumberRef pixelFormatNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pixelFormat);
+    if (pixelFormatNum == nullptr) {
+      return false;
+    }
+
+    const void* attrKeys[] = {
+      kCVPixelBufferPixelFormatTypeKey,
+      kCVPixelBufferMetalCompatibilityKey
     };
+    const void* attrValues[] = {
+      pixelFormatNum,
+      kCFBooleanFalse
+    };
+    CFDictionaryRef destinationImageBufferAttributes = CFDictionaryCreate(
+        kCFAllocatorDefault, attrKeys, attrValues, 2,
+        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFRelease(pixelFormatNum);
+    if (destinationImageBufferAttributes == nullptr) {
+      return false;
+    }
 
     VTDecompressionOutputCallbackRecord callbackRecord;
     callbackRecord.decompressionOutputCallback = OnDecompressionOutput;
@@ -908,9 +1105,10 @@ private:
         kCFAllocatorDefault,
         formatDesc_,
         nullptr,
-        (__bridge CFDictionaryRef)destinationImageBufferAttributes,
+        destinationImageBufferAttributes,
         &callbackRecord,
         &session_);
+    CFRelease(destinationImageBufferAttributes);
 
     if (status != noErr || session_ == nullptr) {
       return false;
@@ -939,22 +1137,34 @@ private:
       CMTime presentationDuration) {
     auto* frameContext = static_cast<FrameDecodeContext*>(sourceFrameRefCon);
     if (frameContext != nullptr) {
-      HandleFrame(frameContext, status, imageBuffer);
+      HandleFrame(frameContext, status, infoFlags, imageBuffer);
     }
   }
 
-  static void HandleFrame(FrameDecodeContext* frameContext, OSStatus status, CVImageBufferRef imageBuffer) {
-    if (status != noErr || imageBuffer == nullptr) {
+  static void HandleFrame(
+      FrameDecodeContext* frameContext,
+      OSStatus status,
+      VTDecodeInfoFlags infoFlags,
+      CVImageBufferRef imageBuffer) {
+    if (status != noErr) {
+      frameContext->callbackStatus = status;
       return;
     }
-
-    std::lock_guard<std::mutex> lock(frameContext->mutex);
+    if (imageBuffer == nullptr) {
+      if ((infoFlags & kVTDecodeInfo_FrameDropped) == 0) {
+        frameContext->callbackStatus = kVTVideoDecoderBadDataErr;
+      }
+      return;
+    }
     if (frameContext->outputPixels == nullptr) {
+      frameContext->callbackStatus = kCVReturnInvalidArgument;
       return;
     }
 
     CVPixelBufferRef pixelBuffer = static_cast<CVPixelBufferRef>(imageBuffer);
-    if (CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess) {
+    CVReturn lockStatus = CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+    if (lockStatus != kCVReturnSuccess) {
+      frameContext->callbackStatus = lockStatus;
       return;
     }
 
@@ -966,7 +1176,7 @@ private:
     size_t rowBytes = width * 4;
     size_t totalBytes = rowBytes * height;
 
-    if (src != nullptr && totalBytes <= frameContext->outputCapacity) {
+    if (src != nullptr && bytesPerRow >= rowBytes && totalBytes <= frameContext->outputCapacity) {
       if (bytesPerRow == rowBytes) {
         memcpy(frameContext->outputPixels, src, totalBytes);
       } else {
@@ -977,6 +1187,8 @@ private:
       frameContext->decodedWidth = static_cast<int32_t>(width);
       frameContext->decodedHeight = static_cast<int32_t>(height);
       frameContext->frameProduced = true;
+    } else {
+      frameContext->callbackStatus = kCVReturnInvalidSize;
     }
 
     CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
@@ -1016,7 +1228,8 @@ Java_com_android_tools_idea_streaming_device_OsVideoDecoder_decodeFrame(
     jobject outputPixelBuffer, jint outputCapacity,
     jintArray outDimensions) {
   auto* decoder = reinterpret_cast<MacVideoDecoder*>(handle);
-  if (decoder == nullptr || packetBuffer == nullptr || outputPixelBuffer == nullptr) {
+  if (decoder == nullptr || packetBuffer == nullptr || outputPixelBuffer == nullptr ||
+      outDimensions == nullptr || env->GetArrayLength(outDimensions) < 2) {
     return DECODE_ERROR;
   }
 
@@ -1034,21 +1247,14 @@ Java_com_android_tools_idea_streaming_device_OsVideoDecoder_decodeFrame(
     return DECODE_ERROR;
   }
 
-  jobject outputBufferRef = env->NewGlobalRef(outputPixelBuffer);
-  if (outputBufferRef == nullptr) {
-    return DECODE_ERROR;
-  }
-
   int32_t width = 0;
   int32_t height = 0;
   jint result = decoder->Decode(
       packetBytes + packetOffset, static_cast<size_t>(packetSize),
-      outputBufferRef, outputBytes, static_cast<size_t>(outputCapacity),
+      outputBytes, static_cast<size_t>(outputCapacity),
       &width, &height);
 
-  env->DeleteGlobalRef(outputBufferRef);
-
-  if (result == DECODE_FRAME_PRODUCED && outDimensions != nullptr) {
+  if (result == DECODE_FRAME_PRODUCED) {
     jint dims[2] = { width, height };
     env->SetIntArrayRegion(outDimensions, 0, 2, dims);
   }

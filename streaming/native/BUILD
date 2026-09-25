@@ -122,7 +122,7 @@ sh_binary(
 objc_library(
     name = "video_decoder_mac",
     srcs = ["VideoDecoderMac.mm"],
-    copts = [
+    cxxopts = [
         "-O2",
         "-std=c++17",
     ],

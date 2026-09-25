@@ -619,11 +619,13 @@ internal constructor(
             buf.capacity(),
             dimensions,
           )
-        if (status < 0) {
-          return false
-        }
-        if (status == 0) {
-          return true
+        when (status) {
+          OsVideoDecoder.DECODE_ERROR -> return false
+          OsVideoDecoder.DECODE_INVALID_FRAME ->
+            throw InvalidFrameException(
+              "Display $displayId: video packet was rejected by the decoder: $status ${packet.toDebugString()} header: $header"
+            )
+          OsVideoDecoder.DECODE_NO_FRAME -> return true
         }
 
         val frameWidth = dimensions[0]
