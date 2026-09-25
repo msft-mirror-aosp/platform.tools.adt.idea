@@ -131,9 +131,7 @@ class PreviewItemPanel(
 
   private fun createMatchPercentageLabel(previewData: PreviewDetails): JPanel {
     val hasReferenceImage =
-      (previewData.destImagePath?.let { File(it).exists() } == true) ||
-        previewData.diffPercent != null ||
-        previewData.testResult == AndroidTestCaseResult.PASSED
+      previewData.destImageExists || previewData.diffPercent != null || previewData.testResult == AndroidTestCaseResult.PASSED
 
     if (!hasReferenceImage) {
       return JPanel().apply {
@@ -203,7 +201,7 @@ class PreviewItemPanel(
       }
       ScreenshotViewType.DIFF -> {
         val diffPath = previewData.diffImagePath
-        if (diffPath != null && File(diffPath).exists()) {
+        if (diffPath != null && previewData.diffImageExists) {
           loadImage(diffPath, previewData.testId, onImageLoaded)
         } else {
           if (previewData.testResult == AndroidTestCaseResult.PASSED) {
@@ -215,7 +213,7 @@ class PreviewItemPanel(
       }
       ScreenshotViewType.REFERENCE -> {
         val refPath = previewData.destImagePath
-        if (refPath != null && File(refPath).exists()) {
+        if (refPath != null && previewData.destImageExists) {
           loadImage(refPath, previewData.testId, onImageLoaded)
         } else {
           showPlaceholder(NO_REF_IMAGE_TEXT, JBColor.RED)

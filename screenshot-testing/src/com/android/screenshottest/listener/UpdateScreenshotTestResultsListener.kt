@@ -22,7 +22,6 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCase
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestSuite
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.Executor
 
@@ -36,6 +35,9 @@ private const val SIZE_MISMATCH_PREFIX = "Size Mismatch"
 
 /**
  * A listener that receives screenshot test results and passes them to the UI dialog.
+ *
+ * Events are forwarded from a single background thread, so they keep their order and slow work such as resolving paths and checking files
+ * stays off the EDT. The dialog moves each event to the EDT itself.
  *
  * @param dialog The dialog to update with the test results.
  */
@@ -73,39 +75,35 @@ class UpdateScreenshotTestResultsListener(
           artifacts[ARTIFACT_KEY_DIFF_IMAGE_PATH],
         )
 
-      ApplicationManager.getApplication().invokeLater {
-        val errorTrace = (testCase.errorStackTrace as? String) ?: ""
-        val sizeMismatchLine = errorTrace.lineSequence().firstOrNull { it.contains(SIZE_MISMATCH_PREFIX) }
-        val previewDetails =
-          PreviewDetails(
-            testId = testId,
-            className = className,
-            methodName = methodName,
-            previewName = previewName,
-            testResult = testCase.result,
-            destImagePath = destPath,
-            srcImagePath = srcPath,
-            diffImagePath = diffPath,
-            diffPercent = artifacts[ARTIFACT_KEY_DIFF_PERCENT],
-            isSizeMismatch = sizeMismatchLine != null,
-            sizeMismatchMessage = sizeMismatchLine?.let { line -> line.substring(line.indexOf(SIZE_MISMATCH_PREFIX)).trim() },
-          )
-        dialog.updateDialogWithTestResult(previewDetails, true)
-      }
+      val errorTrace = (testCase.errorStackTrace as? String) ?: ""
+      val sizeMismatchLine = errorTrace.lineSequence().firstOrNull { it.contains(SIZE_MISMATCH_PREFIX) }
+      val previewDetails =
+        PreviewDetails(
+          testId = testId,
+          className = className,
+          methodName = methodName,
+          previewName = previewName,
+          testResult = testCase.result,
+          destImagePath = destPath,
+          srcImagePath = srcPath,
+          diffImagePath = diffPath,
+          diffPercent = artifacts[ARTIFACT_KEY_DIFF_PERCENT],
+          isSizeMismatch = sizeMismatchLine != null,
+          sizeMismatchMessage = sizeMismatchLine?.let { line -> line.substring(line.indexOf(SIZE_MISMATCH_PREFIX)).trim() },
+        )
+          .withResolvedImageFiles()
+
+      dialog.updateDialogWithTestResult(previewDetails, true)
     }
   }
 
   override fun onTestSuiteStarted(device: AndroidDevice, testSuite: AndroidTestSuite) {
     // The suite starts once the project is built, right before the previews are rendered.
-    executor.execute {
-      ApplicationManager.getApplication().invokeLater { dialog.onRenderingStarted() }
-    }
+    executor.execute { dialog.onRenderingStarted() }
   }
 
   override fun onTestSuiteFinished(device: AndroidDevice, testSuite: AndroidTestSuite) {
-    executor.execute {
-      ApplicationManager.getApplication().invokeLater { dialog.onTestSuiteFinished() }
-    }
+    executor.execute { dialog.onTestSuiteFinished() }
   }
 
   /**

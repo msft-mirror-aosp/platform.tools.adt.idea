@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposePanel
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.android.annotations.concurrency.AnyThread
+import com.android.annotations.concurrency.WorkerThread
 import com.android.screenshottest.util.ImageData
 import com.android.screenshottest.util.copyReferenceImages
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
@@ -155,6 +157,7 @@ class UpdateReferenceImagesDialog(
   }
 
   /** Reports that the project was built and the previews are being rendered. */
+  @AnyThread
   fun onRenderingStarted() {
     ApplicationManager.getApplication().invokeLater {
       if (!isFirstTestDiscovered) {
@@ -163,6 +166,7 @@ class UpdateReferenceImagesDialog(
     }
   }
 
+  @AnyThread
   fun updateDialogWithTestResult(previewDetails: PreviewDetails, isChecked: Boolean) {
     ApplicationManager.getApplication().invokeLater {
       val className = previewDetails.className
@@ -223,6 +227,7 @@ class UpdateReferenceImagesDialog(
     updateOkButtonState()
   }
 
+  @AnyThread
   fun onTestSuiteFinished() {
     // If no tests were ever discovered by the time the suite finishes, it indicates a build
     // failure or that no tests were found to run. Close the dialog and show an error.
@@ -253,6 +258,7 @@ class UpdateReferenceImagesDialog(
    * If the run fails before any preview is rendered, closes the dialog and opens the Run tool window to show errors. Otherwise, no more
    * results will arrive, so the previews rendered so far can be added.
    */
+  @AnyThread
   fun onBuildFailed() {
     ApplicationManager.getApplication().invokeLater {
       if (isFirstTestDiscovered) {
@@ -599,6 +605,12 @@ class UpdateReferenceImagesDialog(
   }
 }
 
+/**
+ * The details of a single rendered preview.
+ *
+ * [destImageExists] and [diffImageExists] record whether the reference and diff images are on disk. Producers compute them off the EDT with
+ * [withResolvedImageFiles] so that the dialog never has to check the file system while painting.
+ */
 data class PreviewDetails(
   val testId: String,
   val className: String,
@@ -611,7 +623,17 @@ data class PreviewDetails(
   val diffPercent: String? = null,
   val isSizeMismatch: Boolean = false,
   val sizeMismatchMessage: String? = null,
-)
+  val destImageExists: Boolean = false,
+  val diffImageExists: Boolean = false,
+) {
+  /** Returns a copy with [destImageExists] and [diffImageExists] read from the file system. */
+  @WorkerThread
+  fun withResolvedImageFiles(): PreviewDetails =
+    copy(
+      destImageExists = destImagePath?.let { File(it).exists() } == true,
+      diffImageExists = diffImagePath?.let { File(it).exists() } == true,
+    )
+}
 
 data class MethodGroup(
   val className: String,

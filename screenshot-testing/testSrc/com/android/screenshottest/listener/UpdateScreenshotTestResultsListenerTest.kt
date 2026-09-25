@@ -337,6 +337,43 @@ class UpdateScreenshotTestResultsListenerTest {
     inOrder.verify(dialog).onTestSuiteFinished()
   }
 
+  /** Verifies that the listener records which images exist so the dialog doesn't have to check the disk. */
+  @Test
+  fun testOnTestCaseFinished_resolvesImageFileExistence() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    `when`(dialog.project).thenReturn(projectRule.project)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+
+    val refFile = File(projectRule.project.basePath, "existing_ref.png").canonicalFile.apply {
+      parentFile.mkdirs()
+      writeText("ref")
+    }
+    val diffPath = File(projectRule.project.basePath, "missing_diff.png").canonicalPath
+    val testCase =
+      AndroidTestCase(
+        id = "test1",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        additionalTestArtifacts =
+          mutableMapOf(
+            "PreviewScreenshot.methodName" to "m",
+            "PreviewScreenshot.previewName" to "p",
+            "PreviewScreenshot.refImagePath" to refFile.path,
+            "PreviewScreenshot.diffImagePath" to diffPath,
+          ),
+      )
+
+    listener.onTestCaseFinished(mock(AndroidDevice::class.java), mock(AndroidTestSuite::class.java), testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+    assertTrue(captor.value.destImageExists)
+    assertFalse(captor.value.diffImageExists)
+  }
+
   /** Verifies that size mismatch errors in the stack trace are detected and parsed correctly. */
   @Test
   fun testOnTestCaseFinished_extractsSizeMismatch() {

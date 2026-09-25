@@ -274,6 +274,7 @@ class PreviewItemPanelTest {
         testResult = AndroidTestCaseResult.FAILED,
         srcImagePath = srcPath,
         diffImagePath = diffPath,
+        diffImageExists = true,
       )
 
     val panel =
@@ -590,6 +591,92 @@ class PreviewItemPanelTest {
     assertFalse("Corrupted image should fail to load", panel.isLoadedSuccessfully)
     val label = findLabel(panel)
     assertEquals("Couldn't load image", label?.text)
+  }
+
+  @Test
+  fun verifyMatchLabelUsesDestImageExistsFlag() = runInEdtAndWait {
+    // The reference image is on disk, but the panel relies on the flag rather than checking the disk.
+    val refPath = temporaryFolder.newFile("ref.png").absolutePath
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "C",
+        methodName = "m",
+        previewName = "p",
+        testResult = AndroidTestCaseResult.FAILED,
+        destImagePath = refPath,
+      )
+    val panel = PreviewItemPanel(details, projectRule.project)
+    assertNotNull(findAllLabels(panel).find { it.text == "New" })
+    assertNull(findAllLabels(panel).find { it.text == "Match: " })
+
+    panel.updateData(details.copy(destImageExists = true), ScreenshotViewType.NEW)
+
+    assertNull(findAllLabels(panel).find { it.text == "New" })
+    assertNotNull(findAllLabels(panel).find { it.text == "Match: " })
+  }
+
+  @Test
+  fun verifyReferenceViewUsesDestImageExistsFlag() = runInEdtAndWait {
+    val refPath = temporaryFolder.newFile("ref.png").absolutePath
+    val decodedPaths = mutableListOf<String>()
+    val details =
+      PreviewDetails(testId = "id", className = "C", methodName = "m", previewName = "p", destImagePath = refPath)
+    val panel =
+      PreviewItemPanel(
+        details,
+        projectRule.project,
+        showDetails = false,
+        appExecutorService = MoreExecutors.newDirectExecutorService(),
+        createImageIcon = { path ->
+          decodedPaths.add(path)
+          mock()
+        },
+      )
+
+    panel.showImageForView(ScreenshotViewType.REFERENCE)
+    assertEquals("No Reference Image", findLabel(panel)?.text)
+    assertTrue(decodedPaths.isEmpty())
+
+    panel.updateData(details.copy(destImageExists = true), ScreenshotViewType.REFERENCE)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(listOf(refPath), decodedPaths)
+    assertTrue(panel.isLoadedSuccessfully)
+  }
+
+  @Test
+  fun verifyDiffViewUsesDiffImageExistsFlag() = runInEdtAndWait {
+    val diffPath = temporaryFolder.newFile("diff.png").absolutePath
+    val decodedPaths = mutableListOf<String>()
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "C",
+        methodName = "m",
+        previewName = "p",
+        testResult = AndroidTestCaseResult.FAILED,
+        diffImagePath = diffPath,
+      )
+    val panel =
+      PreviewItemPanel(
+        details,
+        projectRule.project,
+        showDetails = false,
+        appExecutorService = MoreExecutors.newDirectExecutorService(),
+        createImageIcon = { path ->
+          decodedPaths.add(path)
+          mock()
+        },
+      )
+
+    panel.showImageForView(ScreenshotViewType.DIFF)
+    assertEquals("No Diff Image", findLabel(panel)?.text)
+    assertTrue(decodedPaths.isEmpty())
+
+    panel.updateData(details.copy(diffImageExists = true), ScreenshotViewType.DIFF)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(listOf(diffPath), decodedPaths)
+    assertTrue(panel.isLoadedSuccessfully)
   }
 
   private fun findLabel(container: Container): JBLabel? {

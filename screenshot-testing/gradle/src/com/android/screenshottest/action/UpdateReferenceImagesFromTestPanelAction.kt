@@ -96,6 +96,7 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
                 ),
               diffPercent = artifacts["PreviewScreenshot.diffPercent"],
             )
+              .withResolvedImageFiles()
 
           LOG.debug("PreviewDetails: $previewDetails")
           dialog.updateDialogWithTestResult(

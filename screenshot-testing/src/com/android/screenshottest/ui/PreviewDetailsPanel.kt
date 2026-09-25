@@ -505,7 +505,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         previewData.methodName
       }
 
-    val refImagePath = previewData.destImagePath?.takeIf { File(it).exists() }
+    val refImagePath = previewData.destImagePath?.takeIf { previewData.destImageExists }
 
     screenshotAttributesView.updateData(
       refImagePath = refImagePath,
