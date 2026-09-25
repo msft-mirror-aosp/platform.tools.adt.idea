@@ -31,8 +31,15 @@ import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.sun.net.httpserver.HttpServer
+import java.awt.image.BufferedImage
 import java.io.File
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import javax.swing.plaf.basic.BasicHTML
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -122,6 +129,59 @@ class AndroidTestSuiteDetailsViewTest {
     val view =
       AndroidTestSuiteDetailsView(disposableRule.disposable, mockController, mockListener, projectRule.project, mockLogger, headerActions)
     assertThat(view.titleTextView.getClientProperty("html.disable")).isEqualTo(true)
+  }
+
+  // Test names are reported by the device and must be displayed as plain text, never rendered as HTML.
+  @Test
+  fun titleTextViewShouldNotRenderHtmlFromMethodName() {
+    val view =
+      AndroidTestSuiteDetailsView(disposableRule.disposable, mockController, mockListener, projectRule.project, mockLogger, headerActions)
+    val payload = "<html><img src='http://127.0.0.1:1/x'>"
+
+    view.setAndroidTestResults(createTestResults(AndroidTestCaseResult.FAILED, methodName = payload, className = "", packageName = ""))
+
+    assertThat(view.titleTextView.text).isEqualTo(payload)
+    assertThat(view.titleTextView.getClientProperty(BasicHTML.propertyKey)).isNull()
+  }
+
+  @Test
+  fun titleTextViewShouldNotRenderHtmlFromClassName() {
+    val view =
+      AndroidTestSuiteDetailsView(disposableRule.disposable, mockController, mockListener, projectRule.project, mockLogger, headerActions)
+    val payload = "<html><img src='http://127&#46;0&#46;0&#46;1:1/x'>"
+
+    view.setAndroidTestResults(createTestResults(AndroidTestCaseResult.FAILED, methodName = "", className = payload, packageName = ""))
+
+    assertThat(view.titleTextView.text).isEqualTo(payload)
+    assertThat(view.titleTextView.getClientProperty(BasicHTML.propertyKey)).isNull()
+  }
+
+  @Test
+  fun titleTextViewShouldNotFetchRemoteImageFromMethodName() {
+    val requestReceived = CountDownLatch(1)
+    val server =
+      HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0).apply {
+        createContext("/") { exchange ->
+          requestReceived.countDown()
+          exchange.sendResponseHeaders(404, -1)
+          exchange.close()
+        }
+        start()
+      }
+    try {
+      val view =
+        AndroidTestSuiteDetailsView(disposableRule.disposable, mockController, mockListener, projectRule.project, mockLogger, headerActions)
+      val payload = "<html><img src='http://127.0.0.1:${server.address.port}/testmatrix'>"
+
+      view.setAndroidTestResults(createTestResults(AndroidTestCaseResult.FAILED, methodName = payload, className = "", packageName = ""))
+      view.titleTextView.setSize(view.titleTextView.preferredSize)
+      val image = BufferedImage(200, 50, BufferedImage.TYPE_INT_ARGB)
+      image.createGraphics().also { view.titleTextView.paint(it) }.dispose()
+
+      assertThat(requestReceived.await(2, TimeUnit.SECONDS)).isFalse()
+    } finally {
+      server.stop(0)
+    }
   }
 
   private fun createTestResults(
