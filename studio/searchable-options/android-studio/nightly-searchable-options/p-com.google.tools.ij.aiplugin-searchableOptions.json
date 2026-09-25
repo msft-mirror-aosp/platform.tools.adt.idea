@@ -78,6 +78,9 @@
       "hit": "750 ms"
     },
     {
+      "hit": "Add custom instructions to review prompt"
+    },
+    {
       "hit": "Automatically collapse diff chunks below:"
     },
     {
