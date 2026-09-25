@@ -16,10 +16,18 @@
 package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.graphics.Color
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.parentOfType
 import java.math.RoundingMode
+import java.util.Locale
 import kotlin.math.roundToInt
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 fun formatFloat(number: Float): String {
   return number.toBigDecimal().setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
@@ -31,9 +39,9 @@ fun Color.toHexStringNoHash(includeAlpha: Boolean = false): String {
   val b = (blue * 255f).roundToInt()
   return if (includeAlpha) {
     val a = (alpha * 255f).roundToInt()
-    String.format("%02X%02X%02X%02X", a, r, g, b)
+    String.format(Locale.US, "%02X%02X%02X%02X", a, r, g, b)
   } else {
-    String.format("%02X%02X%02X", r, g, b)
+    String.format(Locale.US, "%02X%02X%02X", r, g, b)
   }
 }
 
@@ -42,68 +50,40 @@ fun Color.toComposeHexLiteral(): String {
   val g = (green * 255f).roundToInt()
   val b = (blue * 255f).roundToInt()
   val a = (alpha * 255f).roundToInt()
-  return String.format("0x%02X%02X%02X%02X", a, r, g, b)
+  return String.format(Locale.US, "0x%02X%02X%02X%02X", a, r, g, b)
 }
 
-fun String.toColor(): Color {
-  var processedColorString = this.trim()
+fun KtCallExpression.isValidMeshGradientCall(expectedFqn: String = "androidx.compose.ui.graphics.MeshGradientPainter"): Boolean {
+  val callee = calleeExpression as? KtNameReferenceExpression ?: return false
+  val file = containingFile as? KtFile ?: return false
+  val shortName = expectedFqn.substringAfterLast('.')
+  val packagePrefix = expectedFqn.substringBeforeLast('.', "")
 
-  if (processedColorString.startsWith("#")) {
-    processedColorString = processedColorString.substring(1)
+  val qualifiedParent = parent as? KtQualifiedExpression
+  if (qualifiedParent != null && qualifiedParent.selectorExpression == this) {
+    return callee.text == shortName && qualifiedParent.receiverExpression.text == packagePrefix
   }
-
-  if (processedColorString.length != 6 && processedColorString.length != 8) {
-    throw IllegalArgumentException("Invalid color string: $this")
-  }
-
-  val colorLong = processedColorString.toLongOrNull(16) ?: throw IllegalArgumentException("Invalid color string: $this")
-
-  val alpha =
-    if (processedColorString.length == 8) {
-      (colorLong shr 24 and 0xFF).toFloat() / 255f
-    } else {
-      1.0f
-    }
-  val red = (colorLong shr 16 and 0xFF).toFloat() / 255f
-  val green = (colorLong shr 8 and 0xFF).toFloat() / 255f
-  val blue = (colorLong and 0xFF).toFloat() / 255f
-
-  return Color(red, green, blue, alpha)
-}
-
-fun org.jetbrains.kotlin.psi.KtCallExpression.isValidMeshGradientCall(
-  expectedFqn: String = "androidx.compose.ui.graphics.MeshGradientPainter"
-): Boolean {
-  val callee = calleeExpression as? org.jetbrains.kotlin.psi.KtNameReferenceExpression ?: return false
-  val file = containingFile as? org.jetbrains.kotlin.psi.KtFile ?: return false
 
   // 1. First Check: Try to find an explicit import in the file
-  val explicitImport = runReadActionBlocking { file.importDirectives.firstOrNull { it.importedFqName?.asString() == expectedFqn } }
-
+  val explicitImport = file.importDirectives.firstOrNull { it.importedFqName?.asString() == expectedFqn }
   if (explicitImport != null) {
-    // Case A: Explicitly imported (very common). Check matching name/alias and skip resolve() entirely!
-    val expectedName = explicitImport.aliasName ?: "MeshGradientPainter"
+    val expectedName = explicitImport.aliasName ?: shortName
     return callee.text == expectedName
   }
 
-  // Case B: No explicit import (could be star-imported, or mock test sandboxes, or custom references)
-  // Fallback 1: In mock test environments, resolve() returns null.
-  // We check if the callee text matches standard "MeshGradientPainter" as a test fallback.
-  val isMockEnvironment = runReadActionBlocking { callee.references.firstNotNullOfOrNull { it.resolve() } } == null
-  if (isMockEnvironment) {
-    return callee.text == "MeshGradientPainter"
+  // 2. Resolve reference once (handles star-imports and test sandboxes)
+  val target = callee.references.firstNotNullOfOrNull { it.resolve() }
+  if (target == null) {
+    return callee.text == shortName
   }
 
-  // Fallback 2: Reference resolves successfully (e.g., star-import is resolved). Verify FQN.
-  val resolvedFqn = runReadActionBlocking {
-    val target = callee.references.firstNotNullOfOrNull { it.resolve() }
+  val resolvedFqn =
     when (target) {
-      is org.jetbrains.kotlin.psi.KtConstructor<*> -> target.parentOfType<org.jetbrains.kotlin.psi.KtClass>()?.fqName?.asString()
-      is org.jetbrains.kotlin.psi.KtClass -> target.fqName?.asString()
-      is com.intellij.psi.PsiClass -> target.qualifiedName
-      is com.intellij.psi.PsiMethod -> if (target.isConstructor) target.containingClass?.qualifiedName else null
+      is KtConstructor<*> -> target.parentOfType<KtClass>()?.fqName?.asString()
+      is KtClass -> target.fqName?.asString()
+      is PsiClass -> target.qualifiedName
+      is PsiMethod -> if (target.isConstructor) target.containingClass?.qualifiedName else null
       else -> null
     }
-  }
   return resolvedFqn == expectedFqn
 }

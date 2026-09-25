@@ -25,13 +25,15 @@ import com.intellij.openapi.editor.markup.MarkupEditorFilterFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
-import com.intellij.psi.util.parentOfType
 import icons.StudioIcons
 import javax.swing.Icon
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
 class MeshGradientLineMarkerProvider : LineMarkerProviderDescriptor() {
 
@@ -46,17 +48,24 @@ class MeshGradientLineMarkerProvider : LineMarkerProviderDescriptor() {
     if (!element.isValid) return null
     if (!element.isPhysical) return null
 
-    val file = element.containingFile as? KtFile ?: return null
-    val aliasName =
-      file.importDirectives.firstOrNull { it.importedFqName?.asString() == "androidx.compose.ui.graphics.MeshGradientPainter" }?.aliasName
-    val expectedName = aliasName ?: "MeshGradientPainter"
-    if (element.text != expectedName) return null
+    val nameRef = element.parent as? KtNameReferenceExpression ?: return null
+    val callExpression = nameRef.parent as? KtCallExpression ?: return null
+    if (callExpression.calleeExpression != nameRef) return null
 
-    val callExpression = element.parentOfType<KtCallExpression>() ?: return null
+    val file = element.containingFile as? KtFile ?: return null
+    if (
+      element.text != "MeshGradientPainter" &&
+        file.importDirectives.none {
+          it.aliasName == element.text && it.importedFqName?.asString() == "androidx.compose.ui.graphics.MeshGradientPainter"
+        }
+    ) {
+      return null
+    }
 
     if (!callExpression.isValidMeshGradientCall()) return null
 
-    val info = createInfo(element, element.textRange, element.project, callExpression)
+    val callPointer = SmartPointerManager.getInstance(element.project).createSmartPsiElementPointer(callExpression)
+    val info = createInfo(element, element.textRange, element.project, callPointer)
     NavigateAction.setNavigateAction(info, "Edit Mesh Gradient", null, icon)
     return info
   }
@@ -65,7 +74,7 @@ class MeshGradientLineMarkerProvider : LineMarkerProviderDescriptor() {
     element: PsiElement,
     textRange: TextRange,
     project: Project,
-    callExpression: KtCallExpression,
+    callPointer: SmartPsiElementPointer<KtCallExpression>,
   ): LineMarkerInfo<PsiElement> {
     return object :
       LineMarkerInfo<PsiElement>(
@@ -74,9 +83,10 @@ class MeshGradientLineMarkerProvider : LineMarkerProviderDescriptor() {
         icon,
         { "Edit Mesh Gradient" },
         { _, _ ->
-          val file = element.containingFile as? KtFile
-          if (file != null) {
-            val dialog = MeshGradientEditorDialog(project, file, callExpression)
+          val validCall = callPointer.element?.takeIf { it.isValid }
+          val file = validCall?.containingFile as? KtFile
+          if (validCall != null && file != null) {
+            val dialog = MeshGradientEditorDialog(project, file, validCall)
             dialog.show()
           }
         },
