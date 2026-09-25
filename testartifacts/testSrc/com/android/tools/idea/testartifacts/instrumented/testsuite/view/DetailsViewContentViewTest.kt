@@ -49,6 +49,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.Answers
@@ -56,6 +57,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
 /** Unit tests for [DetailsViewContentView]. */
@@ -65,12 +67,13 @@ class DetailsViewContentViewTest {
 
   private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
+  private val temporaryFolder = TemporaryFolder()
   private val headerActions = emptyList<AnAction>()
   @Mock lateinit var mockLogger: AndroidTestSuiteLogger
 
   @Mock(answer = Answers.RETURNS_DEEP_STUBS) lateinit var mockTestResults: AndroidTestResults
 
-  @get:Rule val rules: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule()).around(disposableRule)
+  @get:Rule val rules: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule()).around(disposableRule).around(temporaryFolder)
 
   private val createdViews = mutableListOf<DetailsViewContentView>()
 
@@ -83,6 +86,7 @@ class DetailsViewContentViewTest {
   @Before
   fun setup() {
     MockitoAnnotations.openMocks(this)
+    whenever(mockTestResults.getLogcatFile(any())).thenReturn(null)
     createdViews.clear()
   }
 
@@ -91,6 +95,13 @@ class DetailsViewContentViewTest {
     try {
       createdViews.forEach { view ->
         view.pathResolutionFuture?.let {
+          try {
+            PlatformTestUtil.waitForFuture(it)
+          } catch (e: Exception) {
+            // Ignore expected CancellationExceptions or other failures during cleanup.
+          }
+        }
+        view.logLoadingFuture?.let {
           try {
             PlatformTestUtil.waitForFuture(it)
           } catch (e: Exception) {
@@ -733,6 +744,92 @@ class DetailsViewContentViewTest {
 
     val labels = UIUtil.findComponentsOfType(tabComponent, javax.swing.JLabel::class.java)
     assertThat(labels.map { it.text }).doesNotContain("Logs")
+  }
+
+  @Test
+  fun fileBackedLogsLoadedAsynchronously() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val logcatFile =
+      temporaryFolder.newFile("async-logcat.txt").apply {
+        writeText("file logcat message\nsecond line")
+      }
+    whenever(mockTestResults.getLogcatFile(testDevice)).thenReturn(logcatFile)
+
+    view.setResults(testDevice, mockTestResults)
+
+    // Wait for the background task to complete and invokeLater events to flush
+    view.logLoadingFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    view.myLogsView.waitAllRequests()
+    assertThat(view.isLoadingLogs).isFalse()
+    assertThat(view.myLogsView.text).contains("file logcat message\nsecond line")
+  }
+
+  @Test
+  fun placeholderDisplayedWhenLoadingLogs() {
+    val view = createView()
+    view.isLoadingLogs = true
+    view.refreshLogsView()
+    view.myLogsView.waitAllRequests()
+    assertThat(view.myLogsView.text).isEqualTo("Loading logs...")
+  }
+
+  @Test
+  fun changingSelectionCancelsPendingLogcatLoading() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val mockFuture = org.mockito.Mockito.mock(java.util.concurrent.Future::class.java)
+    view.logLoadingFuture = mockFuture
+
+    // Immediately switch to in-memory result (or different test)
+    val otherResults = org.mockito.Mockito.mock(AndroidTestResults::class.java, org.mockito.Answers.RETURNS_DEEP_STUBS)
+    whenever(otherResults.getLogcat(testDevice)).thenReturn("new in-memory logcat")
+    whenever(otherResults.getLogcatFile(testDevice)).thenReturn(null)
+
+    view.setResults(testDevice, otherResults)
+
+    org.mockito.Mockito.verify(mockFuture).cancel(true)
+    assertThat(view.isLoadingLogs).isFalse()
+    view.myLogsView.waitAllRequests()
+    assertThat(view.myLogsView.text).isEqualTo("new in-memory logcat\n")
+  }
+
+  @Test
+  fun emptyFileBackedLogsDisplaysNoLogsAvailable() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val logcatFile = temporaryFolder.newFile("empty-logcat.txt")
+    whenever(mockTestResults.getLogcatFile(testDevice)).thenReturn(logcatFile)
+
+    view.setResults(testDevice, mockTestResults)
+
+    // Wait for the background task to complete and invokeLater events to flush
+    view.logLoadingFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    view.myLogsView.waitAllRequests()
+    assertThat(view.isLoadingLogs).isFalse()
+    assertThat(view.myLogsView.text).isEqualTo("No logs available")
+  }
+
+  @Test
+  fun nonExistentFileBackedLogsHandledGracefully() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val nonExistentFile = temporaryFolder.root.resolve("non-existent-logcat.txt")
+    whenever(mockTestResults.getLogcatFile(testDevice)).thenReturn(nonExistentFile)
+
+    view.setResults(testDevice, mockTestResults)
+
+    // Wait for the background task to complete and invokeLater events to flush
+    view.logLoadingFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    view.myLogsView.waitAllRequests()
+    assertThat(view.isLoadingLogs).isFalse()
+    assertThat(view.myLogsView.text).isEqualTo("No logs available")
   }
 
   private fun createEncodedJourneyArtifact(): String {

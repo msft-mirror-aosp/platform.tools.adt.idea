@@ -148,7 +148,10 @@ class DdmlibTestRunListenerAdapter(private val myIDevice: IDevice, private val l
     if (!testCase.result.isTerminalState) {
       testCase.result = AndroidTestCaseResult.PASSED
     }
-    testCase.logcat = testMetrics.getOrDefault(DDMLIB_LOGCAT, "")
+    val logcatMessage = testMetrics.getOrDefault(DDMLIB_LOGCAT, "")
+    if (logcatMessage.isNotEmpty()) {
+      testCase.logcat = logcatMessage
+    }
     testCase.benchmark =
       getBenchmarkOutput(
         testMetrics = testMetrics,

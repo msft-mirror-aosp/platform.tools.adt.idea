@@ -34,6 +34,7 @@ import com.intellij.openapi.externalSystem.model.task.event.SkippedResult
 import com.intellij.openapi.externalSystem.model.task.event.SuccessResult
 import com.intellij.openapi.externalSystem.model.task.event.TestAssertionFailure
 import com.intellij.openapi.externalSystem.model.task.event.TestFailure
+import com.intellij.openapi.util.io.FileUtil
 import org.jetbrains.plugins.gradle.execution.test.runner.events.TestEventXPPXmlView
 
 /**
@@ -145,16 +146,32 @@ class AndroidTestSuiteViewAdaptor(private val runConfiguration: RunConfiguration
   ) {
     val testCase = testCaseMap[testIdentifier.id]
     if (testCase != null) {
+      val logcatLines = mutableListOf<String>()
       output.lineSequence().forEach { line ->
         if (line.startsWith("[additionalTestArtifacts]")) {
           val parts = line.substringAfter("[additionalTestArtifacts]").split("=", limit = 2)
           val key = parts.getOrNull(0)?.trim().orEmpty()
           val value = parts.getOrNull(1)?.trim().orEmpty()
           if (key.isNotEmpty() && isSafeArtifactValue(value)) {
-            testCase.additionalTestArtifacts[key] = value
+            synchronized(testCase) {
+              testCase.additionalTestArtifacts[key] = value
+            }
           }
         } else if (line.isNotBlank()) {
-          testCase.logcat += line + "\n"
+          logcatLines.add(line)
+        }
+      }
+      if (logcatLines.isNotEmpty()) {
+        val file =
+          synchronized(testCase) {
+            testCase.logcatFile ?: FileUtil.createTempFile("logcat", ".txt", true).also { testCase.logcatFile = it }
+          }
+        try {
+          synchronized(file) {
+            file.appendText(logcatLines.joinToString("\n", postfix = "\n"))
+          }
+        } catch (e: Exception) {
+          LOGGER.warning("Failed to append logcat output to ${file.path}: ${e.message}")
         }
       }
     } else {

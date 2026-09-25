@@ -320,6 +320,33 @@ class AndroidTestResultsTableViewTest {
   }
 
   @Test
+  fun addTestResultsWithLogcatFile() {
+    val table =
+      AndroidTestResultsTableView(
+        mockListener,
+        projectRule.project,
+        mockModule,
+        mockLogger,
+        mockAndroidTestResultsUserPreferencesManager,
+        mockTestResultsPsiElementProvider,
+      )
+    val device = device("deviceId1", "deviceName1")
+    table.addDevice(device)
+
+    val logcatFile =
+      File.createTempFile("test-logcat", ".txt").apply {
+        deleteOnExit()
+        writeText("file logcat content")
+      }
+
+    table.addTestCase(device, AndroidTestCase("testid1", "method1", "class1", "package1", logcatFile = logcatFile))
+
+    val row = table.getTableViewForTesting().getItem(2)
+    assertThat(row.getLogcat(device)).isEqualTo("file logcat content")
+    assertThat(row.getLogcatFile(device)).isEqualTo(logcatFile)
+  }
+
+  @Test
   fun addTestResultsWithBenchmark() {
     val table =
       AndroidTestResultsTableView(
@@ -1191,7 +1218,7 @@ class AndroidTestResultsTableViewTest {
     table.addDevice(device1)
     table.addTestCase(
       device1,
-      AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.PASSED, "test logcat message"),
+      AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.PASSED),
     )
 
     // Assert that each column's preferred width is set to its default value when the table is created.
@@ -1231,7 +1258,7 @@ class AndroidTestResultsTableViewTest {
     table.addDevice(device1)
     table.addTestCase(
       device1,
-      AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.PASSED, "test logcat message"),
+      AndroidTestCase("testid1", "method1", "class1", "package1", AndroidTestCaseResult.PASSED),
     )
 
     // Select the test case 1.

@@ -294,16 +294,16 @@ private class ImportAndroidTestMatrixRunProfileState(
                   "testcase" -> {
                     val testcase =
                       AndroidTestCase(
-                        attributes.getValue("id"),
-                        attributes.getValue("methodName"),
-                        attributes.getValue("className"),
-                        attributes.getValue("packageName"),
-                        AndroidTestCaseResult.valueOf(attributes.getValue("result")),
-                        attributes.getValue("logcat"),
-                        attributes.getValue("errorStackTrace"),
-                        attributes.getValue("startTimestampMillis").toLong(),
-                        attributes.getValue("endTimestampMillis").toLong(),
-                        attributes.getValue("benchmark"),
+                        id = attributes.getValue("id"),
+                        methodName = attributes.getValue("methodName"),
+                        className = attributes.getValue("className"),
+                        packageName = attributes.getValue("packageName"),
+                        result = AndroidTestCaseResult.valueOf(attributes.getValue("result")),
+                        logcat = attributes.getValue("logcat").orEmpty(),
+                        errorStackTrace = attributes.getValue("errorStackTrace"),
+                        startTimestampMillis = attributes.getValue("startTimestampMillis").toLong(),
+                        endTimestampMillis = attributes.getValue("endTimestampMillis").toLong(),
+                        benchmark = attributes.getValue("benchmark"),
                       )
                     val device = requireNotNull(myCurrentTargetDevice)
                     val testsuite = requireNotNull(myCurrentTestSuite)

@@ -24,6 +24,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Journey
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkLinkListener
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.getName
+import com.android.tools.idea.testartifacts.instrumented.testsuite.model.readLogcatFromFile
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScreenshotTestEvent
 import com.google.common.annotations.VisibleForTesting
@@ -63,6 +64,7 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
@@ -113,6 +115,9 @@ open class DetailsViewContentView(
   @get:VisibleForTesting
   var myErrorStackTrace: String = ""
     private set
+
+  @VisibleForTesting var logLoadingFuture: Future<*>? = null
+  @VisibleForTesting var isLoadingLogs: Boolean = false
 
   private var needsRefreshLogsView: Boolean = true
 
@@ -307,6 +312,9 @@ open class DetailsViewContentView(
   }
 
   private fun setLogs(logcat: String?, errorStackTrace: String?) {
+    logLoadingFuture?.cancel(true)
+    logLoadingFuture = null
+    isLoadingLogs = false
     // Keep only a bounded amount of text alive: a single test case can emit hundreds of megabytes of logcat output (b/446684393).
     // The tail of the logcat is kept because that is the part the console displays, while the head of the stack trace is kept because
     // its first line is shown in the test result label.
@@ -325,12 +333,41 @@ open class DetailsViewContentView(
     }
   }
 
-  private fun setBenchmarkText(benchmarkText: BenchmarkOutput) {
+  private fun setLogsAsync(logcatFile: File, errorStackTrace: String?) {
+    logLoadingFuture?.cancel(true)
+    val nonNullError = errorStackTrace.orEmpty().keepFirstChars(maxRetainedLogChars)
+    val errorChanged = myErrorStackTrace != nonNullError
+    myErrorStackTrace = nonNullError
+    if (errorChanged) {
+      refreshTestResultLabel()
+    }
+    myLogcat = ""
+    isLoadingLogs = true
+    needsRefreshLogsView = false
+    refreshLogsView()
+
+    var currentFuture: Future<*>? = null
+    currentFuture =
+      AppExecutorUtil.getAppExecutorService().submit {
+        val content = readLogcatFromFile(logcatFile)
+        invokeLater(ModalityState.any()) {
+          if (Disposer.isDisposed(this)) return@invokeLater
+          if (logLoadingFuture !== currentFuture) return@invokeLater
+          logLoadingFuture = null
+          isLoadingLogs = false
+          myLogcat = content.keepLastChars(maxRetainedLogChars)
+          refreshLogsView()
+        }
+      }
+    logLoadingFuture = currentFuture
+  }
+
+  private fun setBenchmarkText(benchmarkText: BenchmarkOutput?) {
     myBenchmarkView.clear()
-    for (line in benchmarkText.lines) {
+    for (line in benchmarkText?.lines.orEmpty()) {
       line.print(myBenchmarkView, ConsoleViewContentType.NORMAL_OUTPUT, BenchmarkLinkListener(project))
     }
-    val benchmarkOutputIsEmpty = benchmarkText.lines.isEmpty()
+    val benchmarkOutputIsEmpty = benchmarkText?.lines.isNullOrEmpty()
     myBenchmarkTab.isHidden = benchmarkOutputIsEmpty
   }
 
@@ -415,7 +452,12 @@ open class DetailsViewContentView(
   fun setResults(androidDevice: AndroidDevice, testResults: AndroidTestResults) {
     setAndroidDevice(androidDevice)
     setAndroidTestCaseResult(testResults.getTestCaseResult(androidDevice))
-    setLogs(testResults.getLogcat(androidDevice), testResults.getErrorStackTrace(androidDevice))
+    val logcatFile = testResults.getLogcatFile(androidDevice)
+    if (logcatFile != null) {
+      setLogsAsync(logcatFile, testResults.getErrorStackTrace(androidDevice))
+    } else {
+      setLogs(testResults.getLogcat(androidDevice), testResults.getErrorStackTrace(androidDevice))
+    }
     setBenchmarkText(testResults.getBenchmark(androidDevice))
     setAdditionalTestArtifacts(testResults.getAdditionalTestArtifacts(androidDevice), testResults)
   }
@@ -493,6 +535,16 @@ open class DetailsViewContentView(
     needsRefreshLogsView = false
     myLogsView.clear()
 
+    if (isLoadingLogs) {
+      logsTab.isHidden = false
+      myLogsView.print("Loading logs...", ConsoleViewContentType.NORMAL_OUTPUT)
+      if (myErrorStackTrace.isNotBlank()) {
+        myLogsView.print("\n", ConsoleViewContentType.NORMAL_OUTPUT)
+        myLogsView.print(myErrorStackTrace, ConsoleViewContentType.ERROR_OUTPUT)
+      }
+      return
+    }
+
     if (myLogcat.isBlank() && myErrorStackTrace.isBlank()) {
       myLogsView.print("No logs available", ConsoleViewContentType.NORMAL_OUTPUT)
       return
@@ -542,6 +594,9 @@ open class DetailsViewContentView(
 
   override fun dispose() {
     pathResolutionFuture?.cancel(true)
+    logLoadingFuture?.cancel(true)
+    logLoadingFuture = null
+    isLoadingLogs = false
     // Clear the logcat message to reduce the impact of the memory leak. b/446684393.
     myLogcat = ""
     myErrorStackTrace = ""
