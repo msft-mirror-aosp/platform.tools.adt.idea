@@ -17,7 +17,6 @@ package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -43,14 +42,15 @@ fun MeshGradient(
   content: @Composable () -> Unit = {},
 ): Unit {
   val pointSize = with(LocalDensity.current) { 1.5.dp.toPx() }
-  val pointsPaint = remember {
-    Paint().apply {
-      color = Color.White.copy(alpha = 0.4f)
-      strokeWidth = pointSize
-      strokeCap = StrokeCap.Round
-      blendMode = BlendMode.SrcOver
+  val pointsPaint =
+    remember(pointSize) {
+      Paint().apply {
+        color = Color.White.copy(alpha = 0.4f)
+        strokeWidth = pointSize
+        strokeCap = StrokeCap.Round
+        blendMode = BlendMode.SrcOver
+      }
     }
-  }
   val gradientPainter =
     remember(rows, columns, hasBicubicColor, points) {
       MeshGradientPainter(rows, columns, hasBicubicColor) {
@@ -77,8 +77,22 @@ fun MeshGradient(
     modifier =
       modifier.paint(gradientPainter).drawBehind {
         if (showPoints) {
-          val intermediatePoints = points.flatten().map { point -> Offset(point.position.x * size.width, point.position.y * size.height) }
-          drawIntoCanvas { canvas -> canvas.drawPoints(pointMode = PointMode.Points, points = intermediatePoints, paint = pointsPaint) }
+          val canvasSize = size
+          var totalPoints = 0
+          for (i in points.indices) {
+            totalPoints += points[i].size
+          }
+          val intermediatePoints = FloatArray(totalPoints * 2)
+          var index = 0
+          for (i in points.indices) {
+            val row = points[i]
+            for (j in row.indices) {
+              val point = row[j]
+              intermediatePoints[index++] = point.position.x * canvasSize.width
+              intermediatePoints[index++] = point.position.y * canvasSize.height
+            }
+          }
+          drawIntoCanvas { canvas -> canvas.drawRawPoints(pointMode = PointMode.Points, points = intermediatePoints, paint = pointsPaint) }
         }
       }
   ) {
