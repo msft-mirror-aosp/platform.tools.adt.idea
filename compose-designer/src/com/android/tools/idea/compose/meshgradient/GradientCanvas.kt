@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,21 +44,29 @@ fun GradientCanvas(
   onPointDrag: (row: Int, col: Int, offset: Offset) -> Unit,
   onPointClick: ((row: Int, col: Int) -> Unit)? = null,
 ) {
+  if (meshPoints.isEmpty() || meshPoints[0].isEmpty()) return
+
+  val currentMeshPoints by rememberUpdatedState(meshPoints)
+  val currentOnTogglePoints by rememberUpdatedState(onTogglePoints)
+  val currentOnPointDrag by rememberUpdatedState(onPointDrag)
+  val currentOnPointClick by rememberUpdatedState(onPointClick)
+
   Box(contentAlignment = Alignment.Center, modifier = modifier.fillMaxSize()) {
     BoxWithConstraints(
-      modifier = Modifier.pointerInput(Unit) { detectTapGestures(onDoubleTap = { onTogglePoints() }) }.padding(16.dp).fillMaxSize()
+      modifier = Modifier.pointerInput(Unit) { detectTapGestures(onDoubleTap = { currentOnTogglePoints() }) }.padding(16.dp).fillMaxSize()
     ) {
       val maxWidth = constraints.maxWidth
       val maxHeight = constraints.maxHeight
 
       fun handlePointDrag(row: Int, col: Int, offsetX: Float, offsetY: Float) {
-        val currentPoint = meshPoints[row][col]
+        if (maxWidth <= 0 || maxHeight <= 0) return
+        val currentPoint = currentMeshPoints.getOrNull(row)?.getOrNull(col) ?: return
         val currentOffset = currentPoint.position
 
         val x = (currentOffset.x + (offsetX / maxWidth)).coerceIn(0f, 1f)
         val y = (currentOffset.y + (offsetY / maxHeight)).coerceIn(0f, 1f)
 
-        onPointDrag(row, col, Offset(x = x, y = y))
+        currentOnPointDrag(row, col, Offset(x = x, y = y))
       }
 
       MeshGradient(
@@ -84,16 +94,11 @@ fun GradientCanvas(
                   color = col.color,
                   enabled = isMovable,
                   modifier =
-                    Modifier.pointerInput(Unit) { detectTapGestures(onTap = { onPointClick?.invoke(rowIdx, colIdx) }) }
-                      .pointerInput(Unit) {
-                        detectDragGestures(
-                          onDragStart = {
-                            // Optional: handle drag start
-                          },
-                          onDragEnd = {
-                            // Optional: handle drag end
-                          },
-                        ) { change, dragAmount ->
+                    Modifier.pointerInput(rowIdx, colIdx) {
+                        detectTapGestures(onTap = { currentOnPointClick?.invoke(rowIdx, colIdx) })
+                      }
+                      .pointerInput(rowIdx, colIdx, maxWidth, maxHeight) {
+                        detectDragGestures { change, dragAmount ->
                           change.consume()
                           handlePointDrag(row = rowIdx, col = colIdx, offsetX = dragAmount.x, offsetY = dragAmount.y)
                         }
@@ -115,12 +120,13 @@ fun GradientCanvas(
               placeables.forEachIndexed { i, placeable ->
                 val row = i / cols
                 val col = i % cols
+                val point = meshPoints.getOrNull(row)?.getOrNull(col) ?: return@forEachIndexed
 
-                val xOffset = meshPoints[row][col].position.x
-                val yOffset = meshPoints[row][col].position.y
+                val xOffset = point.position.x
+                val yOffset = point.position.y
 
-                val x = ((xOffset * (constraints.maxWidth)) - cursorWidth / 2).toInt()
-                val y = ((yOffset * (constraints.maxHeight)) - cursorHeight / 2).toInt()
+                val x = ((xOffset * constraints.maxWidth) - cursorWidth / 2).toInt()
+                val y = ((yOffset * constraints.maxHeight) - cursorHeight / 2).toInt()
                 placeable.place(x, y)
               }
             }

@@ -18,7 +18,6 @@ package com.android.tools.idea.compose.meshgradient.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
@@ -31,12 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.android.tools.idea.compose.meshgradient.formatFloat
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
@@ -62,41 +62,41 @@ fun DimensionInputField(
   val focusManager = LocalFocusManager.current
   val textFieldState = remember(value) { TextFieldState(value.toString()) }
 
-  LaunchedEffect(Unit) {
+  LaunchedEffect(textFieldState) {
     snapshotFlow { textFieldState.text }
       .collectLatest {
         val filteredValue = it.filter { char -> char.isDigit() }
-        textFieldState.edit { replace(0, textFieldState.text.length, filteredValue) }
+        if (filteredValue.length != it.length) {
+          textFieldState.edit { replace(0, length, filteredValue) }
+        }
       }
   }
 
   fun reset() {
-    textFieldState.edit { replace(0, textFieldState.text.length, value.toString()) }
+    textFieldState.edit { replace(0, length, value.toString()) }
   }
 
   fun validate() {
-    try {
-      textFieldState.text.toString().toIntOrNull()?.let { next ->
-        if (next != value) {
-          val nextValue =
-            next.let {
-              if (min != null && max != null) {
-                it.coerceIn(min, max)
-              } else if (min != null) {
-                it.coerceAtLeast(min)
-              } else if (max != null) {
-                it.coerceAtMost(max)
-              } else {
-                it
-              }
-            }
-
-          onUpdate(nextValue)
-          textFieldState.edit { replace(0, textFieldState.text.length, nextValue.toString()) }
-        }
-      } ?: run { reset() }
-    } catch (e: Exception) {
-      println(e.message)
+    val parsed = textFieldState.text.toString().toIntOrNull()
+    if (parsed == null) {
+      reset()
+      return
+    }
+    val nextValue =
+      if (min != null && max != null) {
+        parsed.coerceIn(min, max)
+      } else if (min != null) {
+        parsed.coerceAtLeast(min)
+      } else if (max != null) {
+        parsed.coerceAtMost(max)
+      } else {
+        parsed
+      }
+    if (nextValue != value) {
+      onUpdate(nextValue)
+    }
+    if (textFieldState.text.toString() != nextValue.toString()) {
+      textFieldState.edit { replace(0, length, nextValue.toString()) }
     }
   }
 
@@ -111,66 +111,25 @@ fun DimensionInputField(
     },
     modifier =
       modifier
-        .onFocusChanged { validate() }
+        .onFocusChanged {
+          if (!it.isFocused) {
+            validate()
+          }
+        }
         .onKeyEvent {
+          if (it.type != KeyEventType.KeyDown) return@onKeyEvent false
           when (it.key) {
             Key.Tab -> {
               validate()
-              return@onKeyEvent false
+              false
             }
-
             Key.Escape -> {
               reset()
               focusManager.clearFocus()
+              true
             }
+            else -> false
           }
-          return@onKeyEvent true
-        },
-  )
-}
-
-@Composable
-fun OffsetInputField(value: Float, modifier: Modifier = Modifier, enabled: Boolean = true, paramName: String, onUpdate: (Float) -> Unit) {
-  val focusManager = LocalFocusManager.current
-  val textFieldState = remember(value) { TextFieldState(formatFloat(value)) }
-
-  fun reset() {
-    textFieldState.edit { replace(0, textFieldState.text.length, formatFloat(value)) }
-  }
-
-  fun validate() {
-    textFieldState.text.toString().toFloatOrNull()?.let { next ->
-      if (next != value) {
-        onUpdate(next.coerceIn(0f, 1f))
-      }
-    } ?: run { reset() }
-  }
-
-  TextField(
-    state = textFieldState,
-    enabled = enabled,
-    leadingIcon = { ParameterSwatch(text = paramName, modifier = Modifier.size(16.dp).padding(end = 6.dp)) },
-    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-    onKeyboardAction = {
-      validate()
-      focusManager.clearFocus()
-    },
-    modifier =
-      modifier
-        .onFocusChanged { validate() }
-        .onKeyEvent {
-          when (it.key) {
-            Key.Tab -> {
-              validate()
-              return@onKeyEvent false
-            }
-
-            Key.Escape -> {
-              reset()
-              focusManager.clearFocus()
-            }
-          }
-          return@onKeyEvent true
         },
   )
 }

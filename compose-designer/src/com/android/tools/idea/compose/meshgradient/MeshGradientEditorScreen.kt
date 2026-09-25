@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -166,13 +167,18 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
           onPointClick = { row, col -> showColorPickerForVertex = Pair(row, col) },
         )
 
-        showColorPickerForVertex?.let { (row, col) ->
-          val point = state.meshPoints[row][col]
-          val relativeOffset = point.position
+        val activeVertex = showColorPickerForVertex
+        val selectedPoint = activeVertex?.let { (row, col) -> state.meshPoints.getOrNull(row)?.getOrNull(col) }
+        if (activeVertex != null && selectedPoint != null) {
+          val (row, col) = activeVertex
+          val relativeOffset = selectedPoint.position
+          val paddingPx = with(LocalDensity.current) { 16.dp.toPx() }
+          val innerWidth = (canvasSize.width - 2 * paddingPx).coerceAtLeast(0f)
+          val innerHeight = (canvasSize.height - 2 * paddingPx).coerceAtLeast(0f)
 
-          // Calculate absolute pixel coordinates inside the Box container
-          val xOffset = (relativeOffset.x * canvasSize.width).toInt()
-          val yOffset = (relativeOffset.y * canvasSize.height).toInt()
+          // Calculate pixel coordinates inside the Box container accounting for 16.dp canvas padding
+          val xOffset = (paddingPx + relativeOffset.x * innerWidth).toInt()
+          val yOffset = (paddingPx + relativeOffset.y * innerHeight).toInt()
 
           Popup(
             alignment = Alignment.TopStart,
@@ -216,7 +222,10 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
           min = 2,
           max = 10,
           paramName = "Rows",
-          onUpdate = { state.updateRows(it) },
+          onUpdate = {
+            showColorPickerForVertex = null
+            state.updateRows(it)
+          },
           modifier = Modifier.width(100.dp),
         )
         DimensionInputField(
@@ -224,7 +233,10 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
           min = 2,
           max = 10,
           paramName = "Cols",
-          onUpdate = { state.updateCols(it) },
+          onUpdate = {
+            showColorPickerForVertex = null
+            state.updateCols(it)
+          },
           modifier = Modifier.width(100.dp),
         )
         Spacer(Modifier.width(8.dp))
@@ -245,7 +257,7 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.fillMaxWidth(),
       ) {
-        state.availableColors.forEachIndexed { index, color ->
+        state.availableColors.forEach { color ->
           ContextMenuArea(
             items = {
               listOf(
@@ -297,10 +309,7 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
               .background(JewelTheme.globalColors.panelBackground)
               .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(4.dp))
               .clickable {
-                val placeholderColor = Color.White
-                state.availableColors.add(placeholderColor)
-                val newIndex = state.availableColors.lastIndex
-
+                var addedIndex: Int? = null
                 createAndShowColorPickerPopup(
                   initialColor = AwtColor.WHITE,
                   initialColorResource = null,
@@ -312,7 +321,13 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
                   locationToShow = null,
                   colorPickedCallback = { newAwtColor ->
                     val newColor = Color(newAwtColor.rgb)
-                    state.availableColors[newIndex] = newColor
+                    val idx = addedIndex
+                    if (idx == null) {
+                      state.availableColors.add(newColor)
+                      addedIndex = state.availableColors.lastIndex
+                    } else if (idx in state.availableColors.indices) {
+                      state.availableColors[idx] = newColor
+                    }
                   },
                   colorResourcePickedCallback = null,
                 )
