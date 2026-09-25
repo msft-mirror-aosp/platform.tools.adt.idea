@@ -20,14 +20,76 @@ import com.android.annotations.concurrency.GuardedBy
 import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.RemovalCause
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import java.io.IOException
 import java.time.Duration
 import java.util.WeakHashMap
 import java.util.concurrent.locks.ReentrantLock
+import java.util.zip.Deflater
+import java.util.zip.DeflaterOutputStream
+import java.util.zip.Inflater
 import kotlin.concurrent.withLock
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.annotations.VisibleForTesting
 
 private const val MAX_WEIGHT_BYTES = 100_000_000L // We will store no more than 100Mb of cached classes
 private const val EXPIRE_MINUTES = 30L // We will store cached classes for no longer than 30 minutes
+
+/** Number of bytes used to store the uncompressed size at the beginning of a compressed entry. */
+private const val UNCOMPRESSED_SIZE_HEADER_BYTES = 4
+
+/**
+ * Compresses the given class [data] for storage in the cache. The returned array is the uncompressed size, encoded as a big-endian int,
+ * followed by the deflated contents. [Deflater.BEST_SPEED] is used since this runs as part of class loading, and class files still compress
+ * to roughly half their size at that level.
+ */
+@VisibleForTesting
+internal fun compress(data: ByteArray): ByteArray {
+  val deflater = Deflater(Deflater.BEST_SPEED)
+  try {
+    val baos = ByteArrayOutputStream(UNCOMPRESSED_SIZE_HEADER_BYTES + data.size / 2)
+    DataOutputStream(baos).use { dos ->
+      dos.writeInt(data.size)
+      DeflaterOutputStream(dos, deflater).use { it.write(data) }
+    }
+    return baos.toByteArray()
+  } finally {
+    deflater.end()
+  }
+}
+
+/** Reverses [compress]. */
+@VisibleForTesting
+internal fun decompress(stored: ByteArray): ByteArray {
+  if (stored.size < UNCOMPRESSED_SIZE_HEADER_BYTES) {
+    throw IOException("Malformed compressed cache entry: size ${stored.size} < $UNCOMPRESSED_SIZE_HEADER_BYTES")
+  }
+  val uncompressedSize =
+    ((stored[0].toInt() and 0xFF) shl 24) or
+      ((stored[1].toInt() and 0xFF) shl 16) or
+      ((stored[2].toInt() and 0xFF) shl 8) or
+      (stored[3].toInt() and 0xFF)
+  if (uncompressedSize < 0) {
+    throw IOException("Malformed compressed cache entry: negative uncompressed size $uncompressedSize")
+  }
+  val result = ByteArray(uncompressedSize)
+  val inflater = Inflater()
+  try {
+    inflater.setInput(stored, UNCOMPRESSED_SIZE_HEADER_BYTES, stored.size - UNCOMPRESSED_SIZE_HEADER_BYTES)
+    var offset = 0
+    while (offset < uncompressedSize) {
+      val read = inflater.inflate(result, offset, uncompressedSize - offset)
+      if (read == 0) {
+        throw IOException("Truncated compressed cache entry: expected $uncompressedSize bytes, got $offset")
+      }
+      offset += read
+    }
+    return result
+  } finally {
+    inflater.end()
+  }
+}
 
 /** A class binary representation cache. */
 class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Long, expireMinutes: Long) {
@@ -91,7 +153,7 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
         return null
       }
 
-      return globalCache.getIfPresent(key)
+      return globalCache.getIfPresent(key)?.let { decompress(it) }
     }
 
     private fun getCachingKey(fqcn: String, transformationId: String) = "$transformationId:$fqcn"
@@ -99,8 +161,9 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
     // @LayoutlibRenderThread
     override fun put(fqcn: String, transformationId: String, libraryPath: String, data: ByteArray) {
       val key = getCachingKey(fqcn, transformationId)
+      val compressedData = compress(data)
       lock.withLock {
-        globalCache.put(key, data)
+        globalCache.put(key, compressedData)
         val oldLibrary = cachingKey2LibraryPath.put(key, libraryPath)
         if ((oldLibrary != null) && (oldLibrary != libraryPath)) {
           libraryPath2CachingKeys[oldLibrary]?.let { keys ->

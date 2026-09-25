@@ -15,10 +15,15 @@
  */
 package com.android.tools.rendering.classloading
 
+import com.android.tools.rendering.classloading.codeexecution.A
 import com.google.common.base.Ticker
+import java.io.IOException
+import kotlin.random.Random
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import org.junit.Test
 
 class ClassBinaryCacheManagerTest {
@@ -96,12 +101,16 @@ class ClassBinaryCacheManagerTest {
     val moduleCache = manager.getCache(cacheKey)
     moduleCache.setDependencies(listOf("A"))
 
-    moduleCache.put("a.b.c", "A", ByteArray(80))
+    // The cache stores the contents compressed and weighs the entries by their compressed size, so the test data needs to be
+    // incompressible for the weight to be meaningful.
+    val random = Random(0)
+
+    moduleCache.put("a.b.c", "A", random.nextBytes(80))
 
     assertNotNull(moduleCache.get("a.b.c"))
     assertEquals(setOf(":a.b.c"), manager.getCachedKeysForLibrary("A"))
 
-    moduleCache.put("a.b.d", "A", ByteArray(80))
+    moduleCache.put("a.b.d", "A", random.nextBytes(80))
 
     assertNull(moduleCache.get("a.b.c"))
     // Ensure the removal listener cleaned up the evicted entry from the library mapping.
@@ -210,5 +219,69 @@ class ClassBinaryCacheManagerTest {
     assertEquals(emptySet(), manager.getCachedKeysForLibrary("A"))
     assertEquals(setOf("$transformationId:$fqcn"), manager.getCachedKeysForLibrary("B"))
     assertEquals("v3", moduleCache.get(fqcn, transformationId)?.toString(Charsets.UTF_8))
+  }
+
+  @Test
+  fun testCompressionLosslessAndExecutable() {
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 100_000, 1)
+    val moduleCache = manager.getCache(Any())
+    moduleCache.setDependencies(listOf("libA"))
+
+    // 1. Test real compiled class bytecode
+    val originalBytes = loadClassBytes(A::class.java)
+    val fqcn = A::class.java.name
+    moduleCache.put(fqcn, "trans1", "libA", originalBytes)
+
+    val decompressedBytes = moduleCache.get(fqcn, "trans1")
+    assertNotNull(decompressedBytes)
+    assertTrue(originalBytes.contentEquals(decompressedBytes))
+
+    // Verify the decompressed bytecode is valid JVM bytecode and can be loaded/executed
+    val testClassLoader = TestClassLoader(mapOf(fqcn to decompressedBytes))
+    val loadedClass = testClassLoader.loadClass(fqcn)
+    assertNotNull(loadedClass)
+    val method = loadedClass.getDeclaredMethod("intA")
+    method.isAccessible = true
+    assertEquals(0, method.invoke(null))
+
+    // 2. Test roundtrip on various edge cases: empty array, single byte, repetitive data, incompressible data
+    val edgeCases =
+      listOf(
+        "empty" to ByteArray(0),
+        "single" to byteArrayOf(0x42),
+        "repetitive" to ByteArray(4096) { 0x55 },
+        "random" to Random(42).nextBytes(4096),
+      )
+    for ((name, data) in edgeCases) {
+      val key = "test.$name"
+      moduleCache.put(key, "trans1", "libA", data)
+      val retrieved = moduleCache.get(key, "trans1")
+      assertNotNull(retrieved)
+      assertTrue(data.contentEquals(retrieved), "Data mismatch for case: $name")
+    }
+  }
+
+  @Test
+  fun testDecompressMalformedHeaderThrows() {
+    // Shorter than 4-byte header
+    assertFailsWith<IOException> { decompress(ByteArray(0)) }
+    assertFailsWith<IOException> { decompress(ByteArray(3)) }
+
+    // Negative uncompressed size (e.g. 0xFFFFFFFF = -1)
+    assertFailsWith<IOException> { decompress(byteArrayOf(0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte())) }
+  }
+
+  @Test
+  fun testDecompressTruncatedDataThrows() {
+    // Header indicates 100 bytes uncompressed, but no compressed payload follows
+    val truncatedHeaderOnly = byteArrayOf(0, 0, 0, 100)
+    assertFailsWith<IOException> { decompress(truncatedHeaderOnly) }
+
+    // Valid compressed payload truncated halfway
+    val original = ByteArray(100) { 0x42 }
+    val compressed = compress(original)
+    // Truncate compressed array so it cannot finish deflating all 100 bytes
+    val truncated = compressed.copyOf(compressed.size / 2)
+    assertFailsWith<IOException> { decompress(truncated) }
   }
 }
