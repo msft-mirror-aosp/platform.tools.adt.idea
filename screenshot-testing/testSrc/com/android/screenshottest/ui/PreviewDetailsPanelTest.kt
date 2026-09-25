@@ -33,6 +33,8 @@ import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JSeparator
+import javax.swing.event.ListDataEvent
+import javax.swing.event.ListDataListener
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -417,6 +419,53 @@ class PreviewDetailsPanelTest {
   }
 
   @Test
+  fun testStreamingResultsOnlyUpdateChangedRows() = runInEdtAndWait {
+    val panel = PreviewDetailsPanel(projectRule.project)
+    val a1 = preview("a1", method = "a")
+    val b1 = preview("b1", method = "b")
+    val b2 = preview("b2", method = "b")
+    val c1 = preview("c1", method = "c")
+    panel.displayPreviews(listOf(a1, b1), ScreenshotViewType.NEW, null)
+    val list = findPreviewList(panel)
+    val events = recordListEvents(list)
+
+    // A new preview for the last method only changes that row.
+    panel.displayPreviews(listOf(a1, b1, b2), ScreenshotViewType.NEW, null)
+    assertEquals(listOf("changed 1..1"), events)
+    assertEquals(listOf(b1, b2), (list.model.getElementAt(1) as MethodGroup).previews)
+
+    // A preview for a new method appends a row.
+    events.clear()
+    panel.displayPreviews(listOf(a1, b1, b2, c1), ScreenshotViewType.NEW, null)
+    assertEquals(listOf("added 2..2"), events)
+
+    // The same previews don't touch the model at all.
+    events.clear()
+    panel.displayPreviews(listOf(a1, b1, b2, c1), ScreenshotViewType.NEW, null)
+    assertEquals(emptyList<String>(), events)
+
+    // Fewer previews remove the trailing rows.
+    events.clear()
+    panel.displayPreviews(listOf(a1), ScreenshotViewType.NEW, null)
+    assertEquals(listOf("removed 1..2"), events)
+    assertEquals(1, list.model.size)
+  }
+
+  @Test
+  fun testViewTypeChangeRebuildsAllRows() = runInEdtAndWait {
+    val panel = PreviewDetailsPanel(projectRule.project)
+    val previews = listOf(preview("a1", method = "a"), preview("b1", method = "b"))
+    panel.displayPreviews(previews, ScreenshotViewType.NEW, null)
+    val list = findPreviewList(panel)
+    val events = recordListEvents(list)
+
+    panel.displayPreviews(previews, ScreenshotViewType.DIFF, null)
+
+    // Row heights depend on the view type, so every row is measured again.
+    assertEquals(listOf("removed 0..1", "added 0..1"), events)
+  }
+
+  @Test
   fun testRenderingRowsRepeatedlyDecodesEachImageOnce() = runInEdtAndWait {
     val decodedPaths = mutableListOf<String>()
     val decodeExecutor = ManualExecutorService()
@@ -485,6 +534,26 @@ class PreviewDetailsPanelTest {
     val activePanel = panel.components.first { it.isVisible } as JPanel
     val scrollPane = activePanel.components.find { it is JBScrollPane } as JBScrollPane
     return scrollPane.viewport.view as JList<MethodGroup>
+  }
+
+  private fun recordListEvents(list: JList<*>): MutableList<String> {
+    val events = mutableListOf<String>()
+    list.model.addListDataListener(
+      object : ListDataListener {
+        override fun intervalAdded(e: ListDataEvent) {
+          events.add("added ${e.index0}..${e.index1}")
+        }
+
+        override fun intervalRemoved(e: ListDataEvent) {
+          events.add("removed ${e.index0}..${e.index1}")
+        }
+
+        override fun contentsChanged(e: ListDataEvent) {
+          events.add("changed ${e.index0}..${e.index1}")
+        }
+      }
+    )
+    return events
   }
 
   private fun paintAllRows(list: JList<MethodGroup>) {

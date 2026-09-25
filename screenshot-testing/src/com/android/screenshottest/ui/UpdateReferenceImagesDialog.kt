@@ -72,6 +72,7 @@ import javax.swing.BorderFactory
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTree
+import javax.swing.Timer
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 import org.jetbrains.jewel.bridge.theme.SwingBridgeTheme
@@ -79,16 +80,21 @@ import org.jetbrains.jewel.ui.component.SegmentedControl
 import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
 
+private const val DEFAULT_REFRESH_DELAY_MS = 100
+
 /**
  * A dialog for selecting and viewing screenshot test previews. It features a two-pane layout with a tree of previews on the left and a
  * live-updating image viewer on the right.
  *
  * While the screenshots are generated, the dialog reports the current phase: building the project, then rendering previews with a running
- * count as results arrive.
+ * count as results arrive. Results that arrive in quick succession are coalesced into a single refresh of the right pane.
+ *
+ * @param refreshDelayMs the minimum delay between two refreshes of the right pane caused by incoming results.
  */
 class UpdateReferenceImagesDialog(
   val project: Project?,
   private val logger: Logger = Logger.getInstance(UpdateReferenceImagesDialog::class.java),
+  @VisibleForTesting refreshDelayMs: Int = DEFAULT_REFRESH_DELAY_MS,
 ) : DialogWrapper(project) {
 
   private val centerPanelCardLayout = CardLayout()
@@ -112,6 +118,7 @@ class UpdateReferenceImagesDialog(
   private lateinit var rightPaneCardLayout: CardLayout
   private var isLeafSelected by mutableStateOf(false)
   private lateinit var rightPaneWrapper: JPanel
+  private val rightPaneRefreshTimer = Timer(refreshDelayMs) { refreshRightPane() }.apply { isRepeats = false }
 
   private var buildProcessHandler: ProcessHandler? = null
   private var isCancelled = false
@@ -125,6 +132,11 @@ class UpdateReferenceImagesDialog(
   @get:VisibleForTesting
   val progressText: String?
     get() = progressLabel.text.takeIf { isFirstTestDiscovered && progressLabel.isVisible }
+
+  /** The number of times the right pane was rebuilt. */
+  @get:VisibleForTesting
+  var rightPaneRefreshCount = 0
+    private set
 
   fun setBuildProcessHandler(handler: ProcessHandler) {
     if (isCancelled) {
@@ -150,6 +162,11 @@ class UpdateReferenceImagesDialog(
     setCancelButtonText("Cancel")
     isResizable = true
     init()
+  }
+
+  override fun dispose() {
+    rightPaneRefreshTimer.stop()
+    super.dispose()
   }
 
   override fun getDimensionServiceKey(): String {
@@ -213,17 +230,44 @@ class UpdateReferenceImagesDialog(
         }
         renderedCount++
         progressLabel.text = renderingProgressText(renderedCount)
-        updateRightPane(tree)
+        onPreviewAdded(leafNode)
       } else {
         logger.warn("Missing methodName or previewName for tests in class $className")
       }
     }
   }
 
-  /** Marks the run as over: stops reporting progress and lets the user add the previews that were rendered. */
+  /**
+   * Refreshes the right pane for a newly added preview. The first preview is shown right away; later ones are coalesced so that a burst of
+   * results rebuilds the right pane at most once per refresh delay.
+   */
+  private fun onPreviewAdded(leafNode: CheckedTreeNode) {
+    if (renderedCount == 1) {
+      refreshRightPane()
+      return
+    }
+    val selectedNode = tree.selectionPath?.lastPathComponent as? CheckedTreeNode ?: return
+    if (selectedNode.isNodeDescendant(leafNode) && !rightPaneRefreshTimer.isRunning) {
+      rightPaneRefreshTimer.start()
+    }
+  }
+
+  private fun refreshRightPane() {
+    rightPaneRefreshTimer.stop()
+    rightPaneRefreshCount++
+    updateRightPane(tree)
+  }
+
+  /**
+   * Marks the run as over: stops reporting progress, applies any refresh of the right pane that is still pending, and lets the user add the
+   * previews that were rendered.
+   */
   private fun finishRendering() {
     isTestSuiteFinished = true
     progressLabel.isVisible = false
+    if (rightPaneRefreshTimer.isRunning) {
+      refreshRightPane()
+    }
     updateOkButtonState()
   }
 
@@ -380,6 +424,10 @@ class UpdateReferenceImagesDialog(
 
     return CheckboxTree(renderer, rootNode).apply {
       isRootVisible = true
+      // Select the root node by default when the dialog opens. This happens before the selection
+      // listener is added because the right pane is refreshed when the first result arrives.
+      // The tree will be expanded dynamically as nodes are added.
+      selectionPath = TreePath(rootNode.path)
       addCheckboxTreeListener(
         object : CheckboxTreeListener {
           override fun nodeStateChanged(node: CheckedTreeNode) {
@@ -387,10 +435,7 @@ class UpdateReferenceImagesDialog(
           }
         }
       )
-      addTreeSelectionListener { updateRightPane(this) }
-      // Select the root node by default when the dialog opens.
-      // The tree will be expanded dynamically as nodes are added.
-      selectionPath = TreePath(rootNode.path)
+      addTreeSelectionListener { refreshRightPane() }
     }
   }
 
@@ -418,7 +463,7 @@ class UpdateReferenceImagesDialog(
                             selected = viewId == selectedViewType,
                             onClick = {
                               selectedViewType = viewId
-                              updateRightPane(tree)
+                              refreshRightPane()
                             },
                             role = Role.RadioButton,
                           )
@@ -427,7 +472,7 @@ class UpdateReferenceImagesDialog(
                   },
                   onSelect = {
                     selectedViewType = viewId
-                    updateRightPane(tree)
+                    refreshRightPane()
                   },
                 )
               }

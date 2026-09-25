@@ -28,8 +28,11 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
+import com.intellij.util.ui.UIUtil
 import java.io.File
 import java.util.Base64
+import javax.swing.JList
+import javax.swing.tree.TreePath
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -436,6 +439,86 @@ class UpdateReferenceImagesDialogTest {
     assertFalse(dialog.isOKActionEnabled)
   }
 
+  @Test
+  fun testBuildFailureAfterResultsAppliesPendingRefresh() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(1, shownPreviewCount())
+
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals(2, dialog.rightPaneRefreshCount)
+    assertEquals(2, shownPreviewCount())
+  }
+
+  @Test
+  fun testResultsInQuickSuccessionAreCoalescedIntoOneRefresh() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("The first preview should be shown right away", 1, dialog.rightPaneRefreshCount)
+
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p3"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p4", method = "other"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Later previews should wait for the refresh delay", 1, dialog.rightPaneRefreshCount)
+    assertEquals(1, shownPreviewCount())
+
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Finishing should apply the pending refresh", 2, dialog.rightPaneRefreshCount)
+    assertEquals(4, shownPreviewCount())
+  }
+
+  @Test
+  fun testPendingRefreshIsAppliedAfterDelay() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 10)
+
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p3"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    PlatformTestUtil.waitWithEventsDispatching("Pending refresh was not applied", { dialog.rightPaneRefreshCount == 2 }, 10)
+    assertEquals(3, shownPreviewCount())
+  }
+
+  @Test
+  fun testFinishingWithoutPendingRefreshDoesNotRefreshAgain() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals(1, dialog.rightPaneRefreshCount)
+  }
+
+  @Test
+  fun testResultOutsideSelectedNodeDoesNotRefresh() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    val tree = findTree(dialog)
+    val root = tree.model.root as CheckedTreeNode
+    val leaf = (root.firstChild as CheckedTreeNode).firstChild.let { (it as CheckedTreeNode).firstChild as CheckedTreeNode }
+    tree.selectionPath = TreePath(leaf.path)
+    val refreshCountAfterSelection = dialog.rightPaneRefreshCount
+
+    dialog.updateDialogWithTestResult(preview("p2", method = "other"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals(refreshCountAfterSelection, dialog.rightPaneRefreshCount)
+  }
+
   private fun preview(name: String, method: String = "testMethod") =
     PreviewDetails(
       testId = "com.example.TestClass.$method.$name",
@@ -444,6 +527,20 @@ class UpdateReferenceImagesDialogTest {
       previewName = name,
       testResult = AndroidTestCaseResult.PASSED,
     )
+
+  private fun recreateDialog(refreshDelayMs: Int) {
+    dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+    dialog = UpdateReferenceImagesDialog(projectRule.project, mockLogger, refreshDelayMs)
+  }
+
+  /** Returns the number of previews currently listed in the right pane. */
+  private fun shownPreviewCount(): Int {
+    val field = UpdateReferenceImagesDialog::class.java.getDeclaredField("previewDetailsPanel")
+    field.isAccessible = true
+    val panel = field.get(dialog) as PreviewDetailsPanel
+    val list = UIUtil.findComponentOfType(panel, JList::class.java)!!
+    return (0 until list.model.size).sumOf { (list.model.getElementAt(it) as MethodGroup).previews.size }
+  }
 
   private fun findTree(dialog: UpdateReferenceImagesDialog): CheckboxTree {
     val field = UpdateReferenceImagesDialog::class.java.getDeclaredField("tree")

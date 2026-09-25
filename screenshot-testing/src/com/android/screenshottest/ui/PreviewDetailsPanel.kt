@@ -64,6 +64,7 @@ import javax.swing.ListSelectionModel
 import javax.swing.SwingUtilities
 import javax.swing.event.ChangeEvent
 import javax.swing.event.ChangeListener
+import kotlin.math.min
 
 // Keys for the CardLayout switching between single and multiple preview modes.
 private const val MULTIPLE_PREVIEWS_PANEL = "MULTIPLE_PREVIEWS_PANEL"
@@ -542,12 +543,36 @@ class PreviewDetailsPanel(
       MethodGroup(className, methodName, labelText, previews)
     }
 
-    listModel.clear()
-    methodGroups.forEach { listModel.addElement(it) }
-    methodGroupRenderer.viewType = viewType
+    if (methodGroupRenderer.viewType != viewType) {
+      // Row heights depend on the view type, so force the list to measure every row again.
+      methodGroupRenderer.viewType = viewType
+      listModel.clear()
+    }
+    updateListModel(methodGroups)
 
     multiplePreviewsPanel.revalidate()
     multiplePreviewsPanel.repaint()
+  }
+
+  /**
+   * Makes [listModel] match [methodGroups] with the fewest model events.
+   *
+   * Results stream in one at a time, so usually only the last row changes or a row is appended. Unchanged rows keep their measured size and
+   * are not rendered again.
+   */
+  private fun updateListModel(methodGroups: List<MethodGroup>) {
+    val commonSize = min(listModel.size, methodGroups.size)
+    for (i in 0 until commonSize) {
+      if (listModel.getElementAt(i) != methodGroups[i]) {
+        listModel.set(i, methodGroups[i])
+      }
+    }
+    if (listModel.size > methodGroups.size) {
+      listModel.removeRange(methodGroups.size, listModel.size - 1)
+    }
+    if (methodGroups.size > commonSize) {
+      listModel.addAll(methodGroups.subList(commonSize, methodGroups.size))
+    }
   }
 
   /**
