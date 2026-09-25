@@ -60,6 +60,8 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import javax.xml.XMLConstants
+import javax.xml.parsers.SAXParser
 import javax.xml.parsers.SAXParserFactory
 import org.jdom.JDOMException
 import org.xml.sax.Attributes
@@ -68,6 +70,38 @@ import org.xml.sax.helpers.DefaultHandler
 
 private val logger: Logger
   get() = Logger.getInstance("ImportUtils")
+
+private fun createSafeSaxParser(): SAXParser {
+  return SAXParserFactory.newInstance()
+    .apply {
+      setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+      setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+      setFeature("http://xml.org/sax/features/external-general-entities", false)
+      setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+      setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+    }
+    .newSAXParser()
+}
+
+/**
+ * Validates that [xmlFile] is well-formed XML and does not contain a DOCTYPE declaration before passing it to JDOMUtil or
+ * AbstractImportTestsAction.ImportRunProfile.
+ */
+fun isXmlFileSafeToImport(xmlFile: File): Boolean {
+  return try {
+    FileInputStream(xmlFile).use { fileStream ->
+      createSafeSaxParser()
+        .parse(
+          InputSource(InputStreamReader(fileStream, StandardCharsets.UTF_8)),
+          DefaultHandler(),
+        )
+    }
+    true
+  } catch (e: Exception) {
+    logger.warn("Rejected unsafe or malformed test result XML file: ${xmlFile.name}", e)
+    false
+  }
+}
 
 /**
  * Validates whether the given test artifact metadata value is safe to ingest.
@@ -100,9 +134,13 @@ fun importAndroidTestMatrixResultXmlFile(
   xmlFile: VirtualFile,
   onExecutionStarted: (ExecutionEnvironment) -> Unit = {},
 ): Boolean {
+  val ioFile = VfsUtilCore.virtualToIoFile(xmlFile)
+  if (!isXmlFileSafeToImport(ioFile)) {
+    return false
+  }
   val rootElement =
     try {
-      JDOMUtil.load(VfsUtilCore.virtualToIoFile(xmlFile))
+      JDOMUtil.load(ioFile)
     } catch (e: JDOMException) {
       logger.warn(e)
       return false
@@ -197,143 +235,145 @@ private class ImportAndroidTestMatrixRunProfileState(
     handler.detachProcess()
 
     ApplicationManager.getApplication().executeOnPooledThread {
-      val spf = SAXParserFactory.newInstance()
-      spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-      spf.setFeature("http://xml.org/sax/features/external-general-entities", false)
-      spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-      val saxParser = spf.newSAXParser()
-      saxParser.parse(
-        InputSource(InputStreamReader(FileInputStream(historyXmlFile), StandardCharsets.UTF_8)),
-        object : DefaultHandler() {
+      try {
+        val saxParser = createSafeSaxParser()
+        FileInputStream(historyXmlFile).use { fileStream ->
+          saxParser.parse(
+            InputSource(InputStreamReader(fileStream, StandardCharsets.UTF_8)),
+            object : DefaultHandler() {
 
-          private var myProcessingAndroidTestMatrixElement: Boolean = false
-          private val myDevices: MutableMap<String, AndroidDevice> = mutableMapOf()
-          private var myCurrentTargetDevice: AndroidDevice? = null
-          private var myCurrentTestSuite: AndroidTestSuite? = null
-          private var myCurrentTestCase: AndroidTestCase? = null
-          private var myCurrentTestStep: AndroidTestStep? = null
+              private var myProcessingAndroidTestMatrixElement: Boolean = false
+              private val myDevices: MutableMap<String, AndroidDevice> = mutableMapOf()
+              private var myCurrentTargetDevice: AndroidDevice? = null
+              private var myCurrentTestSuite: AndroidTestSuite? = null
+              private var myCurrentTestCase: AndroidTestCase? = null
+              private var myCurrentTestStep: AndroidTestStep? = null
 
-          override fun startElement(uri: String, localName: String, qName: String, attributes: Attributes) {
-            if (!myProcessingAndroidTestMatrixElement) {
-              if (qName != "androidTestMatrix") {
-                return
-              }
-              myProcessingAndroidTestMatrixElement = true
-              attributes.getValue("executionDuration")?.toLongOrNull()?.let {
-                console.testExecutionDurationOverride = Duration.ofMillis(it)
-              }
-            }
-            when (qName) {
-              "device" -> {
-                val device =
-                  AndroidDevice(
-                    attributes.getValue("id"),
-                    attributes.getValue("deviceName"),
-                    attributes.getValue("deviceName"),
-                    AndroidDeviceType.valueOf(attributes.getValue("deviceType")),
-                    AndroidVersion(attributes.getValue("version").toInt()),
-                  )
-                myDevices[device.id] = device
-                myCurrentTargetDevice = device
-              }
+              override fun startElement(uri: String, localName: String, qName: String, attributes: Attributes) {
+                if (!myProcessingAndroidTestMatrixElement) {
+                  if (qName != "androidTestMatrix") {
+                    return
+                  }
+                  myProcessingAndroidTestMatrixElement = true
+                  attributes.getValue("executionDuration")?.toLongOrNull()?.let {
+                    console.testExecutionDurationOverride = Duration.ofMillis(it)
+                  }
+                }
+                when (qName) {
+                  "device" -> {
+                    val device =
+                      AndroidDevice(
+                        attributes.getValue("id"),
+                        attributes.getValue("deviceName"),
+                        attributes.getValue("deviceName"),
+                        AndroidDeviceType.valueOf(attributes.getValue("deviceType")),
+                        AndroidVersion(attributes.getValue("version").toInt()),
+                      )
+                    myDevices[device.id] = device
+                    myCurrentTargetDevice = device
+                  }
 
-              "additionalInfo" -> {
-                requireNotNull(myCurrentTargetDevice).additionalInfo[attributes.getValue("key")] = attributes.getValue("value")
-              }
+                  "additionalInfo" -> {
+                    requireNotNull(myCurrentTargetDevice).additionalInfo[attributes.getValue("key")] = attributes.getValue("value")
+                  }
 
-              "testsuite" -> {
-                val device = requireNotNull(myDevices[attributes.getValue("deviceId")])
-                val testSuite =
-                  AndroidTestSuite(
-                    device.id,
-                    device.id,
-                    attributes.getValue("testCount").toInt(),
-                    AndroidTestSuiteResult.valueOf(attributes.getValue("result")),
-                  )
-                myCurrentTargetDevice = device
-                myCurrentTestSuite = testSuite
-                console.onTestSuiteStarted(device, testSuite)
-              }
+                  "testsuite" -> {
+                    val device = requireNotNull(myDevices[attributes.getValue("deviceId")])
+                    val testSuite =
+                      AndroidTestSuite(
+                        device.id,
+                        device.id,
+                        attributes.getValue("testCount").toInt(),
+                        AndroidTestSuiteResult.valueOf(attributes.getValue("result")),
+                      )
+                    myCurrentTargetDevice = device
+                    myCurrentTestSuite = testSuite
+                    console.onTestSuiteStarted(device, testSuite)
+                  }
 
-              "testcase" -> {
-                val testcase =
-                  AndroidTestCase(
-                    attributes.getValue("id"),
-                    attributes.getValue("methodName"),
-                    attributes.getValue("className"),
-                    attributes.getValue("packageName"),
-                    AndroidTestCaseResult.valueOf(attributes.getValue("result")),
-                    attributes.getValue("logcat"),
-                    attributes.getValue("errorStackTrace"),
-                    attributes.getValue("startTimestampMillis").toLong(),
-                    attributes.getValue("endTimestampMillis").toLong(),
-                    attributes.getValue("benchmark"),
-                  )
-                val device = requireNotNull(myCurrentTargetDevice)
-                val testsuite = requireNotNull(myCurrentTestSuite)
-                myCurrentTestCase = testcase
-                console.onTestCaseStarted(device, testsuite, testcase)
-                console.onTestCaseFinished(device, testsuite, testcase)
-              }
+                  "testcase" -> {
+                    val testcase =
+                      AndroidTestCase(
+                        attributes.getValue("id"),
+                        attributes.getValue("methodName"),
+                        attributes.getValue("className"),
+                        attributes.getValue("packageName"),
+                        AndroidTestCaseResult.valueOf(attributes.getValue("result")),
+                        attributes.getValue("logcat"),
+                        attributes.getValue("errorStackTrace"),
+                        attributes.getValue("startTimestampMillis").toLong(),
+                        attributes.getValue("endTimestampMillis").toLong(),
+                        attributes.getValue("benchmark"),
+                      )
+                    val device = requireNotNull(myCurrentTargetDevice)
+                    val testsuite = requireNotNull(myCurrentTestSuite)
+                    myCurrentTestCase = testcase
+                    console.onTestCaseStarted(device, testsuite, testcase)
+                    console.onTestCaseFinished(device, testsuite, testcase)
+                  }
 
-              "additionalTestCaseArtifact" -> {
-                val key = attributes.getValue("key")
-                val value = attributes.getValue("value")
-                if (key != null && isSafeArtifactValue(value)) {
-                  requireNotNull(myCurrentTestCase).additionalTestArtifacts[key] = value
+                  "additionalTestCaseArtifact" -> {
+                    val key = attributes.getValue("key")
+                    val value = attributes.getValue("value")
+                    if (key != null && isSafeArtifactValue(value)) {
+                      requireNotNull(myCurrentTestCase).additionalTestArtifacts[key] = value
+                    }
+                  }
+
+                  "testStep" -> {
+                    val testStep =
+                      AndroidTestStep(
+                        attributes.getValue("id"),
+                        attributes.getValue("index").toInt(),
+                        attributes.getValue("name"),
+                        AndroidTestCaseResult.valueOf(attributes.getValue("result")),
+                        attributes.getValue("logcat"),
+                        attributes.getValue("errorStackTrace"),
+                        attributes.getValue("startTimestampMillis").toLong(),
+                        attributes.getValue("endTimestampMillis").toLong(),
+                      )
+                    val device = requireNotNull(myCurrentTargetDevice)
+                    val testSuite = requireNotNull(myCurrentTestSuite)
+                    val testCase = requireNotNull(myCurrentTestCase)
+                    myCurrentTestStep = testStep
+                    console.onTestStepStarted(device, testSuite, testCase, testStep)
+                    console.onTestStepFinished(device, testSuite, testCase, testStep)
+                  }
+
+                  "additionalTestStepArtifact" -> {
+                    val key = attributes.getValue("key")
+                    val value = attributes.getValue("value")
+                    if (key != null && isSafeArtifactValue(value)) {
+                      requireNotNull(myCurrentTestStep).additionalTestArtifacts[key] = value
+                    }
+                  }
                 }
               }
 
-              "testStep" -> {
-                val testStep =
-                  AndroidTestStep(
-                    attributes.getValue("id"),
-                    attributes.getValue("index").toInt(),
-                    attributes.getValue("name"),
-                    AndroidTestCaseResult.valueOf(attributes.getValue("result")),
-                    attributes.getValue("logcat"),
-                    attributes.getValue("errorStackTrace"),
-                    attributes.getValue("startTimestampMillis").toLong(),
-                    attributes.getValue("endTimestampMillis").toLong(),
-                  )
-                val device = requireNotNull(myCurrentTargetDevice)
-                val testSuite = requireNotNull(myCurrentTestSuite)
-                val testCase = requireNotNull(myCurrentTestCase)
-                myCurrentTestStep = testStep
-                console.onTestStepStarted(device, testSuite, testCase, testStep)
-                console.onTestStepFinished(device, testSuite, testCase, testStep)
-              }
+              override fun endElement(uri: String, localName: String, qName: String) {
+                if (!myProcessingAndroidTestMatrixElement) {
+                  return
+                }
+                when (qName) {
+                  "androidTestMatrix" -> {
+                    myProcessingAndroidTestMatrixElement = false
+                  }
 
-              "additionalTestStepArtifact" -> {
-                val key = attributes.getValue("key")
-                val value = attributes.getValue("value")
-                if (key != null && isSafeArtifactValue(value)) {
-                  requireNotNull(myCurrentTestStep).additionalTestArtifacts[key] = value
+                  "device" -> {
+                    console.onTestSuiteScheduled(requireNotNull(myCurrentTargetDevice))
+                  }
+
+                  "testsuite" -> {
+                    console.onTestSuiteFinished(requireNotNull(myCurrentTargetDevice), requireNotNull(myCurrentTestSuite))
+                  }
                 }
               }
-            }
-          }
-
-          override fun endElement(uri: String, localName: String, qName: String) {
-            if (!myProcessingAndroidTestMatrixElement) {
-              return
-            }
-            when (qName) {
-              "androidTestMatrix" -> {
-                myProcessingAndroidTestMatrixElement = false
-              }
-
-              "device" -> {
-                console.onTestSuiteScheduled(requireNotNull(myCurrentTargetDevice))
-              }
-
-              "testsuite" -> {
-                console.onTestSuiteFinished(requireNotNull(myCurrentTargetDevice), requireNotNull(myCurrentTestSuite))
-              }
-            }
-          }
-        },
-      )
+            },
+          )
+        }
+      } catch (e: Exception) {
+        logger.warn("Failed to parse imported AndroidTestMatrix XML file", e)
+      }
     }
 
     return DefaultExecutionResult(console, handler)

@@ -16,9 +16,11 @@
 package com.android.tools.idea.testartifacts.instrumented.testsuite.actions
 
 import com.android.tools.idea.testartifacts.instrumented.testsuite.export.importAndroidTestMatrixResultXmlFile
+import com.android.tools.idea.testartifacts.instrumented.testsuite.export.isXmlFileSafeToImport
 import com.intellij.execution.testframework.sm.runner.history.actions.ImportTestsFromHistoryAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
 import java.io.File
 
 /**
@@ -31,6 +33,9 @@ class ImportTestsFromHistoryAction(project: Project, historyXmlFile: File) : Imp
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
     val virtualFile = getFile(project) ?: return
+    if (!isXmlFileSafeToImport(VfsUtilCore.virtualToIoFile(virtualFile))) {
+      return
+    }
     if (!importAndroidTestMatrixResultXmlFile(project, virtualFile)) {
       // Fallback to the standard IntelliJ test import action.
       super.actionPerformed(e)
