@@ -16,7 +16,8 @@
             android:name=".GlassesMainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:requiredDisplayCategory="android.hardware.display.category.XR_PROJECTED">
+            android:requiredDisplayCategory="android.hardware.display.category.XR_PROJECTED"
+            android:theme="@style/GlassesTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

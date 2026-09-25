@@ -60,9 +60,7 @@ class GlassesMainActivity : ComponentActivity() {
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, onClose: () -> Unit) {
     Box(
-        modifier = modifier
-            .background(GlimmerTheme.colors.background)
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter
     ) {
         ActionCard(

@@ -3,4 +3,9 @@
 <resources>
 
     <style name="Theme.App" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="GlassesTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowSplashScreenBackground">@android:color/black</item>
+    </style>
 </resources>
