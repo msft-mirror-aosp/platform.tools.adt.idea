@@ -111,11 +111,22 @@ kotlin_test(
         "testSrc/com/android/tools/profilers/performance/*.kt",
         "testSrc/com/android/tools/profilers/performance/*.java",
     ]),
+    data = [
+        "testData/hprofs/multi_leak.hprof",
+        "testData/hprofs/single_leak.hprof",
+    ],
     jvm_flags = ["-Dtest.suite.jar=intellij.android.profilers.performance.jar"],
+    tags = [
+        "ci:perfgate-linux",
+        "ci:perfgate-win",
+        "noci:studio-linux",
+        "noci:studio-win",
+    ],
     test_class = "com.android.testutils.JarTestSuite",
     deps = [
         ":intellij.android.profilers",
         ":intellij.android.profilers.tests_testlib",
+        "//prebuilts/tools/common/m2:shark-2.14",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests_testlib",
         "//tools/adt/idea/android-transport:intellij.android.transport",
