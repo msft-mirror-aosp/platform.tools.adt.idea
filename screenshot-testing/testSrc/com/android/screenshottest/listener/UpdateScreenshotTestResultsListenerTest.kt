@@ -34,6 +34,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -292,6 +293,48 @@ class UpdateScreenshotTestResultsListenerTest {
     // Flush EDT to ensure invokeLater block from listener runs before verification.
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     verify(dialog).onTestSuiteFinished()
+  }
+
+  /** Verifies that the start of the suite is reported to the dialog as the start of rendering. */
+  @Test
+  fun testOnTestSuiteStarted_notifiesRenderingStarted() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+
+    listener.onTestSuiteStarted(mock(AndroidDevice::class.java), mock(AndroidTestSuite::class.java))
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    verify(dialog).onRenderingStarted()
+  }
+
+  /** Verifies that suite and test events reach the dialog in the order they were received. */
+  @Test
+  fun testEventsAreDeliveredInOrder() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val tasks = ArrayDeque<Runnable>()
+    val listener = UpdateScreenshotTestResultsListener(dialog) { tasks.add(it) }
+    val device = mock(AndroidDevice::class.java)
+    val suite = mock(AndroidTestSuite::class.java)
+    val testCase =
+      AndroidTestCase(
+        id = "test1",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.PASSED,
+        additionalTestArtifacts = mutableMapOf("PreviewScreenshot.methodName" to "m", "PreviewScreenshot.previewName" to "p"),
+      )
+
+    listener.onTestSuiteStarted(device, suite)
+    listener.onTestCaseFinished(device, suite, testCase)
+    listener.onTestSuiteFinished(device, suite)
+    while (tasks.isNotEmpty()) tasks.removeFirst().run()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val inOrder = inOrder(dialog)
+    inOrder.verify(dialog).onRenderingStarted()
+    inOrder.verify(dialog).updateDialogWithTestResult(capturePreviewDetails(ArgumentCaptor.forClass(PreviewDetails::class.java)), ArgumentMatchers.eq(true))
+    inOrder.verify(dialog).onTestSuiteFinished()
   }
 
   /** Verifies that size mismatch errors in the stack trace are detected and parsed correctly. */

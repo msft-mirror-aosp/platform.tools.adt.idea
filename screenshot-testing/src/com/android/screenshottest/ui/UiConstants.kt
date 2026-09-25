@@ -27,6 +27,12 @@ internal const val DEFAULT_MATCH_PERCENTAGE = "0.00%"
 internal const val UNNAMED_FUNCTION_TEXT = "Unnamed Function"
 internal const val NEW_TAG_TEXT = "New"
 
+// User-facing text for the progress of generating screenshots.
+internal const val BUILDING_PROJECT_TEXT = "Building project…"
+internal const val RENDERING_PREVIEWS_TEXT = "Rendering previews…"
+
+internal fun renderingProgressText(renderedCount: Int): String = "Rendering previews ($renderedCount rendered)…"
+
 // Keys for CardLayout switching in screenshot UI dialogs and panels.
 internal const val CARD_PLACEHOLDER = "placeholder"
 internal const val CARD_DETAILS = "details"

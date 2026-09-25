@@ -95,6 +95,13 @@ class UpdateScreenshotTestResultsListener(
     }
   }
 
+  override fun onTestSuiteStarted(device: AndroidDevice, testSuite: AndroidTestSuite) {
+    // The suite starts once the project is built, right before the previews are rendered.
+    executor.execute {
+      ApplicationManager.getApplication().invokeLater { dialog.onRenderingStarted() }
+    }
+  }
+
   override fun onTestSuiteFinished(device: AndroidDevice, testSuite: AndroidTestSuite) {
     executor.execute {
       ApplicationManager.getApplication().invokeLater { dialog.onTestSuiteFinished() }

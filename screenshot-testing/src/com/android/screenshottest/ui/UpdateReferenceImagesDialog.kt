@@ -36,6 +36,7 @@ import com.android.screenshottest.util.copyReferenceImages
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScreenshotTestEvent
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
+import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.accessibility.AccessibilityUtils
 import com.intellij.execution.process.ProcessHandler
@@ -56,6 +57,7 @@ import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.accessibility.AccessibleContextUtil
 import com.intellij.util.ui.tree.TreeUtil
 import java.awt.BorderLayout
@@ -78,6 +80,9 @@ import org.jetbrains.jewel.ui.component.Text
 /**
  * A dialog for selecting and viewing screenshot test previews. It features a two-pane layout with a tree of previews on the left and a
  * live-updating image viewer on the right.
+ *
+ * While the screenshots are generated, the dialog reports the current phase: building the project, then rendering previews with a running
+ * count as results arrive.
  */
 class UpdateReferenceImagesDialog(
   val project: Project?,
@@ -86,8 +91,14 @@ class UpdateReferenceImagesDialog(
 
   private val centerPanelCardLayout = CardLayout()
   private val centerPanel = JPanel(centerPanelCardLayout)
+  private val loadingLabel = JBLabel(BUILDING_PROJECT_TEXT, AnimatedIcon.Default(), JBLabel.CENTER)
+  private val progressLabel =
+    JBLabel(renderingProgressText(0), AnimatedIcon.Default(), JBLabel.LEFT).apply {
+      border = JBUI.Borders.empty(4, 8)
+    }
   private var isFirstTestDiscovered = false
   private var isTestSuiteFinished = false
+  private var renderedCount = 0
   private lateinit var tree: CheckboxTree
   private val placeholderLabel = JBLabel("Select a node from the left to see its previews.", JBLabel.CENTER)
   private val classNodeMap = mutableMapOf<String, CheckedTreeNode>()
@@ -102,6 +113,16 @@ class UpdateReferenceImagesDialog(
 
   private var buildProcessHandler: ProcessHandler? = null
   private var isCancelled = false
+
+  /** The text shown while no preview has been rendered yet. */
+  @get:VisibleForTesting
+  val loadingText: String
+    get() = loadingLabel.text
+
+  /** The progress text shown below the preview tree, or `null` if it is hidden. */
+  @get:VisibleForTesting
+  val progressText: String?
+    get() = progressLabel.text.takeIf { isFirstTestDiscovered && progressLabel.isVisible }
 
   fun setBuildProcessHandler(handler: ProcessHandler) {
     if (isCancelled) {
@@ -131,6 +152,15 @@ class UpdateReferenceImagesDialog(
 
   override fun getDimensionServiceKey(): String {
     return "com.android.screenshottest.ui.UpdateReferenceImagesDialog"
+  }
+
+  /** Reports that the project was built and the previews are being rendered. */
+  fun onRenderingStarted() {
+    ApplicationManager.getApplication().invokeLater {
+      if (!isFirstTestDiscovered) {
+        loadingLabel.text = RENDERING_PREVIEWS_TEXT
+      }
+    }
   }
 
   fun updateDialogWithTestResult(previewDetails: PreviewDetails, isChecked: Boolean) {
@@ -177,11 +207,20 @@ class UpdateReferenceImagesDialog(
         if (srcImagePath == null) {
           logger.warn("Source image path missing. Test did not produce an image for testId: $testId")
         }
+        renderedCount++
+        progressLabel.text = renderingProgressText(renderedCount)
         updateRightPane(tree)
       } else {
         logger.warn("Missing methodName or previewName for tests in class $className")
       }
     }
+  }
+
+  /** Marks the run as over: stops reporting progress and lets the user add the previews that were rendered. */
+  private fun finishRendering() {
+    isTestSuiteFinished = true
+    progressLabel.isVisible = false
+    updateOkButtonState()
   }
 
   fun onTestSuiteFinished() {
@@ -202,21 +241,28 @@ class UpdateReferenceImagesDialog(
           "Failed to generate screenshots",
         )
       } else {
-        isTestSuiteFinished = true
         logger.debug("TestSuite finished. Enabling the 'Add' button.")
-        updateOkButtonState()
+        finishRendering()
       }
     }
   }
 
   /**
-   * Handles cases where the build or execution fails before tests start. Closes the dialog and opens the Run tool window to show errors.
+   * Handles a failed build or test run.
+   *
+   * If the run fails before any preview is rendered, closes the dialog and opens the Run tool window to show errors. Otherwise, no more
+   * results will arrive, so the previews rendered so far can be added.
    */
   fun onBuildFailed() {
     ApplicationManager.getApplication().invokeLater {
+      if (isFirstTestDiscovered) {
+        logger.warn("Build or execution failed after some previews were rendered.")
+        finishRendering()
+        return@invokeLater
+      }
       // Only act if we haven't discovered any tests yet (meaning the failure happened during build
       // or startup)
-      if (!isFirstTestDiscovered && !isCancelled) {
+      if (!isCancelled) {
         logger.warn("Build or execution failed. Closing dialog.")
 
         // Log the SCREENSHOT_DIALOG_BUILD_FAILURE event when build fails
@@ -285,6 +331,7 @@ class UpdateReferenceImagesDialog(
       JPanel(BorderLayout()).apply {
         add(treeHeadingLabel, BorderLayout.NORTH)
         add(treeScrollPane, BorderLayout.CENTER)
+        add(progressLabel, BorderLayout.SOUTH)
       }
 
     splitter.firstComponent = treeContainer
@@ -294,8 +341,7 @@ class UpdateReferenceImagesDialog(
   }
 
   override fun createCenterPanel(): JComponent {
-    val loadingIcon = JBLabel("Generating screenshots", AnimatedIcon.Default(), JBLabel.CENTER)
-    centerPanel.add(loadingIcon, CARD_LOADING)
+    centerPanel.add(loadingLabel, CARD_LOADING)
     centerPanelCardLayout.show(centerPanel, CARD_LOADING)
     centerPanel.preferredSize = Dimension(800, 600)
     centerPanel.minimumSize = Dimension(550, 400)

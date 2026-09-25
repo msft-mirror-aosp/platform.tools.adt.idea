@@ -34,6 +34,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -365,6 +366,84 @@ class UpdateReferenceImagesDialogTest {
 
     TestDialogManager.setTestDialog(TestDialog.DEFAULT)
   }
+
+  @Test
+  fun testLoadingTextStartsWithBuildingPhase() = runInEdtAndWait {
+    assertEquals("Building project…", dialog.loadingText)
+    assertNull("Progress is only shown once previews are listed", dialog.progressText)
+  }
+
+  @Test
+  fun testRenderingStartedSwitchesLoadingText() = runInEdtAndWait {
+    dialog.onRenderingStarted()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals("Rendering previews…", dialog.loadingText)
+  }
+
+  @Test
+  fun testProgressCountsRenderedPreviewsAndHidesWhenFinished() = runInEdtAndWait {
+    dialog.onRenderingStarted()
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Rendering previews (1 rendered)…", dialog.progressText)
+
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p3", method = "other"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Rendering previews (3 rendered)…", dialog.progressText)
+
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertNull(dialog.progressText)
+  }
+
+  @Test
+  fun testInvalidResultIsNotCounted() = runInEdtAndWait {
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("", method = ""), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals("Rendering previews (1 rendered)…", dialog.progressText)
+  }
+
+  @Test
+  fun testBuildFailureAfterResultsKeepsDialogOpenAndHidesProgress() = runInEdtAndWait {
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertFalse(dialog.isOKActionEnabled)
+
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertNull(dialog.progressText)
+    assertFalse("The dialog should stay open with the rendered previews", dialog.isDisposed)
+    assertTrue("The rendered previews should be addable", dialog.isOKActionEnabled)
+    val failureEvent = metricsTrackerRule.testTracker.usages.find {
+      it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
+    }
+    assertNull(failureEvent)
+  }
+
+  @Test
+  fun testBuildFailureAfterUncheckedResultsKeepsOkDisabled() = runInEdtAndWait {
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = false)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertFalse(dialog.isOKActionEnabled)
+  }
+
+  private fun preview(name: String, method: String = "testMethod") =
+    PreviewDetails(
+      testId = "com.example.TestClass.$method.$name",
+      className = "com.example.TestClass",
+      methodName = method,
+      previewName = name,
+      testResult = AndroidTestCaseResult.PASSED,
+    )
 
   private fun findTree(dialog: UpdateReferenceImagesDialog): CheckboxTree {
     val field = UpdateReferenceImagesDialog::class.java.getDeclaredField("tree")
