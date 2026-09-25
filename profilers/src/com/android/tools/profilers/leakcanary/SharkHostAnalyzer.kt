@@ -49,15 +49,18 @@ class SharkHostAnalyzer {
         logger.info(step.toString())
         onProgress(getProgressPercentage(step))
       }
+      // HeapAnalyzer doesn't close a graph it's given, so close it here to release the hprof file.
       analysisResult =
-        analyzer.analyze(
-          heapDumpFile = hprofFile,
-          graph = hprofFile.openHeapGraph(),
-          leakingObjectFinder = KeyedWeakReferenceFinder,
-          referenceMatchers = AndroidReferenceMatchers.Companion.appDefaults,
-          computeRetainedHeapSize = true,
-          objectInspectors = AndroidObjectInspectors.Companion.appDefaults,
-        )
+        hprofFile.openHeapGraph().use { graph ->
+          analyzer.analyze(
+            heapDumpFile = hprofFile,
+            graph = graph,
+            leakingObjectFinder = KeyedWeakReferenceFinder,
+            referenceMatchers = AndroidReferenceMatchers.Companion.appDefaults,
+            computeRetainedHeapSize = true,
+            objectInspectors = AndroidObjectInspectors.Companion.appDefaults,
+          )
+        }
       logger.info("Leak analysis complete : $analysisResult")
     } catch (e: Throwable) {
       logger.warn("Heap analysis failed for ${hprofFile.name}", e)
