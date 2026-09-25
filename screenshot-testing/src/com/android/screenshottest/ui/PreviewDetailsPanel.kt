@@ -39,8 +39,6 @@ import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.util.concurrency.AppExecutorUtil
-import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.CardLayout
@@ -49,6 +47,8 @@ import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
 import java.io.File
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Future
 import javax.imageio.ImageIO
 import javax.swing.BorderFactory
 import javax.swing.BoundedRangeModel
@@ -78,14 +78,18 @@ private val LOG = Logger.getInstance(PreviewDetailsPanel::class.java)
  * A panel that displays detailed views of screenshot previews. It can show a single preview with extensive details or a list of previews
  * grouped by test method.
  */
-class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLayout()) {
+class PreviewDetailsPanel(
+  private val project: Project? = null,
+  private val thumbnailLoader: ThumbnailLoader = ThumbnailLoader(),
+  private val imageLoadExecutor: ExecutorService = ThumbnailLoader.createDecodeExecutor(),
+) : JPanel(CardLayout()) {
 
   @VisibleForTesting val screenshotAttributesView = ScreenshotAttributesView()
   private val multiplePreviewsPanel = JPanel(BorderLayout())
   private val singlePreviewPanel = JPanel(BorderLayout())
 
   private val listModel = DefaultListModel<MethodGroup>()
-  private val methodGroupRenderer = MethodGroupRenderer(project)
+  private val methodGroupRenderer = MethodGroupRenderer(project, thumbnailLoader)
   // Use JBList for virtualization: only visible rows are rendered, which is essential for
   // scalability.
   private val multiplePreviewsList =
@@ -98,7 +102,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     }
 
   private val toolbarAnalytics = ScreenshotToolbarAnalytics(project)
-  private val loadingFutures = mutableMapOf<ImageWithToolbarPanel, java.util.concurrent.Future<*>>()
+  private val loadingFutures = mutableMapOf<ImageWithToolbarPanel, Future<*>>()
 
   // Panels for the "All" view (3-way split) in single preview mode.
   private val newImagePanel =
@@ -460,9 +464,9 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       loadingFutures.remove(targetPanel)
       return
     }
-    var future: java.util.concurrent.Future<*>? = null
+    var future: Future<*>? = null
     future =
-      AppExecutorUtil.getAppExecutorService().submit {
+      imageLoadExecutor.submit {
         val image =
           try {
             val file = File(filePath)
@@ -550,13 +554,11 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
    * A renderer for a group of previews belonging to the same test method. This renderer uses a "rubber stamp" pattern, reusing the same
    * panel instance for all rows to optimize memory and performance.
    */
-  private class MethodGroupRenderer(private val project: Project?) : JPanel(), ListCellRenderer<MethodGroup> {
+  private class MethodGroupRenderer(
+    private val project: Project?,
+    private val thumbnailLoader: ThumbnailLoader,
+  ) : JPanel(), ListCellRenderer<MethodGroup> {
     var viewType: ScreenshotViewType = ScreenshotViewType.NEW
-    // Shared cache for scaled thumbnails to prevent redundant disk I/O and memory pressure.
-    private val thumbnailCache =
-      object : LinkedHashMap<String, JBImageIcon>(200, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, JBImageIcon>?): Boolean = size > 200
-      }
 
     private val functionNameLabel =
       JBLabel().apply {
@@ -619,7 +621,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       // Manage the pool of PreviewItemPanels to match the current row's preview count.
       while (previewPanelPool.size < previews.size) {
         val dummyData = previews[0] // Use any data for initial creation
-        val panel = PreviewItemPanel(dummyData, project, showDetails = true, thumbnailCache = thumbnailCache)
+        val panel = PreviewItemPanel(dummyData, project, showDetails = true, thumbnailLoader = thumbnailLoader)
         previewPanelPool.add(panel)
         horizontalPreviewsPanel.add(panel)
       }
