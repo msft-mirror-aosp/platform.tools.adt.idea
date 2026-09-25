@@ -19,17 +19,44 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.idea.blaze.base.BlazeTestCase;
 import com.google.idea.blaze.base.run.state.RunConfigurationFlagsState.RunConfigurationFlagsStateEditor;
+import com.google.idea.testing.EdtRule;
+import com.intellij.mock.MockEditorFactory;
+import com.intellij.mock.MockFileDocumentManagerImpl;
+import com.intellij.openapi.command.CommandProcessor;
+import com.intellij.openapi.command.impl.CoreCommandProcessor;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.impl.DocumentWriteAccessGuard;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.impl.CoreProgressManager;
+import com.intellij.ui.EditorTextField;
 import java.util.List;
 import javax.swing.JComponent;
-import javax.swing.JTextArea;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Unit tests for {@link RunConfigurationFlagsState}. */
 @RunWith(JUnit4.class)
-public class RunConfigurationFlagStateTest {
+public class RunConfigurationFlagStateTest extends BlazeTestCase {
+  @Rule public EdtRule edtRule = new EdtRule();
+
+  @Override
+  protected void initTest(Container applicationServices, Container projectServices) {
+    super.initTest(applicationServices, projectServices);
+    registerExtensionPoint(DocumentWriteAccessGuard.EP_NAME, DocumentWriteAccessGuard.class);
+    MockEditorFactory mockEditorFactory = new MockEditorFactory();
+    applicationServices.register(EditorFactory.class, mockEditorFactory);
+    applicationServices.register(
+        FileDocumentManager.class,
+        new MockFileDocumentManagerImpl(null, mockEditorFactory::createDocument));
+    applicationServices.register(ProgressManager.class, new CoreProgressManager());
+    applicationServices.register(CommandProcessor.class, new CoreCommandProcessor());
+  }
+
   @Test
   public void testEscapedDoubleQuotesRetainedAfterReserialization() {
     // previously, we were removing escape chars and quotes during ParametersListUtil.parse, then
@@ -82,7 +109,7 @@ public class RunConfigurationFlagStateTest {
   public void testDoubleQuotesInEditor() {
     RunConfigurationFlagsState state = new RunConfigurationFlagsState("tag", "field");
     RunConfigurationStateEditor editor = state.getEditor(null);
-    JTextArea textArea = getTextField(editor);
+    EditorTextField textArea = getTextField(editor);
 
     String originalText = "\"--flags=a b\"\n\"--flags=\\\"a b\\\"\"";
     textArea.setText(originalText);
@@ -108,7 +135,7 @@ public class RunConfigurationFlagStateTest {
   public void testSingleQuotesInEditor() {
     RunConfigurationFlagsState state = new RunConfigurationFlagsState("tag", "field");
     RunConfigurationStateEditor editor = state.getEditor(null);
-    JTextArea textArea = getTextField(editor);
+    EditorTextField textArea = getTextField(editor);
 
     String originalText = "'--flags=a b'\n'--flags=\"a b\"'";
     textArea.setText(originalText);
@@ -133,7 +160,7 @@ public class RunConfigurationFlagStateTest {
   public void testNestedQuotesRetainedAfterRoundTripSerialization() {
     RunConfigurationFlagsState state = new RunConfigurationFlagsState("tag", "field");
     RunConfigurationStateEditor editor = state.getEditor(null);
-    JTextArea textArea = getTextField(editor);
+    EditorTextField textArea = getTextField(editor);
 
     String originalText = "--where_clause=\"op = 'addshardreplica' AND purpose = 'rebalancing'\"";
     textArea.setText(originalText);
@@ -150,7 +177,7 @@ public class RunConfigurationFlagStateTest {
   public void testSplitOnWhitespaceAndNewlines() {
     RunConfigurationFlagsState state = new RunConfigurationFlagsState("tag", "field");
     RunConfigurationStateEditor editor = state.getEditor(null);
-    JTextArea textArea = getTextField(editor);
+    EditorTextField textArea = getTextField(editor);
 
     String originalText = "--flag=a --other=b --c='d=e'\n\"--final=f\"";
     List<String> expectedFlags =
@@ -174,7 +201,7 @@ public class RunConfigurationFlagStateTest {
   public void testFlagsContainingQuotedNewlines() {
     RunConfigurationFlagsState state = new RunConfigurationFlagsState("tag", "field");
     RunConfigurationStateEditor editor = state.getEditor(null);
-    JTextArea textArea = getTextField(editor);
+    EditorTextField textArea = getTextField(editor);
 
     String originalText = "\"a\nb\nc\"";
     List<String> expectedFlags = ImmutableList.of("\"a\nb\nc\"");
@@ -219,11 +246,11 @@ public class RunConfigurationFlagStateTest {
         .inOrder();
   }
 
-  private static JTextArea getTextField(RunConfigurationStateEditor editor) {
+  private static EditorTextField getTextField(RunConfigurationStateEditor editor) {
     assertThat(editor).isInstanceOf(RunConfigurationFlagsStateEditor.class);
     RunConfigurationFlagsStateEditor flagsEditor = (RunConfigurationFlagsStateEditor) editor;
     JComponent internalField = flagsEditor.getInternalComponent();
-    assertThat(internalField).isInstanceOf(JTextArea.class);
-    return (JTextArea) internalField;
+    assertThat(internalField).isInstanceOf(EditorTextField.class);
+    return (EditorTextField) internalField;
   }
 }
