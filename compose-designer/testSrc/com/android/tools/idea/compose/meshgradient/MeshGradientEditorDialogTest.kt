@@ -71,6 +71,7 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
 
     assertEquals(3, dialog.state.rows)
     assertEquals(4, dialog.state.cols)
+    assertTrue(dialog.state.hasBicubicColor)
 
     val p01 = dialog.state.meshPoints[0][1]
     assertEquals(Offset(0.3333f, 0f), p01.position)
@@ -99,5 +100,57 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
       "Should contain updated offset in code",
       updatedText.contains("setVertex(1, 1, Offset(0.4000f, 0.6000f), Color(0xFF2196F3))"),
     )
+    assertTrue("Should preserve hasBicubicColor = true", updatedText.contains("hasBicubicColor = true"))
+  }
+
+  @Test
+  fun testDialogPreservesBezierControlPointsAcrossEdits() {
+    val codeWithBezier =
+      """
+      package test
+
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      fun MyMesh() {
+          val gradientPainter = remember {
+              MeshGradientPainter(rows = 1, columns = 1, hasBicubicColor = true) {
+                  setVertex(0, 0, Offset(0.0000f, 0.0000f), Color(0xFFF44336), rightControlPoint = Offset(0.2500f, 0.1000f))
+                  setVertex(0, 1, Offset(1.0000f, 0.0000f), Color(0xFFE91E63))
+                  setVertex(1, 0, Offset(0.0000f, 1.0000f), Color(0xFF3F51B5))
+                  setVertex(1, 1, Offset(1.0000f, 1.0000f), Color(0xFF2196F3))
+              }
+          }
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestBezier.kt", codeWithBezier)
+    val psiManager = MeshGradientPsiManager(project)
+
+    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    assertNotNull(call)
+
+    val dialog = MeshGradientEditorDialog(project, file, call!!)
+    assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
+
+    dialog.state.updatePaletteAndMeshColor(Color(0xFFF44336), Color(0xFF00BCD4))
+    assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
+
+    dialog.doOKAction()
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue("Should contain updated color: $updatedText", updatedText.contains("Color(0xFF00BCD4)"))
+    assertTrue(
+      "Should preserve rightControlPoint: $updatedText",
+      updatedText.contains("rightControlPoint = Offset(0.2500f, 0.1000f)"),
+    )
+
+    val reparsed = runReadActionBlocking { psiManager.parseMesh(call) }
+    assertNotNull(reparsed)
+    val v00 = reparsed!!.vertices.first { it.row == 0 && it.col == 0 }
+    assertEquals(Color(0xFF00BCD4), v00.color)
+    assertEquals(Offset(0.25f, 0.1f), v00.rightBezierOffset)
   }
 }

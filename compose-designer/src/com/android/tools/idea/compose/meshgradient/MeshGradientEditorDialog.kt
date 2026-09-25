@@ -21,6 +21,7 @@ import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.idea.compose.meshgradient.MeshGradientPsiManager.ParsedMesh
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.psi.SmartPointerManager
@@ -29,6 +30,8 @@ import java.awt.Dimension
 import javax.swing.JComponent
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
+
+private val logger = Logger.getInstance(MeshGradientEditorDialog::class.java)
 
 class MeshGradientEditorDialog(private val project: Project, private val file: KtFile, painterCall: KtCallExpression) :
   DialogWrapper(project, true) {
@@ -50,10 +53,17 @@ class MeshGradientEditorDialog(private val project: Project, private val file: K
             val vertex = parsed.vertices.firstOrNull { it.row == r && it.col == c }
             val offset = vertex?.offset ?: Offset(c.toFloat() / (parsed.cols - 1), r.toFloat() / (parsed.rows - 1))
             val color = vertex?.color ?: Color.White
-            MeshGradientPoint(offset, color)
+            MeshGradientPoint(
+              position = offset,
+              color = color,
+              leftBezierOffset = vertex?.leftBezierOffset ?: Offset.Unspecified,
+              topBezierOffset = vertex?.topBezierOffset ?: Offset.Unspecified,
+              rightBezierOffset = vertex?.rightBezierOffset ?: Offset.Unspecified,
+              bottomBezierOffset = vertex?.bottomBezierOffset ?: Offset.Unspecified,
+            )
           }
         }
-      state.loadMesh(parsed.rows, parsed.cols, grid)
+      state.loadMesh(parsed.rows, parsed.cols, grid, parsed.hasBicubicColor)
     }
 
     init()
@@ -66,17 +76,18 @@ class MeshGradientEditorDialog(private val project: Project, private val file: K
   }
 
   public override fun doOKAction() {
-    val call = painterCallPointer.element ?: return super.doOKAction()
+    val call = painterCallPointer.element?.takeIf { it.isValid } ?: return super.doOKAction()
 
     WriteCommandAction.runWriteCommandAction(
       project,
       "Update Mesh Gradient",
       null,
       {
-        val successArgs = psiManager.updateConstructorArguments(call, state.rows, state.cols)
+        val successArgs = psiManager.updateConstructorArguments(call, state.rows, state.cols, state.hasBicubicColor)
         val successBody = psiManager.regenerateLambdaBody(call, state.meshPoints)
         if (!successArgs || !successBody) {
-          throw IllegalStateException("Failed to update mesh structure! Args success: $successArgs, Body success: $successBody")
+          logger.warn("Failed to update mesh structure! Args success: $successArgs, Body success: $successBody")
+          return@runWriteCommandAction
         }
         CodeStyleManager.getInstance(project).reformat(call)
       },

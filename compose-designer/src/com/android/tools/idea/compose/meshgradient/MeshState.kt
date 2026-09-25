@@ -33,6 +33,7 @@ class MeshGeneratorState {
 
   var showPoints by mutableStateOf(true)
   var constrainEdgePoints by mutableStateOf(true)
+  var hasBicubicColor by mutableStateOf(false)
 
   val meshPoints = mutableStateListOf<List<MeshGradientPoint>>()
 
@@ -70,9 +71,10 @@ class MeshGeneratorState {
     generateMeshPoints()
   }
 
-  fun loadMesh(newRows: Int, newCols: Int, newPoints: List<List<MeshGradientPoint>>) {
+  fun loadMesh(newRows: Int, newCols: Int, newPoints: List<List<MeshGradientPoint>>, newHasBicubicColor: Boolean = false) {
     rows = newRows.coerceIn(2, 10)
     cols = newCols.coerceIn(2, 10)
+    hasBicubicColor = newHasBicubicColor
     meshPoints.clear()
     meshPoints.addAll(newPoints)
 
@@ -122,22 +124,21 @@ class MeshGeneratorState {
   }
 
   fun distributeMeshPointsEvenly() {
-    val newPoints =
-      meshPoints.mapIndexed { rowIdx, currentPoints ->
-        val newRowPoints = mutableListOf<MeshGradientPoint>()
-        val yPosition = if (rows > 1) rowIdx.toFloat() / (rows - 1) else 0f
-        repeat(cols) { colIdx ->
-          val xPosition = if (cols > 1) colIdx.toFloat() / (cols - 1) else 0f
-          newRowPoints.add(currentPoints[colIdx].copy(position = Offset(xPosition, yPosition)))
-        }
-        newRowPoints.toList()
+    val newPoints = meshPoints.mapIndexed { rowIdx, currentPoints ->
+      val newRowPoints = mutableListOf<MeshGradientPoint>()
+      val yPosition = if (rows > 1) rowIdx.toFloat() / (rows - 1) else 0f
+      repeat(cols) { colIdx ->
+        val xPosition = if (cols > 1) colIdx.toFloat() / (cols - 1) else 0f
+        newRowPoints.add(currentPoints[colIdx].copy(position = Offset(xPosition, yPosition)))
       }
+      newRowPoints.toList()
+    }
     meshPoints.clear()
     meshPoints.addAll(newPoints)
   }
 
-  fun updateAllPoints(transform: (Offset, Color) -> MeshGradientPoint) {
-    val updated = meshPoints.map { row -> row.map { p -> transform(p.position, p.color) } }
+  fun updateAllPoints(transform: (MeshGradientPoint) -> MeshGradientPoint) {
+    val updated = meshPoints.map { row -> row.map(transform) }
     meshPoints.clear()
     meshPoints.addAll(updated)
   }
@@ -147,11 +148,11 @@ class MeshGeneratorState {
     if (index != -1) {
       availableColors[index] = newColor
     }
-    updateAllPoints { offset, currentColor ->
-      if (currentColor == oldColor) {
-        MeshGradientPoint(position = offset, color = newColor)
+    updateAllPoints { point ->
+      if (point.color == oldColor) {
+        point.copy(color = newColor)
       } else {
-        MeshGradientPoint(position = offset, color = currentColor)
+        point
       }
     }
   }
@@ -175,21 +176,21 @@ class MeshGeneratorState {
   private fun generateCode(): String {
     val sb = StringBuilder()
     sb.append("val gradientPainter = remember {\n")
-    sb.append(String.format(Locale.US, "    MeshGradientPainter(rows = %d, columns = %d, hasBicubicColor = false) {\n", rows - 1, cols - 1))
+    sb.append(
+      String.format(
+        Locale.US,
+        "    MeshGradientPainter(rows = %d, columns = %d, hasBicubicColor = %b) {\n",
+        rows - 1,
+        cols - 1,
+        hasBicubicColor,
+      )
+    )
 
     meshPoints.forEachIndexed { rowIdx, row ->
       row.forEachIndexed { colIdx, point ->
-        sb.append(
-          String.format(
-            Locale.US,
-            "        setVertex(%d, %d, Offset(%.4ff, %.4ff), Color(%s))\n",
-            rowIdx,
-            colIdx,
-            point.position.x,
-            point.position.y,
-            point.color.toComposeHexLiteral(),
-          )
-        )
+        sb.append("        ")
+        sb.append(formatSetVertexCall(rowIdx, colIdx, point))
+        sb.append("\n")
       }
     }
 

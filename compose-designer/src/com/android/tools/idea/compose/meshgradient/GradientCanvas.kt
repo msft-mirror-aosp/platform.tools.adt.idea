@@ -36,12 +36,13 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun GradientCanvas(
-  modifier: Modifier = Modifier,
   meshPoints: List<List<MeshGradientPoint>>,
   showPoints: Boolean,
+  onPointDrag: (row: Int, col: Int, offset: Offset) -> Unit,
+  modifier: Modifier = Modifier,
+  hasBicubicColor: Boolean = false,
   constrainEdgePoints: Boolean = true,
   onTogglePoints: () -> Unit = {},
-  onPointDrag: (row: Int, col: Int, offset: Offset) -> Unit,
   onPointClick: ((row: Int, col: Int) -> Unit)? = null,
 ) {
   if (meshPoints.isEmpty() || meshPoints[0].isEmpty()) return
@@ -73,6 +74,7 @@ fun GradientCanvas(
         modifier = Modifier.clip(RoundedCornerShape(8.dp)).fillMaxSize(),
         rows = meshPoints.size - 1,
         columns = meshPoints[0].size - 1,
+        hasBicubicColor = hasBicubicColor,
         points = meshPoints,
         showPoints = showPoints,
       ) {

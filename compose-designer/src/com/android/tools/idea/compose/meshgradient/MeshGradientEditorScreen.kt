@@ -160,6 +160,7 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
       Box(modifier = Modifier.fillMaxWidth().height(220.dp).onGloballyPositioned { canvasSize = it.size }) {
         GradientCanvas(
           meshPoints = state.meshPoints,
+          hasBicubicColor = state.hasBicubicColor,
           showPoints = state.showPoints,
           constrainEdgePoints = state.constrainEdgePoints,
           onTogglePoints = { state.showPoints = !state.showPoints },
@@ -265,11 +266,11 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
                   if (state.availableColors.size > 1) {
                     state.availableColors.remove(color)
                     val fallbackColor = state.availableColors.first()
-                    state.updateAllPoints { offset, currentColor ->
-                      if (currentColor == color) {
-                        MeshGradientPoint(offset, fallbackColor)
+                    state.updateAllPoints { point ->
+                      if (point.color == color) {
+                        point.copy(color = fallbackColor)
                       } else {
-                        MeshGradientPoint(offset, currentColor)
+                        point
                       }
                     }
                   }

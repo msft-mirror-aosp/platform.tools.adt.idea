@@ -581,4 +581,152 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
       assertEquals(Offset(0.1f, 0.2f), v00.offset)
     }
   }
+
+  @Test
+  fun testParseNamedArgumentsBezierControlPointsAndUnderscoreHex() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      fun MyMesh() {
+          val rowCount = 1
+          val colCount = 2
+          val useBicubic = true
+          val r0 = 0
+          val c1 = 1
+          val hexColor = 0xFF_12_34_56L
+          val rComp = 0.5f
+          val gComp = 0.25f
+          val bComp = 0.75f
+          val gradientPainter = remember {
+              MeshGradientPainter(columns = colCount, rows = rowCount, hasBicubicColor = useBicubic) {
+                  setVertex(
+                      color = Color(hexColor),
+                      position = Offset(y = 0.2f, x = 0.1f),
+                      column = c1,
+                      row = r0,
+                      leftControlPoint = Offset(0.05f, 0.15f),
+                      bottomControlPoint = Offset(0.12f, 0.25f),
+                  )
+                  setVertex(
+                      row = 0,
+                      column = 0,
+                      position = Offset(0f, 0f),
+                      color = Color(red = rComp, green = gComp, blue = bComp),
+                  )
+              }
+          }
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", code)
+    val psiManager = MeshGradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call = psiManager.findMeshPainterCall(file)
+      assertNotNull(call)
+
+      val parsedMesh = psiManager.parseMesh(call!!)
+      assertNotNull(parsedMesh)
+      assertEquals(2, parsedMesh!!.rows)
+      assertEquals(3, parsedMesh.cols)
+      assertTrue(parsedMesh.hasBicubicColor)
+      assertEquals(2, parsedMesh.vertices.size)
+
+      val v01 = parsedMesh.vertices.first { it.row == 0 && it.col == 1 }
+      assertEquals(Offset(0.1f, 0.2f), v01.offset)
+      assertEquals(Color(0xFF123456), v01.color)
+      assertEquals(Offset(0.05f, 0.15f), v01.leftBezierOffset)
+      assertEquals(Offset.Unspecified, v01.topBezierOffset)
+      assertEquals(Offset.Unspecified, v01.rightBezierOffset)
+      assertEquals(Offset(0.12f, 0.25f), v01.bottomBezierOffset)
+
+      val v00 = parsedMesh.vertices.first { it.row == 0 && it.col == 0 }
+      assertEquals(Color(0.5f, 0.25f, 0.75f, 1f), v00.color)
+    }
+  }
+
+  @Test
+  fun testLocalVariableShadowingAndNoForwardReference() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      val color = Color.Red
+
+      fun MyMesh() {
+          val color = Color.Green
+          val color = remember { color }
+          val firstColor = color
+          val color = Color.Blue
+          val gradientPainter = remember {
+              MeshGradientPainter(rows = 1, columns = 1) {
+                  setVertex(0, 0, Offset(0f, 0f), firstColor)
+                  setVertex(0, 1, Offset(1f, 0f), color)
+              }
+          }
+          val color = Color.Yellow
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", code)
+    val psiManager = MeshGradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call = psiManager.findMeshPainterCall(file)
+      assertNotNull(call)
+      val parsedMesh = psiManager.parseMesh(call!!)
+      assertNotNull(parsedMesh)
+
+      val v00 = parsedMesh!!.vertices.first { it.row == 0 && it.col == 0 }
+      assertEquals(Color.Green, v00.color)
+
+      val v01 = parsedMesh.vertices.first { it.row == 0 && it.col == 1 }
+      assertEquals(Color.Blue, v01.color)
+    }
+  }
+
+  @Test
+  fun testUpdateConstructorArgumentsAppendsMissingHasBicubicColor() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      fun MyMesh() {
+          val painter = MeshGradientPainter(2, 3) {
+              setVertex(0, 0, Offset(0f, 0f), Color.Red)
+          }
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", code)
+    val psiManager = MeshGradientPsiManager(project)
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val call = psiManager.findMeshPainterCall(file)
+      assertNotNull(call)
+      val updated = psiManager.updateConstructorArguments(call!!, newRows = 3, newCols = 4, hasBicubicColor = true)
+      assertTrue(updated)
+    }
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue("Should contain updated rows", updatedText.contains("2"))
+    assertTrue("Should contain updated columns", updatedText.contains("3"))
+    assertTrue("Should append hasBicubicColor = true", updatedText.contains("hasBicubicColor = true"))
+  }
 }

@@ -41,6 +41,15 @@ private const val FUN_COLOR = "Color"
 
 private const val ARG_ROWS = "rows"
 private const val ARG_COLUMNS = "columns"
+private const val ARG_HAS_BICUBIC_COLOR = "hasBicubicColor"
+private const val ARG_ROW = "row"
+private const val ARG_COLUMN = "column"
+private const val ARG_POSITION = "position"
+private const val ARG_COLOR = "color"
+private const val ARG_LEFT_CONTROL_POINT = "leftControlPoint"
+private const val ARG_TOP_CONTROL_POINT = "topControlPoint"
+private const val ARG_RIGHT_CONTROL_POINT = "rightControlPoint"
+private const val ARG_BOTTOM_CONTROL_POINT = "bottomControlPoint"
 private const val ARG_X = "x"
 private const val ARG_Y = "y"
 private const val ARG_RED = "red"
@@ -59,34 +68,81 @@ private val COLLECTION_LIST_MAP =
 
 private val COLLECTION_LIST_FUNCTIONS = COLLECTION_LIST_MAP.keys + COLLECTION_LIST_MAP.values
 
+internal fun formatSetVertexCall(r: Int, c: Int, point: MeshGradientPoint): String {
+  val base =
+    String.format(
+      Locale.US,
+      "setVertex(%d, %d, Offset(%.4ff, %.4ff), Color(%s)",
+      r,
+      c,
+      point.position.x,
+      point.position.y,
+      point.color.toComposeHexLiteral(),
+    )
+  val controlPoints = buildList {
+    if (point.leftBezierOffset != Offset.Unspecified) {
+      add(String.format(Locale.US, "leftControlPoint = Offset(%.4ff, %.4ff)", point.leftBezierOffset.x, point.leftBezierOffset.y))
+    }
+    if (point.topBezierOffset != Offset.Unspecified) {
+      add(String.format(Locale.US, "topControlPoint = Offset(%.4ff, %.4ff)", point.topBezierOffset.x, point.topBezierOffset.y))
+    }
+    if (point.rightBezierOffset != Offset.Unspecified) {
+      add(String.format(Locale.US, "rightControlPoint = Offset(%.4ff, %.4ff)", point.rightBezierOffset.x, point.rightBezierOffset.y))
+    }
+    if (point.bottomBezierOffset != Offset.Unspecified) {
+      add(String.format(Locale.US, "bottomControlPoint = Offset(%.4ff, %.4ff)", point.bottomBezierOffset.x, point.bottomBezierOffset.y))
+    }
+  }
+  return if (controlPoints.isEmpty()) {
+    "$base)"
+  } else {
+    "$base, ${controlPoints.joinToString(", ")})"
+  }
+}
+
 class MeshGradientPsiManager(private val project: Project) {
 
-  data class ParsedVertex(val row: Int, val col: Int, val offset: Offset, val color: Color)
+  data class ParsedVertex(
+    val row: Int,
+    val col: Int,
+    val offset: Offset,
+    val color: Color,
+    val leftBezierOffset: Offset = Offset.Unspecified,
+    val topBezierOffset: Offset = Offset.Unspecified,
+    val rightBezierOffset: Offset = Offset.Unspecified,
+    val bottomBezierOffset: Offset = Offset.Unspecified,
+  )
 
-  data class ParsedMesh(val rows: Int, val cols: Int, val vertices: List<ParsedVertex>)
+  data class ParsedMesh(val rows: Int, val cols: Int, val vertices: List<ParsedVertex>, val hasBicubicColor: Boolean = false)
 
   /** Finds the first [KtCallExpression] for "MeshGradientPainter" in the file. */
   fun findMeshPainterCall(file: KtFile): KtCallExpression? {
     return SyntaxTraverser.psiTraverser(file).filter(KtCallExpression::class.java).firstOrNull { it.isValidMeshGradientCall() }
   }
 
-  /** Parses the [KtCallExpression] of MeshGradientPainter to extract rows, cols, and vertices. */
+  /** Parses the [KtCallExpression] of MeshGradientPainter to extract rows, cols, hasBicubicColor, and vertices. */
   fun parseMesh(callExpr: KtCallExpression): ParsedMesh? {
     val rowsExpr = findArgumentExpression(callExpr, ARG_ROWS, 0) ?: return null
     val colsExpr = findArgumentExpression(callExpr, ARG_COLUMNS, 1) ?: return null
 
-    val rows = rowsExpr.text.toIntOrNull() ?: return null
-    val cols = colsExpr.text.toIntOrNull() ?: return null
+    val rows = resolveExpression(rowsExpr).text.toIntOrNull() ?: return null
+    val cols = resolveExpression(colsExpr).text.toIntOrNull() ?: return null
+
+    val bicubicExpr = findArgumentExpression(callExpr, ARG_HAS_BICUBIC_COLOR, 2)
+    val hasBicubicColor = bicubicExpr?.let { resolveExpression(it).text.toBooleanStrictOrNull() } ?: false
 
     val actualRows = rows + 1
     val actualCols = cols + 1
 
-    val lambdaArg = callExpr.valueArguments.lastOrNull() as? KtLambdaArgument ?: return null
-    val body = lambdaArg.getLambdaExpression()?.bodyExpression ?: return null
-
+    val body = getMeshLambdaBody(callExpr) ?: return null
     val vertices = parseVertices(body)
 
-    return ParsedMesh(actualRows, actualCols, vertices)
+    return ParsedMesh(actualRows, actualCols, vertices, hasBicubicColor)
+  }
+
+  private fun getMeshLambdaBody(callExpr: KtCallExpression): KtBlockExpression? {
+    val lambdaArg = callExpr.lambdaArguments.firstOrNull() ?: (callExpr.valueArguments.lastOrNull() as? KtLambdaArgument)
+    return lambdaArg?.getLambdaExpression()?.bodyExpression
   }
 
   private fun findArgumentExpression(callExpr: KtCallExpression, name: String, index: Int): KtExpression? {
@@ -96,6 +152,7 @@ class MeshGradientPsiManager(private val project: Project) {
     val args = callExpr.valueArguments
     if (index < args.size) {
       val arg = args[index]
+      if (arg is KtLambdaArgument) return null
       if (arg.getArgumentName() == null) {
         return arg.getArgumentExpression()
       }
@@ -112,16 +169,23 @@ class MeshGradientPsiManager(private val project: Project) {
       val args = call.valueArguments
       if (args.size < 4) continue
 
-      val row = args[0].getArgumentExpression()?.text?.toIntOrNull() ?: continue
-      val col = args[1].getArgumentExpression()?.text?.toIntOrNull() ?: continue
+      val rowExpr = findArgumentExpression(call, ARG_ROW, 0) ?: continue
+      val colExpr = findArgumentExpression(call, ARG_COLUMN, 1) ?: continue
+      val row = resolveExpression(rowExpr).text.toIntOrNull() ?: continue
+      val col = resolveExpression(colExpr).text.toIntOrNull() ?: continue
 
-      val offsetExpr = args[2].getArgumentExpression() ?: continue
+      val offsetExpr = findArgumentExpression(call, ARG_POSITION, 2) ?: continue
       val offset = parseOffset(offsetExpr) ?: continue
 
-      val colorExpr = args[3].getArgumentExpression() ?: continue
+      val colorExpr = findArgumentExpression(call, ARG_COLOR, 3) ?: continue
       val color = parseColor(colorExpr) ?: continue
 
-      vertices.add(ParsedVertex(row, col, offset, color))
+      val leftCp = findArgumentExpression(call, ARG_LEFT_CONTROL_POINT, 4)?.let { parseOffset(it) } ?: Offset.Unspecified
+      val topCp = findArgumentExpression(call, ARG_TOP_CONTROL_POINT, 5)?.let { parseOffset(it) } ?: Offset.Unspecified
+      val rightCp = findArgumentExpression(call, ARG_RIGHT_CONTROL_POINT, 6)?.let { parseOffset(it) } ?: Offset.Unspecified
+      val bottomCp = findArgumentExpression(call, ARG_BOTTOM_CONTROL_POINT, 7)?.let { parseOffset(it) } ?: Offset.Unspecified
+
+      vertices.add(ParsedVertex(row, col, offset, color, leftCp, topCp, rightCp, bottomCp))
     }
     return vertices
   }
@@ -158,7 +222,8 @@ class MeshGradientPsiManager(private val project: Project) {
 
       if (args.size == 1) {
         val argExpr = args[0].getArgumentExpression() ?: return null
-        val text = argExpr.text.removeSuffix(".toInt()").removeSuffix(".toLong()")
+        val resolvedArg = resolveExpression(argExpr)
+        val text = resolvedArg.text.removeSuffix(".toInt()").removeSuffix(".toLong()")
         val longValue = parseLong(text) ?: return null
         return Color(longValue)
       } else if (args.size >= 3) {
@@ -187,16 +252,19 @@ class MeshGradientPsiManager(private val project: Project) {
   }
 
   private fun parseLong(text: String): Long? {
-    return if (text.startsWith("0x") || text.startsWith("0X")) {
-      text.substring(2).toLongOrNull(16)
+    val clean = text.replace("_", "").trimEnd('L', 'l', 'U', 'u')
+    return if (clean.startsWith("0x") || clean.startsWith("0X")) {
+      clean.substring(2).toLongOrNull(16)
     } else {
-      text.toLongOrNull()
+      clean.toLongOrNull()
     }
   }
 
   private fun parseColorComponent(expr: KtExpression): Float? {
-    val text = expr.text.removeSuffix("f").removeSuffix("F")
-    if (text.contains(".") || expr.text.endsWith("f") || expr.text.endsWith("F")) {
+    val resolved = resolveExpression(expr)
+    val rawText = resolved.text
+    val text = rawText.removeSuffix("f").removeSuffix("F")
+    if (text.contains(".") || rawText.endsWith("f") || rawText.endsWith("F")) {
       // Float: 0f .. 1f
       return text.toFloatOrNull()?.coerceIn(0f, 1f)
     } else {
@@ -231,14 +299,9 @@ class MeshGradientPsiManager(private val project: Project) {
    * dialog uses regenerateLambdaBody to rewrite the entire block cleanly.
    */
   internal fun updateVertexColor(painterCall: KtCallExpression, row: Int, col: Int, newColor: Color): Boolean {
-    val lambda = painterCall.valueArguments.lastOrNull() as? KtLambdaArgument ?: return false
-    val body = lambda.getLambdaExpression()?.bodyExpression ?: return false
+    val body = getMeshLambdaBody(painterCall) ?: return false
     val setVertexCall = findSetVertexCall(body, row, col) ?: return false
-    val args = setVertexCall.valueArguments
-    if (args.size < 4) return false
-
-    val colorArg = args[3]
-    val colorExpr = colorArg.getArgumentExpression() ?: return false
+    val colorExpr = findArgumentExpression(setVertexCall, ARG_COLOR, 3) ?: return false
 
     val psiFactory = KtPsiFactory(project)
     val newColorExpr = psiFactory.createExpression("Color(${newColor.toComposeHexLiteral()})")
@@ -254,14 +317,9 @@ class MeshGradientPsiManager(private val project: Project) {
    * dialog uses regenerateLambdaBody to rewrite the entire block cleanly.
    */
   internal fun updateVertexOffset(painterCall: KtCallExpression, row: Int, col: Int, newOffset: Offset): Boolean {
-    val lambda = painterCall.valueArguments.lastOrNull() as? KtLambdaArgument ?: return false
-    val body = lambda.getLambdaExpression()?.bodyExpression ?: return false
+    val body = getMeshLambdaBody(painterCall) ?: return false
     val setVertexCall = findSetVertexCall(body, row, col) ?: return false
-    val args = setVertexCall.valueArguments
-    if (args.size < 3) return false
-
-    val offsetArg = args[2]
-    val offsetExpr = offsetArg.getArgumentExpression() ?: return false
+    val offsetExpr = findArgumentExpression(setVertexCall, ARG_POSITION, 2) ?: return false
 
     val psiFactory = KtPsiFactory(project)
     val newOffsetExpr = psiFactory.createExpression(String.format(Locale.US, FORMAT_OFFSET, newOffset.x, newOffset.y))
@@ -270,8 +328,13 @@ class MeshGradientPsiManager(private val project: Project) {
     return true
   }
 
-  /** Updates the rows and columns constructor arguments of the painter call. */
-  fun updateConstructorArguments(painterCall: KtCallExpression, newRows: Int, newCols: Int): Boolean {
+  /** Updates the rows, columns, and optional hasBicubicColor constructor arguments of the painter call. */
+  fun updateConstructorArguments(
+    painterCall: KtCallExpression,
+    newRows: Int,
+    newCols: Int,
+    hasBicubicColor: Boolean? = null,
+  ): Boolean {
     val rowsExpr = findArgumentExpression(painterCall, ARG_ROWS, 0) ?: return false
     val colsExpr = findArgumentExpression(painterCall, ARG_COLUMNS, 1) ?: return false
 
@@ -281,13 +344,21 @@ class MeshGradientPsiManager(private val project: Project) {
 
     rowsExpr.replace(newRowsExpr)
     colsExpr.replace(newColsExpr)
+
+    if (hasBicubicColor != null) {
+      val bicubicExpr = findArgumentExpression(painterCall, ARG_HAS_BICUBIC_COLOR, 2)
+      if (bicubicExpr != null) {
+        bicubicExpr.replace(psiFactory.createExpression(hasBicubicColor.toString()))
+      } else if (hasBicubicColor) {
+        painterCall.valueArgumentList?.addArgument(psiFactory.createArgument("$ARG_HAS_BICUBIC_COLOR = true"))
+      }
+    }
     return true
   }
 
   /** Completely clears and regenerates all setVertex statements inside the lambda body block. */
   fun regenerateLambdaBody(painterCall: KtCallExpression, meshPoints: List<List<MeshGradientPoint>>): Boolean {
-    val lambda = painterCall.valueArguments.lastOrNull() as? KtLambdaArgument ?: return false
-    val body = lambda.getLambdaExpression()?.bodyExpression ?: return false
+    val body = getMeshLambdaBody(painterCall) ?: return false
 
     // Delete all existing statements inside lambda body
     body.statements.forEach { it.delete() }
@@ -296,16 +367,7 @@ class MeshGradientPsiManager(private val project: Project) {
 
     meshPoints.forEachIndexed { r, row ->
       row.forEachIndexed { c, point ->
-        val statementStr =
-          String.format(
-            Locale.US,
-            "setVertex(%d, %d, Offset(%.4ff, %.4ff), Color(%s))",
-            r,
-            c,
-            point.position.x,
-            point.position.y,
-            point.color.toComposeHexLiteral(),
-          )
+        val statementStr = formatSetVertexCall(r, c, point)
         val statementExpr = psiFactory.createExpression(statementStr)
         body.add(statementExpr)
         body.add(psiFactory.createNewLine())
@@ -320,10 +382,10 @@ class MeshGradientPsiManager(private val project: Project) {
       .filter(KtCallExpression::class.java)
       .filter { it.calleeExpression?.text == FUN_SET_VERTEX }
       .firstOrNull { call ->
-        val args = call.valueArguments
-        if (args.size < 2) return@firstOrNull false
-        val r = args[0].getArgumentExpression()?.text?.toIntOrNull()
-        val c = args[1].getArgumentExpression()?.text?.toIntOrNull()
+        val rExpr = findArgumentExpression(call, ARG_ROW, 0) ?: return@firstOrNull false
+        val cExpr = findArgumentExpression(call, ARG_COLUMN, 1) ?: return@firstOrNull false
+        val r = resolveExpression(rExpr).text.toIntOrNull()
+        val c = resolveExpression(cExpr).text.toIntOrNull()
         r == row && c == col
       }
   }
@@ -429,7 +491,7 @@ class MeshGradientPsiManager(private val project: Project) {
     while (current != null) {
       if (current is KtBlockExpression) {
         val properties = PsiTreeUtil.getChildrenOfType(current, KtProperty::class.java)
-        val property = properties?.firstOrNull { it.name == targetName }
+        val property = properties?.lastOrNull { it.name == targetName && it.textRange.endOffset <= nameExpr.textOffset }
         if (property != null) {
           return property.initializer
         }
