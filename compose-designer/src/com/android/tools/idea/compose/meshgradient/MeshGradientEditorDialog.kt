@@ -44,7 +44,12 @@ class MeshGradientEditorDialog(private val project: Project, private val file: K
   init {
     title = "Mesh Gradient Editor"
 
-    runReadActionBlocking { parsedMesh = psiManager.parseMesh(painterCall) }
+    var contextColors = emptyList<Color>()
+    runReadActionBlocking {
+      parsedMesh = psiManager.parseMesh(painterCall)
+      contextColors = psiManager.collectAvailableColors(painterCall)
+    }
+    state.addAvailableColors(contextColors)
 
     parsedMesh?.let { parsed ->
       val grid =

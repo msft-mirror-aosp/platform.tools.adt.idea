@@ -721,7 +721,8 @@ class MeshGradientPsiManager(private val project: Project) {
       }
       current = current.parent
     }
-    return null
+    val file = nameExpr.containingFile as? KtFile ?: return null
+    return resolveImportedOrSamePackageProperty(project, file, targetName)?.initializer
   }
 
   private fun resolveArrayAccess(arrayAccess: KtArrayAccessExpression, onDynamic: (() -> Unit)? = null): KtExpression? {
@@ -746,5 +747,31 @@ class MeshGradientPsiManager(private val project: Project) {
       }
     }
     return null
+  }
+
+  /**
+   * Collects all resolvable [Color] declarations in scope at [callExpr], including local variables in enclosing blocks, top-level
+   * properties in the current file, and top-level properties imported from the module.
+   */
+  fun collectAvailableColors(callExpr: KtCallExpression): List<Color> {
+    val properties = mutableListOf<KtProperty>()
+    var current: PsiElement? = callExpr
+    while (current != null) {
+      if (current is KtBlockExpression) {
+        val blockProps = PsiTreeUtil.getChildrenOfType(current, KtProperty::class.java).orEmpty()
+        properties.addAll(blockProps.filter { it.textRange.endOffset <= callExpr.textOffset })
+      } else if (current is KtClassBody || current is KtFile) {
+        val declarations = (current as? KtClassBody)?.declarations ?: (current as? KtFile)?.declarations
+        properties.addAll(declarations.orEmpty().filterIsInstance<KtProperty>())
+      }
+      current = current.parent
+    }
+
+    val file = callExpr.containingFile as? KtFile
+    if (file != null) {
+      properties.addAll(findImportedAndSamePackageProperties(project, file))
+    }
+
+    return properties.mapNotNull { prop -> prop.initializer?.let { parseColor(it) } }.distinct()
   }
 }

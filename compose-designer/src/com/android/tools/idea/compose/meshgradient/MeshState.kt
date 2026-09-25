@@ -62,6 +62,14 @@ class MeshGeneratorState {
     generateMeshPoints()
   }
 
+  fun addAvailableColors(colors: Iterable<Color>) {
+    colors.forEach { color ->
+      if (color !in availableColors) {
+        availableColors.add(color)
+      }
+    }
+  }
+
   fun updateRows(value: Int) {
     rows = value.coerceIn(2, 10)
     generateMeshPoints()

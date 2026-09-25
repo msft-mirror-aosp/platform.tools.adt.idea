@@ -20,9 +20,12 @@ import androidx.compose.ui.graphics.Color
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.VfsTestUtil
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -855,5 +858,132 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
     assertTrue("Should contain updated rows", updatedText.contains("2"))
     assertTrue("Should contain updated columns", updatedText.contains("3"))
     assertTrue("Should append hasBicubicColor = true", updatedText.contains("hasBicubicColor = true"))
+  }
+
+  @Test
+  fun testCollectAndResolveLocalAndImportedModuleColors() {
+    VfsTestUtil.createFile(
+      getSourceRoot(),
+      "ui/theme/ThemeColors.kt",
+      """
+      package test.ui.theme
+
+      import androidx.compose.ui.graphics.Color
+
+      val Purple80 = Color(0xFFD0BCFF)
+      val PurpleGrey80 = Color(0xFFCCC2DC)
+      val Pink80 = Color(0xFFEFB8C8)
+      private val ThemePrivateRed = Color(0xFFFF0000)
+      """
+        .trimIndent(),
+    )
+
+    VfsTestUtil.createFile(
+      getSourceRoot(),
+      "ui/palette/StarColors.kt",
+      """
+      package test.ui.palette
+
+      import androidx.compose.ui.graphics.Color
+
+      val StarAmber = Color(0xFFFFC107)
+      val UnusedStarCyan = Color(0xFF00E5FF)
+      private val StarPrivateBlue = Color(0xFF0000FF)
+      """
+        .trimIndent(),
+    )
+
+    VfsTestUtil.createFile(
+      getSourceRoot(),
+      "SamePkgColors.kt",
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Color
+
+      val SamePkgCoral = Color(0xFFFF5A5A)
+      private val SamePkgPrivateGreen = Color(0xFF00FF00)
+      """
+        .trimIndent(),
+    )
+
+    val mainVFile =
+      VfsTestUtil.createFile(
+        getSourceRoot(),
+        "MyScreen.kt",
+        """
+        package test
+
+        import androidx.compose.ui.geometry.Offset
+        import androidx.compose.ui.graphics.Color
+        import test.ui.theme.Purple80
+        import test.ui.theme.Pink80 as BrandPink
+        import test.ui.palette.*
+
+        val FileLevelMint = Color(0xFF00E676)
+        private val FileLevelPrivateTeal = Color(0xFF008080)
+
+        fun MyMesh() {
+            val localUnusedGold = Color(0xFFFFD700)
+            val gradientPainter = remember {
+                val blockLocalPrior = Color(0xFFABCDEF)
+                MeshGradientPainter(rows = 1, columns = 1) {
+                    setVertex(0, 0, Offset(0f, 0f), Purple80)
+                    setVertex(0, 1, Offset(1f, 0f), BrandPink)
+                    setVertex(1, 0, Offset(0f, 1f), StarAmber)
+                    setVertex(1, 1, Offset(1f, 1f), SamePkgCoral)
+                }
+            }
+            val forwardLocalIgnored = Color(0xFF123456)
+        }
+        """
+          .trimIndent(),
+      )
+
+    val psiManager = MeshGradientPsiManager(project)
+
+    runReadActionBlocking {
+      val mainFile = this.psiManager.findFile(mainVFile) as KtFile
+      val call = psiManager.findMeshPainterCall(mainFile)
+      assertNotNull("Should find MeshGradientPainter call", call)
+
+      val parsedMesh = psiManager.parseMesh(call!!)
+      assertNotNull("Should parse mesh with imported colors", parsedMesh)
+      assertEquals(4, parsedMesh!!.vertices.size)
+
+      val v00 = parsedMesh.vertices.first { it.row == 0 && it.col == 0 }
+      assertEquals(Color(0xFFD0BCFF), v00.color)
+
+      val v01 = parsedMesh.vertices.first { it.row == 0 && it.col == 1 }
+      assertEquals(Color(0xFFEFB8C8), v01.color)
+
+      val v10 = parsedMesh.vertices.first { it.row == 1 && it.col == 0 }
+      assertEquals(Color(0xFFFFC107), v10.color)
+
+      val v11 = parsedMesh.vertices.first { it.row == 1 && it.col == 1 }
+      assertEquals(Color(0xFFFF5A5A), v11.color)
+
+      val availableColors = psiManager.collectAvailableColors(call)
+      assertTrue("Should include localUnusedGold", Color(0xFFFFD700) in availableColors)
+      assertTrue("Should include blockLocalPrior", Color(0xFFABCDEF) in availableColors)
+      assertTrue("Should include FileLevelMint", Color(0xFF00E676) in availableColors)
+      assertTrue("Should include FileLevelPrivateTeal from current file", Color(0xFF008080) in availableColors)
+      assertTrue("Should include explicitly imported Purple80", Color(0xFFD0BCFF) in availableColors)
+      assertTrue("Should include aliased import BrandPink", Color(0xFFEFB8C8) in availableColors)
+      assertTrue("Should include star-imported StarAmber", Color(0xFFFFC107) in availableColors)
+      assertTrue("Should include star-imported UnusedStarCyan", Color(0xFF00E5FF) in availableColors)
+      assertTrue("Should include same-package SamePkgCoral", Color(0xFFFF5A5A) in availableColors)
+      assertTrue("Should not include unimported PurpleGrey80", Color(0xFFCCC2DC) !in availableColors)
+      assertTrue("Should not include forward declaration forwardLocalIgnored", Color(0xFF123456) !in availableColors)
+      assertTrue("Should not include cross-file private SamePkgPrivateGreen", Color(0xFF00FF00) !in availableColors)
+      assertTrue("Should not include cross-file private StarPrivateBlue", Color(0xFF0000FF) !in availableColors)
+      assertTrue("Should not include cross-file private ThemePrivateRed", Color(0xFFFF0000) !in availableColors)
+
+      val resolvePrivateCrossFile = resolveImportedOrSamePackageProperty(project, mainFile, "SamePkgPrivateGreen")
+      assertNull("Cross-file same-package private property should not be resolved", resolvePrivateCrossFile)
+
+      val resolveStarPrivateCrossFile = resolveImportedOrSamePackageProperty(project, mainFile, "StarPrivateBlue")
+      assertNull("Cross-file star-imported private property should not be resolved", resolveStarPrivateCrossFile)
+    }
   }
 }

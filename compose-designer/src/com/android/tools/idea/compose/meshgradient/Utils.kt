@@ -16,18 +16,26 @@
 package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.graphics.Color
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.parentOfType
 import java.math.RoundingMode
 import java.util.Locale
 import kotlin.math.roundToInt
+import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
+import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelPropertyFqnNameIndex
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.psiUtil.isPrivate
 
 fun formatFloat(number: Float): String {
   return number.toBigDecimal().setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
@@ -86,4 +94,78 @@ fun KtCallExpression.isValidMeshGradientCall(expectedFqn: String = "androidx.com
       else -> null
     }
   return resolvedFqn == expectedFqn
+}
+
+private fun getModuleSearchScope(project: Project, file: KtFile): GlobalSearchScope {
+  val module = ModuleUtilCore.findModuleForPsiElement(file)
+  return module?.moduleContentScope ?: GlobalSearchScope.projectScope(project)
+}
+
+internal fun findImportedAndSamePackageProperties(project: Project, file: KtFile): List<KtProperty> {
+  if (DumbService.isDumb(project)) return emptyList()
+  val scope = getModuleSearchScope(project, file)
+  val result = mutableListOf<KtProperty>()
+
+  val currentPkg = file.packageFqName.asString()
+  for (pkgFile in KotlinExactPackagesIndex.get(currentPkg, project, scope)) {
+    if (pkgFile == file) continue
+    result.addAll(pkgFile.declarations.filterIsInstance<KtProperty>().filter { !it.isPrivate() })
+  }
+
+  for (directive in file.importDirectives) {
+    val importedFqName = directive.importedFqName?.asString() ?: continue
+
+    if (directive.isAllUnder) {
+      for (pkgFile in KotlinExactPackagesIndex.get(importedFqName, project, scope)) {
+        if (pkgFile == file) continue
+        result.addAll(pkgFile.declarations.filterIsInstance<KtProperty>().filter { !it.isPrivate() })
+      }
+    } else {
+      result.addAll(KotlinTopLevelPropertyFqnNameIndex.get(importedFqName, project, scope).filter { !it.isPrivate() })
+    }
+  }
+
+  return result
+}
+
+internal fun resolveImportedOrSamePackageProperty(project: Project, file: KtFile, targetName: String): KtProperty? {
+  if (DumbService.isDumb(project)) return null
+  val scope = getModuleSearchScope(project, file)
+
+  // 1. Explicit import (including import alias)
+  val explicitImport =
+    file.importDirectives.firstOrNull {
+      !it.isAllUnder && (it.aliasName == targetName || (it.aliasName == null && it.importedName?.asString() == targetName))
+    }
+  if (explicitImport != null) {
+    val fqn = explicitImport.importedFqName?.asString() ?: return null
+    KotlinTopLevelPropertyFqnNameIndex.get(fqn, project, scope)
+      .firstOrNull { !it.isPrivate() }
+      ?.let {
+        return it
+      }
+  }
+
+  // 2. Same-package files in the module
+  val currentPkg = file.packageFqName.asString()
+  val candidateFqn = if (currentPkg.isEmpty()) targetName else "$currentPkg.$targetName"
+  KotlinTopLevelPropertyFqnNameIndex.get(candidateFqn, project, scope)
+    .firstOrNull { it.containingKtFile != file && !it.isPrivate() }
+    ?.let {
+      return it
+    }
+
+  // 3. Star-imported packages in the module
+  for (directive in file.importDirectives) {
+    if (!directive.isAllUnder) continue
+    val pkgFqn = directive.importedFqName?.asString() ?: continue
+    val starCandidateFqn = if (pkgFqn.isEmpty()) targetName else "$pkgFqn.$targetName"
+    KotlinTopLevelPropertyFqnNameIndex.get(starCandidateFqn, project, scope)
+      .firstOrNull { !it.isPrivate() }
+      ?.let {
+        return it
+      }
+  }
+
+  return null
 }

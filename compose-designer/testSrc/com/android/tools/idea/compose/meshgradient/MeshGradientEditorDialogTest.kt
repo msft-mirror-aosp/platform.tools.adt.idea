@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.VfsTestUtil
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -213,5 +215,63 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
     val v00 = reparsed!!.vertices.first { it.row == 0 && it.col == 0 }
     assertEquals(Color(0xFF00BCD4), v00.color)
     assertEquals(Offset(0.25f, 0.1f), v00.rightBezierOffset)
+  }
+
+  @Test
+  fun testDialogLoadsLocalAndImportedColorsIntoPalette() {
+    VfsTestUtil.createFile(
+      getSourceRoot(),
+      "ui/theme/Color.kt",
+      """
+      package test.ui.theme
+
+      import androidx.compose.ui.graphics.Color
+
+      val ThemePrimary = Color(0xFF6200EE)
+      val ThemeSecondary = Color(0xFF03DAC5)
+      """
+        .trimIndent(),
+    )
+
+    val mainVFile =
+      VfsTestUtil.createFile(
+        getSourceRoot(),
+        "MainScreen.kt",
+        """
+        package test
+
+        import androidx.compose.ui.geometry.Offset
+        import androidx.compose.ui.graphics.Color
+        import test.ui.theme.*
+
+        val FileAccent = Color(0xFFFF4081)
+
+        fun MyMesh() {
+            val localCustom = Color(0xFFAA00FF)
+            val gradientPainter = remember {
+                MeshGradientPainter(rows = 1, columns = 1) {
+                    setVertex(0, 0, Offset(0f, 0f), Color.Red)
+                    setVertex(0, 1, Offset(1f, 0f), Color.Blue)
+                    setVertex(1, 0, Offset(0f, 1f), Color.Green)
+                    setVertex(1, 1, Offset(1f, 1f), Color.Yellow)
+                }
+            }
+        }
+        """
+          .trimIndent(),
+      )
+
+    val psiManager = MeshGradientPsiManager(project)
+    val mainFile = runReadActionBlocking { this.psiManager.findFile(mainVFile) as KtFile }
+    val call = runReadActionBlocking { psiManager.findMeshPainterCall(mainFile) }
+    assertNotNull(call)
+
+    val dialog = MeshGradientEditorDialog(project, mainFile, call!!)
+    assertTrue("Should include localCustom in palette", Color(0xFFAA00FF) in dialog.state.availableColors)
+    assertTrue("Should include FileAccent in palette", Color(0xFFFF4081) in dialog.state.availableColors)
+    assertTrue("Should include star-imported ThemePrimary in palette", Color(0xFF6200EE) in dialog.state.availableColors)
+    assertTrue("Should include star-imported ThemeSecondary in palette", Color(0xFF03DAC5) in dialog.state.availableColors)
+
+    dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
   }
 }
