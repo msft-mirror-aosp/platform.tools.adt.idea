@@ -59,6 +59,67 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
       .trimIndent()
 
   @Test
+  fun testDialogPreservesUnmodifiedVariableAndAnimatedExpressions() {
+    val animatedCode =
+      """
+      package test
+
+      import androidx.compose.animation.core.animateFloat
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      fun MyAnimatedMesh() {
+          val infiniteTransition = rememberInfiniteTransition()
+          val animatedOffset by infiniteTransition.animateFloat(initialValue = -0.1f, targetValue = 0.1f)
+          val indigo = Color(0xFF5856D6)
+          val coral = Color(255, 90, 90)
+          val points = remember { listOf(Offset(0.0f, 0.0f), Offset(1.0f, 0.0f)) }
+
+          val gradientPainter = remember {
+              MeshGradientPainter(rows = 1, columns = 1) {
+                  setVertex(0, 0, points[0], indigo)
+                  setVertex(0, 1, points[1], indigo)
+                  setVertex(1, 0, Offset(0.0000f, 1.0000f), coral)
+                  setVertex(1, 1, Offset(0.2f, 0.4f) + Offset(animatedOffset, animatedOffset), coral)
+              }
+          }
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestAnimatedDialog.kt", animatedCode)
+    val psiManager = MeshGradientPsiManager(project)
+
+    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    assertNotNull(call)
+
+    val dialog = MeshGradientEditorDialog(project, file, call!!)
+    assertTrue("Should detect dynamic values", dialog.state.hasDynamicOrUnresolvedValues)
+
+    // Modify only (0, 0) position and (0, 1) color; leave (1, 1) untouched
+    dialog.state.constrainEdgePoints = false
+    dialog.state.updateMeshPoint(0, 0, Offset(0.05f, 0.05f))
+    dialog.state.updateVertexColor(0, 1, Color(0xFF00BCD4))
+
+    dialog.doOKAction()
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue(
+      "Updated vertex (0,0) should have new offset literal and preserve indigo variable: $updatedText",
+      updatedText.contains("setVertex(0, 0, Offset(0.0500f, 0.0500f), indigo)"),
+    )
+    assertTrue(
+      "Updated vertex (0,1) should preserve points[1] and have new color literal: $updatedText",
+      updatedText.contains("setVertex(0, 1, points[1], Color(0xFF00BCD4))"),
+    )
+    assertTrue(
+      "Untouched vertex (1,1) should preserve animated offset expression and coral variable: $updatedText",
+      updatedText.contains("setVertex(1, 1, Offset(0.2f, 0.4f) + Offset(animatedOffset, animatedOffset), coral)"),
+    )
+  }
+
+  @Test
   fun testDialogInitialization() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)

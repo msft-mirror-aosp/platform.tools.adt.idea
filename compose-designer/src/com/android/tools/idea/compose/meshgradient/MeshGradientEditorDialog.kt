@@ -60,9 +60,12 @@ class MeshGradientEditorDialog(private val project: Project, private val file: K
               topBezierOffset = vertex?.topBezierOffset ?: Offset.Unspecified,
               rightBezierOffset = vertex?.rightBezierOffset ?: Offset.Unspecified,
               bottomBezierOffset = vertex?.bottomBezierOffset ?: Offset.Unspecified,
+              positionExpression = vertex?.positionExpression,
+              colorExpression = vertex?.colorExpression,
             )
           }
         }
+      state.hasDynamicOrUnresolvedValues = parsed.hasDynamicOrUnresolvedValues
       state.loadMesh(parsed.rows, parsed.cols, grid, parsed.hasBicubicColor)
     }
 

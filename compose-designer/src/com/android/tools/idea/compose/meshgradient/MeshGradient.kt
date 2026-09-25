@@ -107,4 +107,6 @@ data class MeshGradientPoint(
   val topBezierOffset: Offset = Offset.Unspecified,
   val rightBezierOffset: Offset = Offset.Unspecified,
   val bottomBezierOffset: Offset = Offset.Unspecified,
+  val positionExpression: String? = null,
+  val colorExpression: String? = null,
 )

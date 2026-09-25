@@ -113,6 +113,133 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
       .trimIndent()
 
   @Test
+  fun testParseAnimatedMeshAndBinaryExpressions() {
+    val animatedSnippet =
+      """
+      package test
+
+      import androidx.compose.animation.animateColorAsState
+      import androidx.compose.animation.core.animateFloat
+      import androidx.compose.runtime.mutableStateOf
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      fun AnimatedMesh() {
+          val infiniteTransition = rememberInfiniteTransition(label = "meshMovement")
+          val animatedOffset by infiniteTransition.animateFloat(
+              initialValue = -0.1f,
+              targetValue = 0.1f,
+          )
+          val animatedColor by animateColorAsState(targetValue = Color(0xFF112233))
+          val mutableX by remember { mutableStateOf(0.25f) }
+
+          val coral = Color(255, 90, 90)
+          val peach = Color(255, 139, 90)
+          val indigo = Color(0xFF5856D6)
+          val pink = Color(0xFFFF2D55)
+
+          val gradientPainter = remember {
+              MeshGradientPainter(rows = 1, columns = 1) {
+                  setVertex(0, 0, Offset.Zero, indigo, leftControlPoint = Offset.Zero, rightControlPoint = Offset.Unspecified)
+                  setVertex(0, 1, Offset(mutableX * 2f, 0.0f), animatedColor)
+                  setVertex(1, 0, Offset(0.3f, 0.8f) - Offset(animatedOffset, 0f), pink)
+                  setVertex(1, 1, Offset(0.2f, 0.4f) + Offset(animatedOffset, animatedOffset), coral)
+              }
+          }
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("AnimatedTest.kt", animatedSnippet)
+    val psiManager = MeshGradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call = psiManager.findMeshPainterCall(file)
+      assertNotNull("Should find MeshGradientPainter call", call)
+
+      val parsedMesh = psiManager.parseMesh(call!!)
+      assertNotNull("Should parse animated mesh successfully", parsedMesh)
+      assertTrue("Should flag dynamic values", parsedMesh!!.hasDynamicOrUnresolvedValues)
+      assertEquals(4, parsedMesh.vertices.size)
+
+      val v00 = parsedMesh.vertices.first { it.row == 0 && it.col == 0 }
+      assertEquals(Offset.Zero, v00.offset)
+      assertEquals(Color(0xFF5856D6), v00.color)
+      assertEquals(Offset.Zero, v00.leftBezierOffset)
+      assertEquals(Offset.Unspecified, v00.rightBezierOffset)
+
+      val v01 = parsedMesh.vertices.first { it.row == 0 && it.col == 1 }
+      assertEquals(Offset(0.5f, 0.0f), v01.offset)
+      assertEquals(Color(0xFF112233), v01.color)
+
+      val v10 = parsedMesh.vertices.first { it.row == 1 && it.col == 0 }
+      assertEquals(0.4f, v10.offset.x, 0.0001f)
+      assertEquals(0.8f, v10.offset.y, 0.0001f)
+      assertEquals(Color(0xFFFF2D55), v10.color)
+
+      val v11 = parsedMesh.vertices.first { it.row == 1 && it.col == 1 }
+      assertEquals(0.1f, v11.offset.x, 0.0001f)
+      assertEquals(0.3f, v11.offset.y, 0.0001f)
+      assertEquals(Color(255, 90, 90), v11.color)
+      assertEquals("Offset(0.2f, 0.4f) + Offset(animatedOffset, animatedOffset)", v11.positionExpression)
+      assertEquals("coral", v11.colorExpression)
+    }
+  }
+
+  @Test
+  fun testDelegatedShadowingDynamicArrayAccessAndUnspecifiedOffsetGuard() {
+    val snippet =
+      """
+      package test
+
+      import androidx.compose.runtime.mutableFloatStateOf
+      import androidx.compose.runtime.mutableStateOf
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Color
+
+      val shadowedX = 0.9f
+
+      fun DynamicShadowMesh() {
+          val shadowedX = 0.25f
+          val shadowedX by remember { mutableFloatStateOf(shadowedX) }
+          val dynamicPoints by remember { mutableStateOf(listOf(Offset(0.1f, 0.2f), Offset(0.3f, 0.4f))) }
+
+          val gradientPainter = remember {
+              MeshGradientPainter(rows = 1, columns = 1) {
+                  setVertex(0, 0, dynamicPoints[0], Color.Red)
+                  setVertex(0, 1, Offset(shadowedX, 0.5f), Color.Blue)
+                  setVertex(1, 0, Offset.Unspecified, Color.Green)
+                  setVertex(1, 1, Offset.Unspecified + Offset(0.1f, 0.1f), Color.Yellow)
+              }
+          }
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("DynamicShadowTest.kt", snippet)
+    val psiManager = MeshGradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call = psiManager.findMeshPainterCall(file)
+      assertNotNull(call)
+
+      val parsedMesh = psiManager.parseMesh(call!!)
+      assertNotNull(parsedMesh)
+      assertTrue(parsedMesh!!.hasDynamicOrUnresolvedValues)
+      // Vertices (1, 0) and (1, 1) with Offset.Unspecified primary positions are rejected
+      assertEquals(2, parsedMesh.vertices.size)
+
+      val v00 = parsedMesh.vertices.first { it.row == 0 && it.col == 0 }
+      assertEquals(Offset(0.1f, 0.2f), v00.offset)
+
+      val v01 = parsedMesh.vertices.first { it.row == 0 && it.col == 1 }
+      assertEquals(Offset(0.25f, 0.5f), v01.offset)
+    }
+  }
+
+  @Test
   fun testParseMesh() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)

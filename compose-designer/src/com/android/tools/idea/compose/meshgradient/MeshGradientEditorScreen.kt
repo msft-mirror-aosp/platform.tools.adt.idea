@@ -156,6 +156,28 @@ fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEdit
         },
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+      if (isEditingExisting && state.hasDynamicOrUnresolvedValues) {
+        Row(
+          modifier =
+            Modifier.fillMaxWidth()
+              .clip(RoundedCornerShape(6.dp))
+              .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
+              .padding(8.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Icon(
+            key = AllIconsKeys.General.Warning,
+            iconClass = AllIconsKeys::class.java,
+            contentDescription = "Warning",
+            modifier = Modifier.size(16.dp),
+          )
+          Text(
+            "Some vertices use dynamic or unresolved expressions. Initial or default values are shown; editing a vertex will replace its expression."
+          )
+        }
+      }
+
       // 1. Canvas Preview
       Box(modifier = Modifier.fillMaxWidth().height(220.dp).onGloballyPositioned { canvasSize = it.size }) {
         GradientCanvas(
