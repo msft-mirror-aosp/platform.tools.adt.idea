@@ -275,7 +275,7 @@ internal abstract class AbstractDisplayView(
     if (value >= 1) roundDownIfNecessary(value) else roundDownToNaturalNumberOrNearestSmallFraction(value)
 
   /** Returns the rectangle occupied by the display image and the device frame (if visible) in physical pixels. */
-  protected open fun computeContentRectangle(): Rectangle? = projectionRectangle
+  internal open fun computeContentRectangle(): Rectangle? = projectionRectangle
 
   private fun handleDoubleClick(event: MouseEvent) {
     if (!isConnected) {
