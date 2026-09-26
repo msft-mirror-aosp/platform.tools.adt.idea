@@ -108,7 +108,6 @@ iml_module(
     test_class = "com.android.tools.idea.DesignerTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/latest",

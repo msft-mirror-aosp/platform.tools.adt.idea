@@ -114,7 +114,6 @@ iml_module(
     tags = ["noci:studio-win"],
     test_class = "com.android.tools.idea.compose.preview.ComposePreviewTestSuite",
     test_data = [
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/35.0.0",

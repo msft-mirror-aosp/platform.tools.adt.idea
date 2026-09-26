@@ -30,7 +30,6 @@ iml_module(
     ],
     test_class = "com.android.tools.idea.room.AndroidRoomTestSuite",
     test_data = [
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
     ],

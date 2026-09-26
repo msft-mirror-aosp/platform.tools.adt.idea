@@ -388,20 +388,14 @@ local_generate_old_agp_tests_from_list(
             "tags": COMMON_OLD_AGP_TEST_TARGETS_TAGS,
         },
         {
-            "additional_jdks": [
-                "11",
-                "17",
-            ],
+            "additional_jdks": ["17"],
             "agp_version": AGP_9_0,
             "gradle_version": GRADLE_9_1_0,
             "shard_count": 5,
             "tags": COMMON_OLD_AGP_TEST_TARGETS_TAGS,
         },
         {
-            "additional_jdks": [
-                "11",
-                "17",
-            ],
+            "additional_jdks": ["17"],
             "agp_version": AGP_9_1,
             "gradle_version": GRADLE_9_3_1,
             "shard_count": 5,
