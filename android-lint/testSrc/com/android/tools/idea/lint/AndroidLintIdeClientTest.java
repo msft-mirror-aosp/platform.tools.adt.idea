@@ -114,9 +114,10 @@ public class AndroidLintIdeClientTest extends AndroidTestCase {
       getLocalAddOnPackage(
         sdkRoot, "google_apis", "Google APIs", "google", "Google Inc.", 23);
 
-    RepositoryPackages packages = new RepositoryPackages();
-    packages.setLocalPkgInfos(
-      ImmutableList.of(platformPackage, previewPlatform, addOnPlatform));
+    RepositoryPackages packages =
+      new RepositoryPackages(
+        ImmutableList.of(platformPackage, previewPlatform, addOnPlatform),
+        ImmutableList.of());
     RepoManager mgr = new FakeRepoManager(null, packages);
     AndroidSdkHandler sdkHandler = new AndroidSdkHandler(sdkRoot, null, mgr);
     LintClient client = new AndroidLintIdeClient(ideaProject, result) {

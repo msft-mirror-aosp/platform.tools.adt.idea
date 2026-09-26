@@ -48,7 +48,6 @@ import com.intellij.testFramework.EdtRule;
 import com.intellij.testFramework.IndexingTestUtil;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.RunsInEdt;
-import com.intellij.util.ui.UIUtil;
 import java.nio.file.Path;
 import java.util.Collections;
 import org.junit.After;
@@ -65,7 +64,7 @@ public class SdkQuickfixUtilsTest {
   @Rule
   public RuleChain ruleChain = RuleChain.outerRule(androidProjectRule).around(new EdtRule()).around(new HeadlessDialogRule());
 
-  RepoManager myRepoManager;
+  FakeRepoManager myRepoManager;
   AndroidSdkHandler mySdkHandler;
   RepositoryPackages myPackages;
 
@@ -156,7 +155,7 @@ public class SdkQuickfixUtilsTest {
 
   @Test
   public void testCheckPathIsAvailableForDownload() {
-    myPackages.setLocalPkgInfos(ImmutableList.of());
+    myRepoManager.setLocalPackages(ImmutableList.of());
     myPackages.setRemotePkgInfos(ImmutableList.of());
     myRepoManager.markInvalid();
 
@@ -165,7 +164,7 @@ public class SdkQuickfixUtilsTest {
     assertThat(SdkQuickfixUtils.checkPathIsAvailableForDownload("some;localandremote;package")).isFalse();
     assertThat(SdkQuickfixUtils.checkPathIsAvailableForDownload("some;missing;package")).isFalse();
 
-    myPackages.setLocalPkgInfos(ImmutableList.of(
+    myRepoManager.setLocalPackages(ImmutableList.of(
       new FakePackage.FakeLocalPackage("some;localonly;package"),
       new FakePackage.FakeLocalPackage("some;localandremote;package")
     ));

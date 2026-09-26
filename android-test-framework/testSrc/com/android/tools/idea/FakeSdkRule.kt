@@ -19,6 +19,7 @@ import com.android.repository.api.LocalPackage
 import com.android.repository.api.RemotePackage
 import com.android.repository.impl.meta.RepositoryPackages
 import com.android.repository.testframework.FakePackage
+import com.android.repository.testframework.FakeProgressIndicator
 import com.android.repository.testframework.FakeRepoManager
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
@@ -41,11 +42,13 @@ import org.mockito.kotlin.whenever
 class FakeSdkRule(val projectRule: AndroidProjectRule, val sdkPath: Path = createInMemoryFileSystemAndFolder("sdk")) :
   NamedExternalResource() {
 
-  var packages: RepositoryPackages = RepositoryPackages()
+  lateinit var repoManager: FakeRepoManager
   val localPackages = mutableListOf<LocalPackage>()
   val remotePackages = mutableListOf<RemotePackage>()
 
   fun withLocalPackage(localPackage: LocalPackage) = apply { localPackages.add(localPackage) }
+
+  fun withLocalPackages(packages: Collection<LocalPackage>) = apply { localPackages.addAll(packages) }
 
   fun withLocalPackage(path: String, location: String) = apply {
     localPackages.add(FakePackage.FakeLocalPackage(path, sdkPath.resolve(location)))
@@ -53,13 +56,23 @@ class FakeSdkRule(val projectRule: AndroidProjectRule, val sdkPath: Path = creat
 
   fun withRemotePackage(remotePackage: RemotePackage) = apply { remotePackages.add(remotePackage) }
 
+  /** Reads the packages from [sdkPath] into the [FakeRepoManager]. */
+  fun withExistingPackages() = apply {
+    val existingPackages = AndroidSdkHandler(sdkPath, null).getRepoManagerAndLoadSynchronously(FakeProgressIndicator()).packages
+    localPackages.addAll(existingPackages.localPackages.values)
+    remotePackages.addAll(existingPackages.remotePackages.values)
+  }
+
   fun addLocalPackage(path: String, location: String) {
-    packages.setLocalPkgInfos(packages.localPackages.values.plus(FakePackage.FakeLocalPackage(path, sdkPath.resolve(location))))
+    repoManager.setLocalPackages(repoManager.packages.localPackages.values + FakePackage.FakeLocalPackage(path, sdkPath.resolve(location)))
+  }
+
+  fun setLocalPackages(packages: Collection<LocalPackage>) {
+    repoManager.setLocalPackages(packages)
   }
 
   override fun before(description: Description) {
-    packages = RepositoryPackages(localPackages, remotePackages)
-    val repoManager = FakeRepoManager(sdkPath, packages)
+    repoManager = FakeRepoManager(sdkPath, RepositoryPackages(localPackages, remotePackages))
     val sdkHandler = AndroidSdkHandler(sdkPath, null, repoManager)
 
     val ideSdks = spy(IdeSdks.getInstance())

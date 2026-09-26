@@ -77,7 +77,7 @@ class AddDeviceWizardTest {
   fun addDeviceDefaultPath() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val source = createAddDeviceWizard()
 
@@ -115,7 +115,7 @@ class AddDeviceWizardTest {
     with(SdkFixture()) {
       val api34Ext9Auto =
         createLocalSystemImage("android-automotive", listOf(SystemImageTags.AUTOMOTIVE_TAG), AndroidVersion(34, null, 9, false))
-      repoPackages.setLocalPkgInfos(listOf(api34Ext9Auto))
+      setLocalPackages(api34Ext9Auto)
 
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
@@ -159,7 +159,7 @@ class AddDeviceWizardTest {
       ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, androidSdks, disposableRule.disposable)
 
       val api36Glasses = createLocalSystemImage("ai-glasses", listOf(SystemImageTags.AI_GLASSES_TAG), AndroidVersion(36, null, 9, false))
-      repoPackages.setLocalPkgInfos(listOf(api36Glasses))
+      setLocalPackages(api36Glasses)
 
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
@@ -202,7 +202,7 @@ class AddDeviceWizardTest {
           listOf(SystemImageTags.XR_GLASSES_TAG, SystemImageTags.XR_HEADSET_TAG),
           AndroidVersion(34, null, 9, false),
         )
-      repoPackages.setLocalPkgInfos(listOf(api34XrOst))
+      setLocalPackages(api34XrOst)
 
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
@@ -237,7 +237,7 @@ class AddDeviceWizardTest {
   fun accelerationErrorCode() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val wizard = TestComposeWizard {
         with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
@@ -257,7 +257,7 @@ class AddDeviceWizardTest {
   fun statePreservation() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val phone = deviceManager.getDevice("medium_phone", "Generic")!!
       for (letter in 'A'..'Z') {
@@ -305,7 +305,7 @@ class AddDeviceWizardTest {
   fun noSystemImage() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val wizard = TestComposeWizard {
         with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
@@ -331,7 +331,7 @@ class AddDeviceWizardTest {
   fun noSupportedSystemImage() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_atd", listOf(SystemImageTags.GOOGLE_ATD_TAG), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val source = createAddDeviceWizard()
 
