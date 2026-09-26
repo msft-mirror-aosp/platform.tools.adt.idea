@@ -119,6 +119,35 @@ sh_binary(
     data = [":libimage_converter"],
 )
 
+cc_library(
+    name = "video_decoder_linux",
+    srcs = ["VideoDecoderLinux.cc"],
+    copts = [
+        "-O2",
+        "-std=c++17",
+    ],
+    defines = ["NDEBUG"],
+    linkstatic = True,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = ["//prebuilts/studio/jdk:jni_headers"],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libvideo_decoder.so",
+    linkopts = [
+        "-Wl,--strip-all",
+        "-ldl",
+    ],
+    linkshared = True,
+    stamp = 0,
+    target_compatible_with = ["@platforms//os:linux"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":video_decoder_linux",
+    ],
+)
+
 objc_library(
     name = "video_decoder_mac",
     srcs = ["VideoDecoderMac.mm"],
@@ -183,12 +212,9 @@ cc_binary(
 filegroup(
     name = "libvideo_decoder",
     srcs = select({
+        "@platforms//os:linux": [":libvideo_decoder.so"],
         "@platforms//os:macos": [":libvideo_decoder.dylib"],
         "@platforms//os:windows": [":video_decoder.dll"],
-    }),
-    target_compatible_with = select({
-        "@platforms//os:linux": ["@platforms//:incompatible"],
-        "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],
 )
@@ -207,14 +233,11 @@ sh_binary(
         "-f",
         "$(execpath :libvideo_decoder)",
     ] + select({
+        "@platforms//os:linux": ["prebuilts/tools/linux-x86_64/streaming"],
         ":macos": ["prebuilts/tools/darwin-x86_64/streaming"],
         ":macos_arm": ["prebuilts/tools/darwin-arm64/streaming"],
         "@platforms//os:windows": ["prebuilts/tools/windows-x86_64/streaming"],
         "//conditions:default": [],
     }),
     data = [":libvideo_decoder"],
-    target_compatible_with = select({
-        "@platforms//os:linux": ["@platforms//:incompatible"],
-        "//conditions:default": [],
-    }),
 )

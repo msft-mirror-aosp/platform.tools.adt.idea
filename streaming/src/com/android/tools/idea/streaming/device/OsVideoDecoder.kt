@@ -29,7 +29,7 @@ import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.annotations.VisibleForTesting
 
-/** OS-provided hardware-accelerated video decoder (VideoToolbox on macOS, Media Foundation on Windows). */
+/** OS-provided video decoder (VideoToolbox on macOS, Media Foundation on Windows, system FFmpeg/GStreamer on Linux). */
 internal class OsVideoDecoder(codecName: String) : AutoCloseable {
 
   private var nativeHandle: Long = 0
@@ -96,7 +96,7 @@ internal class OsVideoDecoder(codecName: String) : AutoCloseable {
     }
 
     private fun getCodecType(codecName: String): Int {
-      return if (SystemInfoRt.isMac || SystemInfoRt.isWindows) {
+      return if (SystemInfoRt.isMac || SystemInfoRt.isWindows || SystemInfoRt.isLinux) {
         when (codecName) {
           "av01",
           "av1" -> CODEC_TYPE_AV1
@@ -107,7 +107,7 @@ internal class OsVideoDecoder(codecName: String) : AutoCloseable {
           "hevc",
           "h265" -> CODEC_TYPE_HEVC
 
-          "vp8" -> if (SystemInfoRt.isWindows) CODEC_TYPE_VP8 else 0
+          "vp8" -> if (SystemInfoRt.isWindows || SystemInfoRt.isLinux) CODEC_TYPE_VP8 else 0
           "vp9" -> CODEC_TYPE_VP9
           else -> 0
         }
@@ -155,6 +155,7 @@ internal class OsVideoDecoder(codecName: String) : AutoCloseable {
       if (isRunningFromSources()) {
         val hostSegment =
           when {
+            SystemInfoRt.isLinux -> "linux-x86_64"
             SystemInfoRt.isMac -> if (CpuArch.isArm64()) "darwin-arm64" else "darwin-x86_64"
             SystemInfoRt.isWindows -> "windows-x86_64"
             else -> throw UnsatisfiedLinkError("Unsupported OS")

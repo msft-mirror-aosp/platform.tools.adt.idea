@@ -1328,6 +1328,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testHevcEncoding() {
+    assumeTrue(!SystemInfo.isLinux) // Bundled FFmpeg on Linux lacks a software HEVC encoder for FakeScreenSharingAgent.
     checkEncoding("hevc")
   }
 
