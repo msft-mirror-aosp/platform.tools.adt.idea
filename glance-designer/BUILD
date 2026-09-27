@@ -55,6 +55,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/intellij.android.compose-common",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
     ],
     test_friends = ["//tools/adt/idea/glance-designer:intellij.android.glance-designer"],
     test_srcs = ["testSrc"],

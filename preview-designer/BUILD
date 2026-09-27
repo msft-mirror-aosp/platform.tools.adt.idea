@@ -82,6 +82,7 @@ iml_module(
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
         "//tools/analytics-library/shared:analytics-shared",
         "//tools/adt/idea/designer:intellij.android.designer.tests",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:asm-tools",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",

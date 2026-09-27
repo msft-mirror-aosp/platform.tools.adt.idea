@@ -76,6 +76,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/adt/idea/designer:intellij.android.designer.tests",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
     ],

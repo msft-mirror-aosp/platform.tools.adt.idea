@@ -38,7 +38,7 @@ Structural changes to the layout (adding/removing/reordering components) MUST be
 ### How to run tests
 Use Bazel for the core designer tests:
 ```bash
-bazel test //tools/adt/idea/designer:intellij.android.designer_tests
+bazel test //tools/adt/idea/designer:intellij.android.designer.tests_tests
 ```
 
 ## Related Documentation

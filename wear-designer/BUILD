@@ -60,6 +60,7 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/designer:intellij.android.designer.tests",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/preview-designer:intellij.android.preview-designer.tests",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",

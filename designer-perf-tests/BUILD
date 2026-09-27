@@ -131,6 +131,7 @@ iml_module(
         "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         "//tools/adt/idea/compose-designer:intellij.android.compose-designer.testFramework",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

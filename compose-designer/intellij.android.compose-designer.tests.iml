@@ -89,6 +89,7 @@
       </library>
     </orderEntry>
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.designer.testFramework" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.compose-designer" />
 </module>
