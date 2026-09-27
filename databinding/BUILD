@@ -7,7 +7,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.databinding.iml"],
     resources = ["resources"],
-    test_resources = ["testData"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -83,7 +82,10 @@ iml_module(
         "//tools/adt/idea/databinding/gradle:intellij.android.databinding.gradle",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
     ],
-    test_resources = ["testResources"],
+    test_resources = [
+        "testResources",
+        "testData",
+    ],
     test_srcs = ["testSrc"],
     test_timeout = "long",
     visibility = ["//visibility:public"],
