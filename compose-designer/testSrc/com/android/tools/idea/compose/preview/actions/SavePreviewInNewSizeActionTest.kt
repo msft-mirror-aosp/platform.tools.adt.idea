@@ -98,6 +98,7 @@ class SavePreviewInNewSizeActionTest {
   fun setup() {
     `when`(designSurface.sceneManagers).thenReturn(listOf(sceneManager))
     `when`(sceneManager.model).thenReturn(model)
+    `when`(resizePanel.commitPendingEdits()).thenReturn(true)
     modeManager = CommonPreviewModeManager()
   }
 
@@ -444,6 +445,42 @@ class SavePreviewInNewSizeActionTest {
       )
     `when`(model.configuration).thenReturn(configuration)
     return SavePreviewInNewSizeAction()
+  }
+
+  @Test
+  fun `actionPerformed commits pending dimension edits and does not save invalid ones`() = runTest {
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Preview(name = "MyPreview")
+        @Composable
+        fun MyComposable() {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val previewElement = AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTest.virtualFile).first()
+    modeManager.setMode(PreviewMode.Focus(previewElement))
+    `when`(resizePanel.hasBeenResized).thenReturn(true)
+    `when`(model.dataProvider)
+      .thenReturn(
+        object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+          override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+        }
+      )
+    `when`(model.configuration).thenReturn(createConfiguration(500, 600))
+    `when`(resizePanel.commitPendingEdits()).thenReturn(false)
+
+    SavePreviewInNewSizeAction().actionPerformed(TestActionEvent.createTestEvent(getDataContext()))
+
+    Mockito.verify(resizePanel).commitPendingEdits()
+    assertThat(AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTest.virtualFile)).hasSize(1)
   }
 
   @Test

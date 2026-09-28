@@ -326,6 +326,16 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     }
   }
 
+  /**
+   * Applies values typed into the width/height fields that have not been committed yet. Edits are normally committed on Enter or when the
+   * field loses focus, which doesn't happen when e.g. a toolbar button is clicked.
+   *
+   * Must be called on the UI thread.
+   *
+   * @return false if the typed values are invalid.
+   */
+  fun commitPendingEdits(): Boolean = dimensionInputsAction.commitDimensionChanges()
+
   override fun dispose() {
     clear()
   }
@@ -505,13 +515,18 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
         heightTextField.getClientProperty(OUTLINE_PROPERTY) == ERROR_VALUE
     }
 
-    /** Validates the dimension fields and, if they are both valid, updates the [Configuration]. */
-    private fun commitDimensionChanges() {
+    /**
+     * Validates the dimension fields and, if they are both valid, updates the [Configuration].
+     *
+     * @return true if both fields are valid.
+     */
+    fun commitDimensionChanges(): Boolean {
       val widthIsValid = validate(widthTextField)
       val heightIsValid = validate(heightTextField)
       if (widthIsValid && heightIsValid) {
         updateConfigurationFromTextFields()
       }
+      return widthIsValid && heightIsValid
     }
 
     private fun validate(field: IntegerField): Boolean {

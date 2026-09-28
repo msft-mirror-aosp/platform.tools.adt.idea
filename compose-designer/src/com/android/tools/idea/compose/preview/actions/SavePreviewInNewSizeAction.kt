@@ -88,6 +88,8 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
     val project = e.project ?: return
     val sceneManager = e.getSceneManagerInFocusMode() ?: return
     val previewElement = sceneManager.model.dataProvider?.previewElement() ?: return
+    // Apply dimensions that were typed but not yet committed, so that the saved preview matches what the user sees.
+    if (e.dataContext.getData(RESIZE_PANEL_INSTANCE_KEY)?.commitPendingEdits() == false) return
 
     val configuration = sceneManager.model.configuration
     val previewMethod = previewElement.previewBody?.element?.parent as? KtFunction ?: return

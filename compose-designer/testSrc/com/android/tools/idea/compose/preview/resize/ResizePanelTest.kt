@@ -603,6 +603,25 @@ class ResizePanelTest {
   }
 
   @Test
+  fun `commitPendingEdits applies typed dimensions`() = runInEdtAndGet {
+    setupAndShowPanel()
+    val originalWidth = configuration.deviceSizeDp().width
+    val newWidth = if (originalWidth == 321) 322 else 321
+
+    // Type a value without pressing Enter or moving the focus away.
+    widthTextField.text = newWidth.toString()
+    assertEquals(originalWidth, configuration.deviceSizeDp().width)
+
+    assertTrue(resizePanel.commitPendingEdits())
+    assertEquals(newWidth, configuration.deviceSizeDp().width)
+
+    // Invalid values are not applied.
+    widthTextField.text = ""
+    assertFalse(resizePanel.commitPendingEdits())
+    assertEquals(newWidth, configuration.deviceSizeDp().width)
+  }
+
+  @Test
   fun `automotive ultrawide width is correctly set`() = runInEdtAndGet {
     setupAndShowPanel()
 
