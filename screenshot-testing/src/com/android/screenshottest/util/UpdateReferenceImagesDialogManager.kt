@@ -68,6 +68,7 @@ class UpdateReferenceImagesDialogManager(private val project: Project) : Disposa
     return newDialog
   }
 
+  @Synchronized
   override fun dispose() {
     activeDialog = null
   }
