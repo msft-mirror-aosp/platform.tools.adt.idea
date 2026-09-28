@@ -129,7 +129,9 @@ internal class ModuleClassLoaderImpl(
   private val loader: DelegatingClassLoader.Loader
   private val parentLoader = parentClassLoader?.let { ClassLoaderLoader(it) }
 
-  private val onClassRewrite = { fqcn: String, timeMs: Long, size: Int -> diagnostics.classRewritten(fqcn, size, timeMs) }
+  private val onClassRewrite = { fqcn: String, timeNs: Long, size: Int ->
+    diagnostics.classRewritten(fqcn, size, timeNs)
+  }
 
   private val _projectLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
   private val _nonProjectLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())

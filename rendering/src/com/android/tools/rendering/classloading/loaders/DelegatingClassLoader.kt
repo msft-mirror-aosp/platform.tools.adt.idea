@@ -59,21 +59,21 @@ open class DelegatingClassLoader(parent: ClassLoader?, private val loader: Loade
   @Throws(ClassNotFoundException::class)
   final override fun loadClass(name: String): Class<*> {
     onBeforeLoadClass(name)
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime()
     var loaded = false
     try {
       val clazz = super.loadClass(renamedClasses[name] ?: name)
       loaded = true
       return clazz
     } finally {
-      onAfterLoadClass(name, loaded, System.currentTimeMillis() - start)
+      onAfterLoadClass(name, loaded, System.nanoTime() - start)
     }
   }
 
   @Throws(ClassNotFoundException::class)
   final override fun findClass(name: String): Class<*> {
     onBeforeFindClass(name)
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime()
     var found = false
     try {
       val bytes = loadClassBytes(name)
@@ -100,11 +100,11 @@ open class DelegatingClassLoader(parent: ClassLoader?, private val loader: Loade
         }
       }
 
-      val clazz = defineClass(ClassReader(bytes).className.replace('/', '.'), bytes, 0, bytes.size)
+      val clazz = defineClass(redefinedName, bytes, 0, bytes.size)
       found = true
       return clazz
     } finally {
-      onAfterFindClass(name, found, System.currentTimeMillis() - start)
+      onAfterFindClass(name, found, System.nanoTime() - start)
     }
   }
 
@@ -116,9 +116,9 @@ open class DelegatingClassLoader(parent: ClassLoader?, private val loader: Loade
    *
    * @param fqcn the Fully Qualified Name of the class.
    * @param loaded true if the class was loaded or false otherwise.
-   * @param durationMs time in milliseconds that the load took.
+   * @param durationNs time in nanoseconds that the load took.
    */
-  protected open fun onAfterLoadClass(fqcn: String, loaded: Boolean, durationMs: Long) {}
+  protected open fun onAfterLoadClass(fqcn: String, loaded: Boolean, durationNs: Long) {}
 
   /** Called when [ClassLoader.findClass] starts. */
   protected open fun onBeforeFindClass(fqcn: String) {}
@@ -128,7 +128,7 @@ open class DelegatingClassLoader(parent: ClassLoader?, private val loader: Loade
    *
    * @param fqcn the Fully Qualified Name of the class.
    * @param found true if the class was found or false otherwise.
-   * @param durationMs time in milliseconds that the lookup took.
+   * @param durationNs time in nanoseconds that the lookup took.
    */
-  protected open fun onAfterFindClass(fqcn: String, found: Boolean, durationMs: Long) {}
+  protected open fun onAfterFindClass(fqcn: String, found: Boolean, durationNs: Long) {}
 }

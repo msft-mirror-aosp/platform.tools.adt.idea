@@ -16,9 +16,11 @@
 package com.android.tools.rendering
 
 import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsRead
+import java.util.concurrent.TimeUnit
 
 /** Class to record stats from a render result. */
 data class RenderResultStats
+@JvmOverloads
 constructor(
   /** Inflate duration in ms or -1 if unknown. */
   val inflateDurationMs: Long = -1,
@@ -26,10 +28,13 @@ constructor(
   val renderDurationMs: Long = -1,
   /** Classes loaded or -1 if unknown. */
   val classesFound: Long = -1,
-  /** Total class loading duration of -1 if unknown. */
+  /** Total class loading duration in ms or -1 if unknown. */
   val totalClassLoadDurationMs: Long = -1,
-  /** Total class rewrite duration of -1 if unknown. */
+  /** Total class rewrite duration in ms or -1 if unknown. */
   val totalClassRewriteDurationMs: Long = -1,
+  /** Total class loading duration in us or -1 if unknown. */
+  val totalClassLoadDurationUs: Long =
+    if (totalClassLoadDurationMs != -1L) TimeUnit.MILLISECONDS.toMicros(totalClassLoadDurationMs) else -1,
 ) {
 
   constructor(
@@ -42,6 +47,7 @@ constructor(
     classLoaderStats?.classesFound ?: -1,
     classLoaderStats?.accumulatedFindTimeMs ?: -1,
     classLoaderStats?.accumulatedRewriteTimeMs ?: -1,
+    classLoaderStats?.accumulatedFindTimeUs ?: -1,
   )
 
   /** Total render time (inflate + render). */
@@ -57,6 +63,7 @@ constructor(
       classesFound = maxOf(classesFound, stats.classesFound),
       totalClassLoadDurationMs = maxOf(totalClassLoadDurationMs, stats.totalClassLoadDurationMs),
       totalClassRewriteDurationMs = maxOf(totalClassRewriteDurationMs, stats.totalClassRewriteDurationMs),
+      totalClassLoadDurationUs = maxOf(totalClassLoadDurationUs, stats.totalClassLoadDurationUs),
     )
 
   companion object {
