@@ -22,7 +22,6 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -32,7 +31,6 @@ import java.io.File
 import java.net.URI
 import java.net.URISyntaxException
 import java.nio.file.InvalidPathException
-import java.nio.file.Paths
 import java.util.Locale
 
 private val BENCHMARK_TRACE_FILE_PREFIX_V2 = BenchmarkOutput.BENCHMARK_TRACE_FILE_PREFIX
@@ -57,12 +55,7 @@ class BenchmarkLinkListener(
 
         // check if the file exists
         val fileName = link.drop(BENCHMARK_TRACE_FILE_PREFIX_V3.length).substringBefore('?') // drop query params (and the prefix)
-        val tempRoot =
-          try {
-            Paths.get(FileUtil.getTempDirectory()).toRealPath()
-          } catch (e: Exception) {
-            Paths.get(FileUtil.getTempDirectory()).toAbsolutePath().normalize()
-          }
+        val tempRoot = BenchmarkOutput.getBenchmarkTraceDirectory()
         val localPath =
           try {
             if (BenchmarkOutput.isSafeRelativeFilePath(fileName)) tempRoot.resolve(fileName).normalize() else null

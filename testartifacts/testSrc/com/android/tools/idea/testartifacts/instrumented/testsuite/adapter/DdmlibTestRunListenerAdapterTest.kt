@@ -492,6 +492,16 @@ class DdmlibTestRunListenerAdapterTest {
     }
   }
 
+  @Test
+  fun existingBenchmarkFileIsNotOverwritten() {
+    withTempRoot { tempRoot, _ ->
+      val existingFile = Files.write(tempRoot.resolve("existing.trace"), "original".toByteArray())
+      reportBenchmarkOutput("Benchmark test ran in [32 ns](file://existing.trace)")
+      verify(mockDevice, times(0)).pullFile(any(), any())
+      assertThat(Files.readAllBytes(existingFile).decodeToString()).isEqualTo("original")
+    }
+  }
+
   /** Reports [benchmarkOutput] as the benchmark result of a single test. Benchmark files are pulled synchronously in unit tests. */
   private fun reportBenchmarkOutput(benchmarkOutput: String, deviceRoot: String = DEVICE_ROOT) {
     val adapter = DdmlibTestRunListenerAdapter(mockDevice, mockListener)

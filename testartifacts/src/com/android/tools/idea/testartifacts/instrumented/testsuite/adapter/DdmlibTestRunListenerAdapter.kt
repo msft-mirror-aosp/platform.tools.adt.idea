@@ -36,7 +36,6 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.util.ClassUtil
 import java.io.IOException
 import java.nio.file.FileAlreadyExistsException
@@ -44,7 +43,6 @@ import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.file.Paths
 
 /** An adapter to translate [ITestRunListener] and [ProcessListener] callback methods into [AndroidTestResultListener]. */
 class DdmlibTestRunListenerAdapter(private val myIDevice: IDevice, private val listener: AndroidTestResultListener) :
@@ -219,12 +217,7 @@ class DdmlibTestRunListenerAdapter(private val myIDevice: IDevice, private val l
                   logger.warn("Rejected invalid benchmark trace file path: $relativeFilePath")
                   return
                 }
-                val tempRoot =
-                  try {
-                    Paths.get(FileUtil.getTempDirectory()).toRealPath()
-                  } catch (e: Exception) {
-                    Paths.get(FileUtil.getTempDirectory()).toAbsolutePath().normalize()
-                  }
+                val tempRoot = BenchmarkOutput.getBenchmarkTraceDirectory()
                 val localPath =
                   try {
                     tempRoot.resolve(relativeFilePath).normalize()
@@ -294,7 +287,7 @@ class DdmlibTestRunListenerAdapter(private val myIDevice: IDevice, private val l
       for (segment in segments.dropLast(1)) {
         parent = parent.resolve(segment)
         try {
-          Files.createDirectory(parent)
+          Files.createDirectory(parent).toFile().deleteOnExit()
         } catch (e: FileAlreadyExistsException) {
           // Created earlier, possibly by a concurrent pull of another trace in the same directory. Verified below.
         }

@@ -19,7 +19,10 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchma
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput.Companion.LINK_GROUP
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtilRt
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.Locale
 
 /**
@@ -66,6 +69,14 @@ class BenchmarkOutput private constructor(val lines: List<BenchmarkLine>) {
 
     fun isBenchmarkTraceFile(fileName: String): Boolean =
       FileUtilRt.getExtension(fileName).lowercase(Locale.ROOT) in BENCHMARK_TRACE_FILE_EXTENSIONS
+
+    /** Returns the directory that benchmark trace files are copied to and opened from, with symbolic links resolved when possible. */
+    fun getBenchmarkTraceDirectory(): Path =
+      try {
+        Paths.get(FileUtil.getTempDirectory()).toRealPath()
+      } catch (e: Exception) {
+        Paths.get(FileUtil.getTempDirectory()).toAbsolutePath().normalize()
+      }
 
     /**
      * Returns whether [path] is a plain relative path: not blank, not rooted, without a drive letter or NTFS stream separator (`:`), and
