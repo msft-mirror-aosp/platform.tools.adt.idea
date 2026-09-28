@@ -2689,7 +2689,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : My First App.app:mysharedlibrary_debug
+                    moduleName                    : mysharedlibrary_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2707,7 +2707,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : My First App.app:mysharedlibrary_debugAndroidTest
+                    moduleName                    : mysharedlibrary_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2726,7 +2726,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : My First App.app:mysharedlibrary_debugUnitTest
+                    moduleName                    : mysharedlibrary_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2740,7 +2740,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

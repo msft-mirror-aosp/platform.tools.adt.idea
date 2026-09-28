@@ -1667,7 +1667,7 @@ MODULE                        : MainActivity.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/localDebug
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:app_localDebug
+                    moduleName                    : app_localDebug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -1686,7 +1686,7 @@ MODULE                        : MainActivity.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/localDebugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:app_localDebugAndroidTest
+                    moduleName                    : app_localDebugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -1705,7 +1705,7 @@ MODULE                        : MainActivity.app
                     backendThreads                : 1
                     destination                   : <ROOT>/app/build/tmp/kotlin-classes/localDebugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:app_localDebugUnitTest
+                    moduleName                    : app_localDebugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -1720,7 +1720,7 @@ MODULE                        : MainActivity.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             localDebug                    : KotlinTaskPropertiesImpl
@@ -1784,7 +1784,7 @@ MODULE                        : MainActivity.javaLib
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLib/build/classes/kotlin/main
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:javaLib
+                    moduleName                    : javaLib
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -1809,7 +1809,7 @@ MODULE                        : MainActivity.javaLib
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLib/build/classes/kotlin/test
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:javaLib_test
+                    moduleName                    : javaLib_test
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -1830,7 +1830,7 @@ MODULE                        : MainActivity.javaLib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -2908,7 +2908,7 @@ MODULE                        : MainActivity.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debug
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:lib_debug
+                    moduleName                    : lib_debug
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2926,7 +2926,7 @@ MODULE                        : MainActivity.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debugAndroidTest
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:lib_debugAndroidTest
+                    moduleName                    : lib_debugAndroidTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2944,7 +2944,7 @@ MODULE                        : MainActivity.lib
                     backendThreads                : 1
                     destination                   : <ROOT>/lib/build/tmp/kotlin-classes/debugUnitTest
                     jvmTarget                     : 17
-                    moduleName                    : MainActivity:lib_debugUnitTest
+                    moduleName                    : lib_debugUnitTest
                     noJdk                         : true
                     noReflect                     : true
                     noStdlib                      : true
@@ -2958,7 +2958,7 @@ MODULE                        : MainActivity.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

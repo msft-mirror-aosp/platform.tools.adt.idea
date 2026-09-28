@@ -818,6 +818,8 @@ MODULE                        : NonStandardSourceSetDependencies
                     - taskArtifacts               : <ROOT>/common/build/libs/common-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/common/build/libs/common-jvm.jar [-]
                     configurationArtifacts
+                        - archives                    : <ROOT>/common/build/libs/common-jvm.jar [-]
+                        - archives                    : <ROOT>/common/build/libs/common-metadata.jar [-]
                         - jvmApiElements              : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmApiElements-published    : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmRuntimeElements          : <ROOT>/common/build/libs/common-jvm.jar [-]
@@ -1008,6 +1010,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         - androidApiElements-published          : <ROOT>/feature-b/build/outputs/aar/feature-b.aar [-]
                         - androidRuntimeElements-published      : <ROOT>/feature-b/build/outputs/aar/feature-b.aar [-]
                         - androidSourcesElements-published      : <ROOT>/feature-b/build/libs/feature-b-android-sources.jar [-]
+                        - archives                    : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                         - metadataApiElements         : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                         - metadataSourcesElements     : <ROOT>/feature-b/build/libs/feature-b-kotlin-sources.jar [-]
                     - additionalArtifacts         : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
@@ -1172,6 +1175,8 @@ MODULE                        : NonStandardSourceSetDependencies
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                             configurationArtifacts
+                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
+                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                                 - jvmApiElements              : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmApiElements-published    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmRuntimeElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
@@ -2139,10 +2144,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         swiftExport                   : KotlinSwiftExportModelImpl
-        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
-            integrateLinkagePackageTaskPath         : :common:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2185,7 +2188,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     backendThreads                : 1
                     destination                   : <ROOT>/common/build/classes/kotlin/jvm/main
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:common
+                    moduleName                    : common
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -2266,7 +2269,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     backendThreads                : 1
                     destination                   : <ROOT>/common/build/classes/kotlin/jvm/test
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:common_test
+                    moduleName                    : common_test
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -2338,7 +2341,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     backendThreads                : 1
                     destination                   : <ROOT>/desktop/build/classes/kotlin/main
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:desktop
+                    moduleName                    : desktop
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -2362,7 +2365,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     backendThreads                : 1
                     destination                   : <ROOT>/desktop/build/classes/kotlin/test
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:desktop_test
+                    moduleName                    : desktop_test
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -2382,7 +2385,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -3534,7 +3537,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         - kotlinImportingDiagnostics  : OrphanSourceSetsImportingDiagnostic
             kotlinSourceSet               : commonTest (KotlinSourceSetImpl)
                 actualPlatforms               : KotlinPlatformContainerImpl
@@ -3552,8 +3555,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                 - sourceDirs                  : <ROOT>/feature-b/src/commonTest/kotlin [-]
                 platform                      : JVM
         swiftExport                   : KotlinSwiftExportModelImpl
-        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
-            integrateLinkagePackageTaskPath         : :feature-b:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3595,7 +3596,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     backendThreads                : 1
                     destination                   : <ROOT>/feature-b/build/classes/kotlin/android/main
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:feature-b
+                    moduleName                    : feature-b
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -3671,7 +3672,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLibrary/build/classes/kotlin/main
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:javaLibrary
+                    moduleName                    : javaLibrary
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -3695,7 +3696,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLibrary/build/classes/kotlin/test
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:javaLibrary_test
+                    moduleName                    : javaLibrary_test
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -3719,7 +3720,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLibrary/build/classes/kotlin/testEnv
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies:javaLibrary_testEnv
+                    moduleName                    : javaLibrary_testEnv
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -3739,7 +3740,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -3803,10 +3804,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 2.3.10
         swiftExport                   : KotlinSwiftExportModelImpl
-        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
-            integrateLinkagePackageTaskPath         : :kmp-java:sample:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3849,7 +3848,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     backendThreads                : 1
                     destination                   : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies.kmp-java:sample
+                    moduleName                    : sample
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -3932,7 +3931,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     backendThreads                : 1
                     destination                   : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test
                     jvmTarget                     : 17
-                    moduleName                    : NonStandardSourceSetDependencies.kmp-java:sample_test
+                    moduleName                    : sample_test
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true

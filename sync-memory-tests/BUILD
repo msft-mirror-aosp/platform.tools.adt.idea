@@ -132,6 +132,7 @@ iml_module(
                 "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//prebuilts/studio/sdk:platforms/android-35",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks",
             ],
         },
         "Benchmark2000CpuAgp813PhasedSyncOff": {
@@ -148,6 +149,7 @@ iml_module(
                 "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//prebuilts/studio/sdk:platforms/android-35",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks",
             ],
         },
         "Benchmark2000CpuAgp813WithDependencyResolutionPhase": {
@@ -164,6 +166,7 @@ iml_module(
                 "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//prebuilts/studio/sdk:platforms/android-35",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks",
             ],
         },
         # Presubmit tests
