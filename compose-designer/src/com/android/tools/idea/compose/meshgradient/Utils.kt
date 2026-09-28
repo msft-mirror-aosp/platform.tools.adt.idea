@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.DumbService
@@ -31,15 +32,54 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelPropertyFqnNameIndex
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.psiUtil.isPrivate
 
+internal const val FUN_LINEAR_GRADIENT = "linearGradient"
+internal const val FUN_RADIAL_GRADIENT = "radialGradient"
+internal const val FUN_SWEEP_GRADIENT = "sweepGradient"
+internal const val FUN_HORIZONTAL_GRADIENT = "horizontalGradient"
+internal const val FUN_VERTICAL_GRADIENT = "verticalGradient"
+
+private const val CLASS_BRUSH = "Brush"
+private const val SUFFIX_COMPANION = ".Companion"
+private const val FQN_BRUSH = "androidx.compose.ui.graphics.Brush"
+private const val FQN_BRUSH_COMPANION = "$FQN_BRUSH$SUFFIX_COMPANION"
+private const val FQN_MESH_GRADIENT_PAINTER = "androidx.compose.ui.graphics.MeshGradientPainter"
+
+internal val BRUSH_GRADIENT_NAMES =
+  setOf(
+    FUN_LINEAR_GRADIENT,
+    FUN_RADIAL_GRADIENT,
+    FUN_SWEEP_GRADIENT,
+    FUN_HORIZONTAL_GRADIENT,
+    FUN_VERTICAL_GRADIENT,
+  )
+
 fun formatFloat(number: Float): String {
+  if (!number.isFinite()) return number.toString()
   return number.toBigDecimal().setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 }
+
+internal fun generateFloatSource(value: Float): String =
+  when {
+    value == Float.POSITIVE_INFINITY -> "Float.POSITIVE_INFINITY"
+    value == Float.NEGATIVE_INFINITY -> "Float.NEGATIVE_INFINITY"
+    value.isNaN() -> "Float.NaN"
+    else -> "${value}f"
+  }
+
+internal fun generateOffsetSource(offset: Offset): String =
+  when (offset) {
+    Offset.Unspecified -> "Offset.Unspecified"
+    Offset.Infinite -> "Offset.Infinite"
+    else -> "Offset(${generateFloatSource(offset.x)}, ${generateFloatSource(offset.y)})"
+  }
 
 fun Color.toHexStringNoHash(includeAlpha: Boolean = false): String {
   val r = (red * 255f).roundToInt()
@@ -61,7 +101,7 @@ fun Color.toComposeHexLiteral(): String {
   return String.format(Locale.US, "0x%02X%02X%02X%02X", a, r, g, b)
 }
 
-fun KtCallExpression.isValidMeshGradientCall(expectedFqn: String = "androidx.compose.ui.graphics.MeshGradientPainter"): Boolean {
+fun KtCallExpression.isValidMeshGradientCall(expectedFqn: String = FQN_MESH_GRADIENT_PAINTER): Boolean {
   val callee = calleeExpression as? KtNameReferenceExpression ?: return false
   val file = containingFile as? KtFile ?: return false
   val shortName = expectedFqn.substringAfterLast('.')
@@ -79,11 +119,10 @@ fun KtCallExpression.isValidMeshGradientCall(expectedFqn: String = "androidx.com
     return callee.text == expectedName
   }
 
+  if (callee.text != shortName) return false
+
   // 2. Resolve reference once (handles star-imports and test sandboxes)
-  val target = callee.references.firstNotNullOfOrNull { it.resolve() }
-  if (target == null) {
-    return callee.text == shortName
-  }
+  val target = callee.references.firstNotNullOfOrNull { it.resolve() } ?: return true
 
   val resolvedFqn =
     when (target) {
@@ -168,4 +207,45 @@ internal fun resolveImportedOrSamePackageProperty(project: Project, file: KtFile
   }
 
   return null
+}
+
+fun KtCallExpression.isValidBrushGradientCall(name: String): Boolean {
+  val callee = calleeExpression as? KtNameReferenceExpression ?: return false
+  val file = containingFile as? KtFile ?: return false
+  val methodFqn = "$FQN_BRUSH.$name"
+  val companionMethodFqn = "$FQN_BRUSH_COMPANION.$name"
+
+  val parentDot = parent as? KtDotQualifiedExpression
+  if (parentDot != null && parentDot.selectorExpression == this) {
+    if (callee.text != name) return false
+    val receiverText = parentDot.receiverExpression.text.removeSuffix(SUFFIX_COMPANION)
+    return receiverText == CLASS_BRUSH ||
+      receiverText == FQN_BRUSH ||
+      file.importDirectives.any {
+        it.aliasName == receiverText && (it.importedFqName?.asString() == FQN_BRUSH || it.importedFqName?.asString() == FQN_BRUSH_COMPANION)
+      }
+  }
+
+  val explicitImport =
+    file.importDirectives.firstOrNull {
+      it.importedFqName?.asString() == methodFqn || it.importedFqName?.asString() == companionMethodFqn
+    }
+  if (explicitImport != null) {
+    val expectedName = explicitImport.aliasName ?: name
+    return callee.text == expectedName
+  }
+
+  if (callee.text != name) return false
+  val target = callee.references.firstNotNullOfOrNull { it.resolve() } ?: return false
+  val resolvedFqn =
+    when (target) {
+      is KtNamedFunction -> target.fqName?.asString()
+      is PsiMethod -> target.containingClass?.qualifiedName + "." + target.name
+      else -> null
+    }
+  return resolvedFqn == companionMethodFqn || resolvedFqn == methodFqn
+}
+
+fun KtCallExpression.isValidGradientCall(): Boolean {
+  return isValidMeshGradientCall() || BRUSH_GRADIENT_NAMES.any { isValidBrushGradientCall(it) }
 }

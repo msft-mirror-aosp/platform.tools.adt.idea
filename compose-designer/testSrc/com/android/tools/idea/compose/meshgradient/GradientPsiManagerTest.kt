@@ -17,13 +17,17 @@ package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.testFramework.VfsTestUtil
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -984,6 +988,488 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
       val resolveStarPrivateCrossFile = resolveImportedOrSamePackageProperty(project, mainFile, "StarPrivateBlue")
       assertNull("Cross-file star-imported private property should not be resolved", resolveStarPrivateCrossFile)
+    }
+  }
+
+  private val linearGradientCode =
+    """
+    package test
+
+    import androidx.compose.ui.geometry.Offset
+    import androidx.compose.ui.graphics.Brush
+    import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.TileMode
+
+    fun MyLinear() {
+        val brush = Brush.linearGradient(
+            colors = listOf(Color.Red, Color.Blue),
+            start = Offset(0.0f, 0.0f),
+            end = Offset(1.0f, 1.0f),
+            tileMode = TileMode.Mirror
+        )
+    }
+    """
+      .trimIndent()
+
+  private val linearGradientStopsCode =
+    """
+    package test
+
+    import androidx.compose.ui.geometry.Offset
+    import androidx.compose.ui.graphics.Brush
+    import androidx.compose.ui.graphics.Color
+
+    fun MyLinear() {
+        val brush = Brush.linearGradient(
+            colorStops = arrayOf(0.0f to Color.Red, 1.0f to Color.Blue),
+            start = Offset(0.0f, 0.0f),
+            end = Offset(1.0f, 1.0f)
+        )
+    }
+    """
+      .trimIndent()
+
+  private val radialGradientCode =
+    """
+    package test
+
+    import androidx.compose.ui.geometry.Offset
+    import androidx.compose.ui.graphics.Brush
+    import androidx.compose.ui.graphics.Color
+
+    fun MyRadial() {
+        val brush = Brush.radialGradient(
+            colors = listOf(Color.Red, Color.Blue),
+            center = Offset(0.5f, 0.5f),
+            radius = 100.0f
+        )
+    }
+    """
+      .trimIndent()
+
+  private val sweepGradientCode =
+    """
+    package test
+
+    import androidx.compose.ui.geometry.Offset
+    import androidx.compose.ui.graphics.Brush
+    import androidx.compose.ui.graphics.Color
+
+    fun MySweep() {
+        val brush = Brush.sweepGradient(
+            colors = listOf(Color.Red, Color.Blue),
+            center = Offset(0.5f, 0.5f)
+        )
+    }
+    """
+      .trimIndent()
+
+  @Test
+  fun testParseLinearGradient() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", linearGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseLinearGradient(call!!)
+      assertNotNull(parsed)
+      assertEquals(2, parsed!!.colors.size)
+      assertEquals(Color.Red, parsed.colors[0])
+      assertEquals(Color.Blue, parsed.colors[1])
+      assertEquals(Offset(0.0f, 0.0f), parsed.start)
+      assertEquals(Offset(1.0f, 1.0f), parsed.end)
+      assertEquals(TileMode.Mirror, parsed.tileMode)
+    }
+  }
+
+  @Test
+  fun testParseLinearGradientWithStops() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", linearGradientStopsCode)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseLinearGradient(call!!)
+      assertNotNull(parsed)
+      assertNotNull(parsed!!.colorStops)
+      assertEquals(2, parsed.colorStops!!.size)
+      assertEquals(0.0f, parsed.colorStops!![0].first)
+      assertEquals(Color.Red, parsed.colorStops!![0].second)
+      assertEquals(1.0f, parsed.colorStops!![1].first)
+      assertEquals(Color.Blue, parsed.colorStops!![1].second)
+    }
+  }
+
+  @Test
+  fun testParseRadialGradient() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", radialGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "radialGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseRadialGradient(call!!)
+      assertNotNull(parsed)
+      assertEquals(2, parsed!!.colors.size)
+      assertEquals(Color.Red, parsed.colors[0])
+      assertEquals(Color.Blue, parsed.colors[1])
+      assertEquals(Offset(0.5f, 0.5f), parsed.center)
+      assertEquals(100.0f, parsed.radius)
+    }
+  }
+
+  @Test
+  fun testParseSweepGradient() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", sweepGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "sweepGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseSweepGradient(call!!)
+      assertNotNull(parsed)
+      assertEquals(2, parsed!!.colors.size)
+      assertEquals(Color.Red, parsed.colors[0])
+      assertEquals(Color.Blue, parsed.colors[1])
+      assertEquals(Offset(0.5f, 0.5f), parsed.center)
+    }
+  }
+
+  private val horizontalGradientCode =
+    """
+    package test
+
+    import androidx.compose.ui.graphics.Brush
+    import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.TileMode
+
+    fun MyHorizontal() {
+        val brush = Brush.horizontalGradient(
+            colors = listOf(Color.Red, Color.Blue),
+            startX = 10f,
+            endX = 200f,
+            tileMode = TileMode.Repeated
+        )
+    }
+    """
+      .trimIndent()
+
+  private val verticalGradientCode =
+    """
+    package test
+
+    import androidx.compose.ui.graphics.Brush
+    import androidx.compose.ui.graphics.Color
+
+    fun MyVertical() {
+        val brush = Brush.verticalGradient(
+            colors = listOf(Color.Red, Color.Blue),
+            startY = 20f,
+            endY = 300f
+        )
+    }
+    """
+      .trimIndent()
+
+  @Test
+  fun testParseHorizontalGradient() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", horizontalGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "horizontalGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseHorizontalGradient(call!!)
+      assertNotNull(parsed)
+      assertEquals(2, parsed!!.colors.size)
+      assertEquals(Color.Red, parsed.colors[0])
+      assertEquals(Color.Blue, parsed.colors[1])
+      assertEquals(Offset(10f, 0f), parsed.start)
+      assertEquals(Offset(200f, 0f), parsed.end)
+      assertEquals(TileMode.Repeated, parsed.tileMode)
+    }
+  }
+
+  @Test
+  fun testParseVerticalGradient() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", verticalGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "verticalGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseVerticalGradient(call!!)
+      assertNotNull(parsed)
+      assertEquals(2, parsed!!.colors.size)
+      assertEquals(Color.Red, parsed.colors[0])
+      assertEquals(Color.Blue, parsed.colors[1])
+      assertEquals(Offset(0f, 20f), parsed.start)
+      assertEquals(Offset(0f, 300f), parsed.end)
+      assertEquals(TileMode.Clamp, parsed.tileMode)
+    }
+  }
+
+  @Test
+  fun testIsValidBrushGradientCall() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", horizontalGradientCode)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "horizontalGradient" }
+      assertNotNull(call)
+      assertTrue("Should be valid brush gradient call", call!!.isValidBrushGradientCall("horizontalGradient"))
+    }
+  }
+
+  @Test
+  fun testParseLinearGradientPositionalColors() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+
+      fun MyPositionalLinear() {
+          val brush = Brush.linearGradient(listOf(Color.Red, Color.Blue))
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", code)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseLinearGradient(call!!)
+      assertNotNull(parsed)
+      assertNull(parsed!!.colorStops)
+      assertEquals(listOf(Color.Red, Color.Blue), parsed.colors)
+      assertEquals(Offset.Zero, parsed.start)
+      assertEquals(Offset.Infinite, parsed.end)
+      assertFalse(parsed.hasDynamicOrUnresolvedValues)
+    }
+  }
+
+  @Test
+  fun testParseBrushGradientWithDynamicValues() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.animation.animateColorAsState
+      import androidx.compose.runtime.getValue
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+
+      fun MyAnimatedLinear() {
+          val animatedColor by animateColorAsState(targetValue = Color.Red)
+          val brush = Brush.linearGradient(colors = listOf(animatedColor, Color.Blue))
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", code)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseLinearGradient(call!!)
+      assertNotNull(parsed)
+      assertEquals(listOf(Color.Red, Color.Blue), parsed!!.colors)
+      assertTrue(parsed.hasDynamicOrUnresolvedValues)
+    }
+  }
+
+  @Test
+  fun testUpdateLinearGradient() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", linearGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    val newGradient =
+      Gradient.LinearGradient(
+        colors = listOf(Color.Green, Color.Yellow),
+        start = Offset(0.1f, 0.2f),
+        end = Offset(0.8f, 0.9f),
+        tileMode = TileMode.Repeated,
+      )
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+      assertNotNull(call)
+      val success = psiManager.updateGradient(call!!, newGradient)
+      assertTrue("Should update gradient successfully", success)
+    }
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue("Should contain updated colors", updatedText.contains("colors = listOf(Color(0xFF00FF00), Color(0xFFFFFF00))"))
+    assertTrue("Should contain updated start", updatedText.contains("start = Offset(0.1f, 0.2f)"))
+    assertTrue("Should contain updated end", updatedText.contains("end = Offset(0.8f, 0.9f)"))
+    assertTrue("Should contain updated tileMode", updatedText.contains("tileMode = TileMode.Repeated"))
+  }
+
+  @Test
+  fun testUpdateRadialGradientWithSpecialValues() {
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("Test.kt", radialGradientCode)
+    val psiManager = GradientPsiManager(project)
+
+    val newGradient =
+      Gradient.RadialGradient(
+        colors = listOf(Color.Red, Color.Blue),
+        center = Offset.Unspecified,
+        radius = Float.POSITIVE_INFINITY,
+        tileMode = TileMode.Clamp,
+      )
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "radialGradient" }
+      assertNotNull(call)
+      val success = psiManager.updateGradient(call!!, newGradient)
+      assertTrue("Should update gradient successfully", success)
+    }
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue("Should contain Offset.Unspecified", updatedText.contains("center = Offset.Unspecified"))
+    assertTrue("Should contain Float.POSITIVE_INFINITY", updatedText.contains("radius = Float.POSITIVE_INFINITY"))
+  }
+
+  @Test
+  fun testParseLinearGradientVarargStopsAndIntegerFractions() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.TileMode
+
+      fun MyVarargStops() {
+          val brush = Brush.linearGradient(
+              0 to Color.Red,
+              0.5f to Color.Green,
+              1 to Color.Blue,
+              start = Offset(0f, Float.NEGATIVE_INFINITY),
+              tileMode = TileMode.Decal
+          )
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestVarargStops.kt", code)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseLinearGradient(call!!)
+      assertNotNull(parsed)
+      assertFalse("Should not flag dynamic values when vararg stops and NEGATIVE_INFINITY are used", parsed!!.hasDynamicOrUnresolvedValues)
+      assertNotNull(parsed.colorStops)
+      assertEquals(listOf(0f to Color.Red, 0.5f to Color.Green, 1f to Color.Blue), parsed.colorStops)
+      assertEquals(Offset(0f, Float.NEGATIVE_INFINITY), parsed.start)
+      assertEquals(Offset.Infinite, parsed.end)
+      assertEquals(TileMode.Decal, parsed.tileMode)
+    }
+  }
+
+  @Test
+  fun testParseBrushGradientWithUnresolvedSingleColorElement() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+
+      fun MyUnresolvedColor(surfaceColor: Color) {
+          val brush = Brush.verticalGradient(colors = listOf(surfaceColor, Color.Transparent))
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestUnresolvedColor.kt", code)
+    val psiManager = GradientPsiManager(project)
+
+    runReadActionBlocking {
+      val call =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "verticalGradient" }
+      assertNotNull(call)
+
+      val parsed = psiManager.parseVerticalGradient(call!!)
+      assertNotNull(parsed)
+      assertTrue(parsed!!.hasDynamicOrUnresolvedValues)
+      assertEquals(listOf(Color.White, Color.Transparent), parsed.colors)
+    }
+  }
+
+  @Test
+  fun testIsValidBrushGradientCallRejectsNonBrushReceiver() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Brush.Companion.linearGradient
+      import androidx.compose.ui.graphics.Color
+
+      object OtherObj {
+          fun linearGradient(colors: List<Color>) = Unit
+      }
+
+      fun TestCalls() {
+          OtherObj.linearGradient(listOf(Color.Red, Color.Blue))
+          Brush.Companion.linearGradient(listOf(Color.Red, Color.Blue))
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestNonBrushReceiver.kt", code)
+
+    runReadActionBlocking {
+      val calls =
+        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).filter { it.calleeExpression?.text == "linearGradient" }
+      assertEquals(2, calls.size)
+      assertFalse("OtherObj.linearGradient should be rejected", calls[0].isValidBrushGradientCall("linearGradient"))
+      assertTrue("Brush.Companion.linearGradient should be accepted", calls[1].isValidBrushGradientCall("linearGradient"))
     }
   }
 }

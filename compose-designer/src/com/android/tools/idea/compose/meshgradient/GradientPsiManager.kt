@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SyntaxTraverser
@@ -36,11 +37,15 @@ import org.jetbrains.kotlin.psi.KtPrefixExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.psi.KtValueArgument
 
 private const val FUN_MESH_PAINTER = "MeshGradientPainter"
 private const val FUN_SET_VERTEX = "setVertex"
 private const val FUN_OFFSET = "Offset"
 private const val FUN_COLOR = "Color"
+private const val FUN_ARRAY_OF = "arrayOf"
+private const val FUN_PAIR = "Pair"
+private const val OP_TO = "to"
 
 private const val ARG_ROWS = "rows"
 private const val ARG_COLUMNS = "columns"
@@ -62,6 +67,22 @@ private const val ARG_ALPHA = "alpha"
 private const val ARG_INITIAL_VALUE = "initialValue"
 private const val ARG_TARGET_VALUE = "targetValue"
 private const val ARG_VALUE = "value"
+private const val ARG_COLORS = "colors"
+private const val ARG_COLOR_STOPS = "colorStops"
+private const val ARG_START = "start"
+private const val ARG_END = "end"
+private const val ARG_START_X = "startX"
+private const val ARG_END_X = "endX"
+private const val ARG_START_Y = "startY"
+private const val ARG_END_Y = "endY"
+private const val ARG_CENTER = "center"
+private const val ARG_RADIUS = "radius"
+private const val ARG_TILE_MODE = "tileMode"
+
+private const val TILE_MODE_CLAMP = "Clamp"
+private const val TILE_MODE_REPEATED = "Repeated"
+private const val TILE_MODE_MIRROR = "Mirror"
+private const val TILE_MODE_DECAL = "Decal"
 
 private const val FORMAT_OFFSET = "Offset(%.4ff, %.4ff)"
 
@@ -85,6 +106,64 @@ private val DYNAMIC_STATE_MAP =
     "androidx.compose.runtime.mutableIntStateOf" to "mutableIntStateOf",
     "androidx.compose.runtime.mutableLongStateOf" to "mutableLongStateOf",
   )
+
+/**
+ * Represents a parsed Compose gradient configuration along with whether any of its parameters rely on dynamic or unresolvable expressions.
+ */
+sealed class Gradient {
+  abstract val hasDynamicOrUnresolvedValues: Boolean
+
+  /**
+   * A 2D grid-based gradient defined via `MeshGradientPainter`, where colors and cubic Bézier control points are interpolated across a
+   * [rows] x [cols] mesh of [vertices].
+   */
+  data class MeshGradient(
+    val rows: Int,
+    val cols: Int,
+    val vertices: List<Vertex>,
+    override val hasDynamicOrUnresolvedValues: Boolean = false,
+  ) : Gradient()
+
+  /**
+   * A gradient that interpolates [colors] (or fractional [colorStops]) along a straight line between [start] and [end] coordinates,
+   * repeating or clamping outside the bounds according to [tileMode]. Also represents `Brush.horizontalGradient` and
+   * `Brush.verticalGradient`.
+   */
+  data class LinearGradient(
+    val colors: List<Color>,
+    val colorStops: List<Pair<Float, Color>>? = null,
+    val start: Offset,
+    val end: Offset,
+    val tileMode: TileMode = TileMode.Clamp,
+    override val hasDynamicOrUnresolvedValues: Boolean = false,
+  ) : Gradient()
+
+  /**
+   * A circular gradient that radiates outward from a [center] point up to a given [radius], interpolating [colors] (or fractional
+   * [colorStops]) and applying [tileMode] beyond the radius.
+   */
+  data class RadialGradient(
+    val colors: List<Color>,
+    val colorStops: List<Pair<Float, Color>>? = null,
+    val center: Offset,
+    val radius: Float,
+    val tileMode: TileMode = TileMode.Clamp,
+    override val hasDynamicOrUnresolvedValues: Boolean = false,
+  ) : Gradient()
+
+  /**
+   * An angular (conic) gradient that sweeps [colors] (or fractional [colorStops]) full circle (360 degrees) clockwise around a [center]
+   * point.
+   */
+  data class SweepGradient(
+    val colors: List<Color>,
+    val colorStops: List<Pair<Float, Color>>? = null,
+    val center: Offset,
+    override val hasDynamicOrUnresolvedValues: Boolean = false,
+  ) : Gradient()
+}
+
+data class Vertex(val row: Int, val col: Int, val offset: Offset, val color: Color)
 
 internal fun formatSetVertexCall(r: Int, c: Int, point: MeshGradientPoint): String {
   val positionStr = point.positionExpression ?: String.format(Locale.US, FORMAT_OFFSET, point.position.x, point.position.y)
@@ -139,6 +218,336 @@ class GradientPsiManager(private val project: Project) {
     return SyntaxTraverser.psiTraverser(file).filter(KtCallExpression::class.java).firstOrNull { it.isValidMeshGradientCall() }
   }
 
+  /**
+   * Parses a `Brush.linearGradient` [KtCallExpression] into a [Gradient.LinearGradient], or returns null if the call does not represent a
+   * valid linear gradient.
+   */
+  fun parseLinearGradient(callExpr: KtCallExpression): Gradient.LinearGradient? {
+    if (!callExpr.isValidBrushGradientCall(FUN_LINEAR_GRADIENT) && callExpr.calleeExpression?.text != FUN_LINEAR_GRADIENT) return null
+    var hasDynamicOrUnresolved = false
+    val onDynamic: () -> Unit = { hasDynamicOrUnresolved = true }
+
+    val (colors, colorStops) = parseColorsOrStops(callExpr, onDynamic)
+    if (colors == null && colorStops == null) return null
+
+    val hasVarargStops = colorStops != null
+    val startExpr = findArgumentExpression(callExpr, ARG_START, if (hasVarargStops) -1 else 1)
+    val endExpr = findArgumentExpression(callExpr, ARG_END, if (hasVarargStops) -1 else 2)
+    val tileModeExpr = findArgumentExpression(callExpr, ARG_TILE_MODE, if (hasVarargStops) -1 else 3)
+
+    // If an optional argument is explicitly provided (expr != null) but cannot be statically
+    // resolved, we mark the gradient as having dynamic/unresolved values (`onDynamic()`) and fall
+    // back to its Compose default. If the argument is omitted altogether (expr == null), using its
+    // default parameter value is standard static behavior and should not trigger `onDynamic()`.
+    val start = startExpr?.let { parseOffset(it, onDynamic) ?: Offset.Zero.also { onDynamic() } } ?: Offset.Zero
+    val end = endExpr?.let { parseOffset(it, onDynamic) ?: Offset.Infinite.also { onDynamic() } } ?: Offset.Infinite
+    val tileMode = tileModeExpr?.let { parseTileMode(it, onDynamic) ?: TileMode.Clamp.also { onDynamic() } } ?: TileMode.Clamp
+
+    return Gradient.LinearGradient(
+      colors = colors ?: emptyList(),
+      colorStops = colorStops,
+      start = start,
+      end = end,
+      tileMode = tileMode,
+      hasDynamicOrUnresolvedValues = hasDynamicOrUnresolved,
+    )
+  }
+
+  /**
+   * Parses a `Brush.horizontalGradient` [KtCallExpression] into an equivalent horizontal [Gradient.LinearGradient] (`y = 0f`), or returns
+   * null if the call is not a valid horizontal gradient.
+   */
+  fun parseHorizontalGradient(callExpr: KtCallExpression): Gradient.LinearGradient? {
+    if (!callExpr.isValidBrushGradientCall(FUN_HORIZONTAL_GRADIENT) && callExpr.calleeExpression?.text != FUN_HORIZONTAL_GRADIENT) {
+      return null
+    }
+    var hasDynamicOrUnresolved = false
+    val onDynamic: () -> Unit = { hasDynamicOrUnresolved = true }
+
+    val (colors, colorStops) = parseColorsOrStops(callExpr, onDynamic)
+    if (colors == null && colorStops == null) return null
+
+    val hasVarargStops = colorStops != null
+    val startXExpr = findArgumentExpression(callExpr, ARG_START_X, if (hasVarargStops) -1 else 1)
+    val endXExpr = findArgumentExpression(callExpr, ARG_END_X, if (hasVarargStops) -1 else 2)
+    val tileModeExpr = findArgumentExpression(callExpr, ARG_TILE_MODE, if (hasVarargStops) -1 else 3)
+
+    // Omitted optional arguments (expr == null) fall back to their Compose default values without
+    // calling `onDynamic()`; only explicitly passed but unresolvable arguments trigger `onDynamic()`.
+    val startX = startXExpr?.let { parseFloat(it, onDynamic) ?: 0f.also { onDynamic() } } ?: 0f
+    val endX = endXExpr?.let { parseFloat(it, onDynamic) ?: Float.POSITIVE_INFINITY.also { onDynamic() } } ?: Float.POSITIVE_INFINITY
+    val tileMode = tileModeExpr?.let { parseTileMode(it, onDynamic) ?: TileMode.Clamp.also { onDynamic() } } ?: TileMode.Clamp
+
+    return Gradient.LinearGradient(
+      colors = colors ?: emptyList(),
+      colorStops = colorStops,
+      start = Offset(startX, 0f),
+      end = Offset(endX, 0f),
+      tileMode = tileMode,
+      hasDynamicOrUnresolvedValues = hasDynamicOrUnresolved,
+    )
+  }
+
+  /**
+   * Parses a `Brush.verticalGradient` [KtCallExpression] into an equivalent vertical [Gradient.LinearGradient] (`x = 0f`), or returns null
+   * if the call is not a valid vertical gradient.
+   */
+  fun parseVerticalGradient(callExpr: KtCallExpression): Gradient.LinearGradient? {
+    if (!callExpr.isValidBrushGradientCall(FUN_VERTICAL_GRADIENT) && callExpr.calleeExpression?.text != FUN_VERTICAL_GRADIENT) return null
+    var hasDynamicOrUnresolved = false
+    val onDynamic: () -> Unit = { hasDynamicOrUnresolved = true }
+
+    val (colors, colorStops) = parseColorsOrStops(callExpr, onDynamic)
+    if (colors == null && colorStops == null) return null
+
+    val hasVarargStops = colorStops != null
+    val startYExpr = findArgumentExpression(callExpr, ARG_START_Y, if (hasVarargStops) -1 else 1)
+    val endYExpr = findArgumentExpression(callExpr, ARG_END_Y, if (hasVarargStops) -1 else 2)
+    val tileModeExpr = findArgumentExpression(callExpr, ARG_TILE_MODE, if (hasVarargStops) -1 else 3)
+
+    // Omitted optional arguments (expr == null) fall back to their Compose default values without
+    // calling `onDynamic()`; only explicitly passed but unresolvable arguments trigger `onDynamic()`.
+    val startY = startYExpr?.let { parseFloat(it, onDynamic) ?: 0f.also { onDynamic() } } ?: 0f
+    val endY = endYExpr?.let { parseFloat(it, onDynamic) ?: Float.POSITIVE_INFINITY.also { onDynamic() } } ?: Float.POSITIVE_INFINITY
+    val tileMode = tileModeExpr?.let { parseTileMode(it, onDynamic) ?: TileMode.Clamp.also { onDynamic() } } ?: TileMode.Clamp
+
+    return Gradient.LinearGradient(
+      colors = colors ?: emptyList(),
+      colorStops = colorStops,
+      start = Offset(0f, startY),
+      end = Offset(0f, endY),
+      tileMode = tileMode,
+      hasDynamicOrUnresolvedValues = hasDynamicOrUnresolved,
+    )
+  }
+
+  /**
+   * Parses a `Brush.radialGradient` [KtCallExpression] into a [Gradient.RadialGradient], or returns null if the call does not represent a
+   * valid radial gradient.
+   */
+  fun parseRadialGradient(callExpr: KtCallExpression): Gradient.RadialGradient? {
+    if (!callExpr.isValidBrushGradientCall(FUN_RADIAL_GRADIENT) && callExpr.calleeExpression?.text != FUN_RADIAL_GRADIENT) return null
+    var hasDynamicOrUnresolved = false
+    val onDynamic: () -> Unit = { hasDynamicOrUnresolved = true }
+
+    val (colors, colorStops) = parseColorsOrStops(callExpr, onDynamic)
+    if (colors == null && colorStops == null) return null
+
+    val hasVarargStops = colorStops != null
+    val centerExpr = findArgumentExpression(callExpr, ARG_CENTER, if (hasVarargStops) -1 else 1)
+    val radiusExpr = findArgumentExpression(callExpr, ARG_RADIUS, if (hasVarargStops) -1 else 2)
+    val tileModeExpr = findArgumentExpression(callExpr, ARG_TILE_MODE, if (hasVarargStops) -1 else 3)
+
+    // Omitted optional arguments (expr == null) fall back to their Compose default values without
+    // calling `onDynamic()`; only explicitly passed but unresolvable arguments trigger `onDynamic()`.
+    val center = centerExpr?.let { parseOffset(it, onDynamic) ?: Offset.Unspecified.also { onDynamic() } } ?: Offset.Unspecified
+    val radius = radiusExpr?.let { parseFloat(it, onDynamic) ?: Float.POSITIVE_INFINITY.also { onDynamic() } } ?: Float.POSITIVE_INFINITY
+    val tileMode = tileModeExpr?.let { parseTileMode(it, onDynamic) ?: TileMode.Clamp.also { onDynamic() } } ?: TileMode.Clamp
+
+    return Gradient.RadialGradient(
+      colors = colors ?: emptyList(),
+      colorStops = colorStops,
+      center = center,
+      radius = radius,
+      tileMode = tileMode,
+      hasDynamicOrUnresolvedValues = hasDynamicOrUnresolved,
+    )
+  }
+
+  /**
+   * Parses a `Brush.sweepGradient` [KtCallExpression] into a [Gradient.SweepGradient], or returns null if the call does not represent a
+   * valid sweep gradient.
+   */
+  fun parseSweepGradient(callExpr: KtCallExpression): Gradient.SweepGradient? {
+    if (!callExpr.isValidBrushGradientCall(FUN_SWEEP_GRADIENT) && callExpr.calleeExpression?.text != FUN_SWEEP_GRADIENT) return null
+    var hasDynamicOrUnresolved = false
+    val onDynamic: () -> Unit = { hasDynamicOrUnresolved = true }
+
+    val (colors, colorStops) = parseColorsOrStops(callExpr, onDynamic)
+    if (colors == null && colorStops == null) return null
+
+    val hasVarargStops = colorStops != null
+    val centerExpr = findArgumentExpression(callExpr, ARG_CENTER, if (hasVarargStops) -1 else 1)
+    // Omitted optional `center` argument (centerExpr == null) defaults to Offset.Unspecified
+    // without calling `onDynamic()`; only an explicitly passed but unresolvable argument triggers it.
+    val center = centerExpr?.let { parseOffset(it, onDynamic) ?: Offset.Unspecified.also { onDynamic() } } ?: Offset.Unspecified
+
+    return Gradient.SweepGradient(
+      colors = colors ?: emptyList(),
+      colorStops = colorStops,
+      center = center,
+      hasDynamicOrUnresolvedValues = hasDynamicOrUnresolved,
+    )
+  }
+
+  private fun parseColorsOrStops(
+    callExpr: KtCallExpression,
+    onDynamic: () -> Unit,
+  ): Pair<List<Color>?, List<Pair<Float, Color>>?> {
+    val colorsExpr = findArgumentExpression(callExpr, ARG_COLORS, 0)
+    val colors = colorsExpr?.let { parseColorsList(it, onDynamic) }
+    if (colors != null) return colors to null
+
+    val colorStopsExpr = findArgumentExpression(callExpr, ARG_COLOR_STOPS, 0)
+    val colorStops = colorStopsExpr?.let { parseColorStops(it, onDynamic) } ?: parsePositionalColorStops(callExpr, onDynamic)
+    return null to colorStops
+  }
+
+  private fun parseColorsList(expr: KtExpression, onDynamic: (() -> Unit)? = null): List<Color>? {
+    val resolved = resolveExpression(expr, onDynamic)
+    val call = getCallExpression(resolved) ?: return null
+    val callee = getQualifiedCalleeText(resolved) ?: return null
+    if (!isCollectionListFunction(resolved, callee)) return null
+    if (call.valueArguments.isEmpty()) return null
+    var anyResolved = false
+    var anyFailed = false
+    val result =
+      call.valueArguments.map { arg ->
+        val argExpr = arg.getArgumentExpression()
+        val color = argExpr?.let { parseColor(it, onDynamic) }
+        if (color != null) {
+          anyResolved = true
+          color
+        } else {
+          anyFailed = true
+          Color.White
+        }
+      }
+    if (!anyResolved) return null
+    if (anyFailed) onDynamic?.invoke()
+    return if (result.size == 1) {
+      onDynamic?.invoke()
+      listOf(result[0], Color.White)
+    } else {
+      result
+    }
+  }
+
+  private fun parseColorStops(expr: KtExpression, onDynamic: (() -> Unit)? = null): List<Pair<Float, Color>>? {
+    val unwrapped = (expr as? KtPrefixExpression)?.takeIf { it.operationReference.text == "*" }?.baseExpression ?: expr
+    val resolved = resolveExpression(unwrapped, onDynamic)
+    val call = getCallExpression(resolved) ?: return null
+    val callee = call.calleeExpression?.text ?: return null
+    if (callee != FUN_ARRAY_OF && !isCollectionListFunction(resolved, callee)) return null
+    return parseStopArguments(call.valueArguments, onDynamic)
+  }
+
+  private fun parsePositionalColorStops(callExpr: KtCallExpression, onDynamic: (() -> Unit)? = null): List<Pair<Float, Color>>? {
+    val positionalArgs = callExpr.valueArguments.filter { it !is KtLambdaArgument && it.getArgumentName() == null }
+    if (positionalArgs.isEmpty()) return null
+    return parseStopArguments(positionalArgs, onDynamic)
+  }
+
+  private fun parseStopArguments(args: List<KtValueArgument>, onDynamic: (() -> Unit)? = null): List<Pair<Float, Color>>? {
+    if (args.isEmpty()) return null
+    var anyResolved = false
+    var anyFailed = false
+    val count = args.size
+    val result = args.mapIndexed { index, arg ->
+      val defaultFraction = if (count > 1) index.toFloat() / (count - 1) else 0f
+      val argExpr = arg.getArgumentExpression()
+      val stop = argExpr?.let { parseColorStop(it, onDynamic, defaultFraction) }
+      if (stop != null) {
+        anyResolved = true
+        stop
+      } else {
+        anyFailed = true
+        Pair(defaultFraction, Color.White)
+      }
+    }
+    if (!anyResolved) return null
+    if (anyFailed) onDynamic?.invoke()
+    return if (result.size == 1) {
+      onDynamic?.invoke()
+      listOf(result[0], Pair(1f, Color.White))
+    } else {
+      result
+    }
+  }
+
+  private fun parseColorStop(
+    expr: KtExpression,
+    onDynamic: (() -> Unit)? = null,
+    defaultFraction: Float? = null,
+  ): Pair<Float, Color>? {
+    val resolved = resolveExpression(expr, onDynamic)
+    if (resolved is KtBinaryExpression && resolved.operationReference.text == OP_TO) {
+      val rawLeft = resolved.left?.let { parseFloat(it, onDynamic)?.coerceIn(0f, 1f) }
+      val rawRight = resolved.right?.let { parseColor(it, onDynamic) }
+      if (rawLeft == null && rawRight == null) return null
+      if (rawLeft == null || rawRight == null) onDynamic?.invoke()
+      return Pair(rawLeft ?: defaultFraction ?: 0f, rawRight ?: Color.White)
+    }
+    if (resolved is KtCallExpression && resolved.calleeExpression?.text == FUN_PAIR) {
+      val args = resolved.valueArguments
+      if (args.size == 2) {
+        val rawLeft = args[0].getArgumentExpression()?.let { parseFloat(it, onDynamic)?.coerceIn(0f, 1f) }
+        val rawRight = args[1].getArgumentExpression()?.let { parseColor(it, onDynamic) }
+        if (rawLeft == null && rawRight == null) return null
+        if (rawLeft == null || rawRight == null) onDynamic?.invoke()
+        return Pair(rawLeft ?: defaultFraction ?: 0f, rawRight ?: Color.White)
+      }
+    }
+    return null
+  }
+
+  private fun parseTileMode(expr: KtExpression, onDynamic: (() -> Unit)? = null): TileMode? {
+    val text = resolveExpression(expr, onDynamic).text
+    return when {
+      text.endsWith(TILE_MODE_CLAMP) -> TileMode.Clamp
+      text.endsWith(TILE_MODE_REPEATED) -> TileMode.Repeated
+      text.endsWith(TILE_MODE_MIRROR) -> TileMode.Mirror
+      text.endsWith(TILE_MODE_DECAL) -> TileMode.Decal
+      else -> null
+    }
+  }
+
+  /**
+   * Replaces the given `Brush` gradient [callExpr] (or its enclosing qualified expression) in the PSI tree with updated source code for
+   * [gradient]. Returns false for [Gradient.MeshGradient], which is updated via [updateConstructorArguments] and [regenerateLambdaBody].
+   */
+  fun updateGradient(callExpr: KtCallExpression, gradient: Gradient): Boolean {
+    val psiFactory = KtPsiFactory(project)
+    val newExprStr =
+      when (gradient) {
+        is Gradient.LinearGradient -> generateLinearGradientSource(gradient)
+        is Gradient.RadialGradient -> generateRadialGradientSource(gradient)
+        is Gradient.SweepGradient -> generateSweepGradientSource(gradient)
+        is Gradient.MeshGradient -> return false
+      }
+    val newExpr = psiFactory.createExpression(newExprStr)
+    val targetToReplace = (callExpr.parent as? KtDotQualifiedExpression)?.takeIf { it.selectorExpression == callExpr } ?: callExpr
+    targetToReplace.replace(newExpr)
+    return true
+  }
+
+  private fun generateLinearGradientSource(gradient: Gradient.LinearGradient): String {
+    val colorsStr = generateColorsOrStopsSource(gradient.colors, gradient.colorStops)
+    return "Brush.$FUN_LINEAR_GRADIENT($colorsStr, $ARG_START = ${generateOffsetSource(gradient.start)}, $ARG_END = ${generateOffsetSource(gradient.end)}, $ARG_TILE_MODE = ${generateTileModeSource(gradient.tileMode)})"
+  }
+
+  private fun generateRadialGradientSource(gradient: Gradient.RadialGradient): String {
+    val colorsStr = generateColorsOrStopsSource(gradient.colors, gradient.colorStops)
+    return "Brush.$FUN_RADIAL_GRADIENT($colorsStr, $ARG_CENTER = ${generateOffsetSource(gradient.center)}, $ARG_RADIUS = ${generateFloatSource(gradient.radius)}, $ARG_TILE_MODE = ${generateTileModeSource(gradient.tileMode)})"
+  }
+
+  private fun generateSweepGradientSource(gradient: Gradient.SweepGradient): String {
+    val colorsStr = generateColorsOrStopsSource(gradient.colors, gradient.colorStops)
+    return "Brush.$FUN_SWEEP_GRADIENT($colorsStr, $ARG_CENTER = ${generateOffsetSource(gradient.center)})"
+  }
+
+  private fun generateColorsOrStopsSource(colors: List<Color>, colorStops: List<Pair<Float, Color>>?): String {
+    return if (colorStops != null) {
+      "$ARG_COLOR_STOPS = $FUN_ARRAY_OF(${colorStops.joinToString { "${generateFloatSource(it.first)} $OP_TO Color(${it.second.toComposeHexLiteral()})" }})"
+    } else {
+      "$ARG_COLORS = listOf(${colors.joinToString { "Color(${it.toComposeHexLiteral()})" }})"
+    }
+  }
+
+  private fun generateTileModeSource(tileMode: TileMode): String {
+    return "TileMode.$tileMode"
+  }
+
   /** Parses the [KtCallExpression] of MeshGradientPainter to extract rows, cols, hasBicubicColor, and vertices. */
   fun parseMesh(callExpr: KtCallExpression): ParsedMesh? {
     var hasDynamicOrUnresolved = false
@@ -176,7 +585,7 @@ class GradientPsiManager(private val project: Project) {
     if (namedArg != null) return namedArg.getArgumentExpression()
 
     val args = callExpr.valueArguments
-    if (index < args.size) {
+    if (index in args.indices) {
       val arg = args[index]
       if (arg is KtLambdaArgument) return null
       if (arg.getArgumentName() == null) {
@@ -327,6 +736,7 @@ class GradientPsiManager(private val project: Project) {
         return when (text.removePrefix("$prefix.")) {
           "Zero" -> Offset.Zero
           "Unspecified" -> Offset.Unspecified
+          "Infinite" -> Offset.Infinite
           else -> null
         }
       }
@@ -361,6 +771,12 @@ class GradientPsiManager(private val project: Project) {
         "/" -> if (r == 0f) null else l / r
         else -> null
       }
+    }
+    if (resolved.text.endsWith("POSITIVE_INFINITY")) {
+      return Float.POSITIVE_INFINITY
+    }
+    if (resolved.text.endsWith("NEGATIVE_INFINITY")) {
+      return Float.NEGATIVE_INFINITY
     }
     return resolved.text.removeSuffix("f").removeSuffix("F").toFloatOrNull()
   }
