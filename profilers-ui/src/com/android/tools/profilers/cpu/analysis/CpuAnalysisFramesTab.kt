@@ -20,8 +20,8 @@ import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.profilers.cpu.analysis.TableUtils.changeRangeOnSelection
 import com.android.tools.profilers.cpu.analysis.TableUtils.setColumnRenderers
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import javax.swing.JPanel
@@ -64,7 +64,7 @@ class CpuAnalysisFramesTab(profilersView: StudioProfilersView, model: CpuAnalysi
       // Add a dropdown list when there are multiple layers.
       val layerDropdownList =
         ComboBox(model.tableModels.toTypedArray()).apply {
-          renderer = SimpleListCellRenderer.create("") { it.toString() }
+          renderer = textListCellRenderer("") { it.toString() }
           addActionListener { initializeTable(this.selectedItem as PaginatedTableModel<FrameEventRow>) }
         }
       add(
