@@ -88,6 +88,35 @@ class GradientLineMarkerProviderTest : LightPlatformTestCase() {
     assertEquals(listOf("AliasedMeshPainter", "MeshGradientPainter"), runReadActionBlocking { markers.mapNotNull { it.element?.text } })
   }
 
+  fun testLineMarkerSupportsStandardBrushGradients() {
+    val code =
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+
+      fun MyGradients() {
+          val b1 = Brush.linearGradient(colors = listOf(Color.Red, Color.Blue))
+          val b2 = Brush.radialGradient(colors = listOf(Color.Red, Color.Blue))
+          val b3 = Brush.sweepGradient(colors = listOf(Color.Red, Color.Blue))
+          val b4 = Brush.horizontalGradient(colors = listOf(Color.Red, Color.Blue))
+          val b5 = Brush.verticalGradient(colors = listOf(Color.Red, Color.Blue))
+      }
+      """
+        .trimIndent()
+
+    val file = createFile("TestBrushGradients.kt", code) as KtFile
+    val markers = runReadActionBlocking {
+      SyntaxTraverser.psiTraverser(file).filter(LeafPsiElement::class.java).mapNotNull { provider.getLineMarkerInfo(it) }
+    }
+
+    assertEquals(
+      listOf("linearGradient", "radialGradient", "sweepGradient", "horizontalGradient", "verticalGradient"),
+      runReadActionBlocking { markers.mapNotNull { it.element?.text } },
+    )
+  }
+
   fun testLineMarkerRespectsFeatureFlag() {
     StudioFlags.COMPOSE_MESH_GRADIENT_EDITOR.override(false)
     val code =

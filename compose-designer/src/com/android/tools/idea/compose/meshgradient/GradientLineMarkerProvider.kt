@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
+import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
@@ -37,7 +38,7 @@ import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
 class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
 
-  override fun getName(): String = "Mesh Gradient Editor"
+  override fun getName(): String = message("gradient.editor.annotator.name")
 
   override fun getIcon(): Icon = StudioIcons.GutterIcons.PREVIEW_SETTINGS
 
@@ -52,21 +53,17 @@ class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
     val callExpression = nameRef.parent as? KtCallExpression ?: return null
     if (callExpression.calleeExpression != nameRef) return null
 
-    val file = element.containingFile as? KtFile ?: return null
-    if (
-      element.text != "MeshGradientPainter" &&
-        file.importDirectives.none {
-          it.aliasName == element.text && it.importedFqName?.asString() == "androidx.compose.ui.graphics.MeshGradientPainter"
-        }
-    ) {
-      return null
+    val text = element.text
+    if (text != "MeshGradientPainter" && text !in BRUSH_GRADIENT_NAMES) {
+      val file = callExpression.containingFile as? KtFile ?: return null
+      if (file.importDirectives.none { it.aliasName == text }) return null
     }
 
-    if (!callExpression.isValidMeshGradientCall()) return null
+    if (!callExpression.isValidGradientCall()) return null
 
     val callPointer = SmartPointerManager.getInstance(element.project).createSmartPsiElementPointer(callExpression)
     val info = createInfo(element, element.textRange, element.project, callPointer)
-    NavigateAction.setNavigateAction(info, "Edit Mesh Gradient", null, icon)
+    NavigateAction.setNavigateAction(info, message("gradient.editor.action.title"), null, icon)
     return info
   }
 
@@ -81,7 +78,7 @@ class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
         element,
         textRange,
         icon,
-        { "Edit Mesh Gradient" },
+        { message("gradient.editor.action.tooltip") },
         { _, _ ->
           val validCall = callPointer.element?.takeIf { it.isValid }
           val file = validCall?.containingFile as? KtFile
@@ -91,7 +88,7 @@ class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
           }
         },
         GutterIconRenderer.Alignment.LEFT,
-        { "Edit Mesh Gradient" },
+        { message("gradient.editor.action.tooltip") },
       ) {
       override fun getEditorFilter(): MarkupEditorFilter {
         return MarkupEditorFilterFactory.createIsNotDiffFilter()

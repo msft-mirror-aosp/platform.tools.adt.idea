@@ -17,10 +17,13 @@ package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.testFramework.VfsTestUtil
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Assert.assertEquals
@@ -132,6 +135,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
     val dialog = GradientEditorDialog(project, file, call!!)
 
+    assertEquals(GradientType.MESH, dialog.state.currentType)
     assertEquals(3, dialog.state.rows)
     assertEquals(4, dialog.state.cols)
     assertTrue(dialog.state.hasBicubicColor)
@@ -272,6 +276,117 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     assertTrue("Should include star-imported ThemePrimary in palette", Color(0xFF6200EE) in dialog.state.availableColors)
     assertTrue("Should include star-imported ThemeSecondary in palette", Color(0xFF03DAC5) in dialog.state.availableColors)
 
+    dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+  }
+
+  @Test
+  fun testDialogInitializesAndCommitsLinearGradient() {
+    val linearCode =
+      """
+      package test
+
+      import androidx.compose.ui.geometry.Offset
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.TileMode
+
+      fun MyLinear() {
+          val brush = Brush.linearGradient(
+              colors = listOf(Color.Red, Color.Blue),
+              start = Offset(0.1f, 0.2f),
+              end = Offset(0.8f, 0.9f),
+              tileMode = TileMode.Mirror
+          )
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestLinearDialog.kt", linearCode)
+    val call = runReadActionBlocking {
+      PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+    }
+    assertNotNull(call)
+
+    val dialog = GradientEditorDialog(project, file, call!!)
+    assertEquals(GradientType.LINEAR, dialog.state.currentType)
+    assertEquals(listOf(Color.Red, Color.Blue), dialog.state.colors.toList())
+    assertEquals(Offset(0.1f, 0.2f), dialog.state.start)
+    assertEquals(Offset(0.8f, 0.9f), dialog.state.end)
+    assertEquals(TileMode.Mirror, dialog.state.tileMode)
+
+    dialog.state.start = Offset(0.25f, 0.35f)
+    dialog.doOKAction()
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue("Should contain updated start offset: $updatedText", updatedText.contains("start = Offset(0.25f, 0.35f)"))
+  }
+
+  @Test
+  fun testDialogPopulatesColorsFromColorStops() {
+    val stopsCode =
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+
+      fun MyLinearStops() {
+          val brush = Brush.linearGradient(
+              colorStops = arrayOf(0.0f to Color.Red, 0.5f to Color.Green, 1.0f to Color.Blue)
+          )
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestStopsDialog.kt", stopsCode)
+    val call = runReadActionBlocking {
+      PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
+    }
+    assertNotNull(call)
+
+    val dialog = GradientEditorDialog(project, file, call!!)
+    assertEquals(GradientType.LINEAR, dialog.state.currentType)
+    assertEquals(listOf(Color.Red, Color.Green, Color.Blue), dialog.state.colors.toList())
+    assertEquals(3, dialog.state.colorStops.size)
+
+    dialog.state.updateColor(1, Color.Yellow)
+    dialog.doOKAction()
+
+    val updatedText = runReadActionBlocking { file.text }
+    assertTrue("Should contain first stop: $updatedText", updatedText.contains("0.0f to Color(0xFFFF0000)"))
+    assertTrue("Should contain updated middle stop: $updatedText", updatedText.contains("0.5f to Color(0xFFFFFF00)"))
+    assertTrue("Should contain last stop: $updatedText", updatedText.contains("1.0f to Color(0xFF0000FF)"))
+    assertTrue("Should contain Offset.Infinite end: $updatedText", updatedText.contains("end = Offset.Infinite"))
+  }
+
+  @Test
+  fun testDialogFallbackForFullyDynamicBrushColors() {
+    val dynamicCode =
+      """
+      package test
+
+      import androidx.compose.ui.graphics.Brush
+      import androidx.compose.ui.graphics.Color
+
+      fun MyDynamicRadial(themeColors: List<Color>) {
+          val brush = Brush.radialGradient(colors = themeColors)
+      }
+      """
+        .trimIndent()
+
+    val psiFactory = KtPsiFactory(project)
+    val file = psiFactory.createFile("TestDynamicRadialDialog.kt", dynamicCode)
+    val call = runReadActionBlocking {
+      PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "radialGradient" }
+    }
+    assertNotNull(call)
+
+    val dialog = GradientEditorDialog(project, file, call!!)
+    assertEquals(GradientType.RADIAL, dialog.state.currentType)
+    assertTrue("Should flag dynamic or unresolved values", dialog.state.hasDynamicOrUnresolvedValues)
+    assertTrue("Should maintain at least 2 fallback colors", dialog.state.colors.size >= 2)
     dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
   }
 }
