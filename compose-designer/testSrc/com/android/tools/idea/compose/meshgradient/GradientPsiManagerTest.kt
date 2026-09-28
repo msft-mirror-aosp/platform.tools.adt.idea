@@ -29,7 +29,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class MeshGradientPsiManagerTest : LightPlatformTestCase() {
+class GradientPsiManagerTest : LightPlatformTestCase() {
 
   private val codeTemplate =
     """
@@ -155,7 +155,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("AnimatedTest.kt", animatedSnippet)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -222,7 +222,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("DynamicShadowTest.kt", snippet)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -246,7 +246,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testParseMesh() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -269,7 +269,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testFindMeshPainterCallWithImportAlias() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", aliasCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
     assertNotNull("Should find call even when using import alias", call)
@@ -282,7 +282,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testParseMeshWithVariables() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", variablesCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -309,7 +309,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testRobustParsing() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", robustCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -344,7 +344,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testUpdateVertexColor() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     WriteCommandAction.runWriteCommandAction(project) {
       val call = psiManager.findMeshPainterCall(file)
@@ -361,7 +361,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testUpdateVertexOffset() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     WriteCommandAction.runWriteCommandAction(project) {
       val call = psiManager.findMeshPainterCall(file)
@@ -434,7 +434,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testParseUserSnippet() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", userSnippet)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -498,7 +498,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testParseWithFullyQualifiedNamesAndAliases() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", fqnAndAliasCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -553,7 +553,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testCircularReferenceSafety() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", circularReferenceCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -600,7 +600,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testVariableIndexResolution() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", variableIndexCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -672,7 +672,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testParseMeshWithCoordinateVariables() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", coordinateVariablesCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -694,7 +694,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
   fun testParseMeshWithCollectionAlias() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", collectionAliasCodeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -755,7 +755,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", code)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -810,7 +810,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", code)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val call = psiManager.findMeshPainterCall(file)
@@ -845,7 +845,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", code)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     WriteCommandAction.runWriteCommandAction(project) {
       val call = psiManager.findMeshPainterCall(file)
@@ -940,7 +940,7 @@ class MeshGradientPsiManagerTest : LightPlatformTestCase() {
           .trimIndent(),
       )
 
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
       val mainFile = this.psiManager.findFile(mainVFile) as KtFile

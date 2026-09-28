@@ -22,9 +22,9 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.testFramework.LightPlatformTestCase
 import org.jetbrains.kotlin.psi.KtFile
 
-class MeshGradientLineMarkerProviderTest : LightPlatformTestCase() {
+class GradientLineMarkerProviderTest : LightPlatformTestCase() {
 
-  private val provider = MeshGradientLineMarkerProvider()
+  private val provider = GradientLineMarkerProvider()
 
   override fun setUp() {
     super.setUp()

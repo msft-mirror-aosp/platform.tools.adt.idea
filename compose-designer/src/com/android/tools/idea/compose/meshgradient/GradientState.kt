@@ -24,7 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import java.util.Locale
 
-class MeshGeneratorState {
+class GradientEditorState {
   var rows by mutableIntStateOf(3)
     private set
 

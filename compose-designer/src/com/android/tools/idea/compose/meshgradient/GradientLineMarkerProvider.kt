@@ -35,7 +35,7 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
-class MeshGradientLineMarkerProvider : LineMarkerProviderDescriptor() {
+class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
 
   override fun getName(): String = "Mesh Gradient Editor"
 
@@ -86,7 +86,7 @@ class MeshGradientLineMarkerProvider : LineMarkerProviderDescriptor() {
           val validCall = callPointer.element?.takeIf { it.isValid }
           val file = validCall?.containingFile as? KtFile
           if (validCall != null && file != null) {
-            val dialog = MeshGradientEditorDialog(project, file, validCall)
+            val dialog = GradientEditorDialog(project, file, validCall)
             dialog.show()
           }
         },

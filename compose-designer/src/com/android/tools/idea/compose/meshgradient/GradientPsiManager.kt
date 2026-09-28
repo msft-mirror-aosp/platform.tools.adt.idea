@@ -111,7 +111,7 @@ internal fun formatSetVertexCall(r: Int, c: Int, point: MeshGradientPoint): Stri
   }
 }
 
-class MeshGradientPsiManager(private val project: Project) {
+class GradientPsiManager(private val project: Project) {
 
   data class ParsedVertex(
     val row: Int,

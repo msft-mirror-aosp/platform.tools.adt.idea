@@ -18,7 +18,7 @@ package com.android.tools.idea.compose.meshgradient
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import com.android.tools.adtui.compose.StudioComposePanel
-import com.android.tools.idea.compose.meshgradient.MeshGradientPsiManager.ParsedMesh
+import com.android.tools.idea.compose.meshgradient.GradientPsiManager.ParsedMesh
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.Logger
@@ -31,13 +31,13 @@ import javax.swing.JComponent
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 
-private val logger = Logger.getInstance(MeshGradientEditorDialog::class.java)
+private val logger = Logger.getInstance(GradientEditorDialog::class.java)
 
-class MeshGradientEditorDialog(private val project: Project, private val file: KtFile, painterCall: KtCallExpression) :
+class GradientEditorDialog(private val project: Project, private val file: KtFile, painterCall: KtCallExpression) :
   DialogWrapper(project, true) {
 
-  private val psiManager = MeshGradientPsiManager(project)
-  internal val state = MeshGeneratorState()
+  private val psiManager = GradientPsiManager(project)
+  internal val state = GradientEditorState()
   private var parsedMesh: ParsedMesh? = null
   private val painterCallPointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(painterCall)
 

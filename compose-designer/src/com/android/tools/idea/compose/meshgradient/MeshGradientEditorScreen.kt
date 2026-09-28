@@ -85,7 +85,7 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 @OptIn(ExperimentalLayoutApi::class)
 @Suppress("UseJBColor")
 @Composable
-fun MeshGradientEditorScreen(project: Project, state: MeshGeneratorState, isEditingExisting: Boolean = false) {
+fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEditingExisting: Boolean = false) {
   val scrollState = rememberScrollState()
   var canvasSize by remember { mutableStateOf(IntSize.Zero) }
   var showColorPickerForVertex by remember { mutableStateOf<Pair<Int, Int>?>(null) }

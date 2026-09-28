@@ -28,7 +28,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class MeshGradientEditorDialogTest : LightPlatformTestCase() {
+class GradientEditorDialogTest : LightPlatformTestCase() {
 
   private val codeTemplate =
     """
@@ -91,12 +91,12 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("TestAnimatedDialog.kt", animatedCode)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
     assertNotNull(call)
 
-    val dialog = MeshGradientEditorDialog(project, file, call!!)
+    val dialog = GradientEditorDialog(project, file, call!!)
     assertTrue("Should detect dynamic values", dialog.state.hasDynamicOrUnresolvedValues)
 
     // Modify only (0, 0) position and (0, 1) color; leave (1, 1) untouched
@@ -125,12 +125,12 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
   fun testDialogInitialization() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
     assertNotNull(call)
 
-    val dialog = MeshGradientEditorDialog(project, file, call!!)
+    val dialog = GradientEditorDialog(project, file, call!!)
 
     assertEquals(3, dialog.state.rows)
     assertEquals(4, dialog.state.cols)
@@ -147,12 +147,12 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
   fun testDialogOkActionCommitsChanges() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
     assertNotNull(call)
 
-    val dialog = MeshGradientEditorDialog(project, file, call!!)
+    val dialog = GradientEditorDialog(project, file, call!!)
 
     dialog.state.updateMeshPoint(1, 1, Offset(0.4f, 0.6f))
 
@@ -190,12 +190,12 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("TestBezier.kt", codeWithBezier)
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
 
     val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
     assertNotNull(call)
 
-    val dialog = MeshGradientEditorDialog(project, file, call!!)
+    val dialog = GradientEditorDialog(project, file, call!!)
     assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
 
     dialog.state.updatePaletteAndMeshColor(Color(0xFFF44336), Color(0xFF00BCD4))
@@ -261,12 +261,12 @@ class MeshGradientEditorDialogTest : LightPlatformTestCase() {
           .trimIndent(),
       )
 
-    val psiManager = MeshGradientPsiManager(project)
+    val psiManager = GradientPsiManager(project)
     val mainFile = runReadActionBlocking { this.psiManager.findFile(mainVFile) as KtFile }
     val call = runReadActionBlocking { psiManager.findMeshPainterCall(mainFile) }
     assertNotNull(call)
 
-    val dialog = MeshGradientEditorDialog(project, mainFile, call!!)
+    val dialog = GradientEditorDialog(project, mainFile, call!!)
     assertTrue("Should include localCustom in palette", Color(0xFFAA00FF) in dialog.state.availableColors)
     assertTrue("Should include FileAccent in palette", Color(0xFFFF4081) in dialog.state.availableColors)
     assertTrue("Should include star-imported ThemePrimary in palette", Color(0xFF6200EE) in dialog.state.availableColors)

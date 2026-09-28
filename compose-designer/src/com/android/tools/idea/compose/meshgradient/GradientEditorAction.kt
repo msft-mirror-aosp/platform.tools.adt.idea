@@ -25,12 +25,12 @@ import com.intellij.openapi.ui.DialogWrapper
 import java.awt.Dimension
 import javax.swing.JComponent
 
-class MeshGradientEditorAction : AnAction() {
+class GradientEditorAction : AnAction() {
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
-    val dialog = MeshGradientEditorPlaygroundDialog(project)
+    val dialog = GradientEditorPlaygroundDialog(project)
     dialog.show()
   }
 
@@ -40,8 +40,8 @@ class MeshGradientEditorAction : AnAction() {
   }
 }
 
-class MeshGradientEditorPlaygroundDialog(private val project: Project) : DialogWrapper(project, true) {
-  private val state = MeshGeneratorState()
+class GradientEditorPlaygroundDialog(private val project: Project) : DialogWrapper(project, true) {
+  private val state = GradientEditorState()
 
   init {
     title = "Mesh Gradient Editor"
