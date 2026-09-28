@@ -18,7 +18,6 @@ package com.android.tools.idea.instrumentation.threading
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.util.StudioPathManager.isRunningFromSources
 import com.android.tools.instrumentation.threading.agent.callback.ThreadingCheckerTrampoline
-import com.intellij.execution.process.OSProcessUtil
 import com.intellij.ide.ApplicationInitializedListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
@@ -79,7 +78,7 @@ class ThreadingChecker : ApplicationInitializedListener {
         return
       }
       try {
-        vm = VirtualMachine.attach(OSProcessUtil.getApplicationPid())
+        vm = VirtualMachine.attach(ProcessHandle.current().pid().toString())
       } catch (e: IOException) {
         thisLogger().info("Couldn't attach to current VM to load Threading Agent. Make sure 'jdk.attach.allowAttachSelf=true'", e)
         return
