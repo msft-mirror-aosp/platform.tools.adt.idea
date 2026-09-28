@@ -133,7 +133,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   private boolean myLeakCanaryOccurrencesEnabled = false;
 
-  private boolean myUseTraceProcessorForHprofEnabled = false;
+  private boolean myUseTraceProcessorForHprofEnabled = true;
 
   private boolean mySystemTraceInEditorEnabled = false;
 
