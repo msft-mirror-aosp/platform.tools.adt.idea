@@ -160,4 +160,36 @@ class UpdateReferenceImagesDialogManagerTest {
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     }
   }
+
+  @Test
+  fun testDialogRecreatedWhenExistingDialogNotVisible() = runInEdtAndWait {
+    val manager = UpdateReferenceImagesDialogManager.getInstance(projectRule.project)
+
+    val mockDialog1 = mock(UpdateReferenceImagesDialog::class.java)
+    val mockDialog2 = mock(UpdateReferenceImagesDialog::class.java)
+
+    val disposable1 = Disposer.newDisposable(projectRule.testRootDisposable, "MockDialog1")
+    val disposable2 = Disposer.newDisposable(projectRule.testRootDisposable, "MockDialog2")
+
+    `when`(mockDialog1.disposable).thenReturn(disposable1)
+    `when`(mockDialog2.disposable).thenReturn(disposable2)
+
+    var callCount = 0
+    manager.dialogFactory = {
+      callCount++
+      if (callCount == 1) mockDialog1 else mockDialog2
+    }
+
+    `when`(mockDialog1.isVisible).thenReturn(false)
+    val dialog1 = manager.showOrGetDialog()
+    assertNotNull(dialog1)
+
+    // Second call while existing dialog is not visible returns a newly created dialog
+    val dialog2 = manager.showOrGetDialog()
+    assertNotNull(dialog2)
+    assertNotSame(dialog1, dialog2)
+
+    Disposer.dispose(disposable1)
+    Disposer.dispose(disposable2)
+  }
 }
