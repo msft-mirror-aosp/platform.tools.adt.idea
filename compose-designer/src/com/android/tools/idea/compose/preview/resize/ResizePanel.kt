@@ -100,7 +100,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   private var currentFocusedPreviewElement: PsiComposePreviewElementInstance? = null
   private var currentSceneManager: LayoutlibSceneManager? = null
 
-  private var currentConfiguration: Configuration? = null
+  // Read by the toolbar actions on a background thread.
+  @Volatile private var currentConfiguration: Configuration? = null
 
   private var originalDeviceSnapshot: Device? = null
   private var originalDeviceStateSnapshot: State? = null
@@ -251,6 +252,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     originalUiModeSnapshot = UiMode.NORMAL
     originalThemeSnapshot = null
     hasBeenResized = false
+    // Disable (and hide) the dimension inputs until a new configuration is set, e.g. while the preview refreshes.
+    updatePanelFromConfiguration()
   }
 
   /**
@@ -419,10 +422,12 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     }
 
     override fun update(e: AnActionEvent) {
-      e.presentation.isEnabled = this@ResizePanel.isEnabled
+      // Hide the inputs when there is no configuration (e.g. while the preview is refreshing), like the device picker.
+      e.presentation.isEnabledAndVisible = this@ResizePanel.isEnabled && currentConfiguration != null
     }
 
     override fun updateCustomComponent(component: JComponent, presentation: Presentation) {
+      component.isVisible = presentation.isVisible
       val isEnabled = presentation.isEnabled
       widthTextField.isEnabled = isEnabled
       heightTextField.isEnabled = isEnabled

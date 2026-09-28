@@ -41,9 +41,11 @@ import com.intellij.openapi.actionSystem.EdtNoGetDataProvider
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.actionSystem.impl.ActionMenuItem
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndGet
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.fields.IntegerField
 import java.awt.Dimension
 import java.awt.event.ActionEvent
@@ -577,6 +579,30 @@ class ResizePanelTest {
   }
 
   @Test
+  fun `dimension inputs are hidden while the panel is cleared`() = runInEdtAndGet {
+    setupAndShowPanel()
+    assertTrue(resizePanel.isEnabled)
+    assertTrue(fakeUi.findAllComponents<IntegerField>().any { fakeUi.isShowing(it) })
+
+    // A preview refresh clears the panel until the new render finishes.
+    resizePanel.clear()
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertFalse(resizePanel.isEnabled)
+    assertTrue(fakeUi.findAllComponents<IntegerField>().none { fakeUi.isShowing(it) })
+
+    // After the render, the scene manager is set again and the inputs come back.
+    resizePanel.setSceneManager(sceneManager)
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertTrue(resizePanel.isEnabled)
+    assertTrue(fakeUi.findAllComponents<IntegerField>().any { fakeUi.isShowing(it) })
+    assertEquals(configuration.deviceSizeDp().width, widthTextField.value)
+  }
+
+  @Test
   fun `automotive ultrawide width is correctly set`() = runInEdtAndGet {
     setupAndShowPanel()
 
@@ -623,6 +649,8 @@ class ResizePanelTest {
 
     resizePanel.setSceneManager(sceneManager)
     configuration.finishBulkEditing()
+    // The panel state is updated on the EDT.
+    runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
 
     assertNotNull(configuration.cachedDeviceState)
     assertTrue(resizePanel.isEnabled)
