@@ -309,6 +309,144 @@ class SavePreviewInNewSizeActionTest {
   }
 
   @Test
+  fun `update disables the action when an identical preview already exists`() = runTest {
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Preview(name = "MyPreview", group = "MyGroup", showSystemUi = true)
+        @Composable
+        fun MyComposable() {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val previewElement = AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTest.virtualFile).first()
+    modeManager.setMode(PreviewMode.Focus(previewElement))
+
+    val configuration = createConfiguration(500, 600)
+    configuration.setDevice(device(100, 300, ScreenOrientation.LANDSCAPE, "Pixel_9"), true)
+
+    `when`(resizePanel.hasBeenResized).thenReturn(true)
+    `when`(model.dataProvider)
+      .thenReturn(
+        object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+          override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+        }
+      )
+    `when`(model.configuration).thenReturn(configuration)
+
+    val action = SavePreviewInNewSizeAction()
+    val beforeSave = TestActionEvent.createTestEvent(getDataContext())
+    action.update(beforeSave)
+    assertThat(beforeSave.presentation.isEnabled).isTrue()
+
+    action.actionPerformed(TestActionEvent.createTestEvent(getDataContext()))
+    assertThat(AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTest.virtualFile)).hasSize(2)
+
+    // Saving the same device again would add an identical @Preview.
+    val afterSave = TestActionEvent.createTestEvent(getDataContext())
+    action.update(afterSave)
+    assertThat(afterSave.presentation.isVisible).isTrue()
+    assertThat(afterSave.presentation.isEnabled).isFalse()
+    assertThat(afterSave.presentation.description).isEqualTo("A @Preview for Pixel 9 already exists")
+
+    // A different device can still be saved.
+    configuration.setDevice(device(200, 400, ScreenOrientation.PORTRAIT, "Pixel_9a"), true)
+    val otherDevice = TestActionEvent.createTestEvent(getDataContext())
+    action.update(otherDevice)
+    assertThat(otherDevice.presentation.isEnabled).isTrue()
+  }
+
+  @Test
+  fun `update disables the action when an identical preview uses unqualified uiMode constants`() = runTest {
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+        import android.content.res.Configuration.UI_MODE_NIGHT_YES
+        import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Preview(name = "Dark", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
+        @Preview(name = "Pixel 9", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL, device = "id:Pixel_9")
+        @Composable
+        fun MyComposable() {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTest.virtualFile).first {
+        it.displaySettings.name.contains("Dark")
+      }
+    val action = setUpUpdateForExistingPreview(previewElement, device(100, 300, ScreenOrientation.PORTRAIT, "Pixel_9"))
+
+    // The generated annotation uses fully qualified uiMode constants, which should match the unqualified ones.
+    val event = TestActionEvent.createTestEvent(getDataContext())
+    action.update(event)
+    assertThat(event.presentation.isVisible).isTrue()
+    assertThat(event.presentation.isEnabled).isFalse()
+  }
+
+  @Test
+  fun `update disables the action when an identical preview passes name as a positional argument`() = runTest {
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Preview(name = "Base")
+        @Preview("Pixel 9", device = "id:Pixel_9")
+        @Composable
+        fun MyComposable() {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTest.virtualFile).first {
+        it.displaySettings.name.contains("Base")
+      }
+    val action = setUpUpdateForExistingPreview(previewElement, device(100, 300, ScreenOrientation.PORTRAIT, "Pixel_9"))
+
+    // @Preview("Pixel 9", device = "id:Pixel_9") is equivalent to @Preview(name = "Pixel 9", device = "id:Pixel_9").
+    val event = TestActionEvent.createTestEvent(getDataContext())
+    action.update(event)
+    assertThat(event.presentation.isVisible).isTrue()
+    assertThat(event.presentation.isEnabled).isFalse()
+  }
+
+  /** Sets up the mocks so that [previewElement] is focused and resized to [targetDevice], and returns the action under test. */
+  private fun setUpUpdateForExistingPreview(previewElement: PsiComposePreviewElement, targetDevice: Device): SavePreviewInNewSizeAction {
+    modeManager.setMode(PreviewMode.Focus(previewElement))
+    val configuration = createConfiguration(500, 600)
+    configuration.setDevice(targetDevice, true)
+
+    `when`(resizePanel.hasBeenResized).thenReturn(true)
+    `when`(model.dataProvider)
+      .thenReturn(
+        object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+          override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+        }
+      )
+    `when`(model.configuration).thenReturn(configuration)
+    return SavePreviewInNewSizeAction()
+  }
+
+  @Test
   fun `add new annotation, showSystemUi = false`() = runTest {
     @Language("kotlin")
     val composeTest =

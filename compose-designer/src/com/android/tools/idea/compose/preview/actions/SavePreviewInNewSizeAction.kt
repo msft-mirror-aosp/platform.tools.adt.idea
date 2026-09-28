@@ -36,6 +36,19 @@ import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.preview.PreviewElement
+import com.android.tools.preview.config.PARAMETER_API_LEVEL
+import com.android.tools.preview.config.PARAMETER_BACKGROUND_COLOR
+import com.android.tools.preview.config.PARAMETER_DEVICE
+import com.android.tools.preview.config.PARAMETER_FONT_SCALE
+import com.android.tools.preview.config.PARAMETER_GROUP
+import com.android.tools.preview.config.PARAMETER_HEIGHT_DP
+import com.android.tools.preview.config.PARAMETER_LOCALE
+import com.android.tools.preview.config.PARAMETER_NAME
+import com.android.tools.preview.config.PARAMETER_SHOW_BACKGROUND
+import com.android.tools.preview.config.PARAMETER_SHOW_SYSTEM_UI
+import com.android.tools.preview.config.PARAMETER_UI_MODE
+import com.android.tools.preview.config.PARAMETER_WALLPAPER
+import com.android.tools.preview.config.PARAMETER_WIDTH_DP
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -51,6 +64,10 @@ import kotlinx.coroutines.launch
 import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
 import org.jetbrains.kotlin.idea.base.psi.imports.addImport
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtBinaryExpression
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtImportAlias
@@ -180,11 +197,56 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
     e.presentation.isEnabledAndVisible = e.dataContext.getData(RESIZE_PANEL_INSTANCE_KEY)?.hasBeenResized == true
 
     if (e.presentation.isEnabledAndVisible) {
-      e.presentation.text = message("action.save.preview.current.size.title", createNewName(configuration))
-      e.presentation.description = message("action.save.preview.current.size.description", createNewName(configuration))
+      val newName = createNewName(configuration)
+      e.presentation.text = message("action.save.preview.current.size.title", newName)
+      e.presentation.description = message("action.save.preview.current.size.description", newName)
       e.presentation.putClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR, true)
+
+      val previewElement = sceneManager.model.dataProvider?.previewElement()
+      if (previewElement != null && hasIdenticalPreview(e, previewElement, configuration, newName)) {
+        e.presentation.isEnabled = false
+        e.presentation.description = message("action.save.preview.current.size.already.exists", newName)
+      }
     }
   }
+
+  /** Returns true if the preview function already has a `@Preview` annotation identical to the one this action would add. */
+  private fun hasIdenticalPreview(
+    e: AnActionEvent,
+    previewElement: PsiComposePreviewElementInstance,
+    configuration: Configuration,
+    newName: String,
+  ): Boolean {
+    val project = e.project ?: return false
+    val previewMethod = previewElement.previewBody?.element?.parent as? KtFunction ?: return false
+    val targetFile = previewMethod.containingFile as? KtFile ?: return false
+    val newAnnotation = KtPsiFactory(project).createAnnotationEntry(buildAnnotationText(previewElement, configuration, newName, targetFile))
+    val newArguments = newAnnotation.normalizedArguments()
+    val previewShortNames = setOfNotNull(newAnnotation.shortName?.asString(), COMPOSE_PREVIEW_ANNOTATION_FQN.substringAfterLast('.'))
+    return previewMethod.annotationEntries.any { it.shortName?.asString() in previewShortNames && it.normalizedArguments() == newArguments }
+  }
+
+  /**
+   * Maps each argument to its normalized value text (see [normalizedValue]). Positional arguments are mapped to the corresponding
+   * `@Preview` parameter name, so that e.g. `@Preview("Pixel 9")` and `@Preview(name = "Pixel 9")` compare equal.
+   */
+  private fun KtAnnotationEntry.normalizedArguments(): Map<String?, String?> =
+    valueArguments.withIndex().associate { (index, argument) ->
+      val name = argument.getArgumentName()?.asName?.asString() ?: PREVIEW_PARAMETERS_IN_ORDER.getOrNull(index)
+      name to argument.getArgumentExpression()?.normalizedValue()
+    }
+
+  /**
+   * Returns the text of this expression with qualified references reduced to their last segment, so that e.g.
+   * `android.content.res.Configuration.UI_MODE_NIGHT_YES` and `UI_MODE_NIGHT_YES` compare equal. Binary expressions are normalized
+   * recursively to support combined masks such as `UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL`.
+   */
+  private fun KtExpression.normalizedValue(): String =
+    when (this) {
+      is KtDotQualifiedExpression -> selectorExpression?.text ?: text
+      is KtBinaryExpression -> "${left?.normalizedValue()} ${operationReference.text} ${right?.normalizedValue()}"
+      else -> text
+    }
 
   /**
    * Sets up the switching to the newly created preview after the action is performed. It observes the flow of all preview elements and,
@@ -211,6 +273,24 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
 
   private fun PreviewElement<*>.originalNameFromParameter() = displaySettings.parameterName?.substringBefore(" - ")?.trim()
 }
+
+/** Parameters of the `@Preview` annotation in declaration order, used to resolve positional arguments. */
+private val PREVIEW_PARAMETERS_IN_ORDER =
+  listOf(
+    PARAMETER_NAME,
+    PARAMETER_GROUP,
+    PARAMETER_API_LEVEL,
+    PARAMETER_WIDTH_DP,
+    PARAMETER_HEIGHT_DP,
+    PARAMETER_LOCALE,
+    PARAMETER_FONT_SCALE,
+    PARAMETER_SHOW_SYSTEM_UI,
+    PARAMETER_SHOW_BACKGROUND,
+    PARAMETER_BACKGROUND_COLOR,
+    PARAMETER_UI_MODE,
+    PARAMETER_DEVICE,
+    PARAMETER_WALLPAPER,
+  )
 
 /**
  * Returns the [LayoutlibSceneManager] associated with the current [AnActionEvent].
