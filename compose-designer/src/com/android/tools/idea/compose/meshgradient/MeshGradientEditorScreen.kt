@@ -23,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -82,24 +83,32 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
 import org.jetbrains.kotlin.idea.KotlinLanguage
 
-@OptIn(ExperimentalLayoutApi::class)
-@Suppress("UseJBColor")
 @Composable
-fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEditingExisting: Boolean = false) {
-  val scrollState = rememberScrollState()
-  var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-  var showColorPickerForVertex by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+internal fun DynamicValuesWarningBanner(message: String) {
+  Row(
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(RoundedCornerShape(6.dp))
+        .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
+        .padding(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(
+      key = AllIconsKeys.General.Warning,
+      iconClass = AllIconsKeys::class.java,
+      contentDescription = "Warning",
+      modifier = Modifier.size(16.dp),
+    )
+    Text(message)
+  }
+}
 
-  // Only create heavy editor instances in Generator fallback mode
-  val document =
-    remember(isEditingExisting) {
-      if (isEditingExisting) return@remember null
-      EditorFactory.getInstance().createDocument("")
-    }
-
+@Composable
+internal fun ColumnScope.GeneratedCodeSection(project: Project, generatedCode: String) {
+  val document = remember { EditorFactory.getInstance().createDocument("") }
   val editor =
-    remember(project, document, isEditingExisting) {
-      if (isEditingExisting || document == null) return@remember null
+    remember(project, document) {
       val fileType = KotlinLanguage.INSTANCE.getAssociatedFileType() ?: FileTypes.PLAIN_TEXT
       val highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(project, fileType)
       (EditorFactory.getInstance().createViewer(document, project) as EditorEx).apply {
@@ -119,29 +128,64 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
       }
     }
 
-  if (editor != null) {
-    DisposableEffect(editor) {
-      val connection = project.messageBus.connect()
-      connection.subscribe(
-        EditorColorsManager.TOPIC,
-        EditorColorsListener { newScheme ->
-          val scheme = newScheme ?: EditorColorsManager.getInstance().schemeForCurrentUITheme
-          WriteIntentReadAction.run {
-            editor.colorsScheme = scheme
-            editor.setBackgroundColor(scheme.defaultBackground)
-            editor.scrollPane.background = scheme.defaultBackground
-            editor.scrollPane.viewport.background = scheme.defaultBackground
-            editor.component.background = scheme.defaultBackground
-            editor.contentComponent.background = scheme.defaultBackground
-          }
-        },
-      )
-      onDispose {
-        connection.disconnect()
-        WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(editor) }
-      }
+  DisposableEffect(editor) {
+    val connection = project.messageBus.connect()
+    connection.subscribe(
+      EditorColorsManager.TOPIC,
+      EditorColorsListener { newScheme ->
+        val scheme = newScheme ?: EditorColorsManager.getInstance().schemeForCurrentUITheme
+        WriteIntentReadAction.run {
+          editor.colorsScheme = scheme
+          editor.setBackgroundColor(scheme.defaultBackground)
+          editor.scrollPane.background = scheme.defaultBackground
+          editor.scrollPane.viewport.background = scheme.defaultBackground
+          editor.component.background = scheme.defaultBackground
+          editor.contentComponent.background = scheme.defaultBackground
+        }
+      },
+    )
+    onDispose {
+      connection.disconnect()
+      WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(editor) }
     }
   }
+
+  Divider(orientation = Orientation.Horizontal)
+
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text("Generated Code", style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
+    DefaultButton(
+      onClick = {
+        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+        clipboard.setContents(StringSelection(generatedCode), null)
+      }
+    ) {
+      Text("Copy Code")
+    }
+  }
+
+  SwingPanel(
+    factory = { editor.component },
+    modifier = Modifier.fillMaxWidth().weight(1f),
+    update = {
+      if (document.text != generatedCode) {
+        WriteIntentReadAction.run { ApplicationManager.getApplication().runWriteAction { document.setText(generatedCode) } }
+      }
+    },
+  )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Suppress("UseJBColor")
+@Composable
+fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEditingExisting: Boolean = false) {
+  val scrollState = rememberScrollState()
+  var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+  var showColorPickerForVertex by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
   Column(
     modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground).padding(12.dp),
@@ -157,25 +201,9 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       if (isEditingExisting && state.hasDynamicOrUnresolvedValues) {
-        Row(
-          modifier =
-            Modifier.fillMaxWidth()
-              .clip(RoundedCornerShape(6.dp))
-              .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
-              .padding(8.dp),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(
-            key = AllIconsKeys.General.Warning,
-            iconClass = AllIconsKeys::class.java,
-            contentDescription = "Warning",
-            modifier = Modifier.size(16.dp),
-          )
-          Text(
-            "Some vertices use dynamic or unresolved expressions. Initial or default values are shown; editing a vertex will replace its expression."
-          )
-        }
+        DynamicValuesWarningBanner(
+          "Some vertices use dynamic or unresolved expressions. Initial or default values are shown; editing a vertex will replace its expression."
+        )
       }
 
       // 1. Canvas Preview
@@ -367,36 +395,7 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
     }
 
     if (!isEditingExisting) {
-      Divider(orientation = Orientation.Horizontal)
-
-      // 5. Generated Code Header
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text("Generated Code", style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
-        DefaultButton(
-          onClick = {
-            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-            clipboard.setContents(StringSelection(state.generatedCode), null)
-          }
-        ) {
-          Text("Copy Code")
-        }
-      }
-    }
-
-    if (!isEditingExisting && editor != null && document != null) {
-      SwingPanel(
-        factory = { editor.component },
-        modifier = Modifier.fillMaxWidth().weight(1f),
-        update = {
-          if (document.text != state.generatedCode) {
-            WriteIntentReadAction.run { ApplicationManager.getApplication().runWriteAction { document.setText(state.generatedCode) } }
-          }
-        },
-      )
+      GeneratedCodeSection(project = project, generatedCode = state.generatedCode)
     }
   }
 }

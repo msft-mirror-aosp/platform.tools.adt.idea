@@ -37,6 +37,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.android.tools.idea.compose.meshgradient.formatFloat
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
@@ -97,6 +98,82 @@ fun DimensionInputField(
     }
     if (textFieldState.text.toString() != nextValue.toString()) {
       textFieldState.edit { replace(0, length, nextValue.toString()) }
+    }
+  }
+
+  TextField(
+    state = textFieldState,
+    enabled = enabled,
+    leadingIcon = { ParameterSwatch(text = paramName, modifier = Modifier.height(16.dp).padding(end = 6.dp)) },
+    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+    onKeyboardAction = {
+      validate()
+      focusManager.clearFocus()
+    },
+    modifier =
+      modifier
+        .onFocusChanged {
+          if (!it.isFocused) {
+            validate()
+          }
+        }
+        .onKeyEvent {
+          if (it.type != KeyEventType.KeyDown) return@onKeyEvent false
+          when (it.key) {
+            Key.Tab -> {
+              validate()
+              false
+            }
+            Key.Escape -> {
+              reset()
+              focusManager.clearFocus()
+              true
+            }
+            else -> false
+          }
+        },
+  )
+}
+
+@Composable
+fun FloatInputField(
+  value: Float,
+  modifier: Modifier = Modifier,
+  min: Float? = null,
+  max: Float? = null,
+  enabled: Boolean = true,
+  paramName: String,
+  onUpdate: (Float) -> Unit,
+) {
+  val focusManager = LocalFocusManager.current
+  val textFieldState = remember(value) { TextFieldState(formatFloat(value)) }
+
+  fun reset() {
+    textFieldState.edit { replace(0, length, formatFloat(value)) }
+  }
+
+  fun validate() {
+    val parsed = textFieldState.text.toString().toFloatOrNull()
+    if (parsed == null || !parsed.isFinite()) {
+      reset()
+      return
+    }
+    val nextValue =
+      if (min != null && max != null) {
+        parsed.coerceIn(min, max)
+      } else if (min != null) {
+        parsed.coerceAtLeast(min)
+      } else if (max != null) {
+        parsed.coerceAtMost(max)
+      } else {
+        parsed
+      }
+    if (nextValue != value) {
+      onUpdate(nextValue)
+    }
+    val formatted = formatFloat(nextValue)
+    if (textFieldState.text.toString() != formatted) {
+      textFieldState.edit { replace(0, length, formatted) }
     }
   }
 

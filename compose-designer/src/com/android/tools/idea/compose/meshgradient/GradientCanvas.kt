@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,10 +31,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.dp
+import com.android.tools.idea.compose.preview.message
+import org.jetbrains.jewel.ui.component.Text
 
 @Composable
 fun GradientCanvas(
@@ -136,5 +144,148 @@ fun GradientCanvas(
         },
       )
     }
+  }
+}
+
+@Composable
+fun StandardGradientCanvas(state: GradientEditorState, modifier: Modifier = Modifier) {
+  val currentState by rememberUpdatedState(state)
+
+  Box(contentAlignment = Alignment.Center, modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+      val maxWidth = constraints.maxWidth
+      val maxHeight = constraints.maxHeight
+
+      Box(
+        Modifier.clip(RoundedCornerShape(8.dp)).fillMaxSize().background(createPreviewBrush(state, maxWidth.toFloat(), maxHeight.toFloat()))
+      )
+
+      val activeColors = state.colors
+      val primaryColor = activeColors.firstOrNull() ?: Color.White
+      val secondaryColor = activeColors.lastOrNull() ?: Color.White
+
+      Layout(
+        content = {
+          when (state.currentType) {
+            GradientType.LINEAR -> {
+              LabeledPointCursor(
+                label = message("gradient.editor.canvas.start"),
+                color = primaryColor,
+                modifier =
+                  Modifier.pointerInput(maxWidth, maxHeight) {
+                    detectDragGestures { change, dragAmount ->
+                      change.consume()
+                      if (maxWidth <= 0 || maxHeight <= 0) return@detectDragGestures
+                      val curX = currentState.start.safeX(0f).coerceIn(0f, 1f)
+                      val curY = currentState.start.safeY(0f).coerceIn(0f, 1f)
+                      val newX = (curX + (dragAmount.x / maxWidth)).coerceIn(0f, 1f)
+                      val y = (curY + (dragAmount.y / maxHeight)).coerceIn(0f, 1f)
+                      currentState.start = Offset(newX, y)
+                    }
+                  },
+              )
+              LabeledPointCursor(
+                label = message("gradient.editor.canvas.end"),
+                color = secondaryColor,
+                modifier =
+                  Modifier.pointerInput(maxWidth, maxHeight) {
+                    detectDragGestures { change, dragAmount ->
+                      change.consume()
+                      if (maxWidth <= 0 || maxHeight <= 0) return@detectDragGestures
+                      val curX = currentState.end.safeX(1f).coerceIn(0f, 1f)
+                      val curY = currentState.end.safeY(1f).coerceIn(0f, 1f)
+                      val newX = (curX + (dragAmount.x / maxWidth)).coerceIn(0f, 1f)
+                      val y = (curY + (dragAmount.y / maxHeight)).coerceIn(0f, 1f)
+                      currentState.end = Offset(newX, y)
+                    }
+                  },
+              )
+            }
+            GradientType.RADIAL,
+            GradientType.SWEEP -> {
+              LabeledPointCursor(
+                label = message("gradient.editor.canvas.center"),
+                color = primaryColor,
+                modifier =
+                  Modifier.pointerInput(maxWidth, maxHeight) {
+                    detectDragGestures { change, dragAmount ->
+                      change.consume()
+                      if (maxWidth <= 0 || maxHeight <= 0) return@detectDragGestures
+                      val curX = currentState.center.safeX(0.5f).coerceIn(0f, 1f)
+                      val curY = currentState.center.safeY(0.5f).coerceIn(0f, 1f)
+                      val newX = (curX + (dragAmount.x / maxWidth)).coerceIn(0f, 1f)
+                      val y = (curY + (dragAmount.y / maxHeight)).coerceIn(0f, 1f)
+                      currentState.center = Offset(newX, y)
+                    }
+                  },
+              )
+            }
+            else -> {}
+          }
+        },
+        measurePolicy = { measurables, constraints ->
+          val placeables = measurables.map { measurable -> measurable.measure(constraints) }
+          layout(constraints.maxWidth, constraints.maxHeight) {
+            if (placeables.isNotEmpty()) {
+              val cursorWidth = placeables[0].width
+              val cursorHeight = placeables[0].height
+
+              when (state.currentType) {
+                GradientType.LINEAR -> {
+                  if (placeables.size == 2) {
+                    val startNormX = state.start.safeX(0f).coerceIn(0f, 1f)
+                    val startNormY = state.start.safeY(0f).coerceIn(0f, 1f)
+                    val cursorStartPixelX = ((startNormX * constraints.maxWidth) - cursorWidth / 2).toInt()
+                    val cursorStartPixelY = ((startNormY * constraints.maxHeight) - cursorHeight / 2).toInt()
+                    placeables[0].place(cursorStartPixelX, cursorStartPixelY)
+
+                    val endNormX = state.end.safeX(1f).coerceIn(0f, 1f)
+                    val endNormY = state.end.safeY(1f).coerceIn(0f, 1f)
+                    val cursorEndPixelX = ((endNormX * constraints.maxWidth) - cursorWidth / 2).toInt()
+                    val cursorEndPixelY = ((endNormY * constraints.maxHeight) - cursorHeight / 2).toInt()
+                    placeables[1].place(cursorEndPixelX, cursorEndPixelY)
+                  }
+                }
+                GradientType.RADIAL,
+                GradientType.SWEEP -> {
+                  if (placeables.size == 1) {
+                    val centerNormX = state.center.safeX(0.5f).coerceIn(0f, 1f)
+                    val centerNormY = state.center.safeY(0.5f).coerceIn(0f, 1f)
+                    val cursorCenterPixelX = ((centerNormX * constraints.maxWidth) - cursorWidth / 2).toInt()
+                    val cursorCenterPixelY = ((centerNormY * constraints.maxHeight) - cursorHeight / 2).toInt()
+                    placeables[0].place(cursorCenterPixelX, cursorCenterPixelY)
+                  }
+                }
+                else -> {}
+              }
+            }
+          }
+        },
+      )
+    }
+  }
+}
+
+@Composable
+fun LabeledPointCursor(label: String, color: Color, modifier: Modifier = Modifier, enabled: Boolean = true) {
+  Box(
+    contentAlignment = Alignment.Center,
+    modifier =
+      modifier.size(24.dp).drawWithContent {
+        drawCircle(color = color)
+        val borderColor = if (enabled) Color.White else Color.LightGray
+        drawCircle(color = borderColor, style = Stroke(width = 4.dp.toPx()))
+        drawContent()
+      },
+  ) {
+    val textColor =
+      if (!enabled) {
+        Color.LightGray
+      } else if (color.luminance() > 0.5f) {
+        Color.Black
+      } else {
+        Color.White
+      }
+    Text(label.take(1), color = textColor)
   }
 }
