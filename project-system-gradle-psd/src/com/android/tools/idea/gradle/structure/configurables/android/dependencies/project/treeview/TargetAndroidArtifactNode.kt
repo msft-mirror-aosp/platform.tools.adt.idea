@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.gradle.structure.configurables.android.dependencies.project.treeview
 
-import com.android.tools.idea.gradle.model.IdeArtifactName
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings
 import com.android.tools.idea.gradle.structure.configurables.ui.treeview.AbstractPsModelNode
 import com.android.tools.idea.gradle.structure.configurables.ui.treeview.AbstractPsNode
@@ -55,11 +56,15 @@ internal constructor(val artifact: PsAndroidArtifact, private val myVersion: Str
   override fun nameOf(model: PsAndroidArtifact): String = buildString {
     append(model.parent.name)
     when (model.resolvedName) {
-      IdeArtifactName.MAIN -> Unit
-      IdeArtifactName.ANDROID_TEST -> append(" (androidTest)")
-      IdeArtifactName.UNIT_TEST -> append(" (test)")
-      IdeArtifactName.TEST_FIXTURES -> append(" (testFixtures)")
-      IdeArtifactName.SCREENSHOT_TEST -> append(" (screenshotTest)")
+      WellKnownIdeArtifactName.MAIN -> Unit
+      WellKnownIdeArtifactName.ANDROID_TEST -> append(" (androidTest)")
+      WellKnownIdeArtifactName.UNIT_TEST -> append(" (test)")
+      WellKnownIdeArtifactName.TEST_FIXTURES -> append(" (testFixtures)")
+      WellKnownIdeArtifactName.SCREENSHOT_TEST -> append(" (screenshotTest)")
+      // Unlike androidTest or test, test suites do not have hardcoded sourceSet names. Their
+      // sourceSet names are dynamic and stored in IdeTestSuiteArtifactName, which is fetched here
+      // via `model.resolvedName.name` (e.g. "debug (firstTest)").
+      is IdeTestSuiteArtifactName -> append(" (${model.resolvedName.name})")
     }
   }
 

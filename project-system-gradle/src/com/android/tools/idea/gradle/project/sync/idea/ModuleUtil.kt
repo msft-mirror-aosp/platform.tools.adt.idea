@@ -17,7 +17,8 @@ package com.android.tools.idea.gradle.project.sync.idea
 
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
+import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.project.sync.idea.data.model.KotlinMultiplatformAndroidSourceSetType
@@ -40,7 +41,7 @@ import org.jetbrains.plugins.gradle.util.gradlePath
 object ModuleUtil {
   @JvmStatic
   fun getModuleName(artifactName: IdeArtifactName): String {
-    return artifactName.toWellKnownSourceSet().sourceSetName
+    return artifactName.toSourceSet().sourceSetName
   }
 
   /**
@@ -78,7 +79,10 @@ object ModuleUtil {
           emptyMap()
         }
       } else {
-        IdeArtifactName.values().associate { getModuleName(it) to it }
+        // Only the well-known artifacts are mapped here, to fill the matching fields of LinkedAndroidGradleModuleGroup (main, unitTest,
+        // androidTest, testFixtures and screenshotTest). Test suite source set names are defined in the build file and cannot be listed
+        // here. Their modules are identified by the "TestSuite" property below and added to LinkedAndroidGradleModuleGroup.testSuites.
+        WellKnownIdeArtifactName.values().associate { getModuleName(it) to it }
       }
 
     val testSuiteModules = mutableListOf<Module>()

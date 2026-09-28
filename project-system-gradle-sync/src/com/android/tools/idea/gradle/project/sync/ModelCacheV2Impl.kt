@@ -67,7 +67,7 @@ import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toPrintableName
-import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
+import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
 import com.android.tools.idea.gradle.model.IdeBytecodeTransformation
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
@@ -81,8 +81,10 @@ import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeTestOptions
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.IdeTestSuiteSource
 import com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
@@ -105,7 +107,7 @@ import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl
-import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.MAIN
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.TEST_FIXTURES
 import com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl
@@ -1073,7 +1075,7 @@ fun modelCacheV2Impl(
     bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildPathMap: Map<String, BuildId>,
-    artifactName: IdeModuleWellKnownSourceSet,
+    artifactName: IdeModuleSourceSet,
   ): ModelResult<IdeModelWithPostProcessor<IdeAndroidArtifactCoreImpl>> {
     return ModelResult.create {
       val compileClasspathCore =
@@ -1156,7 +1158,7 @@ fun modelCacheV2Impl(
     bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildPathMap: Map<String, BuildId>,
-    artifactName: IdeModuleWellKnownSourceSet,
+    artifactName: IdeModuleSourceSet,
   ): ModelResult<IdeModelWithPostProcessor<IdeJavaArtifactCoreImpl>>? {
     if (variantDependencies == null) return null
     return ModelResult.create {
@@ -1432,7 +1434,7 @@ fun modelCacheV2Impl(
               bootClasspath = bootClasspath,
               androidProjectPathResolver = androidProjectPathResolver,
               buildPathMap = buildPathMap,
-              artifactName = it.name.toWellKnownSourceSet(),
+              artifactName = it.name.toSourceSet(),
             )
             ?.recordAndGet()
         }
@@ -1450,7 +1452,7 @@ fun modelCacheV2Impl(
               bootClasspath = bootClasspath,
               androidProjectPathResolver = androidProjectPathResolver,
               buildPathMap = buildPathMap,
-              artifactName = it.name.toWellKnownSourceSet(),
+              artifactName = it.name.toSourceSet(),
             )
             .recordAndGet()
         }
@@ -1963,11 +1965,15 @@ private fun getApplicationIdFromArtifact(
     artifact.applicationId
   } else {
     when (name) {
-      IdeArtifactName.MAIN -> legacyAndroidGradlePluginProperties?.componentToApplicationIdMap?.get(mainVariantName)
-      IdeArtifactName.ANDROID_TEST -> legacyAndroidGradlePluginProperties?.componentToApplicationIdMap?.get(mainVariantName + "AndroidTest")
-      IdeArtifactName.UNIT_TEST,
-      IdeArtifactName.TEST_FIXTURES,
-      IdeArtifactName.SCREENSHOT_TEST -> null
+      WellKnownIdeArtifactName.MAIN -> legacyAndroidGradlePluginProperties?.componentToApplicationIdMap?.get(mainVariantName)
+      WellKnownIdeArtifactName.ANDROID_TEST ->
+        legacyAndroidGradlePluginProperties?.componentToApplicationIdMap?.get(mainVariantName + "AndroidTest")
+      WellKnownIdeArtifactName.UNIT_TEST,
+      WellKnownIdeArtifactName.TEST_FIXTURES,
+      WellKnownIdeArtifactName.SCREENSHOT_TEST,
+      // Test suites are only supported in recent AGP versions, which always report applicationId
+      // directly (ModelFeature.HAS_APPLICATION_ID, AGP 7.4.0-alpha04+), so this legacy lookup is never reached for them.
+      is IdeTestSuiteArtifactName -> null
     }
   }
 

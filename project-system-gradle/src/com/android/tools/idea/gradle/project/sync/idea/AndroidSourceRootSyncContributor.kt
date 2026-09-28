@@ -26,7 +26,7 @@ import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
+import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
@@ -494,7 +494,7 @@ private fun SyncContributorAndroidProjectContext.getAllSourceSetModuleEntities(s
 
   val knownArtifactsSources = allSourceSets.associate { (sourceSetArtifactName, typeToDirsMap) ->
     // For each source set in the project, create entity source and the actual entities.
-    val sourceSetName = sourceSetArtifactName.toWellKnownSourceSet().sourceSetName
+    val sourceSetName = sourceSetArtifactName.toSourceSet().sourceSetName
     val entitySource = AndroidGradleSourceSetEntitySource(context.projectPath, sourceSetName)
     val moduleName = resolveSourceSetModuleName(storage, sourceSetName)
     LOG.debug("Configuring source set for $moduleName: $typeToDirsMap")

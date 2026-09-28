@@ -22,7 +22,7 @@ import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
+import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
 import com.android.tools.idea.gradle.model.IdeDependenciesCore
 import com.android.tools.idea.gradle.model.IdeJavaArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
@@ -328,13 +328,11 @@ private fun buildJarArtifactToSourceSetMapFromPlatformModels(
     .associate { (artifact, sourceSets) -> artifact to sourceSets }
 
 private fun IdeAndroidArtifactCore.asCompileDependency() =
-  Triple(name.toWellKnownSourceSet().sourceSetName, compileClasspathCore, DependencyScope.COMPILE)
+  Triple(name.toSourceSet().sourceSetName, compileClasspathCore, DependencyScope.COMPILE)
 
-private fun IdeAndroidArtifactCore.asTestDependency() =
-  Triple(name.toWellKnownSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
+private fun IdeAndroidArtifactCore.asTestDependency() = Triple(name.toSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
 
-private fun IdeJavaArtifactCore.asTestDependency() =
-  Triple(name.toWellKnownSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
+private fun IdeJavaArtifactCore.asTestDependency() = Triple(name.toSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
 
 private fun IdeTestSuiteVariantTargetImpl.asEmptyTestDependency() =
   Triple(suiteName, IdeDependenciesCoreDirect(emptyList()), DependencyScope.TEST)

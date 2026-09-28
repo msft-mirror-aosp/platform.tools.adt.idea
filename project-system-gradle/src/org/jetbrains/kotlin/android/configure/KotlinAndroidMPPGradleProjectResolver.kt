@@ -11,10 +11,11 @@ import com.android.tools.idea.gradle.model.ARTIFACT_NAME_SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_TEST_FIXTURES
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeSourceProviderContainer
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
@@ -198,9 +199,9 @@ fun IdeVariantCoreImpl.patchFromMppModel(androidProject: IdeAndroidProjectImpl, 
   return this.copy(
     mainArtifact = mainArtifact.copy(variantSourceProvider = mainArtifact.variantSourceProvider.patch(MAIN)),
     deviceTestArtifacts =
-      deviceTestArtifacts.map { it.copy(variantSourceProvider = it.variantSourceProvider?.patch(it.name.toWellKnownSourceSet())) },
+      deviceTestArtifacts.map { it.copy(variantSourceProvider = it.variantSourceProvider?.patch(it.name.requireWellKnownSourceSet())) },
     hostTestArtifacts =
-      hostTestArtifacts.map { it.copy(variantSourceProvider = it.variantSourceProvider.patch(it.name.toWellKnownSourceSet())) },
+      hostTestArtifacts.map { it.copy(variantSourceProvider = it.variantSourceProvider.patch(it.name.requireWellKnownSourceSet())) },
     testFixturesArtifact =
       testFixturesArtifact?.copy(variantSourceProvider = testFixturesArtifact?.variantSourceProvider.patch(TEST_FIXTURES)),
   )
@@ -215,6 +216,25 @@ private fun IdeVariantCoreImpl.artifact(artifact: IdeModuleWellKnownSourceSet): 
     ANDROID_TEST -> deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
   }
 }
+
+/**
+ * Maps the name of an artifact in [IdeVariantCoreImpl.hostTestArtifacts] or [IdeVariantCoreImpl.deviceTestArtifacts] to its
+ * [IdeModuleWellKnownSourceSet], so that [patchFromMppModel] can patch its source provider.
+ *
+ * This covers `unitTest` and `screenshotTest` (host test artifacts) and `androidTest` (device test artifacts). `main` and `testFixtures`
+ * are patched separately above, with [MAIN] and [TEST_FIXTURES] passed in directly.
+ *
+ * AGP test suite artifacts ([IdeTestSuiteArtifactName]) are intentionally not patched here, because:
+ * - this resolver only handles the legacy `kotlin("multiplatform")` + `com.android.application`/`com.android.library` (`androidTarget()`)
+ *   setup, which only maps Android compilations to the well-known source sets (see `findFor`), and
+ * - test suites are not part of `hostTestArtifacts`/`deviceTestArtifacts`. Those lists are built with `convertArtifactName`, which only
+ *   returns well-known names. Test suites are kept in [IdeVariantCoreImpl.testSuiteArtifacts], which [patchFromMppModel] copies over
+ *   unchanged.
+ *
+ * So the cast is always expected to succeed. A test suite name here would mean a bug, so this fails instead of silently skipping it.
+ */
+private fun IdeArtifactName.requireWellKnownSourceSet(): IdeModuleWellKnownSourceSet =
+  checkNotNull(this as? WellKnownIdeArtifactName) { "Expected a well-known artifact name, but got: $this" }.toWellKnownSourceSet()
 
 private val IdeModuleWellKnownSourceSet.artifactName: String
   get() =

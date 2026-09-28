@@ -23,6 +23,8 @@ import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeJavaArtifactCore
 import com.android.tools.idea.gradle.model.IdeSourceProvider
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
@@ -604,11 +606,12 @@ private fun IdeArtifactName.toDeviceTestSourceProviderName(): TestComponentType.
 
 private fun IdeArtifactName.toKnownScopeType() =
   when (this) {
-    IdeArtifactName.MAIN -> ScopeType.MAIN
-    IdeArtifactName.UNIT_TEST -> ScopeType.UNIT_TEST
-    IdeArtifactName.SCREENSHOT_TEST -> ScopeType.SCREENSHOT_TEST
-    IdeArtifactName.ANDROID_TEST -> ScopeType.ANDROID_TEST
-    IdeArtifactName.TEST_FIXTURES -> ScopeType.TEST_FIXTURES
+    WellKnownIdeArtifactName.MAIN -> ScopeType.MAIN
+    WellKnownIdeArtifactName.UNIT_TEST -> ScopeType.UNIT_TEST
+    WellKnownIdeArtifactName.SCREENSHOT_TEST -> ScopeType.SCREENSHOT_TEST
+    WellKnownIdeArtifactName.ANDROID_TEST -> ScopeType.ANDROID_TEST
+    WellKnownIdeArtifactName.TEST_FIXTURES -> ScopeType.TEST_FIXTURES
+    is IdeTestSuiteArtifactName -> ScopeType.TEST_SUITE
   }
 
 /** An [ApplicationProjectContextProvider] for the Gradle project system. */

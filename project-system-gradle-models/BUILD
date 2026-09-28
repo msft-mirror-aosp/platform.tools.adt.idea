@@ -28,5 +28,6 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
     ],
 )

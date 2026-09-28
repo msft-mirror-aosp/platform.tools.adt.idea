@@ -35,7 +35,7 @@ import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
+import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
 import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
 import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
@@ -2005,15 +2005,14 @@ private fun createAndroidModuleDataNode(
   }
 
   val selectedVariant = gradleAndroidModel.selectedVariantCore
-  selectedVariant.mainArtifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet()) }
-  selectedVariant.deviceTestArtifacts
-    .find { it.name == IdeArtifactName.ANDROID_TEST }
-    ?.name
-    ?.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet()) }
-  selectedVariant.hostTestArtifacts.forEach { artifact ->
-    artifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet()) }
+  selectedVariant.mainArtifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
+  selectedVariant.deviceTestArtifacts.forEach { artifact ->
+    artifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
   }
-  selectedVariant.testFixturesArtifact?.name?.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet()) }
+  selectedVariant.hostTestArtifacts.forEach { artifact ->
+    artifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
+  }
+  selectedVariant.testFixturesArtifact?.name?.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
   selectedVariant.testSuiteArtifacts.forEach { testSuite ->
     testSuite.suiteName.let {
       val sourceSet = IdeModuleSourceSetImpl(it, canBeConsumed = false)

@@ -19,7 +19,9 @@ import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
 import com.android.tools.idea.gradle.model.IdeSourceProvider
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.model.impl.FileImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
@@ -100,11 +102,14 @@ data class GradleAndroidModelData(
 
   fun getTestSourceProviders(artifactName: IdeArtifactName): List<IdeSourceProvider> {
     return when (artifactName) {
-      IdeArtifactName.ANDROID_TEST -> deviceTestSourceProviders[CommonTestType.ANDROID_TEST] ?: emptyList()
-      IdeArtifactName.UNIT_TEST -> hostTestSourceProviders[CommonTestType.UNIT_TEST] ?: emptyList()
-      IdeArtifactName.MAIN -> emptyList()
-      IdeArtifactName.TEST_FIXTURES -> emptyList()
-      IdeArtifactName.SCREENSHOT_TEST -> hostTestSourceProviders[CommonTestType.SCREENSHOT_TEST] ?: emptyList()
+      WellKnownIdeArtifactName.ANDROID_TEST -> deviceTestSourceProviders[CommonTestType.ANDROID_TEST] ?: emptyList()
+      WellKnownIdeArtifactName.UNIT_TEST -> hostTestSourceProviders[CommonTestType.UNIT_TEST] ?: emptyList()
+      WellKnownIdeArtifactName.MAIN -> emptyList()
+      WellKnownIdeArtifactName.TEST_FIXTURES -> emptyList()
+      WellKnownIdeArtifactName.SCREENSHOT_TEST -> hostTestSourceProviders[CommonTestType.SCREENSHOT_TEST] ?: emptyList()
+      // TODO(b/570996505): Test suite artifacts are not yet part of IdeVariantCore. Once they are added, resolve their
+      //  source providers per source set via androidProject.testSuites.
+      is IdeTestSuiteArtifactName -> emptyList()
     }
   }
 

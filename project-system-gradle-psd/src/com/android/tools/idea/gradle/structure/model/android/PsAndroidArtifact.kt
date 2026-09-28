@@ -30,12 +30,15 @@ import com.android.tools.idea.gradle.dsl.api.dependencies.CommonConfigurationNam
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifact
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.structure.model.PsChildModel
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.icons.AllIcons
 import com.intellij.icons.AllIcons.Modules.TestRoot
 import com.intellij.icons.AllIcons.Nodes.Artifact
 import com.intellij.openapi.util.text.StringUtil.capitalize
+import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import icons.StudioIcons.Shell.Filetree.ANDROID_TEST_ROOT
 import javax.swing.Icon
 import org.jetbrains.annotations.NonNls
@@ -59,23 +62,28 @@ class PsAndroidArtifact(override val parent: PsVariant, val resolvedName: IdeArt
     var icon = Artifact
     var name = ""
     when (resolvedName) {
-      IdeArtifactName.MAIN -> icon = AllIcons.Modules.SourceRoot
-      IdeArtifactName.TEST_FIXTURES -> {
+      WellKnownIdeArtifactName.MAIN -> icon = AllIcons.Modules.SourceRoot
+      WellKnownIdeArtifactName.TEST_FIXTURES -> {
         name = "TestFixtures"
         icon = AllIcons.Modules.SourceRoot
       }
-      IdeArtifactName.ANDROID_TEST -> {
+      WellKnownIdeArtifactName.ANDROID_TEST -> {
         name = "AndroidTest"
         icon = ANDROID_TEST_ROOT
       }
-      IdeArtifactName.UNIT_TEST -> {
+      WellKnownIdeArtifactName.UNIT_TEST -> {
         name = "UnitTest"
         icon = TestRoot
       }
 
-      IdeArtifactName.SCREENSHOT_TEST -> {
+      WellKnownIdeArtifactName.SCREENSHOT_TEST -> {
         name = "ScreenshotTest"
         icon = TestRoot // TODO(karimai): Add support for this artifact on PSD
+      }
+
+      is IdeTestSuiteArtifactName -> {
+        name = escapeXmlEntities(capitalize(resolvedName.name))
+        icon = TestRoot
       }
     }
     this.name = name
@@ -119,36 +127,40 @@ class PsAndroidArtifact(override val parent: PsVariant, val resolvedName: IdeArt
 fun getPossibleConfigurationNames(resolvedName: IdeArtifactName, buildTypeName: String, productFlavorNames: List<String>): List<String> {
   val configurationNames = mutableListOf<String>()
   when (resolvedName) {
-    IdeArtifactName.MAIN -> {
+    WellKnownIdeArtifactName.MAIN -> {
       configurationNames.add(COMPILE)
       configurationNames.add(API)
       configurationNames.add(IMPLEMENTATION)
     }
-    IdeArtifactName.UNIT_TEST -> {
+    WellKnownIdeArtifactName.UNIT_TEST -> {
       configurationNames.add(TEST_COMPILE)
       configurationNames.add(TEST_API)
       configurationNames.add(TEST_IMPLEMENTATION)
     }
-    IdeArtifactName.ANDROID_TEST -> {
+    WellKnownIdeArtifactName.ANDROID_TEST -> {
       configurationNames.add(ANDROID_TEST_COMPILE)
       configurationNames.add(ANDROID_TEST_API)
       configurationNames.add(ANDROID_TEST_IMPLEMENTATION)
     }
-    IdeArtifactName.TEST_FIXTURES -> {
+    WellKnownIdeArtifactName.TEST_FIXTURES -> {
       configurationNames.add(TEST_FIXTURES_COMPILE)
       configurationNames.add(TEST_FIXTURES_API)
       configurationNames.add(TEST_FIXTURES_IMPLEMENTATION)
     }
-    IdeArtifactName.SCREENSHOT_TEST -> {} // TODO(karimai): add ScreenshotTest to commonConfigs names
+    WellKnownIdeArtifactName.SCREENSHOT_TEST -> {} // TODO(karimai): add ScreenshotTest to commonConfigs names
+    // Test suite dependencies are declared through DependencyCollectors inside the suite's own DSL block
+    // (e.g. `hostJar { dependencies { implementation.add(...) } }`), not through top-level `dependencies {}`
+    // configurations, so there are no configuration names that map to a test suite artifact.
+    is IdeTestSuiteArtifactName -> {}
   }
 
   when (resolvedName) {
-    IdeArtifactName.MAIN -> {
+    WellKnownIdeArtifactName.MAIN -> {
       configurationNames.add(buildTypeName + COMPILE_SUFFIX)
       configurationNames.add(buildTypeName + API_SUFFIX)
       configurationNames.add(buildTypeName + IMPLEMENTATION_SUFFIX)
     }
-    IdeArtifactName.UNIT_TEST -> {
+    WellKnownIdeArtifactName.UNIT_TEST -> {
       configurationNames.add("test" + capitalize(buildTypeName) + COMPILE_SUFFIX)
       configurationNames.add("test" + capitalize(buildTypeName) + API_SUFFIX)
       configurationNames.add("test" + capitalize(buildTypeName) + IMPLEMENTATION_SUFFIX)
@@ -159,28 +171,33 @@ fun getPossibleConfigurationNames(resolvedName: IdeArtifactName, buildTypeName: 
 
   productFlavorNames.forEach { productFlavorName ->
     when (resolvedName) {
-      IdeArtifactName.MAIN -> {
+      WellKnownIdeArtifactName.MAIN -> {
         configurationNames.add(productFlavorName + COMPILE_SUFFIX)
         configurationNames.add(productFlavorName + API_SUFFIX)
         configurationNames.add(productFlavorName + IMPLEMENTATION_SUFFIX)
       }
-      IdeArtifactName.UNIT_TEST -> {
+      WellKnownIdeArtifactName.UNIT_TEST -> {
         configurationNames.add("test" + capitalize(productFlavorName) + COMPILE_SUFFIX)
         configurationNames.add("test" + capitalize(productFlavorName) + API_SUFFIX)
         configurationNames.add("test" + capitalize(productFlavorName) + IMPLEMENTATION_SUFFIX)
       }
-      IdeArtifactName.ANDROID_TEST -> {
+      WellKnownIdeArtifactName.ANDROID_TEST -> {
         configurationNames.add("androidTest" + capitalize(productFlavorName) + COMPILE_SUFFIX)
         configurationNames.add("androidTest" + capitalize(productFlavorName) + API_SUFFIX)
         configurationNames.add("androidTest" + capitalize(productFlavorName) + IMPLEMENTATION_SUFFIX)
       }
-      IdeArtifactName.TEST_FIXTURES -> {
+      WellKnownIdeArtifactName.TEST_FIXTURES -> {
         configurationNames.add("testFixtures" + capitalize(productFlavorName) + COMPILE_SUFFIX)
         configurationNames.add("testFixtures" + capitalize(productFlavorName) + API_SUFFIX)
         configurationNames.add("testFixtures" + capitalize(productFlavorName) + IMPLEMENTATION_SUFFIX)
       }
 
-      IdeArtifactName.SCREENSHOT_TEST -> {} // TODO(karimai): add support here.
+      WellKnownIdeArtifactName.SCREENSHOT_TEST -> {} // TODO(karimai): add support here.
+      // In AGP, test suite dependencies are only configured via AgpTestSuiteDependencies
+      // DependencyCollectors inside `testOptions.suites` (or via the Variant API); AGP does not
+      // register flavor-specific bucket configurations (such as `<suite><Flavor>Implementation`)
+      // for the top-level `dependencies {}` block.
+      is IdeTestSuiteArtifactName -> {}
     }
   }
   return configurationNames

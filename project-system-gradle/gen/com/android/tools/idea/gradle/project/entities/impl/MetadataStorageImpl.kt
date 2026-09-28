@@ -3267,24 +3267,54 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                                                             isNullable = false,
                                                                                             typeMetadata =
-                                                                                              FinalClassMetadata.EnumClassMetadata(
+                                                                                              ExtendableClassMetadata.AbstractClassMetadata(
                                                                                                 fqName =
                                                                                                   "com.android.tools.idea.gradle.model.IdeArtifactName",
-                                                                                                properties = listOf(),
-                                                                                                supertypes =
+                                                                                                subclasses =
                                                                                                   listOf(
-                                                                                                    "java.io.Serializable",
-                                                                                                    "kotlin.Comparable",
-                                                                                                    "kotlin.Enum",
+                                                                                                    FinalClassMetadata.ClassMetadata(
+                                                                                                      fqName =
+                                                                                                        "com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName",
+                                                                                                      properties =
+                                                                                                        listOf(
+                                                                                                          OwnPropertyMetadata(
+                                                                                                            isComputable = false,
+                                                                                                            isKey = false,
+                                                                                                            isOpen = false,
+                                                                                                            name = "name",
+                                                                                                            valueType =
+                                                                                                              primitiveTypeStringNotNullable,
+                                                                                                            withDefault = false,
+                                                                                                          )
+                                                                                                        ),
+                                                                                                      supertypes =
+                                                                                                        listOf(
+                                                                                                          "com.android.tools.idea.gradle.model.IdeArtifactName",
+                                                                                                          "java.io.Serializable",
+                                                                                                        ),
+                                                                                                    ),
+                                                                                                    FinalClassMetadata.EnumClassMetadata(
+                                                                                                      fqName =
+                                                                                                        "com.android.tools.idea.gradle.model.WellKnownIdeArtifactName",
+                                                                                                      properties = listOf(),
+                                                                                                      supertypes =
+                                                                                                        listOf(
+                                                                                                          "com.android.tools.idea.gradle.model.IdeArtifactName",
+                                                                                                          "java.io.Serializable",
+                                                                                                          "kotlin.Comparable",
+                                                                                                          "kotlin.Enum",
+                                                                                                        ),
+                                                                                                      values =
+                                                                                                        listOf(
+                                                                                                          "ANDROID_TEST",
+                                                                                                          "MAIN",
+                                                                                                          "SCREENSHOT_TEST",
+                                                                                                          "TEST_FIXTURES",
+                                                                                                          "UNIT_TEST",
+                                                                                                        ),
+                                                                                                    ),
                                                                                                   ),
-                                                                                                values =
-                                                                                                  listOf(
-                                                                                                    "ANDROID_TEST",
-                                                                                                    "MAIN",
-                                                                                                    "SCREENSHOT_TEST",
-                                                                                                    "TEST_FIXTURES",
-                                                                                                    "UNIT_TEST",
-                                                                                                  ),
+                                                                                                supertypes = listOf("java.io.Serializable"),
                                                                                               ),
                                                                                           ),
                                                                                         withDefault = false,
@@ -9178,19 +9208,52 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                 ValueTypeMetadata.SimpleType.CustomType(
                                                                   isNullable = false,
                                                                   typeMetadata =
-                                                                    FinalClassMetadata.EnumClassMetadata(
+                                                                    ExtendableClassMetadata.AbstractClassMetadata(
                                                                       fqName = "com.android.tools.idea.gradle.model.IdeArtifactName",
-                                                                      properties = listOf(),
-                                                                      supertypes =
-                                                                        listOf("java.io.Serializable", "kotlin.Comparable", "kotlin.Enum"),
-                                                                      values =
+                                                                      subclasses =
                                                                         listOf(
-                                                                          "ANDROID_TEST",
-                                                                          "MAIN",
-                                                                          "SCREENSHOT_TEST",
-                                                                          "TEST_FIXTURES",
-                                                                          "UNIT_TEST",
+                                                                          FinalClassMetadata.ClassMetadata(
+                                                                            fqName =
+                                                                              "com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName",
+                                                                            properties =
+                                                                              listOf(
+                                                                                OwnPropertyMetadata(
+                                                                                  isComputable = false,
+                                                                                  isKey = false,
+                                                                                  isOpen = false,
+                                                                                  name = "name",
+                                                                                  valueType = primitiveTypeStringNotNullable,
+                                                                                  withDefault = false,
+                                                                                )
+                                                                              ),
+                                                                            supertypes =
+                                                                              listOf(
+                                                                                "com.android.tools.idea.gradle.model.IdeArtifactName",
+                                                                                "java.io.Serializable",
+                                                                              ),
+                                                                          ),
+                                                                          FinalClassMetadata.EnumClassMetadata(
+                                                                            fqName =
+                                                                              "com.android.tools.idea.gradle.model.WellKnownIdeArtifactName",
+                                                                            properties = listOf(),
+                                                                            supertypes =
+                                                                              listOf(
+                                                                                "com.android.tools.idea.gradle.model.IdeArtifactName",
+                                                                                "java.io.Serializable",
+                                                                                "kotlin.Comparable",
+                                                                                "kotlin.Enum",
+                                                                              ),
+                                                                            values =
+                                                                              listOf(
+                                                                                "ANDROID_TEST",
+                                                                                "MAIN",
+                                                                                "SCREENSHOT_TEST",
+                                                                                "TEST_FIXTURES",
+                                                                                "UNIT_TEST",
+                                                                              ),
+                                                                          ),
                                                                         ),
+                                                                      supertypes = listOf("java.io.Serializable"),
                                                                     ),
                                                                 ),
                                                               withDefault = false,
@@ -13462,12 +13525,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
   }
 
   override fun initializeMetadataHash() {
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = -340484778)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = -1189269290)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity", metadataHash = 860414102)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleProjectPathEntity", metadataHash = -1975636342)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId", metadataHash = -1768909912)
     addMetadataHash(typeFqn = "com.intellij.platform.workspace.jps.entities.ModuleId", metadataHash = 369441961)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = 1166011787)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = -776193441)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider", metadataHash = 713147243)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.FileImpl", metadataHash = -1013892919)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", metadataHash = 236716780)
@@ -13477,14 +13540,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$DeviceTest", metadataHash = -760449735)
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", metadataHash = -1391885428)
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest", metadataHash = -2078241399)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = -914245224)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = -112164028)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", metadataHash = 1606052470)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing", metadataHash = -976234809)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl", metadataHash = 730983063)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl", metadataHash = -1818980688)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -594772583)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = 2117522134)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = -1307011003)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -44131731)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = 755123114)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = 1505402649)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl", metadataHash = -778716903)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", metadataHash = 1457664590)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", metadataHash = 1692703930)
@@ -13496,7 +13559,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.ResolverType", metadataHash = 728753551)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreRef", metadataHash = 117499923)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.ThrowingIdeDependencies", metadataHash = -1493306531)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactName", metadataHash = -2028415565)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactName", metadataHash = -1760346529)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName", metadataHash = -647748273)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.WellKnownIdeArtifactName", metadataHash = -1834344765)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", metadataHash = 350613816)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution", metadataHash = 2074843232)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl", metadataHash = 1989792250)
@@ -13541,7 +13606,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.sdklib.devices.Abi", metadataHash = 1474563559)
     addMetadataHash(typeFqn = "com.android.tools.idea.model.TestExecutionOption", metadataHash = -650853306)
     addMetadataHash(typeFqn = "com.android.tools.idea.model.TestOptions", metadataHash = 1033509383)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = -175076431)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = 655611741)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", metadataHash = 11344619)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeDependencies", metadataHash = -1816906722)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeLibrary", metadataHash = 1847052760)

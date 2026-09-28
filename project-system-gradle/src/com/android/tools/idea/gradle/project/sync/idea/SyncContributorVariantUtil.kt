@@ -26,6 +26,8 @@ import com.android.tools.idea.gradle.model.ARTIFACT_NAME_SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toPrintableName
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.project.sync.ModelFeature
 import com.android.tools.idea.gradle.project.sync.ModelVersions
@@ -166,16 +168,19 @@ internal fun SyncContributorAndroidProjectContext.getSourceSetDataForAndroidProj
 internal fun SyncContributorAndroidProjectContext.getSelectedVariantArtifact(sourceSetArtifactName: IdeArtifactName): AbstractArtifact? {
   val selectedVariant = androidProject.variants.singleOrNull { it.name == variantName } ?: error("Can't determine the selected variant")
   return when (sourceSetArtifactName) {
-    IdeArtifactName.MAIN -> selectedVariant.mainArtifact
-    IdeArtifactName.TEST_FIXTURES -> selectedVariant.testFixturesArtifact
-    IdeArtifactName.UNIT_TEST ->
+    WellKnownIdeArtifactName.MAIN -> selectedVariant.mainArtifact
+    WellKnownIdeArtifactName.TEST_FIXTURES -> selectedVariant.testFixturesArtifact
+    WellKnownIdeArtifactName.UNIT_TEST ->
       if (testArtifactsAndSourceSetsInMaps) selectedVariant.hostTestArtifacts[ARTIFACT_NAME_UNIT_TEST] else selectedVariant.unitTestArtifact
-    IdeArtifactName.ANDROID_TEST ->
+    WellKnownIdeArtifactName.ANDROID_TEST ->
       if (testArtifactsAndSourceSetsInMaps) selectedVariant.deviceTestArtifacts[ARTIFACT_NAME_ANDROID_TEST]
       else selectedVariant.androidTestArtifact
-    IdeArtifactName.SCREENSHOT_TEST ->
+    WellKnownIdeArtifactName.SCREENSHOT_TEST ->
       if (testArtifactsAndSourceSetsInMaps) selectedVariant.hostTestArtifacts[ARTIFACT_NAME_SCREENSHOT_TEST]
       else error("ScreenshotTest are not available")
+    // TODO(b/570996505): Test suite artifacts are not part of AGP's hostTestArtifacts/deviceTestArtifacts maps. Once
+    //  test suite artifacts are added, look them up from the variant's test suite artifacts instead.
+    is IdeTestSuiteArtifactName -> null
   }
 }
 
