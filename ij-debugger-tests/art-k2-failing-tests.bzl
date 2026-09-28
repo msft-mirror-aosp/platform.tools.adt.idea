@@ -163,5 +163,38 @@ _tests = [
     "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testCoroutinesHierarchy3",
     "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testOneCoroutine",
 ]
-
 ART_K2_FAILING = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests]
+
+_tests_with_order_related_failure = [
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInFunction",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInSamLambdas",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInSuspendFunction",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testUnnamedContextParameters",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameAnonymousObject",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameExtFunExtFun",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testGetterOfLateinitVariableIsNotShown",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testLambdaAsValueArgument",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSequenceLambda",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSourcePositionForGetter",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSourcePositionForGetterWithDiamondInterfaces",
+    "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
+]
+TESTS_WITH_ORDER_RELATED_FAILURE = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests_with_order_related_failure]
+
+_tests_with_errors = [
+    "InlineScopesAndK2IdeK2CodeEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testEvaluatableGetters",
+    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowComplex",
+    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowDebounce",
+    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowMerge",
+    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowMultipleFlowsSameValues",
+    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowNulls",
+    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowSimple",
+    "K2FlowAsyncStackTraceTestGenerated.testStateFlowComplex",
+    "K2FlowAsyncStackTraceTestGenerated.testStateFlowMerge",
+    "K2FlowAsyncStackTraceTestGenerated.testStateFlowMultipleFlowsSameValues",
+    "K2FlowAsyncStackTraceTestGenerated.testStateFlowNulls",
+    "K2FlowAsyncStackTraceTestGenerated.testStateFlowSimple",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testEvaluatableGetters",
+]
+TESTS_WITH_ERRORS = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests_with_errors]

@@ -1,7 +1,7 @@
 directories:
-  tools/adt/idea/ij-debugger-tests
   prebuilts/tools/linux-x86_64/art
-  # tools/idea/plugins/kotlin/jvm-debugger
+  tools/adt/idea/ij-debugger-tests
+  tools/idea/plugins/kotlin/jvm-debugger
   tools/adt/idea/debuggers
   tools/adt/idea/android-kotlin
   tools/idea/platform/testFramework/bootstrap
@@ -10,6 +10,7 @@ directories:
 targets:
   //tools/adt/idea/ij-debugger-tests/lib
   @tools_idea//platform/testFramework/bootstrap:tools-testsBootstrap
+  @tools_idea//plugins/kotlin/jvm-debugger/testFramework:testFramework_test_lib
 
 additional_languages:
   kotlin
