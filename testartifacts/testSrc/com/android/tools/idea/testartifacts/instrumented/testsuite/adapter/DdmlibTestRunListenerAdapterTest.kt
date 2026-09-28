@@ -34,7 +34,13 @@ import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.ProjectRule
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.Path
+import java.nio.file.Paths
 import org.jetbrains.kotlin.konan.file.File
+import org.junit.Assume.assumeNoException
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -46,10 +52,14 @@ import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.junit.MockitoJUnit
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doNothing
+import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.mockito.quality.Strictness
+
+private const val DEVICE_ROOT = "/device/root/path"
 
 /** Unit tests for [DdmlibTestRunListenerAdapter]. */
 class DdmlibTestRunListenerAdapterTest {
@@ -387,6 +397,138 @@ class DdmlibTestRunListenerAdapterTest {
     adapter.testRunEnded(/* elapsedTime= */ 1000, mutableMapOf())
     // Expect we DO NOT attempt to copy the trace file because it is a path traversal.
     verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinkWithInvalidPathCharactersIsRejected() {
+    reportBenchmarkOutput("Benchmark test ran in [32 ns](file://evil\u0000.trace)")
+    verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinkWithQueryParametersIsCopiedWithoutParameters() {
+    withTempRoot { tempRoot, _ ->
+      val validTracePath = "path/to/valid/my.perfetto-trace"
+      reportBenchmarkOutput("Benchmark test ran in [32 ns](file://$validTracePath?enablePlugins=trace_processor)")
+      verify(mockDevice, times(1)).pullFile(DEVICE_ROOT + "/" + validTracePath, tempRoot.resolve(validTracePath).toString())
+    }
+  }
+
+  @Test
+  fun benchmarkFileLinkWithNonTraceExtensionIsRejected() {
+    reportBenchmarkOutput("Benchmark test ran in [32 ns](file://path/to/evil.sh)")
+    verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinkWithLeadingSlashIsRejected() {
+    reportBenchmarkOutput("Benchmark test ran in [32 ns](file:///etc/evil.trace) and [trace](file://\\evil.trace)")
+    verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinkWithColonIsRejected() {
+    reportBenchmarkOutput("Benchmark test ran in [32 ns](file://C:evil.trace) and [trace](file://evil.bat:stream.trace)")
+    verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinkWithDisguisedDotSegmentIsRejected() {
+    reportBenchmarkOutput("Traces: [a](file://dir/.. /evil.trace) [b](file://.../evil.trace) [c](file://dir/ ./evil.trace)")
+    verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinkWithDeviceRootTraversalIsRejected() {
+    reportBenchmarkOutput("Benchmark test ran in [32 ns](file://path/to/valid/my.trace)", deviceRoot = "/device/root/../escape")
+    verify(mockDevice, times(0)).pullFile(any(), any())
+  }
+
+  @Test
+  fun benchmarkFileLinksSharingANewDirectoryAreAllPulled() {
+    withTempRoot { tempRoot, _ ->
+      reportBenchmarkOutput("Traces: [first](file://shared/dir/first.trace) [second](file://shared/dir/second.perfetto-trace)")
+      verify(mockDevice).pullFile("$DEVICE_ROOT/shared/dir/first.trace", tempRoot.resolve("shared/dir/first.trace").toString())
+      verify(mockDevice)
+        .pullFile("$DEVICE_ROOT/shared/dir/second.perfetto-trace", tempRoot.resolve("shared/dir/second.perfetto-trace").toString())
+    }
+  }
+
+  @Test
+  fun benchmarkFileLinkIntoSymlinkedDirectoryIsRejected() {
+    withTempRoot { tempRoot, outsideDir ->
+      createSymbolicLinkOrSkip(tempRoot.resolve("linked"), outsideDir)
+      reportBenchmarkOutput("Benchmark test ran in [32 ns](file://linked/evil.trace)")
+      verify(mockDevice, times(0)).pullFile(any(), any())
+      assertThat(Files.list(outsideDir).use { it.count() }).isEqualTo(0)
+    }
+  }
+
+  @Test
+  fun benchmarkFileLinkOverDanglingSymlinkIsRejected() {
+    withTempRoot { tempRoot, outsideDir ->
+      val outsideTarget = outsideDir.resolve("evil.trace")
+      createSymbolicLinkOrSkip(tempRoot.resolve("evil.trace"), outsideTarget)
+      reportBenchmarkOutput("Benchmark test ran in [32 ns](file://evil.trace)")
+      verify(mockDevice, times(0)).pullFile(any(), any())
+      assertThat(Files.exists(outsideTarget, LinkOption.NOFOLLOW_LINKS)).isFalse()
+    }
+  }
+
+  @Test
+  fun failedBenchmarkFilePullRemovesIncompleteFile() {
+    withTempRoot { tempRoot, _ ->
+      val localFile = tempRoot.resolve("retry/my.trace")
+      doThrow(IOException("device disconnected")).doNothing().whenever(mockDevice).pullFile(any(), any())
+      val benchmarkOutput = "Benchmark test ran in [32 ns](file://retry/my.trace)"
+
+      reportBenchmarkOutput(benchmarkOutput)
+      assertThat(Files.exists(localFile)).isFalse()
+
+      // The failed pull must not block a later pull of the same trace.
+      reportBenchmarkOutput(benchmarkOutput)
+      verify(mockDevice, times(2)).pullFile("$DEVICE_ROOT/retry/my.trace", localFile.toString())
+      assertThat(Files.exists(localFile)).isTrue()
+    }
+  }
+
+  /** Reports [benchmarkOutput] as the benchmark result of a single test. Benchmark files are pulled synchronously in unit tests. */
+  private fun reportBenchmarkOutput(benchmarkOutput: String, deviceRoot: String = DEVICE_ROOT) {
+    val adapter = DdmlibTestRunListenerAdapter(mockDevice, mockListener)
+    val testId = TestIdentifier("exampleTestClass", "exampleTest1", 1)
+    adapter.testRunStarted("exampleTestSuite", /* testCount= */ 1)
+    adapter.testStarted(testId)
+    adapter.testEnded(testId, mutableMapOf(BENCHMARK_TEST_METRICS_KEY to benchmarkOutput, BENCHMARK_PATH_TEST_METRICS_KEY to deviceRoot))
+    adapter.testRunEnded(/* elapsedTime= */ 1000, mutableMapOf())
+  }
+
+  /**
+   * Runs [block] with a fresh, empty directory as the IDE temp directory that benchmark files are pulled into, and a sibling directory
+   * outside of it.
+   */
+  private fun withTempRoot(block: (tempRoot: Path, outsideDir: Path) -> Unit) {
+    val originalTempDirectory = FileUtil.getTempDirectory()
+    val baseDir = Files.createTempDirectory(Paths.get(originalTempDirectory), "benchmarkPull")
+    try {
+      val tempRoot = Files.createDirectory(baseDir.resolve("temp")).toRealPath()
+      val outsideDir = Files.createDirectory(baseDir.resolve("outside")).toRealPath()
+      FileUtil.resetCanonicalTempPathCache(tempRoot.toString())
+      block(tempRoot, outsideDir)
+    } finally {
+      FileUtil.resetCanonicalTempPathCache(originalTempDirectory)
+      FileUtil.delete(baseDir.toFile())
+    }
+  }
+
+  /** Creates a symbolic link, or skips the test where that is not permitted (e.g. Windows without the required privilege). */
+  private fun createSymbolicLinkOrSkip(link: Path, target: Path) {
+    try {
+      Files.createSymbolicLink(link, target)
+    } catch (e: IOException) {
+      assumeNoException(e)
+    } catch (e: UnsupportedOperationException) {
+      assumeNoException(e)
+    }
   }
 
   @Test

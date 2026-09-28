@@ -30,9 +30,13 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.replaceService
 import java.io.File
+import java.io.IOException
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
 import org.jetbrains.android.ComponentStack
 import org.junit.After
+import org.junit.Assume.assumeNoException
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -134,6 +138,87 @@ class BenchmarkLinkListenerTest {
     listener.hyperlinkClicked("uri://bad\u0000name.trace")
     verify(mockNotification).showBalloon(eq("Invalid benchmark path"), any<String>(), eq(NotificationType.WARNING))
     verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerRejectsAbsolutePathToFileInTempDirectory() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val traceFile = FileUtil.createTempFile("traceFile", ".trace")
+    traceFile.deleteOnExit()
+    listener.hyperlinkClicked("file://${traceFile.absolutePath}")
+    listener.hyperlinkClicked("uri://${traceFile.absolutePath}")
+    verify(mockNotification, times(2)).showBalloon(eq("Invalid benchmark path"), any<String>(), eq(NotificationType.WARNING))
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerRejectsPathsWithColon() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    listener.hyperlinkClicked("file://C:evil.trace")
+    listener.hyperlinkClicked("uri://evil.bat:stream.trace")
+    verify(mockNotification, times(2)).showBalloon(eq("Invalid benchmark path"), any<String>(), eq(NotificationType.WARNING))
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerRejectsDisguisedDotSegments() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    listener.hyperlinkClicked("file://dir/.. /evil.trace")
+    listener.hyperlinkClicked("uri://.../evil.trace")
+    verify(mockNotification, times(2)).showBalloon(eq("Invalid benchmark path"), any<String>(), eq(NotificationType.WARNING))
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun rejectedLongPathIsTrimmedInNotification() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    listener.hyperlinkClicked("file://../" + "a".repeat(10_000) + ".trace")
+    val textCaptor = ArgumentCaptor.forClass(String::class.java)
+    verify(mockNotification).showBalloon(eq("Invalid benchmark path"), textCaptor.capture(), eq(NotificationType.WARNING))
+    val shownPath = textCaptor.value.removePrefix("Rejected path traversal: ")
+    assertThat(shownPath.length).isAtMost(200)
+    assertThat(shownPath).startsWith("../")
+    assertThat(shownPath).contains("…")
+    verifyNoInteractions(mockEditorService)
+  }
+
+  @Test
+  fun listenerDoesNotOpenDirectoryWithTraceExtension() {
+    val listener = BenchmarkLinkListener(projectRule.project)
+    val directory = FileUtil.createTempDirectory("traceDir", ".perfetto-trace")
+    try {
+      listener.hyperlinkClicked("uri://${directory.name}")
+      verify(mockNotification).showBalloon(eq("Benchmark file not found"), any<String>(), eq(NotificationType.WARNING))
+      verifyNoInteractions(mockEditorService)
+    } finally {
+      FileUtil.delete(directory)
+    }
+  }
+
+  @Test
+  fun listenerDoesNotOpenTraceLinkedFromOutsideTempDirectory() {
+    val originalTempDirectory = FileUtil.getTempDirectory()
+    val baseDir = Files.createTempDirectory(Paths.get(originalTempDirectory), "benchmarkLink")
+    try {
+      val tempRoot = Files.createDirectory(baseDir.resolve("temp")).toRealPath()
+      val outsideTrace = Files.createFile(Files.createDirectory(baseDir.resolve("outside")).resolve("secret.trace"))
+      try {
+        Files.createSymbolicLink(tempRoot.resolve("link.trace"), outsideTrace)
+      } catch (e: IOException) {
+        assumeNoException(e)
+      } catch (e: UnsupportedOperationException) {
+        assumeNoException(e)
+      }
+      FileUtil.resetCanonicalTempPathCache(tempRoot.toString())
+
+      BenchmarkLinkListener(projectRule.project).hyperlinkClicked("file://link.trace")
+
+      verify(mockNotification).showBalloon(eq("Invalid benchmark path"), any<String>(), eq(NotificationType.WARNING))
+      verifyNoInteractions(mockEditorService)
+    } finally {
+      FileUtil.resetCanonicalTempPathCache(originalTempDirectory)
+      FileUtil.delete(baseDir.toFile())
+    }
   }
 
   @Test

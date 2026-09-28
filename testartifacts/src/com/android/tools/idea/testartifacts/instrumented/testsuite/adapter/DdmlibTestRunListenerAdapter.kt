@@ -16,7 +16,10 @@
 package com.android.tools.idea.testartifacts.instrumented.testsuite.adapter
 
 import com.android.annotations.concurrency.AnyThread
+import com.android.ddmlib.AdbCommandRejectedException
 import com.android.ddmlib.IDevice
+import com.android.ddmlib.SyncException
+import com.android.ddmlib.TimeoutException
 import com.android.ddmlib.testrunner.IInstrumentationResultParser.StatusKeys.DDMLIB_LOGCAT
 import com.android.ddmlib.testrunner.ITestRunListener
 import com.android.ddmlib.testrunner.TestIdentifier
@@ -35,6 +38,12 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.util.ClassUtil
+import java.io.IOException
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.InvalidPathException
+import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.nio.file.Paths
 
 /** An adapter to translate [ITestRunListener] and [ProcessListener] callback methods into [AndroidTestResultListener]. */
@@ -193,7 +202,7 @@ class DdmlibTestRunListenerAdapter(private val myIDevice: IDevice, private val l
   }
 
   private fun copyBenchmarkFilesIfNeeded(benchmark: String, deviceRoot: String) {
-    if (benchmark.isBlank() || deviceRoot.isBlank()) {
+    if (benchmark.isBlank() || deviceRoot.isBlank() || deviceRoot.contains("..")) {
       return
     }
     val benchmarkOutput = BenchmarkOutput(benchmark)
@@ -205,31 +214,99 @@ class DdmlibTestRunListenerAdapter(private val myIDevice: IDevice, private val l
           val task =
             object : Task.Backgroundable(null, "Pulling: $link", true) {
               override fun run(indicator: ProgressIndicator) {
-                val relativeFilePath = link.replace(BenchmarkOutput.BENCHMARK_TRACE_FILE_PREFIX, "")
+                val relativeFilePath = link.removePrefix(BenchmarkOutput.BENCHMARK_TRACE_FILE_PREFIX).substringBefore('?')
+                if (!BenchmarkOutput.isSafeRelativeFilePath(relativeFilePath)) {
+                  logger.warn("Rejected invalid benchmark trace file path: $relativeFilePath")
+                  return
+                }
                 val tempRoot =
                   try {
                     Paths.get(FileUtil.getTempDirectory()).toRealPath()
                   } catch (e: Exception) {
                     Paths.get(FileUtil.getTempDirectory()).toAbsolutePath().normalize()
                   }
-                val localPath = tempRoot.resolve(relativeFilePath).normalize()
+                val localPath =
+                  try {
+                    tempRoot.resolve(relativeFilePath).normalize()
+                  } catch (e: InvalidPathException) {
+                    logger.warn("Rejected benchmark trace path with invalid characters: $relativeFilePath")
+                    return
+                  }
                 if (!localPath.startsWith(tempRoot)) {
                   logger.warn("Rejected benchmark trace path traversal: $relativeFilePath")
                   return
                 }
-                val localFile = localPath.toFile()
-                localFile.deleteOnExit()
-                if (!localFile.exists() && (localFile.parentFile.exists() || localFile.parentFile.mkdirs())) {
-                  myIDevice.pullFile("$deviceRoot/$relativeFilePath", localFile.absolutePath)
-                } else {
-                  logger.warn("Unable to copy latest trace file ($relativeFilePath) from device (${myIDevice.serialNumber})")
+                val localFileName = localPath.fileName?.toString().orEmpty()
+                if (!BenchmarkOutput.isBenchmarkTraceFile(localFileName)) {
+                  logger.warn("Rejected non-trace benchmark file: $relativeFilePath")
+                  return
                 }
+                val localFile = createLocalTraceFile(tempRoot, relativeFilePath)
+                if (localFile == null) {
+                  logger.warn("Unable to copy latest trace file ($relativeFilePath) from device (${myIDevice.serialNumber})")
+                  return
+                }
+                pullTraceFile("$deviceRoot/$relativeFilePath", localFile)
               }
             }
           ProgressManager.getInstance().run(task)
         }
         match = match.next()
       }
+    }
+  }
+
+  /**
+   * Pulls [remotePath] into the placeholder [localFile]. If the pull fails, the placeholder is deleted so that it does not block a later
+   * pull of the same trace.
+   */
+  private fun pullTraceFile(remotePath: String, localFile: Path) {
+    try {
+      myIDevice.pullFile(remotePath, localFile.toString())
+    } catch (e: Exception) {
+      try {
+        Files.deleteIfExists(localFile)
+      } catch (deleteError: IOException) {
+        e.addSuppressed(deleteError)
+      }
+      when (e) {
+        is IOException,
+        is AdbCommandRejectedException,
+        is TimeoutException,
+        is SyncException -> logger.warn("Failed to pull trace file ($remotePath) from device (${myIDevice.serialNumber})", e)
+        else -> throw e
+      }
+    }
+  }
+
+  /**
+   * Creates an empty file at [relativeFilePath] under [tempRoot] and returns it, or returns null if the file already exists or cannot be
+   * created safely. Parent directories that are symbolic links, or that resolve outside [tempRoot], are rejected. The file is created
+   * exclusively, so an existing file or symbolic link at the destination is never written through.
+   */
+  private fun createLocalTraceFile(tempRoot: Path, relativeFilePath: String): Path? {
+    val segments = relativeFilePath.split('/', '\\').filter { it.isNotEmpty() }
+    if (segments.isEmpty()) {
+      return null
+    }
+    try {
+      var parent = tempRoot
+      for (segment in segments.dropLast(1)) {
+        parent = parent.resolve(segment)
+        try {
+          Files.createDirectory(parent)
+        } catch (e: FileAlreadyExistsException) {
+          // Created earlier, possibly by a concurrent pull of another trace in the same directory. Verified below.
+        }
+        if (!Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS) || !parent.toRealPath().startsWith(tempRoot)) {
+          return null
+        }
+      }
+      return Files.createFile(parent.resolve(segments.last())).also { it.toFile().deleteOnExit() }
+    } catch (e: IOException) {
+      return null
+    } catch (e: InvalidPathException) {
+      return null
     }
   }
 
