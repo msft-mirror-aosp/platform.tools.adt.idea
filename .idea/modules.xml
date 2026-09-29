@@ -112,10 +112,14 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/attach/altlang.attach.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/attach/altlang.attach.iml" />
       <module fileurl="file://$PROJECT_DIR$/analytics/analytics.iml" filepath="$PROJECT_DIR$/analytics/analytics.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../analytics-library/crash/analytics-crash.iml" filepath="$PROJECT_DIR$/../../analytics-library/crash/analytics-crash.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../analytics-library/crash/analytics-crash.tests.iml" filepath="$PROJECT_DIR$/../../analytics-library/crash/analytics-crash.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../analytics-library/inspector/analytics-inspector.iml" filepath="$PROJECT_DIR$/../../analytics-library/inspector/analytics-inspector.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../analytics-library/publisher/analytics-publisher.iml" filepath="$PROJECT_DIR$/../../analytics-library/publisher/analytics-publisher.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../analytics-library/publisher/analytics-publisher.tests.iml" filepath="$PROJECT_DIR$/../../analytics-library/publisher/analytics-publisher.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../analytics-library/shared/analytics-shared.iml" filepath="$PROJECT_DIR$/../../analytics-library/shared/analytics-shared.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../analytics-library/shared/analytics-shared.tests.iml" filepath="$PROJECT_DIR$/../../analytics-library/shared/analytics-shared.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../analytics-library/tracker/analytics-tracker.iml" filepath="$PROJECT_DIR$/../../analytics-library/tracker/analytics-tracker.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../analytics-library/tracker/analytics-tracker.tests.iml" filepath="$PROJECT_DIR$/../../analytics-library/tracker/analytics-tracker.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/android-apk/android-apk.iml" filepath="$PROJECT_DIR$/../../vendor/google/android-apk/android-apk.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/android-apk/android-apk.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/android-apk/android-apk.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/android-keys/android-keys.iml" filepath="$PROJECT_DIR$/../../vendor/google/android-keys/android-keys.iml" />

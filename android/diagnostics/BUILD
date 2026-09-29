@@ -23,6 +23,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/analytics-library/shared:analytics-shared",
+        "//tools/analytics-library/shared:analytics-shared.tests",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/analytics-library/crash:analytics-crash",

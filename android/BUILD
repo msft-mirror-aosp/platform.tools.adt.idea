@@ -202,6 +202,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:google-dexlib2",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/analytics-library/shared:analytics-shared",
+        "//tools/analytics-library/shared:analytics-shared.tests",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/wizard:intellij.android.wizard",
