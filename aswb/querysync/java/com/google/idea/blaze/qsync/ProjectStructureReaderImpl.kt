@@ -34,6 +34,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.measureTime
 import kotlinx.coroutines.runBlocking
 
+internal val EMPTY_PATH: Path = Path.of("")
+internal val BUILD_PATH: Path = Path.of("BUILD")
+internal val BUILD_BAZEL_PATH: Path = Path.of("BUILD.bazel")
+
 /** Default implementation of [ProjectStructureReader] that traverses the filesystem to identify project packages and source files. */
 internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtensions, private val packageReader: PackageReader) :
   ProjectStructureReader {
@@ -45,8 +49,8 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
     context: Context<*>,
     workspaceRoot: Path,
     projectDefinition: ProjectDefinition,
-    locator: BuildPackageLocator = BuildPackageLocator(workspaceRoot),
   ): ProjectStructureData {
+    val locator = BuildPackageLocator(workspaceRoot)
     /**
      * Map storing discovered source files grouped by:
      * 1. Project structure root path (relative to workspace) (ConcurrentHashMap)
@@ -66,7 +70,7 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
     fun aggregateResult(includeRoot: Path, result: FileProcessResult, forcedPackage: String? = null) {
       when (result) {
         is FileProcessResult.SourceFile -> {
-          val buildPackage = locator.findBuildPackage(result.relativePath.parent ?: Path.of(""))
+          val buildPackage = locator.findBuildPackage(result.relativePath.parent ?: EMPTY_PATH)
           if (buildPackage != null) {
             if (buildPackage.startsWith(includeRoot)) {
               val javaPackage = if (result.language == QuerySyncLanguage.JVM) forcedPackage ?: "" else ""
@@ -97,13 +101,10 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
             val rootMap = sourcesMap.computeIfAbsent(includeRoot) { ConcurrentHashMap() }
             rootMap.computeIfAbsent(result.packagePath) { ConcurrentHashMap() }
           }
-          if (result.packagePath.toString().isNotEmpty()) {
-            val parentPath = result.packagePath.parent ?: Path.of("")
-            val enclosingParentPackage = locator.findBuildPackage(parentPath)
-            if (enclosingParentPackage != null && enclosingParentPackage != result.packagePath) {
-              directSubpackagesMap.computeIfAbsent(enclosingParentPackage) { ConcurrentHashMap.newKeySet() }.add(result.packagePath)
-            }
-          }
+          directSubpackagesMap.recordDirectSubpackage(
+            result.packagePath,
+            locator,
+          )
         }
         is FileProcessResult.Ignored -> {}
       }
@@ -129,23 +130,7 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
       }
     }
 
-    val roots = sourcesMap.map { (includeRoot, packageMap) ->
-      val buildPackages = packageMap.mapValues { (buildPackage, packageMap) ->
-        val sourceSets = packageMap.map { (javaPackage, packageContent) ->
-          SourceSet(
-            rootPath = buildPackage,
-            javaSourceFiles = packageContent.javaSources.sorted().map { buildPackage.relativize(it) },
-            nonJavaSourceFiles = packageContent.nonJavaSources.sorted().map { buildPackage.relativize(it) },
-            javaPackage = javaPackage,
-          )
-        }
-        val timestamp = packageTimestamps[buildPackage] ?: 0L
-        val directSubpackages = directSubpackagesMap[buildPackage]?.toList() ?: emptyList()
-        val stamp = computePackageStamp(buildFileTimestamp = timestamp, sourceSets = sourceSets, directSubpackages = directSubpackages)
-        BuildPackage(path = buildPackage, sourceSets = sourceSets, stamp = stamp)
-      }
-      ProjectStructureRoot(projectStructureRootPath = includeRoot, buildPackages = buildPackages)
-    }
+    val roots = buildProjectStructureRoots(sourcesMap, packageTimestamps, directSubpackagesMap)
 
     val result = ProjectStructureData.create(roots = roots, activeLanguages = languages)
 
@@ -164,6 +149,53 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
     )
     return result
   }
+
+  /**
+   * Builds [ProjectStructureRoot] instances from the discovered project data.
+   *
+   * @param sourcesMap Map of discovered source files: content root -> source root (build package) -> Java package -> package content.
+   * @param packageTimestamps Map from build package path to its BUILD file last modified timestamp in milliseconds.
+   * @param directSubpackagesMap Map from build package path to its direct child subpackage paths.
+   */
+  private fun buildProjectStructureRoots(
+    sourcesMap: Map<Path, Map<Path, Map<String, JavaPackageContent>>>,
+    packageTimestamps: Map<Path, Long>,
+    directSubpackagesMap: Map<Path, Collection<Path>>,
+  ): List<ProjectStructureRoot> = sourcesMap.map { (includeRoot, packageMap) ->
+    val buildPackages = packageMap.mapValues { (buildPackage, packageMap) ->
+      val sourceSets = packageMap.map { (javaPackage, packageContent) ->
+        SourceSet(
+          rootPath = buildPackage,
+          javaSourceFiles =
+            packageContent.javaSources.sorted().map {
+              buildPackage.relativize(it)
+            },
+          nonJavaSourceFiles =
+            packageContent.nonJavaSources.sorted().map {
+              buildPackage.relativize(it)
+            },
+          javaPackage = javaPackage,
+        )
+      }
+      val timestamp = packageTimestamps[buildPackage] ?: 0L
+      val directSubpackages = directSubpackagesMap[buildPackage]?.toList() ?: emptyList()
+      val stamp =
+        computePackageStamp(
+          buildFileTimestamp = timestamp,
+          sourceSets = sourceSets,
+          directSubpackages = directSubpackages,
+        )
+      BuildPackage(
+        path = buildPackage,
+        sourceSets = sourceSets,
+        stamp = stamp,
+      )
+    }
+    ProjectStructureRoot(
+      projectStructureRootPath = includeRoot,
+      buildPackages = buildPackages,
+    )
+  }
 }
 
 private class JavaPackageContent {
@@ -174,7 +206,8 @@ private class JavaPackageContent {
 private class BuildPackageLocator(private val workspaceRoot: Path) {
   private val cache = ConcurrentHashMap<Path, Optional<Path>>()
 
-  private fun isBuildPackageDirectory(dir: Path): Boolean = Files.exists(dir.resolve("BUILD")) || Files.exists(dir.resolve("BUILD.bazel"))
+  private fun isBuildPackageDirectory(dir: Path): Boolean =
+    Files.exists(dir.resolve(BUILD_PATH)) || Files.exists(dir.resolve(BUILD_BAZEL_PATH))
 
   fun findBuildPackage(startPath: Path): Path? {
     val cachedStart = cache[startPath]
@@ -196,8 +229,8 @@ private class BuildPackageLocator(private val workspaceRoot: Path) {
         break
       }
       visited.add(current)
-      val reachedRoot = current == Path.of("")
-      current = current.parent ?: Path.of("")
+      val reachedRoot = current == EMPTY_PATH
+      current = current.parent ?: EMPTY_PATH
     } while (!reachedRoot)
 
     val cachedResult = Optional.ofNullable(result)
@@ -206,5 +239,22 @@ private class BuildPackageLocator(private val workspaceRoot: Path) {
       cache[result] = cachedResult
     }
     return result
+  }
+}
+
+private fun ConcurrentHashMap<Path, MutableSet<Path>>.recordDirectSubpackage(
+  packagePath: Path,
+  locator: BuildPackageLocator,
+) {
+  if (packagePath.toString().isNotEmpty()) {
+    val parentPath = packagePath.parent ?: EMPTY_PATH
+    val enclosingParentPackage = locator.findBuildPackage(parentPath)
+    if (enclosingParentPackage != null && enclosingParentPackage != packagePath) {
+      val subpackages =
+        computeIfAbsent(enclosingParentPackage) {
+          ConcurrentHashMap.newKeySet()
+        }
+      subpackages.add(packagePath)
+    }
   }
 }
