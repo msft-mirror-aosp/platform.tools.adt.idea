@@ -16,6 +16,7 @@
 
 #include "audio_record.h"
 
+#include "accessors/agent_context.h"
 #include "agent.h"
 #include "jvm.h"
 #include "log.h"
@@ -39,7 +40,17 @@ constexpr int AudioMixingRule_RULE_MATCH_ATTRIBUTE_USAGE = 0x1;
 // From https://android.googlesource.com/platform/frameworks/base/+/main/media/java/android/media/AudioTimestamp.java.
 constexpr int AudioTimestamp_TIMEBASE_MONOTONIC = 0;
 
-JObject CreateAudioRecord(Jni jni, int32_t audio_sample_rate) {
+void UnregisterAudioPolicy(Jni jni, JObject&& policy) {
+  if (policy.IsNull()) {
+    return;
+  }
+  JClass audio_manager_class = jni.GetClass("android/media/AudioManager");
+  jmethodID unregister_method =
+      audio_manager_class.GetStaticMethod("unregisterAudioPolicyAsyncStatic", "(Landroid/media/audiopolicy/AudioPolicy;)V");
+  audio_manager_class.CallStaticVoidMethod(jni, unregister_method, policy.ref());
+}
+
+JObject CreateAudioRecord(Jni jni, int32_t audio_sample_rate, JObject* out_policy) {
   // Create an AudioAttributes object representing an unused usage type.
   JClass audio_attributes_builder_class = jni.GetClass("android/media/AudioAttributes$Builder");
   JObject audio_attributes_builder = audio_attributes_builder_class.NewObject(jni, audio_attributes_builder_class.GetConstructor());
@@ -90,7 +101,7 @@ JObject CreateAudioRecord(Jni jni, int32_t audio_sample_rate) {
   // Create an AudioPolicy.
   JClass policy_builder_class = jni.GetClass("android/media/audiopolicy/AudioPolicy$Builder");
   JObject policy_builder = policy_builder_class.NewObject(
-      jni, policy_builder_class.GetConstructor("(Landroid/content/Context;)V"), nullptr);
+      jni, policy_builder_class.GetConstructor("(Landroid/content/Context;)V"), AgentContext::context().ref());
   jmethodID add_mix_method = policy_builder_class.GetMethod(
       jni, "addMix", "(Landroid/media/audiopolicy/AudioMix;)Landroid/media/audiopolicy/AudioPolicy$Builder;");
   policy_builder.CallObjectMethod(jni, add_mix_method, mix.ref());
@@ -110,7 +121,7 @@ JObject CreateAudioRecord(Jni jni, int32_t audio_sample_rate) {
   int32_t res = audio_manager_class.CallStaticIntMethod(jni, register_audio_policy_method, policy.ref());
   if (res != 0) {
     Log::W("Unable to register audio policy: %d", res);
-    return JObject();
+    return {};
   }
 
   jmethodID create_audio_record_sink_method =
@@ -119,14 +130,17 @@ JObject CreateAudioRecord(Jni jni, int32_t audio_sample_rate) {
   if (audio_record.IsNull()) {
     jni.CheckAndClearException();
     Log::W("Unable to create AudioRecord");
+    UnregisterAudioPolicy(jni, std::move(policy));
+    return {};
   }
+  *out_policy = std::move(policy).ToGlobal();
   return audio_record;
 }
 
 }  // namespace
 
 AudioRecord::AudioRecord(Jni jni, int32_t audio_sample_rate)
-    : audio_record_(CreateAudioRecord(jni, audio_sample_rate).ToGlobal()) {
+    : audio_record_(CreateAudioRecord(jni, audio_sample_rate, &audio_policy_).ToGlobal()) {
   if (audio_record_.IsNull()) {
     return;
   }
@@ -147,6 +161,7 @@ AudioRecord::~AudioRecord() {
 
 AudioRecord& AudioRecord::operator=(AudioRecord&& other) noexcept {
   Release();
+  audio_policy_ = std::move(other.audio_policy_);
   audio_record_ = std::move(other.audio_record_);
   release_method_ = other.release_method_;
   start_recording_method_ = other.start_recording_method_;
@@ -162,6 +177,9 @@ void AudioRecord::Release() {
   if (audio_record_.IsNotNull()) {
     Jvm::GetJni()->CallVoidMethod(audio_record_.Release(), release_method_);
   }
+  if (audio_policy_.IsNotNull()) {
+    UnregisterAudioPolicy(Jvm::GetJni(), std::move(audio_policy_));
+  }
 }
 
 bool AudioRecord::Start(Jni jni) {
@@ -169,6 +187,7 @@ bool AudioRecord::Start(Jni jni) {
   JThrowable exception = jni.GetAndClearException();
   if (exception.IsNotNull()) {
     Log::E(std::move(exception), "AudioRecord.startRecording failed");
+    Release();
     return false;
   }
   return true;
