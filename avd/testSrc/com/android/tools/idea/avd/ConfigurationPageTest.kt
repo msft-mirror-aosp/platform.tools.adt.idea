@@ -48,7 +48,6 @@ import com.android.tools.idea.adddevicedialog.LoadingState
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.flags.StudioFlags
-import com.android.utils.NullLogger
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
@@ -605,8 +604,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -629,8 +627,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -653,8 +650,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -685,8 +681,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -748,8 +743,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {

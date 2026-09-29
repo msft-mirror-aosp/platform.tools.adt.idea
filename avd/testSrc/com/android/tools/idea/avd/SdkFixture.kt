@@ -77,7 +77,7 @@ class SdkFixture(
       hasLocal = hasLocal,
       hasRemote = hasRemote,
       error = error,
-      images = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), logger).get().toImmutableList(),
+      images = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().toImmutableList(),
     )
 
   fun createLocalSystemImage(

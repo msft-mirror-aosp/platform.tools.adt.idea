@@ -20,7 +20,6 @@ import com.android.sdklib.SystemImageSupplier
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.repository.AndroidSdkHandler
-import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
@@ -67,12 +66,7 @@ internal object ISystemImages {
     val indicator = StudioLoggerProgressIndicator(ISystemImages::class.java)
     val repoManager = sdkHandler.getRepoManager(indicator)
     val systemImageManager = sdkHandler.getSystemImageManager(indicator)
-    val imageSupplier =
-      SystemImageSupplier(
-        repoManager,
-        systemImageManager,
-        LogWrapper(thisLogger<ISystemImages>()),
-      )
+    val imageSupplier = SystemImageSupplier(repoManager, systemImageManager)
 
     var state = SystemImageState.INITIAL
 
