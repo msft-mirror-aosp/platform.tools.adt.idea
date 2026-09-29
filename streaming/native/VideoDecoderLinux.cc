@@ -20,6 +20,7 @@
 
 #include <dlfcn.h>
 #include <jni.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cstdint>
@@ -396,20 +397,22 @@ constexpr const char* kSystemLibDirs[] = {
     "/usr/lib64",
     "/lib64",
     "/usr/lib",
-    "",
 };
 
-bool IsFromJavaCpp(const void* sym) {
-  if (sym == nullptr) {
-    return true;
+bool IsExpectedSystemFile(const void* sym, const char* expectedPath) {
+  if (sym == nullptr || expectedPath == nullptr) {
+    return false;
   }
   Dl_info dlInfo = {};
-  if (dladdr(sym, &dlInfo) != 0 && dlInfo.dli_fname != nullptr) {
-    if (std::strstr(dlInfo.dli_fname, "javacpp") != nullptr) {
-      return true;
-    }
+  if (dladdr(sym, &dlInfo) == 0 || dlInfo.dli_fname == nullptr) {
+    return false;
   }
-  return false;
+  struct stat actualStat = {};
+  struct stat expectedStat = {};
+  if (stat(dlInfo.dli_fname, &actualStat) != 0 || stat(expectedPath, &expectedStat) != 0) {
+    return false;
+  }
+  return actualStat.st_dev == expectedStat.st_dev && actualStat.st_ino == expectedStat.st_ino;
 }
 
 class SystemFfmpegApi {
@@ -494,21 +497,19 @@ private:
   SystemFfmpegApi() {
     for (const auto& triplet : kFfmpegTriplets) {
       for (const char* dir : kSystemLibDirs) {
-        std::string prefix = (dir[0] != '\0') ? (std::string(dir) + "/") : std::string();
+        std::string prefix = std::string(dir) + "/";
         std::string avutilPath = prefix + triplet.avutilSoname;
         std::string swresamplePath = prefix + triplet.swresampleSoname;
         std::string swscalePath = prefix + triplet.swscaleSoname;
         std::string avcodecPath = prefix + triplet.avcodecSoname;
 
-        if (dir[0] != '\0') {
-          if (access(avutilPath.c_str(), R_OK) != 0 ||
-              access(swscalePath.c_str(), R_OK) != 0 ||
-              access(avcodecPath.c_str(), R_OK) != 0) {
-            continue;
-          }
+        if (access(avutilPath.c_str(), R_OK) != 0 ||
+            access(swscalePath.c_str(), R_OK) != 0 ||
+            access(avcodecPath.c_str(), R_OK) != 0) {
+          continue;
         }
 
-        if (TryLoadTriplet(avutilPath.c_str(), swresamplePath.c_str(), swscalePath.c_str(), avcodecPath.c_str(), dir[0] != '\0')) {
+        if (TryLoadTriplet(avutilPath.c_str(), swresamplePath.c_str(), swscalePath.c_str(), avcodecPath.c_str())) {
           return;
         }
       }
@@ -516,7 +517,7 @@ private:
   }
 
   bool TryLoadTriplet(
-      const char* avutilPath, const char* swresamplePath, const char* swscalePath, const char* avcodecPath, bool hasExplicitDir) {
+      const char* avutilPath, const char* swresamplePath, const char* swscalePath, const char* avcodecPath) {
     void* avutil = nullptr;
     void* swresample = nullptr;
     void* swscale = nullptr;
@@ -535,13 +536,14 @@ private:
 
     // First attempt loading in a new linker namespace (LM_ID_NEWLM) to avoid any symbol or SONAME
     // collision with JavaCPP's bundled FFmpeg libraries loaded in LM_ID_BASE.
-    // Within the isolated namespace, use RTLD_GLOBAL so swscale and avcodec resolve avutil symbols.
-    avutil = dlmopen(LM_ID_NEWLM, avutilPath, RTLD_LAZY | RTLD_GLOBAL);
+    // Note: glibc's dlmopen rejects RTLD_GLOBAL with EINVAL; objects loaded into the same secondary
+    // namespace automatically resolve DT_NEEDED symbols from each other with RTLD_LOCAL.
+    avutil = dlmopen(LM_ID_NEWLM, avutilPath, RTLD_LAZY | RTLD_LOCAL);
     if (avutil != nullptr) {
       Lmid_t lmid = LM_ID_BASE;
       if (dlinfo(avutil, RTLD_DI_LMID, &lmid) == 0) {
-        if (!hasExplicitDir || access(swresamplePath, R_OK) == 0) {
-          swresample = dlmopen(lmid, swresamplePath, RTLD_LAZY | RTLD_GLOBAL);
+        if (access(swresamplePath, R_OK) == 0) {
+          swresample = dlmopen(lmid, swresamplePath, RTLD_LAZY | RTLD_LOCAL);
         }
         swscale = dlmopen(lmid, swscalePath, RTLD_LAZY | RTLD_LOCAL);
         avcodec = dlmopen(lmid, avcodecPath, RTLD_LAZY | RTLD_LOCAL);
@@ -559,7 +561,7 @@ private:
       flags |= RTLD_DEEPBIND;
 #endif
       avutil = dlopen(avutilPath, flags);
-      if (avutil != nullptr && (!hasExplicitDir || access(swresamplePath, R_OK) == 0)) {
+      if (avutil != nullptr && access(swresamplePath, R_OK) == 0) {
         swresample = dlopen(swresamplePath, flags);
       }
       swscale = avutil ? dlopen(swscalePath, flags) : nullptr;
@@ -607,11 +609,12 @@ private:
       return false;
     }
 
-    // Ensure none of the libraries resolved to JavaCPP's bundled FFmpeg and that avcodec and
-    // swscale bound their DT_NEEDED libavutil dependency to the exact same libavutil instance.
-    if (IsFromJavaCpp(reinterpret_cast<const void*>(fn_avcodec_find_decoder_by_name)) ||
-        IsFromJavaCpp(reinterpret_cast<const void*>(fn_av_frame_alloc)) ||
-        IsFromJavaCpp(reinterpret_cast<const void*>(fn_sws_scale)) ||
+    // Verify that every resolved symbol belongs to the exact system library file on disk (matching
+    // st_dev and st_ino) and that avcodec and swscale bound their DT_NEEDED libavutil dependency
+    // to that exact same libavutil instance.
+    if (!IsExpectedSystemFile(reinterpret_cast<const void*>(fn_avcodec_find_decoder_by_name), avcodecPath) ||
+        !IsExpectedSystemFile(reinterpret_cast<const void*>(fn_av_frame_alloc), avutilPath) ||
+        !IsExpectedSystemFile(reinterpret_cast<const void*>(fn_sws_scale), swscalePath) ||
         dlsym(avcodec, "av_frame_alloc") != reinterpret_cast<void*>(fn_av_frame_alloc) ||
         dlsym(swscale, "av_frame_alloc") != reinterpret_cast<void*>(fn_av_frame_alloc)) {
       closeHandles();
@@ -697,11 +700,11 @@ public:
     switch (codecType) {
       case kCodecTypeAVC:
         if (!HasElement("h264parse")) return result;
-        addAvailable({"openh264dec", "avdec_h264", "vah264dec", "vaapih264dec", "nvh264dec"});
+        addAvailable({"openh264dec", "vah264dec", "vaapih264dec", "nvh264dec"});
         break;
       case kCodecTypeHEVC:
         if (!HasElement("h265parse")) return result;
-        addAvailable({"de265dec", "avdec_h265", "vah265dec", "vaapih265dec", "nvh265dec"});
+        addAvailable({"de265dec", "vah265dec", "vaapih265dec", "nvh265dec"});
         break;
       case kCodecTypeVP8:
         addAvailable({"vp8dec", "avdec_vp8", "vavp8dec", "vaapivp8dec", "nvvp8dec"});
@@ -1267,6 +1270,9 @@ private:
   }
 
   void DestroyFfmpegDecoder() {
+    if (swsCtx_ == nullptr && pkt_ == nullptr && frame_ == nullptr && codecCtx_ == nullptr) {
+      return;
+    }
     const auto& api = SystemFfmpegApi::Instance();
     if (!api.IsAvailable()) {
       return;
@@ -1485,6 +1491,9 @@ private:
   }
 
   void DestroyGstPipeline() {
+    if (gstPipeline_ == nullptr && gstAppSrc_ == nullptr && gstAppSink_ == nullptr) {
+      return;
+    }
     const auto& gst = SystemGstApi::Instance();
     if (!gst.IsAvailable()) {
       return;

@@ -103,7 +103,7 @@ internal constructor(
 ) {
 
   private val decodingContexts = ConcurrentHashMap<Int, DecodingContext>()
-  private val codec = CompletableDeferred<AVCodec>()
+  private val codec = CompletableDeferred<AVCodec?>()
   @Volatile private var codecName = ""
   @Volatile private var useOsDecoder = false
   @Volatile private var endOfVideoStream = false
@@ -184,18 +184,25 @@ internal constructor(
     this.codecName = codecName
     logger.debug { "Receiving $codecName video stream" }
     useOsDecoder = OsVideoDecoder.isSupported(codecName)
+    // Bundled FFmpeg decoders for AVC and HEVC cannot be used due to licensing restrictions.
     val ffmpegCodecName =
       when (codecName) {
         "av01" -> "libaom-av1"
         "avc",
-        "h264" -> "h264"
-        "hevc" -> "hevc"
+        "h264",
+        "hevc" -> null
         "vp8" -> "vp8"
         "vp9" -> "vp9"
         "vvc" -> "vvc"
         else -> throw VideoDecoderException("Unsupported video codec '$codecName' advertised by device")
       }
-    codec.complete(avcodec_find_decoder_by_name(ffmpegCodecName) ?: throw VideoDecoderException("$ffmpegCodecName decoder not found"))
+    val ffmpegCodec = ffmpegCodecName?.let {
+      avcodec_find_decoder_by_name(it) ?: if (!useOsDecoder) throw VideoDecoderException("$it decoder not found") else null
+    }
+    if (!useOsDecoder && ffmpegCodec == null) {
+      throw VideoDecoderException("No decoder available for $codecName")
+    }
+    codec.complete(ffmpegCodec)
   }
 
   interface FrameListener {
@@ -439,7 +446,7 @@ internal constructor(
       @GuardedBy("this") private var initialized: Boolean? = false
 
       @Synchronized
-      fun ensureInitialized(codec: AVCodec): Boolean {
+      fun ensureInitialized(codec: AVCodec?): Boolean {
         when (initialized) {
           true -> return true
           null -> return false
@@ -451,12 +458,15 @@ internal constructor(
             initialized = true
             return true
           } catch (e: Throwable) {
-            logger.warn("Failed to initialize OsVideoDecoder for $codecName, falling back to FFmpeg", e)
             osDecoder = null
             useOsDecoder = false
+            if (codec == null) {
+              throw VideoDecoderException("Failed to initialize OsVideoDecoder for $codecName", e)
+            }
+            logger.warn("Failed to initialize OsVideoDecoder for $codecName, falling back to FFmpeg", e)
           }
         }
-        initFfmpegDecoder(codec)
+        initFfmpegDecoder(codec ?: throw VideoDecoderException("No decoder available for $codecName"))
         initialized = true
         return true
       }
@@ -578,11 +588,13 @@ internal constructor(
           if (processFrameOs(osDecoder, packet, header)) {
             return
           }
-          logger.warn("OsVideoDecoder failed to decode $codecName stream, falling back to FFmpeg")
           osDecoder.close()
           this.osDecoder = null
           useOsDecoder = false
-          @Suppress("OPT_IN_USAGE") initFfmpegDecoder(codec.getCompleted())
+          @Suppress("OPT_IN_USAGE")
+          val fallbackCodec = codec.getCompleted() ?: throw VideoDecoderException("OsVideoDecoder failed to decode $codecName stream")
+          logger.warn("OsVideoDecoder failed to decode $codecName stream, falling back to FFmpeg")
+          initFfmpegDecoder(fallbackCodec)
         }
 
         val parserContext = parserContext ?: return
@@ -835,7 +847,7 @@ internal constructor(
   }
 }
 
-open class VideoDecoderException(message: String) : RuntimeException(message)
+open class VideoDecoderException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
 class InvalidFrameException(message: String) : VideoDecoderException(message)
 
