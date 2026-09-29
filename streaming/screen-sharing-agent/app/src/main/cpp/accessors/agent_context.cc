@@ -38,6 +38,17 @@ void AgentContext::CreateContext(promise<JObject>* context_promise) {
   jfieldID instance_field = agent_context_class.GetStaticFieldId("INSTANCE", "Lcom/android/tools/screensharing/AgentContext;");
   JObject context = JObject(jni, jni->GetStaticObjectField(agent_context_class.ref(), instance_field));
   context.MakeGlobal();
+
+  // Ensure ActivityThread.currentApplication() delegates package and AttributionSource queries to AgentContext.
+  JClass activity_thread_class = jni.GetClass("android/app/ActivityThread");
+  jmethodID current_application_method = activity_thread_class.GetStaticMethod("currentApplication", "()Landroid/app/Application;");
+  JObject application = activity_thread_class.CallStaticObjectMethod(jni, current_application_method);
+  if (application.IsNotNull()) {
+    JClass context_wrapper_class = jni.GetClass("android/content/ContextWrapper");
+    jfieldID base_field = context_wrapper_class.GetFieldId(jni, "mBase", "Landroid/content/Context;");
+    jni->SetObjectField(application.ref(), base_field, context.ref());
+  }
+
   context_promise->set_value(std::move(context));
   Looper::Loop();
   Log::D("AgentContext: Terminating main looper thread");
