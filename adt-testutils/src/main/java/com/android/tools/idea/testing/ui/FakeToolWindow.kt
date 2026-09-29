@@ -179,7 +179,12 @@ internal constructor(
   override fun getType(): ToolWindowType = type
 
   override fun setType(type: ToolWindowType, runnable: Runnable?) {
+    if (this.type == type) {
+      runnable?.run()
+      return
+    }
     this.type = type
+    notifyStateChanged(ToolWindowManagerEventType.SetToolWindowType)
     runnable?.run()
   }
 
