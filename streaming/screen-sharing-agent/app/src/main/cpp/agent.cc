@@ -97,18 +97,24 @@ private:
     string mime_type;
     CodecInfo* codec_info;
     if (codec_name->empty()) {
-      *codec_name = "vp8";
-      mime_type = "video/x-vnd.on2.vp8";
+      *codec_name = "vp9";
+      mime_type = "video/x-vnd.on2.vp9";
       codec_info = SelectForMimeType(mime_type);
-      if ((flags & ALLOW_AVC_ENCODING) != 0 && (codec_info == nullptr || !codec_info->hardware_accelerated)) {
-        CodecInfo* avc_info = SelectForMimeType("video/avc");
-        if (avc_info != nullptr && avc_info->hardware_accelerated) {
-          delete codec_info;
-          codec_info = avc_info;
-          *codec_name = "avc";
-          mime_type = "video/avc";
-        } else {
-          delete avc_info;
+      if (codec_info == nullptr || !codec_info->hardware_accelerated) {
+        delete codec_info;
+        *codec_name = "vp8";
+        mime_type = "video/x-vnd.on2.vp8";
+        codec_info = SelectForMimeType(mime_type);
+        if ((flags & ALLOW_AVC_ENCODING) != 0 && (codec_info == nullptr || !codec_info->hardware_accelerated)) {
+          CodecInfo* avc_info = SelectForMimeType("video/avc");
+          if (avc_info != nullptr && avc_info->hardware_accelerated) {
+            delete codec_info;
+            codec_info = avc_info;
+            *codec_name = "avc";
+            mime_type = "video/avc";
+          } else {
+            delete avc_info;
+          }
         }
       }
     } else {
