@@ -21,14 +21,22 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 @RunWith(JUnit4::class)
 class AdaptiveVerticalScrollbarAdapterTest {
+
+  @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun testAdapterScrollOffsetAndSize() {
