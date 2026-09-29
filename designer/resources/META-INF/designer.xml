@@ -50,6 +50,9 @@
     <extensionPoint qualifiedName="com.android.tools.idea.designer.issueFixActionProvider"
                     interface="com.android.tools.idea.common.error.IssueFixActionProvider"
                     dynamic="true"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.uibuilder.layoutEditorAiActionProvider"
+                    interface="com.android.tools.idea.uibuilder.editor.LayoutEditorAiActionProvider"
+                    dynamic="true"/>
   </extensionPoints>
 
   <!-- New layout editor -->

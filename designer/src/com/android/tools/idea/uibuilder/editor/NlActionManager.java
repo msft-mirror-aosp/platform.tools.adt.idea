@@ -50,6 +50,7 @@ import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.type.LayoutFileType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.actionSystem.ActionGroup;
@@ -242,7 +243,8 @@ public class NlActionManager extends ActionManager<DesignSurface<LayoutlibSceneM
     return group;
   }
 
-  private void createLayoutOnlyActions(@Nullable NlComponent leafComponent, @NotNull DefaultActionGroup group) {
+  @VisibleForTesting
+  void createLayoutOnlyActions(@Nullable NlComponent leafComponent, @NotNull DefaultActionGroup group) {
     if (leafComponent != null) {
       group.add(new MorphComponentAction(leafComponent));
     }
@@ -250,6 +252,9 @@ public class NlActionManager extends ActionManager<DesignSurface<LayoutlibSceneM
       group.add(new ConvertToConstraintLayoutAction());
     }
     group.add(createRefactoringMenu());
+    for (LayoutEditorAiActionProvider provider : LayoutEditorAiActionProvider.EP_NAME.getExtensionList()) {
+      provider.getContextMenuActions().forEach(group::add);
+    }
 
     group.addSeparator();
   }
