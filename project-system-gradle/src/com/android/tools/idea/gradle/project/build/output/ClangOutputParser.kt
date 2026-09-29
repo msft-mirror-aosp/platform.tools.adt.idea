@@ -29,7 +29,7 @@ import com.intellij.build.events.impl.FileMessageEventImpl
 import com.intellij.build.events.impl.MessageEventImpl
 import com.intellij.build.output.BuildOutputInstantReader
 import com.intellij.build.output.BuildOutputParser
-import java.io.File
+import java.nio.file.Path
 import java.util.function.Consumer
 
 /**
@@ -120,7 +120,7 @@ class ClangOutputParser : BuildOutputParser {
       messageConsumer.accept(
         if (message.file != null && message.column != null && message.line != null) {
           val abiMessage = if (message.abi == null) "" else " [${message.abi}]"
-          val position = FilePosition(File(message.file!!), message.line!! - 1, message.column!! - 1)
+          val position = FilePosition(Path.of(message.file!!), message.line!! - 1, message.column!! - 1)
           FileMessageEventImpl(parentId, kind, group, message.body + abiMessage, detailedMessage, position)
         } else {
           MessageEventImpl(parentId, kind, group, message.body, detailedMessage)

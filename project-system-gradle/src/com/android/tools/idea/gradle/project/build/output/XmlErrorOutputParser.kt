@@ -63,7 +63,7 @@ class XmlErrorOutputParser : BuildOutputParser {
             XML_PARSING_GROUP + MESSAGE_GROUP_ERROR_SUFFIX,
             message,
             message,
-            FilePosition(file, lineNumber, columnNumber),
+            FilePosition(file.toPath(), lineNumber, columnNumber),
           )
         )
       } else {

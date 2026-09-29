@@ -33,6 +33,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.util.Disposer
 import java.io.File
+import java.nio.file.Path
 
 class BuildOutputErrorsListener(
   private val externalSystemTaskId: ExternalSystemTaskId,
@@ -75,7 +76,7 @@ fun toBuildErrorMessage(buildEvent: BuildEvent): BuildErrorMessage? {
   findErrorTypeByGroup(buildEvent.group)?.let { builder.errorShownType = it }
   if (buildEvent is FileMessageEvent) {
     builder.fileLocationIncluded = true
-    buildEvent.filePosition.file?.let { builder.fileIncludedType = getFileType(it) }
+    buildEvent.filePosition.path?.let { builder.fileIncludedType = getFileType(it) }
     if (buildEvent.filePosition.startLine >= 0) {
       builder.lineLocationIncluded = true
     }
@@ -103,8 +104,8 @@ private fun findErrorTypeByGroup(messageGroup: String): BuildErrorMessage.ErrorT
   toolNameToEnumMap.filterKeys { messageGroup.startsWith(it) }.values.firstOrNull()
 
 /** Returns whether the file is build generated or user added. */
-private fun getFileType(file: File): BuildErrorMessage.FileType {
-  val filePath = if (file.isAbsolute) file.absolutePath else file.path
+private fun getFileType(path: Path): BuildErrorMessage.FileType {
+  val filePath = path.toString()
   if (
     filePath.contains(File.separatorChar + FileUtils.join(FilenameConstants.BUILD, SdkConstants.FD_GENERATED) + File.separatorChar) ||
       filePath.contains(File.separatorChar + FileUtils.join(FilenameConstants.BUILD, SdkConstants.FD_INTERMEDIATES) + File.separatorChar)

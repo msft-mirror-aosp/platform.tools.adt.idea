@@ -20,7 +20,7 @@ import com.intellij.build.events.FileMessageEventResult;
 import com.intellij.openapi.externalSystem.service.notification.NotificationData;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
+import java.nio.file.Path;
 
 public class AndroidSyncIssueFileEventResult extends AndroidSyncIssueEventResult implements FileMessageEventResult {
   @NotNull private final FilePosition myFilePosition;
@@ -30,7 +30,7 @@ public class AndroidSyncIssueFileEventResult extends AndroidSyncIssueEventResult
     assert notificationData.getFilePath() != null;
     int line = notificationData.getLine() < 0 ? -1 : notificationData.getLine() - 1;
     int column = notificationData.getColumn() < 0 ? -1 : notificationData.getColumn() - 1;
-    myFilePosition = new FilePosition(new File(notificationData.getFilePath()), line, column);
+    myFilePosition = new FilePosition(Path.of(notificationData.getFilePath()), line, column);
   }
 
   @Override

@@ -101,7 +101,7 @@ class DataBindingOutputParser : BuildOutputParser {
           // file unless we feed it the absolute path directly.
           val sourceFile = File(msg.filePath).absoluteFile
           val location = msg.locations.first()
-          val filePosition = FilePosition(sourceFile, location.startLine, location.startCol, location.endLine, location.endCol)
+          val filePosition = FilePosition(sourceFile.toPath(), location.startLine, location.startCol, location.endLine, location.endCol)
           messageConsumer.accept(
             FileMessageEventImpl(reader.parentEventId, MessageEvent.Kind.ERROR, DATABINDING_GROUP, summary, msg.message, filePosition)
           )
@@ -160,8 +160,8 @@ class DataBindingOutputParser : BuildOutputParser {
         val endCol = locMatch.groupValues[4].toInt()
 
         val sourceFile = File(file)
-        val filePosition = FilePosition(sourceFile, startLine, startCol, endLine, endCol)
-        val fileLink = StringBuilder(filePosition.file?.path.orEmpty())
+        val filePosition = FilePosition(sourceFile.toPath(), startLine, startCol, endLine, endCol)
+        val fileLink = StringBuilder(filePosition.path?.toString().orEmpty())
         if (filePosition.startLine > 0) {
           fileLink.append(":").append(filePosition.startLine + 1)
           if (filePosition.startColumn > 0) {
