@@ -34,4 +34,37 @@
             column="19"/>
     </issue>
 
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
+        errorLine1="      fromFacet("
+        errorLine2="      ^">
+        <location
+            file="src/com/android/tools/idea/npw/actions/NewAndroidComponentAction.kt"
+            line="159"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
+        errorLine1="    openNewFragmentWizard(facet, module.project, targetDirectory, createdFiles, shouldOpenFiles)"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/npw/actions/NewAndroidFragmentAction.kt"
+            line="58"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
+        errorLine1="            showWizardDialog(e, category.name, message(messageKey, FormFactor.MOBILE.id), &quot;New $name&quot;)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/npw/template/TemplateManager.kt"
+            line="121"
+            column="13"/>
+    </issue>
+
 </issues>

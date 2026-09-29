@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.5.0-dev" type="baseline" client="" dependencies="true" name="" variant="all" version="9.5.0-dev">
+
+    <issue
+        id="UnsatisfiableThreadConstraint"
+        message="Call results in an unsatisfiable thread requirement"
+        errorLine1="      UpgradeAssistantWindowModel("
+        errorLine2="      ^">
+        <location
+            file="src/com/android/tools/idea/gradle/project/upgrade/ui/UpgradeAssistantContentManager.kt"
+            line="46"
+            column="7"/>
+    </issue>
+
+</issues>

@@ -531,6 +531,50 @@
 
     <issue
         id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `ToolWindowFactory.createToolWindowContent(…)` is allowing `@UiThread`"
+        errorLine1="      .runWhenResourceCacheClean("
+        errorLine2="       ^">
+        <location
+            file="src/com/android/tools/idea/ui/resourcemanager/ResourceExplorerToolFactory.kt"
+            line="61"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `SyncResultListener.syncEnded(…)` is allowing `@AnyThread`"
+        errorLine1="                createContent(toolWindow, project)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/ui/resourcemanager/ResourceExplorerToolFactory.kt"
+            line="96"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `SyncResultListener.syncEnded(…)` is allowing `@AnyThread`"
+        errorLine1="      createContent(toolWindow, project)"
+        errorLine2="      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/ui/resourcemanager/ResourceExplorerToolFactory.kt"
+            line="204"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
+        errorLine1="      ResourceImportDialog(ResourceImportDialogViewModel(facet, emptySequence(), importersProvider = importersProvider)).show()"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/ui/resourcemanager/explorer/ResourceExplorerToolbarViewModel.kt"
+            line="254"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
         message="Call must be from `@{Slow,WorkerThread}`, but super method `BaseRefactoringProcessor.performRefactoring(…)` is allowing `@UiThread`"
         errorLine1="          performRefactoringForLayoutFile(refactoring);"
         errorLine2="          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
@@ -549,6 +593,28 @@
             file="src/com/android/tools/idea/welcome/wizard/SdkComponentsStepController.kt"
             line="105"
             column="18"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call has an unsatisfiable thread requirement, but context is allowing `@UiThread`"
+        errorLine1="    showWizard(sdkPath, sdkUpdatedCallback, sdkComponentInstaller, tracker)"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/sdk/wizard/SetupSdkApplicationService.kt"
+            line="82"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call has an unsatisfiable thread requirement, but context is allowing `@UiThread`"
+        errorLine1="      val model = FirstRunWizardModel(mode, initialSdkLocation.toPath(), installUpdates = true, sdkComponentInstaller, tracker)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/welcome/wizard/StudioFirstRunWelcomeScreen.kt"
+            line="173"
+            column="19"/>
     </issue>
 
 </issues>
