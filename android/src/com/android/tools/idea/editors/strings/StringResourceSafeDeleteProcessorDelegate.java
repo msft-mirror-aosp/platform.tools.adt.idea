@@ -16,6 +16,7 @@
 package com.android.tools.idea.editors.strings;
 
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.xml.XmlAttribute;
@@ -75,7 +76,10 @@ final class StringResourceSafeDeleteProcessorDelegate extends SafeDeleteProcesso
 
     elements.add(attribute.getValueElement());
     elements.addAll(Arrays.asList(IdeResourcesUtil.findResourceFieldsForValueResource(tag, true)));
-    elements.forEach(e -> SafeDeleteProcessor.findGenericElementUsages(e, result, elementsToDelete));
+    elements.forEach(e -> {
+      ProgressManager.checkCanceled();
+      SafeDeleteProcessor.findGenericElementUsages(e, result, elementsToDelete);
+    });
 
     return new NonCodeUsageSearchInfo(SafeDeleteProcessor.getDefaultInsideDeletedCondition(elementsToDelete), elements);
   }

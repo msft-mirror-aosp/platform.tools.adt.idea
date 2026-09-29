@@ -1059,14 +1059,25 @@ fun packageToRClass(packageName: String): String {
   return packageName + RESOURCE_CLASS_SUFFIX
 }
 
-fun findResourceFields(facet: AndroidFacet, resClassName: String, resourceName: String): Array<PsiField> {
-  return findResourceFields(facet, resClassName, setOf(resourceName))
-}
+@JvmOverloads
+fun findResourceFields(
+  facet: AndroidFacet,
+  resClassName: String,
+  resourceName: String,
+  onlyInOwnPackages: Boolean = false,
+) = findResourceFields(facet, resClassName, setOf(resourceName), onlyInOwnPackages)
 
 /** Like [.findResourceFields] but can match than more than a single field name */
-fun findResourceFields(facet: AndroidFacet, resClassName: String, resourceNames: Collection<String>): Array<PsiField> {
+@JvmOverloads
+fun findResourceFields(
+  facet: AndroidFacet,
+  resClassName: String,
+  resourceNames: Collection<String>,
+  onlyInOwnPackages: Boolean = false,
+): Array<PsiField> {
   val result: MutableList<PsiField> = ArrayList()
-  for (rClass in findRJavaClasses(facet)) {
+  val rClasses = if (onlyInOwnPackages) findRJavaClassesDefinedByModule(facet) else findRJavaClasses(facet)
+  for (rClass in rClasses) {
     findResourceFieldsFromClass(rClass, resClassName, resourceNames, result)
   }
   return result.toTypedArray()
@@ -1135,6 +1146,20 @@ private fun findResourceFieldsFromClass(
 }
 
 /**
+ * Finds R classes defined by the given module.
+ *
+ * @param facet [AndroidFacet] of the module to find classes for
+ */
+private fun findRJavaClassesDefinedByModule(facet: AndroidFacet): Collection<PsiClass> {
+  val module = facet.module
+  if (Manifest.getMainManifest(facet) == null) {
+    return emptySet()
+  }
+  val resourceClassService = facet.module.project.getProjectSystem().getLightResourceClassService()
+  return resourceClassService.getLightRClassesDefinedByModule(module)
+}
+
+/**
  * Finds all R classes that contain fields for resources from the given module.
  *
  * @param facet [AndroidFacet] of the module to find classes for
@@ -1152,7 +1177,7 @@ fun findResourceFieldsForFileResource(file: PsiFile, onlyInOwnPackages: Boolean)
   val facet = AndroidFacet.getInstance(file) ?: return PsiField.EMPTY_ARRAY
   val resourceType = ModuleResourceManagers.getInstance(facet).localResourceManager.getFileResourceType(file) ?: return PsiField.EMPTY_ARRAY
   val resourceName = SdkUtils.fileNameToResourceName(file.name)
-  return findResourceFields(facet, resourceType, resourceName)
+  return findResourceFields(facet, resourceType, resourceName, onlyInOwnPackages)
 }
 
 fun findResourceFieldsForValueResource(tag: XmlTag, onlyInOwnPackages: Boolean): Array<PsiField> {
@@ -1161,7 +1186,7 @@ fun findResourceFieldsForValueResource(tag: XmlTag, onlyInOwnPackages: Boolean):
   val resourceType =
     (if (fileResType == ResourceFolderType.VALUES) getResourceTypeForResourceTag(tag) else null) ?: return PsiField.EMPTY_ARRAY
   val name = tag.getAttributeValue(SdkConstants.ATTR_NAME) ?: return PsiField.EMPTY_ARRAY
-  return findResourceFields(facet, resourceType.getName(), name)
+  return findResourceFields(facet, resourceType.getName(), name, onlyInOwnPackages)
 }
 
 fun getRJavaFieldName(resourceName: String): String {
