@@ -70,7 +70,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.After
-import org.junit.AfterClass
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -120,17 +119,12 @@ class IntellijProfilerServicesTest {
 
   @After
   fun after() {
+    StudioFlags.PROFILER_TRACEBOX.clearOverride()
+    StudioFlags.PROFILER_TASK_BASED_UX.clearOverride()
+    StudioFlags.PROFILER_LEAKCANARY.clearOverride()
+    StudioFlags.PROFILER_SYSTEM_TRACE_IN_EDITOR.clearOverride()
+    StudioFlags.PROFILER_METHOD_TRACE_IN_EDITOR.clearOverride()
     Disposer.dispose(intellijProfilerServices)
-  }
-
-  companion object {
-    @JvmStatic
-    @AfterClass
-    fun tearDown() {
-      StudioFlags.PROFILER_TRACEBOX.clearOverride()
-      StudioFlags.PROFILER_TASK_BASED_UX.clearOverride()
-      StudioFlags.PROFILER_LEAKCANARY.clearOverride()
-    }
   }
 
   @Test

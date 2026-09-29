@@ -137,9 +137,9 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   private boolean myUseTraceProcessorForHprofEnabled = true;
 
-  private boolean mySystemTraceInEditorEnabled = false;
+  private boolean mySystemTraceInEditorEnabled = true;
 
-  private boolean myMethodTraceInEditorEnabled = false;
+  private boolean myMethodTraceInEditorEnabled = true;
 
   private boolean myCallstackSampleTraceInEditorEnabled = true;
 

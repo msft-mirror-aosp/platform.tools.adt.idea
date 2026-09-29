@@ -609,6 +609,7 @@ class SessionsViewTest {
   @Test
   fun testCpuCaptureItemSelection() {
     myIdeProfilerServices.enableTaskBasedUx(false)
+    myIdeProfilerServices.setMethodTraceInEditorEnabled(false)
 
     val sessionsPanel = mySessionsView.sessionsPanel
     sessionsPanel.setSize(200, 200)
@@ -689,6 +690,7 @@ class SessionsViewTest {
   @Test
   fun testCpuOngoingCaptureItemSelection() {
     myIdeProfilerServices.enableTaskBasedUx(false)
+    myIdeProfilerServices.setSystemTraceInEditorEnabled(false)
 
     val sessionsPanel = mySessionsView.sessionsPanel
     sessionsPanel.setSize(200, 200)

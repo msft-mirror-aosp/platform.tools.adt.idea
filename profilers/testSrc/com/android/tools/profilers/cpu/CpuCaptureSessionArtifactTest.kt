@@ -50,6 +50,9 @@ class CpuCaptureSessionArtifactTest {
   fun setUp() {
     ApplicationManager.getApplication().registerServiceInstance(TransportService::class.java, TransportServiceTestImpl(transportService))
     val ideProfilerServices = FakeIdeProfilerServices()
+    // These tests cover captures listed as session artifacts, which in-editor captures are not.
+    ideProfilerServices.setSystemTraceInEditorEnabled(false)
+    ideProfilerServices.setMethodTraceInEditorEnabled(false)
     val profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
     sessionsManager = profilers.sessionsManager
     sessionsManager.beginSession(

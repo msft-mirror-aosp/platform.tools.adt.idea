@@ -667,6 +667,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void setCaptureShouldUseTraceType() throws IOException, InterruptedException {
+    myServices.setMethodTraceInEditorEnabled(false);
     // Select the right configuration for trace.
     myStage.getProfilerConfigModel().setProfilingConfiguration(ArtInstrumentedConfiguration.create("My Config", myServices.getFeatureConfig().isMethodTraceInEditorEnabled()));
     // Capture a new trace.
@@ -681,6 +682,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void cpuMetadataSuccessfulCapture() throws InterruptedException, IOException {
+    myServices.setMethodTraceInEditorEnabled(false);
     CpuCaptureParser.clearPreviouslyLoadedCaptures();
     ArtInstrumentedConfiguration config = ArtInstrumentedConfiguration.create("My Config", myServices.getFeatureConfig().isMethodTraceInEditorEnabled());
     config.setProfilingBufferSizeInMb(15);
@@ -736,6 +738,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void cpuMetadataFailureParsing() throws InterruptedException, IOException {
+    myServices.setMethodTraceInEditorEnabled(false);
     // Try to parse a simpleperf trace with ART config. Parsing should fail.
     ArtInstrumentedConfiguration config = ArtInstrumentedConfiguration.create("My Config", myServices.getFeatureConfig().isMethodTraceInEditorEnabled());
     config.setProfilingBufferSizeInMb(15);
@@ -764,6 +767,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void cpuMetadataFailureUserAbort() throws InterruptedException {
+    myServices.setMethodTraceInEditorEnabled(false);
     // Try to parse a simpleperf trace with ART config. Parsing should fail.
     ArtInstrumentedConfiguration config = ArtInstrumentedConfiguration.create("My Config", myServices.getFeatureConfig().isMethodTraceInEditorEnabled());
     config.setProfilingBufferSizeInMb(15);
@@ -909,6 +913,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void captureParsingFailureShowsErrorBalloon() throws InterruptedException, IOException {
+    myServices.setMethodTraceInEditorEnabled(false);
     ProfilingConfiguration config = ArtInstrumentedConfiguration.create("My Config", myServices.getFeatureConfig().isMethodTraceInEditorEnabled());
     myStage.getProfilerConfigModel().setProfilingConfiguration(config);
     CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
