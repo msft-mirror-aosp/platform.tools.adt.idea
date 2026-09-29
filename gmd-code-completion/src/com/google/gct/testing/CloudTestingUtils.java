@@ -99,7 +99,7 @@ public class CloudTestingUtils {
                                         project,
                                         detailedErrorMessage,
                                         errorDialogTitle,
-                                        new String[] {Messages.CANCEL_BUTTON},
+                                        new String[] {Messages.getCancelButton()},
                                         0,
                                         null);
                             }
