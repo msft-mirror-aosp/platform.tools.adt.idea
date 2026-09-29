@@ -1382,9 +1382,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_B386236480_TESTING = new BooleanFlag(
     DEVICE_MIRRORING, "b386236480.testing", "Turn device screen off on Android versions affected by b/386236480",
     "If enabled, Studio will turn off the screen of a mirrored device even if that device is affected by b/386236480.");
-  public static final Flag<Boolean> DEVICE_MIRRORING_NATIVE_VIDEO_DECODER = new BooleanFlag(
-    DEVICE_MIRRORING, "native.video.decoder", "Use OS-provided Video Decoder",
-    "Use OS-provided hardware-accelerated video decoder instead of FFmpeg when available");
   //endregion
 
   //region Screenshot and Screen Recording

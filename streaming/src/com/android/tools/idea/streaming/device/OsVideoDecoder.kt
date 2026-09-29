@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.streaming.device
 
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.util.StudioPathManager
 import com.android.tools.idea.util.StudioPathManager.isRunningFromSources
 import com.intellij.openapi.application.PathManager
@@ -119,9 +118,6 @@ internal class OsVideoDecoder(codecName: String) : AutoCloseable {
     private val supportedCodecs = ConcurrentHashMap<Int, Boolean>()
 
     fun isSupported(codecName: String): Boolean {
-      if (!StudioFlags.DEVICE_MIRRORING_NATIVE_VIDEO_DECODER.get()) {
-        return false
-      }
       val codecType = getCodecType(codecName)
       if (codecType == 0 || !isLoaded) {
         return false
