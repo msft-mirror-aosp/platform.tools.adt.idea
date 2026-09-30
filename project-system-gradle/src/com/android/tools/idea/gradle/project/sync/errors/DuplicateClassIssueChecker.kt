@@ -24,6 +24,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
 import java.util.function.Consumer
 import org.gradle.tooling.BuildException
+import org.jetbrains.plugins.gradle.execution.build.output.GradleOutputDispatcherFactory
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
 
@@ -70,6 +71,7 @@ class DuplicateClassIssueChecker : GradleIssueChecker {
     return null
   }
 
+  @Suppress("UnstableApiUsage")
   override fun consumeBuildOutputFailureMessage(
     message: String,
     failureCause: String,
@@ -78,6 +80,7 @@ class DuplicateClassIssueChecker : GradleIssueChecker {
     parentEventId: Any,
     messageConsumer: Consumer<in BuildEvent>,
   ): Boolean {
-    return failureCause.startsWith(DUPLICATE_CLASS) && (parentEventId as? String)?.endsWith(":checkDebugDuplicateClasses") == true
+    val taskName = (parentEventId as? GradleOutputDispatcherFactory.TaskNameId)?.name ?: (parentEventId as? String)
+    return failureCause.startsWith(DUPLICATE_CLASS) && taskName?.endsWith(":checkDebugDuplicateClasses") == true
   }
 }

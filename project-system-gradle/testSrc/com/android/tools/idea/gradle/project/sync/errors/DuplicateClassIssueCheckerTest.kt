@@ -19,6 +19,7 @@ import com.android.tools.idea.gradle.project.build.output.TestMessageEventConsum
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenLinkQuickFix
 import com.google.common.truth.Truth.assertThat
 import org.gradle.tooling.BuildException
+import org.jetbrains.plugins.gradle.execution.build.output.GradleOutputDispatcherFactory.TaskNameId
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
 import org.junit.Test
 
@@ -95,6 +96,18 @@ class DuplicateClassIssueCheckerTest {
           null,
           null,
           ":app:checkDebugDuplicateClasses",
+          TestMessageEventConsumer(),
+        )
+      )
+      .isEqualTo(true)
+
+    assertThat(
+        issueChecker.consumeBuildOutputFailureMessage(
+          "Build failed with Exception",
+          "Duplicate class  ABC",
+          null,
+          null,
+          TaskNameId(":app:checkDebugDuplicateClasses"),
           TestMessageEventConsumer(),
         )
       )

@@ -176,7 +176,7 @@ class JavaLanguageLevelDeprecationOutputParserTest : BuildOutputIntegrationTestB
     assertThat(buildEvents.printEvents())
       .isEqualTo(
         """
-        root > :app:compileDebugJavaWithJavac' (registered by plugin 'com.android.internal.application'). > ERROR:'Java compiler version 21 has removed support for compiling with source/target version 7'
+        root > [Task :app:compileDebugJavaWithJavac] > ERROR:'Java compiler version 21 has removed support for compiling with source/target version 7'
         root > 'failed'
         """
           .trimIndent()
@@ -184,7 +184,7 @@ class JavaLanguageLevelDeprecationOutputParserTest : BuildOutputIntegrationTestB
 
     buildEvents
       .findBuildEvent(
-        "root > :app:compileDebugJavaWithJavac' (registered by plugin 'com.android.internal.application'). > ERROR:'Java compiler version 21 has removed support for compiling with source/target version 7'"
+        "root > [Task :app:compileDebugJavaWithJavac] > ERROR:'Java compiler version 21 has removed support for compiling with source/target version 7'"
       )
       .let { event ->
         assertThat(event.description)
@@ -263,7 +263,7 @@ class JavaLanguageLevelDeprecationOutputParserTest : BuildOutputIntegrationTestB
       .isEqualTo(
         """
         root > [Task :lib:compileJava] > ERROR:'Java compiler has removed support for compiling with source/target compatibility version 7.'
-        root > :app:compileDebugJavaWithJavac' (registered by plugin 'com.android.internal.application'). > ERROR:'Java compiler version 21 has removed support for compiling with source/target version 7'
+        root > [Task :app:compileDebugJavaWithJavac] > ERROR:'Java compiler version 21 has removed support for compiling with source/target version 7'
         root > 'failed'
         """
           .trimIndent()

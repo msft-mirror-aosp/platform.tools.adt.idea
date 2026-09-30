@@ -108,7 +108,7 @@ abstract class GradleBuildFailureParser(
         whatWentWrongSectionLines
           .firstOrNull { it.startsWith("Execution failed for task '") }
           ?.substringAfter("Execution failed for task '")
-          ?.substringBefore("'.")
+          ?.substringBefore("'")
   }
 
   interface FailureDetailsHandler {
