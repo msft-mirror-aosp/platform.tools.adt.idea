@@ -655,11 +655,14 @@
       <module fileurl="file://$PROJECT_DIR$/whats-new-assistant/whats-new-assistant.iml" filepath="$PROJECT_DIR$/whats-new-assistant/whats-new-assistant.iml" />
       <module fileurl="file://$PROJECT_DIR$/whats-new-assistant/whats-new-assistant-test.iml" filepath="$PROJECT_DIR$/whats-new-assistant/whats-new-assistant-test.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/clangd/altlang.clangd.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/clangd/altlang.clangd.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/clangd-lsp/altlang.clangd-lsp.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/clangd-lsp/altlang.clangd-lsp.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/languages/asfp-plugin/altlang-languages-asfp.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/languages/asfp-plugin/altlang-languages-asfp.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/core/altlang.dap.core.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/core/altlang.dap.core.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-builtin/altlang.dap.lldb-builtin.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-builtin/altlang.dap.lldb-builtin.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/conditional-breakpoints/altlang.dap.conditional-breakpoints.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/conditional-breakpoints/altlang.dap.conditional-breakpoints.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cxx/plugin/altlang.cxx-plugin.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cxx/plugin/altlang.cxx-plugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cxx/gradle/altlang.cxx.gradle.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cxx/gradle/altlang.cxx.gradle.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cxx/native-workspace/altlang.cxx.native-workspace.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cxx/native-workspace/altlang.cxx.native-workspace.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/compdb/altlang.compdb.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/compdb/altlang.compdb.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/python/altlang.python.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/python/altlang.python.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/adapter-kit/altlang.dap.adapter-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/adapter-kit/altlang.dap.adapter-kit.iml" />
