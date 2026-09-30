@@ -30,6 +30,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.Toggleable;
 import com.intellij.openapi.actionSystem.ex.ActionManagerEx;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.fileEditor.ex.FileEditorWithProvider;
@@ -104,7 +105,13 @@ public abstract class ConfigurationAction extends AnAction implements Configurat
             // Switch files, and leave this configuration alone.
             pickedBetterMatch(configuration, matchingFiles.get(0), file);
             ConfigurationManager configurationManager = configForFile.getSettings();
-            updateConfiguration(configurationManager.getConfiguration(matchingFiles.get(0)), true /*commit*/);
+            // Resolve the new file's Configuration on a background thread (@Slow) and dispatch
+            // updateConfiguration back to the EDT so configuration listeners run on the UI thread.
+            ApplicationManager.getApplication().executeOnPooledThread(() -> {
+              Configuration newConfig = configurationManager.getConfiguration(matchingFiles.get(0));
+              ApplicationManager.getApplication().invokeLater(
+                () -> updateConfiguration(newConfig, true /*commit*/));
+            });
             return;
           }
         }

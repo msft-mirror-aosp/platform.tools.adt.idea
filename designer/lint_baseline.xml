@@ -431,17 +431,6 @@
     </issue>
 
     <issue
-        id="UnsatisfiableThreadConstraint"
-        message="Statement must run from `@{Slow,WorkerThread}`, incompatible with earlier code that must run from `@UiThread`"
-        errorLine1="            updateConfiguration(configurationManager.getConfiguration(matchingFiles.get(0)), true /*commit*/);"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/actions/ConfigurationAction.java"
-            line="107"
-            column="13"/>
-    </issue>
-
-    <issue
         id="DiscouragedApi"
         message="Use of `scheduleAtFixedRate` is strongly discouraged because it can lead to unexpected behavior when Android processes become cached (tasks may unexpectedly execute hundreds or thousands of times in quick succession when a process changes from cached to uncached); prefer using `scheduleWithFixedDelay`"
         errorLine1="    executor?.scheduleAtFixedRate(onTick, 0, period.toNanos(), TimeUnit.NANOSECONDS)"
