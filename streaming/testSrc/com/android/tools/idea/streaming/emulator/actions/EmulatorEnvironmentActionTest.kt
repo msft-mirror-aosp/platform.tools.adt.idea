@@ -369,10 +369,10 @@ class EmulatorEnvironmentActionTest {
     val children = group.getChildren(null)
 
     // Expect original children + Separators + Recent Environments submenu
-    assertThat(children.size).isEqualTo(9)
-    assertThat(children[3]).isInstanceOf(Separator::class.java)
-    val recentGroup = children[5] as DefaultActionGroup
-    assertThat(children[7]).isInstanceOf(Separator::class.java)
+    assertThat(children.size).isEqualTo(10)
+    assertThat(children[4]).isInstanceOf(Separator::class.java)
+    val recentGroup = children[6] as DefaultActionGroup
+    assertThat(children[8]).isInstanceOf(Separator::class.java)
     assertThat(recentGroup.templatePresentation.text).isEqualTo("Recent Custom Environments")
     val recentChildren = recentGroup.getChildren(null)
     assertThat(recentChildren.size).isEqualTo(2)
@@ -551,7 +551,7 @@ class EmulatorEnvironmentActionTest {
 
     val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
     val children = group.getChildren(null)
-    val recentGroup = children[5] as DefaultActionGroup
+    val recentGroup = children[6] as DefaultActionGroup
 
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
     assertThat(updateAndGetActionPresentation(recentGroup, event).isVisible).isFalse()
@@ -571,10 +571,10 @@ class EmulatorEnvironmentActionTest {
     val children = group.getChildren(null)
 
     // Expect original children + Separators + Recent Environments submenu containing 1 file (file1)
-    assertThat(children.size).isEqualTo(9)
-    assertThat(children[3]).isInstanceOf(Separator::class.java)
-    val recentGroup = children[5] as DefaultActionGroup
-    assertThat(children[7]).isInstanceOf(Separator::class.java)
+    assertThat(children.size).isEqualTo(10)
+    assertThat(children[4]).isInstanceOf(Separator::class.java)
+    val recentGroup = children[6] as DefaultActionGroup
+    assertThat(children[8]).isInstanceOf(Separator::class.java)
     assertThat(recentGroup.templatePresentation.text).isEqualTo("Recent Custom Environments")
     val recentChildren = recentGroup.getChildren(null)
     assertThat(recentChildren.size).isEqualTo(1)
@@ -601,11 +601,11 @@ class EmulatorEnvironmentActionTest {
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
     val children = group.getChildren(event)
 
-    // Expect original children (5) + Separators + Cameras submenu
-    assertThat(children.size).isEqualTo(9)
-    assertThat(children[3]).isInstanceOf(Separator::class.java)
-    assertThat(children[7]).isInstanceOf(Separator::class.java)
-    val camerasGroup = children[6] as DefaultActionGroup
+    // Expect original children (6) + Separators + Cameras submenu
+    assertThat(children.size).isEqualTo(10)
+    assertThat(children[4]).isInstanceOf(Separator::class.java)
+    assertThat(children[8]).isInstanceOf(Separator::class.java)
+    val camerasGroup = children[7] as DefaultActionGroup
     assertThat(camerasGroup.templatePresentation.text).isEqualTo("Camera")
     val cameraChildren = camerasGroup.getChildren(event)
     assertThat(cameraChildren.size).isEqualTo(2)
@@ -626,7 +626,7 @@ class EmulatorEnvironmentActionTest {
     val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
     val children = group.getChildren(event)
-    val camerasGroup = children[6] as DefaultActionGroup
+    val camerasGroup = children[7] as DefaultActionGroup
 
     assertThat(updateAndGetActionPresentation(camerasGroup, event).isVisible).isFalse()
   }
@@ -641,7 +641,7 @@ class EmulatorEnvironmentActionTest {
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
     emulatorController
     val children = group.getChildren(event)
-    val camerasGroup = children[6] as DefaultActionGroup
+    val camerasGroup = children[7] as DefaultActionGroup
 
     assertThat(updateAndGetActionPresentation(camerasGroup, event).isVisible).isFalse()
   }
@@ -654,9 +654,9 @@ class EmulatorEnvironmentActionTest {
 
     val indoorAction = children.firstOrNull() as? EmulatorEnvironmentAction.BuiltInImage
     assertThat(indoorAction).isNotNull()
-    assertThat(indoorAction!!.environmentPath.fileName.toString()).isEqualTo("indoor-study-dark.jpg")
-    assertThat(indoorAction.templatePresentation.text).isEqualTo("<html>Indoor Study Dark <font color=\"gray\">photo</font></html>")
-    assertThat(indoorAction.templatePresentation.description).isEqualTo("Select Indoor Study Dark environment")
+    assertThat(indoorAction!!.environmentPath.fileName.toString()).isEqualTo("study-360.jpg")
+    assertThat(indoorAction.templatePresentation.text).isEqualTo("<html>Study 360 <font color=\"gray\">photo</font></html>")
+    assertThat(indoorAction.templatePresentation.description).isEqualTo("Select Study 360 environment")
   }
 
   @Test
