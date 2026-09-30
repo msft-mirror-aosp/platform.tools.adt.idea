@@ -364,6 +364,18 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Import a non-Android project and convert it to Android using Gemini.",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Import and Convert",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Import and Convert\u2026",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Inline Edit",
       "path": "ActionManager"
     },
@@ -396,10 +408,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Migrate File to Compose",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Migrate Layout XML to Jetpack Compose using AI.",
       "path": "ActionManager"
     },
@@ -408,7 +416,7 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Migrate the project to Jetpack Compose using AI.",
+      "hit": "Migrate to Compose",
       "path": "ActionManager"
     },
     {
@@ -493,6 +501,10 @@
     },
     {
       "hit": "Start a review of your pending changes using the AI agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Starts the migration of the project to Compose.",
       "path": "ActionManager"
     },
     {
