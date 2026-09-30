@@ -59,8 +59,8 @@ fun calculatePackageStampAffectedPackages(
     }
   }
 
-  // Always drop all deleted packages within the project scope so that removed packages are cleaned up from the graph.
-  val deletedPackages = (latestBuildGraphDataPackageStamp.keys - latestProjectDataPackageStamp.keys).filter { projectScope(it) }.toSet()
+  // Always drop all deleted packages so that removed packages are cleaned up from the graph.
+  val deletedPackages = (latestBuildGraphDataPackageStamp.keys - latestProjectDataPackageStamp.keys).toSet()
 
   return AffectedPackages(modifiedPackages, deletedPackages)
 }

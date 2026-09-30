@@ -423,7 +423,7 @@ class ProjectRefresherTest {
         listOf(
           ProjectStructureRoot(
             Path.of("other"),
-            emptyMap(),
+            mapOf(Path.of("other/package") to BuildPackage(Path.of("other/package"), emptyList(), stamp = 200L)),
           )
         ),
         setOf(QuerySyncLanguage.JVM),

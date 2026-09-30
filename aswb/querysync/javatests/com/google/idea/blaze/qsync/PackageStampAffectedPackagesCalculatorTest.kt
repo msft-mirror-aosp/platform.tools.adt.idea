@@ -68,7 +68,7 @@ class PackageStampAffectedPackagesCalculatorTest {
   }
 
   @Test
-  fun testDeletedPackages_outsideProjectScope() {
+  fun testDeletedPackages_outsideProjectScope_dropped() {
     val affected =
       calculatePackageStampAffectedPackages(
         latestProjectDataPackageStamp = emptyMap(),
@@ -78,7 +78,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         haveSubincludesChanged = { false },
       )
 
-    assertThat(affected.deletedPackages).isEmpty()
+    assertThat(affected.deletedPackages).containsExactly(Path.of("a/b/c"))
   }
 
   @Test
