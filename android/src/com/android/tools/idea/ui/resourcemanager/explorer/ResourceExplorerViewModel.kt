@@ -108,12 +108,10 @@ private constructor(
       mergingUpdateQueue = MergingUpdateQueue("queue", 1000, true, MergingUpdateQueue.ANY_COMPONENT, this, null, false),
     )
 
-  private var resourceVersion: ResourceNotificationManager.ResourceVersion? = null
+  @Volatile private var resourceVersion: ResourceNotificationManager.ResourceVersion? = null
 
   private val resourceNotificationManager =
-    ResourceNotificationManager.getInstance(defaultFacet.module.project).apply {
-      resourceVersion = getCurrentVersion(defaultFacet, null, null)
-    }
+    ResourceNotificationManager.getInstance(defaultFacet.module.project)
 
   private val resourceNotificationListener =
     ResourceNotificationManager.ResourceChangeListener { reason ->
@@ -198,7 +196,17 @@ private constructor(
     val configurationFuture = getConfiguration(facet, contextFileForConfiguration)
     return getResourceResolver(facet, configurationFuture)
       .thenApplyAsync(
-        Function { resourceResolver ->
+        { resourceResolver ->
+          // Initialize resourceVersion on a background thread before creating the list view model.
+          if (!facet.isDisposed) {
+            resourceVersion = resourceNotificationManager.getCurrentVersion(facet, null, null)
+          }
+          resourceResolver
+        },
+        AppExecutorUtil.getAppExecutorService(),
+      )
+      .thenApplyAsync(
+        { resourceResolver ->
           ResourceExplorerListViewModelImpl(
               facet,
               contextFileForConfiguration,
