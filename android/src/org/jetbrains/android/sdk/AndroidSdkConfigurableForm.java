@@ -15,6 +15,8 @@
  */
 package org.jetbrains.android.sdk;
 
+import static com.intellij.ui.dsl.listCellRenderer.BuilderKt.textListCellRenderer;
+
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.idea.io.FilePaths;
 import com.android.tools.idea.sdk.AndroidSdks;
@@ -24,9 +26,6 @@ import com.intellij.openapi.projectRoots.SdkModificator;
 import com.intellij.openapi.roots.OrderRootType;
 import com.intellij.openapi.roots.libraries.ui.OrderRoot;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.ColorUtil;
-import com.intellij.ui.JBColor;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.util.ArrayUtil;
@@ -56,14 +55,7 @@ class AndroidSdkConfigurableForm {
     setupUI();
     myBuildTargetComboBox.setModel(myBuildTargetsModel);
 
-    myBuildTargetComboBox.setRenderer(SimpleListCellRenderer.create((label, value, index) -> {
-      if (value != null) {
-        label.setText(AndroidSdkUtils.getTargetPresentableName(value));
-      }
-      else {
-        label.setText("<html><font color='#" + ColorUtil.toHex(JBColor.RED) + "'>[none]</font></html>");
-      }
-    }));
+    myBuildTargetComboBox.setRenderer(textListCellRenderer("[none]", AndroidSdkUtils::getTargetPresentableName));
 
     myBuildTargetComboBox.addItemListener(e -> {
       if (myFreeze) {
