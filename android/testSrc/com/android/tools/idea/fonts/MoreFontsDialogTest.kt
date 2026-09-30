@@ -22,6 +22,9 @@ import com.android.ide.common.fonts.FontSource
 import com.android.resources.ResourceFolderType
 import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
+import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.fonts.DownloadableFontCacheService
 import com.android.tools.fonts.DownloadableFontCacheServiceImpl
 import com.android.tools.fonts.FontDownloader
@@ -30,9 +33,11 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBList
@@ -53,7 +58,10 @@ import org.junit.Rule
 import org.junit.Test
 
 class MoreFontsDialogTest {
-  @get:Rule val projectRule = AndroidProjectRule.onDisk()
+  private val projectRule = AndroidProjectRule.onDisk()
+  private val headlessDialogRule = HeadlessDialogRule()
+
+  @get:Rule val chain = RuleChain(projectRule, headlessDialogRule)
 
   private lateinit var facet: AndroidFacet
   private lateinit var tempFontPath: File
@@ -206,9 +214,6 @@ class MoreFontsDialogTest {
         val selectedFamily = fontList.selectedValue
         assertThat(selectedFamily).isNotNull()
         assertThat(selectedFamily?.name).isEqualTo("Abel")
-
-        fontList.clearSelection()
-        selectFontFamily(fontList, "Abel")
       }
 
       val fontDetailList = invokeAndWaitIfNeeded { findFontDetailList(rootPanel) }
@@ -269,6 +274,75 @@ class MoreFontsDialogTest {
       }
     } finally {
       invokeAndWaitIfNeeded { disposeDialog(dialog) }
+    }
+  }
+
+  @Test
+  fun testModalDialogLoadsFontsAndSelectsInitialSystemFont() {
+    invokeAndWaitIfNeeded {
+      val dialog = MoreFontsDialog(facet, "sans-serif", true)
+      createModalDialogAndInteractWithIt({ dialog.show() }) {
+        val ui = FakeUi(dialog.contentPane)
+        @Suppress("UNCHECKED_CAST") val fontList = ui.findComponent<JBList<*>> { it.name == "Font list" } as JBList<FontFamily>
+        @Suppress("UNCHECKED_CAST") val detailList = ui.findComponent<JBList<*>> { it !== fontList } as JBList<FontDetail>
+
+        waitForCondition(5.seconds) {
+          fontList.emptyText.text == "No fonts available" && fontList.selectedValue?.name == "sans-serif" && detailList.model.size > 0
+        }
+
+        assertThat(fontList.selectedValue.name).isEqualTo("sans-serif")
+        assertThat(detailList.selectedValue).isNotNull()
+        assertThat(dialog.isOKActionEnabled).isTrue()
+        dialog.clickDefaultButton()
+      }
+      assertThat(dialog.isOK).isTrue()
+      assertThat(dialog.resultingFont).isEqualTo("sans-serif")
+    }
+  }
+
+  @Test
+  fun testModalDialogSelectsInitialProjectFont() {
+    projectRule.fixture.copyFileToProject("fonts/customfont.ttf", "res/font/customfont.ttf")
+    invokeAndWaitIfNeeded {
+      val dialog = MoreFontsDialog(facet, "@font/customfont", true)
+      createModalDialogAndInteractWithIt({ dialog.show() }) {
+        val ui = FakeUi(dialog.contentPane)
+        @Suppress("UNCHECKED_CAST") val fontList = ui.findComponent<JBList<*>> { it.name == "Font list" } as JBList<FontFamily>
+        @Suppress("UNCHECKED_CAST") val detailList = ui.findComponent<JBList<*>> { it !== fontList } as JBList<FontDetail>
+
+        waitForCondition(5.seconds) {
+          fontList.emptyText.text == "No fonts available" && fontList.selectedValue?.name == "customfont" && detailList.model.size > 0
+        }
+
+        assertThat(fontList.selectedValue.fontSource).isEqualTo(FontSource.PROJECT)
+        assertThat(fontList.selectedValue.name).isEqualTo("customfont")
+        assertThat(detailList.selectedValue).isNotNull()
+        dialog.clickDefaultButton()
+      }
+      assertThat(dialog.isOK).isTrue()
+      assertThat(dialog.resultingFont).isEqualTo("@font/customfont")
+    }
+  }
+
+  @Test
+  fun testModalDialogWithoutExistingFonts() {
+    invokeAndWaitIfNeeded {
+      val dialog = MoreFontsDialog(facet, null, false)
+      createModalDialogAndInteractWithIt({ dialog.show() }) {
+        val ui = FakeUi(dialog.contentPane)
+        @Suppress("UNCHECKED_CAST") val fontList = ui.findComponent<JBList<*>> { it.name == "Font list" } as JBList<FontFamily>
+
+        waitForCondition(5.seconds) {
+          fontList.emptyText.text == "No fonts available" && fontList.model.size > 0
+        }
+
+        val elements = (0 until fontList.model.size).map { fontList.model.getElementAt(it) }
+        assertThat(elements.first().name).isEqualTo("Downloadable")
+        assertThat(elements.none { it.fontSource == FontSource.PROJECT }).isTrue()
+        assertThat(elements.none { it.fontSource == FontSource.SYSTEM }).isTrue()
+        assertThat(elements.any { it.name == "Abel" }).isTrue()
+        dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+      }
     }
   }
 

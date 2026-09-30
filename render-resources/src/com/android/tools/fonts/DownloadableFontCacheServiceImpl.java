@@ -23,13 +23,17 @@ import com.android.ide.common.fonts.FontDetail;
 import com.android.ide.common.fonts.FontFamily;
 import com.android.ide.common.fonts.FontLoader;
 import com.android.ide.common.fonts.FontProvider;
+import com.android.ide.common.fonts.FontSource;
 import com.android.ide.common.fonts.FontsFolderProvider;
 import com.android.ide.common.fonts.SdkFontsFolderProvider;
 import com.android.tools.environment.Logger;
 import java.awt.Font;
 import java.awt.FontFormatException;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -171,7 +175,7 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
     File file = getCachedMenuFile(fontFamily);
     if (file != null && file.exists()) {
       try {
-        return Font.createFont(Font.TRUETYPE_FONT, file);
+        return createFont(file, fontFamily.getFontSource());
       }
       catch (FontFormatException | IOException ex) {
         Logger.getInstance(DownloadableFontCacheServiceImpl.class).warn("Could not load font: " + fontFamily.getName(), ex);
@@ -186,13 +190,24 @@ public class DownloadableFontCacheServiceImpl extends FontLoader implements Down
     File file = getCachedFontFile(fontDetail);
     if (file != null && file.exists()) {
       try {
-        return Font.createFont(Font.TRUETYPE_FONT, file);
+        return createFont(file, fontDetail.getFamily().getFontSource());
       }
       catch (FontFormatException | IOException ex) {
         Logger.getInstance(DownloadableFontCacheServiceImpl.class).warn("Could not load font: " + fontDetail.getFamily().getName(), ex);
       }
     }
     return null;
+  }
+
+  @NotNull
+  private static Font createFont(@NotNull File file, @NotNull FontSource fontSource) throws FontFormatException, IOException {
+    if (fontSource == FontSource.PROJECT) {
+      // Load from an InputStream rather than a File so SunFontManager does not keep an open file handle to project font files on Windows.
+      try (InputStream stream = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
+        return Font.createFont(Font.TRUETYPE_FONT, stream);
+      }
+    }
+    return Font.createFont(Font.TRUETYPE_FONT, file);
   }
 
   @Override

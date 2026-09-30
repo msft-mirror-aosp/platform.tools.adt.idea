@@ -89,6 +89,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 import org.jetbrains.annotations.NonNls
+import org.mockito.kotlin.whenever
 
 /** Enables showing of dialogs in a headless test environment. Don't call this function directly, prefer [HeadlessDialogRule]. */
 fun enableHeadlessDialogs(disposable: Disposable) {
@@ -264,6 +265,7 @@ private class HeadlessDialogWrapperPeer(
     modal = ideModalityType != IdeModalityType.MODELESS
     dialog.add(rootPane)
     dialogWindow = createFakeWindow(dialog, wrapper.disposable)
+    whenever(dialogWindow.isModal).thenAnswer { modal }
   }
 
   override fun isHeadless(): Boolean {
@@ -419,7 +421,7 @@ private class HeadlessDialogWrapperPeer(
 
     if (changeModalityState) {
       commandProcessor.enterModal()
-      LaterInvocator.enterModal(wrapper)
+      LaterInvocator.enterModal(dialogWindow)
     }
 
     if (appStarted) {
@@ -437,7 +439,7 @@ private class HeadlessDialogWrapperPeer(
     } finally {
       if (changeModalityState) {
         commandProcessor.leaveModal()
-        LaterInvocator.leaveModal(wrapper)
+        LaterInvocator.leaveModal(dialogWindow)
       }
       result.complete(null)
     }
