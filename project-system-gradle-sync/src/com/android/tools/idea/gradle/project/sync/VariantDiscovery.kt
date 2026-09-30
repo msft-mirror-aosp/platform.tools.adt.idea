@@ -124,11 +124,11 @@ internal class VariantDiscovery(
   fun discoverVariantsAndSync(shouldUseProjectGraph: Boolean) {
     if (inputModules.isEmpty()) return
 
-    // Run the new resolution for V2 projects. TODO: Enable this once we have proper support for the configurations of interest
-    val useNewResolution = false
-    // syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution &&
-    //  buildInfo.buildIdMap.keys.size == 1 &&
-    //  inputModules.all { it is AndroidModule.V2 && it.nativeModelVersion == AndroidModule.NativeModelVersion.None }
+    // Run the new resolution for V2 projects.
+    val useNewResolution =
+      syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution &&
+        buildInfo.buildIdMap.keys.size == 1 &&
+        inputModules.all { it is AndroidModule.V2 && it.nativeModelVersion == AndroidModule.NativeModelVersion.None }
 
     if (shouldUsePreviouslyResolvedVariants) {
       val modulesToSetUpWithPriority = prepareRequestedOrDefaultModuleConfigurations()
