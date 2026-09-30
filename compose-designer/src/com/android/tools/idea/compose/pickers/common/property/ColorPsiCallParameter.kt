@@ -78,7 +78,11 @@ internal class ColorPsiCallParameter(
             createAndShowColorPickerPopup(
               initialColor = value?.substringAfter("0x")?.let { parseColor("#$it") },
               initialColorResource = null,
-              configuration = null,
+              // Pass null directly instead of configuration = null to avoid the overload that calls @Slow
+              // Configuration.getResourceResolver() on the UI thread.
+              facet = null,
+              contextFile = null,
+              resourceResolver = null,
               resourcePickerSources = listOf(),
               restoreFocusComponent = e.componentToRestoreFocusTo(),
               locationToShow = e.locationFromEvent(),
