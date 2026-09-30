@@ -16,8 +16,6 @@
 package com.android.tools.idea.compose.preview.animation
 
 import androidx.compose.animation.tooling.ComposeAnimation
-import com.android.tools.idea.compose.preview.animation.ComposeAnimationSubscriber.onAnimationSubscribed
-import com.android.tools.idea.compose.preview.animation.ComposeAnimationSubscriber.onAnimationUnsubscribed
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
