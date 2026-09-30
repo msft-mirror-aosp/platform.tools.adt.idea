@@ -63,6 +63,7 @@ import kotlin.time.measureTime
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -877,6 +878,87 @@ class GlassesPairingWizardTest {
       for (path in listOf("/screens/$name.svg", "/screens/${name}_dark.svg")) {
         assertWithMessage(path).that(GlassesPairingWizard::class.java.getResource(path)).isNotNull()
       }
+    }
+  }
+
+  @Test
+  fun testShowCoreReturnsResultWhenWindowClosedInCompleteState() = runTest {
+    val coroutineScope = CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler))
+    try {
+      val phone =
+        FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+          "phone_1",
+          coroutineScope,
+          DeviceState.Connected(
+            properties =
+              DeviceProperties.buildForTest {
+                icon = EmptyIcon.DEFAULT
+                manufacturer = "Google"
+                model = "Pixel Phone"
+                deviceType = DeviceType.HANDHELD
+                androidVersion = AndroidVersion(37, 0)
+              },
+            connectedDevice = mock<ConnectedDevice>(),
+            isTransitioning = false,
+            isReady = true,
+            status = "Online",
+          ),
+        )
+      val glasses =
+        FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+          "glasses_1",
+          coroutineScope,
+          DeviceState.Connected(
+            properties =
+              DeviceProperties.buildForTest {
+                icon = EmptyIcon.DEFAULT
+                manufacturer = "Google"
+                model = "Display Glasses"
+                deviceType = DeviceType.AI_GLASSES
+                androidVersion = AndroidVersion(36, 1)
+              },
+            connectedDevice = mock<ConnectedDevice>(),
+            isTransitioning = false,
+            isReady = true,
+            status = "Online",
+          ),
+        )
+      val devicesFlow = MutableStateFlow(listOf<DeviceHandle>(phone, glasses))
+      val pairer =
+        object : GlassesPairer {
+          override fun pair(
+            glasses: DeviceHandle,
+            phone: DeviceHandle,
+            project: Project?,
+            onMacRetrieved: (String) -> Unit,
+          ): Flow<PairingState> = flow {
+            onMacRetrieved("00:11:22:33:44:55")
+            emit(PairingState.Complete("Pixel Phone", "Display Glasses"))
+          }
+        }
+      val controller = TestWizardController()
+      val resultDeferred = coroutineScope.async {
+        GlassesPairingWizard.showCore(
+          parent = null,
+          project = null,
+          devicesFlow = devicesFlow,
+          glassesHandle = glasses,
+          phoneHandle = phone,
+          pairer = pairer,
+          isCompatible = { true },
+        ) { _, _, _, _, _, content ->
+          val testWizard = TestComposeWizard { content() }
+          composeTestRule.setContent { testWizard.Content() }
+          controller
+        }
+      }
+      composeTestRule.waitForIdle()
+      // Simulate closing the wizard window via the titlebar X button (controller.show() returns false)
+      controller.close(false)
+      val result = resultDeferred.await()
+      assertThat(result).isEqualTo(GlassesPairingResult(glasses = glasses, phone = phone, glassesMacAddress = "00:11:22:33:44:55"))
+    } finally {
+      coroutineScope.cancel()
     }
   }
 }

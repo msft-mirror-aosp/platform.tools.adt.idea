@@ -972,6 +972,53 @@ class StreamingToolWindowManagerTest {
   }
 
   @Test
+  fun testUserInvolvementRequiredTwoDevicesInitializesToolWindowAndPersistsSplitLayout() {
+    assertThat(contentManager.contents).isEmpty()
+    assertThat(toolWindow.isVisible).isFalse()
+
+    val tempFolder = emulatorRule.avdRoot
+    val glasses = emulatorRule.newEmulator(FakeEmulator.createDisplayGlassesAvd(tempFolder))
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
+    glasses.pairedDevice = phone
+    createMockDeviceProvisioner(glasses.deviceHandle, phone.deviceHandle)
+
+    glasses.start(standalone = false)
+    phone.start(standalone = false)
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).userInvolvementRequired(glasses.serialNumber, phone.serialNumber, project)
+    dispatchAllInvocationEvents()
+
+    waitForCondition(5.seconds) {
+      val contents = contentManager.contentsRecursively
+      contents.size == 2 && contents[0].manager != contents[1].manager
+    }
+    assertThat(toolWindow.isVisible).isTrue()
+
+    val contentGlasses = contentManager.contentsRecursively.find { it.displayName.startsWith(glasses.avdName) }!!
+    val contentPhone = contentManager.contentsRecursively.find { it.displayName == phone.avdName }!!
+    assertThat(contentGlasses.manager == contentPhone.manager).isFalse()
+
+    val layoutStorage = PairedDevicesLayoutStorage.getInstance()
+    waitForCondition(2.seconds) {
+      layoutStorage.getLayout(glasses.deviceId)?.side !in listOf(null, PairLayout.FIRST_ONLY, PairLayout.SECOND_ONLY)
+    }
+    val savedLayout = layoutStorage.getLayout(glasses.deviceId)!!
+    assertThat(savedLayout.side).isNotEqualTo(PairLayout.FIRST_ONLY)
+    assertThat(savedLayout.side).isNotEqualTo(PairLayout.SECOND_ONLY)
+
+    // Verify calling userInvolvementRequired when already split still persists the split layout.
+    layoutStorage.clear()
+    assertThat(layoutStorage.getLayout(glasses.deviceId)).isNull()
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).userInvolvementRequired(glasses.serialNumber, phone.serialNumber, project)
+    dispatchAllInvocationEvents()
+    waitForCondition(2.seconds) {
+      layoutStorage.getLayout(glasses.deviceId)?.side !in listOf(null, PairLayout.FIRST_ONLY, PairLayout.SECOND_ONLY)
+    }
+    assertThat(layoutStorage.getLayout(glasses.deviceId)!!.side).isEqualTo(savedLayout.side)
+  }
+
+  @Test
   fun testSplitLayoutSaving() {
     assertThat(contentManager.contents).isEmpty()
 
