@@ -34,15 +34,4 @@
             column="19"/>
     </issue>
 
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
-        errorLine1="          () -> updateIcon(selectedIcon), ModalityState.any(), o -> Disposer.isDisposed(this));"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/npw/assetstudio/ui/VectorIconButton.java"
-            line="103"
-            column="17"/>
-    </issue>
-
 </issues>

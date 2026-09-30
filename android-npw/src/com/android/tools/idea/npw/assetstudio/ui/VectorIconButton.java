@@ -67,8 +67,7 @@ public final class VectorIconButton extends JButton
         SymbolPickerDialog iconPicker = new SymbolPickerDialog(this, null, null);
         if (iconPicker.showAndGet()) {
           VdIcon selectedIcon = iconPicker.getSelectedIcon();
-          // UpdateIcon perform a @Slow generatePreview to a background thread, so we need to execute the icon update off the UI Thread.
-          ApplicationManager.getApplication().executeOnPooledThread(() -> updateIcon(selectedIcon));
+          updateIcon(selectedIcon);
         }
       } :
     actionEvent -> {
@@ -78,8 +77,7 @@ public final class VectorIconButton extends JButton
         VdIcon selectedIcon = iconPicker.getSelectedIcon();
         // Not null if user pressed OK.
         assert selectedIcon != null;
-        // UpdateIcon perform a @Slow generatePreview to a background thread, so we need to execute the icon update off the UI Thread.
-        ApplicationManager.getApplication().executeOnPooledThread(() -> updateIcon(selectedIcon));
+        updateIcon(selectedIcon);
       }
     };
 
@@ -107,32 +105,34 @@ public final class VectorIconButton extends JButton
     myIcon = null;
     setIcon(null);
     if (selectedIcon != null) {
-      try {
-        // The VectorAsset class works with files, but IconPicker returns resources from a jar.
-        // Adapt by saving the resource into a temporary file.
-        File iconFile = new File(FileUtil.getTempDirectory(), selectedIcon.getName());
-        try (InputStream iconStream = selectedIcon.getURL().openStream();
-             FileOutputStream outputStream = new FileOutputStream(iconFile)) {
-          FileUtil.copy(iconStream, outputStream);
-        }
-        myXmlAsset.path().setValue(iconFile);
-        // Our icons are always square, so although parse() expects width, we can pass in height.
-        VectorAsset.Preview result = myXmlAsset.generatePreview(h);
-
-        BufferedImage image = result.getImage();
-        if (image != null) {
-          // Switch foreground to white instead?
-          BufferedImage adjustedImage = VdIcon.adjustIconColor(this, image);
+      // Offload temporary file I/O and icon rendering to a background thread, then apply UI and
+      // observable property updates back on the EDT.
+      ApplicationManager.getApplication().executeOnPooledThread(() -> {
+        try {
+          // The VectorAsset class works with files, but IconPicker returns resources from a jar.
+          // Adapt by saving the resource into a temporary file.
+          File iconFile = new File(FileUtil.getTempDirectory(), selectedIcon.getName());
+          try (InputStream iconStream = selectedIcon.getURL().openStream();
+               FileOutputStream outputStream = new FileOutputStream(iconFile)) {
+            FileUtil.copy(iconStream, outputStream);
+          }
+          // Our icons are always square, so although renderIcon() expects width, we can pass in height.
+          BufferedImage image = selectedIcon.renderIcon(h, h);
           ApplicationManager.getApplication().invokeLater(() -> {
             if (!Disposer.isDisposed(this)) {
-              setIcon(new ImageIcon(adjustedImage));
+              myXmlAsset.path().setValue(iconFile);
+              if (image != null) {
+                // Switch foreground to white instead?
+                BufferedImage adjustedImage = VdIcon.adjustIconColor(this, image);
+                setIcon(new ImageIcon(adjustedImage));
+              }
               myIcon = selectedIcon;
             }
           }, ModalityState.any());
         }
-      }
-      catch (IOException ignored) {
-      }
+        catch (IOException ignored) {
+        }
+      });
     }
   }
 
