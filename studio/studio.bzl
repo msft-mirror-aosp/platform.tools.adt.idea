@@ -803,6 +803,7 @@ def _get_external_attributes(all_files):
         "bin/clangd",
         "plugins/android-ndk/resources/lldb/bin/*",
         "plugins/android-ndk/resources/lldb/android/*/lldb-server",
+        "plugins/android/resources/android-cli/bin/android",
         "plugins/android/resources/simpleperf/*/simpleperf",
         "plugins/android/resources/simpleperf/*/libsimpleperf_report.so",
         "plugins/android/resources/simpleperf/*/libsimpleperf_report.dylib",
