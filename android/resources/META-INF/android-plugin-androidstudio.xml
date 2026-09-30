@@ -54,6 +54,7 @@
     <postStartupActivity implementation="com.android.tools.idea.serverflags.ServerFlagDownloader$Initializer" />
     <postStartupActivity implementation="com.android.tools.idea.diagnostics.WindowsCRuntimeChecker" os="windows" />
     <postStartupActivity implementation="com.android.tools.idea.diagnostics.DiagnosticsReportCleaner" />
+    <postStartupActivity implementation="com.android.tools.idea.diagnostics.AndroidStudioSystemHealthMonitor$MyStartupActivity" />
     <defender.config implementation="com.android.tools.idea.diagnostics.windows.AndroidWindowsDefenderCheckerExt"/>
     <defaultToolWindowLayout
       id="AndroidStudioDefaultToolWindowLayoutExtension"

@@ -110,10 +110,10 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.actionSystem.EditorAction;
 import com.intellij.openapi.editor.actions.BackspaceAction;
 import com.intellij.openapi.extensions.PluginId;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.project.ProjectManagerListener;
-import com.intellij.openapi.startup.StartupManager;
+import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
@@ -147,11 +147,15 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
 import org.HdrHistogram.SingleWriterRecorder;
 import org.jetbrains.android.AndroidPluginDisposable;
 import org.jetbrains.android.util.AndroidBundle;
@@ -583,6 +587,15 @@ public final class AndroidStudioSystemHealthMonitor {
     SystemHealthDataCollection.getInstance().start();
   }
 
+  private static final AtomicReference<Consumer<@Nullable Project>> ourPendingHeapReportHandler = new AtomicReference<>();
+
+  private static void runPendingHeapReportAnalysis(@Nullable Project project) {
+    Consumer<@Nullable Project> handler = ourPendingHeapReportHandler.getAndSet(null);
+    if (handler != null) {
+      handler.accept(project);
+    }
+  }
+
   /**
    * @return List of paths to hprof files to be analyzed
    */
@@ -593,39 +606,30 @@ public final class AndroidStudioSystemHealthMonitor {
     final UnanalyzedHeapReport report = reports.get(0);
     final Path path = report.getHprofPath();
 
+    MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus().connect();
+    ourPendingHeapReportHandler.set(project -> {
+      connection.disconnect();
+      if (project != null) {
+        DumbService.getInstance(project).runWhenSmart(() -> new AnalysisRunnable(report, true).run());
+      } else {
+        new AnalysisRunnable(report, true).run();
+      }
+    });
+    connection.subscribe(AppLifecycleListener.TOPIC, new AppLifecycleListener() {
+      @Override
+      public void welcomeScreenDisplayed() {
+        runPendingHeapReportAnalysis(null);
+      }
+    });
+    if (ourPendingHeapReportHandler.get() == null) {
+      connection.disconnect();
+      return Collections.singletonList(path);
+    }
+
     ProjectManager projectManager = ProjectManager.getInstanceIfCreated();
     Project[] openedProjects = projectManager != null ? projectManager.getOpenProjects() : null;
-
     if (openedProjects != null && openedProjects.length > 0) {
-      Project project = openedProjects[0];
-      StartupManager.getInstance(project).runWhenProjectIsInitialized(
-        () -> new AnalysisRunnable(report, true).run()
-      );
-    } else {
-      MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus().connect();
-      AtomicBoolean eventHandled = new AtomicBoolean(false);
-
-      connection.subscribe(ProjectManager.TOPIC, new ProjectManagerListener() {
-        @Override
-        public void projectOpened(@NotNull Project project) {
-          if (eventHandled.getAndSet(true)) {
-            return;
-          }
-          connection.disconnect();
-          StartupManager.getInstance(project).runWhenProjectIsInitialized(
-            () -> new AnalysisRunnable(report, true).run());
-        }
-      });
-      connection.subscribe(AppLifecycleListener.TOPIC, new AppLifecycleListener() {
-        @Override
-        public void welcomeScreenDisplayed() {
-          if (eventHandled.getAndSet(true)) {
-            return;
-          }
-          connection.disconnect();
-          new AnalysisRunnable(report, true).run();
-        }
-      });
+      runPendingHeapReportAnalysis(openedProjects[0]);
     }
     return Collections.singletonList(path);
   }
@@ -637,6 +641,14 @@ public final class AndroidStudioSystemHealthMonitor {
     }
     catch (IOException ignored) {
       return false;
+    }
+  }
+
+  public static class MyStartupActivity implements ProjectActivity {
+    @Override
+    public @Nullable Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+      runPendingHeapReportAnalysis(project);
+      return Unit.INSTANCE;
     }
   }
 
