@@ -44,17 +44,20 @@ private constructor(
   fun setKeyName(key: StringResourceKey, name: String): ListenableFuture<Boolean> {
     if (key.name == name || keyToResourceMap.keys.any { it.name == name }) return Futures.immediateFuture(false)
 
-    val value = getStringResource(key).defaultValueAsResourceItem ?: return Futures.immediateFuture(false)
-    val stringElement = checkNotNull(getItemTag(project, value))
-    val nameAttribute = checkNotNull(stringElement.getAttribute(SdkConstants.ATTR_NAME))
-    val nameAttributeValue = checkNotNull(nameAttribute.valueElement)
+    val nameAttributeValue =
+      runReadAction {
+        val value = getStringResource(key).defaultValueAsResourceItem ?: return@runReadAction null
+        val stringElement = getItemTag(project, value) ?: return@runReadAction null
+        val nameAttribute = stringElement.getAttribute(SdkConstants.ATTR_NAME) ?: return@runReadAction null
+        nameAttribute.valueElement
+      } ?: return Futures.immediateFuture(false)
 
     RenameProcessor(project, nameAttributeValue, name, /* isSearchInComments= */ false, /* isSearchTextOccurrences= */ false).run()
 
     val futureItem = SettableFuture.create<Boolean>()
     val newKey = StringResourceKey(name, key.directory)
     repository.invokeAfterPendingUpdatesFinish(newKey) {
-      replaceInMap(key, StringResource(newKey, this))
+      replaceInMap(key, runReadAction { StringResource(newKey, this) })
       futureItem.set(true)
     }
     return futureItem

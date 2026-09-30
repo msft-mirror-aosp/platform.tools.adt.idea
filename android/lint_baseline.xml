@@ -551,15 +551,4 @@
             column="18"/>
     </issue>
 
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
-        errorLine1="          Futures.addCallback(myData.setKeyName(keyToRename, (String)value), new FutureCallback&lt;>() {"
-        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/editors/strings/table/StringResourceTableModel.java"
-            line="124"
-            column="38"/>
-    </issue>
-
 </issues>
