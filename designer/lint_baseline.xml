@@ -463,15 +463,4 @@
             column="7"/>
     </issue>
 
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
-        errorLine1="          myModification.commit();"
-        errorLine2="                         ~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/uibuilder/handlers/constraint/WidgetConstraintModel.java"
-            line="327"
-            column="26"/>
-    </issue>
-
 </issues>

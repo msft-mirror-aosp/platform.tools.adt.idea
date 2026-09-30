@@ -116,7 +116,7 @@ public class LayoutParamsManagerTest extends AndroidTestCase {
   public void testSetAttribute() {
     DefaultValues layoutParams = new DefaultValues(0, 0);
     Configuration configurationMock = mock(Configuration.class);
-    when(configurationMock.getResourceResolver()).thenReturn(null);
+    when(configurationMock.getResourceItemResolver()).thenReturn(null);
     when(configurationMock.getDensity()).thenReturn(Density.HIGH);
 
     assertThat(LayoutParamsManager.setAttribute(layoutParams, "intAttribute", "123456", myModule, configurationMock)).isTrue();
@@ -170,7 +170,7 @@ public class LayoutParamsManagerTest extends AndroidTestCase {
   public void testEmptyAttributeFormat() {
     DefaultValues layoutParams = new DefaultValues(0, 0);
     Configuration configurationMock = mock(Configuration.class);
-    when(configurationMock.getResourceResolver()).thenReturn(null);
+    when(configurationMock.getResourceItemResolver()).thenReturn(null);
     when(configurationMock.getDensity()).thenReturn(Density.HIGH);
 
     // Test flag attribute

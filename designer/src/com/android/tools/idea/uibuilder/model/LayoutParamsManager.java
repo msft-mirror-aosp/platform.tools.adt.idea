@@ -25,6 +25,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.AttributeFormat;
+import com.android.ide.common.rendering.api.RenderResources;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.tools.dom.attrs.AttributeDefinition;
 import com.android.tools.configurations.Configuration;
@@ -391,10 +392,10 @@ public class LayoutParamsManager {
       ? EnumSet.copyOf(attributeDefinition.getFormats())
       : EnumSet.noneOf(AttributeFormat.class);
     if (value != null &&
-        (value.startsWith(SdkConstants.PREFIX_RESOURCE_REF) || value.startsWith(SdkConstants.PREFIX_THEME_REF)) &&
-        configuration.getResourceResolver() != null) {
+        (value.startsWith(SdkConstants.PREFIX_RESOURCE_REF) || value.startsWith(SdkConstants.PREFIX_THEME_REF))) {
       // This is a reference so we resolve the actual value and we try to infer the type from the given reference type
-      ResourceValue resourceValue = configuration.getResourceResolver().findResValue(value, false);
+      RenderResources resourceResolver = configuration.getResourceItemResolver();
+      ResourceValue resourceValue = resourceResolver != null ? resourceResolver.findResValue(value, false) : null;
 
       if (resourceValue != null) {
         value = resourceValue.getValue();
