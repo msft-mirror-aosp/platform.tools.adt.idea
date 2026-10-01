@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.project.sync.model.GradleRoot
 import com.android.tools.idea.gradle.project.sync.utils.ProjectIdeaConfigFilesUtils
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.testing.FileSubject
+import com.android.tools.idea.testing.JdkConstants
 import com.android.utils.FileUtils
 import com.google.common.truth.Truth
 import com.intellij.openapi.util.io.FileUtil
@@ -198,6 +199,18 @@ internal fun updateProjectJdk(projectRoot: File) {
   val jdk = IdeSdks.getInstance().jdk ?: error("${SyncedProjectTest::class} requires a valid JDK")
   val miscXml = projectRoot.resolve(".idea").resolve("misc.xml")
   miscXml.writeText(miscXml.readText().replace("""project-jdk-name="1.8"""", """project-jdk-name="${jdk.name}""""))
+}
+
+internal fun patchAndroidKotlinMultiplatformJdk(projectRoot: File) {
+  projectRoot.resolve("gradle.properties").replaceContent { content ->
+    content.plus(
+      """
+
+      org.gradle.java.installations.paths=${JdkConstants.JDK_11_PATH}
+      """
+        .trimIndent()
+    )
+  }
 }
 
 internal fun createEmptyGradleSettingsFile(projectRootPath: File) {

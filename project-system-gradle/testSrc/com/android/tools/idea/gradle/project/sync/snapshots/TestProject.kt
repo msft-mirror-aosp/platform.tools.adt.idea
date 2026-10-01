@@ -27,7 +27,6 @@ import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
-import com.android.tools.idea.testing.JdkConstants
 import com.android.tools.idea.testing.ModelVersion
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths
@@ -86,12 +85,47 @@ enum class TestProject(
   ANDROID_KOTLIN_MULTIPLATFORM(
     TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM,
     isCompatibleWith = { it == AGP_CURRENT },
+    patch = { projectRoot -> patchAndroidKotlinMultiplatformJdk(projectRoot) },
+  ),
+  ANDROID_KOTLIN_MULTIPLATFORM_VARIANT_API_RES(
+    TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM,
+    testName = "variantApiRes",
+    isCompatibleWith = { it == AGP_CURRENT },
     patch = { projectRoot ->
-      projectRoot.resolve("gradle.properties").replaceContent { content ->
-        content.plus(
+      patchAndroidKotlinMultiplatformJdk(projectRoot)
+      val kmpFirstLib = projectRoot.resolve("kmpFirstLib")
+      kmpFirstLib
+        .resolve("build.gradle.kts")
+        .appendText(
+          "\n\n" +
+            """
+            androidComponents {
+              onVariants { variant ->
+                variant.sources.res?.addStaticSourceDirectory("src/androidMain/variantApiRes")
+              }
+            }
+            """
+              .trimIndent()
+        )
+      // Resource in the conventional res directory, to check it is still picked up alongside the variant API one.
+      kmpFirstLib.resolve("src/androidMain/res/values/default_strings.xml").apply {
+        parentFile.mkdirs()
+        writeText("""<resources><string name="default_res_string">Default Res String</string></resources>""")
+      }
+      kmpFirstLib.resolve("src/androidMain/variantApiRes/values/variant_api_strings.xml").apply {
+        parentFile.mkdirs()
+        writeText("""<resources><string name="variant_api_string">Variant API String</string></resources>""")
+      }
+      kmpFirstLib.resolve("src/androidMain/kotlin/com/example/kmpfirstlib/VariantApiResUsage.kt").apply {
+        parentFile.mkdirs()
+        writeText(
           """
+          package com.example.kmpfirstlib
 
-          org.gradle.java.installations.paths=${JdkConstants.JDK_11_PATH}
+          object VariantApiResUsage {
+            val defaultResString = R.string.default_res_string
+            val variantApiResString = R.string.variant_api_string
+          }
           """
             .trimIndent()
         )
