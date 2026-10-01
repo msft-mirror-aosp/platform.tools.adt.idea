@@ -95,7 +95,7 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   protected val centerPanel = BorderLayoutPanel()
   protected val notificationHolderPanel = NotificationHolderPanel(centerPanel)
   private val displayPanelsMap = Int2ObjectRBTreeMap<T>()
-  protected val displayPanels: Collection<T>
+  internal val displayPanels: Collection<T>
     get() = displayPanelsMap.values
 
   private val displayListeners = createLockFreeCopyOnWriteList<DeviceDisplayListener>()
@@ -127,7 +127,19 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
 
     addToCenter(notificationHolderPanel)
 
-    val toolbarPanel = BorderLayoutPanel()
+    val toolbarPanel =
+      object : BorderLayoutPanel() {
+        override fun getPreferredSize(): Dimension {
+          if (width > 0) {
+            // When AbstractDevicePanel's BorderLayout lays out this panel, it calls setSize(newWidth, oldHeight)
+            // followed immediately by getPreferredSize(). Without calling doLayout() here, mainToolbar.component.width
+            // would still hold its previous width, causing WrapLayoutStrategy.calcPreferredSize to compute the toolbar
+            // height for the stale width and leaving the toolbar at the wrong height after resizing.
+            doLayout()
+          }
+          return super.getPreferredSize()
+        }
+      }
     if (IS_TOOLBAR_HORIZONTAL) {
       toolbarPanel.add(mainToolbar.component, BorderLayout.CENTER)
       toolbarPanel.add(secondaryToolbar.component, BorderLayout.EAST)

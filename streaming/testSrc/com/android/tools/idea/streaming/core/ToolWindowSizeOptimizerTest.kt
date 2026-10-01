@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.core
 
 import com.android.emulator.control.DisplayConfiguration
+import com.android.emulator.control.Posture.PostureValue
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.DataManagerRule
 import com.android.tools.adtui.swing.FakeUi
@@ -34,6 +35,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.IndexingTestUtil.Companion.waitUntilIndexesAreReady
 import com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -53,6 +55,7 @@ import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -86,10 +89,16 @@ class ToolWindowSizeOptimizerTest {
   private val testRootDisposable
     get() = projectRule.disposable
 
+  @Before
+  fun setUp() {
+    waitUntilIndexesAreReady(project)
+  }
+
   @After
   fun tearDown() {
     Disposer.dispose(toolWindow.disposable)
     dispatchAllEventsInIdeEventQueue() // Finish asynchronous processing triggered by hiding the tool window.
+    waitUntilIndexesAreReady(project)
   }
 
   @Test
@@ -223,6 +232,7 @@ class ToolWindowSizeOptimizerTest {
 
     // 7. Undocked mode (WINDOWED and FLOATING): shrink width/height.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
     toolWindow.decorator.size = Dimension(500, 500)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, phoneView)
@@ -232,6 +242,7 @@ class ToolWindowSizeOptimizerTest {
     assertMatchesAspectRatio(phoneView)
 
     toolWindow.setType(ToolWindowType.FLOATING, null)
+    dispatchAllEventsInIdeEventQueue()
     toolWindow.decorator.size = Dimension(150, 600)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, phoneView)
@@ -298,6 +309,7 @@ class ToolWindowSizeOptimizerTest {
 
     // Undocked mode (WINDOWED) with scale > 1: shrinks both width and height to integer scale 2x (640x640).
     toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
     toolWindow.decorator.size = Dimension(800, 800)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, watchView)
@@ -355,13 +367,11 @@ class ToolWindowSizeOptimizerTest {
     assertThat(scrollPane.verticalScrollBar.isVisible).isTrue()
     assertThat(scrollPane.horizontalScrollBar.isVisible).isFalse()
 
-    // Windowed mode with preserved ZoomType.IN (scale = 2.0) and vertical scrollbar: shrinks width and expands height to 640x640.
+    // Windowed mode with preserved ZoomType.IN (scale = 2.0) and vertical scrollbar:
+    // transitioning to WINDOWED shrinks width and expands height to 640x640.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
-    toolWindow.decorator.size = Dimension(800, 500 + toolbarHeight)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, watchView)
-    assertThat(watchView.scale).isEqualTo(2.0)
-    doubleClickInView(ui, watchView, 2, watchView.height / 2)
     assertThat(watchView.scale).isEqualTo(2.0)
     assertThat(watchView.size).isEqualTo(Dimension(640, 640))
     assertThat(scrollPane.verticalScrollBar.isVisible).isFalse()
@@ -499,9 +509,9 @@ class ToolWindowSizeOptimizerTest {
       object : JPanel(BorderLayout()) {
         override fun getPreferredSize(): Dimension {
           val h =
-            when {
-              width in 1..wrapThreshold2 -> 85
-              width in 1..wrapThreshold -> 60
+            when (width) {
+              in 1..wrapThreshold2 -> 85
+              in 1..wrapThreshold -> 60
               else -> 25
             }
           return Dimension(width, h)
@@ -514,6 +524,7 @@ class ToolWindowSizeOptimizerTest {
     // 1. In WINDOWED mode with toolbar wrapping:
     // Window height expands rather than downscaling the display image.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
     toolWindow.decorator.size = Dimension(500, 500)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, phoneView)
@@ -612,6 +623,237 @@ class ToolWindowSizeOptimizerTest {
     assertMatchesAspectRatio(phoneView)
   }
 
+  @Test
+  fun testResizeOnTransitionToDetachedSingleDevice() {
+    val (_, phoneView, ui) = startPhone(Dimension(500, 500))
+
+    // Single device transitioning from DOCKED to WINDOWED.
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    assertThat(toolWindow.decorator.width).isLessThan(500)
+    assertThat(toolWindow.decorator.height).isAtLeast(500)
+    assertMatchesAspectRatio(phoneView)
+
+    // Switching from WINDOWED to FLOATING (already detached) should not override user manual resizing.
+    toolWindow.decorator.size = Dimension(500, 500)
+    ui.layoutAndDispatchEvents()
+    toolWindow.setType(ToolWindowType.FLOATING, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    assertThat(toolWindow.decorator.size).isEqualTo(Dimension(500, 500))
+
+    val devicePanel = phoneView.findAncestor<AbstractDevicePanel<*>>()!!
+    val toolbarPanel = (devicePanel.layout as BorderLayout).getLayoutComponent(BorderLayout.NORTH)
+    val singleRowToolbarHeight = toolbarPanel.height
+
+    // Re-docking and transitioning to FLOATING removes vertical empty space.
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    dispatchAllEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(150, 600)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    toolWindow.setType(ToolWindowType.FLOATING, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    assertThat(toolWindow.decorator.height).isLessThan(600)
+    assertThat(toolWindow.decorator.width).isEqualTo(150)
+    assertThat(toolbarPanel.height).isGreaterThan(singleRowToolbarHeight)
+    assertMatchesAspectRatio(phoneView)
+
+    // Re-docking into a wide pane unwraps the toolbar back to a single row in a single layout pass.
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    dispatchAllEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(500, 500)
+    ui.layout()
+    assertThat(toolbarPanel.height).isEqualTo(singleRowToolbarHeight)
+  }
+
+  @Test
+  fun testResizeOnTransitionToDetachedMultipleDisplays() {
+    val (phone, phoneView, ui) = startPhone(Dimension(900, 500))
+
+    // Two displays.
+    runBlocking {
+      phone.changeSecondaryDisplays(listOf(DisplayConfiguration.newBuilder().setDisplay(1).setWidth(600).setHeight(800).build()))
+    }
+    waitForCondition(5.seconds) { ui.findAllComponents<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }.size == 2 }
+    ui.layoutAndDispatchEvents()
+    val secondaryView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == phone.serialNumber && it.displayId == 1 }
+    waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, secondaryView) > 0u }
+
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    renderAndGetFrameNumber(ui, secondaryView)
+    assertMatchesAspectRatio(phoneView)
+    assertMatchesAspectRatio(secondaryView)
+
+    // 3 displays in nested splitters.
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    dispatchAllEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(800, 900)
+    ui.layoutAndDispatchEvents()
+    runBlocking {
+      phone.changeSecondaryDisplays(
+        listOf(
+          DisplayConfiguration.newBuilder().setDisplay(1).setWidth(600).setHeight(800).build(),
+          DisplayConfiguration.newBuilder().setDisplay(2).setWidth(800).setHeight(600).build(),
+        )
+      )
+    }
+    waitForCondition(5.seconds) { ui.findAllComponents<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }.size == 3 }
+    toolWindow.decorator.size = Dimension(1200, 900)
+    ui.layoutAndDispatchEvents()
+    val displayViews3 = ui.findAllComponents<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }
+    waitForCondition(5.seconds) { displayViews3.all { renderAndGetFrameNumber(ui, it) > 0u } }
+    val scalesBefore3 = displayViews3.associateWith { roundDownToNaturalNumberOrNearestSmallFraction(it.scale) }
+
+    toolWindow.setType(ToolWindowType.FLOATING, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    for (view in displayViews3) {
+      renderAndGetFrameNumber(ui, view)
+      assertThat(roundDownToNaturalNumberOrNearestSmallFraction(view.scale)).isEqualTo(scalesBefore3.getValue(view))
+    }
+    assertThat(toolWindow.decorator.width).isLessThan(1200)
+  }
+
+  @Test
+  fun testResizeOnTransitionToDetachedSplitWithWatch() {
+    val (phone, phoneView, ui) = startPhone(Dimension(1200, 600))
+    val watch = emulatorRule.newEmulator(FakeEmulator.createWatchAvd(emulatorRule.avdRoot, skinFolder = null))
+    watch.start()
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+    waitForCondition(10.seconds) { contentManager.contentsRecursively.size == 2 }
+    val watchContent = contentManager.contentsRecursively.find { it.displayName?.startsWith("Android Wear") == true }!!
+
+    // Phone with twop displays split horizontally with the watch.
+    runBlocking {
+      phone.changeSecondaryDisplays(listOf(DisplayConfiguration.newBuilder().setDisplay(1).setWidth(600).setHeight(800).build()))
+    }
+    waitForCondition(5.seconds) { ui.findAllComponents<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }.size == 2 }
+    ui.layoutAndDispatchEvents()
+    val secondaryView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == phone.serialNumber && it.displayId == 1 }
+    waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, secondaryView) > 0u }
+    FakeToolWindow.split(watchContent, SwingConstants.RIGHT)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    val splitWatchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
+    waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, splitWatchView) > 0u }
+    val allViewsBeforeHorizontalSplit = ui.findAllComponents<EmulatorView>()
+    val scalesBeforeHorizontalSplit = allViewsBeforeHorizontalSplit.associateWith {
+      roundDownToNaturalNumberOrNearestSmallFraction(it.scale)
+    }
+
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    for (view in allViewsBeforeHorizontalSplit) {
+      renderAndGetFrameNumber(ui, view)
+      assertThat(roundDownToNaturalNumberOrNearestSmallFraction(view.scale)).isEqualTo(scalesBeforeHorizontalSplit.getValue(view))
+    }
+    assertMatchesAspectRatio(phoneView)
+    assertMatchesAspectRatio(secondaryView)
+    assertThat(splitWatchView.width).isEqualTo(320)
+    assertThat(splitWatchView.scale).isEqualTo(1.0)
+
+    // Vertical split between single-display phone and watch: watch preserves 320x320 (100% zoom) and phone preserves its zoom level.
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    dispatchAllEventsInIdeEventQueue()
+    runBlocking { phone.changeSecondaryDisplays(emptyList()) }
+    waitForCondition(5.seconds) { ui.findAllComponents<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }.size == 1 }
+    FakeToolWindow.unsplit(watchContent.manager!!, watchContent)
+    dispatchAllEventsInIdeEventQueue()
+    FakeToolWindow.split(watchContent, SwingConstants.TOP)
+    dispatchAllEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(500, 900)
+    ui.layoutAndDispatchEvents()
+    val topWatchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
+    val bottomPhoneView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }
+    waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, topWatchView) > 0u && renderAndGetFrameNumber(ui, bottomPhoneView) > 0u }
+    val phoneScaleBeforeVerticalDetach = roundDownToNaturalNumberOrNearestSmallFraction(bottomPhoneView.scale)
+
+    toolWindow.setType(ToolWindowType.FLOATING, null)
+    dispatchAllEventsInIdeEventQueue()
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, topWatchView)
+    renderAndGetFrameNumber(ui, bottomPhoneView)
+    assertThat(topWatchView.size).isEqualTo(Dimension(320, 320))
+    assertThat(topWatchView.scale).isEqualTo(1.0)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(bottomPhoneView.scale)).isEqualTo(phoneScaleBeforeVerticalDetach)
+
+    FakeToolWindow.unsplit(watchContent.manager!!, watchContent)
+    dispatchAllEventsInIdeEventQueue()
+  }
+
+  @Test
+  fun testResizeOnTransitionToDetachedSplitPhones() {
+    // Horizontal split between two phones where one is width-constrained (with vertical empty space) and the other is
+    // height-constrained (with horizontal empty space and a wrapping toolbar), and stale floatingBounds crushes the window before
+    // optimization: both devices preserve their zoom levels and horizontal empty space is eliminated.
+    val dockedSize = Dimension(959, 992)
+    val (_, phoneView, ui) = startPhone(dockedSize)
+    val phoneContent = contentManager.contentsRecursively.find { it.displayName?.startsWith("Pixel") == true }!!
+
+    val foldable = emulatorRule.newEmulator(FakeEmulator.createFoldableAvd(emulatorRule.avdRoot))
+    foldable.start()
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+    waitForCondition(10.seconds) { contentManager.contentsRecursively.any { it.displayName?.contains("Fold") == true } }
+    val foldableController = RunningEmulatorCatalog.getInstance().emulators.first { it.emulatorId.avdName.contains("Fold") }
+    waitForCondition(5.seconds) { foldableController.connectionState == EmulatorController.ConnectionState.CONNECTED }
+    val foldableContent = contentManager.contentsRecursively.first { it.displayName?.contains("Fold") == true }
+    FakeToolWindow.split(foldableContent, SwingConstants.RIGHT)
+    phoneContent.manager!!.setSelectedContent(phoneContent)
+    dispatchAllEventsInIdeEventQueue()
+
+    val foldableView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == foldable.serialNumber }
+    foldable.setPosture(PostureValue.POSTURE_CLOSED)
+    waitForCondition(5.seconds) {
+      ui.layoutAndDispatchEvents()
+      renderAndGetFrameNumber(ui, foldableView) > 0u && foldableView.deviceDisplaySize == Dimension(1080, 2092)
+    }
+
+    val foldablePanel = foldableView.findAncestor<AbstractDevicePanel<*>>()!!
+    val wrappingFoldableToolbar =
+      object : JPanel(BorderLayout()) {
+        override fun getPreferredSize(): Dimension = Dimension(width, if (width in 1..450) 112 else 85)
+      }
+    wrappingFoldableToolbar.size = Dimension(577, 85)
+    foldablePanel.add(wrappingFoldableToolbar, BorderLayout.NORTH)
+
+    val horizontalSplitter = foldableView.findAncestor<Splitter>()!!
+    horizontalSplitter.proportion = 0.39f
+    toolWindow.decorator.size = dockedSize
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    renderAndGetFrameNumber(ui, foldableView)
+
+    val phoneWidthBefore = phoneView.width
+    val phoneScaleBefore = roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)
+    val foldableScaleBefore = roundDownToNaturalNumberOrNearestSmallFraction(foldableView.scale)
+    assertThat(foldableView.width).isGreaterThan(phoneWidthBefore)
+
+    // Simulate ToolWindowManagerImpl applying stale floatingBounds (264 x 1501) before ToolWindowSizeOptimizer.optimizeSize runs.
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    toolWindow.decorator.size = Dimension(264, 1501)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    renderAndGetFrameNumber(ui, foldableView)
+
+    assertThat(phoneView.width).isEqualTo(phoneWidthBefore)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)).isEqualTo(phoneScaleBefore)
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(foldableView.scale)).isEqualTo(foldableScaleBefore)
+    assertMatchesAspectRatio(foldableView)
+    assertThat(toolWindow.decorator.width).isLessThan(dockedSize.width)
+
+    FakeToolWindow.unsplit(foldableContent.manager!!, null)
+    dispatchAllEventsInIdeEventQueue()
+  }
+
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, displayView: AbstractDisplayView): UInt {
     fakeUi.render() // The frame number may get updated as a result of rendering.
     return displayView.frameNumber
@@ -638,6 +880,7 @@ class ToolWindowSizeOptimizerTest {
     val ui = createFakeUi(toolWindow.decorator)
     val phoneView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, phoneView) > 0u }
+    ui.layoutAndDispatchEvents()
     return PhoneTestContext(phone, phoneView, ui)
   }
 

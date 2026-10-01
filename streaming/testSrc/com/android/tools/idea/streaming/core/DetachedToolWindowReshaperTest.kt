@@ -92,6 +92,8 @@ class DetachedToolWindowReshaperTest {
 
     // 1. Detached (WINDOWED) with empty space: rotating should NOT resize the window and should reset zoom.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(500, 500)
     phoneView.zoom(ZoomType.IN)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, phoneView)

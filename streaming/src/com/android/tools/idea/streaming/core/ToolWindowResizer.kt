@@ -17,8 +17,10 @@ package com.android.tools.idea.streaming.core
 
 import com.android.tools.adtui.util.scaled
 import com.intellij.openapi.ui.Splitter
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.openapi.wm.impl.InternalDecorator
+import com.intellij.ui.ClientProperty
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Container
@@ -41,7 +43,7 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
     rootContainer: Component,
     desiredSize: Dimension,
     toolbarHeightDelta: Int,
-    isUndocked: Boolean,
+    isDetached: Boolean,
     canResizeToolWindowWidth: Boolean,
     canResizeToolWindowHeight: Boolean,
   ) {
@@ -56,10 +58,19 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
         canResizeToolWindowHeight,
         updateSplitters = true,
       )
+    applyTargetRootSize(toolWindow, rootContainer, targetSize, isDetached)
+  }
+
+  protected fun applyTargetRootSize(
+    toolWindow: ToolWindowEx,
+    rootContainer: Component,
+    targetSize: Dimension,
+    isDetached: Boolean,
+  ) {
     val deltaWidth = targetSize.width - rootContainer.width
     val deltaHeight = targetSize.height - rootContainer.height
 
-    if (isUndocked) {
+    if (isDetached) {
       val oldWidth = rootContainer.width
       val oldHeight = rootContainer.height
       if (deltaWidth != 0) {
@@ -71,13 +82,14 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
       val remainingDeltaWidth = if (rootContainer.width == oldWidth) deltaWidth else 0
       val remainingDeltaHeight = if (rootContainer.height == oldHeight) deltaHeight else 0
       if (remainingDeltaWidth != 0 || remainingDeltaHeight != 0) {
-        SwingUtilities.getWindowAncestor(displayView)?.let { window ->
+        SwingUtilities.getWindowAncestor(rootContainer)?.let { window ->
           val minSize = window.minimumSize
           val minWidth = (minSize?.width ?: 0).coerceAtLeast(1)
           val minHeight = (minSize?.height ?: 0).coerceAtLeast(1)
           val targetWidth = (window.width + remainingDeltaWidth).coerceAtLeast(minWidth)
           val targetHeight = (window.height + remainingDeltaHeight).coerceAtLeast(minHeight)
           window.setSize(targetWidth, targetHeight)
+          syncExternalDecoratorBounds(window)
           window.validate()
         }
       }
@@ -117,8 +129,6 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
     canResizeToolWindowHeight: Boolean,
   ): Int {
     val devicePanel = displayView.findAncestor<AbstractDevicePanel<*>>() ?: return 0
-    val layout = devicePanel.layout as? BorderLayout ?: return 0
-    val toolbarPanel = layout.getLayoutComponent(BorderLayout.NORTH) ?: return 0
     val newDevicePanelWidth =
       computeAncestorSize(
           viewport,
@@ -132,12 +142,23 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
         )
         .width
         .coerceAtLeast(0)
-    toolbarPanel.setSize(newDevicePanelWidth, originalToolbarHeight)
+    return updateDevicePanelToolbarHeightForWidth(devicePanel, newDevicePanelWidth, originalToolbarHeight, originalToolbarBounds)
+  }
+
+  protected fun updateDevicePanelToolbarHeightForWidth(
+    devicePanel: AbstractDevicePanel<*>,
+    newDevicePanelWidth: Int,
+    originalToolbarHeight: Int,
+    originalToolbarBounds: Rectangle?,
+  ): Int {
+    val layout = devicePanel.layout as? BorderLayout ?: return 0
+    val toolbarPanel = layout.getLayoutComponent(BorderLayout.NORTH) ?: return 0
+    toolbarPanel.setSize(newDevicePanelWidth.coerceAtLeast(0), originalToolbarHeight)
     layoutToolbarPanel(toolbarPanel)
     val newToolbarHeight = toolbarPanel.preferredSize.height
     val heightDelta = newToolbarHeight - originalToolbarHeight
     if (heightDelta != 0) {
-      toolbarPanel.setSize(newDevicePanelWidth, newToolbarHeight)
+      toolbarPanel.setSize(newDevicePanelWidth.coerceAtLeast(0), newToolbarHeight)
       layoutToolbarPanel(toolbarPanel)
     } else if (originalToolbarBounds != null) {
       toolbarPanel.bounds = Rectangle(originalToolbarBounds)
@@ -179,6 +200,7 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
     canResizeToolWindowHeight: Boolean,
     updateSplitters: Boolean,
   ): Dimension {
+    val rootContainer = findRootContainer()
     var targetWidth = startWidth
     var targetHeight = startHeight
     var c: Component = startComponent
@@ -187,7 +209,7 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
       if (targetWidth == c.width) {
         targetWidth = p.width
       } else if (p is Splitter && !p.isVertical) {
-        val canResizeSplitter = canResizeToolWindowWidth || hasSplitterAncestor(p, stopAncestor, isVertical = false)
+        val canResizeSplitter = canResizeToolWindowWidth || hasSplitterAncestor(p, rootContainer, isVertical = false)
         targetWidth =
           computeSplitterSizeAndUpdateProportion(
             p,
@@ -203,7 +225,7 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
       if (targetHeight == c.height) {
         targetHeight = p.height
       } else if (p is Splitter && p.isVertical) {
-        val canResizeSplitter = canResizeToolWindowHeight || hasSplitterAncestor(p, stopAncestor, isVertical = true)
+        val canResizeSplitter = canResizeToolWindowHeight || hasSplitterAncestor(p, rootContainer, isVertical = true)
         targetHeight =
           computeSplitterSizeAndUpdateProportion(
             p,
@@ -224,7 +246,7 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
     return Dimension(targetWidth, targetHeight)
   }
 
-  private fun computeSplitterSizeAndUpdateProportion(
+  protected fun computeSplitterSizeAndUpdateProportion(
     splitter: Splitter,
     isFirstComponent: Boolean,
     targetChildSize: Int,
@@ -241,26 +263,90 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
         0
       }
     val currentSplitterSize = (if (splitter.isVertical) splitter.height else splitter.width) + heightAdjustment
+    val child = if (isFirstComponent) splitter.firstComponent else splitter.secondComponent
     val other = if (isFirstComponent) splitter.secondComponent else splitter.firstComponent
     val otherVisible = other != null && other.isVisible
     if (!otherVisible) {
       return (if (canResizeRoot) targetChildSize else currentSplitterSize).coerceAtLeast(0)
     }
-    val otherSize = if (splitter.isVertical) other.height else other.width
+    val minChildSize = getMinimumChildSize(splitter, child)
+    val minOtherSize = getMinimumChildSize(splitter, other)
+    val effectiveChildSize = max(targetChildSize, minChildSize)
+    val otherSize = max(if (splitter.isVertical) other.height else other.width, minOtherSize)
     val dividerWidth = splitter.dividerWidth
-    var newTotal = if (canResizeRoot) otherSize + targetChildSize else currentSplitterSize - dividerWidth
+    var newTotal = if (canResizeRoot) otherSize + effectiveChildSize else currentSplitterSize - dividerWidth
     if (newTotal > 0) {
-      val desiredFirstSize = if (isFirstComponent) targetChildSize else newTotal - targetChildSize
-      val newProportion = ((desiredFirstSize + 0.25f) / newTotal).coerceIn(splitter.minimumProportion, splitter.maximumProportion)
-      if (canResizeRoot) {
+      val desiredFirstSize = if (isFirstComponent) effectiveChildSize else newTotal - effectiveChildSize
+      val rawProportion = desiredFirstSize.toFloat() / newTotal
+      val newProportion = rawProportion.coerceIn(splitter.minimumProportion, splitter.maximumProportion)
+      if (canResizeRoot && newProportion != rawProportion) {
         val childShare = if (isFirstComponent) newProportion.toDouble() else 1.0 - newProportion.toDouble()
         if (childShare > 0.0) {
-          newTotal = max(newTotal, ceil(targetChildSize / childShare).toInt())
+          newTotal = max(newTotal, (effectiveChildSize / childShare).roundToInt())
+          val firstSize = (newTotal * newProportion).roundToInt()
+          val actualChildSize = if (isFirstComponent) firstSize else newTotal - firstSize
+          if (actualChildSize < effectiveChildSize) {
+            newTotal++
+          }
         }
       }
       if (updateSplitter) {
         splitter.proportion = newProportion
       }
+    }
+    return (newTotal + dividerWidth).coerceAtLeast(0)
+  }
+
+  protected fun computeTwoChildSplitterSizeAndUpdateProportion(
+    splitter: Splitter,
+    targetFirstSize: Int,
+    targetSecondSize: Int,
+    canResizeRoot: Boolean,
+  ): Int {
+    val currentSplitterSize = if (splitter.isVertical) splitter.height else splitter.width
+    val first = splitter.firstComponent
+    val second = splitter.secondComponent
+    val firstVisible = first != null && first.isVisible
+    val secondVisible = second != null && second.isVisible
+    if (!firstVisible && !secondVisible) {
+      return currentSplitterSize.coerceAtLeast(0)
+    }
+    if (!firstVisible) {
+      return (if (canResizeRoot) targetSecondSize else currentSplitterSize).coerceAtLeast(0)
+    }
+    if (!secondVisible) {
+      return (if (canResizeRoot) targetFirstSize else currentSplitterSize).coerceAtLeast(0)
+    }
+    val minFirst = getMinimumChildSize(splitter, first)
+    val minSecond = getMinimumChildSize(splitter, second)
+    val effectiveFirst = max(targetFirstSize, minFirst)
+    val effectiveSecond = max(targetSecondSize, minSecond)
+    val dividerWidth = splitter.dividerWidth
+    var newTotal = if (canResizeRoot) effectiveFirst + effectiveSecond else currentSplitterSize - dividerWidth
+    if (newTotal > 0) {
+      val totalDesired = effectiveFirst + effectiveSecond
+      val rawProportion =
+        if (canResizeRoot) {
+          effectiveFirst.toFloat() / newTotal
+        } else if (totalDesired > 0) {
+          effectiveFirst.toFloat() / totalDesired
+        } else {
+          splitter.proportion
+        }
+      val newProportion = rawProportion.coerceIn(splitter.minimumProportion, splitter.maximumProportion)
+      if (canResizeRoot) {
+        if (newProportion > 0f) {
+          newTotal = max(newTotal, (effectiveFirst / newProportion.toDouble()).roundToInt())
+        }
+        if (newProportion < 1f) {
+          newTotal = max(newTotal, (effectiveSecond / (1.0 - newProportion.toDouble())).roundToInt())
+        }
+        val firstSize = (newTotal * newProportion.toDouble()).roundToInt()
+        if (firstSize < effectiveFirst || newTotal - firstSize < effectiveSecond) {
+          newTotal++
+        }
+      }
+      splitter.proportion = newProportion
     }
     return (newTotal + dividerWidth).coerceAtLeast(0)
   }
@@ -293,5 +379,35 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
       root = p
     }
     return topDecorator ?: root
+  }
+
+  private fun getMinimumChildSize(splitter: Splitter, child: Component?): Int {
+    if (!splitter.isHonorMinimumSize || child == null) {
+      return 0
+    }
+    return if (splitter.isVertical) child.minimumSize.height else child.minimumSize.width
+  }
+
+  /**
+   * Synchronizes the expected bounds tracked by IntelliJ's `ToolWindowExternalDecoratorBoundsHelper` with the current bounds of [window].
+   *
+   * Both `WindowedDecorator` and `FloatingDecorator` attach a `ToolWindowExternalDecoratorBoundsHelper` listener to their [Window] to guard
+   * against unexpected OS/window-manager move or resize events during the first 100ms after the window is shown
+   * (`ide.tool.window.prevent.move.resize.timeout`). During that window, any `componentShown` or `componentResized` event whose bounds
+   * differ from the helper's stored bounds causes the helper to reset `visibleWindowBounds` back to the initial unoptimized bounds set
+   * before the window was shown.
+   *
+   * Calling [Window.setSize] directly does not update the helper's stored bounds; only `ToolWindowExternalDecorator.setVisibleWindowBounds`
+   * updates them. Since `ToolWindowExternalDecorator` has `internal` visibility in `intellij.platform.ide.impl`, reflection is used to read
+   * and re-apply `visibleWindowBounds` after resizing [window].
+   */
+  private fun syncExternalDecoratorBounds(window: Window) {
+    try {
+      val decoratorClass = Class.forName("com.intellij.openapi.wm.impl.ToolWindowExternalDecorator")
+      val key = decoratorClass.getField("DECORATOR_PROPERTY").get(null) as? Key<*> ?: return
+      val externalDecorator = ClientProperty.get(window, key) ?: return
+      val bounds = decoratorClass.getMethod("getVisibleWindowBounds").invoke(externalDecorator) as Rectangle
+      decoratorClass.getMethod("setVisibleWindowBounds", Rectangle::class.java).invoke(externalDecorator, bounds)
+    } catch (_: ReflectiveOperationException) {}
   }
 }

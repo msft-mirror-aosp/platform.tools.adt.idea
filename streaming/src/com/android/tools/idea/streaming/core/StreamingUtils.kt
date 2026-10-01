@@ -32,7 +32,9 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.AnActionHolder
 import com.intellij.openapi.util.NlsContexts
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.dsl.builder.HyperlinkEventAction
 import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
@@ -76,6 +78,10 @@ fun ByteBuffer.putUInt(value: UInt): ByteBuffer = putInt(value.toInt())
  * component associated with the given action belonging to the Running Devices tool window.
  */
 fun AnActionEvent.findComponentForAction(action: AnAction): Component? = findComponentForAction(action, RUNNING_DEVICES_TOOL_WINDOW_ID)
+
+/** Returns true if the tool window is detached ([ToolWindowType.WINDOWED] or [ToolWindowType.FLOATING]). */
+internal val ToolWindow.isDetached: Boolean
+  get() = type == ToolWindowType.WINDOWED || type == ToolWindowType.FLOATING
 
 /**
  * If this [AnActionEvent] is associated with an [ActionButtonComponent], returns that component. Otherwise, returns the first found
