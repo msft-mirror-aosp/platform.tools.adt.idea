@@ -32,7 +32,7 @@ class OldProjectAppTest {
     AndroidSystem.withCustomJdkForGradle(AndroidStudioInstallation.AndroidStudioFlavor.FOR_EXTERNAL_USERS, AndroidSystem.JdkVersion.JDK_25)
 
   @Test
-  fun `Given old app configured with JDK 11 and compatible gradle version When open project with recent studio Then gradle sync succeed`() {
+  fun `Given old app configured with JDK 17 and compatible gradle version When open project with recent studio Then gradle sync succeed`() {
     system.installation.apply {
       addVmOption("-Didea.log.debug.categories=#com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectResolver")
       addVmOption("-Dstudio.project.sync.debug.mode=true")
@@ -40,8 +40,8 @@ class OldProjectAppTest {
     val project = AndroidProject("tools/adt/idea/project-system-integration-tests/testData/oldprojectapp")
     project.setDistribution("tools/external/gradle/gradle-7.3.3-bin.zip")
 
-    val embeddedJdk11Path = EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk11")
-    system.setEnv(IdeSdks.JDK_LOCATION_ENV_VARIABLE_NAME, embeddedJdk11Path.toString())
+    val embeddedJdk17Path = EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk17")
+    system.setEnv(IdeSdks.JDK_LOCATION_ENV_VARIABLE_NAME, embeddedJdk17Path.toString())
     system.installRepo(MavenRepo("tools/adt/idea/project-system-integration-tests/oldprojectapp_deps.manifest"))
     system.runStudio(project).use { studio -> studio.waitForSync() }
   }
