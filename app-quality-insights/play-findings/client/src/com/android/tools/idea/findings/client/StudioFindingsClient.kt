@@ -29,6 +29,7 @@ import com.google.play.androidpublisher.v3.ComputeFindingsResponse as ProtoCompu
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData as ProtoVitalsDeviceBadBehaviorFindingData
 import com.google.protobuf.util.JsonFormat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
@@ -119,6 +120,33 @@ private fun ProtoFindingData.toDomain(): FindingData =
           drmVersion = drmVersion,
           recommendedDrmVersion = recommendedDrmVersion.takeIf { it.isNotEmpty() },
           learnMoreUrl = learnMoreUrl.takeIf { it.isNotEmpty() },
+        )
+      }
+    ProtoFindingData.DataTypeCase.EDGE_TO_EDGE_COMPAT -> FindingData.EdgeToEdge(manualReviewMessage = edgeToEdgeCompat.reviewMessage)
+    ProtoFindingData.DataTypeCase.VITALS_ANOMALY ->
+      vitalsAnomaly.run {
+        FindingData.VitalsAnomaly(
+          metric = metric,
+          metricValue = metricValue,
+          isHourly = hasHourlyTime(),
+        )
+      }
+    ProtoFindingData.DataTypeCase.VITALS_BAD_BEHAVIOR ->
+      vitalsBadBehavior.run {
+        FindingData.VitalsBadBehavior(
+          metric = metric,
+          threshold = threshold,
+          metricValue = metricValue,
+        )
+      }
+    ProtoFindingData.DataTypeCase.VITALS_DEVICE_BAD_BEHAVIOR ->
+      vitalsDeviceBadBehavior.run {
+        FindingData.VitalsDeviceBadBehavior(
+          metric = metric,
+          threshold = threshold,
+          affectedDeviceModelsCount = affectedDeviceModelCount.toInt(),
+          isEmerging = badBehaviorType == ProtoVitalsDeviceBadBehaviorFindingData.Type.EMERGING_BAD_BEHAVIOR,
+          affectedInstallsRatio = affectedInstallsRatio.takeIf { it > 0.0 },
         )
       }
     else -> FindingData.Empty

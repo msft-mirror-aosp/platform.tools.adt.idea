@@ -33,6 +33,27 @@ message Finding {
     //
     // (-- Note: DRM_APP_COMPAT = 1; --)
     DRM_APP_COMPAT = 1;
+
+    // This finding identifies that the app does not support Edge-to-Edge
+    // display properly.
+    EDGE_TO_EDGE_COMPAT = 2;
+
+    // This finding identifies that the app has anomalous vitals behavior.
+    VITALS_ANOMALY = 3;
+
+    // This finding identifies that the app's vitals metrics exceed an overall
+    // bad behavior threshold.
+    VITALS_BAD_BEHAVIOR = 4;
+
+    // This finding identifies that the app's vitals metrics exceed a
+    // per-device-model bad behavior threshold.
+    VITALS_DEVICE_BAD_BEHAVIOR = 5;
+
+    // This finding identifies that the app is using one or more SDK versions
+    // that have a crash annotation.
+    //
+    // Associated finding data: None.
+    SDK_HAS_CRASH_ANNOTATION = 6;
   }
 
   // The type of this finding. Always set.

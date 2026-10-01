@@ -25,6 +25,7 @@
     <orderEntry type="module" module-name="google-login" />
     <orderEntry type="library" name="protobuf-kotlin" level="project" />
     <orderEntry type="library" name="protobuf-java-util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />

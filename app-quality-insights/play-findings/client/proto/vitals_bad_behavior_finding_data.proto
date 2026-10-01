@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package google.play.androidpublisher.v3;
+
+option java_package = "com.google.play.androidpublisher.v3";
+option java_multiple_files = true;
+option java_outer_classname = "VitalsBadBehaviorFindingDataProto";
+
+// Data for Vitals Bad Behavior findings (finding type
+// [Finding.Type.VITALS_BAD_BEHAVIOR][google.play.androidpublisher.v3.Finding.Type.VITALS_BAD_BEHAVIOR]).
+message VitalsBadBehaviorFindingData {
+  // The metric set as defined by the Play Developer Reporting API that contains
+  // the metric with bad behavior, for example "vitals.crashrate".
+  // See: https://developers.google.com/play/developer/reporting/metricset-intro
+  //
+  // Optional.
+  string metric_set = 1;
+
+  // The name of the metric in the metric set that contains bad behavior data.
+  // For reference, see
+  // https://developers.google.com/play/developer/reporting/metricset-intro
+  //
+  // Optional.
+  string metric = 2;
+
+  // Bad behavior threshold (e.g. a value of 0.05 means that the exceeded
+  // threshold is 5%). The value is in the range [0, 1].
+  // Always set.
+  double threshold = 3;
+
+  // The actual metric value detected that exceeded the bad behavior threshold.
+  // The value is in the range [0, 1].
+  // Optional.
+  double metric_value = 4;
+}

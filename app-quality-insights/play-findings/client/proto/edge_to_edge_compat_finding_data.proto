@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package google.play.androidpublisher.v3;
+
+option java_package = "com.google.play.androidpublisher.v3";
+option java_multiple_files = true;
+option java_outer_classname = "EdgeToEdgeCompatFindingDataProto";
+
+// Data for Edge-to-Edge compatibility findings (finding type
+// [Finding.Type.EDGE_TO_EDGE_COMPAT][google.play.androidpublisher.v3.Finding.Type.EDGE_TO_EDGE_COMPAT]).
+//
+// Represents a compatibility or quality issue where an app does not support
+// Edge-to-Edge display properly.
+message EdgeToEdgeCompatFindingData {
+  // Message detailing the outcome, including specific instructions or feedback
+  // on how the app is malfunctioning.
+  // Always set.
+  string review_message = 1;
+}
