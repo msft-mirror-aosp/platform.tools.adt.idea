@@ -17,13 +17,21 @@ package com.android.tools.idea.uibuilder.surface
 
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.common.surface.createNlDesignSurfaceZoomController
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
 import org.junit.Assert
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class NlDesignSurfaceZoomControllerTest {
+
+  @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun `test fit scale when the surface is empty`() {
