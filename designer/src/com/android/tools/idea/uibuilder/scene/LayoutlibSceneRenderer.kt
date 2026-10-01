@@ -34,6 +34,8 @@ import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.res.ResourceNotificationManager
 import com.android.tools.idea.res.ResourceNotificationManager.ResourceVersion
 import com.android.tools.idea.uibuilder.io.saveFileIfNecessary
+import com.android.tools.idea.uibuilder.model.hasNlComponentInfo
+import com.android.tools.idea.uibuilder.model.viewInfo
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.rendering.ProblemSeverity
 import com.android.tools.rendering.RenderLogger
@@ -492,6 +494,13 @@ class LayoutlibSceneRenderer(
     if (isActive.getAndSet(false)) {
       renderTask = null
       renderResult = null
+      updateHierarchyLock.withLock {
+        model.treeReader.flattenComponents().forEach {
+          if (it.hasNlComponentInfo) {
+            it.viewInfo = null
+          }
+        }
+      }
     }
   }
 

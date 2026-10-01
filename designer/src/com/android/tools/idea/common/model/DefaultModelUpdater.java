@@ -21,6 +21,7 @@ import static com.android.SdkConstants.ATTR_ID;
 
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.tools.idea.rendering.parsers.PsiXmlTag;
+import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
 import com.android.tools.rendering.parsers.TagSnapshot;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ArrayListMultimap;
@@ -133,6 +134,9 @@ public class DefaultModelUpdater implements NlModelUpdaterInterface {
     // data
     for (NlComponent component : data.myTagToComponentMap.values()) {
       component.setSnapshot(null);
+      if (NlComponentHelperKt.getHasNlComponentInfo(component)) {
+        NlComponentHelperKt.setViewInfo(component, null);
+      }
     }
 
     // Update the components' snapshots
