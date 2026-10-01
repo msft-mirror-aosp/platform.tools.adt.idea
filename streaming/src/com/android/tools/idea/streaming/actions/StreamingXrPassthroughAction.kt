@@ -24,17 +24,14 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Cell
 import com.intellij.ui.dsl.builder.labelTable
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.dsl.builder.selected
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
 import java.awt.Component
 import java.beans.PropertyChangeListener
-import javax.swing.JCheckBox
 import javax.swing.JSlider
 import javax.swing.LayoutFocusTraversalPolicy
 import kotlin.math.abs
@@ -71,37 +68,22 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
   private var isUpdatingUi = false
 
   fun show(anchor: Component?) {
-    var passthroughCheckBox: Cell<JBCheckBox>? = null
     var dimmingSlider: Cell<JSlider>? = null
 
     val panel = panel {
-      row("Passthrough:") {
-        passthroughCheckBox =
-          checkBox("").accessibleName("Passthrough").selected(xrController.passthroughEnabled).onChanged {
-            dimmingSlider!!.component.isEnabled = it.isSelected
-            if (!isUpdatingUi) {
-              setPassthroughAndDimming(it, dimmingSlider!!.component)
-            }
-          }
-      }
       row("Dimming:") {
         val smallFont = JBFont.label().lessOn(4f)
         dimmingSlider =
           slider(0, dimmingLevels.size - 1, 0, 1)
             .accessibleName("Dimming")
             .labelTable(dimmingLevels.indices.associateWith { JBLabel("${dimmingLevels[it].toPercent()}%").apply { font = smallFont } })
-            .enabled(xrController.passthroughEnabled)
             .applyToComponent {
               snapToTicks = true
               value = xrController.dimmingLevelIndex
-              // JSlider is rendered with some internal margins that make it appear misaligned compared to other widgets.
-              // Adding the left empty border makes the UI DSL layout mechanics shift the slider to the left making it
-              // appear aligned with the checkbox.
-              border = JBUI.Borders.emptyLeft(16)
             }
             .onChanged {
               if (!isUpdatingUi && !it.valueIsAdjusting) {
-                setPassthroughAndDimming(passthroughCheckBox!!.component, it)
+                setDimming(it)
               }
             }
       }
@@ -113,12 +95,11 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
         border = JBUI.Borders.empty(14)
       }
 
-    checkNotNull(passthroughCheckBox)
     checkNotNull(dimmingSlider)
 
     val popup =
       JBPopupFactory.getInstance()
-        .createComponentPopupBuilder(panel, passthroughCheckBox.component)
+        .createComponentPopupBuilder(panel, dimmingSlider.component)
         .setTitle("Environment Visibility")
         .setFocusable(true)
         .setRequestFocus(true)
@@ -132,16 +113,9 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
       isUpdatingUi = true
       try {
         when (it.propertyName) {
-          AbstractXrInputController.PASSTHROUGH_COEFFICIENT_PROPERTY -> {
-            passthroughCheckBox.applyToComponent { isSelected = xrController.passthroughEnabled }
-          }
           AbstractXrInputController.DIMMING_COEFFICIENT_PROPERTY -> {
             dimmingSlider.applyToComponent {
-              // Only update the slider if we're in passthrough mode; otherwise, it's meaningless.
-              // When we re-enter passthrough mode, we'll restore the dimming level that was previously used there.
-              if (isEnabled) {
-                value = xrController.dimmingLevelIndex
-              }
+              value = xrController.dimmingLevelIndex
             }
           }
         }
@@ -159,10 +133,10 @@ private class XrPassthroughPopup(val xrController: AbstractXrInputController) {
     }
   }
 
-  private fun setPassthroughAndDimming(passthroughCheckBox: JCheckBox, dimmingSlider: JSlider) {
+  private fun setDimming(dimmingSlider: JSlider) {
     coroutineScope.launch {
       xrController.setPassthroughAndDimming(
-        passthroughCoefficient = if (passthroughCheckBox.isSelected) 1f else 0f,
+        passthroughCoefficient = 1f,
         dimmingCoefficient = dimmingLevels[dimmingSlider.value],
       )
     }
@@ -186,9 +160,6 @@ private fun FloatArray.indexOfClosest(value: Float): Int {
   }
   return closestIndex
 }
-
-private val AbstractXrInputController.passthroughEnabled: Boolean
-  get() = passthroughCoefficient >= 0.5f
 
 private val AbstractXrInputController.dimmingLevelIndex: Int
   get() = dimmingLevels.indexOfClosest(dimmingCoefficient)
