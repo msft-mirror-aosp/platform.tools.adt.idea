@@ -211,3 +211,7 @@ data class ProjectDefinition(
     }
   }
 }
+
+/** Returns existing absolute directories for [ProjectDefinition.projectIncludes] resolved against [workspaceRoot]. */
+fun ProjectDefinition.existingAbsoluteIncludes(workspaceRoot: Path): Set<Path> =
+  projectIncludes.map { workspaceRoot.resolve(it) }.filter { Files.exists(it) && Files.isDirectory(it) }.toSet()

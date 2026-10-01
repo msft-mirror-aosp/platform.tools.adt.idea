@@ -18,10 +18,10 @@ package com.google.idea.blaze.qsync
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.qsync.project.ProjectDefinition
+import com.google.idea.blaze.qsync.project.existingAbsoluteIncludes
 import com.google.idea.blaze.traverser.DirectoryContents
 import com.google.idea.blaze.traverser.ScanTask
 import com.google.idea.blaze.traverser.traverseIncludedDirectories
-import java.nio.file.Files
 import java.nio.file.Path
 
 private val WORKSPACE_FILE_NAMES = setOf("MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel")
@@ -55,11 +55,10 @@ suspend fun traverseProjectDirectories(
   context: Context<*>,
   workspaceRoot: Path,
   projectDefinition: ProjectDefinition,
-  startDirs: Set<Path>? = null,
+  startDirs: Set<Path>,
   processContents: (rootDir: Path, currentDir: Path, contents: DirectoryContents) -> DirectoryContents?,
 ) {
-  val includeAbsolute =
-    projectDefinition.projectIncludes.map { workspaceRoot.resolve(it) }.filter { Files.exists(it) && Files.isDirectory(it) }
+  val includeAbsolute = projectDefinition.existingAbsoluteIncludes(workspaceRoot)
   if (includeAbsolute.isEmpty()) {
     return
   }
@@ -78,15 +77,10 @@ suspend fun traverseProjectDirectories(
         ),
     )
 
-  val initialTasks =
-    if (startDirs == null) {
-      includeAbsolute.map { ScanTask(it, it) }
-    } else {
-      startDirs.mapNotNull { startDir ->
-        val rootDir = includeAbsolute.filter { startDir.startsWith(it) }.maxByOrNull { it.nameCount }
-        rootDir?.let { ScanTask(it, startDir) }
-      }
-    }
+  val initialTasks = startDirs.mapNotNull { startDir ->
+    val rootDir = includeAbsolute.filter { startDir.startsWith(it) }.maxByOrNull { it.nameCount }
+    rootDir?.let { ScanTask(it, startDir) }
+  }
 
   if (initialTasks.isNotEmpty()) {
     traverseIncludedDirectories(initialTasks, processor)

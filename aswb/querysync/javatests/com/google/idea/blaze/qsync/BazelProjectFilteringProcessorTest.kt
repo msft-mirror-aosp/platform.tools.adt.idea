@@ -18,6 +18,7 @@ package com.google.idea.blaze.qsync
 import com.google.common.truth.Truth.assertThat
 import com.google.idea.blaze.common.NoopContext
 import com.google.idea.blaze.qsync.project.ProjectDefinition
+import com.google.idea.blaze.qsync.project.existingAbsoluteIncludes
 import com.google.idea.blaze.traverser.DirectoryContents
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -196,7 +197,12 @@ class BazelProjectFilteringProcessorTest {
     runBlocking {
       val def = ProjectDefinition.EMPTY.copy(projectIncludes = setOf(Path.of("nonexistent")))
       var callbackCalled = false
-      traverseProjectDirectories(context, workspaceRoot, def) { _, _, c ->
+      traverseProjectDirectories(
+        context,
+        workspaceRoot,
+        def,
+        def.existingAbsoluteIncludes(workspaceRoot),
+      ) { _, _, c ->
         callbackCalled = true
         c
       }
@@ -217,7 +223,12 @@ class BazelProjectFilteringProcessorTest {
       val visitedDirs = ConcurrentHashMap.newKeySet<Path>()
       val visitedFiles = ConcurrentHashMap.newKeySet<Path>()
 
-      traverseProjectDirectories(context, workspaceRoot, def) { _, currentDir, contents ->
+      traverseProjectDirectories(
+        context,
+        workspaceRoot,
+        def,
+        def.existingAbsoluteIncludes(workspaceRoot),
+      ) { _, currentDir, contents ->
         visitedDirs.add(currentDir)
         visitedFiles.addAll(contents.files.map { it.path })
         contents
