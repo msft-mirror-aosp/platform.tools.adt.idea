@@ -15,6 +15,7 @@
  */
 package com.google.idea.blaze.qsync
 
+import com.google.common.annotations.VisibleForTesting
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.qsync.java.PackageReader
@@ -38,17 +39,51 @@ internal val EMPTY_PATH: Path = Path.of("")
 internal val BUILD_PATH: Path = Path.of("BUILD")
 internal val BUILD_BAZEL_PATH: Path = Path.of("BUILD.bazel")
 
+/**
+ * Defines the scope of a directory scan for [ProjectStructureReaderImpl].
+ *
+ * @property dirsToScan Workspace-relative directories from which traversal should start.
+ * @property knownUnmodifiedPackages Workspace-relative paths of already-known build packages whose contents were not modified and do not
+ *   need to be rescanned. When encountered during traversal, they are recorded as direct subpackages of their enclosing package and their
+ *   subdirectories are not traversed.
+ */
+class ScanScope(
+  private val dirsToScan: Set<Path>,
+  private val knownUnmodifiedPackages: Set<Path>,
+) {
+  fun isKnownUnmodifiedPackage(path: Path): Boolean = path in knownUnmodifiedPackages
+
+  fun startDirs(workspaceRoot: Path): Set<Path> =
+    dirsToScan.map { workspaceRoot.resolve(it) }.filter { Files.exists(it) && Files.isDirectory(it) }.toSet()
+}
+
 /** Default implementation of [ProjectStructureReader] that traverses the filesystem to identify project packages and source files. */
-internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtensions, private val packageReader: PackageReader) :
-  ProjectStructureReader {
+class ProjectStructureReaderImpl(
+  private val fileExtensions: FileExtensions,
+  private val packageReader: PackageReader,
+) : ProjectStructureReader {
 
-  override fun read(context: Context<*>, workspaceRoot: Path, projectDefinition: ProjectDefinition): ProjectStructureData =
-    scanDirectories(context, workspaceRoot, projectDefinition)
-
-  private fun scanDirectories(
+  override fun read(
     context: Context<*>,
     workspaceRoot: Path,
     projectDefinition: ProjectDefinition,
+  ): ProjectStructureData =
+    scanDirectories(
+      context,
+      workspaceRoot,
+      projectDefinition,
+      ScanScope(
+        dirsToScan = projectDefinition.projectIncludes,
+        knownUnmodifiedPackages = emptySet(),
+      ),
+    )
+
+  @VisibleForTesting
+  fun scanDirectories(
+    context: Context<*>,
+    workspaceRoot: Path,
+    projectDefinition: ProjectDefinition,
+    scope: ScanScope,
   ): ProjectStructureData {
     val locator = BuildPackageLocator(workspaceRoot)
     /**
@@ -112,20 +147,39 @@ internal class ProjectStructureReaderImpl(private val fileExtensions: FileExtens
 
     val duration = measureTime {
       runBlocking {
-        traverseProjectDirectories(context, workspaceRoot, projectDefinition) { rootDir, currentDir, contents ->
-          val includeRoot = workspaceRoot.relativize(rootDir)
-          val candidateFiles =
-            choosePackageCandidates(contents.files.map { it.path }, fileExtensions) {
-              Files.exists(workspaceRoot.resolve(currentDir).resolve(it))
-            }
-          val javaPackage =
-            candidateFiles.firstNotNullOfOrNull { packageReader.readPackage(context, workspaceRoot.resolve(currentDir).resolve(it)) } ?: ""
+        traverseProjectDirectories(
+          context,
+          workspaceRoot,
+          projectDefinition,
+          scope.startDirs(workspaceRoot),
+        ) { rootDir, currentDir, contents ->
+          val relativeDir = workspaceRoot.relativize(currentDir)
+          if (scope.isKnownUnmodifiedPackage(relativeDir)) {
+            directSubpackagesMap.recordDirectSubpackage(relativeDir, locator)
+            null
+          } else {
+            val includeRoot = workspaceRoot.relativize(rootDir)
+            val candidateFiles =
+              choosePackageCandidates(
+                contents.files.map { it.path },
+                fileExtensions,
+              ) {
+                Files.exists(workspaceRoot.resolve(currentDir).resolve(it))
+              }
+            val javaPackage =
+              candidateFiles.firstNotNullOfOrNull {
+                packageReader.readPackage(
+                  context,
+                  workspaceRoot.resolve(currentDir).resolve(it),
+                )
+              } ?: ""
 
-          for (file in contents.files) {
-            val result = fileProcessor.processRegularFile(file, currentDir)
-            aggregateResult(includeRoot, result, javaPackage)
+            for (file in contents.files) {
+              val result = fileProcessor.processRegularFile(file, currentDir)
+              aggregateResult(includeRoot, result, javaPackage)
+            }
+            contents
           }
-          contents
         }
       }
     }
