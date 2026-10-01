@@ -52,6 +52,8 @@ message FindUsagesResponse {
 message RenderComposePreviewRequest {
   string file_path = 1;
   string composable = 2;
+  // If true, render errors are reported in full, including stack traces, instead of as a concise summary.
+  bool verbose = 3;
 }
 
 message RenderComposePreviewResponse {
