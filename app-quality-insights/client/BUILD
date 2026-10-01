@@ -29,6 +29,7 @@ kotlin_library(
     srcs = glob([
         "src/**/*.kt",
     ]),
+    visibility = ["//visibility:public"],
     deps = [
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
         "@maven//:com.google.api-client.google-api-client",
