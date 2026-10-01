@@ -205,7 +205,7 @@ class OpenFileAtLocationQuickFix(val myFilePosition: FilePosition) : BuildIssueQ
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val projectFile = project.projectFile ?: return CompletableFuture.completedFuture<Any>(null)
-    val filePositionFile = myFilePosition.file?.path ?: return CompletableFuture.completedFuture<Any>(null)
+    val filePositionFile = myFilePosition.path?.toString() ?: return CompletableFuture.completedFuture<Any>(null)
     val future = CompletableFuture<Any>()
     invokeLater {
       val file = projectFile.parent.fileSystem.findFileByPath(filePositionFile)

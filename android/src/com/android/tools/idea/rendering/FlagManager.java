@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.rendering;
 
+import static com.intellij.ui.dsl.listCellRenderer.BuilderKt.textListCellRenderer;
+
 import com.android.ide.common.resources.Locale;
 import com.android.ide.common.resources.LocaleManager;
 import com.android.ide.common.resources.configuration.FolderConfiguration;
@@ -22,7 +24,6 @@ import com.android.ide.common.resources.configuration.LocaleQualifier;
 import com.google.common.collect.Maps;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.util.Function;
 import icons.AndroidIcons;
 import icons.StudioIcons;
@@ -186,20 +187,14 @@ public class FlagManager {
   @NotNull
   public ListCellRenderer getLanguageCodeCellRenderer() {
     final Function<Object, String> nameMapper = getLanguageNameMapper();
-    return SimpleListCellRenderer.create((label, value, index) -> {
-      label.setText(nameMapper.fun(value));
-      label.setIcon(getFlag((String)value, null));
-    });
+    return textListCellRenderer("", nameMapper::fun);
   }
 
   /** Returns a {@link ListCellRenderer} suitable for displaying regions when the list model contains String region codes */
   @NotNull
   public ListCellRenderer getRegionCodeCellRenderer() {
     final Function<Object, String> nameMapper = getRegionNameMapper();
-    return SimpleListCellRenderer.create((label, value, index) -> {
-      label.setText(nameMapper.fun(value));
-      label.setIcon(getFlag(null, (String)value));
-    });
+    return textListCellRenderer("", nameMapper::fun);
   }
 
   /** A function which maps from language code to a language label: code + name */

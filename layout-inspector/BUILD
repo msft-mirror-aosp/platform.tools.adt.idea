@@ -22,22 +22,6 @@ iml_module(
     iml_files = ["intellij.android.layout-inspector.iml"],
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:kotlin-test",
-        "//tools/base/fakeadbserver:studio.android.sdktools.fakeadbserver",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/jps-model:intellij.android.jps.model",
-        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
-        "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
-    ],
-    test_srcs = ["testingSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -147,7 +131,10 @@ iml_module(
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
     test_resources = ["testResources"],
     test_shard_count = 2,
-    test_srcs = ["testSrc"],
+    test_srcs = [
+        "testSrc",
+        "testingSrc",
+    ],
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

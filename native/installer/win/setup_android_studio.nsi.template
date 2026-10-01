@@ -94,7 +94,9 @@ RequestExecutionLevel admin # The uninstaller always runs in admin mode
 
 !define VERSION_MAJOR 2026
 !define VERSION_MINOR 2
-!define VERSION ${VERSION_MAJOR}.${VERSION_MINOR}
+!ifndef VERSION
+    !define VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.{VERSION_MICRO_PATCH}
+!endif
 !define VENDOR Android
 !define COMPANY "Google LLC"
 !define URL http://developer.android.com
@@ -156,7 +158,7 @@ ShowUninstDetails hide
 ManifestDPIAware true
 
 # Right-click installer .exe -> Properties -> Details
-VIProductVersion ${VERSION}.0.0
+VIProductVersion ${VERSION}
 VIAddVersionKey ProductName "${APP_NAME}"
 VIAddVersionKey ProductVersion "${VERSION}"
 VIAddVersionKey CompanyName "${COMPANY}"

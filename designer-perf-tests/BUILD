@@ -86,7 +86,6 @@ iml_module(
     test_class = "com.android.tools.idea.rendering.PerfgateRenderTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/35.0.0",
@@ -131,6 +130,7 @@ iml_module(
         "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         "//tools/adt/idea/compose-designer:intellij.android.compose-designer.testFramework",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

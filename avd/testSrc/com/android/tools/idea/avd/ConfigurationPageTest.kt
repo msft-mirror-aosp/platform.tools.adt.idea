@@ -48,7 +48,6 @@ import com.android.tools.idea.adddevicedialog.LoadingState
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.flags.StudioFlags
-import com.android.utils.NullLogger
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
@@ -164,7 +163,7 @@ class ConfigurationPageTest {
 
   @Test
   fun configurationPage_extensionImages() {
-    val sdkFixture = SdkFixture().apply { repoPackages.setLocalPkgInfos(listOf(api34(), api34ext8())) }
+    val sdkFixture = SdkFixture().apply { setLocalPackages(api34(), api34ext8()) }
     with(ConfigurationPageFixture(sdkFixture)) {
       composeTestRule.onNodeWithClickableText("34").assertIsSelected()
 
@@ -184,7 +183,7 @@ class ConfigurationPageTest {
   @Test
   fun configurationPage_nameValidation() {
     with(SdkFixture()) {
-      repoPackages.setLocalPkgInfos(listOf(api34(), api34ext8()))
+      setLocalPackages(api34(), api34ext8())
 
       // Create a Pixel 8
       with(ConfigurationPageFixture(this)) {
@@ -224,7 +223,7 @@ class ConfigurationPageTest {
   fun configurationPage_preferredAbi() {
     with(SdkFixture()) {
       val api34Image = api34()
-      repoPackages.setLocalPkgInfos(listOf(api34Image, localApi34RiscV()))
+      setLocalPackages(api34Image, localApi34RiscV())
 
       with(ConfigurationPageFixture(this)) {
         // Select system image with RISC-V translation
@@ -273,7 +272,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val api34Image = api34()
       val api34PlayImage = api34Play()
-      repoPackages.setLocalPkgInfos(listOf(api34Image, api34PlayImage))
+      setLocalPackages(api34Image, api34PlayImage)
 
       with(ConfigurationPageFixture(this)) {
         // The Play image should be selected by default, and present in the device details
@@ -325,7 +324,7 @@ class ConfigurationPageTest {
       val remoteApi34Image = remoteApi34RiscV()
       val remoteApi34PlayImage = remoteApi34Play()
 
-      repoPackages.setLocalPkgInfos(listOf(api34Image))
+      setLocalPackages(api34Image)
 
       with(ConfigurationPageFixture(this, SystemImageState.INITIAL)) {
         composeTestRule.onNodeWithText("Loading system images...").assertIsDisplayed()
@@ -362,7 +361,7 @@ class ConfigurationPageTest {
   fun systemImageLoading_remoteError() {
     with(SdkFixture()) {
       val api34Image = api34()
-      repoPackages.setLocalPkgInfos(listOf(api34Image))
+      setLocalPackages(api34Image)
 
       with(ConfigurationPageFixture(this, SystemImageState.INITIAL)) {
         composeTestRule.onNodeWithText("Loading system images...").assertIsDisplayed()
@@ -388,7 +387,7 @@ class ConfigurationPageTest {
         composeTestRule.onNodeWithContentDescription("Download").assertIsDisplayed()
         composeTestRule.onNodeWithText(remoteImage.displayName).assertIsSelected()
 
-        repoPackages.setLocalPkgInfos(listOf(localImage))
+        setLocalPackages(localImage)
         systemImageStateFlow.value = systemImageState()
         composeTestRule.waitForIdle()
 
@@ -432,7 +431,7 @@ class ConfigurationPageTest {
           promptYesNoResult = true,
           downloadPackagesResult = true,
           onDownload = {
-            repoPackages.setLocalPkgInfos(listOf(localImage))
+            setLocalPackages(localImage)
           },
         )
 
@@ -456,7 +455,7 @@ class ConfigurationPageTest {
       val localImage = api34()
       val remoteQemuNext =
         FakeRemotePackage(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH).apply { displayName = EmulatorPackage.QEMU_NEXT_PACKAGE_NAME }
-      repoPackages.setLocalPkgInfos(listOf(localImage))
+      setLocalPackages(localImage)
       repoPackages.setRemotePkgInfos(listOf(remoteQemuNext))
 
       val context =
@@ -487,7 +486,7 @@ class ConfigurationPageTest {
       val remoteQemuNext =
         FakeRemotePackage(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH).apply { displayName = EmulatorPackage.QEMU_NEXT_PACKAGE_NAME }
       val localQemuNext = FakeLocalPackage(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
-      repoPackages.setLocalPkgInfos(listOf(localImage))
+      setLocalPackages(localImage)
       repoPackages.setRemotePkgInfos(listOf(remoteQemuNext))
 
       val context =
@@ -495,7 +494,7 @@ class ConfigurationPageTest {
           promptYesNoResult = true,
           downloadPackagesResult = true,
           onDownload = {
-            repoPackages.setLocalPkgInfos(listOf(localImage, localQemuNext))
+            setLocalPackages(localImage, localQemuNext)
           },
         )
 
@@ -522,7 +521,7 @@ class ConfigurationPageTest {
       val localImage = api37()
       val remoteQemuNext =
         FakeRemotePackage(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH).apply { displayName = EmulatorPackage.QEMU_NEXT_PACKAGE_NAME }
-      repoPackages.setLocalPkgInfos(listOf(localImage))
+      setLocalPackages(localImage)
       repoPackages.setRemotePkgInfos(listOf(remoteQemuNext))
 
       val context =
@@ -553,7 +552,7 @@ class ConfigurationPageTest {
       val localQemuNext = FakeLocalPackage(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
       val remoteQemuNext =
         FakeRemotePackage(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH).apply { displayName = EmulatorPackage.QEMU_NEXT_PACKAGE_NAME }
-      repoPackages.setLocalPkgInfos(listOf(localImage, localQemuNext))
+      setLocalPackages(localImage, localQemuNext)
       repoPackages.setRemotePkgInfos(listOf(remoteQemuNext))
 
       val context =
@@ -581,7 +580,7 @@ class ConfigurationPageTest {
   fun ensureNeededPackagesArePresent_noPackagesRequired_returnsTrueImmediately() {
     with(SdkFixture()) {
       val localImage = api34()
-      repoPackages.setLocalPkgInfos(listOf(localImage))
+      setLocalPackages(localImage)
       val systemImages = sdkHandler.getSystemImageManager(FakeProgressIndicator()).images
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
@@ -605,8 +604,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -629,8 +627,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -653,8 +650,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -667,7 +663,7 @@ class ConfigurationPageTest {
         FakeConfigurationPageContext(
           promptYesNoResult = true,
           downloadPackagesResult = true,
-          onDownload = { repoPackages.setLocalPkgInfos(listOf(localPkg)) },
+          onDownload = { setLocalPackages(localPkg) },
         )
       val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), emptyList())
 
@@ -685,8 +681,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -712,7 +707,7 @@ class ConfigurationPageTest {
   fun ensureNeededPackagesArePresent_requiredExtraPackages_downloadsSuccessfully() {
     with(SdkFixture()) {
       val localImage = api34()
-      repoPackages.setLocalPkgInfos(listOf(localImage))
+      setLocalPackages(localImage)
       val systemImages = sdkHandler.getSystemImageManager(FakeProgressIndicator()).images
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
@@ -732,7 +727,7 @@ class ConfigurationPageTest {
           promptYesNoResult = true,
           downloadPackagesResult = true,
           onDownload = {
-            repoPackages.setLocalPkgInfos(listOf(localImage, extraLocalPkg))
+            setLocalPackages(localImage, extraLocalPkg)
           },
         )
       val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), listOf(extraRemotePkg))
@@ -748,8 +743,7 @@ class ConfigurationPageTest {
     with(SdkFixture()) {
       val remotePkg = remoteApi34()
       repoPackages.setRemotePkgInfos(listOf(remotePkg))
-      val remoteImage =
-        SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), NullLogger()).get().first()
+      val remoteImage = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().first()
       val pixel8 = readTestDevices().first { it.name == "Pixel 8" }
       val device =
         VirtualDevice(pixel8).apply {
@@ -769,7 +763,7 @@ class ConfigurationPageTest {
           promptYesNoResult = true,
           downloadPackagesResult = true,
           onDownload = {
-            repoPackages.setLocalPkgInfos(listOf(localImage, extraLocalPkg))
+            setLocalPackages(localImage, extraLocalPkg)
           },
         )
       val result = context.ensureNeededPackagesArePresent(sdkHandler, device, JPanel(), listOf(extraRemotePkg))

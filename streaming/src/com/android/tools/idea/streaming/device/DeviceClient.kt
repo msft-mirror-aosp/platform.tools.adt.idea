@@ -71,6 +71,7 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.IntFunction
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -100,6 +101,7 @@ internal const val USE_UINPUT = 0x08
 internal const val DEVICE_IS_XR = 0x10
 internal const val MIRROR_GLASSES_DISPLAY = 0x20
 internal const val TRACE_CLIPBOARD_SYNCHRONIZATION = 0x40
+internal const val ALLOW_AVC_ENCODING = 0x80
 
 /** Maximum cumulative length of agent messages to remember. */
 private const val MAX_TOTAL_AGENT_MESSAGE_LENGTH = 10_000
@@ -330,7 +332,7 @@ class DeviceClient(
   /** Similar to [withTimeout] but throws [TimeoutException] with the given message. */
   private suspend fun <T> withVerboseTimeout(timeMillis: Long, timeoutMessage: String, block: suspend CoroutineScope.() -> T): T {
     return try {
-      withTimeout(timeMillis, block)
+      withTimeout(timeMillis.milliseconds, block)
     } catch (_: TimeoutCancellationException) {
       throw TimeoutException(timeoutMessage)
     }
@@ -432,7 +434,8 @@ class DeviceClient(
         (if (StudioFlags.DEVICE_MIRRORING_USE_UINPUT.get()) USE_UINPUT else 0) or
         (if (deviceConfig.deviceType == DeviceType.XR_HEADSET) DEVICE_IS_XR else 0) or // Workaround for b/406870742 and b/408280128.
         (if (StudioFlags.DEVICE_MIRRORING_GLASSES_DISPLAY.get()) MIRROR_GLASSES_DISPLAY else 0) or
-        (if (StudioFlags.DEVICE_MIRRORING_TRACE_CLIPBOARD_SYNCHRONIZATION.get()) TRACE_CLIPBOARD_SYNCHRONIZATION else 0)
+        (if (StudioFlags.DEVICE_MIRRORING_TRACE_CLIPBOARD_SYNCHRONIZATION.get()) TRACE_CLIPBOARD_SYNCHRONIZATION else 0) or
+        (if (OsVideoDecoder.isSupported("avc")) ALLOW_AVC_ENCODING else 0)
     val flagsArg = if (flags != 0) " --flags=$flags" else ""
     val maxBitRate = calculateMaxBitRate()
     val maxBitRateArg = if (maxBitRate > 0) " --max_bit_rate=$maxBitRate" else ""
@@ -605,7 +608,7 @@ class DeviceClient(
                 for (listener in agentTerminationListeners) {
                   listener.agentTerminated(it.exitCode)
                 }
-                cancel()
+                this@launch.cancel()
               }
             }
           }

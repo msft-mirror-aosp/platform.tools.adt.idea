@@ -294,6 +294,9 @@
       "hit": "IDE"
     },
     {
+      "hit": "More"
+    },
+    {
       "hit": "Project"
     },
     {
@@ -473,11 +476,11 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Review Commit with AI",
+      "hit": "Review Changes with AI",
       "path": "ActionManager"
     },
     {
-      "hit": "Review Pending Changes with AI",
+      "hit": "Review Commit with AI",
       "path": "ActionManager"
     },
     {

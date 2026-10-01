@@ -19,6 +19,11 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchma
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput.Companion.LINK_GROUP
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.FileUtilRt
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.util.Locale
 
 /**
  * This class manages the parsed output of a benchmark run. The lines array is a list of benchmark lines with the "benchmark: " prefix
@@ -60,6 +65,30 @@ class BenchmarkOutput private constructor(val lines: List<BenchmarkLine>) {
     val BENCHMARK_LINK_REGEX = Regex("""(\[(?<title>[^]]*)])?\((?<link>(?<protocol>(file|uri|http|https)://)(?<path>[^)]*))\)""")
     val LINK_GROUP = "link"
     val BENCHMARK_TRACE_FILE_PREFIX = "file://"
+    val BENCHMARK_TRACE_FILE_EXTENSIONS = setOf("trace", "perfetto-trace")
+
+    fun isBenchmarkTraceFile(fileName: String): Boolean =
+      FileUtilRt.getExtension(fileName).lowercase(Locale.ROOT) in BENCHMARK_TRACE_FILE_EXTENSIONS
+
+    /** Returns the directory that benchmark trace files are copied to and opened from, with symbolic links resolved when possible. */
+    fun getBenchmarkTraceDirectory(): Path =
+      try {
+        Paths.get(FileUtil.getTempDirectory()).toRealPath()
+      } catch (e: Exception) {
+        Paths.get(FileUtil.getTempDirectory()).toAbsolutePath().normalize()
+      }
+
+    /**
+     * Returns whether [path] is a plain relative path: not blank, not rooted, without a drive letter or NTFS stream separator (`:`), and
+     * without segments made only of dots and whitespace (such as `..`, `.. ` or `...`, which Windows may normalize to `.` or `..`).
+     * Benchmark links come from the device, so their file paths must not be able to point anywhere else.
+     */
+    fun isSafeRelativeFilePath(path: String): Boolean =
+      path.isNotBlank() &&
+        !path.startsWith("/") &&
+        !path.startsWith("\\") &&
+        !path.contains(':') &&
+        path.split('/', '\\').none { segment -> segment.isNotEmpty() && segment.all { it == '.' || it.isWhitespace() } }
   }
 }
 

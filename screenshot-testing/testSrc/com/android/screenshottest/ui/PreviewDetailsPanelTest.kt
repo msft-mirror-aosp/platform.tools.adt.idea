@@ -21,24 +21,34 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ImageWit
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.actionSystem.ActionToolbar
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import java.awt.Container
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JSeparator
+import javax.swing.event.ListDataEvent
+import javax.swing.event.ListDataListener
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.mockito.Mockito.mock
 
 class PreviewDetailsPanelTest {
 
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
+
+  @get:Rule val temporaryFolder = TemporaryFolder()
 
   @Test
   fun testSwitchToSinglePreview() = runInEdtAndWait {
@@ -406,6 +416,150 @@ class PreviewDetailsPanelTest {
       "Single preview panel should contain a JSeparator divider",
       containsSeparator(topContainer),
     )
+  }
+
+  @Test
+  fun testStreamingResultsOnlyUpdateChangedRows() = runInEdtAndWait {
+    val panel = PreviewDetailsPanel(projectRule.project)
+    val a1 = preview("a1", method = "a")
+    val b1 = preview("b1", method = "b")
+    val b2 = preview("b2", method = "b")
+    val c1 = preview("c1", method = "c")
+    panel.displayPreviews(listOf(a1, b1), ScreenshotViewType.NEW, null)
+    val list = findPreviewList(panel)
+    val events = recordListEvents(list)
+
+    // A new preview for the last method only changes that row.
+    panel.displayPreviews(listOf(a1, b1, b2), ScreenshotViewType.NEW, null)
+    assertEquals(listOf("changed 1..1"), events)
+    assertEquals(listOf(b1, b2), (list.model.getElementAt(1) as MethodGroup).previews)
+
+    // A preview for a new method appends a row.
+    events.clear()
+    panel.displayPreviews(listOf(a1, b1, b2, c1), ScreenshotViewType.NEW, null)
+    assertEquals(listOf("added 2..2"), events)
+
+    // The same previews don't touch the model at all.
+    events.clear()
+    panel.displayPreviews(listOf(a1, b1, b2, c1), ScreenshotViewType.NEW, null)
+    assertEquals(emptyList<String>(), events)
+
+    // Fewer previews remove the trailing rows.
+    events.clear()
+    panel.displayPreviews(listOf(a1), ScreenshotViewType.NEW, null)
+    assertEquals(listOf("removed 1..2"), events)
+    assertEquals(1, list.model.size)
+  }
+
+  @Test
+  fun testViewTypeChangeRebuildsAllRows() = runInEdtAndWait {
+    val panel = PreviewDetailsPanel(projectRule.project)
+    val previews = listOf(preview("a1", method = "a"), preview("b1", method = "b"))
+    panel.displayPreviews(previews, ScreenshotViewType.NEW, null)
+    val list = findPreviewList(panel)
+    val events = recordListEvents(list)
+
+    panel.displayPreviews(previews, ScreenshotViewType.DIFF, null)
+
+    // Row heights depend on the view type, so every row is measured again.
+    assertEquals(listOf("removed 0..1", "added 0..1"), events)
+  }
+
+  @Test
+  fun testRenderingRowsRepeatedlyDecodesEachImageOnce() = runInEdtAndWait {
+    val decodedPaths = mutableListOf<String>()
+    val decodeExecutor = ManualExecutorService()
+    val loader =
+      ThumbnailLoader(
+        executor = decodeExecutor,
+        decode = {
+          decodedPaths.add(it)
+          mock()
+        },
+      )
+    val panel = PreviewDetailsPanel(projectRule.project, thumbnailLoader = loader)
+    val previews =
+      (1..4).flatMap { m -> (1..5).map { p -> preview("m${m}p$p", method = "m$m", srcImagePath = "/img/m${m}p$p.png") } }
+    panel.displayPreviews(previews, ScreenshotViewType.NEW, null)
+    val list = findPreviewList(panel)
+
+    // Simulate the list painting every row several times while decodes are still running, then
+    // after they complete.
+    repeat(3) {
+      paintAllRows(list)
+      paintAllRows(list)
+      decodeExecutor.runAll()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    }
+    paintAllRows(list)
+
+    assertEquals(previews.map { it.srcImagePath }.toSet(), decodedPaths.toSet())
+    assertEquals("Each image should be decoded exactly once", previews.size, decodedPaths.size)
+  }
+
+  @Test
+  fun testSinglePreviewLoadsFullImageOnProvidedExecutor() = runInEdtAndWait {
+    val imageFile = temporaryFolder.newFile("new.png")
+    ImageIO.write(BufferedImage(10, 10, BufferedImage.TYPE_INT_ARGB), "png", imageFile)
+    val imageExecutor = ManualExecutorService()
+    val panel = PreviewDetailsPanel(projectRule.project, imageLoadExecutor = imageExecutor)
+
+    panel.displayPreviews(
+      listOf(preview("p", method = "m", srcImagePath = imageFile.absolutePath)),
+      ScreenshotViewType.NEW,
+      ComposePanel(),
+    )
+    val newPanel = findImagePanel(panel, ScreenshotViewType.NEW)
+    assertNotNull(newPanel)
+    assertFalse("The image should load in the background", newPanel!!.hasImage())
+
+    imageExecutor.runAll()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertTrue("The image should be loaded", newPanel.hasImage())
+  }
+
+  private fun preview(name: String, method: String, srcImagePath: String? = null) =
+    PreviewDetails(
+      testId = "Class.$method.$name",
+      className = "Class",
+      methodName = method,
+      previewName = name,
+      testResult = AndroidTestCaseResult.PASSED,
+      srcImagePath = srcImagePath,
+    )
+
+  @Suppress("UNCHECKED_CAST")
+  private fun findPreviewList(panel: PreviewDetailsPanel): JList<MethodGroup> {
+    val activePanel = panel.components.first { it.isVisible } as JPanel
+    val scrollPane = activePanel.components.find { it is JBScrollPane } as JBScrollPane
+    return scrollPane.viewport.view as JList<MethodGroup>
+  }
+
+  private fun recordListEvents(list: JList<*>): MutableList<String> {
+    val events = mutableListOf<String>()
+    list.model.addListDataListener(
+      object : ListDataListener {
+        override fun intervalAdded(e: ListDataEvent) {
+          events.add("added ${e.index0}..${e.index1}")
+        }
+
+        override fun intervalRemoved(e: ListDataEvent) {
+          events.add("removed ${e.index0}..${e.index1}")
+        }
+
+        override fun contentsChanged(e: ListDataEvent) {
+          events.add("changed ${e.index0}..${e.index1}")
+        }
+      }
+    )
+    return events
+  }
+
+  private fun paintAllRows(list: JList<MethodGroup>) {
+    for (i in 0 until list.model.size) {
+      list.cellRenderer.getListCellRendererComponent(list, list.model.getElementAt(i), i, false, false)
+    }
   }
 
   private fun findLabelsInScrollPaneContent(container: Container): List<String> {

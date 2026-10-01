@@ -393,6 +393,65 @@ public class ColumnTreeBuilder {
     }
   }
 
+  /**
+   * Returns the tooltip of the column renderer under the given mouse event, or null if that column has none.
+   *
+   * <p>{@link JTree#getToolTipText(MouseEvent)} instead returns the row's tooltip, which is the first non-null one among all columns. Trees
+   * with per-column tooltips should override it, delegate here, and fall back to {@code super} for columns without one. Tooltips only show
+   * if the tree is registered with the {@link javax.swing.ToolTipManager}.
+   */
+  @Nullable
+  public static String getColumnToolTipText(@NotNull JTree tree, @NotNull TableColumnModel columnModel, @Nullable MouseEvent event) {
+    TreeCellRenderer renderer = tree.getCellRenderer();
+    if (event == null || renderer == null) {
+      return null;
+    }
+
+    int row = getRowForLocation(tree, event.getX(), event.getY());
+    // Columns cannot be reordered (see build()), so the column index doubles as the index of the column's renderer in the row renderer.
+    int column = columnModel.getColumnIndexAtX(event.getX());
+    if (row == -1 || column == -1) {
+      return null;
+    }
+
+    TreePath path = tree.getPathForRow(row);
+    if (path == null) {
+      return null;
+    }
+
+    Object node = path.getLastPathComponent();
+    Component rowComponent = renderer.getTreeCellRendererComponent(
+      tree, node, tree.isRowSelected(row), tree.isExpanded(row), tree.getModel().isLeaf(node), row, tree.hasFocus());
+    if (!(rowComponent instanceof Container) || column >= ((Container)rowComponent).getComponentCount()) {
+      return null;
+    }
+
+    Component columnComponent = ((Container)rowComponent).getComponent(column);
+    return columnComponent instanceof JComponent ? ((JComponent)columnComponent).getToolTipText() : null;
+  }
+
+  /**
+   * Row bounds does not include handler on the left, so mark dirty area from x value zero and adjust width.
+   */
+  private static Rectangle getHoverBounds(JTree tree, int row) {
+    Rectangle bounds = tree.getRowBounds(row);
+    if (bounds == null) {
+      return new Rectangle();
+    }
+    return new Rectangle(0, bounds.y, bounds.width + bounds.x, bounds.height);
+  }
+
+  /**
+   * Point may be at tree collapse/expand handler, find closest row first and verify bounds.
+   */
+  private static int getRowForLocation(JTree tree, int x, int y) {
+    int row = tree.getClosestRowForLocation(x, y);
+    if (row != -1 && getHoverBounds(tree, row).contains(x, y)) {
+      return row;
+    }
+    return -1;
+  }
+
   private static int getTreeColumnWidth(JTable table) {
     if (table == null || table.getColumnModel().getColumnCount() == 0) {
       return 0;
@@ -1317,25 +1376,6 @@ public class ColumnTreeBuilder {
 
     public int getHoveredRow() {
       return myHoveredRow;
-    }
-
-    /**
-     * Row bounds does not include handler on the left, so mark dirty area from x value zero and adjust width.
-     */
-    private static Rectangle getHoverBounds(JTree tree, int row) {
-      Rectangle bounds = tree.getRowBounds(row);
-      return new Rectangle(0, bounds.y, bounds.width + bounds.x, bounds.height);
-    }
-
-    /**
-     * Point may be at tree collapse/expand handler, find closest row first and verify bounds.
-     */
-    private static int getRowForLocation(JTree tree, int x, int y) {
-      int row = tree.getClosestRowForLocation(x, y);
-      if (row != -1 && getHoverBounds(tree, row).contains(x, y)) {
-        return row;
-      }
-      return -1;
     }
   }
 }

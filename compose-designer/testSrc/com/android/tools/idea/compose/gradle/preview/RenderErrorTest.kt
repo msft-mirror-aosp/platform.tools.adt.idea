@@ -153,7 +153,6 @@ class RenderErrorTest {
                 size = Dimension(1000, 800)
                 add(previewView, BorderLayout.CENTER)
               },
-              createFakeWindow = true,
               parentDisposable = fixture.testRootDisposable,
             )
             .also { it.root.validate() }

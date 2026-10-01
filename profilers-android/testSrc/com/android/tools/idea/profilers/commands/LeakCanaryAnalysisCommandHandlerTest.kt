@@ -17,6 +17,8 @@ package com.android.tools.idea.profilers.commands
 
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisData
+import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisSuccess
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profiler.proto.TransportServiceGrpc
 import com.google.common.truth.Truth.assertThat
@@ -45,12 +47,12 @@ class LeakCanaryAnalysisCommandHandlerTest {
   }
 
   /**
-   * Verifies the execution flow of the handler. Ensures that the command's string payload is properly extracted and converted into a
-   * LEAKCANARY_ANALYSIS Common.Event, populated with the correct timestamp, process ID, and group ID, and finally dropped into the event
-   * queue for the UI layer to consume.
+   * Verifies the execution flow of the handler for legacy string payloads (Flag OFF). Ensures that the command's string payload is properly
+   * extracted and converted into a LEAKCANARY_ANALYSIS Common.Event, populated with the correct timestamp, process ID, and group ID, and
+   * finally dropped into the event queue for the UI layer to consume.
    */
   @Test
-  fun testExecute() {
+  fun testExecuteWithLegacyStringPayload() {
     val stub = mock(TransportServiceGrpc.TransportServiceBlockingStub::class.java)
     val queue = LinkedBlockingDeque<Common.Event>()
     val handler = LeakCanaryAnalysisCommandHandler(stub, queue)
@@ -60,9 +62,9 @@ class LeakCanaryAnalysisCommandHandlerTest {
     val timeResponse = Transport.TimeResponse.newBuilder().setTimestampNs(expectedTimestamp).build()
     `when`(stub.getCurrentTime(any(Transport.TimeRequest::class.java))).thenReturn(timeResponse)
 
-    // Create a fake SEND_LEAKCANARY_ANALYSIS command
+    // Create a fake SEND_LEAKCANARY_ANALYSIS command with legacy string payload
     val dataPayload = "fake_shark_analysis_json_or_string"
-    val analysisCmd = Commands.SendLeakCanaryAnalysisData.newBuilder().setData(dataPayload).build()
+    val analysisCmd = LeakCanaryAnalysisData.newBuilder().setData(dataPayload).build()
     val command =
       Commands.Command.newBuilder()
         .setType(Commands.Command.CommandType.SEND_LEAKCANARY_ANALYSIS)
@@ -89,5 +91,39 @@ class LeakCanaryAnalysisCommandHandlerTest {
     // Verify the payload
     assertThat(event.hasLeakcanaryAnalysis()).isTrue()
     assertThat(event.leakcanaryAnalysis.data).isEqualTo(dataPayload)
+  }
+
+  /**
+   * Verifies the execution flow of the handler for structured Protobuf payloads (Flag ON). Ensures that the structured
+   * LeakCanaryAnalysisSuccess payload is preserved intact on the generated Common.Event.
+   */
+  @Test
+  fun testExecuteWithStructuredProtoPayload() {
+    val stub = mock(TransportServiceGrpc.TransportServiceBlockingStub::class.java)
+    val queue = LinkedBlockingDeque<Common.Event>()
+    val handler = LeakCanaryAnalysisCommandHandler(stub, queue)
+
+    val expectedTimestamp = 987654321L
+    val timeResponse = Transport.TimeResponse.newBuilder().setTimestampNs(expectedTimestamp).build()
+    `when`(stub.getCurrentTime(any(Transport.TimeRequest::class.java))).thenReturn(timeResponse)
+
+    val successProto = LeakCanaryAnalysisSuccess.newBuilder().putMetadata("App", "com.example").build()
+    val analysisCmd =
+      LeakCanaryAnalysisData.newBuilder().setCreatedAtTimeMillis(1000L).setAnalysisDurationMillis(250L).setSuccess(successProto).build()
+    val command =
+      Commands.Command.newBuilder()
+        .setType(Commands.Command.CommandType.SEND_LEAKCANARY_ANALYSIS)
+        .setPid(99)
+        .setSendLeakcanaryAnalysis(analysisCmd)
+        .build()
+
+    val response = handler.execute(command)
+    assertThat(response).isEqualTo(Transport.ExecuteResponse.getDefaultInstance())
+
+    assertThat(queue).hasSize(1)
+    val event = queue.take()
+    assertThat(event.hasLeakcanaryAnalysis()).isTrue()
+    assertThat(event.leakcanaryAnalysis.hasSuccess()).isTrue()
+    assertThat(event.leakcanaryAnalysis.createdAtTimeMillis).isEqualTo(1000L)
   }
 }

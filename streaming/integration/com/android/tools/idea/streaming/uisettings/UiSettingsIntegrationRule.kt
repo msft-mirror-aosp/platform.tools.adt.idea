@@ -217,7 +217,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
           isFocusable = true
           size = Dimension(200, 300)
         }
-      fakeUi = FakeUi(scrollPane, createFakeWindow = true, parentDisposable = testRootDisposable)
+      fakeUi = FakeUi(scrollPane, parentDisposable = testRootDisposable)
       devicePanel.createContent(true)
       fakeUi.layoutAndDispatchEvents()
       fakeUi.render()
@@ -257,7 +257,7 @@ internal class UiSettingsIntegrationRule : ExternalResource() {
 
   private fun findPopup(): JBPopup {
     val popup = popupRule.fakePopupFactory.getNextPopup()
-    FakeUi(popup.content, createFakeWindow = true, parentDisposable = testRootDisposable)
+    FakeUi(popup.content, parentDisposable = testRootDisposable)
     return popup
   }
 

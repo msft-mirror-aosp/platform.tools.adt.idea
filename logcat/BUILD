@@ -12,7 +12,6 @@ iml_module(
     iml_files = ["intellij.android.logcat.iml"],
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
-    test_resources = ["testResources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -83,6 +82,7 @@ iml_module(
         "//tools/adt/idea/android-adb:intellij.android.adb.tests",
     ],
     test_friends = ["//tools/adt/idea/logcat:intellij.android.logcat"],
+    test_resources = ["testResources"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

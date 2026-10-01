@@ -11,17 +11,6 @@ iml_module(
     kotlin_use_compose = True,
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/analytics-library/testing:android.sdktools.analytics-testing",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-    ],
-    test_srcs = ["testFramework"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -71,6 +60,36 @@ iml_module(
 
 # managed by go/iml_to_build
 iml_module(
+    name = "intellij.android.designer.testFramework",
+    enable_tests = False,
+    iml_files = ["intellij.android.designer.testFramework.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/designer:intellij.android.designer",
+        "//tools/adt/idea/android:intellij.android.core",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/analytics-library/shared:analytics-shared",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing",
+        "//tools/adt/idea/.idea/libraries:layoutlib",
+        "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/adt/idea/rendering:intellij.android.rendering",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+    ],
+    test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
+    test_srcs = ["testFramework"],
+    visibility = ["//visibility:public"],
+    # do not sort: must match IML order
+    deps = ["@intellij//:intellij-sdk"],
+)
+
+# managed by go/iml_to_build
+iml_module(
     name = "intellij.android.designer.tests",
     iml_files = ["intellij.android.designer.tests.iml"],
     kotlin_use_compose = True,
@@ -89,7 +108,6 @@ iml_module(
     test_class = "com.android.tools.idea.DesignerTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/latest",
@@ -142,6 +160,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_resources = ["testResources"],

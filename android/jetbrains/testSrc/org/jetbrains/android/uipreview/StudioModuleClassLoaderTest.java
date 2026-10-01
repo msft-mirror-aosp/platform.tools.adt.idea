@@ -427,6 +427,60 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
     StudioModuleClassLoaderManager.get().release(loaderRef);
   }
 
+  public void testNotUpToDate_whenDependenciesContainDuplicatesWithSameCount() throws IOException {
+    File basePath = new File(Objects.requireNonNull(getProject().getBasePath()));
+    File gradleFolder = basePath.toPath().resolve(".gradle").toFile();
+    String libFolder = "libraryFolder";
+    String libJarA = "fileA.jar";
+    String libJarB = "fileB.jar";
+    File libFolderFile = gradleFolder.toPath().resolve(libFolder).toFile();
+    assertTrue(libFolderFile.exists() || libFolderFile.mkdirs());
+    Files.createFile(libFolderFile.toPath().resolve(libJarA));
+    Files.createFile(libFolderFile.toPath().resolve(libJarB));
+
+    AndroidLibraryDependency libA = ideAndroidLibrary(gradleFolder, "com.example:libraryA:1.0", libFolder, libJarA);
+    AndroidLibraryDependency libB = ideAndroidLibrary(gradleFolder, "com.example:libraryB:1.0", libFolder, libJarB);
+
+    ModuleModelBuilder appModuleBuilder =
+      new AndroidModuleModelBuilder(
+        ":app",
+        "debug",
+        new AndroidProjectBuilder()
+          .withAndroidLibraryDependencyList((it, variant) -> ImmutableList.of(libA, libB)));
+
+    setupTestProjectFromAndroidModel(
+      getProject(),
+      basePath,
+      JavaModuleModelBuilder.getRootModuleBuilder(),
+      appModuleBuilder
+    );
+
+    Module appModule = gradleModule(getProject(), ":app");
+    ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderRef = StudioModuleClassLoaderManager.get()
+      .getPrivate(null, StudioModuleRenderContext.forModule(Objects.requireNonNull(appModule)));
+    StudioModuleClassLoader loader = loaderRef.getClassLoader();
+    assertTrue(loader.areDependenciesUpToDate());
+
+    // Update dependencies so total element count is still 2, but libB was replaced with duplicate libA: [libA, libA]
+    ModuleModelBuilder updatedAppModuleBuilder =
+      new AndroidModuleModelBuilder(
+        ":app",
+        "debug",
+        new AndroidProjectBuilder()
+          .withAndroidLibraryDependencyList((it, variant) -> ImmutableList.of(libA, libA)));
+
+    updateTestProjectFromAndroidModel(
+      getProject(),
+      basePath,
+      JavaModuleModelBuilder.getRootModuleBuilder(),
+      updatedAppModuleBuilder
+    );
+
+    assertFalse(loader.areDependenciesUpToDate());
+
+    StudioModuleClassLoaderManager.get().release(loaderRef);
+  }
+
   public void testModuleClassLoaderCopy() {
     ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderRef = StudioModuleClassLoaderManager.get()
       .getPrivate(null, StudioModuleRenderContext.forModule(Objects.requireNonNull(myFixture.getModule())));

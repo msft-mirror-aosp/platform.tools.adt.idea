@@ -369,6 +369,10 @@ public final class StudioFlags {
     PROFILER, "leakcanary", "LeakCanary",
     "Enables the integration of leakCanary and display of leaks");
 
+  public static final Flag<Boolean> PROFILER_LEAKCANARY_OCCURRENCES = new BooleanFlag(
+    PROFILER, "leakcanary.occurrences", "LeakCanary Occurrences & Direct Integration",
+    "Enables tracking of multiple identical memory leaks, and upgrades the integration to use direct object mapping (bypassing the legacy Logcat text parser for both on-host and on-device flows).");
+
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android");
 
@@ -2453,10 +2457,10 @@ public final class StudioFlags {
                     "Enable Agent Context Protocol (ACP) Support",
                     "Allows using ACP-compatible agent harnesses");
 
-  public static final Flag<Boolean> STUDIOBOT_ACP_CODEX_OVERRIDE =
-    new BooleanFlag(STUDIOBOT, "acp.codex.override",
-                    "Enable config overrides for the Codex ACP agent",
-                    "Injects overrides such as disabling conflicting tools and adding developer instructions into the CODEX_CONFIG environment variable");
+  public static final Flag<Boolean> STUDIOBOT_ACP_CODEX_OVERRIDE_DISABLED =
+    new BooleanFlag(STUDIOBOT, "acp.codex.override.disabled",
+                    "Disable config overrides for the Codex ACP agent",
+                    "Disables injecting overrides such as disabling conflicting tools and adding developer instructions into the CODEX_CONFIG environment variable");
 
   public static final Flag<Boolean> STUDIOBOT_ACP_PLAN_CAPABILITIES_ENABLED =
     new BooleanFlag(STUDIOBOT, "acp.plan.capabilities.enabled",
@@ -2732,11 +2736,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "import.project.enabled",
                     "Enable Import Project migration",
                     "Enables the Import Project migration feature in the UI.");
-
-  public static final Flag<Boolean> IMPORT_PROJECT_KMP_SUPPORT_ENABLED =
-    new BooleanFlag(STUDIOBOT, "import.project.kmp.enabled",
-                    "Enable KMP support in Import Project migration",
-                    "Enables KMP target support in the Import Project migration wizard and agent.");
 
   public static final Flag<Boolean> STUDIOBOT_IMAGE_REF_ENABLED =
     new BooleanFlag(STUDIOBOT, "image.ref.enabled",

@@ -16,6 +16,7 @@
 package com.android.tools.idea.testartifacts.instrumented.testsuite.actions
 
 import com.android.tools.idea.testartifacts.instrumented.testsuite.export.importAndroidTestMatrixResultXmlFile
+import com.android.tools.idea.testartifacts.instrumented.testsuite.export.isXmlFileSafeToImport
 import com.intellij.execution.testframework.sm.SmRunnerBundle
 import com.intellij.execution.testframework.sm.runner.history.actions.AbstractImportTestsAction
 import com.intellij.icons.AllIcons
@@ -26,6 +27,7 @@ import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 
 /** Customized import tests from action which supports additional test format such as UTP test results. */
@@ -54,6 +56,9 @@ class ImportTestsFromFileAction :
             override fun actionPerformed(e: AnActionEvent) {
               val project = e.project ?: return
               val virtualFile = getFile(project) ?: return
+              if (!isXmlFileSafeToImport(VfsUtilCore.virtualToIoFile(virtualFile))) {
+                return
+              }
               if (!importAndroidTestMatrixResultXmlFile(project, virtualFile)) {
                 // Fallback to the standard IntelliJ test import action.
                 super.actionPerformed(e)

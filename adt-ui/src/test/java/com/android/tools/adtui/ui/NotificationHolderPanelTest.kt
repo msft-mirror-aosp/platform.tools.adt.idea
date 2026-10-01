@@ -41,7 +41,7 @@ class NotificationHolderPanelTest {
     val content = JPanel()
     val notificationHolderPanel = NotificationHolderPanel(content)
     notificationHolderPanel.setBounds(0, 0, 200, 500)
-    val ui = FakeUi(notificationHolderPanel, createFakeWindow = true, disposableRule.disposable)
+    val ui = FakeUi(notificationHolderPanel, disposableRule.disposable)
 
     notificationHolderPanel.showFadeOutNotification("Notification message")
     ui.layoutAndDispatchEvents()

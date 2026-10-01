@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.layoutinspector
+package com.android.tools.idea.lint.common
 
-import org.junit.Test
+import com.android.tools.idea.lint.common.LintBundle.Companion.message
+import com.android.tools.lint.checks.GuardedByDetector
 
-/**
- * There has to be at least one test in a module that contains test code or junit complains. This should be deleted if any actual tests are
- * added to this module.
- */
-class PlaceholderTest {
-  @Test fun placeholder() = Unit
-}
+class AndroidLintGuardedByInspection :
+  AndroidLintInspectionBase(
+    message("android.lint.inspections.guarded.by"),
+    GuardedByDetector.ISSUE,
+  )

@@ -22,6 +22,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
 import java.io.File
 import java.io.IOException
+import java.nio.file.Path
 
 class NativeNavSource(private val project: Project, private val symbolizer: NativeSymbolizer) : NavSource {
   override fun lookUp(location: CodeLocation, arch: String?): Navigatable? {
@@ -35,7 +36,7 @@ class NativeNavSource(private val project: Project, private val symbolizer: Nati
       if (symbol == null) {
         null
       } else {
-        FileNavigatable(project, FilePosition(File(symbol.sourceFile), symbol.lineNumber - 1, 0))
+        FileNavigatable(project, FilePosition(Path.of(symbol.sourceFile), symbol.lineNumber - 1, 0))
       }
     } catch (e: IOException) {
       null

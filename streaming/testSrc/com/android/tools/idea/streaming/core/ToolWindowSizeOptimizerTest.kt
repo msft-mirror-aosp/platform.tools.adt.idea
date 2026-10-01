@@ -617,7 +617,7 @@ class ToolWindowSizeOptimizerTest {
     return displayView.frameNumber
   }
 
-  private fun createFakeUi(root: Component): FakeUi = FakeUi(root, createFakeWindow = true, parentDisposable = testRootDisposable)
+  private fun createFakeUi(root: Component): FakeUi = FakeUi(root, parentDisposable = testRootDisposable)
 
   private fun startPhone(initialSize: Dimension = Dimension(500, 500)): PhoneTestContext {
     val tempFolder = emulatorRule.avdRoot

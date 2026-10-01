@@ -41,7 +41,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.toCanonicalPath
 import com.intellij.openapi.vfs.VirtualFile
-import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 import java.util.regex.Pattern
@@ -109,7 +108,7 @@ class SdkBuildToolsTooLowIssueChecker : GradleIssueChecker {
     }
 
     if (buildFiles.isNotEmpty()) {
-      buildIssueComposer.addQuickFix("Open file.", OpenFileAtLocationQuickFix(FilePosition(File(buildFiles[0].path), -1, -1)))
+      buildIssueComposer.addQuickFix("Open file.", OpenFileAtLocationQuickFix(FilePosition(buildFiles[0].toNioPath(), -1, -1)))
     }
     return buildIssueComposer
   }

@@ -381,7 +381,7 @@ class LogcatMainPanelTest {
         size = Dimension(200, 500)
         editor.document.setText("foo") // put some text so 'Fold Lines Like This' is enabled
       }
-    val fakeUi = FakeUi(logcatMainPanel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val fakeUi = FakeUi(logcatMainPanel, parentDisposable = disposableRule.disposable)
 
     fakeUi.rightClickOn(logcatMainPanel)
 
@@ -928,7 +928,7 @@ class LogcatMainPanelTest {
       }
     }
     val fakeUi = runInEdtAndGet {
-      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+      FakeUi(logcatMainPanel.editor.contentComponent, parentDisposable = disposableRule.disposable)
     }
 
     logcatMainPanel.messageProcessor.appendMessages(
@@ -949,7 +949,7 @@ class LogcatMainPanelTest {
   fun clickToSetFilter_addToNotEmpty() = runBlocking {
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().apply { size = Dimension(100, 100) } }
     val fakeUi = runInEdtAndGet {
-      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+      FakeUi(logcatMainPanel.editor.contentComponent, parentDisposable = disposableRule.disposable)
     }
     logcatMainPanel.processMessages(
       listOf(
@@ -975,7 +975,7 @@ class LogcatMainPanelTest {
   fun clickToSetFilter_remove() = runBlocking {
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().apply { size = Dimension(100, 100) } }
     val fakeUi = runInEdtAndGet {
-      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+      FakeUi(logcatMainPanel.editor.contentComponent, parentDisposable = disposableRule.disposable)
     }
     logcatMainPanel.processMessages(
       listOf(
@@ -999,7 +999,7 @@ class LogcatMainPanelTest {
   fun clickToSetFilter_removeMultiple() = runBlocking {
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().apply { size = Dimension(100, 100) } }
     val fakeUi = runInEdtAndGet {
-      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+      FakeUi(logcatMainPanel.editor.contentComponent, parentDisposable = disposableRule.disposable)
     }
     logcatMainPanel.processMessages(
       listOf(
@@ -1028,7 +1028,7 @@ class LogcatMainPanelTest {
       }
     }
     val fakeUi = runInEdtAndGet {
-      FakeUi(logcatMainPanel.editor.contentComponent, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+      FakeUi(logcatMainPanel.editor.contentComponent, parentDisposable = disposableRule.disposable)
     }
 
     logcatMainPanel.messageProcessor.appendMessages(

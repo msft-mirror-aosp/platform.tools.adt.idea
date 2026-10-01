@@ -211,6 +211,8 @@ internal constructor(
       devicesFlow: Flow<List<DeviceHandle>>,
       glassesHandle: DeviceHandle?,
       phoneHandle: DeviceHandle? = null,
+      pairer: GlassesPairer = DefaultGlassesPairer,
+      isCompatible: (DeviceHandle) -> Boolean = ::isAiGlassesCompatible,
       factory: (Project?, String, Component?, Dimension, Dimension, @Composable WizardPageScope.() -> Unit) -> WizardController,
     ): GlassesPairingResult? {
       val lockService = service<GlassesPairingLockService>()
@@ -243,7 +245,15 @@ internal constructor(
       GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ASSISTANT_LAUNCHED)
       val coroutineScope = CoroutineScope(SupervisorJob())
       val wizard =
-        GlassesPairingWizard(project, coroutineScope, devicesFlow, initialGlassesHandle = glassesHandle, initialPhoneHandle = phoneHandle)
+        GlassesPairingWizard(
+          project,
+          coroutineScope,
+          devicesFlow,
+          initialGlassesHandle = glassesHandle,
+          pairer = pairer,
+          isCompatible = isCompatible,
+          initialPhoneHandle = phoneHandle,
+        )
       val controller =
         factory(project, "Glasses Pairing Assistant", parent, JBUI.size(400, 200), JBUI.size(800, 500)) {
           with(wizard) {
@@ -261,7 +271,7 @@ internal constructor(
 
       lockService.setWizardOpen(true)
       try {
-        if (controller.show()) {
+        if (controller.show() || wizard.pairingFlow.value is PairingState.Complete) {
           val glasses = wizard.glassesHandle ?: return null
           val phone = wizard.phoneHandle ?: return null
           val mac = wizard.glassesMacAddress ?: return null
@@ -1000,6 +1010,7 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
 
     emit(PairingState.Pairing("Initiating pairing with $phoneName and $glassesName..."))
 
+    glassesDevice.ensureBluetoothAndLocationEnabled()
     val glassesBluetoothAddress =
       try {
         glassesDevice.getBluetoothAddress()

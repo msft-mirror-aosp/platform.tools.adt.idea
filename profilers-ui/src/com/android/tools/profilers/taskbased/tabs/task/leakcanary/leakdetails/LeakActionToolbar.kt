@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.tools.leakcanarylib.data.Leak
 import com.android.tools.profilers.leakcanary.LeakCanaryModel
+import com.android.tools.profilers.leakcanary.toSingleOccurrenceString
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import icons.StudioIconsCompose
@@ -43,7 +44,16 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 /** A composable for the content of the leak action toolbar. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LeakActionToolbar(selectedLeak: Leak?, onExpandAll: () -> Unit, onCollapseAll: () -> Unit, onCopy: () -> Unit) {
+fun LeakActionToolbar(
+  selectedLeak: Leak?,
+  selectedLeakOccurrenceIndex: Int = 0,
+  isOccurrencesEnabled: Boolean = false,
+  onPreviousOccurrence: () -> Unit = {},
+  onNextOccurrence: () -> Unit = {},
+  onExpandAll: () -> Unit,
+  onCollapseAll: () -> Unit,
+  onCopy: () -> Unit,
+) {
   Row(
     modifier =
       Modifier.padding(horizontal = TaskBasedUxDimensions.TASK_ACTION_BAR_ACTION_HORIZONTAL_SPACE_DP)
@@ -51,8 +61,39 @@ fun LeakActionToolbar(selectedLeak: Leak?, onExpandAll: () -> Unit, onCollapseAl
         .height(TaskBasedUxDimensions.LEAKCANARY_PANE_HEADER_HEIGHT_DP),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    val leakName = selectedLeak?.let { LeakCanaryModel.getLeakClassName(it) } ?: ""
+    val leakName = selectedLeak?.let { LeakCanaryModel.getLeakClassName(it, selectedLeakOccurrenceIndex) } ?: ""
     Text(text = leakName, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(end = 8.dp))
+
+    if (isOccurrencesEnabled && selectedLeak != null && selectedLeak.displayedLeakTrace.size > 1) {
+      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
+        Tooltip(tooltip = { Text(TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE) }) {
+          IconButton(onClick = onPreviousOccurrence, enabled = selectedLeakOccurrenceIndex > 0) {
+            Icon(
+              key = AllIconsKeys.General.ChevronLeft,
+              contentDescription = TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE,
+              modifier = Modifier.padding(TaskBasedUxDimensions.TASK_ACTION_BAR_CONTENT_PADDING_DP),
+            )
+          }
+        }
+        Text(
+          text = "${selectedLeakOccurrenceIndex + 1}",
+          modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        Tooltip(tooltip = { Text(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE) }) {
+          IconButton(
+            onClick = onNextOccurrence,
+            enabled = selectedLeakOccurrenceIndex < selectedLeak.displayedLeakTrace.size - 1,
+          ) {
+            Icon(
+              key = AllIconsKeys.General.ChevronRight,
+              contentDescription = TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE,
+              modifier = Modifier.padding(TaskBasedUxDimensions.TASK_ACTION_BAR_CONTENT_PADDING_DP),
+            )
+          }
+        }
+      }
+    }
+
     Row(verticalAlignment = Alignment.CenterVertically) {
       Tooltip(
         tooltip = {
@@ -90,7 +131,7 @@ fun LeakActionToolbar(selectedLeak: Leak?, onExpandAll: () -> Unit, onCollapseAl
         IconButton(
           onClick = {
             selectedLeak?.let {
-              copyLeakToClipboard(it.toString())
+              copyLeakToClipboard(it.toSingleOccurrenceString(selectedLeakOccurrenceIndex))
               onCopy()
             }
           },

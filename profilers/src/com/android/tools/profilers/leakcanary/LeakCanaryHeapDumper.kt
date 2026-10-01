@@ -19,8 +19,8 @@ import com.android.tools.idea.transport.poller.TransportEventListener
 import com.android.tools.leakcanarylib.LeakCanaryParser
 import com.android.tools.leakcanarylib.data.Analysis
 import com.android.tools.profiler.proto.Commands
-import com.android.tools.profiler.proto.Commands.SendLeakCanaryAnalysisData
 import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisData
 import com.android.tools.profiler.proto.Memory
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.StudioProfilers
@@ -221,7 +221,13 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
     val analysisDurationMs = System.currentTimeMillis() - analysisStartTime
 
     if (analysisResult is HeapAnalysisSuccess) {
-      val analysis = LeakCanaryParser().parseLogcatMessage(analysisResult.toString())
+      val isOccurrencesEnabled = profilers.ideServices.featureConfig.isLeakCanaryOccurrencesEnabled
+      val analysis =
+        if (isOccurrencesEnabled) {
+          SharkToDataAdapter.mapAnalysis(analysisResult)
+        } else {
+          LeakCanaryParser().parseLogcatMessage(analysisResult.toString())
+        }
       if (analysis != null) {
         logger.info(
           "Shark analysis finished successfully. File Size: $hprofFileSizeBytes, Download time: $downloadDurationMs ms, Analysis time: $analysisDurationMs ms"
@@ -255,9 +261,17 @@ class LeakCanaryHeapDumper(private val profilers: StudioProfilers) {
     }
   }
 
-  /** Sends the LeakCanary analysis result to the transport pipeline. */
+  /** Sends the LeakCanary analysis result to the transport pipeline for database persistence. */
   private fun sendAnalysisResultCommand(analysis: Analysis) {
-    val analysisData = SendLeakCanaryAnalysisData.newBuilder().setData(analysis.toString()).build()
+    val isOccurrencesEnabled = profilers.ideServices.featureConfig.isLeakCanaryOccurrencesEnabled
+    val analysisData =
+      if (isOccurrencesEnabled) {
+        logger.info("Persisting structured LeakCanaryAnalysisData proto to transport pipeline.")
+        LeakCanaryProtoAdapter.toProto(analysis)
+      } else {
+        logger.info("Persisting legacy string LeakCanaryAnalysisData to transport pipeline.")
+        LeakCanaryAnalysisData.newBuilder().setData(analysis.toString()).build()
+      }
 
     val command =
       Commands.Command.newBuilder()

@@ -26,6 +26,7 @@ import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.BUTTON_MASK
+import com.android.tools.idea.streaming.core.DetachedToolWindowReshaper
 import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.ZoomType
@@ -535,14 +536,28 @@ internal class DeviceView(
         hideLongRunningOperationIndicatorInstantly()
       }
       repaintAlarm.cancelAllRequests()
-      if (
-        displayOrientationQuadrants != displayFrame.orientation ||
-          deviceDisplaySize.width != 0 && deviceDisplaySize != displayFrame.displaySize
-      ) {
-        zoom(ZoomType.FIT) // Orientation or dimensions of the display have changed - reset zoom level.
-      }
       if (displayFrame.unscaledSize != displayFrame.displaySize) {
         environmentSize = displayFrame.unscaledSize
+      }
+      val displayChanged =
+        displayOrientationQuadrants != displayFrame.orientation ||
+          deviceDisplaySize.width != 0 && deviceDisplaySize != displayFrame.displaySize
+      if (deviceDisplaySize != displayFrame.displaySize || displayOrientationQuadrants != displayFrame.orientation) {
+        val oldActualSize = if (deviceDisplaySize.width != 0) computeActualSize(framing) else null
+        val oldScale = if (oldActualSize != null) scale else 0.0
+        val oldContentRect = if (oldActualSize != null) computeContentRectangle() else null
+        deviceDisplaySize.size = displayFrame.displaySize
+        displayOrientationQuadrants = displayFrame.orientation
+        if (displayChanged) {
+          if (
+            oldActualSize == null ||
+              !DetachedToolWindowReshaper(this).resizeToolWindowToPreserveZoom(oldActualSize, oldScale, oldContentRect)
+          ) {
+            zoom(ZoomType.FIT) // Orientation or dimensions of the display have changed - reset zoom level.
+          }
+        }
+        ActivityTracker.getInstance().inc() // Size and orientation changes may affect enablement of zoom actions.
+        updateVideoSize()
       }
       val displayRect = computeDisplayRectangle(displayFrame.unscaledSize, displayFrame.orientation)
       projectionRectangle = displayRect
@@ -568,13 +583,6 @@ internal class DeviceView(
             }
           }
         }
-      }
-
-      if (deviceDisplaySize != displayFrame.displaySize || displayOrientationQuadrants != displayFrame.orientation) {
-        deviceDisplaySize.size = displayFrame.displaySize
-        displayOrientationQuadrants = displayFrame.orientation
-        ActivityTracker.getInstance().inc() // Size and orientation changes may affect enablement of zoom actions.
-        updateVideoSize()
       }
       deviceScaleFactor =
         min(deviceDisplaySize.width, deviceDisplaySize.height) * screenScalingFactor / min(displayRect.width, displayRect.height)

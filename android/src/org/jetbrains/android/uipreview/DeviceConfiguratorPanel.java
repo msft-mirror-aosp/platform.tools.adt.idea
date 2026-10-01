@@ -2,6 +2,7 @@
 package org.jetbrains.android.uipreview;
 
 import static com.android.ide.common.resources.configuration.LocaleQualifier.FAKE_VALUE;
+import static com.intellij.ui.dsl.listCellRenderer.BuilderKt.textListCellRenderer;
 
 import com.android.ide.common.resources.LocaleManager;
 import com.android.ide.common.resources.configuration.CountryCodeQualifier;
@@ -557,7 +558,7 @@ public abstract class DeviceConfiguratorPanel extends JPanel {
     @Override
     JComponent getComponent() {
       myComboBox.addActionListener(e -> applyEditors());
-      myComboBox.setRenderer(SimpleListCellRenderer.create((label, value, index) -> label.setText(value.getShortDisplayValue())));
+      myComboBox.setRenderer(textListCellRenderer("", ResourceEnum::getShortDisplayValue));
 
       final JPanel panel = new JPanel(new VerticalFlowLayout());
       final JBLabel label = new JBLabel(getCaption());

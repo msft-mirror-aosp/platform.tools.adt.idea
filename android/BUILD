@@ -164,7 +164,7 @@ iml_module(
     # keep sorted
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
+        "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/layoutlib/data:layoutlib_extensions",
@@ -202,6 +202,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:google-dexlib2",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/analytics-library/shared:analytics-shared",
+        "//tools/analytics-library/shared:analytics-shared.tests",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/wizard:intellij.android.wizard",
@@ -469,7 +470,6 @@ filegroup(
         "//tools/vendor/google/ml/aiplugin/android-plugin/integration:aida_grpc",
         "//tools/vendor/google/ml/aiplugin/android-plugin/integration:aida_proto",
         "//tools/vendor/google/ml/aiplugin/android-plugin/integration:aida_protobuf",
-        "//tools/vendor/google/ml/aiplugin/android/journeys/gradle:libjourneys-java-proto",
         "//tools/vendor/google/ml/aiplugin/android:agent_log_proto",
         "//tools/vendor/google/ml/aiplugin/backends/aicode:aicode_grpc",
         "//tools/vendor/google/ml/aiplugin/backends/baicode:baicode_grpc",
@@ -489,6 +489,7 @@ filegroup(
         "//tools/vendor/google/optional-plugins/project-system-lightbuild:lightbuild-json-schema-validator-shaded",
         "//tools/vendor/google/optional-plugins/project-system-lightbuild:lightbuild-jvm-plugin",
         "//tools/vendor/google/optional-plugins/project-system-lightbuild:lightbuild-ksp-plugin",
+        "//tools/vendor/google/optional-plugins/project-system-lightbuild:lightbuild-protobuf-plugin",
         "//tools/vendor/google/studio-automation/plugin:automation-driver-proto",
         "//tools/vendor/google/url-assistant:urlassistant_proto",
         "//tools/vendor/modelcontextprotocol/kotlin-sdk:mcp-sdk-libraries",

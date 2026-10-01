@@ -39,6 +39,8 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
+import java.awt.BorderLayout
+import java.awt.Container
 import java.io.File
 import java.util.Base64
 import javax.swing.JPanel
@@ -164,6 +166,90 @@ class DetailsViewContentViewTest {
 
     assertThat(view.myDeviceTestResultLabel.text).isEqualTo("<html>&lt;device name&gt;</html>")
     assertThat(view.myTestResultLabel.text).isEqualTo("<html><font color='#b81708'>Failed</font> &lt;ErrorStackTrace&gt;</html>")
+    assertThat(view.myTestResultLabel.toolTipText).isEqualTo("&lt;ErrorStackTrace&gt;")
+  }
+
+  @Test
+  fun testResultLabelSetsTooltipAndRetainsFirstLineOnLongErrorMessage() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val longMessage = "Images differ by 12.34% ${"x".repeat(500)}"
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("$longMessage\nat Foo.bar(Foo.kt:1)")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(view.myTestResultLabel.text).isEqualTo("<html><font color='#b81708'>Failed</font> $longMessage</html>")
+    assertThat(view.myTestResultLabel.toolTipText).isEqualTo(longMessage)
+  }
+
+  @Test
+  fun testResultLabelHasNoTooltipWhenNotFailing() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.PASSED)
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(view.myTestResultLabel.toolTipText).isNull()
+  }
+
+  @Test
+  fun testResultLabelSkipsTooltipWhenFailureMessageStartsWithHtml() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("<html><b>injected</b></html>\n\tat Foo.bar(Foo.kt:1)")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(view.myTestResultLabel.toolTipText).isNull()
+  }
+
+  /** Regression test for b/466299079: a long failure message must not make the header taller or wider. */
+  @Test
+  fun headerHeightIsIndependentOfErrorMessageLength() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("short")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    val header = (view.rootPanel.layout as BorderLayout).getLayoutComponent(BorderLayout.NORTH) as JPanel
+    val shortMessageHeight = layoutHeaderAndGetPreferredHeight(header)
+    val shortMessageWidth = header.preferredSize.width
+
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("Images differ by 12.34% ${"x".repeat(2000)}")
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(layoutHeaderAndGetPreferredHeight(header)).isEqualTo(shortMessageHeight)
+    assertThat(header.preferredSize.width).isEqualTo(shortMessageWidth)
+  }
+
+  /**
+   * Lays out [header] (and its children) at a realistic width so that the preferred size of the nested scroll pane reflects the actual
+   * extent, then returns the header's preferred height.
+   */
+  private fun layoutHeaderAndGetPreferredHeight(header: JPanel): Int {
+    header.setSize(500, 100)
+    layoutRecursively(header)
+    return header.preferredSize.height
+  }
+
+  private fun layoutRecursively(container: Container) {
+    container.doLayout()
+    container.components.filterIsInstance<Container>().forEach { layoutRecursively(it) }
   }
 
   @Test

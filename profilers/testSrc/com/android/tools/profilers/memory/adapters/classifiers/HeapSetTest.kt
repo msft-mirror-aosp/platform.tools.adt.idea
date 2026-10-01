@@ -112,4 +112,31 @@ class HeapSetTest {
     h.applyFilter(Filter("Class1"), true)
     assertThat(h.getInstanceFilterMatchCount(filter)).isEqualTo(1)
   }
+
+  @Test
+  fun `trace processor heap set uses precomputed heap retained size and dashes when filtered`() {
+    val capture = org.mockito.Mockito.mock(com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject::class.java)
+    org.mockito.Mockito.`when`(capture.isTraceProcessor).thenReturn(true)
+    org.mockito.Mockito.`when`(capture.hasActiveFilter).thenReturn(false)
+
+    val h = HeapSet(capture, "app", 1)
+    h.setHeapRetainedSizes(74_600L, 5_500_000L)
+
+    assertThat(h.totalRetainedSize).isEqualTo(5_500_000L)
+    assertThat(h.retainedSizeCache).isEqualTo(5_500_000L)
+    assertThat(h.totalRetainedNativeSize).isEqualTo(74_600L)
+    assertThat(h.retainedNativeSizeCache).isEqualTo(74_600L)
+
+    // Applying a text filter should return NOT_APPLICABLE_SIZE (-2L)
+    h.selectFilter(Filter("String"))
+    assertThat(h.totalRetainedSize).isEqualTo(ClassifierSet.NOT_APPLICABLE_SIZE)
+    assertThat(h.retainedSizeCache).isEqualTo(ClassifierSet.NOT_APPLICABLE_SIZE)
+    assertThat(h.totalRetainedNativeSize).isEqualTo(ClassifierSet.NOT_APPLICABLE_SIZE)
+    assertThat(h.retainedNativeSizeCache).isEqualTo(ClassifierSet.NOT_APPLICABLE_SIZE)
+
+    // Clearing the text filter restores the precomputed heap retained size
+    h.selectFilter(Filter.EMPTY_FILTER)
+    assertThat(h.totalRetainedSize).isEqualTo(5_500_000L)
+    assertThat(h.totalRetainedNativeSize).isEqualTo(74_600L)
+  }
 }

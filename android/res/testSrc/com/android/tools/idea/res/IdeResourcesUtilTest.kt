@@ -690,6 +690,32 @@ class IdeResourcesUtilAdditionalModulesTest : AndroidTestCase() {
     assertThat(packages).containsExactly("p1.p2", "p1.p2.lib")
   }
 
+  fun testFindResourceFields_onlyInOwnPackages() {
+    val libModule = myAdditionalModules.single()
+    deleteManifest(libModule)
+
+    myFixture.copyFileToProject("util/lib/AndroidManifest.xml", "additionalModules/lib/AndroidManifest.xml")
+    myFixture.copyFileToProject("util/lib/strings.xml", "additionalModules/lib/res/values/strings.xml")
+    val libDrawableFile = myFixture.addFileToProject("additionalModules/lib/res/drawable/lib_icon.xml", "<root></root>")
+
+    val facet = kotlin.test.assertNotNull(AndroidFacet.getInstance(libModule))
+    val allFields = findResourceFields(facet, "string", "lib_hello", onlyInOwnPackages = false)
+    assertThat(allFields).hasLength(2)
+
+    val ownFields = findResourceFields(facet, "string", "lib_hello", onlyInOwnPackages = true)
+    assertThat(ownFields).hasLength(1)
+    val ownPackage = ownFields.single().containingClass?.containingClass?.qualifiedName?.let(StringUtil::getPackageName)
+    assertThat(ownPackage).isEqualTo("p1.p2.lib")
+
+    val allFileFields = findResourceFieldsForFileResource(libDrawableFile, onlyInOwnPackages = false)
+    assertThat(allFileFields).hasLength(2)
+
+    val ownFileFields = findResourceFieldsForFileResource(libDrawableFile, onlyInOwnPackages = true)
+    assertThat(ownFileFields).hasLength(1)
+    val ownFilePackage = ownFileFields.single().containingClass?.containingClass?.qualifiedName?.let(StringUtil::getPackageName)
+    assertThat(ownFilePackage).isEqualTo("p1.p2.lib")
+  }
+
   /** Tests that a module without an Android Manifest can still import a lib's R class */
   fun testIsRJavaFileImportedNoManifest() {
     // Remove the current lib manifest (has wrong package name) and copy a manifest with proper

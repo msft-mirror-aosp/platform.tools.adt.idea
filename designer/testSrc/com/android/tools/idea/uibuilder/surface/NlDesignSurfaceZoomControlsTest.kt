@@ -160,7 +160,7 @@ class NlDesignSurfaceZoomControlsTest {
           setBounds(0, 0, 1000, 1000)
         }
 
-      FakeUi(outerPanel, createFakeWindow = true, parentDisposable = androidProjectRule.testRootDisposable).apply {
+      FakeUi(outerPanel, parentDisposable = androidProjectRule.testRootDisposable).apply {
         updateToolbars()
         layoutAndDispatchEvents()
       }

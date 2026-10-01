@@ -39,4 +39,5 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.adb.testUtil" scope="TEST" />
   </component>
+  <component name="TestModuleProperties" production-module="intellij.android.execution.common" />
 </module>

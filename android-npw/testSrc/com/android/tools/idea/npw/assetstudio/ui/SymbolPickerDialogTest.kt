@@ -342,7 +342,7 @@ class SymbolPickerDialogTest {
 
       val centerPanel = symbolsPicker.createCenterPanel()
       centerPanel.parent?.remove(centerPanel)
-      FakeUi(centerPanel, createFakeWindow = true, parentDisposable = projectRule.fixture.testRootDisposable)
+      FakeUi(centerPanel, parentDisposable = projectRule.fixture.testRootDisposable)
       val focusManager = FakeKeyboardFocusManager(projectRule.fixture.testRootDisposable)
       focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(centerPanel))
 

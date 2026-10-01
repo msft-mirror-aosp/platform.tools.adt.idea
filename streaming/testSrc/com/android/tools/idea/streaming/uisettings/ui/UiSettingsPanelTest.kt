@@ -63,7 +63,7 @@ class UiSettingsPanelTest {
   fun before() {
     model = createModel()
     panel = UiSettingsPanel(model, deviceTypeFromTestName)
-    ui = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    ui = FakeUi(panel, parentDisposable = disposableRule.disposable)
   }
 
   private fun createModel(): UiSettingsModel {

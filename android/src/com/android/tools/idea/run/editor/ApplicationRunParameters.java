@@ -2,6 +2,8 @@
 
 package com.android.tools.idea.run.editor;
 
+import static com.intellij.ui.dsl.listCellRenderer.BuilderKt.textListCellRenderer;
+
 import com.android.tools.idea.backup.BackupManager;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.model.AndroidModel;
@@ -35,7 +37,6 @@ import com.intellij.packaging.artifacts.ArtifactManager;
 import com.intellij.packaging.artifacts.ArtifactType;
 import com.intellij.packaging.impl.run.BuildArtifactsBeforeRunTaskProvider;
 import com.intellij.ui.CollectionComboBoxModel;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.TitledSeparator;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
@@ -106,16 +107,7 @@ public class ApplicationRunParameters<T extends AndroidRunConfiguration> impleme
     myDeployOptionCombo.setSelectedItem(InstallOption.DEFAULT_APK);
 
     myArtifactCombo = myCustomArtifactLabeledComponent.getComponent();
-    myArtifactCombo.setRenderer(SimpleListCellRenderer.create((label, value, index) -> {
-      if (value instanceof Artifact) {
-        final Artifact artifact = (Artifact)value;
-        label.setText(artifact.getName());
-        label.setIcon(artifact.getArtifactType().getIcon());
-      }
-      else if (value instanceof String) {
-        label.setText("<html><font color='red'>" + value + "</font></html>");
-      }
-    }));
+    myArtifactCombo.setRenderer(textListCellRenderer("", value -> value instanceof Artifact artifact ? artifact.getName() : value.toString()));
     myArtifactCombo.setModel(new DefaultComboBoxModel(getAndroidArtifacts().toArray()));
     myArtifactCombo.addActionListener(this);
 

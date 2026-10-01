@@ -1201,9 +1201,7 @@ public class RenderTask {
             return result.createWithStats(new RenderResultStats(
               inflateResult != null ? inflateResult.getStats().getInflateDurationMs() : result.getStats().getInflateDurationMs(),
               System.currentTimeMillis() - startRenderTimeMs,
-              moduleClassLoader.getStats().getClassesFound(),
-              moduleClassLoader.getStats().getAccumulatedFindTimeMs(),
-              moduleClassLoader.getStats().getAccumulatedRewriteTimeMs()));
+              moduleClassLoader.getStats()));
           });
       }
       catch (Exception e) {

@@ -21,9 +21,9 @@ import com.android.repository.api.RepoPackage
 import com.android.repository.api.UpdatablePackage
 import com.android.repository.testframework.FakePackage.FakeRemotePackage
 import com.android.sdklib.AndroidApiLevel
+import com.android.testutils.TestUtils
+import com.android.tools.idea.FakeSdkRule
 import com.android.tools.idea.editors.AttachAndroidSdkSourcesNotificationProvider.Companion.REQUIRED_SOURCES_KEY
-import com.android.tools.idea.progress.StudioLoggerProgressIndicator
-import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.SdkInstallListener
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
@@ -41,11 +41,15 @@ import kotlin.test.fail
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 /** Tests for [SdkSourceFinderForApiLevel] */
 class SdkSourceFinderForApiLevelTest {
 
-  @get:Rule val androidProjectRule = AndroidProjectRule.withSdk()
+  private val androidProjectRule = AndroidProjectRule.withSdk()
+  private val fakeSdkRule = FakeSdkRule(androidProjectRule, TestUtils.getSdk()).withExistingPackages()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(androidProjectRule).around(fakeSdkRule)
 
   private val project
     get() = androidProjectRule.project
@@ -128,12 +132,7 @@ class SdkSourceFinderForApiLevelTest {
         "${SdkConstants.FD_PLATFORMS}${RepoPackage.PATH_SEPARATOR}android-$apiLevel",
       )
 
-    val packages =
-      AndroidSdks.getInstance()
-        .tryToChooseSdkHandler()
-        .getRepoManagerAndLoadSynchronously(StudioLoggerProgressIndicator(this::class.java))
-        .packages
-    val localPackages = packages.localPackages.values
+    val localPackages = fakeSdkRule.repoManager.packages.localPackages.values
 
     if (originalLocalPackages == null) {
       // This won't get reset at the end of each test automatically. Store original list to restore
@@ -142,18 +141,12 @@ class SdkSourceFinderForApiLevelTest {
     }
 
     val updatedPackages = localPackages.filter { !packagesToRemove.contains(it.path) }
-    packages.setLocalPkgInfos(updatedPackages)
+    fakeSdkRule.setLocalPackages(updatedPackages)
   }
 
   private fun restoreLocalTargetSdkPackages() {
     if (originalLocalPackages != null) {
-      val packages =
-        AndroidSdks.getInstance()
-          .tryToChooseSdkHandler()
-          .getRepoManagerAndLoadSynchronously(StudioLoggerProgressIndicator(this::class.java))
-          .packages
-      packages.setLocalPkgInfos(originalLocalPackages!!)
-
+      fakeSdkRule.setLocalPackages(originalLocalPackages!!)
       originalLocalPackages = null
     }
   }

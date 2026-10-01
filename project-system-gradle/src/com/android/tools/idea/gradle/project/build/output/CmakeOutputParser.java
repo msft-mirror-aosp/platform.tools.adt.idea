@@ -27,7 +27,7 @@ import com.intellij.build.events.impl.FileMessageEventImpl;
 import com.intellij.build.events.impl.MessageEventImpl;
 import com.intellij.build.output.BuildOutputInstantReader;
 import com.intellij.build.output.BuildOutputParser;
-import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -108,7 +108,7 @@ public class CmakeOutputParser implements BuildOutputParser {
     String fullMessage = String.join(" ", messages);
     Matcher matcher = fileAndLineNumber.matcher(fullMessage);
     if (matcher.matches()) {
-      File file = new File(matcher.group(1));
+      Path file = Path.of(matcher.group(1));
 
       ErrorFields fields = matchFileAndLineNumberErrorParts(matcher, fullMessage);
 
@@ -172,7 +172,7 @@ public class CmakeOutputParser implements BuildOutputParser {
     String fullMessage = String.join(" ", messages);
     Matcher matcher = errorFileAndLineNumber.matcher(fullMessage);
     if (matcher.matches()) {
-      File file = new File(matcher.group(2));
+      Path file = Path.of(matcher.group(2));
 
       ErrorFields fields = matchErrorFileAndLineNumberErrorParts(matcher, fullMessage);
       FilePosition position =

@@ -15,8 +15,11 @@
  */
 package com.android.tools.screensharing;
 
+import android.content.AttributionSource;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.os.Build;
+import android.os.Process;
 
 public final class AgentContext extends ContextWrapper {
   public static final AgentContext INSTANCE = new AgentContext();  // Accessed from native code.
@@ -34,6 +37,18 @@ public final class AgentContext extends ContextWrapper {
   @Override
   public String getOpPackageName() {
     return PACKAGE_NAME;
+  }
+
+  @Override
+  public AttributionSource getAttributionSource() {
+    if (Build.VERSION.SDK_INT >= 31) {
+      AttributionSource.Builder attributionSourceBuilder = new AttributionSource.Builder(Process.myUid()).setPackageName(PACKAGE_NAME);
+      if (Build.VERSION.SDK_INT >= 34) {
+        attributionSourceBuilder.setPid(Process.myPid());
+      }
+      return attributionSourceBuilder.build();
+    }
+    return super.getAttributionSource();
   }
 
   @Override

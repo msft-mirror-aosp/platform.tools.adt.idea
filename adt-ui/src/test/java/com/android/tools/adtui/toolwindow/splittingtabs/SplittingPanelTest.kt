@@ -62,7 +62,7 @@ class SplittingPanelTest {
   // one
   private val contentRootPanel = JPanel().also { it.size = Dimension(100, 100) }
 
-  private val fakeUi by lazy { FakeUi(contentRootPanel, createFakeWindow = true, parentDisposable = disposableRule.disposable) }
+  private val fakeUi by lazy { FakeUi(contentRootPanel, parentDisposable = disposableRule.disposable) }
 
   @After
   fun tearDown() {

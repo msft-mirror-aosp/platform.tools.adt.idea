@@ -50,10 +50,10 @@ import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.EmulatorSettingsListener
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.BUTTON_MASK
+import com.android.tools.idea.streaming.core.DetachedToolWindowReshaper
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.isMouseInside
-import com.android.tools.idea.streaming.core.isSameAspectRatio
 import com.android.tools.idea.streaming.core.scaledDown
 import com.android.tools.idea.streaming.core.scaledUnbiased
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.DisplayMode
@@ -204,7 +204,7 @@ internal class EmulatorView(
   override var displayOrientationQuadrants: Int
     get() = screenshotShape.orientation
     internal set(value) {
-      if (value != screenshotShape.orientation && deviceFrameVisible) {
+      if (value != screenshotShape.orientation) {
         requestScreenshotFeed(deviceDisplaySize, value)
       }
     }
@@ -215,6 +215,11 @@ internal class EmulatorView(
     get() = emulatorConfig.api
 
   private var lastScreenshot: Screenshot? = null
+  private var lastActualSize: Dimension? = null
+  private var actualSizeOverride: Dimension? = null
+  private var requestedDisplaySize: Dimension? = null
+  private var requestedOrientationQuadrants: Int? = null
+  private var inRequestScreenshotFeed = false
   private val displayTransform = AffineTransform()
   private val screenshotShape: DisplayShape
     get() = lastScreenshot?.displayShape ?: DisplayShape(0, 0, initialOrientation)
@@ -238,6 +243,9 @@ internal class EmulatorView(
     set(value) {
       if (field != value) {
         field = value
+        if (lastScreenshot != null) {
+          lastActualSize = computeActualSize(value)
+        }
         EventQueue.invokeLater { requestScreenshotFeed() }
       }
     }
@@ -269,6 +277,9 @@ internal class EmulatorView(
     set(value) {
       if (field != value) {
         field = value
+        if (lastScreenshot != null) {
+          lastActualSize = computeActualSize(framing)
+        }
         requestScreenshotFeed()
         if (!value) {
           highlightedSkinButtonKey = null
@@ -287,7 +298,7 @@ internal class EmulatorView(
 
   /** The size of the device including frame in device pixels. */
   val sizeWithFrame: Dimension
-    get() = computeActualSize(framing, screenshotShape.orientation)
+    get() = computeActualSize(framing, deviceDisplaySize, screenshotShape.orientation)
 
   override val displayRectangle: Rectangle2D?
     get() {
@@ -507,16 +518,17 @@ internal class EmulatorView(
 
   override fun canZoom(): Boolean = isConnected
 
-  override fun computeActualSize(framing: Framing): Dimension = computeActualSize(framing, screenshotShape.orientation)
+  override fun computeActualSize(framing: Framing): Dimension =
+    actualSizeOverride ?: computeActualSize(framing, deviceDisplaySize, screenshotShape.orientation)
 
-  private fun computeActualSize(framing: Framing, orientationQuadrants: Int): Dimension {
+  private fun computeActualSize(framing: Framing, displaySize: Dimension, orientationQuadrants: Int): Dimension {
     val skin = getSkin()
     return if (skin != null && deviceFrameVisible) {
-      skin.getRotatedFrameSize(orientationQuadrants, deviceDisplaySize)
+      skin.getRotatedFrameSize(orientationQuadrants, displaySize)
     } else {
       val environmentSize = emulatorConfig.environmentSize
       if (environmentSize == null || framing == Framing.INNER) {
-        deviceDisplaySize.rotatedByQuadrants(orientationQuadrants)
+        displaySize.rotatedByQuadrants(orientationQuadrants)
       } else {
         environmentSize.rotatedByQuadrants(orientationQuadrants)
       }
@@ -526,7 +538,7 @@ internal class EmulatorView(
   override fun setBounds(x: Int, y: Int, width: Int, height: Int) {
     val resized = width != this.width || height != this.height
     super.setBounds(x, y, width, height)
-    if (resized) {
+    if (resized && !inRequestScreenshotFeed) {
       mouseCoordinates = null
       EventQueue.invokeLater { // Postpone reaction to size change to reduce redundant streamScreenshot calls.
         if (emulator.connectionState == ConnectionState.CONNECTED) {
@@ -573,6 +585,10 @@ internal class EmulatorView(
       environmentCollectionJob = null
       if (RunningAvdTracker.getInstance().runningAvds[emulator.emulatorId.avdFolder]?.isShuttingDown != true) {
         lastScreenshot = null
+        lastActualSize = null
+        actualSizeOverride = null
+        requestedDisplaySize = null
+        requestedOrientationQuadrants = null
         xrInputController = null
         hideLongRunningOperationIndicatorInstantly()
         showDisconnectedStateMessage("Disconnected from the Emulator")
@@ -717,59 +733,90 @@ internal class EmulatorView(
   }
 
   private fun requestScreenshotFeed() {
-    requestScreenshotFeed(deviceDisplaySize, displayOrientationQuadrants)
+    requestScreenshotFeed(requestedDisplaySize ?: deviceDisplaySize, requestedOrientationQuadrants ?: displayOrientationQuadrants)
   }
 
   private fun requestScreenshotFeed(displaySize: Dimension, orientationQuadrants: Int) {
     if (isConnected && width != 0 && height != 0) {
-      val maxSize = physicalSize.rotatedByQuadrants(-orientationQuadrants)
-      val environmentSize = emulatorConfig.environmentSize
-      if (environmentSize == null) {
-        val skin = getSkin()
-        if (skin != null && deviceFrameVisible) {
-          // Scale down to leave space for the device frame.
-          val layout = skin.layout
-          maxSize.width = maxSize.width.scaledDown(layout.displaySize.width, layout.frameRectangle.width)
-          maxSize.height = maxSize.height.scaledDown(layout.displaySize.height, layout.frameRectangle.height)
+      inRequestScreenshotFeed = true
+      try {
+        requestedDisplaySize = displaySize
+        requestedOrientationQuadrants = orientationQuadrants
+        if (lastScreenshot != null) {
+          handleDisplaySizeOrOrientationChange(computeActualSize(framing, displaySize, orientationQuadrants))
+        }
+        val maxSize = physicalSize.rotatedByQuadrants(-orientationQuadrants)
+        val environmentSize = emulatorConfig.environmentSize
+        if (environmentSize == null) {
+          val skin = getSkin()
+          if (skin != null && deviceFrameVisible) {
+            // Scale down to leave space for the device frame.
+            val layout = skin.layout
+            maxSize.width = maxSize.width.scaledDown(layout.displaySize.width, layout.frameRectangle.width)
+            maxSize.height = maxSize.height.scaledDown(layout.displaySize.height, layout.frameRectangle.height)
+          }
+
+          // Limit by the display resolution.
+          maxSize.width = maxSize.width.coerceAtMost(displaySize.width)
+          maxSize.height = maxSize.height.coerceAtMost(displaySize.height)
+        } else {
+          if (framing == Framing.INNER) {
+            maxSize.width = maxSize.width.scaledDown(environmentSize.width, displaySize.width)
+            maxSize.height = maxSize.height.scaledDown(environmentSize.height, displaySize.height)
+          }
+          maxSize.width = maxSize.width.coerceAtMost(environmentSize.width)
+          maxSize.height = maxSize.height.coerceAtMost(environmentSize.height)
         }
 
-        // Limit by the display resolution.
-        maxSize.width = maxSize.width.coerceAtMost(displaySize.width)
-        maxSize.height = maxSize.height.coerceAtMost(displaySize.height)
-      } else {
-        if (framing == Framing.INNER) {
-          maxSize.width = maxSize.width.scaledDown(environmentSize.width, displaySize.width)
-          maxSize.height = maxSize.height.scaledDown(environmentSize.height, displaySize.height)
+        val maxImageSize = maxSize.rotatedByQuadrants(orientationQuadrants)
+
+        val receiver = screenshotReceiver
+        if (receiver != null && receiver.maxImageSize == maxImageSize && receiver.orientationQuadrants == orientationQuadrants) {
+          return // Keep the current screenshot feed because it is identical.
         }
-        maxSize.width = maxSize.width.coerceAtMost(environmentSize.width)
-        maxSize.height = maxSize.height.coerceAtMost(environmentSize.height)
+
+        cancelScreenshotFeed()
+        val imageFormat =
+          ImageFormat.newBuilder()
+            .setDisplay(displayId)
+            .setFormat(ImageFormat.ImgFormat.RGB888)
+            .setWidth(maxImageSize.width)
+            .setHeight(maxImageSize.height)
+            .build()
+        val newReceiver = ScreenshotReceiver(maxImageSize, orientationQuadrants)
+        screenshotReceiver = newReceiver
+        screenshotFeed = emulator.streamScreenshot(imageFormat, newReceiver)
+      } finally {
+        inRequestScreenshotFeed = false
       }
-
-      val maxImageSize = maxSize.rotatedByQuadrants(orientationQuadrants)
-
-      val receiver = screenshotReceiver
-      if (receiver != null && receiver.maxImageSize == maxImageSize && receiver.orientationQuadrants == orientationQuadrants) {
-        return // Keep the current screenshot feed because it is identical.
-      }
-
-      cancelScreenshotFeed()
-      val imageFormat =
-        ImageFormat.newBuilder()
-          .setDisplay(displayId)
-          .setFormat(ImageFormat.ImgFormat.RGB888)
-          .setWidth(maxImageSize.width)
-          .setHeight(maxImageSize.height)
-          .build()
-      val newReceiver = ScreenshotReceiver(maxImageSize, orientationQuadrants)
-      screenshotReceiver = newReceiver
-      screenshotFeed = emulator.streamScreenshot(imageFormat, newReceiver)
     }
+  }
+
+  private fun handleDisplaySizeOrOrientationChange(newActualSize: Dimension): Boolean {
+    val oldActualSize = lastActualSize
+    lastActualSize = newActualSize
+    if (oldActualSize == null || oldActualSize == newActualSize) {
+      return false
+    }
+    actualSizeOverride = oldActualSize
+    val oldScale = scale
+    val oldContentRect = computeContentRectangle()
+    actualSizeOverride = newActualSize
+    if (DetachedToolWindowReshaper(this).resizeToolWindowToPreserveZoom(oldActualSize, oldScale, oldContentRect)) {
+      return true
+    }
+    resetZoom()
+    return false
   }
 
   private fun cancelScreenshotFeed() {
     screenshotReceiver = null
     screenshotFeed?.cancel()
     screenshotFeed = null
+    if (!inRequestScreenshotFeed) {
+      requestedDisplaySize = null
+      requestedOrientationQuadrants = null
+    }
   }
 
   private fun processNotifications() {
@@ -778,7 +825,7 @@ internal class EmulatorView(
         launch {
           notificationTracker.currentPosture.collect { posture ->
             if (posture != null && deviceFrameVisible) {
-              requestScreenshotFeed()
+              requestScreenshotFeed(getSkin()?.layout?.displaySize ?: deviceDisplaySize, displayOrientationQuadrants)
             }
           }
         }
@@ -1466,14 +1513,28 @@ internal class EmulatorView(
           recycledImage.set(SofterReference(it))
           alarm.cancelAllRequests()
           alarm.addRequest({ recycledImage.set(null) }, CACHED_IMAGE_LIVE_TIME_MILLIS, ModalityState.any())
-        } else if (!isSameAspectRatio(it.width, it.height, screenshot.displayShape.width, screenshot.displayShape.height, 0.01)) {
-          resetZoom() // Display dimensions changed - reset zoom level.
         }
       }
 
       val lastDisplayMode = lastScreenshot?.displayShape?.displayMode
       if (lastScreenshot?.displayShape != screenshot.displayShape) {
+        val oldActualSize = lastActualSize
+        actualSizeOverride = oldActualSize
+        val oldScale = scale
+        val oldContentRect = computeContentRectangle()
         lastScreenshot = screenshot
+        actualSizeOverride = null
+        requestedDisplaySize = null
+        requestedOrientationQuadrants = null
+        val newActualSize = computeActualSize(framing)
+        lastActualSize = newActualSize
+        if (oldActualSize != null && oldActualSize != newActualSize) {
+          if (DetachedToolWindowReshaper(this@EmulatorView).resizeToolWindowToPreserveZoom(oldActualSize, oldScale, oldContentRect)) {
+            requestScreenshotFeed()
+          } else {
+            resetZoom()
+          }
+        }
         ActivityTracker.getInstance().inc() // Size and orientation changes may affect enablement of zoom actions.
       }
 

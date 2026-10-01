@@ -213,7 +213,7 @@ class EmulatorUiSettingsActionTest {
 
   private fun createEmulatorView(controller: EmulatorController, parentDisposable: Disposable = testRootDisposable): EmulatorView {
     val view = EmulatorView(parentDisposable, controller, uiRule.project, displayId = 0, Dimension(600, 800), deviceFrameVisible = false)
-    FakeUi(view, createFakeWindow = true, parentDisposable = parentDisposable)
+    FakeUi(view, parentDisposable = parentDisposable)
     return view
   }
 

@@ -161,7 +161,7 @@ class NavigatingInteractionHandlerTest {
   @Test
   fun testOptionClickShowsMenuWithElementsUnderClick() {
     runInEdtAndWait {
-      FakeUi(surface, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+      FakeUi(surface, parentDisposable = projectRule.testRootDisposable)
     }
 
     runBlocking {
@@ -230,7 +230,7 @@ class NavigatingInteractionHandlerTest {
   @Test
   fun testOptionClickWithNoNavigatablesDoesNotShowPopup() {
     runInEdtAndWait {
-      FakeUi(surface, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+      FakeUi(surface, parentDisposable = projectRule.testRootDisposable)
     }
 
     runBlocking {
@@ -272,7 +272,7 @@ class NavigatingInteractionHandlerTest {
   @Test
   fun testNormalClickDoesNotShowPopupAndNavigatesDirectly() {
     runInEdtAndWait {
-      FakeUi(surface, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+      FakeUi(surface, parentDisposable = projectRule.testRootDisposable)
     }
 
     runBlocking {

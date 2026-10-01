@@ -47,7 +47,7 @@ class LeakCanaryHeapDumperTest : WithFakeTimer {
 
   @Before
   fun setUp() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
     dumper = LeakCanaryHeapDumper(profilers)
 

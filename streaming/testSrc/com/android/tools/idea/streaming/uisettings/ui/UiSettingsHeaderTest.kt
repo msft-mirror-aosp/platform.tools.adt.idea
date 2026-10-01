@@ -40,7 +40,7 @@ class UiSettingsHeaderTest {
   fun before() {
     model = UiSettingsModel(Dimension(1344, 2992), 480, 34, DeviceType.HANDHELD)
     header = UiSettingsHeader(model)
-    ui = FakeUi(header, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    ui = FakeUi(header, parentDisposable = disposableRule.disposable)
     model.resetAction = { lastCommand = "reset" }
   }
 

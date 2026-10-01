@@ -4,12 +4,15 @@ import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.resources.ResourceFolderType;
 import com.android.utils.SdkUtils;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.SearchScope;
 import com.intellij.refactoring.RefactoringSettings;
 import com.intellij.refactoring.safeDelete.NonCodeUsageSearchInfo;
 import com.intellij.refactoring.safeDelete.SafeDeleteProcessor;
@@ -55,12 +58,19 @@ public class AndroidResourceFileSafeDeleteProcessor extends SafeDeleteProcessorD
   @Nullable
   @Override
   public NonCodeUsageSearchInfo findUsages(@NotNull PsiElement element, @NotNull PsiElement[] allElementsToDelete, @NotNull List<? super UsageInfo> result) {
-    SafeDeleteProcessor.findGenericElementUsages(element, result, allElementsToDelete);
+    ProgressManager.checkCanceled();
+    final AndroidFacet facet = AndroidFacet.getInstance(element);
+    final SearchScope searchScope = facet != null
+        ? GlobalSearchScope.moduleWithDependentsScope(facet.getModule())
+        : element.getUseScope();
+
+    SafeDeleteProcessor.findGenericElementUsages(element, result, allElementsToDelete, searchScope);
 
     if (element instanceof PsiFile) {
       final PsiField[] fields = IdeResourcesUtil.findResourceFieldsForFileResource((PsiFile)element, true);
 
       for (PsiField field : fields) {
+        ProgressManager.checkCanceled();
         SafeDeleteProcessor.findGenericElementUsages(field, result, allElementsToDelete);
       }
     }

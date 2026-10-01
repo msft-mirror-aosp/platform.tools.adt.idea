@@ -276,9 +276,11 @@ internal fun ConfigurationPageContext.ensureNeededPackagesArePresent(
     paths.add(pkg.path)
   }
   val image = device.image
+  var imageDownloadPackagePath: String? = null
   if (image is RemoteSystemImage) {
     displayNames.add(image.toString())
-    paths.add(image.`package`.path)
+    imageDownloadPackagePath = image.`package`.path
+    paths.add(imageDownloadPackagePath)
   }
   if (displayNames.isEmpty()) {
     return true
@@ -295,12 +297,8 @@ internal fun ConfigurationPageContext.ensureNeededPackagesArePresent(
   val progress = StudioLoggerProgressIndicator(AvdConfigurationPage::class.java)
   for (path in paths) {
     val localPackage = sdkHandler.getLocalPackage(path, progress) ?: return false
-    if (path == image?.`package`?.path) {
-      val images = sdkHandler.getSystemImageManager(progress).imageMap.get(localPackage)
-      if (images.size > 1) {
-        logger<AvdConfigurationPage>().warn("Multiple images for $path. Returning the first.")
-      }
-      device.image = images.firstOrNull() ?: return false
+    if (path == imageDownloadPackagePath) {
+      device.image = sdkHandler.getSystemImageManager(progress).images.firstOrNull { it.`package` == localPackage } ?: return false
     }
   }
 

@@ -23,6 +23,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBImageIcon
 import java.awt.Container
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -274,17 +275,18 @@ class PreviewItemPanelTest {
         testResult = AndroidTestCaseResult.FAILED,
         srcImagePath = srcPath,
         diffImagePath = diffPath,
+        diffImageExists = true,
       )
 
     val panel =
       PreviewItemPanel(
         previewData = details,
         project = projectRule.project,
-        appExecutorService = MoreExecutors.newDirectExecutorService(),
-        createImageIcon = { _ ->
-          imageCreationCount++
-          mock()
-        },
+        thumbnailLoader =
+          directThumbnailLoader { _ ->
+            imageCreationCount++
+            mock()
+          },
       )
 
     panel.showImageForView(ScreenshotViewType.NEW)
@@ -335,7 +337,6 @@ class PreviewItemPanelTest {
   @Test
   fun testStaleLoadPrevention() = runInEdtAndWait {
     var imageCreationCount = 0
-    val executor = MoreExecutors.newDirectExecutorService()
 
     val path1 = temporaryFolder.newFile("image1.png").absolutePath
     val path2 = temporaryFolder.newFile("image2.png").absolutePath
@@ -359,11 +360,11 @@ class PreviewItemPanelTest {
       PreviewItemPanel(
         previewData = details,
         project = projectRule.project,
-        appExecutorService = executor,
-        createImageIcon = { path ->
-          imageCreationCount++
-          mock()
-        },
+        thumbnailLoader =
+          directThumbnailLoader { _ ->
+            imageCreationCount++
+            mock()
+          },
       )
 
     panel.loadImage(path1, "id")
@@ -376,7 +377,6 @@ class PreviewItemPanelTest {
   @Test
   fun testOnImageLoadedCallback() = runInEdtAndWait {
     var callbackCount = 0
-    val executor = MoreExecutors.newDirectExecutorService()
     val path = temporaryFolder.newFile("image.png").absolutePath
     val details =
       PreviewDetails(
@@ -391,8 +391,7 @@ class PreviewItemPanelTest {
       PreviewItemPanel(
         previewData = details,
         project = projectRule.project,
-        appExecutorService = executor,
-        createImageIcon = { mock() },
+        thumbnailLoader = directThumbnailLoader { mock() },
       )
 
     panel.updateData(details, ScreenshotViewType.NEW) { callbackCount++ }
@@ -421,11 +420,11 @@ class PreviewItemPanelTest {
         previewData = details,
         project = projectRule.project,
         showDetails = false, // Disable details to avoid finding the "Match: " label
-        appExecutorService = MoreExecutors.newDirectExecutorService(),
-        createImageIcon = { _ ->
-          imageCreationCount++
-          mock()
-        },
+        thumbnailLoader =
+          directThumbnailLoader { _ ->
+            imageCreationCount++
+            mock()
+          },
       )
 
     // 1. Initial load
@@ -450,9 +449,10 @@ class PreviewItemPanelTest {
     panel.showImageForView(ScreenshotViewType.NEW)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    // This should now be 2 because showPlaceholder reset currentImagePath
-    assertEquals("Should trigger a new load after a placeholder was shown", 2, imageCreationCount)
+    // The image is shown again synchronously from the cache, without decoding it a second time.
+    assertEquals("Should reuse the cached thumbnail after a placeholder was shown", 1, imageCreationCount)
     assertTrue("Flag should still be true", panel.isLoadedSuccessfully)
+    assertNull("The placeholder label should be replaced by the image", findLabel(panel))
   }
 
   @Test
@@ -497,8 +497,7 @@ class PreviewItemPanelTest {
         previewData = detailsWithImage,
         project = projectRule.project,
         showDetails = false,
-        appExecutorService = MoreExecutors.newDirectExecutorService(),
-        createImageIcon = { mock() },
+        thumbnailLoader = directThumbnailLoader { mock() },
       )
 
     panel.showImageForView(ScreenshotViewType.NEW)
@@ -545,8 +544,7 @@ class PreviewItemPanelTest {
       PreviewItemPanel(
         previewData = details1,
         project = projectRule.project,
-        appExecutorService = MoreExecutors.newDirectExecutorService(),
-        createImageIcon = { mock() },
+        thumbnailLoader = directThumbnailLoader { mock() },
       )
 
     // First request initiates loading
@@ -579,7 +577,7 @@ class PreviewItemPanelTest {
         previewData = details,
         project = projectRule.project,
         showDetails = false,
-        appExecutorService = MoreExecutors.newDirectExecutorService(),
+        thumbnailLoader = ThumbnailLoader(executor = MoreExecutors.newDirectExecutorService()),
       )
 
     var callbackInvoked = false
@@ -591,6 +589,154 @@ class PreviewItemPanelTest {
     val label = findLabel(panel)
     assertEquals("Couldn't load image", label?.text)
   }
+
+  @Test
+  fun verifyCachedImageIsAppliedSynchronouslyWithoutCallback() = runInEdtAndWait {
+    val path = temporaryFolder.newFile("image.png").absolutePath
+    val details = PreviewDetails(testId = "id1", className = "C", methodName = "m", previewName = "p", srcImagePath = path)
+    var decodeCount = 0
+    val loader =
+      directThumbnailLoader {
+        decodeCount++
+        mock()
+      }
+    val firstPanel = PreviewItemPanel(details, projectRule.project, showDetails = false, thumbnailLoader = loader)
+    firstPanel.loadImage(path, "id1")
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // A list renders every row with the same panel, so a cache hit must not ask the list to repaint
+    // again, otherwise the list would repaint forever.
+    var callbackCount = 0
+    val secondPanel = PreviewItemPanel(details, projectRule.project, showDetails = false, thumbnailLoader = loader)
+    secondPanel.loadImage(path, "id2") { callbackCount++ }
+
+    assertTrue("Cached image should be shown synchronously", secondPanel.isLoadedSuccessfully)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(0, callbackCount)
+    assertEquals(1, decodeCount)
+  }
+
+  @Test
+  fun verifyFailedImageIsNotDecodedAgain() = runInEdtAndWait {
+    val badPath = temporaryFolder.newFile("bad.png").absolutePath
+    val goodPath = temporaryFolder.newFile("good.png").absolutePath
+    val decodedPaths = mutableListOf<String>()
+    val loader =
+      directThumbnailLoader { path ->
+        decodedPaths.add(path)
+        if (path == goodPath) mock() else null
+      }
+    val badDetails =
+      PreviewDetails(testId = "bad", className = "C", methodName = "m", previewName = "bad", srcImagePath = badPath)
+    val goodDetails =
+      PreviewDetails(testId = "good", className = "C", methodName = "m", previewName = "good", srcImagePath = goodPath)
+    val panel = PreviewItemPanel(badDetails, projectRule.project, showDetails = false, thumbnailLoader = loader)
+
+    var callbackCount = 0
+    panel.updateData(badDetails, ScreenshotViewType.NEW) { callbackCount++ }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Couldn't load image", findLabel(panel)?.text)
+
+    // Simulate the list painting other rows and then this row again, several times.
+    repeat(3) {
+      panel.updateData(goodDetails, ScreenshotViewType.NEW) { callbackCount++ }
+      panel.updateData(badDetails, ScreenshotViewType.NEW) { callbackCount++ }
+      assertEquals("Failure should be shown synchronously", "Couldn't load image", findLabel(panel)?.text)
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    }
+
+    assertEquals(listOf(badPath, goodPath), decodedPaths)
+    assertEquals("Only the two decodes should ask for a repaint", 2, callbackCount)
+  }
+
+  @Test
+  fun verifyMatchLabelUsesDestImageExistsFlag() = runInEdtAndWait {
+    // The reference image is on disk, but the panel relies on the flag rather than checking the disk.
+    val refPath = temporaryFolder.newFile("ref.png").absolutePath
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "C",
+        methodName = "m",
+        previewName = "p",
+        testResult = AndroidTestCaseResult.FAILED,
+        destImagePath = refPath,
+      )
+    val panel = PreviewItemPanel(details, projectRule.project)
+    assertNotNull(findAllLabels(panel).find { it.text == "New" })
+    assertNull(findAllLabels(panel).find { it.text == "Match: " })
+
+    panel.updateData(details.copy(destImageExists = true), ScreenshotViewType.NEW)
+
+    assertNull(findAllLabels(panel).find { it.text == "New" })
+    assertNotNull(findAllLabels(panel).find { it.text == "Match: " })
+  }
+
+  @Test
+  fun verifyReferenceViewUsesDestImageExistsFlag() = runInEdtAndWait {
+    val refPath = temporaryFolder.newFile("ref.png").absolutePath
+    val decodedPaths = mutableListOf<String>()
+    val details =
+      PreviewDetails(testId = "id", className = "C", methodName = "m", previewName = "p", destImagePath = refPath)
+    val panel =
+      PreviewItemPanel(
+        details,
+        projectRule.project,
+        showDetails = false,
+        thumbnailLoader =
+          directThumbnailLoader {
+            decodedPaths.add(it)
+            mock()
+          },
+      )
+
+    panel.showImageForView(ScreenshotViewType.REFERENCE)
+    assertEquals("No Reference Image", findLabel(panel)?.text)
+    assertTrue(decodedPaths.isEmpty())
+
+    panel.updateData(details.copy(destImageExists = true), ScreenshotViewType.REFERENCE)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(listOf(refPath), decodedPaths)
+    assertTrue(panel.isLoadedSuccessfully)
+  }
+
+  @Test
+  fun verifyDiffViewUsesDiffImageExistsFlag() = runInEdtAndWait {
+    val diffPath = temporaryFolder.newFile("diff.png").absolutePath
+    val decodedPaths = mutableListOf<String>()
+    val details =
+      PreviewDetails(
+        testId = "id",
+        className = "C",
+        methodName = "m",
+        previewName = "p",
+        testResult = AndroidTestCaseResult.FAILED,
+        diffImagePath = diffPath,
+      )
+    val panel =
+      PreviewItemPanel(
+        details,
+        projectRule.project,
+        showDetails = false,
+        thumbnailLoader =
+          directThumbnailLoader {
+            decodedPaths.add(it)
+            mock()
+          },
+      )
+
+    panel.showImageForView(ScreenshotViewType.DIFF)
+    assertEquals("No Diff Image", findLabel(panel)?.text)
+    assertTrue(decodedPaths.isEmpty())
+
+    panel.updateData(details.copy(diffImageExists = true), ScreenshotViewType.DIFF)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(listOf(diffPath), decodedPaths)
+    assertTrue(panel.isLoadedSuccessfully)
+  }
+
+  private fun directThumbnailLoader(decode: (String) -> JBImageIcon?) =
+    ThumbnailLoader(executor = MoreExecutors.newDirectExecutorService(), decode = decode)
 
   private fun findLabel(container: Container): JBLabel? {
     for (component in container.components) {

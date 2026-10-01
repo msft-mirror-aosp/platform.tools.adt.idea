@@ -380,7 +380,7 @@ class LayoutInspectorManagerTest {
 
     val toolbar =
       tab1.container.allChildren().filterIsInstance<ActionToolbar>().first { it.component.name == "LayoutInspector.MainToolbar" }
-    FakeUi(toolbar.component, createFakeWindow = true, parentDisposable = displayViewRule.disposable)
+    FakeUi(toolbar.component, parentDisposable = displayViewRule.disposable)
 
     waitForCondition(2.seconds) { toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any() }
     val toggleDeepInspectAction = toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()
@@ -428,7 +428,7 @@ class LayoutInspectorManagerTest {
 
     val toolbar =
       tab1.container.allChildren().filterIsInstance<ActionToolbar>().first { it.component.name == "LayoutInspector.MainToolbar" }
-    FakeUi(toolbar.component, createFakeWindow = true, parentDisposable = displayViewRule.disposable)
+    FakeUi(toolbar.component, parentDisposable = displayViewRule.disposable)
 
     waitForCondition(10.seconds) { toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any() }
     val toggleDeepInspectAction = toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()

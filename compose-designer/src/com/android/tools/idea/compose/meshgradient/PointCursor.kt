@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
 
@@ -30,16 +31,24 @@ import org.jetbrains.jewel.ui.component.Text
 
 @Composable
 fun PointCursor(xIndex: Int, yIndex: Int, color: Color, modifier: Modifier = Modifier, enabled: Boolean = true) {
+  val textColor =
+    if (!enabled) {
+      Color.LightGray
+    } else if (color.luminance() > 0.5f) {
+      Color.Black
+    } else {
+      Color.White
+    }
   Box(
     contentAlignment = Alignment.Center,
     modifier =
       modifier.size(20.dp).drawWithContent {
-        drawContent()
         drawCircle(color = color)
         val borderColor = if (enabled) Color.White else Color.LightGray
         drawCircle(color = borderColor, style = Stroke(width = 4.dp.toPx())) // Fill is transparent by default
+        drawContent()
       },
   ) {
-    Text("$xIndex,$yIndex", color = if (enabled) Color.White else Color.LightGray)
+    Text("$xIndex,$yIndex", color = textColor)
   }
 }

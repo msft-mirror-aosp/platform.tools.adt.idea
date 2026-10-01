@@ -35,12 +35,17 @@ import androidx.compose.ui.graphics.Vertices
  */
 internal class DefaultMeshGradientRenderer : BaseMeshGradientRenderer() {
   private val paint = Paint()
+  private var lastIndices: ShortArray? = null
+  private var cachedVertexIndices: List<Int> = emptyList()
 
   @Suppress("PrimitiveInCollection")
   override fun drawTriangles(canvas: Canvas, surfacePositions: FloatArray, surfaceColors: IntArray, indices: ShortArray, vertexCount: Int) {
     val vertexPositions = List(vertexCount) { i -> Offset(surfacePositions[i * 2], surfacePositions[i * 2 + 1]) }
     val vertexColors = List(vertexCount) { i -> Color(surfaceColors[i]) }
-    val vertexIndices = List(indices.size) { i -> indices[i].toInt() }
+    if (lastIndices !== indices) {
+      cachedVertexIndices = List(indices.size) { i -> indices[i].toInt() }
+      lastIndices = indices
+    }
 
     canvas.drawVertices(
       vertices =
@@ -49,7 +54,7 @@ internal class DefaultMeshGradientRenderer : BaseMeshGradientRenderer() {
           positions = vertexPositions,
           textureCoordinates = vertexPositions,
           colors = vertexColors,
-          indices = vertexIndices,
+          indices = cachedVertexIndices,
         ),
       blendMode = BlendMode.Dst,
       paint = paint,

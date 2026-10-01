@@ -175,6 +175,8 @@ bool AudioStreamer::StartAudioCapture() {
     if (audio_reader_->Start(codec_handle_)) {
       return true;
     }
+    delete audio_reader_;
+    audio_reader_ = nullptr;
     if (!use_audio_record) {
       return false;
     }

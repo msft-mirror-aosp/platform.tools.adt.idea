@@ -106,7 +106,7 @@ class SdkComponentsStepTest {
   private fun runInWizardDialog(sdkComponentsStep: SdkComponentsStep, action: (fakeUi: FakeUi) -> Unit) {
     val modelWizardDialog = wrapInWizardDialog(sdkComponentsStep)
     createModalDialogAndInteractWithIt({ modelWizardDialog.show() }) {
-      val fakeUi = FakeUi(modelWizardDialog.contentPane, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+      val fakeUi = FakeUi(modelWizardDialog.contentPane, parentDisposable = projectRule.testRootDisposable)
       action(fakeUi)
     }
   }

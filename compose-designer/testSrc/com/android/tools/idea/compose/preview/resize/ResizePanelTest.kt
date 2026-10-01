@@ -41,9 +41,11 @@ import com.intellij.openapi.actionSystem.EdtNoGetDataProvider
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.actionSystem.impl.ActionMenuItem
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndGet
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.fields.IntegerField
 import java.awt.Dimension
 import java.awt.event.ActionEvent
@@ -100,7 +102,7 @@ class ResizePanelTest {
           size = Dimension(500, 100)
           add(resizePanel)
         }
-      fakeUi = FakeUi(panel, true, parentDisposable = projectRule.testRootDisposable)
+      fakeUi = FakeUi(panel, parentDisposable = projectRule.testRootDisposable)
     }
   }
 
@@ -577,6 +579,49 @@ class ResizePanelTest {
   }
 
   @Test
+  fun `dimension inputs are hidden while the panel is cleared`() = runInEdtAndGet {
+    setupAndShowPanel()
+    assertTrue(resizePanel.isEnabled)
+    assertTrue(fakeUi.findAllComponents<IntegerField>().any { fakeUi.isShowing(it) })
+
+    // A preview refresh clears the panel until the new render finishes.
+    resizePanel.clear()
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertFalse(resizePanel.isEnabled)
+    assertTrue(fakeUi.findAllComponents<IntegerField>().none { fakeUi.isShowing(it) })
+
+    // After the render, the scene manager is set again and the inputs come back.
+    resizePanel.setSceneManager(sceneManager)
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertTrue(resizePanel.isEnabled)
+    assertTrue(fakeUi.findAllComponents<IntegerField>().any { fakeUi.isShowing(it) })
+    assertEquals(configuration.deviceSizeDp().width, widthTextField.value)
+  }
+
+  @Test
+  fun `commitPendingEdits applies typed dimensions`() = runInEdtAndGet {
+    setupAndShowPanel()
+    val originalWidth = configuration.deviceSizeDp().width
+    val newWidth = if (originalWidth == 321) 322 else 321
+
+    // Type a value without pressing Enter or moving the focus away.
+    widthTextField.text = newWidth.toString()
+    assertEquals(originalWidth, configuration.deviceSizeDp().width)
+
+    assertTrue(resizePanel.commitPendingEdits())
+    assertEquals(newWidth, configuration.deviceSizeDp().width)
+
+    // Invalid values are not applied.
+    widthTextField.text = ""
+    assertFalse(resizePanel.commitPendingEdits())
+    assertEquals(newWidth, configuration.deviceSizeDp().width)
+  }
+
+  @Test
   fun `automotive ultrawide width is correctly set`() = runInEdtAndGet {
     setupAndShowPanel()
 
@@ -623,6 +668,8 @@ class ResizePanelTest {
 
     resizePanel.setSceneManager(sceneManager)
     configuration.finishBulkEditing()
+    // The panel state is updated on the EDT.
+    runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
 
     assertNotNull(configuration.cachedDeviceState)
     assertTrue(resizePanel.isEnabled)
@@ -631,7 +678,14 @@ class ResizePanelTest {
   @Test
   fun `selecting tv or automotive device clears phone cutout and updates uiMode`() = runInEdtAndGet {
     val pixel9 = configuration.settings.devices.first { it.id == "pixel_9" }
-    configuration.setDevice(pixel9, false)
+    val customPixel9 =
+      Device.Builder(pixel9)
+        .apply {
+          setId(Configuration.CUSTOM_DEVICE_ID)
+          setName("Custom")
+        }
+        .build()
+    configuration.setDevice(customPixel9, false)
     configuration.useDeviceForCutout("pixel_9")
     configuration.cutoutOverlay = com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE
     configuration.uiMode = com.android.resources.UiMode.NORMAL
@@ -652,6 +706,7 @@ class ResizePanelTest {
     assertFalse(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
     assertEquals(com.android.resources.UiMode.TELEVISION, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.TELEVISION, configuration.fullConfig.uiModeQualifier?.value)
+    assertTrue(resizePanel.hasBeenResized)
 
     // Switch to Automotive
     sceneManager.sceneRenderConfiguration.needsInflation.set(false)
@@ -664,15 +719,17 @@ class ResizePanelTest {
     assertFalse(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
     assertEquals(com.android.resources.UiMode.CAR, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.CAR, configuration.fullConfig.uiModeQualifier?.value)
+    assertTrue(resizePanel.hasBeenResized)
 
-    // Revert to Original (Pixel 9) and verify cutout and uiMode are restored
+    // Revert to Original (Custom Pixel 9) and verify cutout and uiMode are restored
     sceneManager.sceneRenderConfiguration.needsInflation.set(false)
     revert()
     assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
-    assertEquals("pixel_9", configuration.device!!.id)
+    assertEquals(Configuration.CUSTOM_DEVICE_ID, configuration.device!!.id)
     assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_HOLE, configuration.cutoutOverlay)
     assertTrue(configuration.overlays.contains(com.android.tools.res.FrameworkOverlay.PIXEL_9))
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.fullConfig.uiModeQualifier?.value)
+    assertFalse(resizePanel.hasBeenResized)
   }
 }

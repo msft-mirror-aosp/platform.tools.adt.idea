@@ -22,15 +22,18 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
+import java.awt.BorderLayout
 import java.awt.Dimension
+import javax.swing.JComboBox
 import javax.swing.JComponent
+import javax.swing.JPanel
 
-class MeshGradientEditorAction : AnAction() {
+class GradientEditorAction : AnAction() {
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
-    val dialog = MeshGradientEditorPlaygroundDialog(project)
+    val dialog = GradientEditorPlaygroundDialog(project)
     dialog.show()
   }
 
@@ -40,20 +43,33 @@ class MeshGradientEditorAction : AnAction() {
   }
 }
 
-class MeshGradientEditorPlaygroundDialog(private val project: Project) : DialogWrapper(project, true) {
-  private val state = MeshGeneratorState()
+class GradientEditorPlaygroundDialog(private val project: Project) : DialogWrapper(project, true) {
+  private val state = GradientEditorState()
 
   init {
-    title = "Mesh Gradient Editor"
+    title = "Gradient Editor"
     init()
   }
 
   override fun createCenterPanel(): JComponent {
+    val mainPanel = JPanel(BorderLayout())
+
+    val typeSelector = JComboBox(GradientType.entries.toTypedArray())
+    typeSelector.selectedItem = state.currentType
+    typeSelector.addActionListener { state.currentType = typeSelector.selectedItem as GradientType }
+
+    mainPanel.add(typeSelector, BorderLayout.NORTH)
+
     val panel = StudioComposePanel {
-      // Pass isEditingExisting = false to enable generator layouts
-      MeshGradientEditorScreen(project, state, isEditingExisting = false)
+      when (state.currentType) {
+        GradientType.MESH -> MeshGradientEditorScreen(project, state, isEditingExisting = false)
+        GradientType.LINEAR,
+        GradientType.RADIAL,
+        GradientType.SWEEP -> StandardGradientEditorScreen(project, state, isEditingExisting = false)
+      }
     }
     panel.preferredSize = Dimension(520, 650)
-    return panel
+    mainPanel.add(panel, BorderLayout.CENTER)
+    return mainPanel
   }
 }

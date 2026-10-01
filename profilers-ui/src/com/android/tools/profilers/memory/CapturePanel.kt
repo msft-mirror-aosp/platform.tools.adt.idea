@@ -22,6 +22,7 @@ import com.android.tools.adtui.flat.FlatSeparator
 import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.StreamingTimeline
+import com.android.tools.adtui.model.formatter.NumberFormatter
 import com.android.tools.profilers.IdeProfilerComponents
 import com.android.tools.profilers.ProfilerFonts
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_TRIGGER_DELAY_MS
@@ -218,8 +219,18 @@ private class CapturePanelUi(
   private fun buildSummaryPanel() =
     JPanel(FlowLayout(FlowLayout.LEFT)).apply {
       border = AdtUiUtils.DEFAULT_TOP_BORDER
+      fun formatStatValue(value: Long): String =
+        if (value == ClassifierSet.NOT_APPLICABLE_SIZE) "-" else NumberFormatter.formatInteger(value)
+
       fun mkLabel(desc: String, action: Runnable? = null) =
-        StatLabel(0L, desc, numFont = ProfilerFonts.H2_FONT, descFont = AdtUiUtils.DEFAULT_FONT.biggerOn(1f), action = action)
+        StatLabel(
+          0L,
+          desc,
+          numFont = ProfilerFonts.H2_FONT,
+          descFont = AdtUiUtils.DEFAULT_FONT.biggerOn(1f),
+          numFormatter = ::formatStatValue,
+          action = action,
+        )
 
       val totalClassLabel = mkLabel("Classes")
       val totalLeakLabel = mkLabel("Leaks")
@@ -227,6 +238,8 @@ private class CapturePanelUi(
       val totalCountLabel = mkLabel("Count")
       val totalNativeSizeLabel = mkLabel("Native Size")
       val totalShallowSizeLabel = mkLabel("Shallow Size")
+      val retainedSizeSeparator = FlatSeparator(6, 36)
+      val totalRetainedNativeSizeLabel = mkLabel("Retained Native Size")
       val totalRetainedSizeLabel = mkLabel("Retained Size")
 
       // Compute total classes asynchronously to avoid locking on the UI thread
@@ -244,9 +257,15 @@ private class CapturePanelUi(
       fun refreshTotalRetainedSizeAsync(heap: HeapSet) =
         profilersView.studioProfilers.ideServices.poolExecutor.execute {
           val retainedSize = heap.totalRetainedSize
+          val retainedNativeSize = heap.totalRetainedNativeSize
           profilersView.studioProfilers.ideServices.mainExecutor.execute {
             if (selection.selectedHeapSet == heap) {
+              val retainedTooltip = "Retained Size is not available when a filter is applied"
               totalRetainedSizeLabel.numValue = retainedSize
+              totalRetainedSizeLabel.toolTipText = if (retainedSize == ClassifierSet.NOT_APPLICABLE_SIZE) retainedTooltip else null
+              totalRetainedNativeSizeLabel.numValue = retainedNativeSize
+              totalRetainedNativeSizeLabel.toolTipText =
+                if (retainedNativeSize == ClassifierSet.NOT_APPLICABLE_SIZE) retainedTooltip else null
             }
           }
         }
@@ -263,6 +282,8 @@ private class CapturePanelUi(
         totalCountLabel.numValue = heap.totalObjectCount.toLong()
         totalNativeSizeLabel.numValue = heap.totalNativeSize
         totalShallowSizeLabel.numValue = heap.totalShallowSize
+        retainedSizeSeparator.isVisible = capture.isTraceProcessor
+        totalRetainedNativeSizeLabel.isVisible = capture.hasRetainedNativeAllocations
         refreshTotalRetainedSizeAsync(heap)
 
         fun updateLabel(label: StatLabel, filter: CaptureObjectInstanceFilter) {
@@ -293,6 +314,8 @@ private class CapturePanelUi(
       add(totalCountLabel)
       add(totalNativeSizeLabel)
       add(totalShallowSizeLabel)
+      add(retainedSizeSeparator)
+      add(totalRetainedNativeSizeLabel)
       add(totalRetainedSizeLabel)
       alignmentX = Component.LEFT_ALIGNMENT
     }

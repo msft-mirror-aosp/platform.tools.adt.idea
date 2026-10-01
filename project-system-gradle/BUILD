@@ -51,6 +51,7 @@ iml_module(
         "//tools/adt/idea/android-navigator:intellij.android.navigator",
         "//tools/adt/idea/mlkit:intellij.android.mlkit",
         "//tools/vendor/google/android-ndk:android-ndk",
+        "//tools/vendor/google/alt-lang/cxx/gradle:altlang.cxx.gradle",
         "//tools/vendor/google/firebase:firebase",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
         # Lightbuild templates need RepositoryUrlManager for resolving '+' dependencies,

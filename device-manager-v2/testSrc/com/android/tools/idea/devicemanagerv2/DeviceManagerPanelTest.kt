@@ -195,7 +195,7 @@ class DeviceManagerPanelTest {
 
     panel.setBounds(0, 0, 800, 400)
 
-    val fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val fakeUi = FakeUi(panel, parentDisposable = disposableRule.disposable)
     fakeUi.layout()
 
     assertThat(deviceTable.selection.selectedKeys()).isEmpty()
@@ -214,7 +214,7 @@ class DeviceManagerPanelTest {
     notificationBanners.send(listOf(banner))
     panel.setBounds(0, 0, 800, 400)
 
-    val fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val fakeUi = FakeUi(panel, parentDisposable = disposableRule.disposable)
     fakeUi.layout()
     assertThat((((panel.components[0]) as JPanel).components[0] as JPanel).components[0]).isEqualTo(banner)
 
@@ -294,7 +294,7 @@ class DeviceManagerPanelTest {
     deviceHandles.send(listOf(phoneHandle, glassesHandle, otherPhone))
 
     panel.setBounds(0, 0, 800, 400)
-    val fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val fakeUi = FakeUi(panel, parentDisposable = disposableRule.disposable)
     fakeUi.layout()
 
     // When nested, Glasses A follows its parent Phone (Pixel 6):
@@ -316,7 +316,7 @@ class DeviceManagerPanelTest {
       deviceHandles.send(listOf(phoneHandle, glassesHandle, otherPhone))
 
       panel.setBounds(0, 0, 800, 400)
-      val fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+      val fakeUi = FakeUi(panel, parentDisposable = disposableRule.disposable)
       fakeUi.layout()
 
       // When flat (flag disabled), alphabetical sorting by Name applies flatly:
@@ -342,7 +342,7 @@ class DeviceManagerPanelTest {
     deviceTable.addGrouping(DeviceTableColumns.HandleType)
 
     panel.setBounds(0, 0, 800, 400)
-    val fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
+    val fakeUi = FakeUi(panel, parentDisposable = disposableRule.disposable)
     fakeUi.layout()
 
     // Both are Virtual devices, so they belong to the same Category and should nest:

@@ -165,7 +165,7 @@ class EmulatorAdbReadyServiceTest {
   }
 
   private fun createUi(panel: EmulatorToolWindowPanel, fakeEmulator: FakeEmulator): FakeUi {
-    val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = disposable)
+    val ui = FakeUi(panel, parentDisposable = disposable)
     panel.createContent(true)
     panel.size = Dimension(200, 400)
     ui.layoutAndDispatchEvents()

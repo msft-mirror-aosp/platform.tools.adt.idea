@@ -1,4 +1,4 @@
-load(":art-k2-failing-tests.bzl", "ART_K2_FAILING")
+load(":art-k2-failing-tests.bzl", "ART_K2_FAILING", "TESTS_WITH_ERRORS", "TESTS_WITH_ORDER_RELATED_FAILURE")
 load(":ij-debugger-tests.bzl", "debugger_test")
 
 smoke_test = "include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2PositionManagerTestGenerated\\$SingleFile#testClass"
@@ -68,6 +68,22 @@ debugger_test(
     filters = ART_K2_FAILING,
     run_on_art = True,
     shard_count = 50,
+    tags = ["manual"],
+    test_dep = "@tools_idea//plugins/kotlin/jvm-debugger/test/k2:kotlin-jvm-debugger-test_test_lib",
+)
+
+debugger_test(
+    name = "art-tests-with-order-related-failures",
+    filters = TESTS_WITH_ORDER_RELATED_FAILURE,
+    run_on_art = True,
+    tags = ["manual"],
+    test_dep = "@tools_idea//plugins/kotlin/jvm-debugger/test/k2:kotlin-jvm-debugger-test_test_lib",
+)
+
+debugger_test(
+    name = "art-tests-with-errors",
+    filters = TESTS_WITH_ERRORS,
+    run_on_art = True,
     tags = ["manual"],
     test_dep = "@tools_idea//plugins/kotlin/jvm-debugger/test/k2:kotlin-jvm-debugger-test_test_lib",
 )

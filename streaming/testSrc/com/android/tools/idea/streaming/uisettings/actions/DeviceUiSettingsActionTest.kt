@@ -154,7 +154,7 @@ class DeviceUiSettingsActionTest {
         zoomToolbarVisible = false,
       )
     panel.setBounds(0, 0, 600, 800)
-    FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
+    FakeUi(panel, parentDisposable = testRootDisposable)
     return panel.displayView
   }
 

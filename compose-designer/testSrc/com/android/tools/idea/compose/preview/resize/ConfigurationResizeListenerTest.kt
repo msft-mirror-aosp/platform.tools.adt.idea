@@ -39,6 +39,7 @@ import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneRenderConfiguration
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.rendering.RenderResult
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
@@ -189,11 +190,12 @@ class ConfigurationResizeListenerTest {
   }
 
   @Test
-  fun `listener handles null viewObject gracefully`() = runTest {
+  fun `listener still renders when viewObject is null after a previous render`() = runTest {
     val sceneManager = createSceneManager(false)
     val configuration = createConfiguration(500, 600)
 
-    whenever(sceneManager.viewObject).thenReturn(null) // Return null viewObject
+    whenever(sceneManager.viewObject).thenReturn(null) // e.g. the last render failed
+    whenever(sceneManager.renderResult).thenReturn(mock<RenderResult>())
 
     val listener =
       ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
@@ -203,7 +205,47 @@ class ConfigurationResizeListenerTest {
     advanceUntilIdle()
 
     verify(sceneManager, times(1)).viewObject
+    verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
+    verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
+    Disposer.dispose(sceneManager)
+  }
+
+  @Test
+  fun `listener does not render when the preview has never been rendered`() = runTest {
+    val sceneManager = createSceneManager(false)
+    val configuration = createConfiguration(500, 600)
+
+    whenever(sceneManager.viewObject).thenReturn(null)
+    whenever(sceneManager.renderResult).thenReturn(null)
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+    configuration.updateScreenSize(700, 800)
+
+    advanceUntilIdle()
+
+    verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
+    Disposer.dispose(sceneManager)
+  }
+
+  @Test
+  fun `listener still renders when updating the LayoutParams fails`() = runTest {
+    val sceneManager = createSceneManager(false)
+    val configuration = createConfiguration(500, 600)
+    whenever(sceneManager.viewObject).thenReturn(mock<View>())
+    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any()))
+      .thenReturn(CompletableFuture.failedFuture(IllegalStateException("No render session")))
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+    configuration.updateScreenSize(700, 800)
+
+    advanceUntilIdle()
+
+    verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
     Disposer.dispose(sceneManager)
   }
 

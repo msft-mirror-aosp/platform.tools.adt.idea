@@ -56,6 +56,7 @@ import com.android.tools.idea.avd.glassespairing.GlassesPairingLockService
 import com.android.tools.idea.avd.glassespairing.GlassesPairingResult
 import com.android.tools.idea.avd.glassespairing.GlassesPairingUsageTracker
 import com.android.tools.idea.avd.glassespairing.GlassesPairingWizard
+import com.android.tools.idea.avd.glassespairing.userInvolvementRequired
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.AccelerationErrorSolution
 import com.android.tools.idea.avdmanager.AvdManagerConnection
@@ -533,9 +534,22 @@ class StudioLocalEmulatorDeviceHandle(
       if (pairedPhone != null && pairedGlasses != null) {
         try {
           withContext(ioDispatcher) {
-            pairedGlasses.updatePairedPhone(pairedPhone)
             pairedPhone.addPairedGlasses(pairedGlasses.id, mac)
+            pairedGlasses.updatePairedPhone(pairedPhone)
+            refreshDevices()
             logger.info("Successfully paired glasses ${pairedGlasses.id} with phone ${pairedPhone.id}")
+          }
+          // Wait for the pairing status to update, then show the devices side by side.
+          scope.launch {
+            withTimeoutOrNull(5.seconds) {
+              pairedPhone.stateFlow.first { state -> state.properties.pairedGlassesInfos.any { it.id == pairedGlasses.id } }
+              pairedGlasses.stateFlow.first { it.properties.pairedPhoneId == pairedPhone.id }
+            }
+            withContext(edtDispatcher) {
+              if (project?.isDisposed == false) {
+                project.userInvolvementRequired(pairedGlasses, pairedPhone)
+              }
+            }
           }
         } catch (e: IOException) {
           logger.warn("Failed to write pairing config", e)

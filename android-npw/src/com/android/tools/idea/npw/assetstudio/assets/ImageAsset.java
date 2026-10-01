@@ -35,6 +35,7 @@ import com.android.utils.XmlUtils;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.io.OSAgnosticPathUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.ui.UIUtil;
 import java.awt.image.BufferedImage;
@@ -44,7 +45,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,6 +58,9 @@ import org.jetbrains.annotations.Nullable;
  * {@link #getXmlDrawable()} have to be called on the event dispatch thread.
  */
 public final class ImageAsset extends BaseAsset {
+  public static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024; // 10 MB
+  public static final int MAX_IMAGE_DIMENSION = 8192; // 8192 pixels
+
   private static final String IMAGE_PATH_PROPERTY = "imagePath";
 
   @NotNull private final OptionalValueProperty<File> myImagePath;
@@ -79,6 +86,11 @@ public final class ImageAsset extends BaseAsset {
     myImagePath = new OptionalValueProperty<>();
     myImagePath.addListener(() -> {
       myXmlDrawableIsResizable.set(false);
+      // Reset the validity state when a new image path is set so that any validation error
+      // from a previously selected file (e.g., a missing default bundled asset in unit tests,
+      // or an oversized/corrupt file previously chosen by the user) does not remain sticky and
+      // falsely block myIsResizable or show stale error banners before the new file is loaded.
+      myValidityState.set(Validator.Result.OK);
       synchronized (myLock) {
         myImageFile = myImagePath.getValueOrNull();
         myXmlDrawableFuture = null;
@@ -86,15 +98,18 @@ public final class ImageAsset extends BaseAsset {
       }
     });
 
-    myIsResizable = new BooleanExpression(myImagePath, myXmlDrawableIsResizable) {
+    myIsResizable = new BooleanExpression(myImagePath, myXmlDrawableIsResizable, myValidityState) {
       @Override
       @NotNull
       public Boolean get() {
-        FileType fileType = getFileType(myImagePath.getValueOrNull());
-        if (fileType == null) {
+        File file = myImagePath.getValueOrNull();
+        if (file == null || myValidityState.get().getSeverity() == Validator.Severity.ERROR) {
+          // Note: Avoid calling file.exists() or checking file properties on disk here to prevent
+          // synchronous I/O on the UI thread and avoid leaking NTLMv2 credentials via SMB on Windows UNC paths.
+          // File validity and size checks are handled by checkFile() upon asset loading/selection.
           return false;
         }
-        if (fileType == FileType.RASTER_IMAGE_CANDIDATE) {
+        if (getFileType(file) == FileType.RASTER_IMAGE_CANDIDATE) {
           return true;
         }
 
@@ -188,6 +203,13 @@ public final class ImageAsset extends BaseAsset {
         if (file == null || isVectorGraphics(FileType.fromFile(file))) {
           return null;
         }
+        // Fast-abort if the file is invalid or too large to immediately update the UI
+        // validity state and avoid scheduling unnecessary background loading work.
+        Validator.Result validityState = checkFile(file);
+        if (validityState.getSeverity() != Validator.Severity.OK) {
+          updateValidityStateAndResizability(file, validityState, false);
+          return null;
+        }
         myImageFuture = FutureUtils.executeOnPooledThread(() -> loadImage(file));
       }
       return myImageFuture;
@@ -213,9 +235,12 @@ public final class ImageAsset extends BaseAsset {
       }
 
       // SECURITY: imagePath is deserialised from project-level .idea/assetWizardSettings.xml,
-      // which is attacker-authored in an untrusted project. Calling Files.notExists() on a UNC
-      // path before the user grants trust triggers an SMB connect on Windows (NTLMv2 leak).
-      // Skip the existence-probe on Windows and let the user re-pick if the path is stale.
+      // which is attacker-authored in an untrusted project. Probing or accessing a UNC path
+      // triggers an SMB connect on Windows (NTLMv2 leak). Validate that the path is not a UNC path.
+      if (imagePath.startsWith("\\\\") || imagePath.startsWith("//") || OSAgnosticPathUtil.isUncPath(imagePath)) {
+        return null;
+      }
+
       Path path = Paths.get(imagePath);
       if (SystemInfo.isWindows) {
         return path.toFile();
@@ -258,6 +283,11 @@ public final class ImageAsset extends BaseAsset {
           return null;
         }
         File file = myImageFile;
+        Validator.Result validityState = checkFile(file);
+        if (validityState.getSeverity() != Validator.Severity.OK) {
+          updateValidityStateAndResizability(file, validityState, false);
+          return null;
+        }
         myXmlDrawableFuture = FutureUtils.executeOnPooledThread(() -> loadXmlDrawable(file));
       }
       return myXmlDrawableFuture;
@@ -267,7 +297,7 @@ public final class ImageAsset extends BaseAsset {
   @Nullable
   private String loadXmlDrawable(@NotNull File file) {
     String xmlText = null;
-    Validator.Result validityState = checkFileExistence(file);
+    Validator.Result validityState = checkFile(file);
 
     if (validityState.getSeverity() == Validator.Severity.OK) {
       FileType fileType = FileType.fromFile(file);
@@ -334,15 +364,27 @@ public final class ImageAsset extends BaseAsset {
   @Nullable
   private BufferedImage loadImage(@NotNull File file) {
     BufferedImage image = null;
-    Validator.Result validityState = checkFileExistence(file);
+    Validator.Result validityState = checkFile(file);
 
     if (validityState.getSeverity() == Validator.Severity.OK) {
       FileType fileType = FileType.fromFile(file);
       if (fileType == FileType.RASTER_IMAGE_CANDIDATE) {
         try {
-          image = ImageIO.read(file);
+          // Inspect the image header dimensions first before decoding the full bitmap into memory
+          // via ImageIO.read(file). A highly compressed image (e.g., a solid-color PNG) can have a
+          // small on-disk file size (< 10 MB) while expanding to gigabytes of pixel data in RAM.
+          validityState = checkImageDimensions(file);
+          if (validityState.getSeverity() == Validator.Severity.OK) {
+            image = ImageIO.read(file);
+            if (image == null) {
+              validityState = new Validator.Result(Validator.Severity.ERROR,
+                                                   "The " + myRole + " file could not be parsed. Please choose another file.");
+            }
+          }
         }
-        catch (IOException e) {
+        catch (Throwable e) {
+          // Catch Throwable (including OutOfMemoryError or NegativeArraySizeException from ImageIO
+          // when rasterizing malformed/extreme images) so we surface a validation error instead of crashing.
           validityState = Validator.Result.fromThrowable(e);
         }
       }
@@ -352,13 +394,58 @@ public final class ImageAsset extends BaseAsset {
     return image;
   }
 
+  /**
+   * Reads only the image header metadata via {@link ImageReader} to verify that its width and height
+   * do not exceed {@link #MAX_IMAGE_DIMENSION}, avoiding full raster allocation in memory.
+   */
   @NotNull
-  private Validator.Result checkFileExistence(@NotNull File file) {
+  private Validator.Result checkImageDimensions(@NotNull File file) {
+    try (ImageInputStream in = ImageIO.createImageInputStream(file)) {
+      if (in == null) {
+        return Validator.Result.OK;
+      }
+      Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
+      if (readers.hasNext()) {
+        ImageReader reader = readers.next();
+        try {
+          reader.setInput(in);
+          int width = reader.getWidth(0);
+          int height = reader.getHeight(0);
+          if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+            return new Validator.Result(Validator.Severity.ERROR,
+                                        "The " + myRole + " resolution (" + width + "x" + height +
+                                        ") is too large. Maximum allowed dimension is " +
+                                        MAX_IMAGE_DIMENSION + "x" + MAX_IMAGE_DIMENSION + " pixels. Please select a smaller image.");
+          }
+        }
+        finally {
+          // Always dispose the native/stream resources held by the ImageReader.
+          reader.dispose();
+        }
+      }
+    }
+    catch (IOException | RuntimeException ignore) {
+      // If we cannot read headers via ImageReader, fallback to standard loading.
+    }
+    return Validator.Result.OK;
+  }
+
+  /**
+   * Validates that the given file exists, is a regular file (not a directory), and does not exceed
+   * {@link #MAX_FILE_SIZE_BYTES} (10 MB) on disk.
+   */
+  @NotNull
+  private Validator.Result checkFile(@NotNull File file) {
     if (!file.exists()) {
       return Validator.Result.fromNullableMessage("File " + file.getName() + " does not exist");
     }
     if (file.isDirectory()) {
       return new Validator.Result(Validator.Severity.WARNING, "Please select " + getIndefiniteArticlePrefixFor(myRole) + myRole + " file");
+    }
+    // Reject files larger than 10 MB before attempting to read or parse them into memory.
+    if (file.length() > MAX_FILE_SIZE_BYTES) {
+      return new Validator.Result(Validator.Severity.ERROR,
+                                  "The " + myRole + " file is too large. The maximum allowed file size is 10 MB. Please select a smaller image.");
     }
 
     return Validator.Result.OK;

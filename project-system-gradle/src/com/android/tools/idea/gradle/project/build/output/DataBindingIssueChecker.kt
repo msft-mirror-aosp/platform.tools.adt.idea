@@ -105,7 +105,7 @@ class DataBindingIssueChecker : GradleIssueChecker {
         // file unless we feed it the absolute path directly.
         val sourceFile = File(projectPath, msg.filePath).absoluteFile
         val location = msg.locations.first()
-        val filePosition = FilePosition(sourceFile, location.startLine, location.startCol, location.endLine, location.endCol)
+        val filePosition = FilePosition(sourceFile.toPath(), location.startLine, location.startCol, location.endLine, location.endCol)
         val goToFile = OpenFileWithLocationQuickFix("open.file.$index", filePosition)
         return object : BuildIssue {
           override val title: String = summary
@@ -130,7 +130,7 @@ class OpenFileWithLocationQuickFix(uniqueId: String, val myFilePosition: FilePos
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val projectFile = project.projectFile ?: return CompletableFuture.completedFuture<Any>(null)
-    val filePositionPath = myFilePosition.file?.path ?: return CompletableFuture.completedFuture<Any>(null)
+    val filePositionPath = myFilePosition.path?.toString() ?: return CompletableFuture.completedFuture<Any>(null)
     val future = CompletableFuture<Any>()
     invokeLater {
       val file = projectFile.parent.fileSystem.findFileByPath(filePositionPath)

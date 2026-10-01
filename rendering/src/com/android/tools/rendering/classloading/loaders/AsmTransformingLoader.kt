@@ -35,7 +35,7 @@ constructor(
   private val delegate: DelegatingClassLoader.Loader,
   private val pseudoClassLocator: PseudoClassLocator,
   private val asmFlags: Int = ClassWriter.COMPUTE_FRAMES,
-  private val onRewrite: (fqcn: String, durationMs: Long, size: Int) -> Unit = { _, _, _ -> },
+  private val onRewrite: (fqcn: String, durationNs: Long, size: Int) -> Unit = { _, _, _ -> },
 ) : DelegatingClassLoader.Loader {
 
   override fun loadClass(fqcn: String): ByteArray? {
@@ -43,9 +43,9 @@ constructor(
     // Optimization: Skip transformation if the transform doesn't need to rewrite this class.
     // This allows bypassing the expensive ASM parsing and frame recalculation.
     if (!transform.shouldRewrite(bytes)) return bytes
-    val startTime = System.currentTimeMillis()
+    val startTime = System.nanoTime()
     val rewrittenBytes = ClassConverter.rewriteClass(bytes, transform, asmFlags, pseudoClassLocator)
-    onRewrite(fqcn, System.currentTimeMillis() - startTime, rewrittenBytes.size)
+    onRewrite(fqcn, System.nanoTime() - startTime, rewrittenBytes.size)
     return rewrittenBytes
   }
 }

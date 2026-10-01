@@ -1267,6 +1267,10 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     @UiThread
     @Suppress("UnstableApiUsage")
     private fun showInSplitView(device1SerialNumber: String, device2SerialNumber: String) {
+      if (!toolWindow.isVisible) {
+        toolWindow.show { ToolWindowManager.getInstance(project).invokeLater { showInSplitView(device1SerialNumber, device2SerialNumber) } }
+        return
+      }
       val content1 = findContentBySerialNumber(device1SerialNumber) ?: return
       val content2 = findContentBySerialNumber(device2SerialNumber) ?: return
 
@@ -1284,6 +1288,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
       content1.select(ActivationLevel.ACTIVATE_TAB)
       content2.select(ActivationLevel.ACTIVATE_TAB)
+      pairedDevicesLayoutUpdateRequired = true
     }
 
     override fun launchingApp(deviceSerialNumber: String, project: Project) {

@@ -167,6 +167,26 @@ class DesignerCommonIssueSidePanelTest {
   }
 
   @Test
+  fun testFixWithAiButtonNotVisibleWhenComposeRenderErrorIsWarning() {
+    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
+
+    for (severity in listOf(HighlightSeverity.WARNING, HighlightSeverity.WEAK_WARNING)) {
+      val issue = MockIssueFactory.createRenderIssue(severity)
+      val nlRenderIssue = RenderIssueProvider.NlRenderIssueWrapper.wrapIssue(issue, null)
+      val panel =
+        DesignerCommonIssueSidePanel(rule.project, rule.testRootDisposable) {
+          object : AnAction("Fix with AI") {
+            override fun actionPerformed(e: AnActionEvent) {}
+          }
+        }
+      panel.loadIssueNode(TestIssueNode(nlRenderIssue))
+
+      val actionToolbar = panel.findDescendant(ActionToolbar::class.java)
+      assertNull(actionToolbar)
+    }
+  }
+
+  @Test
   fun testFixWithAiButtonNotVisibleWhenComposeRenderErrorFlagIsEnabledAndInvalidIssueType() {
     StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
     val issue = TestIssue()

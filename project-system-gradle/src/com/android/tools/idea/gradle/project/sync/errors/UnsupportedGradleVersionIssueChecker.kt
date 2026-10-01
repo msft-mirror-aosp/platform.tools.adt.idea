@@ -74,7 +74,10 @@ class UnsupportedGradleVersionIssueChecker : GradleIssueChecker {
         buildIssueComposer.addQuickFix(FixGradleVersionInWrapperQuickFix(gradleWrapper, gradleVersion))
         val propertiesFile = gradleWrapper.propertiesFilePath
         if (propertiesFile.exists()) {
-          buildIssueComposer.addQuickFix("Open Gradle wrapper properties", OpenFileAtLocationQuickFix(FilePosition(propertiesFile, -1, -1)))
+          buildIssueComposer.addQuickFix(
+            "Open Gradle wrapper properties",
+            OpenFileAtLocationQuickFix(FilePosition(propertiesFile.toPath(), -1, -1)),
+          )
         }
       } else {
         val gradleProjectSettings = GradleProjectSettingsFinder.getInstance().findGradleProjectSettings(ideaProject)

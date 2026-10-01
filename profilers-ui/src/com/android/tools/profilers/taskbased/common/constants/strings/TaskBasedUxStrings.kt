@@ -150,6 +150,8 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_EXPAND_ALL_SHORTCUT = "Ctrl+NumPad+"
   const val LEAKCANARY_COLLAPSE_ALL_SHORTCUT = "Ctrl+NumPad-"
   const val LEAKCANARY_COPY_TO_CLIPBOARD = "Copy trace to clipboard"
+  const val LEAKCANARY_PREVIOUS_OCCURRENCE = "Previous Occurrence"
+  const val LEAKCANARY_NEXT_OCCURRENCE = "Next Occurrence"
   const val LEAKCANARY_UPVOTE_INSIGHT = "Upvote Insight"
   const val LEAKCANARY_DOWNVOTE_INSIGHT = "Downvote Insight"
   const val LEAKCANARY_COPY_INSIGHT = "Copy Insight"

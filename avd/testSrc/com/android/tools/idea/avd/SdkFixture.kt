@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import com.android.SdkConstants
+import com.android.repository.api.LocalPackage
 import com.android.repository.impl.meta.RepositoryPackages
 import com.android.repository.impl.meta.TypeDetails
 import com.android.repository.testframework.FakePackage
@@ -63,12 +64,20 @@ class SdkFixture(
   val deviceManager: DeviceManager = DeviceManagers.getDeviceManager(sdkHandler),
   val avdManager: AvdManager = AvdManager.createInstance(sdkHandler, avdRoot, deviceManager, logger),
 ) {
+  fun setLocalPackages(vararg packages: LocalPackage) {
+    repoManager.setLocalPackages(*packages)
+  }
+
+  fun setLocalPackages(packages: Collection<LocalPackage>) {
+    repoManager.setLocalPackages(packages)
+  }
+
   internal fun systemImageState(hasLocal: Boolean = true, hasRemote: Boolean = true, error: String? = null) =
     SystemImageState(
       hasLocal = hasLocal,
       hasRemote = hasRemote,
       error = error,
-      images = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), logger).get().toImmutableList(),
+      images = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().toImmutableList(),
     )
 
   fun createLocalSystemImage(

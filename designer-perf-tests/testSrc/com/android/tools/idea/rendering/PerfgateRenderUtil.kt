@@ -198,8 +198,11 @@ internal class ClassAverageLoadTimeUsMeasurement(metric: Metric) : MetricMeasure
   override fun before() {}
 
   override fun after(result: RenderResult) =
-    if (result.stats.totalClassLoadDurationMs != -1L && result.stats.classesFound > 0)
-      MetricSample(Instant.now().toEpochMilli(), (result.stats.totalClassLoadDurationMs * 1000) / result.stats.classesFound)
+    if (result.stats.totalClassLoadDurationUs != -1L && result.stats.classesFound > 0)
+      MetricSample(
+        Instant.now().toEpochMilli(),
+        result.stats.totalClassLoadDurationUs / result.stats.classesFound,
+      )
     else null // No render time available
 }
 

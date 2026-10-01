@@ -72,28 +72,86 @@ int CreateAndConnectSocket(const string& socket_name) {
   Log::Fatal(INVALID_COMMAND_LINE, "Invalid command line argument: \"%s\"", arg.c_str());
 }
 
-CodecInfo* SelectVideoEncoder(const string& mime_type) {
-  Jni jni = Jvm::GetJni();
-  JClass clazz = jni.GetClass("com/android/tools/screensharing/CodecInfo");
-  jmethodID method = clazz.GetStaticMethod("selectVideoEncoderForType",
-                                           "(Ljava/lang/String;)Lcom/android/tools/screensharing/CodecInfo;");
-  JObject codec_info = clazz.CallStaticObjectMethod(jni, method, JString(jni, mime_type).ref());
-  if (codec_info.IsNull()) {
-    Log::Fatal(VIDEO_ENCODER_NOT_FOUND, "No video encoder is available for %s", mime_type.c_str());
+class VideoEncoderSelector {
+public:
+  static CodecInfo* SelectVideoEncoder(Jni jni, string* codec_name, int32_t flags) {
+    return VideoEncoderSelector(jni).Select(codec_name, flags);
   }
-  JString jname = JString(codec_info.GetObjectField(clazz.GetFieldId("name", "Ljava/lang/String;")));
-  string codec_name = jname.IsNull() ? "<unnamed>" : jname.GetValue();
-  int max_width = codec_info.GetIntField(clazz.GetFieldId("maxWidth", "I"));
-  int max_height = codec_info.GetIntField(clazz.GetFieldId("maxHeight", "I"));
-  int width_alignment = codec_info.GetIntField(clazz.GetFieldId("widthAlignment", "I"));
-  int height_alignment = codec_info.GetIntField(clazz.GetFieldId("heightAlignment", "I"));
-  int max_frame_rate = codec_info.GetIntField(clazz.GetFieldId("maxFrameRate", "I"));
-  bool hardware_accelerated = codec_info.GetBooleanField(clazz.GetFieldId("hardwareAccelerated", "Z"));
-  Log::I("Using %s video encoder with %dx%d max resolution%s", codec_name.c_str(), max_width, max_height,
-         hardware_accelerated ? " and hardware acceleration" : "");
-  return new CodecInfo(mime_type, codec_name, Size(max_width, max_height), Size(width_alignment, height_alignment), max_frame_rate,
-                       hardware_accelerated);
-}
+
+private:
+  explicit VideoEncoderSelector(Jni jni)
+      : jni_(jni),
+        codec_info_class_(jni_.GetClass("com/android/tools/screensharing/CodecInfo")),
+        select_video_encoder_method_(codec_info_class_.GetStaticMethod(
+            "selectVideoEncoderForType", "(Ljava/lang/String;)Lcom/android/tools/screensharing/CodecInfo;")),
+        name_field_(codec_info_class_.GetFieldId("name", "Ljava/lang/String;")),
+        max_width_field_(codec_info_class_.GetFieldId("maxWidth", "I")),
+        max_height_field_(codec_info_class_.GetFieldId("maxHeight", "I")),
+        width_alignment_field_(codec_info_class_.GetFieldId("widthAlignment", "I")),
+        height_alignment_field_(codec_info_class_.GetFieldId("heightAlignment", "I")),
+        max_frame_rate_field_(codec_info_class_.GetFieldId("maxFrameRate", "I")),
+        hardware_accelerated_field_(codec_info_class_.GetFieldId("hardwareAccelerated", "Z")) {
+  }
+
+  CodecInfo* Select(string* codec_name, int32_t flags) {
+    string mime_type;
+    CodecInfo* codec_info;
+    if (codec_name->empty()) {
+      *codec_name = "vp8";
+      mime_type = "video/x-vnd.on2.vp8";
+      codec_info = SelectForMimeType(mime_type);
+      if ((flags & ALLOW_AVC_ENCODING) != 0 && (codec_info == nullptr || !codec_info->hardware_accelerated)) {
+        CodecInfo* avc_info = SelectForMimeType("video/avc");
+        if (avc_info != nullptr && avc_info->hardware_accelerated) {
+          delete codec_info;
+          codec_info = avc_info;
+          *codec_name = "avc";
+          mime_type = "video/avc";
+        } else {
+          delete avc_info;
+        }
+      }
+    } else {
+      mime_type = (codec_name->compare(0, 2, "vp") == 0 ? "video/x-vnd.on2." : "video/") + *codec_name;
+      codec_info = SelectForMimeType(mime_type);
+    }
+    if (codec_info == nullptr) {
+      Log::Fatal(VIDEO_ENCODER_NOT_FOUND, "No video encoder is available for %s", mime_type.c_str());
+    }
+    Log::I("Using %s video encoder with %dx%d max resolution%s",
+           codec_info->name.c_str(), codec_info->max_resolution.width, codec_info->max_resolution.height,
+           codec_info->hardware_accelerated ? " and hardware acceleration" : "");
+    return codec_info;
+  }
+
+  CodecInfo* SelectForMimeType(const string& mime_type) {
+    JObject codec_info = codec_info_class_.CallStaticObjectMethod(jni_, select_video_encoder_method_, JString(jni_, mime_type).ref());
+    if (codec_info.IsNull()) {
+      return nullptr;
+    }
+    JString jname = JString(codec_info.GetObjectField(name_field_));
+    string codec_name = jname.IsNull() ? "<unnamed>" : jname.GetValue();
+    int max_width = codec_info.GetIntField(max_width_field_);
+    int max_height = codec_info.GetIntField(max_height_field_);
+    int width_alignment = codec_info.GetIntField(width_alignment_field_);
+    int height_alignment = codec_info.GetIntField(height_alignment_field_);
+    int max_frame_rate = codec_info.GetIntField(max_frame_rate_field_);
+    bool hardware_accelerated = codec_info.GetBooleanField(hardware_accelerated_field_);
+    return new CodecInfo(mime_type, codec_name, Size(max_width, max_height), Size(width_alignment, height_alignment), max_frame_rate,
+                         hardware_accelerated);
+  }
+
+  Jni jni_;
+  JClass codec_info_class_;
+  jmethodID select_video_encoder_method_;
+  jfieldID name_field_;
+  jfieldID max_width_field_;
+  jfieldID max_height_field_;
+  jfieldID width_alignment_field_;
+  jfieldID height_alignment_field_;
+  jfieldID max_frame_rate_field_;
+  jfieldID hardware_accelerated_field_;
+};
 
 void WriteVideoChannelHeader(const string& codec_name, SocketWriter* writer) {
   string buf;
@@ -225,7 +283,8 @@ void Agent::Initialize(const vector<string>& args) {
 void Agent::Run(const vector<string>& args) {
   main_thread_id_ = this_thread::get_id();
   Initialize(args);
-  AgentContext::Initialize(Jvm::GetJni());
+  Jni jni = Jvm::GetJni();
+  AgentContext::Initialize(jni);
 
   assert(display_streamers_.empty());
   int video_socket_fd = CreateAndConnectSocket(socket_name_);
@@ -245,8 +304,7 @@ void Agent::Run(const vector<string>& args) {
     Log::E("Unable to set SIGHUP handler - sigaction returned %d", res);
   }
 
-  string mime_type = (codec_name_.compare(0, 2, "vp") == 0 ? "video/x-vnd.on2." : "video/") + codec_name_;
-  codec_info_ = SelectVideoEncoder(mime_type);
+  codec_info_ = VideoEncoderSelector::SelectVideoEncoder(jni, &codec_name_, flags_);
   WriteVideoChannelHeader(codec_name_, video_socket_writer_);
 
   auto ret = display_streamers_.try_emplace(
@@ -427,7 +485,7 @@ string Agent::socket_name_("screen-sharing-agent");
 Size Agent::max_video_resolution_(numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max());
 int32_t Agent::initial_video_orientation_(-1);
 int32_t Agent::max_bit_rate_(0);
-string Agent::codec_name_("vp8");
+string Agent::codec_name_;
 CodecInfo* Agent::codec_info_(nullptr);
 int32_t Agent::flags_(0);
 SocketWriter* Agent::video_socket_writer_(nullptr);

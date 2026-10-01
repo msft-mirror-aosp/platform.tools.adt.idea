@@ -51,9 +51,11 @@ import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.replaceService
+import com.intellij.testFramework.runInEdtAndWait
 import icons.StudioIcons
 import java.nio.file.Files
 import javax.swing.Icon
@@ -114,7 +116,8 @@ class StudioLocalEmulatorProvisionerPluginTest {
   @After
   fun tearDown() {
     avdManager.close()
-    session.close()
+    runBlockingWithTimeout { session.closeAndJoin() }
+    runInEdtAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
     AvdManagerConnection.resetConnectionFactory()
     GlassesPairingWizard.resetForTesting()
   }
@@ -611,7 +614,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
   }
 
   @Test
-  fun testUnpairGlassesActionStopsAndWipesGlassesAndClearsSettings() = runTest {
+  fun testUnpairGlassesActionStopsAndWipesGlassesAndClearsSettings(): Unit = runBlockingWithTimeout {
     val avdRoot = temporaryDirectoryRule.newPath()
     val phonePath = avdRoot.resolve("fake_avd_1.avd").toString()
     val glassesPath = avdRoot.resolve("fake_avd_2.avd").toString()

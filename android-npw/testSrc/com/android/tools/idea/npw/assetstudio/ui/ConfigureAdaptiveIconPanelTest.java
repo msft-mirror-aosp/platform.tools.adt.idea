@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 
 import com.android.resources.Density;
 import com.android.tools.adtui.validation.ValidatorPanel;
+import com.android.tools.idea.npw.assetstudio.assets.ImageAsset;
 import com.android.tools.idea.npw.assetstudio.icon.AndroidIconType;
 import com.android.tools.idea.observable.AbstractProperty;
 import com.android.tools.idea.observable.BatchInvoker;
@@ -31,8 +32,10 @@ import com.android.tools.idea.rendering.DrawableRenderer;
 import com.android.tools.idea.testing.AndroidProjectRule;
 import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.RunsInEdt;
 import java.io.File;
+import java.io.RandomAccessFile;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -146,5 +149,38 @@ public class ConfigureAdaptiveIconPanelTest {
     Disposer.register(myProjectRule.getFixture().getProjectDisposable(), panel);
     myInvokeStrategy.updateAllSteps();
     assertThat(panel).isNotNull();
+  }
+
+  @Test
+  public void testMonochromeLargeFileShowsErrorInValidatorPanel() throws Exception {
+    AndroidFacet facet = AndroidFacet.getInstance(myProjectRule.getFixture().getModule());
+    ValidatorPanel validatorPanel = new ValidatorPanel(myProjectRule.getFixture().getProjectDisposable(), new JPanel());
+    DrawableRenderer renderer = mock(DrawableRenderer.class);
+
+    BoolValueProperty showGrid = new BoolValueProperty(false);
+    BoolValueProperty showSafeZone = new BoolValueProperty(true);
+    AbstractProperty<Density> previewDensity = new ObjectValueProperty<>(Density.XHIGH);
+
+    ConfigureAdaptiveIconPanel panel = new ConfigureAdaptiveIconPanel(
+      myProjectRule.getFixture().getProjectDisposable(), facet, AndroidIconType.LAUNCHER,
+      showGrid, showSafeZone, previewDensity, validatorPanel, renderer, true
+    );
+    Disposer.register(myProjectRule.getFixture().getProjectDisposable(), panel);
+
+    File largeFile = File.createTempFile("large_monochrome", ".png");
+    largeFile.deleteOnExit();
+    try (RandomAccessFile raf = new RandomAccessFile(largeFile, "rw")) {
+      raf.setLength(ImageAsset.MAX_FILE_SIZE_BYTES + 1024);
+    }
+
+    panel.getMonochromeImageAssetBrowser().getAsset().imagePath().setNullableValue(largeFile);
+    panel.getMonochromeImageAssetBrowser().getAsset().toImage();
+
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+    myInvokeStrategy.updateAllSteps();
+
+    assertThat(validatorPanel.hasErrors().get()).isTrue();
+    assertThat(panel.getMonochromeAssetValidityState().get().getMessage()).contains("monochrome image");
+    assertThat(panel.getMonochromeAssetValidityState().get().getMessage()).contains("too large");
   }
 }

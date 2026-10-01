@@ -147,6 +147,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.apache.http.entity.mime.MultipartEntityBuilder
 import org.junit.After
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
@@ -1315,6 +1316,48 @@ internal class DeviceViewTest {
     assertThat(notification.type).isEqualTo(NotificationType.WARNING)
   }
 
+  @Test
+  fun testAv01Encoding() {
+    checkEncoding("av01")
+  }
+
+  @Test
+  fun testAvcEncoding() {
+    checkEncoding("avc")
+  }
+
+  @Test
+  fun testHevcEncoding() {
+    assumeTrue(!SystemInfo.isLinux) // Bundled FFmpeg on Linux lacks a software HEVC encoder for FakeScreenSharingAgent.
+    checkEncoding("hevc")
+  }
+
+  @Test
+  fun testVp9Encoding() {
+    checkEncoding("vp9")
+  }
+
+  private fun checkEncoding(codec: String) {
+    assumeTrue(OsVideoDecoder.isSupported(codec))
+    StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.overrideForTest(codec, testRootDisposable)
+    createDeviceView(100, 90, retinaMode = true)
+    assertThat(agent.commandLine)
+      .matches(
+        "CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process" +
+          " $DEVICE_PATH_BASE com.android.tools.screensharing.Main" +
+          " --socket=screen-sharing-agent-\\d+ --max_size=200,180 --flags=\\d+ --codec=$codec"
+      )
+    waitForFrame()
+    assertThat(view.projectionRectangle).isEqualTo(Rectangle(58, 0, 83, 181))
+    assertThat(view.displayOrientationQuadrants).isEqualTo(0)
+
+    for (i in 0 until 4) {
+      assertAppearance("Rotation${i * 90}", maxPercentDifferent = 1.0)
+      executeAction("android.device.rotate.left", view, project)
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetDeviceOrientationMessage((i + 1) % 4))
+    }
+  }
+
   private fun createDeviceView(
     width: Int,
     height: Int,
@@ -1358,7 +1401,7 @@ internal class DeviceViewTest {
       )
     displayPanel.size = Dimension(width, height)
     view = displayPanel.displayView
-    fakeUi = FakeUi(displayPanel, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(displayPanel, parentDisposable = testRootDisposable)
   }
 
   private fun assertAppearance(goldenImageName: String, maxPercentDifferent: Double = 0.0) {

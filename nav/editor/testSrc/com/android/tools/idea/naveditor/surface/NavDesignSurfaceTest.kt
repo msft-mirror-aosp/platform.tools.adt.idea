@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.naveditor.surface
 
+import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.DesignSurfaceTestUtil
@@ -23,6 +24,7 @@ import com.android.tools.idea.common.editor.DesignerEditorPanel
 import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlComponent
+import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.scene.SceneContext
 import com.android.tools.idea.common.scene.inlineDrawRect
 import com.android.tools.idea.common.surface.DesignSurface
@@ -38,29 +40,45 @@ import com.android.tools.idea.naveditor.analytics.TestNavUsageTracker
 import com.android.tools.idea.naveditor.model.NavCoordinate
 import com.android.tools.idea.naveditor.scene.NavSceneManager
 import com.android.tools.idea.naveditor.scene.updateHierarchy
+import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_SYNC_TOPIC
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.projectsystem.TestProjectSystem
+import com.android.tools.idea.projectsystem.TestVersion
+import com.android.tools.idea.util.addDependenciesWithUiConfirmation
 import com.google.common.collect.ImmutableList
+import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.NavEditorEvent
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.roots.LibraryOrderEntry
+import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.roots.libraries.Library
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.MouseEvent
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JPanel
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import org.intellij.lang.annotations.Language
 import org.jetbrains.android.dom.navigation.NavigationSchema
@@ -650,10 +668,158 @@ class NavDesignSurfaceTest : NavTestCase() {
     LayoutTestUtilities.releaseMouse(manager, MouseEvent.BUTTON1, x2, y2, 0)
   }
 
+  fun testGoingToSetModel_acceptDependency() {
+    val removedLibraries = removeNavigationLibraries()
+    var librariesRestored = false
+    registerTestNavDesignSurfaceToken {
+      removedLibraries.forEach { ModuleRootModificationUtil.addDependency(myModule, it) }
+      librariesRestored = true
+    }
+
+    TestDialogManager.setTestDialog(TestDialog.OK)
+    try {
+      val model = modelBuilder("nav.xml") { navigation("root") }.buildWithoutSurface()
+      val surface = NavDesignSurface(project).also { Disposer.register(testRootDisposable, it) }
+
+      var isSyncCompleted = false
+      var futureCompletedAfterSync = false
+      project.messageBus
+        .connect(testRootDisposable)
+        .subscribe(
+          PROJECT_SYSTEM_SYNC_TOPIC,
+          ProjectSystemSyncManager.SyncResultListener { syncResult ->
+            if (syncResult == ProjectSystemSyncManager.SyncResult.SUCCESS) {
+              isSyncCompleted = true
+            }
+          },
+        )
+
+      val goingToSetModelFuture = surface.goingToSetModel(model)
+      val thenRunFuture = goingToSetModelFuture.thenRun {
+        if (isSyncCompleted) {
+          futureCompletedAfterSync = true
+        }
+      }
+
+      assertNull(PlatformTestUtil.waitForFuture(goingToSetModelFuture))
+      PlatformTestUtil.waitForFuture(thenRunFuture)
+
+      val addedArtifactIds = testProjectSystem.getAddedDependencies(myModule).map { it.id.artifactId }
+      assertThat(addedArtifactIds).containsExactly("navigation-fragment", "navigation-ui")
+      assertTrue(isSyncCompleted)
+      assertTrue(futureCompletedAfterSync)
+    } finally {
+      TestDialogManager.setTestDialog(TestDialog.DEFAULT)
+      if (!librariesRestored) {
+        removedLibraries.forEach { ModuleRootModificationUtil.addDependency(myModule, it) }
+      }
+    }
+  }
+
+  fun testGoingToSetModel_declineDependency() {
+    val removedLibraries = removeNavigationLibraries()
+    registerTestNavDesignSurfaceToken()
+
+    TestDialogManager.setTestDialog(TestDialog.NO)
+    try {
+      val editor = mock<DesignerEditorPanel>()
+      val workbench = mock<WorkBench<DesignSurface<*>>>()
+      whenever(editor.workBench).thenReturn(workbench)
+      val surface = NavDesignSurface(project, editor).also { Disposer.register(testRootDisposable, it) }
+
+      val model = modelBuilder("nav.xml") { navigation("root") }.buildWithoutSurface()
+      val goingToSetModelFuture = surface.goingToSetModel(model)
+
+      val exception = assertFailsWith<AssertionError> { PlatformTestUtil.waitForFuture(goingToSetModelFuture) }
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+      assertThat(exception.cause).isInstanceOf(ExecutionException::class.java)
+      assertThat(exception.cause?.cause?.message).isEqualTo("Failed to add navigation dependency")
+      verify(workbench).loadingStopped("Failed to add navigation dependency")
+      assertThat(testProjectSystem.getAddedDependencies(myModule)).isEmpty()
+    } finally {
+      TestDialogManager.setTestDialog(TestDialog.DEFAULT)
+      removedLibraries.forEach { ModuleRootModificationUtil.addDependency(myModule, it) }
+    }
+  }
+
+  private fun removeNavigationLibraries(): List<Library> {
+    if (NavigationSchema.hasSchema(myModule)) {
+      Disposer.dispose(NavigationSchema.get(myModule))
+    }
+
+    val removedLibraries = mutableListOf<Library>()
+    ModuleRootModificationUtil.updateModel(myModule) { model ->
+      model.orderEntries.filterIsInstance<LibraryOrderEntry>().forEach {
+        it.library?.let { lib -> removedLibraries.add(lib) }
+        model.removeOrderEntry(it)
+      }
+    }
+    return removedLibraries
+  }
+
+  private fun registerTestNavDesignSurfaceToken(onDependenciesAdded: () -> Unit = {}) {
+    val token =
+      object : NavDesignSurfaceToken<TestProjectSystem> {
+        override fun isApplicable(projectSystem: AndroidProjectSystem): Boolean = projectSystem is TestProjectSystem
+
+        override fun modifyProject(projectSystem: TestProjectSystem, model: NlModel): Boolean {
+          val didAdd = AtomicBoolean(false)
+          val module = model.module
+          val artifacts = NavDesignSurface.getDependencies(module).toSet()
+          ApplicationManager.getApplication()
+            .invokeAndWait(
+              {
+                try {
+                  didAdd.set(
+                    module
+                      .addDependenciesWithUiConfirmation(
+                        artifacts,
+                        promptUserBeforeAdding = true,
+                        requestSync = false,
+                      )
+                      .isEmpty()
+                  )
+                  if (didAdd.get()) {
+                    onDependenciesAdded()
+                  }
+                } catch (_: Throwable) {
+                  didAdd.set(false)
+                }
+              },
+              ModalityState.nonModal(),
+            )
+          return didAdd.get()
+        }
+      }
+    @Suppress("UNCHECKED_CAST")
+    ExtensionTestUtil.maskExtensions(
+      NavDesignSurfaceToken.EP_NAME,
+      listOf(token as NavDesignSurfaceToken<AndroidProjectSystem>),
+      testRootDisposable,
+    )
+  }
+
   override fun setUp() {
     super.setUp()
-    testProjectSystem = TestProjectSystem(project)
+    val navDeps =
+      listOf(
+          GoogleMavenArtifactId.ANDROIDX_NAVIGATION_FRAGMENT,
+          GoogleMavenArtifactId.ANDROIDX_NAVIGATION_UI,
+          GoogleMavenArtifactId.NAVIGATION_FRAGMENT,
+          GoogleMavenArtifactId.NAVIGATION_UI,
+        )
+        .map { TestProjectSystem.Artifact(it, TestVersion.create(1)) }
+    testProjectSystem = TestProjectSystem(project, availableDependencies = navDeps)
     testProjectSystem.useAndroidX = true
     testProjectSystem.useInTests()
+  }
+
+  override fun tearDown() {
+    try {
+      TestDialogManager.setTestDialog(TestDialog.DEFAULT)
+    } finally {
+      super.tearDown()
+    }
   }
 }

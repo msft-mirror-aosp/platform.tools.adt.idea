@@ -50,10 +50,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -337,14 +334,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
 
   @Override
   public boolean areDependenciesUpToDate() {
-    Module module = myBuildTargetReference.getModuleIfNotDisposed();
-    if (module == null) return true;
-
-    Set<Path> currentlyLoadedLibraries = new HashSet<>(myImpl.getExternalLibraries());
-    List<Path> moduleLibraries = ModuleClassLoaderUtil.getExternalLibraries(myBuildTargetReference);
-
-    return currentlyLoadedLibraries.size() == moduleLibraries.size() &&
-           currentlyLoadedLibraries.containsAll(moduleLibraries);
+    return myImpl.areDependenciesUpToDate(myBuildTargetReference);
   }
 
   /**
@@ -372,18 +362,11 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
   }
 
   @Override
-  protected void onBeforeLoadClass(@NotNull String fqcn) { myDiagnostics.classLoadStart(fqcn); }
-
-  @Override
-  protected void onAfterLoadClass(@NotNull String fqcn, boolean loaded, long durationMs) { myDiagnostics.classLoadedEnd(fqcn, durationMs); }
-
-  @Override
   protected void onBeforeFindClass(@NotNull String fqcn) { myDiagnostics.classFindStart(fqcn); }
 
   @Override
-  protected void onAfterFindClass(@NotNull String fqcn, boolean found, long durationMs) {
-    myDiagnostics.classFindEnd(fqcn, found,
-                               durationMs);
+  protected void onAfterFindClass(@NotNull String fqcn, boolean found, long durationNs) {
+    myDiagnostics.classFindEnd(fqcn, found, durationNs);
   }
 
   @Nullable

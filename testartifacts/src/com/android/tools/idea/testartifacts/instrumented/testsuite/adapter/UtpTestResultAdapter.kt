@@ -32,7 +32,6 @@ import com.google.testing.platform.proto.api.core.TestArtifactProto.Artifact
 import com.google.testing.platform.proto.api.core.TestResultProto.TestResult
 import com.google.testing.platform.proto.api.core.TestStatusProto.TestStatus
 import com.google.testing.platform.proto.api.core.TestSuiteResultProto
-import com.intellij.openapi.util.io.FileUtil.exists
 import java.io.File
 import java.nio.charset.Charset
 import java.util.Locale
@@ -61,7 +60,7 @@ class UtpTestResultAdapter(private val protoFile: File) {
    */
   @WorkerThread
   fun forwardResults(listener: AndroidTestResultListener) {
-    val artifactFileResolver = ArtifactFileResolver(protoFile.parentFile)
+    val artifactFileResolver = ArtifactFileResolver(protoFile.absoluteFile.parentFile)
     val androidDeviceResolver = AndroidDeviceResolver(artifactFileResolver)
     val deviceToTestCountMap: MutableMap<AndroidDevice, Int> = sortedMapOf(compareBy { it.id })
     val deviceToTestSuiteMap: MutableMap<AndroidDevice, AndroidTestSuite> = sortedMapOf(compareBy { it.id })
@@ -118,11 +117,7 @@ class UtpTestResultAdapter(private val protoFile: File) {
         startTimestampMillis = testCase.startTime.millis(),
         endTimestampMillis = testCase.endTime.millis(),
       )
-      .apply {
-        setBenchmarkContextAndPrepareFiles(testResult, this) { outputArtifactPath ->
-          artifactFileResolver.resolveFile(outputArtifactPath) ?: File(outputArtifactPath)
-        }
-      }
+      .apply { setBenchmarkContextAndPrepareFiles(testResult, this, artifactFileResolver::resolveFile) }
   }
 
   private fun getIceboxArtifact(testResult: TestResult, artifactFileResolver: ArtifactFileResolver): File? {
@@ -220,21 +215,42 @@ private class ArtifactFileResolver(private val parentDir: File) {
   /**
    * Try to find a file. The fallbacks of file path is as follows:
    *
-   * (1) Try absolute path. (2) Try relative path. (3) Try to get the file name and use it as relative path. This is useful because
-   * currently UTP writes absolute path in the proto.
+   * (1) Try the path itself if it's absolute, or relative to the result directory otherwise. (2) Try a file with the same name in the
+   * result directory. This is useful because currently UTP writes absolute path in the proto, possibly of another machine and OS.
+   *
+   * The proto may come from an untrusted source (e.g. Run > Import Tests from File), so (1) is skipped for network paths: on Windows,
+   * merely checking whether a UNC path such as `\\host\share\file` exists makes the OS connect to that host and send the user's NTLM
+   * credentials. (2) only ever looks inside the result directory. Only regular files are returned.
    */
   fun resolveFile(relativePath: String): File? {
-    if (exists(relativePath)) {
-      return File(relativePath)
+    if (!isNetworkPath(relativePath)) {
+      val file = File(relativePath).let { if (it.isRooted) it else File(parentDir, relativePath) }
+      if (file.isFile) {
+        return file
+      }
     }
-    val file2 = parentDir.resolve(relativePath)
-    if (file2.exists()) {
-      return file2
-    }
-    val file3 = parentDir.resolve(File(relativePath).name)
-    if (file3.exists()) {
-      return file3
-    }
-    return null
+    val fileName = getFileName(relativePath) ?: return null
+    return File(parentDir, fileName).takeIf { it.isFile }
   }
+
+  /**
+   * Returns the last segment of [path] using both '/' and '\' as separators regardless of the current OS, or null if it isn't a plain
+   * file name. Unlike PathUtil.getFileName, it never returns a UNC root such as `\\host\share` as a whole.
+   */
+  private fun getFileName(path: String): String? {
+    val fileName = path.trimEnd { it.isPathSeparator() }.substringAfterLast('/').substringAfterLast('\\')
+    return fileName.takeUnless { it.isBlank() || it == "." || it == ".." }
+  }
+
+  /**
+   * Returns true if [path] may be interpreted by Windows as a network location, i.e. it starts with two path separators (e.g.
+   * `\\host\share`, `//host/share`, `\\?\UNC\host\share`) or with the NT object manager prefix `\??\`. Java normalizes '/' to '\' on
+   * Windows, so mixed separators are checked as well. Leading whitespace is ignored.
+   */
+  private fun isNetworkPath(path: String): Boolean {
+    val trimmedPath = path.trimStart()
+    return trimmedPath.length >= 2 && trimmedPath[0].isPathSeparator() && (trimmedPath[1].isPathSeparator() || trimmedPath[1] == '?')
+  }
+
+  private fun Char.isPathSeparator(): Boolean = this == '/' || this == '\\'
 }

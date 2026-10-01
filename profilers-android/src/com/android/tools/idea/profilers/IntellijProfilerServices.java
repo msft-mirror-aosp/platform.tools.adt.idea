@@ -914,6 +914,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @VisibleForTesting
   public static class FeatureConfigProd implements FeatureConfig {
     @Override
+    public boolean isLeakCanaryOccurrencesEnabled() {
+      return StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.get();
+    }
+
+    @Override
     public boolean isMemoryCSVExportEnabled() {
       return StudioFlags.PROFILER_MEMORY_CSV_EXPORT.get();
     }

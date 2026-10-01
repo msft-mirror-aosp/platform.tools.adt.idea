@@ -30,6 +30,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * Describes Java debug process that we are about to start for any [Client]. It is used by Java debugger [StartJavaDebuggerSession.kt].
@@ -40,12 +41,17 @@ internal class AndroidJavaDebugEnvironmentImpl(
   project: Project,
   private val client: Client,
   private val mySessionName: String,
-  private val consoleViewToReuse: ConsoleView?,
+  consoleViewToReuse: ConsoleView?,
   private val detachIsDefault: Boolean,
 ) : AndroidJavaDebugEnvironment(), Disposable {
   init {
     Disposer.register(project, this)
   }
+
+  /** Cleared on dispose so that a disposed console is not retained by the project's disposer tree. */
+  @VisibleForTesting
+  internal var consoleViewToReuse: ConsoleView? = consoleViewToReuse
+    private set
 
   private var disposableProject: Project? = project
   private val runJre = ProjectRootManager.getInstance(project).projectSdk
@@ -66,12 +72,16 @@ internal class AndroidJavaDebugEnvironmentImpl(
     Disposer.register(project, console)
     val debugProcessHandler = AndroidRemoteDebugProcessHandler(project, client, detachIsDefault)
     console.attachToProcess(debugProcessHandler)
+    // The environment is only needed for the lifetime of its console. Dispose it with the console instead of keeping it
+    // (and the console) alive until the project closes.
+    Disposer.register(console) { Disposer.dispose(this) }
 
     return DefaultExecutionResult(console, debugProcessHandler)
   }
 
   override fun dispose() {
     disposableProject = null
+    consoleViewToReuse = null
   }
 
   override fun isRemote() = true

@@ -20,10 +20,12 @@ import static com.android.tools.profilers.memory.MemoryProfiler.saveHeapDumpToFi
 import com.android.tools.adtui.model.Range;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo;
+import com.android.tools.profilers.ProfilerFormat;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionsManager;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.OutputStream;
 import java.util.List;
@@ -70,7 +72,9 @@ public final class HprofSessionArtifact extends MemorySessionArtifact<HeapDumpIn
   @NotNull
   @Override
   public String getExportExtension() {
-    return "hprof";
+    // An imported recording is named after the file it came from, which is the only surviving record of its format: an ART HPROF and a
+    // Perfetto heap graph both arrive as MEMORY_HEAP_DUMP events. A live recording is named after the process, so it falls back to HPROF.
+    return ProfilerFormat.Hprof.extensionOrDefault(StringUtil.substringAfterLast(getSessionMetaData().getSessionName(), "."));
   }
 
   @Unmodifiable

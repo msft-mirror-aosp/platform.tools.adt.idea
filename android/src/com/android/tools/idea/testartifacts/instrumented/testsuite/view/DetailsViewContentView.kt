@@ -231,7 +231,7 @@ open class DetailsViewContentView(
           border = JBUI.Borders.compound(JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0), JBUI.Borders.empty(10))
 
           // The labels are placed in a sub-panel in the center.
-          // Use BorderLayout to allow the error label (CENTER) to scroll
+          // Use BorderLayout to let the error label (CENTER) be clipped
           // while keeping the device label (WEST) fixed.
           add(
             NonOpaquePanel().apply {
@@ -249,13 +249,23 @@ open class DetailsViewContentView(
               // Add a rigid area to force the row height to match the separator's 24px height.
               errorLabelContainer.add(javax.swing.Box.createRigidArea(Dimension(0, com.intellij.ui.scale.JBUIScale.scale(24))))
 
-              // Wrap the error label container in a scroll pane
+              // Wrap the error label container in a scroll pane that only clips. Scrollbars are
+              // disabled on purpose: an "as needed" horizontal scrollbar adds its height to the
+              // header's preferred size as soon as the message overflows, which makes the header
+              // height depend on the failure text and pushes the tab strip and the header toolbar
+              // out of place (b/466299079). A zero preferred width ensures BorderLayout.CENTER
+              // clips the label instead of expanding the header past the EAST toolbar, while
+              // keeping the full first line in myTestResultLabel.text (for UI driver tests) and
+              // in toolTipText.
               val scrollPane =
-                JBScrollPane(
-                  errorLabelContainer,
-                  ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
-                  ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED,
-                )
+                object :
+                  JBScrollPane(
+                    errorLabelContainer,
+                    ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
+                    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER,
+                  ) {
+                  override fun getPreferredSize(): Dimension = Dimension(0, super.getPreferredSize().height)
+                }
               scrollPane.border = JBUI.Borders.empty()
               scrollPane.viewport.isOpaque = false
               scrollPane.isOpaque = false
@@ -412,6 +422,8 @@ open class DetailsViewContentView(
 
   @VisibleForTesting
   fun refreshTestResultLabel() {
+    // Cleared up-front so that a tooltip from a previously selected test cannot survive any of the early returns below.
+    myTestResultLabel.toolTipText = null
     val device =
       myAndroidDevice
         ?: run {
@@ -428,6 +440,17 @@ open class DetailsViewContentView(
           return
         }
 
+    // Screenshot test failures carry long assertion messages (image paths, diff percentages). The header scroll pane clips the label
+    // visually so the header height and EAST toolbar stay fixed, while the full first line is exposed as the label's tooltip (and kept in
+    // myTestResultLabel.text for UI driver matchers). See b/466299079.
+    val failureMessage =
+      if (testCaseResult == AndroidTestCaseResult.FAILED) {
+        myErrorStackTrace.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+      } else {
+        ""
+      }
+    setFailureTooltip(failureMessage)
+
     myTestResultLabel.text =
       if (testCaseResult.isTerminalState) {
         val statusColor = getColorFor(testCaseResult) ?: UIUtil.getActiveTextColor()
@@ -435,11 +458,10 @@ open class DetailsViewContentView(
         when (testCaseResult) {
           AndroidTestCaseResult.PASSED -> String.format(Locale.US, "<html><font color='%s'>Passed</font></html>", hexColor)
           AndroidTestCaseResult.FAILED -> {
-            val errorMessage = myErrorStackTrace.lineSequence().firstOrNull { it.isNotBlank() } ?: ""
-            if (errorMessage.isBlank()) {
+            if (failureMessage.isBlank()) {
               String.format(Locale.US, "<html><font color='%s'>Failed</font></html>", hexColor)
             } else {
-              String.format(Locale.US, "<html><font color='%s'>Failed</font> %s</html>", hexColor, errorMessage.htmlEscape())
+              String.format(Locale.US, "<html><font color='%s'>Failed</font> %s</html>", hexColor, failureMessage.htmlEscape())
             }
           }
           AndroidTestCaseResult.SKIPPED -> String.format(Locale.US, "<html><font color='%s'>Skipped</font></html>", hexColor)
@@ -452,6 +474,18 @@ open class DetailsViewContentView(
       } else {
         String.format(Locale.US, "Running on %s", device.getName())
       }
+  }
+
+  private fun setFailureTooltip(failureMessage: String) {
+    if (failureMessage.isBlank() || failureMessage.startsWith("<html>", ignoreCase = true)) {
+      return
+    }
+    // Escape HTML without an "<html>" prefix so Swing treats the tooltip as plain text and never renders HTML.
+    val escapedMessage = failureMessage.htmlEscape()
+    if (escapedMessage.startsWith("<html>", ignoreCase = true)) {
+      return
+    }
+    myTestResultLabel.toolTipText = escapedMessage
   }
 
   @VisibleForTesting

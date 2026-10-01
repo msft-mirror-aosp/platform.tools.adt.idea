@@ -780,7 +780,7 @@ class WelcomeScreenWizardTest {
     tracker: FirstRunWizardTracker = mock(),
   ): FakeUi {
     val welcomeScreen = createWelcomeScreen(wizardMode, sdkComponentInstaller, installHandoffData, tracker)
-    return FakeUi(welcomeScreen.welcomePanel, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+    return FakeUi(welcomeScreen.welcomePanel, parentDisposable = projectRule.testRootDisposable)
   }
 
   private fun createWelcomeScreen(

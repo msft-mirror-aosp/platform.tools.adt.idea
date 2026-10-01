@@ -435,7 +435,7 @@ public class MyWebView extends android.webkit.WebView {
   }
 
   private fun checkPopupMenuCreation(layoutType: DesignerEditorFileType) {
-    val ui = FakeUi(myPanel!!, createFakeWindow = true, parentDisposable = projectRule.testRootDisposable)
+    val ui = FakeUi(myPanel!!, parentDisposable = projectRule.testRootDisposable)
     myPanel!!.setSize(800, 1000)
     doLayout(myPanel!!)
     createDesignSurface(layoutType)

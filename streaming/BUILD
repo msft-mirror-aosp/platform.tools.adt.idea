@@ -70,6 +70,7 @@ iml_module(
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/artwork:device-art-resources",
         "//tools/adt/idea/streaming/native:libimage_converter.prebuilt",
+        "//tools/adt/idea/streaming/native:libvideo_decoder.prebuilt",
         "//tools/adt/idea/streaming/testData",
     ],
     # do not sort: must match IML order

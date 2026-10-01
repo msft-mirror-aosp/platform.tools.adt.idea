@@ -52,7 +52,9 @@ import com.intellij.util.io.URLUtil
 import com.intellij.util.lang.UrlClassLoader
 import java.io.File
 import java.lang.ref.WeakReference
+import java.net.URI
 import java.net.URL
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Collections
 import java.util.Enumeration
@@ -81,6 +83,13 @@ private val additionalLibraries: List<Path>
 
 val BuildTargetReference.externalLibraries: List<Path>
   get() = additionalLibraries + this.getBuildSystemFilePreviewServices().getRenderingServices(this).externalLibraries
+
+private fun computeLibraryIdentities(libraries: Iterable<Path>): Map<String, String> = libraries.associate { path ->
+  val libraryPath = FileUtil.toSystemIndependentName(path.toString())
+  // A library that cannot be read is given a fixed identity: it would fail to load classes anyway.
+  val modificationTime = runCatching { Files.getLastModifiedTime(path).toMillis() }.getOrDefault(-1L)
+  libraryPath to "$libraryPath@$modificationTime"
+}
 
 /**
  * Package name used to "re-package" certain classes that would conflict with the ones in the Studio class loader. This applies to all
@@ -120,7 +129,9 @@ internal class ModuleClassLoaderImpl(
   private val loader: DelegatingClassLoader.Loader
   private val parentLoader = parentClassLoader?.let { ClassLoaderLoader(it) }
 
-  private val onClassRewrite = { fqcn: String, timeMs: Long, size: Int -> diagnostics.classRewritten(fqcn, size, timeMs) }
+  private val onClassRewrite = { fqcn: String, timeNs: Long, size: Int ->
+    diagnostics.classRewritten(fqcn, size, timeNs)
+  }
 
   private val _projectLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
   private val _nonProjectLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
@@ -144,6 +155,16 @@ internal class ModuleClassLoaderImpl(
 
   /** Class loader for classes and resources contained in [externalLibraries]. */
   private val externalLibrariesClassLoader = createUrlClassLoader(externalLibraries)
+
+  /**
+   * Identity of every library in [externalLibraries], indexed by its system independent path.
+   *
+   * [binaryCache] is shared by all the class loaders of the module and outlives them, so it must be able to tell whether an entry it holds
+   * still corresponds to the library this loader would load the class from. The identity includes the modification time of the jar, which
+   * means a library that was replaced in place (the path alone would not change) counts as a different dependency and its entries are
+   * dropped from the cache rather than served stale.
+   */
+  private val libraryIdentities: Map<String, String> = computeLibraryIdentities(externalLibraries)
 
   /** List of the FQCN of the classes loaded from the project. */
   val projectLoadedClassNames: Set<String>
@@ -186,12 +207,29 @@ internal class ModuleClassLoaderImpl(
   ): DelegatingClassLoader.Loader {
     // Non project classes loading pipeline
     val nonProjectTransformationId = nonProjectTransforms.id
-    // map of fqcn -> library path used to be able to insert classes into the ClassBinaryCache
-    val fqcnToLibraryPath = mutableMapOf<String, String>()
+    // map of fqcn -> library identity used to be able to insert classes into the ClassBinaryCache. Classes coming from a library that is
+    // not a current dependency (see libraryIdentities) are not cached, since the cache would reject them anyway.
+    val fqcnToLibraryIdentity = ConcurrentHashMap<String, String>()
     val jarLoader =
       NameRemapperLoader(
         ClassLoaderLoader(externalLibrariesClassLoader) { fqcn, path, _ ->
-          URLUtil.splitJarUrl(path)?.first?.let { libraryPath -> fqcnToLibraryPath[fqcn] = libraryPath }
+          URLUtil.splitJarUrl(path)?.first?.let { rawPath ->
+            val libraryPath =
+              FileUtil.toSystemIndependentName(
+                runCatching {
+                  if (rawPath.startsWith("file:", ignoreCase = true)) {
+                    Path.of(URI.create(rawPath)).toString()
+                  } else {
+                    Path.of(URLUtil.unescapePercentSequences(rawPath)).toString()
+                  }
+                }
+                  .getOrElse {
+                    val extracted = URLUtil.extractPath(rawPath)
+                    runCatching { Path.of(URLUtil.unescapePercentSequences(extracted)).toString() }.getOrDefault(extracted)
+                  }
+              )
+            libraryIdentities[libraryPath]?.let { libraryIdentity -> fqcnToLibraryIdentity[fqcn] = libraryIdentity }
+          }
         },
         ::onDiskClassNameLookup,
       )
@@ -220,11 +258,10 @@ internal class ModuleClassLoaderImpl(
                   onRewrite = onClassRewrite,
                 ),
               onAfterLoad = { fqcn, bytes ->
-                onClassLoaded(fqcn)
-                // Map the fqcn to the library path and insert the class into the class
+                // Map the fqcn to the library it was loaded from and insert the class into the class
                 // binary cache
-                fqcnToLibraryPath[onDiskClassNameLookup(fqcn)]?.let { libraryPath ->
-                  binaryCache.put(fqcn, nonProjectTransformationId, libraryPath, bytes)
+                fqcnToLibraryIdentity[onDiskClassNameLookup(fqcn)]?.let { libraryIdentity ->
+                  binaryCache.put(fqcn, nonProjectTransformationId, libraryIdentity, bytes)
                 }
               },
             ),
@@ -241,10 +278,18 @@ internal class ModuleClassLoaderImpl(
           throw IllegalArgumentException("AndroidDispatcherFactory not supported by layoutlib")
         }
       },
+      // Called on the outer loader so non-project loaded classes are recorded on both cache hits and cache misses
+      // (the inner delegate is bypassed on ClassBinaryCache hits).
+      onAfterLoad = { fqcn, _ -> onClassLoaded(fqcn) },
     )
   }
 
   init {
+    // The binary cache is shared by all the class loaders of a module and only returns a class if the library it was cached from is still
+    // one of the dependencies of the module. It has no way of knowing what those dependencies are unless it is told, so without this call
+    // every lookup is rejected (and the corresponding entry dropped), which makes the cache write-only.
+    binaryCache.setDependencies(libraryIdentities.values)
+
     val nonProjectLoader =
       createNonProjectLoader(nonProjectTransforms, binaryCache, { _nonProjectLoadedClassNames.add(it) }, onClassRewrite)
     usesOverlayLoader = FastPreviewManager.getInstance(buildTargetReference.project).isEnabled
@@ -322,14 +367,31 @@ internal class ModuleClassLoaderImpl(
    * Note that light R classes are defined by the parent `LibraryResourceClassLoader` without going through [_projectLoadedClassNames]. That
    * does not affect this check, because Fast Preview only ever compiles edited source files into the overlay, never resources.
    */
-  private fun isOverlayUpToDate(): Boolean = synchronized(overlayManager) {
-    val currentStamp = overlayManager.modificationStamp
-    if (currentStamp == initialOverlayModificationStamp) return@synchronized true
-    if (usesOverlayLoader && _projectLoadedClassNames.isEmpty()) {
-      initialOverlayModificationStamp = currentStamp
-      return@synchronized true
+  private fun isOverlayUpToDate(): Boolean =
+    synchronized(overlayManager) {
+      val currentStamp = overlayManager.modificationStamp
+      if (currentStamp == initialOverlayModificationStamp) return@synchronized true
+      if (usesOverlayLoader && _projectLoadedClassNames.isEmpty()) {
+        initialOverlayModificationStamp = currentStamp
+        return@synchronized true
+      }
+      return@synchronized false
     }
-    return@synchronized false
+
+  /** Checks whether the binary dependencies (and their modification timestamps) are up to date. */
+  fun areDependenciesUpToDate(buildTargetReference: BuildTargetReference?): Boolean {
+    if (buildTargetReference?.moduleIfNotDisposed == null) return true
+    val currentLibraries = buildTargetReference.externalLibraries
+    if (currentLibraries.size < libraryIdentities.size) return false
+    val seenLibraries = HashSet<String>(currentLibraries.size)
+    for (path in currentLibraries) {
+      val libraryPath = FileUtil.toSystemIndependentName(path.toString())
+      if (!seenLibraries.add(libraryPath)) continue
+      val expectedIdentity = libraryIdentities[libraryPath] ?: return false
+      val modificationTime = runCatching { Files.getLastModifiedTime(path).toMillis() }.getOrDefault(-1L)
+      if (expectedIdentity != "$libraryPath@$modificationTime") return false
+    }
+    return seenLibraries.size == libraryIdentities.size
   }
 
   private val isUserCodeUpToDateCached: ChangeTrackerCachedValue<Boolean> = ChangeTrackerCachedValue.softReference()
@@ -363,10 +425,9 @@ internal class ModuleClassLoaderImpl(
    * PSI modification happens.
    *
    * This is intentionally not a pure function: [isOverlayUpToDate] may advance [initialOverlayModificationStamp].
-   * [ChangeTrackerCachedValue] gives no guarantee about how often or on how many threads it invokes its provider. That is fine here
-   * because the side effect is idempotent, happens under the [overlayManager] monitor, and can only move the stamp forward to a value it
-   * has already observed. Leaving the stamp behind is always the conservative direction, so a lost update just makes the next check
-   * stricter.
+   * [ChangeTrackerCachedValue] gives no guarantee about how often or on how many threads it invokes its provider. That is fine here because
+   * the side effect is idempotent, happens under the [overlayManager] monitor, and can only move the stamp forward to a value it has
+   * already observed. Leaving the stamp behind is always the conservative direction, so a lost update just makes the next check stricter.
    */
   private fun isUserCodeUpToDateNonCached() = projectSystemLoader.isUpToDate() && isOverlayUpToDate()
 }

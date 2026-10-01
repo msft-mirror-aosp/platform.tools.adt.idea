@@ -159,11 +159,11 @@ class WhpxUpdateDialog(private val project: Project?, private val fromAehd: Bool
 
   private inner class RebootWarningPanel(warningText: String) : EditorNotificationPanel(Status.Warning) {
     init {
-      myLabel.horizontalAlignment = SwingConstants.CENTER
-      myLabel.horizontalTextPosition = SwingConstants.RIGHT
+      myTextLabel.horizontalAlignment = SwingConstants.CENTER
+      myTextLabel.horizontalTextPosition = SwingConstants.RIGHT
       icon(StudioIcons.Common.WARNING)
       text = warningText
-      myLabel.border = JBUI.Borders.empty()
+      myTextLabel.border = JBUI.Borders.empty()
       border =
         JBUI.Borders.compound(
           JBUI.Borders.customLine(WARNING_BORDER_COLOR, 1),

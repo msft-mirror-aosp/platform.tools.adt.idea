@@ -46,7 +46,6 @@ iml_module(
     test_class = "com.android.tools.idea.naveditor.NavEditorTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:platforms/latest",
@@ -76,6 +75,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/adt/idea/designer:intellij.android.designer.tests",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
     ],

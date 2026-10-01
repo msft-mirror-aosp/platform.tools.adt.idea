@@ -255,6 +255,53 @@ class CapturePanelTest {
     assertThat(classesLabel!!.parent.isVisible).isFalse()
   }
 
+  @Test
+  fun `summary panel shows retained native size and dashes when filtered in trace processor`() {
+    val fakeCapture = FakeCaptureObject.Builder().build()
+    val capture = mock(HeapDumpCaptureObject::class.java)
+    `when`(capture.classDatabase).thenReturn(fakeCapture.classDatabase)
+    `when`(capture.activityFragmentLeakFilter).thenReturn(ActivityFragmentLeakInstanceFilter(fakeCapture.classDatabase))
+    `when`(capture.bitmapDuplicationFilter).thenReturn(BitmapDuplicationInstanceFilter(emptySet()))
+    `when`(capture.supportedClassTypeFilters).thenReturn(setOf(AllClassTypeFilter))
+    `when`(capture.instances).thenAnswer { fakeCapture.instances }
+    `when`(capture.classifierAttributes).thenReturn(fakeCapture.classifierAttributes)
+    `when`(capture.instanceAttributes).thenReturn(fakeCapture.instanceAttributes)
+    `when`(capture.isGroupingSupported(any())).thenReturn(true)
+    `when`(capture.isDoneLoading).thenReturn(true)
+    `when`(capture.isError).thenReturn(false)
+    `when`(capture.isTraceProcessor).thenReturn(true)
+    `when`(capture.hasRetainedNativeAllocations).thenReturn(true)
+    `when`(capture.hasActiveFilter).thenReturn(false)
+
+    val heap = HeapSet(capture, "app", 1)
+    heap.setHeapRetainedSizes(74_600L, 5_500_000L)
+
+    val selection = MemoryCaptureSelection(profilers.ideServices)
+    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val panel =
+      CapturePanel(profilersView, selection, null, profilers.timeline.selectionRange, FakeIdeProfilerComponents(), profilers.timeline, true)
+
+    selection.selectCaptureEntry(CaptureEntry(Any()) { capture })
+    selection.finishSelectingCaptureObject(capture)
+    selection.selectHeapSet(heap)
+
+    assertThat(panel.component.getStatLabel("Retained Native Size")!!.isVisible).isTrue()
+    assertThat(panel.component.getStatLabelValue("Retained Native Size")).isEqualTo("74,600")
+    assertThat(panel.component.getStatLabel("Retained Native Size")!!.toolTipText).isNull()
+    assertThat(panel.component.getStatLabelValue("Retained Size")).isEqualTo("5,500,000")
+    assertThat(panel.component.getStatLabel("Retained Size")!!.toolTipText).isNull()
+
+    `when`(capture.hasActiveFilter).thenReturn(true)
+    selection.aspect.changed(CaptureSelectionAspect.CURRENT_FILTER)
+
+    assertThat(panel.component.getStatLabelValue("Retained Native Size")).isEqualTo("-")
+    assertThat(panel.component.getStatLabel("Retained Native Size")!!.toolTipText)
+      .isEqualTo("Retained Size is not available when a filter is applied")
+    assertThat(panel.component.getStatLabelValue("Retained Size")).isEqualTo("-")
+    assertThat(panel.component.getStatLabel("Retained Size")!!.toolTipText)
+      .isEqualTo("Retained Size is not available when a filter is applied")
+  }
+
   companion object {
     fun JComponent.getStatLabel(desc: String): StatLabel? =
       TreeWalker(this).descendantStream().filter { it is StatLabel && it.descText == desc }.map { it as StatLabel }.findFirst().orElse(null)
