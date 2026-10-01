@@ -696,7 +696,7 @@ studio_plugin(
         "//tools/vendor/google/firebase-provisioning:firebase_provisioning_proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//tools/adt/idea/.idea/libraries:grpc-google-common-protos",
-        "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
+        "//prebuilts/tools/common/m2:protobuf-java-util-3.25.5",
     ],
     license_files = [
         "//tools/vendor/google/firebase:licenses",

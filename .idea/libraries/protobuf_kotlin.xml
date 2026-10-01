@@ -1,7 +1,7 @@
 <component name="libraryTable">
   <library name="protobuf-kotlin">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/com/google/protobuf/protobuf-kotlin/3.24.4/protobuf-kotlin-3.24.4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/com/google/protobuf/protobuf-kotlin/3.25.5/protobuf-kotlin-3.25.5.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

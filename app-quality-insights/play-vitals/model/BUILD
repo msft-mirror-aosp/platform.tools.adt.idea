@@ -57,7 +57,7 @@ kotlin_library(
         "src/**/*.kt",
     ]),
     deps = [
-        "//prebuilts/tools/common/m2:com.google.protobuf.protobuf-kotlin.3.24.4",
+        "//prebuilts/tools/common/m2:com.google.protobuf.protobuf-kotlin.3.25.5",
         "//prebuilts/tools/common/m2:io.grpc.grpc-kotlin-stub.1.4.1",
         "//tools/adt/idea/app-quality-insights/client:app-quality-insights-client-base",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:play_vitals_kt_proto",

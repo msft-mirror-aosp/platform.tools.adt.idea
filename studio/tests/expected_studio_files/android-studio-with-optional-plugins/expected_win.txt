@@ -1873,8 +1873,8 @@ android-studio/plugins/android/lib/pixelprobe.jar
 android-studio/plugins/android/lib/play_findings_proto.jar
 android-studio/plugins/android/lib/play_vitals_kt_proto.jar
 android-studio/plugins/android/lib/proto.jar
-android-studio/plugins/android/lib/protobuf-java-util-3.24.4.jar
-android-studio/plugins/android/lib/protobuf-kotlin-3.24.4.jar
+android-studio/plugins/android/lib/protobuf-java-util-3.25.5.jar
+android-studio/plugins/android/lib/protobuf-kotlin-3.25.5.jar
 android-studio/plugins/android/lib/r8.jar
 android-studio/plugins/android/lib/repository-sdk-schema.jar
 android-studio/plugins/android/lib/repository.jar
@@ -2623,7 +2623,7 @@ android-studio/plugins/firebase/lib/firebase_kt_proto.jar
 android-studio/plugins/firebase/lib/firebase_provisioning_kt_proto.jar
 android-studio/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 android-studio/plugins/firebase/lib/grpc-google-common-protos-2.51.0.jar
-android-studio/plugins/firebase/lib/protobuf-java-util-3.22.3.jar
+android-studio/plugins/firebase/lib/protobuf-java-util-3.25.5.jar
 android-studio/plugins/gemini/lib/acp-jvm-0.30.1.jar
 android-studio/plugins/gemini/lib/acp-model-jvm-0.30.1.jar
 android-studio/plugins/gemini/lib/aicode_grpc.jar
