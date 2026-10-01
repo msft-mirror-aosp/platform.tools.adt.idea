@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.project
 
-import com.android.annotations.concurrency.UiThread
+import com.android.annotations.concurrency.AnyThread
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager.BuildMode
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager.BuildResult
@@ -57,5 +57,5 @@ object DefaultBuildManager : ProjectSystemBuildManager {
     }
   }
 
-  @get:UiThread override var isBuilding = false
+  @get:AnyThread @set:AnyThread override var isBuilding = false
 }
