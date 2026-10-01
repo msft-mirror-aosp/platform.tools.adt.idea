@@ -19,7 +19,6 @@ package com.android.tools.idea.compose.preview.interactive
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.preview.BackNavigationEdge
@@ -102,10 +100,6 @@ fun NavigationControlsContent(
         interactivePreviewNavigationController.trackEdgeDropdownPress()
         interactivePreviewNavigationController.backPressCancelled()
       },
-      backToState = { navigationState ->
-        interactivePreviewNavigationController.backToState(navigationState)
-        interactivePreviewNavigationController.trackNavigateButtonClick()
-      },
       fpsUpdater = fpsUpdater,
       backPressCompletedFlow = interactivePreviewNavigationController.backPressCompletedFlow,
     )
@@ -148,7 +142,6 @@ fun NavigationControlsPanel(
   onBackPressProgress: (Float, BackNavigationEdge) -> Unit,
   onBackPressTrackProgress: () -> Unit,
   onEdgeDropdownPress: () -> Unit,
-  backToState: (Any) -> Unit = {},
   fpsUpdater: SharedFlow<Unit>,
   backPressCompletedFlow: SharedFlow<Unit> = remember { MutableSharedFlow() },
 ) {
@@ -252,7 +245,7 @@ fun NavigationControlsPanel(
       }
     }
     if (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.get()) {
-      BackStack(navigationHistory, parseNavigationItem, backToState, fpsUpdater)
+      BackStack(navigationHistory, parseNavigationItem, fpsUpdater)
     }
   }
 }
@@ -261,7 +254,6 @@ fun NavigationControlsPanel(
 private fun BackStack(
   navigationHistory: List<Any>,
   parseNavigationItem: (Any, (List<NavigationItemInfo>) -> Unit) -> Unit,
-  onBackToState: (Any) -> Unit,
   fpsUpdater: SharedFlow<Unit>,
 ) {
   // Cache parsed navigation keys per history item so reflection is only executed once when a new
@@ -320,10 +312,8 @@ private fun BackStack(
               }
             }
           BackStackItem(
-            navigationInfoItem = navigationInfoItem,
             navKeys = navKeys,
             isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
-            onItemClick = onBackToState,
           )
         }
       }
@@ -333,10 +323,8 @@ private fun BackStack(
 
 @Composable
 private fun BackStackItem(
-  navigationInfoItem: Any,
   navKeys: List<NavigationItemInfo>,
   isCurrentActiveNavigationItem: Boolean,
-  onItemClick: (Any) -> Unit,
 ) {
   val activeAccent = JewelTheme.globalColors.outlines.focused
   val borderColors = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.borders.normal
@@ -344,13 +332,11 @@ private fun BackStackItem(
   val textColor = JewelTheme.globalColors.text.normal
   val itemShape = RoundedCornerShape(8.dp)
 
-  // If the item is not currently shown in the Preview, clicking anywhere on it navigates back to this state.
   Row(
     modifier =
       Modifier.clip(itemShape)
         .border(width = 1.dp, color = borderColors, shape = itemShape)
         .background(color = backGroundColor, shape = itemShape)
-        .clickable(role = Role.Button, enabled = !isCurrentActiveNavigationItem) { onItemClick(navigationInfoItem) }
         .padding(12.dp)
         .fillMaxWidth()
         .widthIn(max = 500.dp),

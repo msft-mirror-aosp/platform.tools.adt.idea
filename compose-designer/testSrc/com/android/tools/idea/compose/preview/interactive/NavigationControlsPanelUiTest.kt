@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -442,11 +443,17 @@ class NavigationControlsPanelUiTest {
   }
 
   @Test
-  fun testVisualStackNavigateButtonClick() {
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+  fun testVisualStackItemsAreReadOnlyAndShowCurrentBadge() {
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
     val historyList = listOf("Screen1", "Screen2")
-    var backToStateTarget: Any? = null
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -458,19 +465,13 @@ class NavigationControlsPanelUiTest {
         onBackPressProgress = { _, _ -> },
         onBackPressTrackProgress = {},
         onEdgeDropdownPress = {},
-        backToState = { backToStateTarget = it },
         fpsUpdater = fpsUpdater,
       )
     }
 
-    // Top item (Screen2) is the current active item and clicking it is a no-op
     composeTestRule.onNodeWithText(message("action.navigate.back.stack.current")).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Screen2").assertIsDisplayed().performClick()
-    assertEquals(null, backToStateTarget)
-
-    // Clicking a previous item (Screen1) navigates back to that state
-    composeTestRule.onNodeWithText("Screen1").assertIsDisplayed().performClick()
-    assertEquals("Screen1", backToStateTarget)
+    composeTestRule.onNodeWithText("Screen2").assertIsDisplayed().assertHasNoClickAction()
+    composeTestRule.onNodeWithText("Screen1").assertIsDisplayed().assertHasNoClickAction()
   }
 
   @Test
@@ -502,13 +503,12 @@ class NavigationControlsPanelUiTest {
   }
 
   @Test
-  fun testNavigationControlsContentSandboxesParseAndBackToState() {
+  fun testNavigationControlsContentSandboxesParse() {
     // Enable the visual back stack feature flag for the test
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
     val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     var isRenderSessionReady = false
     var renderSessionActionCount = 0
-    var navigateButtonTracked = false
 
     val tracker =
       object : InteractivePreviewUsageTracker {
@@ -524,17 +524,14 @@ class NavigationControlsPanelUiTest {
 
         override fun trackNavigationPanelEdgeDropdownPress() {}
 
-        override fun trackNavigateButtonClick() {
-          navigateButtonTracked = true
-        }
+        override fun trackNavigateButtonClick() {}
       }
 
-    // Set up a fake adapter with two items in history and a matching back stack
+    // Set up a fake adapter with two items in history
     val composeViewAdapterObjFake =
       TestComposeViewAdapterViewObj(
         canBackPress = true,
         history = listOf("Screen0", "Screen1"),
-        backStack = listOf("Screen1", "Screen0"),
       )
 
     val controller =
@@ -572,12 +569,6 @@ class NavigationControlsPanelUiTest {
     fpsUpdater.tryEmit(Unit)
     composeTestRule.waitForIdle()
     assertEquals(2, renderSessionActionCount)
-
-    // Clicking a previous item dispatches backToState through the sandboxed render session executor
-    composeTestRule.onNodeWithText("Screen0").performClick()
-    composeTestRule.waitForIdle()
-    assertEquals(3, renderSessionActionCount)
-    assertTrue(navigateButtonTracked)
   }
 
   @Test

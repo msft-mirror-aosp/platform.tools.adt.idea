@@ -194,24 +194,6 @@ class InteractivePreviewNavigationControllerTest {
   }
 
   @Test
-  fun testBackToStateFromViewAdapterObj() {
-    val composeViewAdapterObjFake =
-      TestComposeViewAdapterViewObj(backStack = listOf("Preview Three", "Preview Two", "Preview One", "Preview Zero"))
-    val controller = createController()
-    controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
-
-    // Verify navigating back to an existing state succeeds and pops the back stack down to and including that state.
-    val state = "Preview One"
-    controller.backToState(state)
-    assertThat(composeViewAdapterObjFake.backStack).containsExactly("Preview Zero")
-
-    // Verify back navigation to a non-existing state fails and leaves the back stack unchanged.
-    val nonExistingState = "Non Existing Preview"
-    controller.backToState(nonExistingState)
-    assertThat(composeViewAdapterObjFake.backStack).containsExactly("Preview Zero")
-  }
-
-  @Test
   fun testShowAndHideNavigationControls() {
     var panelUpdated = false
     val controller = createController(onAfterPanelUpdate = { panelUpdated = true })
@@ -295,12 +277,9 @@ class InteractivePreviewNavigationControllerTest {
     controller.backPressCancelled()
     assertThat(renderSessionActionCount).isEqualTo(3)
 
-    controller.backToState("State0")
-    assertThat(renderSessionActionCount).isEqualTo(4)
-
     var parsedItems = emptyList<NavigationItemInfo>()
     controller.parseNavigationItem("State0") { parsedItems = it }
-    assertThat(renderSessionActionCount).isEqualTo(5)
+    assertThat(renderSessionActionCount).isEqualTo(4)
     assertThat(parsedItems.map { it.navKey }).containsExactly("State0")
 
     // Verify exceptions during parsing are caught and invoke onParsed with an empty list
@@ -309,7 +288,7 @@ class InteractivePreviewNavigationControllerTest {
         override fun toString(): String = throw SecurityException("Blocked by sandbox")
       }
     controller.parseNavigationItem(throwingItem) { parsedItems = it }
-    assertThat(renderSessionActionCount).isEqualTo(6)
+    assertThat(renderSessionActionCount).isEqualTo(5)
     assertThat(parsedItems).isEmpty()
   }
 

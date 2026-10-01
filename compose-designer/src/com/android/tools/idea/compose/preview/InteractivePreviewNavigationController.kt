@@ -95,7 +95,6 @@ class InteractivePreviewNavigationController(
   private var onBackPressProgressMethod: Method? = null
   private var onBackPressCompletedMethod: Method? = null
   private var onBackPressCancelledMethod: Method? = null
-  private var backToStateMethod: Method? = null
   private var hasNavDisplayInViewTree: Boolean = false
   private var navigationHistory: Method? = null
 
@@ -127,7 +126,6 @@ class InteractivePreviewNavigationController(
     onBackPressCompletedMethod = null
     onBackPressCancelledMethod = null
     navigationHistory = null
-    backToStateMethod = null
   }
 
   /**
@@ -158,12 +156,12 @@ class InteractivePreviewNavigationController(
       }
   }
 
-  private fun Any?.findMethod(methodName: String, parameterCount: Int? = null): Method? =
+  private fun Any?.findMethod(methodName: String): Method? =
     this?.let {
       it::class
         .java
         .declaredMethods
-        .singleOrNull { method -> method.name == methodName && (parameterCount == null || method.parameterCount == parameterCount) }
+        .singleOrNull { method -> method.name == methodName }
         .also { method ->
           if (method == null) {
             logger.debug("Could not find method $methodName via reflection.")
@@ -276,26 +274,6 @@ class InteractivePreviewNavigationController(
   }
 
   /**
-   * Pops the back stack until reaching the specified [navigationState] in history.
-   *
-   * Dispatches the reflection invocation to the active render session asynchronously to guarantee execution within a sandboxed context
-   * without blocking the EDT.
-   *
-   * @param navigationState the target state in history to navigate back to
-   */
-  fun backToState(navigationState: Any) {
-    val owner = backPressDispatcherOwner ?: return
-    val resolvedMethod = backToStateMethod ?: owner.findMethod(BACK_TO_STATE, parameterCount = 1).also { backToStateMethod = it }
-    executeSandboxedAction {
-      val result = resolvedMethod?.invoke(owner, navigationState) as? Boolean ?: false
-      if (result) {
-        _backPressCompletedFlow.tryEmit(Unit)
-        isBackGestureInProgress = false
-      }
-    }
-  }
-
-  /**
    * Checks, via reflection, if it is possible to show the navigation panel.
    *
    * This is possible if predictive back navigation can be performed and if `NavDisplay` is implemented in code. This method only supports
@@ -365,8 +343,6 @@ class InteractivePreviewNavigationController(
 
   fun trackEdgeDropdownPress() = usageTrackerProvider().trackNavigationPanelEdgeDropdownPress()
 
-  fun trackNavigateButtonClick() = usageTrackerProvider().trackNavigateButtonClick()
-
   @TestOnly
   fun setIsTrustedNavigationEventDispatcherOwnerForTestOnly(isTrusted: (Any) -> Boolean) {
     isTrustedNavigationEventDispatcherOwner = isTrusted
@@ -389,7 +365,6 @@ class InteractivePreviewNavigationController(
     private const val ON_BACK_PRESS_COMPLETED = "onBackPressCompleted"
     private const val ON_BACK_PRESS_CANCELLED = "onBackPressCancelled"
     private const val GET_BACK_HISTORY = "getHistory"
-    private const val BACK_TO_STATE = "backToState"
     private const val EXPECTED_NAVIGATION_EVENT_DISPATCHER_OWNER_CLASS_NAME =
       "androidx.navigationevent.compose.FakeNavigationEventDispatcherOwner"
 
