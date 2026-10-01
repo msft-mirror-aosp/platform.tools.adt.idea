@@ -76,6 +76,7 @@ internal fun handlePhoneAdbRequest(request: String): String? =
     request.contains("grep 'cloud network id: '") -> "cloud network id: CloudID"
     request.contains("dumpsys activity service WearableService | grep 'local: '") -> "local: phoneNodeId"
     request.startsWith("dumpsys activity") -> "Fake dumpsys activity"
+    request.startsWith("pm grant ") -> "OK"
     else -> null
   }
 

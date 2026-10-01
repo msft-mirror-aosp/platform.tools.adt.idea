@@ -268,6 +268,11 @@ class WearPairingManager(
           phoneDevice.createForward(hostPort, 5601)
           wearDevice.createReverse(5601, hostPort)
           wearDevice.refreshEmulatorConnection()
+          if (wearDevice.getCompanionAppIdForWatch() == PIXEL_COMPANION_APP_ID) {
+            // android.permission.BLUETOOTH_CONNECT is required for the companion app to pair and communicate with the watch.
+            // This permission can be removed by "pm clear" calls.
+            phoneDevice.grantPermission(PIXEL_COMPANION_APP_ID, "android.permission.BLUETOOTH_CONNECT")
+          }
           updateDeviceStatus(phoneWearPair, phoneDevice, wearDevice)
         } catch (ex: Throwable) {
           throw IOException(ex)
