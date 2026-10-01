@@ -25,6 +25,7 @@ import com.android.tools.idea.rendering.classloading.LocalNavigationEventTransfo
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.intellij.openapi.diagnostic.thisLogger
+import java.lang.ref.WeakReference
 import java.util.concurrent.TimeUnit
 
 private const val NAV_DISPLAY_NAME = "NavDisplay"
@@ -35,13 +36,13 @@ private const val NAV_DISPLAY_NAME = "NavDisplay"
  */
 object InteractivePreviewBackNavigationUpdater {
 
-  private var _currentNavigationEventDispatcherOwner: Any? = null
+  private var _currentNavigationEventDispatcherOwner: WeakReference<Any?> = WeakReference(null)
   /**
    * Returns the current `androidx.navigationevent.compose.FakeNavigationEventDispatcherOwner` previously created by
    * [LocalNavigationEventTransform]
    */
-  val currentNavigationEventDispatcherOwner
-    get() = _currentNavigationEventDispatcherOwner
+  val currentNavigationEventDispatcherOwner: Any?
+    get() = _currentNavigationEventDispatcherOwner.get()
 
   /**
    * Sets the current [androidx.navigationevent.NavigationEventDispatcherOwner].
@@ -55,7 +56,12 @@ object InteractivePreviewBackNavigationUpdater {
    */
   @Suppress("unused") // Field names are accessed through [LocalNavigationEventTransform]
   fun setNavigationEventDispatcherOwner(dispatcher: Any) {
-    _currentNavigationEventDispatcherOwner = dispatcher
+    _currentNavigationEventDispatcherOwner = WeakReference(dispatcher)
+  }
+
+  /** Clears the cached navigation event dispatcher owner reference. */
+  fun clear() {
+    _currentNavigationEventDispatcherOwner.clear()
   }
 
   /**
@@ -78,8 +84,16 @@ object InteractivePreviewBackNavigationUpdater {
     layoutlibSceneManager: LayoutlibSceneManager,
     interactivePreviewNavigationController: InteractivePreviewNavigationController,
   ) {
-    val composeViewAdapterObj = layoutlibSceneManager.viewObject ?: return
-    if (previewManager.mode.value !is PreviewMode.Interactive) return
+    if (previewManager.mode.value !is PreviewMode.Interactive) {
+      clear()
+      return
+    }
+    val composeViewAdapterObj =
+      layoutlibSceneManager.viewObject
+        ?: run {
+          clear()
+          return
+        }
     val rootViews = layoutlibSceneManager.renderResult?.rootViews ?: emptyList()
     val viewInfo: ViewInfo? = rootViews.firstOrNull()
     val hasNavDisplayInViewTree: Boolean =
@@ -89,9 +103,10 @@ object InteractivePreviewBackNavigationUpdater {
         composeViewInfos.flatMap { it.allChildren() }.any { it.name == NAV_DISPLAY_NAME }
       } ?: false
 
+    val weakSceneManager = WeakReference(layoutlibSceneManager)
     interactivePreviewNavigationController.executeInRenderSessionAsync = { runnable ->
       // Execute in the render session where RenderSecurityManager/RenderSandbox is active
-      layoutlibSceneManager.executeInRenderSessionAsync(runnable, 0, TimeUnit.SECONDS)
+      weakSceneManager.get()?.executeInRenderSessionAsync(runnable, 0, TimeUnit.SECONDS)
     }
 
     interactivePreviewNavigationController.updateObjects(

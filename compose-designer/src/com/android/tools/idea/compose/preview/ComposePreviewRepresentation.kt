@@ -700,6 +700,7 @@ constructor(
   private fun onInteractivePreviewStop() {
     requestVisibilityAndNotificationsUpdate()
     interactiveManager.stop()
+    interactivePreviewNavigationController.clear()
     invalidate()
   }
 
@@ -1029,6 +1030,7 @@ constructor(
     isDisposed.set(true)
     if (mode.value is PreviewMode.Interactive) {
       interactiveManager.stop()
+      interactivePreviewNavigationController.clear()
     } else if (mode.value is PreviewMode.UiCheck) {
       uiCheckFilterFlow.value.basePreviewInstance?.let { uiCheckPanelCleanup(it.instanceId) }
     }
