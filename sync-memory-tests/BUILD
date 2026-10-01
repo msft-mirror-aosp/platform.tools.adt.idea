@@ -21,7 +21,7 @@ iml_module(
             ],
         },
         "Benchmark2000KotlinMultiplatformCpu": {
-            "test_filer": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000KotlinMultiplatformCpuTest",
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000KotlinMultiplatformCpuTest",
             "tags": [
                 "noci:studio-win",
                 "noci:studio-linux",
