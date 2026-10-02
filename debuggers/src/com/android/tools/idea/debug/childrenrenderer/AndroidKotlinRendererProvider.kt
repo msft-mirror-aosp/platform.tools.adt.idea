@@ -16,7 +16,6 @@
 package com.android.tools.idea.debug.childrenrenderer
 
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.idea.debugger.KotlinClassRenderer
 
 /**
  * A class renderer for Android Kotlin classes
@@ -24,10 +23,8 @@ import org.jetbrains.kotlin.idea.debugger.KotlinClassRenderer
  * Sorts object properties in declaration order.
  *
  * DEX'ing a class stores fiends and methods in alphabetic order which determines the way they are displayed in the debugger.
- *
- * TODO: Implement AndroidKotlinClassRenderer and use it instead of KotlinClassRenderer
  */
-class AndroidKotlinRendererProvider : BaseRendererProvider(KotlinClassRenderer()) {
+class AndroidKotlinRendererProvider : BaseRendererProvider(AndroidKotlinClassRenderer()) {
   @VisibleForTesting public override fun getName() = "Android Kotlin Class"
 
   @VisibleForTesting public override fun getClassName() = "kotlin.Any"

@@ -27,6 +27,7 @@ import com.sun.jdi.Field
  *
  * TODO: Add support for Kotlin function local classes
  * TODO: Add support for getters
+ * TODO: Add support for interface fields
  */
 internal class AndroidPropertySorter(private val project: Project) {
   private val scope = GlobalSearchScope.allScope(project)
