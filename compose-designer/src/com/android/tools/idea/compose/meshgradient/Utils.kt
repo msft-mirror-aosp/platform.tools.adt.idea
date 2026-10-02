@@ -18,10 +18,12 @@ package com.android.tools.idea.compose.meshgradient
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.concurrency.annotations.RequiresReadLock
 import java.math.RoundingMode
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -94,75 +96,101 @@ fun Color.toComposeHexLiteral(): String {
  */
 internal fun KtCallExpression.isValidMeshGradientCall(): Boolean = gradientCallKind() == GradientCallKind.MESH
 
+/**
+ * Returns the scope in which top-level properties referenced from [file] are looked up: its module together with the modules it depends on,
+ * or the whole project if [file] doesn't belong to a module.
+ */
 private fun getModuleSearchScope(project: Project, file: KtFile): GlobalSearchScope {
-  val module = ModuleUtilCore.findModuleForPsiElement(file)
-  return module?.moduleContentScope ?: GlobalSearchScope.projectScope(project)
+  val module = ModuleUtilCore.findModuleForPsiElement(file) ?: return GlobalSearchScope.projectScope(project)
+  return GlobalSearchScope.moduleWithDependenciesScope(module)
 }
 
+/**
+ * Whether [this] top-level property, declared in another file, may be referenced and statically evaluated. Only stub-backed data is
+ * accessed, so this is cheap to check before loading the AST of the candidate.
+ *
+ * Visibility is approximated: `internal` properties declared in a dependency module are accepted, even though Kotlin only makes them
+ * visible within their own module.
+ */
+private fun KtProperty.isEvaluableFromOtherFile(): Boolean = !isPrivate() && hasInitializer()
+
+/**
+ * Finds the non-private top-level properties with an initializer that are visible from [file] through its package, explicit imports and
+ * star imports, within its module and the modules it depends on.
+ */
+@RequiresReadLock
 internal fun findImportedAndSamePackageProperties(project: Project, file: KtFile): List<KtProperty> {
   if (DumbService.isDumb(project)) return emptyList()
   val scope = getModuleSearchScope(project, file)
   val result = mutableListOf<KtProperty>()
 
-  val currentPkg = file.packageFqName.asString()
-  for (pkgFile in KotlinExactPackagesIndex.get(currentPkg, project, scope)) {
-    if (pkgFile == file) continue
-    result.addAll(pkgFile.declarations.filterIsInstance<KtProperty>().filter { !it.isPrivate() })
+  fun addPackageProperties(packageFqName: String) {
+    for (pkgFile in KotlinExactPackagesIndex.get(packageFqName, project, scope)) {
+      ProgressManager.checkCanceled()
+      if (pkgFile == file) continue
+      pkgFile.declarations.filterIsInstance<KtProperty>().filterTo(result) { it.isEvaluableFromOtherFile() }
+    }
   }
 
+  addPackageProperties(file.packageFqName.asString())
+
   for (directive in file.importDirectives) {
+    ProgressManager.checkCanceled()
     val importedFqName = directive.importedFqName?.asString() ?: continue
 
     if (directive.isAllUnder) {
-      for (pkgFile in KotlinExactPackagesIndex.get(importedFqName, project, scope)) {
-        if (pkgFile == file) continue
-        result.addAll(pkgFile.declarations.filterIsInstance<KtProperty>().filter { !it.isPrivate() })
-      }
+      addPackageProperties(importedFqName)
     } else {
-      result.addAll(KotlinTopLevelPropertyFqnNameIndex.get(importedFqName, project, scope).filter { !it.isPrivate() })
+      KotlinTopLevelPropertyFqnNameIndex.get(importedFqName, project, scope).filterTo(result) { it.isEvaluableFromOtherFile() }
     }
   }
 
   return result
 }
 
+/**
+ * Resolves [targetName], as referenced from [file], to a non-private top-level property with an initializer, declared in another file and
+ * visible through an explicit import (or import alias), the package of [file] or a star import, within its module and the modules it
+ * depends on.
+ */
+@RequiresReadLock
 internal fun resolveImportedOrSamePackageProperty(project: Project, file: KtFile, targetName: String): KtProperty? {
   if (DumbService.isDumb(project)) return null
   val scope = getModuleSearchScope(project, file)
 
-  // 1. Explicit import (including import alias)
+  fun findProperty(fqName: String, predicate: (KtProperty) -> Boolean = { true }): KtProperty? =
+    KotlinTopLevelPropertyFqnNameIndex.get(fqName, project, scope).firstOrNull {
+      ProgressManager.checkCanceled()
+      it.isEvaluableFromOtherFile() && predicate(it)
+    }
+
+  // 1. Explicit import (including import alias). Explicit imports take priority over the package and star imports, so the name is not
+  // looked up any further even if the imported declaration is not an evaluable property.
   val explicitImport =
     file.importDirectives.firstOrNull {
       !it.isAllUnder && (it.aliasName == targetName || (it.aliasName == null && it.importedName?.asString() == targetName))
     }
   if (explicitImport != null) {
     val fqn = explicitImport.importedFqName?.asString() ?: return null
-    KotlinTopLevelPropertyFqnNameIndex.get(fqn, project, scope)
-      .firstOrNull { !it.isPrivate() }
-      ?.let {
-        return it
-      }
+    return findProperty(fqn)
   }
 
-  // 2. Same-package files in the module
+  // 2. Same-package files in the module and its dependencies
   val currentPkg = file.packageFqName.asString()
   val candidateFqn = if (currentPkg.isEmpty()) targetName else "$currentPkg.$targetName"
-  KotlinTopLevelPropertyFqnNameIndex.get(candidateFqn, project, scope)
-    .firstOrNull { it.containingKtFile != file && !it.isPrivate() }
+  findProperty(candidateFqn) { it.containingKtFile != file }
     ?.let {
       return it
     }
 
-  // 3. Star-imported packages in the module
+  // 3. Star-imported packages in the module and its dependencies
   for (directive in file.importDirectives) {
     if (!directive.isAllUnder) continue
     val pkgFqn = directive.importedFqName?.asString() ?: continue
     val starCandidateFqn = if (pkgFqn.isEmpty()) targetName else "$pkgFqn.$targetName"
-    KotlinTopLevelPropertyFqnNameIndex.get(starCandidateFqn, project, scope)
-      .firstOrNull { !it.isPrivate() }
-      ?.let {
-        return it
-      }
+    findProperty(starCandidateFqn)?.let {
+      return it
+    }
   }
 
   return null
