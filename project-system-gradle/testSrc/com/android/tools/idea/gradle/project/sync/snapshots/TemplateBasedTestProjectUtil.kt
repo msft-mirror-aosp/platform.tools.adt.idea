@@ -157,15 +157,8 @@ internal fun patchMppProject(
     }
   }
   if (addIosTo.isNotEmpty()) {
-    // With built-in Kotlin, KGP comes from `gradle-kotlin` at AGP's built-in Kotlin version. Put KOTLIN_VERSION_FOR_TESTS on the classpath
-    // too, so that KGP (and its Kotlin/Native commonizer) matches the Kotlin/Native distribution selected by `kotlin.native.version` below.
-    val gradleKotlinClasspath = "classpath 'com.android.tools.build:gradle-kotlin:"
-    projectRoot
-      .resolve("build.gradle")
-      .replaceInContent(
-        gradleKotlinClasspath,
-        "classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:$KOTLIN_VERSION_FOR_TESTS'\n        $gradleKotlinClasspath",
-      )
+    // KMP test projects keep KGP at KOTLIN_VERSION_FOR_TESTS on the buildscript classpath (see AndroidGradleTests), so select the
+    // matching Kotlin/Native distribution.
     val konanDir = File(FileUtil.getTempDirectory(), ".konan")
     konanDir.mkdirs()
     projectRoot

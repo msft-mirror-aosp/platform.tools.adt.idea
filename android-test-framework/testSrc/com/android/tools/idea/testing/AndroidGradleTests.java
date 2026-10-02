@@ -111,6 +111,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import junit.framework.TestCase;
 import kotlin.Unit;
 import org.gradle.util.GradleVersion;
@@ -132,6 +133,12 @@ public class AndroidGradleTests {
   private static final String ADDITIONAL_REPOSITORY_PROPERTY = "idea.test.gradle.additional.repositories";
   private static final long DEFAULT_TIMEOUT_SOURCES_FOLDER_UPDATES_MILLIS = 1000;
   private static final String NDK_VERSION_PLACEHOLDER = "// ndkVersion \"{placeholder}\"";
+  /**
+   * Matches the ways test projects apply the Kotlin Multiplatform plugin: the plugin ID (also used in version catalogs), the legacy
+   * plugin ID and the Kotlin DSL accessor.
+   */
+  private static final Pattern KOTLIN_MULTIPLATFORM_PLUGIN_PATTERN =
+    Pattern.compile("org\\.jetbrains\\.kotlin\\.multiplatform|['\"]kotlin-multiplatform['\"]|kotlin\\(\\s*\"multiplatform\"\\s*\\)");
 
   public static void waitForSourceFolderManagerToProcessUpdates(@NotNull Project project) throws Exception {
     waitForSourceFolderManagerToProcessUpdates(project, null);
@@ -241,7 +248,7 @@ public class AndroidGradleTests {
                                                    @Nullable String ndkVersion,
                                                    @NotNull List<File> localRepos,
                                                    @Nullable Boolean builtInKotlinEnabled) throws IOException {
-    internalUpdateToolingVersionsAndPaths(path, true, agpVersion, ndkVersion, localRepos, true, builtInKotlinEnabled);
+    internalUpdateToolingVersionsAndPaths(path, true, agpVersion, ndkVersion, localRepos, true, builtInKotlinEnabled, null);
   }
 
   private static void internalUpdateToolingVersionsAndPaths(@NotNull File path,
@@ -250,13 +257,19 @@ public class AndroidGradleTests {
                                                             @Nullable String ndkVersion,
                                                             @NotNull List<File> localRepos,
                                                             boolean syncEnabled,
-                                                            @Nullable Boolean builtInKotlinEnabled) throws IOException {
+                                                            @Nullable Boolean builtInKotlinEnabled,
+                                                            @Nullable Boolean keepKotlinGradlePluginEnabled) throws IOException {
 
     // Tools/base versions are the same but with then major incremented by 23
     int firstSeparator = agpEnvironment.getAgpVersion().indexOf('.');
     int majorVersion = Integer.parseInt(agpEnvironment.getAgpVersion().substring(0, firstSeparator)) + 23;
     String toolsBaseVersion = majorVersion + agpEnvironment.getAgpVersion().substring(firstSeparator);
     boolean builtInKotlin = (builtInKotlinEnabled != null) ? builtInKotlinEnabled : getBuiltInKotlinEnabled(path, agpEnvironment);
+    // Kotlin Multiplatform projects keep their explicit Kotlin Gradle plugin (see migrateBuildFileToBuiltInKotlin). This is decided
+    // once for the whole project, including included builds such as build-logic, because Gradle loads a single KGP per classloader.
+    boolean keepKotlinGradlePlugin = (keepKotlinGradlePluginEnabled != null)
+                                     ? keepKotlinGradlePluginEnabled
+                                     : builtInKotlin && usesKotlinMultiplatform(path);
     BasicFileAttributes fileAttributes;
     try {
       fileAttributes = Files.readAttributes(path.toPath(), BasicFileAttributes.class);
@@ -283,7 +296,7 @@ public class AndroidGradleTests {
       }
       for (File child : notNullize(path.listFiles())) {
         internalUpdateToolingVersionsAndPaths(
-          child, false, agpEnvironment, ndkVersion, localRepos, syncEnabled, builtInKotlin
+          child, false, agpEnvironment, ndkVersion, localRepos, syncEnabled, builtInKotlin, keepKotlinGradlePlugin
         );
       }
     }
@@ -311,7 +324,7 @@ public class AndroidGradleTests {
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdkVersion *[(=]? *(\\d+)");
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdk *= *(\\d+)");
         contents = updateLocalRepositories(contents, localRepositories);
-        contents = migrateBuildFileToBuiltInKotlin(contents, agpEnvironment.getAgpVersion(), builtInKotlin);
+        contents = migrateBuildFileToBuiltInKotlin(contents, agpEnvironment.getAgpVersion(), builtInKotlin, keepKotlinGradlePlugin);
 
         if (ndkVersion != null) {
           contents = contents.replace(NDK_VERSION_PLACEHOLDER, String.format("ndkVersion=\"%s\"", ndkVersion));
@@ -622,12 +635,24 @@ public class AndroidGradleTests {
   }
 
   @NotNull
-  private static String migrateBuildFileToBuiltInKotlin(@NotNull String contents, @NotNull String agpVersion, boolean builtInKotlin) {
+  private static String migrateBuildFileToBuiltInKotlin(@NotNull String contents,
+                                                        @NotNull String agpVersion,
+                                                        boolean builtInKotlin,
+                                                        boolean keepKotlinGradlePlugin) {
     if (!builtInKotlin) return contents;
 
     // Top level gradle build file
     if (contents.contains("org.jetbrains.kotlin:kotlin-gradle-plugin")) {
-      if (contents.contains("com.android.tools.build:gradle-kotlin")) {
+      if (keepKotlinGradlePlugin) {
+        // Kotlin Multiplatform projects keep the explicit KGP so that they run on the Kotlin version of the test environment
+        // (KOTLIN_VERSION_FOR_TESTS for AGP_LATEST) instead of the older KGP that AGP depends on. Android modules in the same
+        // build use it too. gradle-kotlin is still added next to it as it provides plugins such as com.android.legacy-kapt.
+        if (!contents.contains("com.android.tools.build:gradle-kotlin")) {
+          contents = contents.replaceFirst("([ \\t]*)(classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"])",
+                                           "$1$2\n$1classpath 'com.android.tools.build:gradle-kotlin:" + agpVersion + "'");
+        }
+      }
+      else if (contents.contains("com.android.tools.build:gradle-kotlin")) {
         contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]\\s*", "");
       } else {
         contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]",
@@ -665,6 +690,31 @@ public class AndroidGradleTests {
       // If gradle.properties doesn't exist, assume the default.
       return true;
     }
+  }
+
+  /**
+   * Returns whether any Gradle build file or version catalog under {@code root}, including included builds such as build-logic,
+   * refers to the Kotlin Multiplatform plugin.
+   */
+  private static boolean usesKotlinMultiplatform(@NotNull File root) throws IOException {
+    if (!root.exists()) return false;
+
+    List<Path> candidates;
+    try (Stream<Path> paths = Files.walk(root.toPath())) {
+      candidates = paths
+        .filter(it -> {
+          String name = it.getFileName().toString();
+          return name.endsWith(DOT_GRADLE) || name.endsWith(EXT_GRADLE_KTS) || name.endsWith(DOT_VERSIONS_DOT_TOML);
+        })
+        .filter(Files::isRegularFile)
+        .collect(Collectors.toList());
+    }
+    for (Path candidate : candidates) {
+      if (KOTLIN_MULTIPLATFORM_PLUGIN_PATTERN.matcher(Files.readString(candidate)).find()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -852,7 +902,7 @@ public class AndroidGradleTests {
                                                  File... localRepos) throws IOException {
     preCreateDotGradle(projectRoot);
     // Update dependencies to latest, and possibly repository URL too if android.mavenRepoUrl is set
-    internalUpdateToolingVersionsAndPaths(projectRoot, true, agpVersion, ndkVersion, Lists.newArrayList(localRepos), syncReady, null);
+    internalUpdateToolingVersionsAndPaths(projectRoot, true, agpVersion, ndkVersion, Lists.newArrayList(localRepos), syncReady, null, null);
   }
 
 
