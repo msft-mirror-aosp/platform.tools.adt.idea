@@ -205,7 +205,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     val dialog = createGradientEditorDialog(project, call!!)
     assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
 
-    dialog.state.updatePaletteAndMeshColor(Color(0xFFF44336), Color(0xFF00BCD4))
+    dialog.state.replacePaletteColor(dialog.state.availableColors.indexOf(Color(0xFFF44336)), Color(0xFF00BCD4))
     assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
 
     dialog.performOkAction()

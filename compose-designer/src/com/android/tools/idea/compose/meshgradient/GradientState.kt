@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import com.android.tools.idea.compose.preview.message
 import java.util.Locale
+import org.jetbrains.annotations.VisibleForTesting
 
 enum class GradientType {
   MESH,
@@ -129,10 +131,14 @@ class GradientEditorState {
   var hasBicubicColor by mutableStateOf(false)
   var hasDynamicOrUnresolvedValues by mutableStateOf(false)
 
-  val meshPoints = mutableStateListOf<List<MeshGradientPoint>>()
+  private val _meshPoints = mutableStateListOf<List<MeshGradientPoint>>()
 
-  val generatedCode: String
-    get() = generateCode()
+  /** The mesh vertices, indexed by row and then by column. */
+  internal val meshPoints: List<List<MeshGradientPoint>>
+    get() = _meshPoints
+
+  /** Source code for the current gradient. Only recomputed when the state it depends on changes. */
+  val generatedCode: String by derivedStateOf { generateCode() }
 
   private val defaultColors =
     listOf(
@@ -148,29 +154,51 @@ class GradientEditorState {
       Color(0xFF4CAF50), // Green
     )
 
-  val availableColors = mutableStateListOf<Color>()
+  private val _availableColors = mutableStateListOf<Color>()
+
+  /** The palette of colors offered for mesh vertices. Never contains duplicates once an edit session ends. */
+  internal val availableColors: List<Color>
+    get() = _availableColors
+
+  /**
+   * Incremented whenever the palette or vertex indices held by a [PaletteColorEdit] may stop being valid: when palette entries are removed
+   * or merged, and when the mesh is resized or loaded. Appending palette entries keeps existing indices valid and doesn't change it.
+   */
+  private var editVersion = 0
 
   init {
-    availableColors.addAll(defaultColors)
+    _availableColors.addAll(defaultColors)
     generateMeshPoints()
   }
 
-  fun addAvailableColors(colors: Iterable<Color>) {
+  internal fun addAvailableColors(colors: Iterable<Color>) {
     colors.forEach { color ->
-      if (color !in availableColors) {
-        availableColors.add(color)
+      if (color !in _availableColors) {
+        _availableColors.add(color)
       }
     }
   }
 
-  fun updateRows(value: Int) {
-    rows = value.coerceIn(2, 10)
-    generateMeshPoints()
+  /** Sets the number of vertex rows, keeping existing vertices where possible. See [resizeMeshGrid]. */
+  internal fun updateRows(value: Int) {
+    resizeMesh(value.coerceIn(MIN_MESH_DIMENSION, MAX_MESH_DIMENSION), cols)
   }
 
-  fun updateCols(value: Int) {
-    cols = value.coerceIn(2, 10)
-    generateMeshPoints()
+  /** Sets the number of vertex columns, keeping existing vertices where possible. See [resizeMeshGrid]. */
+  internal fun updateCols(value: Int) {
+    resizeMesh(rows, value.coerceIn(MIN_MESH_DIMENSION, MAX_MESH_DIMENSION))
+  }
+
+  private fun resizeMesh(newRows: Int, newCols: Int) {
+    rows = newRows
+    cols = newCols
+    if (_meshPoints.size == newRows && _meshPoints.all { it.size == newCols }) return
+    editVersion++
+    if (isValidMeshGrid(_meshPoints)) {
+      replaceMesh(resizeMeshGrid(_meshPoints.toList(), newRows, newCols))
+    } else {
+      generateMeshPoints()
+    }
   }
 
   /**
@@ -184,102 +212,189 @@ class GradientEditorState {
     rows = newPoints.size
     cols = newPoints[0].size
     hasBicubicColor = newHasBicubicColor
-    meshPoints.clear()
-    meshPoints.addAll(newPoints)
+    editVersion++
+    _meshPoints.clear()
+    _meshPoints.addAll(newPoints)
 
     val loadedColors = newPoints.flatten().map { it.color }.distinct()
     loadedColors.forEach { color ->
       if (color !in availableColors) {
-        availableColors.add(color)
+        _availableColors.add(color)
       }
     }
   }
 
-  fun updateMeshPoint(row: Int, col: Int, offset: Offset) {
-    if (row !in meshPoints.indices || col !in meshPoints[row].indices) return
-
-    val colorPointsInRow = meshPoints[row].toMutableList()
-
-    var newX = offset.x
-    var newY = offset.y
-
-    if (constrainEdgePoints) {
-      newX =
-        when (col) {
-          0 -> 0f
-          colorPointsInRow.size - 1 -> 1f
-          else -> newX
-        }
-      newY =
-        when (row) {
-          0 -> 0f
-          meshPoints.size - 1 -> 1f
-          else -> newY
-        }
-    }
-
-    val newPoint = colorPointsInRow[col].copy(position = Offset(x = newX, y = newY), positionExpression = null)
-    colorPointsInRow[col] = newPoint
-
-    meshPoints[row] = colorPointsInRow.toList()
-  }
-
-  fun updateVertexColor(row: Int, col: Int, color: Color) {
-    if (row !in meshPoints.indices || col !in meshPoints[row].indices) return
-    val colorPointsInRow = meshPoints[row].toMutableList()
-    val newPoint = colorPointsInRow[col].copy(color = color, colorExpression = null)
-    colorPointsInRow[col] = newPoint
-    meshPoints[row] = colorPointsInRow.toList()
-  }
-
-  fun distributeMeshPointsEvenly() {
-    val newPoints = meshPoints.mapIndexed { rowIdx, currentPoints ->
-      val newRowPoints = mutableListOf<MeshGradientPoint>()
-      val yPosition = if (rows > 1) rowIdx.toFloat() / (rows - 1) else 0f
-      repeat(cols) { colIdx ->
-        val xPosition = if (cols > 1) colIdx.toFloat() / (cols - 1) else 0f
-        newRowPoints.add(currentPoints[colIdx].copy(position = Offset(xPosition, yPosition), positionExpression = null))
-      }
-      newRowPoints.toList()
-    }
-    meshPoints.clear()
-    meshPoints.addAll(newPoints)
-  }
-
-  fun updateAllPoints(transform: (MeshGradientPoint) -> MeshGradientPoint) {
-    val updated = meshPoints.map { row -> row.map(transform) }
-    meshPoints.clear()
-    meshPoints.addAll(updated)
-  }
-
-  fun updatePaletteAndMeshColor(oldColor: Color, newColor: Color) {
-    val index = availableColors.indexOf(oldColor)
-    if (index != -1) {
-      availableColors[index] = newColor
-    }
-    updateAllPoints { point ->
-      if (point.color == oldColor) {
-        point.copy(color = newColor, colorExpression = null)
+  /**
+   * Moves the vertex at ([row], [col]) to [offset], snapping border vertices to their edge when [constrainEdgePoints] is set. The vertex's
+   * position expression is only dropped if its position actually changes.
+   */
+  internal fun updateMeshPoint(row: Int, col: Int, offset: Offset) {
+    val rowPoints = _meshPoints.getOrNull(row) ?: return
+    val point = rowPoints.getOrNull(col) ?: return
+    val target =
+      if (constrainEdgePoints) {
+        Offset(
+          x =
+            when (col) {
+              0 -> 0f
+              rowPoints.lastIndex -> 1f
+              else -> offset.x
+            },
+          y =
+            when (row) {
+              0 -> 0f
+              _meshPoints.lastIndex -> 1f
+              else -> offset.y
+            },
+        )
       } else {
-        point
+        offset
+      }
+    updatePoint(row, col, point.withPosition(target))
+  }
+
+  /** Sets the color of the vertex at ([row], [col]), dropping its color expression unless the color is unchanged. */
+  internal fun updateVertexColor(row: Int, col: Int, color: Color) {
+    val point = _meshPoints.getOrNull(row)?.getOrNull(col) ?: return
+    updatePoint(row, col, point.withColor(color))
+  }
+
+  /** Spreads the vertices evenly over the canvas, keeping the position expressions of vertices that are already in place. */
+  internal fun distributeMeshPointsEvenly() {
+    val rowCount = _meshPoints.size
+    replaceMesh(
+      _meshPoints.mapIndexed { row, rowPoints ->
+        rowPoints.mapIndexed { col, point -> point.withPosition(evenMeshPosition(row, col, rowCount, rowPoints.size)) }
+      }
+    )
+  }
+
+  /**
+   * Removes the palette color at [index]. Vertices using the removed color switch to the first remaining palette color and lose their color
+   * expression, so the canvas and the generated code stay in sync. The last remaining color can't be removed.
+   */
+  internal fun removePaletteColor(index: Int) {
+    val removedColor = _availableColors.getOrNull(index) ?: return
+    dedupePalette()
+    if (_availableColors.size <= 1) return
+    _availableColors.remove(removedColor)
+    editVersion++
+    val fallbackColor = _availableColors.first()
+    updatePoints { point -> if (point.color == removedColor) point.copy(color = fallbackColor, colorExpression = null) else point }
+  }
+
+  /** Replaces the palette entry at [index] with [newColor], recoloring the vertices that use it. */
+  @VisibleForTesting
+  internal fun replacePaletteColor(index: Int, newColor: Color) {
+    val edit = beginPaletteColorEdit(index) ?: return
+    edit.update(newColor)
+    edit.finish()
+  }
+
+  /**
+   * Starts editing the palette entry at [index], e.g. while a color picker is open. The vertices using that color are captured now, so
+   * intermediate colors never pull in unrelated vertices that happen to share them. The caller must call [PaletteColorEdit.finish] when the
+   * edit ends.
+   *
+   * @return the edit session, or null if [index] is not a palette index.
+   */
+  internal fun beginPaletteColorEdit(index: Int): PaletteColorEdit? {
+    val color = _availableColors.getOrNull(index) ?: return null
+    dedupePalette()
+    val vertices = buildSet {
+      _meshPoints.forEachIndexed { row, rowPoints ->
+        rowPoints.forEachIndexed { col, point -> if (point.color == color) add(VertexIndex(row, col)) }
       }
     }
+    return PaletteColorEdit(_availableColors.indexOf(color), vertices, color)
+  }
+
+  /**
+   * Starts adding a new palette entry, which is appended on the first [PaletteColorEdit.update]. The caller must call
+   * [PaletteColorEdit.finish] when the edit ends.
+   */
+  internal fun beginNewPaletteColor(): PaletteColorEdit {
+    dedupePalette()
+    return PaletteColorEdit(entryIndex = null, vertices = emptySet(), currentColor = null)
+  }
+
+  /**
+   * A live edit of a single palette entry and of the vertices that used its color when the edit started.
+   *
+   * Intermediate colors may temporarily duplicate other palette entries; [finish] merges the duplicates. Updates are ignored once the edit
+   * is finished, or after the palette entries are removed or merged or the mesh is resized, since the captured indices may no longer refer
+   * to the same entry and vertices.
+   */
+  internal inner class PaletteColorEdit(
+    private var entryIndex: Int?,
+    private val vertices: Set<VertexIndex>,
+    private var currentColor: Color?,
+  ) {
+    private val startVersion = editVersion
+    private var isFinished = false
+
+    /** Sets the edited palette entry, and the captured vertices that still use the edited color, to [newColor]. */
+    fun update(newColor: Color) {
+      if (newColor == currentColor || isFinished || startVersion != editVersion) return
+      val index = entryIndex
+      if (index == null) {
+        _availableColors.add(newColor)
+        entryIndex = _availableColors.lastIndex
+      } else {
+        if (index !in _availableColors.indices) return
+        _availableColors[index] = newColor
+      }
+      val previousColor = currentColor
+      currentColor = newColor
+      vertices.forEach { (row, col) ->
+        val point = _meshPoints.getOrNull(row)?.getOrNull(col) ?: return@forEach
+        if (point.color == previousColor) {
+          updatePoint(row, col, point.withColor(newColor))
+        }
+      }
+    }
+
+    /** Ends the edit, merging any palette entries it made identical. Later calls to [update] are ignored. */
+    fun finish() {
+      if (isFinished) return
+      isFinished = true
+      dedupePalette()
+    }
+  }
+
+  private fun dedupePalette() {
+    val distinct = _availableColors.distinct()
+    if (distinct.size == _availableColors.size) return
+    _availableColors.clear()
+    _availableColors.addAll(distinct)
+    editVersion++
+  }
+
+  private fun updatePoint(row: Int, col: Int, newPoint: MeshGradientPoint) {
+    val rowPoints = _meshPoints[row]
+    if (rowPoints[col] == newPoint) return
+    _meshPoints[row] = rowPoints.toMutableList().apply { set(col, newPoint) }
+  }
+
+  private fun updatePoints(transform: (MeshGradientPoint) -> MeshGradientPoint) {
+    replaceMesh(_meshPoints.map { row -> row.map(transform) })
+  }
+
+  private fun replaceMesh(newPoints: List<List<MeshGradientPoint>>) {
+    if (newPoints == _meshPoints) return
+    _meshPoints.clear()
+    _meshPoints.addAll(newPoints)
   }
 
   private fun generateMeshPoints() {
-    val newMeshPoints = mutableListOf<List<MeshGradientPoint>>()
-    repeat(rows) { rowIdx ->
-      val newPoints = mutableListOf<MeshGradientPoint>()
-      val yPosition = if (rows > 1) rowIdx.toFloat() / (rows - 1) else 0f
-      repeat(cols) { colIdx ->
-        val xPosition = if (cols > 1) colIdx.toFloat() / (cols - 1) else 0f
-        val color = availableColors[(rowIdx * cols + colIdx) % availableColors.size]
-        newPoints.add(MeshGradientPoint(position = Offset(xPosition, yPosition), color = color))
+    val palette = _availableColors.ifEmpty { defaultColors }
+    replaceMesh(
+      List(rows) { row ->
+        List(cols) { col ->
+          MeshGradientPoint(position = evenMeshPosition(row, col, rows, cols), color = palette[(row * cols + col) % palette.size])
+        }
       }
-      newMeshPoints.add(newPoints.toList())
-    }
-    meshPoints.clear()
-    meshPoints.addAll(newMeshPoints)
+    )
   }
 
   private fun generateCode(): String {

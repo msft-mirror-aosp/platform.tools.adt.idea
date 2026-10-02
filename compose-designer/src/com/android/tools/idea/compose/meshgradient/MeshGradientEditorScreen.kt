@@ -56,9 +56,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import com.android.tools.adtui.LightCalloutPopup
+import com.android.tools.adtui.MaterialColorPaletteProvider
+import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.DimensionInputField
-import com.android.tools.idea.ui.resourcechooser.util.createAndShowColorPickerPopup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteIntentReadAction
 import com.intellij.openapi.editor.EditorFactory
@@ -68,9 +70,15 @@ import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.fileTypes.FileTypes
 import com.intellij.openapi.project.Project
+import com.intellij.ui.colorpicker.ColorPickerBuilder
+import com.intellij.ui.colorpicker.MaterialGraphicalColorPipetteProvider
 import java.awt.Color as AwtColor
+import java.awt.GraphicsEnvironment
+import java.awt.MouseInfo
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.awt.event.ActionEvent
+import javax.swing.AbstractAction
 import javax.swing.ScrollPaneConstants
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
@@ -308,47 +316,11 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.fillMaxWidth(),
       ) {
-        state.availableColors.forEach { color ->
-          ContextMenuArea(
-            items = {
-              listOf(
-                ContextMenuItem("Delete") {
-                  if (state.availableColors.size > 1) {
-                    state.availableColors.remove(color)
-                    val fallbackColor = state.availableColors.first()
-                    state.updateAllPoints { point ->
-                      if (point.color == color) {
-                        point.copy(color = fallbackColor)
-                      } else {
-                        point
-                      }
-                    }
-                  }
-                }
-              )
-            }
-          ) {
+        state.availableColors.forEachIndexed { index, color ->
+          ContextMenuArea(items = { listOf(ContextMenuItem("Delete") { state.removePaletteColor(index) }) }) {
             ColorSwatch(
               color = color,
-              Modifier.clickable {
-                var lastColor = color
-                createAndShowColorPickerPopup(
-                  initialColor = AwtColor(color.toArgb(), true),
-                  initialColorResource = null,
-                  facet = null,
-                  contextFile = null,
-                  resourceResolver = null,
-                  resourcePickerSources = listOf(),
-                  restoreFocusComponent = null,
-                  locationToShow = null,
-                  colorPickedCallback = { newAwtColor ->
-                    val newColor = Color(newAwtColor.rgb)
-                    state.updatePaletteAndMeshColor(lastColor, newColor)
-                    lastColor = newColor
-                  },
-                  colorResourcePickedCallback = null,
-                )
-              },
+              Modifier.clickable { state.beginPaletteColorEdit(index)?.let { edit -> showColorPicker(color, edit::update, edit::finish) } },
             )
           }
         }
@@ -360,28 +332,8 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
               .background(JewelTheme.globalColors.panelBackground)
               .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(4.dp))
               .clickable {
-                var addedIndex: Int? = null
-                createAndShowColorPickerPopup(
-                  initialColor = AwtColor.WHITE,
-                  initialColorResource = null,
-                  facet = null,
-                  contextFile = null,
-                  resourceResolver = null,
-                  resourcePickerSources = listOf(),
-                  restoreFocusComponent = null,
-                  locationToShow = null,
-                  colorPickedCallback = { newAwtColor ->
-                    val newColor = Color(newAwtColor.rgb)
-                    val idx = addedIndex
-                    if (idx == null) {
-                      state.availableColors.add(newColor)
-                      addedIndex = state.availableColors.lastIndex
-                    } else if (idx in state.availableColors.indices) {
-                      state.availableColors[idx] = newColor
-                    }
-                  },
-                  colorResourcePickedCallback = null,
-                )
+                val edit = state.beginNewPaletteColor()
+                showColorPicker(Color.White, edit::update, edit::finish)
               },
         ) {
           Icon(
@@ -399,3 +351,40 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
     }
   }
 }
+
+/**
+ * Shows a color picker popup at the mouse location, starting at [initialColor]. [onColorPicked] is called for every color picked while the
+ * popup is open, and [onClosed] once the popup closes, however it is closed. In a headless environment, or if the mouse location is
+ * unknown, e.g. in some remote sessions, no popup is shown and [onClosed] is called right away.
+ */
+private fun showColorPicker(initialColor: Color, onColorPicked: (Color) -> Unit, onClosed: () -> Unit) {
+  // MouseInfo.getPointerInfo throws a HeadlessException in a headless environment.
+  if (GraphicsEnvironment.isHeadless()) return onClosed()
+  val location = MouseInfo.getPointerInfo()?.location ?: return onClosed()
+  val popup = LightCalloutPopup(closedCallback = onClosed, cancelCallBack = onClosed)
+  val picker =
+    ColorPickerBuilder(showAlpha = true, showAlphaAsPercent = false)
+      .setOriginalColor(initialColor.toAwtColor())
+      .addSaturationBrightnessComponent()
+      .addColorAdjustPanel(MaterialGraphicalColorPipetteProvider())
+      .addColorValuePanel()
+      .withFocus()
+      .addSeparator()
+      .addCustomComponent(MaterialColorPaletteProvider)
+      .addColorListener { color, _ -> onColorPicked(Color(color.rgb)) }
+      .focusWhenDisplay(true)
+      .setFocusCycleRoot(true)
+      .addKeyAction(
+        KeyStrokes.ESCAPE,
+        object : AbstractAction() {
+          override fun actionPerformed(event: ActionEvent) {
+            popup.close()
+          }
+        },
+      )
+      .build()
+  popup.show(picker.content, null, location)
+}
+
+@Suppress("UseJBColor") // The color picker API takes plain AWT colors.
+private fun Color.toAwtColor(): AwtColor = AwtColor(toArgb(), true)

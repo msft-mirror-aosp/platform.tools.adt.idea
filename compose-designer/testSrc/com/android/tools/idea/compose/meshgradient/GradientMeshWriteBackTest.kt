@@ -321,9 +321,12 @@ class GradientMeshWriteBackTest {
 
     withGradientEditorDialog(project, file.meshCall()) { dialog ->
       dialog.state.updateVertexColor(0, 0, Color(0xFF123456))
-      dialog.state.updateAllPoints { point ->
-        if (point.color == Color.Yellow) point.copy(leftBezierOffset = Offset(0.1f, 0.2f)) else point
-      }
+      dialog.state.loadMesh(
+        dialog.state.meshPoints.map { row ->
+          row.map { point -> if (point.color == Color.Yellow) point.copy(leftBezierOffset = Offset(0.1f, 0.2f)) else point }
+        },
+        dialog.state.hasBicubicColor,
+      )
       dialog.performOkAction()
 
       assertFalse("The dialog should stay open to show the error", dialog.isDisposed)
