@@ -3,9 +3,9 @@
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/grazie.jar!/" />
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/intellij.grazie.core.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/intellij.libraries.ai.grazie.rule.engine.jar!/" />
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/intellij.libraries.ai.grazie.spell.gec.engine.local.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/org.jetbrains.intellij.deps.languagetool-language-en.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/org.jetbrains.intellij.deps.languagetool-languagetool-core.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/grazie/lib/intellij.libraries.kotlin.logging.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

@@ -2,6 +2,7 @@
   <library name="studio-plugin-org.jetbrains.plugins.yaml">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/yaml/lib/intellij.yaml.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/yaml/lib/intellij.yaml.syntax.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

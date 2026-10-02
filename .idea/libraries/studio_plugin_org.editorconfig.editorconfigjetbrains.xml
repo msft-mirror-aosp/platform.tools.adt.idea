@@ -2,6 +2,7 @@
   <library name="studio-plugin-org.editorconfig.editorconfigjetbrains">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/editorconfig-plugin/lib/editorconfig-plugin.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/editorconfig-plugin/lib/intellij.libraries.ec4j.core.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

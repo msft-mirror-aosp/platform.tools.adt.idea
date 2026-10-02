@@ -1,7 +1,7 @@
 <component name="libraryTable">
   <library name="studio-plugin-intellij.repository.search.completion">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/repository-search/lib/modules/intellij.repository.search.completion.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/java-aetherDependencyResolver-plugin/lib/modules/intellij.repository.search.completion.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

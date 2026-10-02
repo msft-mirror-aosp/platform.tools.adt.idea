@@ -1,8 +1,8 @@
 <component name="libraryTable">
   <library name="studio-plugin-org.jetbrains.plugins.terminal">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/terminal/lib/completion-ranking-sh.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/terminal/lib/terminal-completion-db-with-extensions.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/terminal/lib/intellij.libraries.completion.ranking.sh.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/terminal/lib/intellij.terminal.libraries.completionDbWithExtensions.jar!/" />
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/terminal/lib/terminal-completion-spec.jar!/" />
       <root url="jar://$PROJECT_DIR$/../../../prebuilts/studio/intellij-sdk/AI/$SDK_PLATFORM$/plugins/terminal/lib/terminal.jar!/" />
     </CLASSES>
