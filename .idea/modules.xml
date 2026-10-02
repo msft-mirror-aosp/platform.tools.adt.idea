@@ -776,6 +776,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/cxx/altlang.dap.cxx.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/cxx/altlang.dap.cxx.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/jdwp-interop/altlang.dap.jdwp-interop.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-cards/altlang.dap.lldb-cards.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-cards/altlang.dap.lldb-cards.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-cards/altlang.dap.lldb-cards.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-cards/altlang.dap.lldb-cards.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.iml" />
