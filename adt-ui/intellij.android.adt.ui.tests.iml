@@ -32,6 +32,7 @@
     <orderEntry type="module" module-name="intellij.android.observable.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.sdklib.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.ide.colorPicker" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.adt.ui" />
 </module>

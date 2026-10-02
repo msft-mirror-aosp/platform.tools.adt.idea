@@ -32,6 +32,7 @@
     <orderEntry type="module" module-name="google-login.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.app-quality-insights.play-policy.ide" />
 </module>

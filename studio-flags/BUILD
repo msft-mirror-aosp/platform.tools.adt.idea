@@ -42,6 +42,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/adt/idea/.idea/libraries:junit4",
     ],
     test_srcs = ["test"],
     visibility = ["//visibility:public"],

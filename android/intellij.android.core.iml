@@ -8,6 +8,21 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.jna" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.shared" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.regexp" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.analysis" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.xml.dom" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.dom.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.ui.common" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.gradle" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
@@ -130,5 +145,7 @@
     <orderEntry type="library" name="studio-plugin-intellij.platform.diagnostic.freezeAnalyzer" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.structureView" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.structureView" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.buildView" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.ide.colorPicker" level="project" />
   </component>
 </module>

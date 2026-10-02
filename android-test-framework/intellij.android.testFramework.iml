@@ -13,6 +13,9 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.gradle" level="project" />
     <orderEntry type="module" module-name="analytics-crash" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />
@@ -54,5 +57,6 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.testRunner" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.repository.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.buildView" level="project" />
   </component>
 </module>

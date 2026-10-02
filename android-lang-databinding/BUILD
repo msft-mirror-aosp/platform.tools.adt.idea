@@ -16,6 +16,9 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/android:intellij.android.core",
@@ -53,6 +56,7 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/android-lang-databinding:intellij.android.lang-databinding",
         "//tools/adt/idea/databinding:intellij.android.databinding",

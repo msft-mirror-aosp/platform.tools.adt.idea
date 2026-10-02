@@ -26,6 +26,7 @@ iml_module(
         "@intellij//:intellij.java.indexing",
         "@intellij//:intellij.java",
         "@intellij//:intellij.java.impl",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
     ],
 )
 

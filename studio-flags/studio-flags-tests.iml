@@ -23,5 +23,6 @@
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
   </component>
 </module>

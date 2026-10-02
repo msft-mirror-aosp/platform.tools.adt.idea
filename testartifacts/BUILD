@@ -104,6 +104,9 @@ iml_module(
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
         "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

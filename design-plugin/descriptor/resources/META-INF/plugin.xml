@@ -39,6 +39,13 @@
     <module name="intellij.java.indexing.impl"/>
     <module name="intellij.java"/>
     <module name="intellij.platform.uast"/>
+    <module name="intellij.platform.problemView.ui"/>
+    <module name="intellij.xml.psi"/>
+    <module name="intellij.xml.dom"/>
+    <module name="intellij.xml.parser"/>
+    <module name="intellij.xml.psi.impl"/>
+    <module name="intellij.platform.ide.colorPicker"/>
+    <module name="intellij.platform.ide.designer"/>
   </dependencies>
 
   <xi:include href="/META-INF/designer.xml"/>

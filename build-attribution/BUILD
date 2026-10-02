@@ -16,6 +16,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.externalSystem",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
@@ -34,6 +35,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
         "//tools/adt/idea/analytics",
+        "@intellij//:intellij.platform.buildView",
     ],
 )
 
@@ -98,6 +100,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.buildView",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "long",

@@ -40,6 +40,8 @@ iml_module(
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

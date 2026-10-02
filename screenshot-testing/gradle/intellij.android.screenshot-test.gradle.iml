@@ -30,5 +30,7 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.smRunner" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.testRunner" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
   </component>
 </module>

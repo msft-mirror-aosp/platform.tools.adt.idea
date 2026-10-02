@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/adt/idea/app-inspection/inspector/ide:app-inspection.inspector.ide",
@@ -64,6 +65,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "@intellij//:intellij.xml.psi.impl",
     ],
     test_friends = ["//tools/adt/idea/app-inspection/inspectors/network/view:app-inspection.inspectors.network.view"],
     test_srcs = ["testSrc"],

@@ -24,6 +24,7 @@ iml_module(
         "//tools/base/lint:studio.android.sdktools.lint-checks",
         "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "@intellij//:intellij.xml.psi",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

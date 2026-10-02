@@ -85,6 +85,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/android-plugin:intellij.android.plugin",
         "//tools/adt/idea/.idea/libraries:truth",
+        "@intellij//:intellij.xml.psi.impl",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "eternal",

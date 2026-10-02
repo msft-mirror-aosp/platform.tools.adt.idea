@@ -25,6 +25,7 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:intellij.libraries.grpc",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:junit4",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client"],
     test_srcs = ["testSrc"],

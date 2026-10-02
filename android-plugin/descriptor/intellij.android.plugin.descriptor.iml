@@ -18,5 +18,7 @@
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.structureView" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.platform.testRunner" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.todo" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.jna" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.compose" level="project" />
   </component>
 </module>

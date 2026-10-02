@@ -61,6 +61,30 @@
     <module name="intellij.java.debugger.impl"/>
     <module name="intellij.java.compiler.impl"/>
     <module name="intellij.java.impl"/>
+    <module name="intellij.xml.psi.impl"/>
+    <module name="intellij.libraries.jna"/>
+    <module name="intellij.xml.dom"/>
+    <module name="intellij.xml.parser"/>
+    <module name="intellij.xml.psi"/>
+    <module name="intellij.platform.debugger"/>
+    <module name="intellij.platform.debugger.impl.ui"/>
+    <module name="intellij.platform.externalSystem"/>
+    <module name="intellij.xml.impl"/>
+    <module name="intellij.xml.ui.common"/>
+    <module name="intellij.platform.vcs"/>
+    <module name="intellij.platform.vcs.core"/>
+    <module name="intellij.platform.debugger.impl.shared"/>
+    <module name="intellij.platform.externalSystem.impl"/>
+    <module name="intellij.xml.analysis"/>
+    <module name="intellij.xml.dom.impl"/>
+    <module name="intellij.platform.debugger.impl"/>
+    <module name="intellij.regexp"/>
+    <module name="intellij.platform.ide.colorPicker"/>
+    <module name="intellij.platform.buildView"/>
+    <module name="intellij.platform.ide.updateChecker"/>
+    <module name="intellij.platform.vcs.shared"/>
+    <module name="intellij.libraries.asm.tools"/>
+    <module name="intellij.libraries.stream"/>
   </dependencies>
 
   <xi:include href="/META-INF/android-plugin.xml"/>

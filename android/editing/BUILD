@@ -19,6 +19,8 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.psi",
         "//tools/adt/idea/.idea/libraries:truth",
     ],
     test_srcs = ["testSrc"],

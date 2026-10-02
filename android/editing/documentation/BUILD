@@ -10,6 +10,9 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/flags:studio.android.sdktools.flags",
@@ -49,6 +52,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:intellij.java.impl",
+        "@intellij//:intellij.xml.psi",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/base/lint:studio.android.sdktools.lint-api",
         "//tools/base/testutils:studio.android.sdktools.testutils",

@@ -13,6 +13,7 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/nav/safeargs:intellij.android.nav.safeargs",
         "//tools/adt/idea/nav/safeargs/common:intellij.android.nav.safeargs.common",

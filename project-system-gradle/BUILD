@@ -67,6 +67,13 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.platform.vcs",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.plugins.gradle",
@@ -132,6 +139,9 @@ iml_module(
         "@intellij//:intellij.java.execution.impl",
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
+        "@intellij//:intellij.platform.buildView",
+        "@intellij//:intellij.platform.vcs.core",
+        "@intellij//:intellij.libraries.stream",
     ],
 )
 
@@ -702,6 +712,11 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
+        "@intellij//:intellij.libraries.jackson.module.kotlin",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.xml.analysis.impl",
+        "@intellij//:intellij.platform.buildView",
     ],
     test_jvm_flags = ["-Didea.skip.indices.initialization=true"],
     test_resources = ["testResources"],

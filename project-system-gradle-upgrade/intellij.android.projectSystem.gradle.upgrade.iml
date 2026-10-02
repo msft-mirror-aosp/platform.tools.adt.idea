@@ -15,6 +15,8 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.gradle" level="project" />
@@ -33,5 +35,6 @@
     <orderEntry type="module" module-name="intellij.android.gmaven" />
     <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.buildView" level="project" />
   </component>
 </module>

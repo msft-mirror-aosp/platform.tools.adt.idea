@@ -27,6 +27,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "@intellij//:intellij.platform.externalSystem",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

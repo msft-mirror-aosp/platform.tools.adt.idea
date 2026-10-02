@@ -10,6 +10,9 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.gradle",
         "//tools/analytics-library/crash:analytics-crash",
         "//tools/adt/idea/android:intellij.android.core",
@@ -51,6 +54,7 @@ iml_module(
         "@intellij//:intellij.platform.testRunner",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "@intellij//:intellij.platform.buildView",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

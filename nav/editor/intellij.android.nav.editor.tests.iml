@@ -39,6 +39,8 @@
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.layout-ui.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.dom.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.nav.editor" />
 </module>

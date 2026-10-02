@@ -34,6 +34,7 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.externalSystem",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/android:intellij.android.core",
@@ -91,6 +92,8 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:com.intellij.gradle",
@@ -109,6 +112,7 @@ iml_module(
         "//tools/adt/idea/gmaven:intellij.android.gmaven",
         "@intellij//:intellij.java",
         "@intellij//:intellij.java.ui",
+        "@intellij//:intellij.platform.buildView",
     ],
 )
 

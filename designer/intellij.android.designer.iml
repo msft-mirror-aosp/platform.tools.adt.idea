@@ -29,6 +29,11 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.problemView.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.dom" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.platform.images" level="project" />
@@ -67,5 +72,7 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.ide.colorPicker" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.ide.designer" level="project" />
   </component>
 </module>

@@ -53,6 +53,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
     ],
     test_resources = ["testResources"],
     test_srcs = ["src"],

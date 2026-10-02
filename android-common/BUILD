@@ -20,6 +20,10 @@ iml_module(
     deps = [
         "//tools/adt/idea/studio-flags",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.libraries.jna",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/common:studio.android.sdktools.common",

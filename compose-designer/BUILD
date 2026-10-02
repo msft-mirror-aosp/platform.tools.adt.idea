@@ -16,6 +16,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.problemView.ui",
+        "@intellij//:intellij.xml.psi",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
@@ -45,6 +47,7 @@ iml_module(
         "@intellij//:intellij.platform.uast",
         "@intellij//:intellij.java.execution.impl",
         "@intellij//:intellij.java.execution",
+        "@intellij//:intellij.platform.ide.colorPicker",
     ],
 )
 
@@ -192,6 +195,7 @@ iml_module(
         "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
+        "@intellij//:intellij.platform.problemView.ui",
     ],
     test_friends = ["//tools/adt/idea/compose-designer:intellij.android.compose-designer"],
     test_jvm_flags = ["-Dcom.google.testing.junit.runner.shouldInstallTestSecurityManager=false"],

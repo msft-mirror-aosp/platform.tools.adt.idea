@@ -11,6 +11,9 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.debugger.impl",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
@@ -90,6 +93,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
         "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "@intellij//:intellij.platform.debugger",
     ],
     test_friends = ["//tools/adt/idea/execution/common:intellij.android.execution.common"],
     test_srcs = ["testSrc"],

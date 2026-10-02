@@ -23,5 +23,6 @@
     <orderEntry type="module" module-name="intellij.android.lint" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common" />
     <orderEntry type="module" module-name="intellij.android.server-flags" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.ide.updateChecker" level="project" />
   </component>
 </module>

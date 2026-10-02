@@ -19,5 +19,7 @@ iml_module(
         "@intellij//:intellij.structureView.plugin",
         "@intellij//:intellij.testRunner.plugin",
         "@intellij//:intellij.todo.plugin",
+        "@intellij//:com.intellij.modules.jna",
+        "@intellij//:com.intellij.modules.compose",
     ],
 )

@@ -31,6 +31,7 @@
       <library>
         <CLASSES>
           <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/junit/junit/4.12/junit-4.12.jar!/" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
         </CLASSES>
         <JAVADOC />
         <SOURCES>

@@ -11,6 +11,7 @@
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.grpc" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.app-quality-insights.client" />
 </module>

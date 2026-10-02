@@ -12,6 +12,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/assistant",
@@ -78,6 +79,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
+        "@intellij//:intellij.xml.dom.impl",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/nav/editor:intellij.android.nav.editor"],
     test_shard_count = 5,

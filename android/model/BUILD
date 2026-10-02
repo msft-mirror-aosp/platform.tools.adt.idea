@@ -24,6 +24,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jimfs",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
         "//tools/adt/idea/android:intellij.android.core.tests",
+        "@intellij//:intellij.xml.psi.impl",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

@@ -16,6 +16,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.parser",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/analytics-library/tracker:analytics-tracker",
@@ -57,6 +58,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.parser",
         "@intellij//:com.intellij.modules.json",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/analytics-library/tracker:analytics-tracker",

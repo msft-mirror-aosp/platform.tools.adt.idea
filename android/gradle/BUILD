@@ -55,6 +55,10 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.platform.buildView",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

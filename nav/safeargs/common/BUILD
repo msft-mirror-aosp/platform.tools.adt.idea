@@ -11,6 +11,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",

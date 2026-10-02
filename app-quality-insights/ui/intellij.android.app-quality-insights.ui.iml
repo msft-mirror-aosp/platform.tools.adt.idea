@@ -8,6 +8,7 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.ui" level="project" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.api" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
@@ -27,5 +28,8 @@
     <orderEntry type="module" module-name="intellij.android.core" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.client" />
     <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.core" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.shared" level="project" />
   </component>
 </module>

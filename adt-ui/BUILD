@@ -11,6 +11,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/common:studio.android.sdktools.common",
@@ -23,6 +24,7 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/observable:intellij.android.observable",
+        "@intellij//:intellij.platform.ide.colorPicker",
     ],
 )
 
@@ -67,6 +69,7 @@ iml_module(
         "//tools/adt/idea/observable:intellij.android.observable.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
+        "@intellij//:intellij.platform.ide.colorPicker",
     ],
     test_friends = ["//tools/adt/idea/adt-ui:intellij.android.adt.ui"],
     test_resources = ["src/test/resources"],

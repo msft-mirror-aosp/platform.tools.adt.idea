@@ -15,6 +15,11 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.problemView.ui",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:com.intellij.platform.images",
@@ -52,6 +57,8 @@ iml_module(
         "@intellij//:intellij.java.indexing",
         "@intellij//:intellij.java.analysis.impl",
         "@intellij//:intellij.java.impl",
+        "@intellij//:intellij.platform.ide.colorPicker",
+        "@intellij//:intellij.platform.ide.designer",
     ],
 )
 
@@ -78,6 +85,8 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_srcs = ["testFramework"],
@@ -163,6 +172,9 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "@intellij//:intellij.platform.problemView.ui",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_resources = ["testResources"],

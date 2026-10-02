@@ -26,6 +26,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/flags:studio.android.sdktools.flags",
@@ -60,6 +62,7 @@ iml_module(
         "@intellij//:intellij.java.debugger.impl",
         "@intellij//:intellij.java.execution",
         "@intellij//:intellij.java.debugger",
+        "@intellij//:intellij.xml.psi.impl",
     ],
 )
 
@@ -130,6 +133,8 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib.tests",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
     test_resources = ["testResources"],

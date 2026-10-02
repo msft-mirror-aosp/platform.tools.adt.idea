@@ -25,6 +25,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.platform.debugger",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

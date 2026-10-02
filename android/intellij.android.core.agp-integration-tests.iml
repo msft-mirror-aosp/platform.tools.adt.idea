@@ -43,5 +43,7 @@
     <orderEntry type="module" module-name="intellij.android.kotlin.idea.k2" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.core.editing.documentation" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
   </component>
 </module>

@@ -34,6 +34,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:mockito",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/base/flags:studio.android.sdktools.flags",
         "@intellij//:org.jetbrains.kotlin",

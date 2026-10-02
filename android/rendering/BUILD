@@ -38,6 +38,7 @@ iml_module(
         "//tools/adt/idea/layoutlib-loader:intellij.android.layoutlib-loader",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/analytics-library/crash:analytics-crash",
+        "@intellij//:intellij.xml.psi",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

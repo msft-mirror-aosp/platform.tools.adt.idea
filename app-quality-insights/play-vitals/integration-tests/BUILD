@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
+        "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/as-driver:as-driver.utils",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model",

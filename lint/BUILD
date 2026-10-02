@@ -10,6 +10,10 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.analysis",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:org.intellij.groovy",
@@ -48,6 +52,7 @@ iml_module(
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.xml.psi",
     ],
     test_resources = ["tests/testData"],
     test_srcs = ["tests/testSrc"],

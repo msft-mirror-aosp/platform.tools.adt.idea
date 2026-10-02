@@ -21,5 +21,7 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.rendering" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.parser" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
   </component>
 </module>

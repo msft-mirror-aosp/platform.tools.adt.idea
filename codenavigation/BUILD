@@ -16,6 +16,7 @@ iml_module(
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/analytics",
+        "@intellij//:intellij.platform.buildView",
     ],
 )
 

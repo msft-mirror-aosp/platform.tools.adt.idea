@@ -11,6 +11,7 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/as-driver:as-driver.utils",
         "@intellij//:intellij-sdk",
+        "//tools/adt/idea/.idea/libraries:junit4",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

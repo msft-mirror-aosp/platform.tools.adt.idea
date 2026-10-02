@@ -76,6 +76,8 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

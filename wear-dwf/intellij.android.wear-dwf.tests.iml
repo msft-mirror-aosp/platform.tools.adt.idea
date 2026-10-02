@@ -33,6 +33,7 @@
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.lang.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.wear-dwf" />
 </module>

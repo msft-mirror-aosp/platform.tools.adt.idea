@@ -24,6 +24,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",

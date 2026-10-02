@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.vcs",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -23,6 +24,7 @@ iml_module(
         "@intellij//:intellij.libraries.grpc.netty.shaded",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "@intellij//:intellij.java.execution",
+        "@intellij//:intellij.platform.vcs.core",
     ],
 )
 
@@ -47,11 +49,15 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "@intellij//:intellij.platform.vcs.impl",
+        "@intellij//:intellij.platform.vcs",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/vendor/google/login:google-login.tests",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "@intellij//:intellij.platform.vcs.core",
+        "@intellij//:intellij.platform.vcs.shared",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api"],
     test_srcs = ["testSrc"],

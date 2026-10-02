@@ -24,6 +24,7 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.xml.psi",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

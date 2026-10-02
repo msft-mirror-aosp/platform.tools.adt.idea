@@ -16,6 +16,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.debugger.impl",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/deploy:intellij.android.deploy",
@@ -41,6 +43,9 @@ iml_module(
         "@intellij//:intellij.java.debugger",
         "@intellij//:intellij.java.debugger.impl",
         "@intellij//:intellij.java.execution",
+        "@intellij//:intellij.platform.debugger.impl.shared",
+        "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
+        "@intellij//:intellij.kotlin.base.codeInsight",
     ],
 )
 
@@ -74,6 +79,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "@intellij//:intellij.platform.debugger",
     ],
     test_friends = ["//tools/adt/idea/debuggers:intellij.android.debuggers"],
     test_srcs = ["testSrc"],

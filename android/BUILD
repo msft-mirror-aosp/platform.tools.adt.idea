@@ -27,10 +27,29 @@ iml_module(
     lint_timeout = "long",
     resources = ["resources"],
     visibility = ["//visibility:public"],
-    exports = ["//tools/adt/idea/build-common:intellij.android.buildCommon"],
+    # do not sort: must match IML order
+    exports = [
+        "@intellij//:intellij.xml.dom",
+        "//tools/adt/idea/build-common:intellij.android.buildCommon",
+    ],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.libraries.jna",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.debugger.impl.shared",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.platform.vcs",
+        "@intellij//:intellij.regexp",
+        "@intellij//:intellij.xml.analysis",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.dom.impl",
+        "@intellij//:intellij.xml.impl",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.xml.psi.impl",
+        "@intellij//:intellij.xml.ui.common",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/analytics",
@@ -144,6 +163,8 @@ iml_module(
         "@intellij//:intellij.platform.diagnostic.freezeAnalyzer",
         "@intellij//:intellij.platform.structureView",
         "@intellij//:intellij.xml.structureView",
+        "@intellij//:intellij.platform.buildView",
+        "@intellij//:intellij.platform.ide.colorPicker",
     ],
 )
 
@@ -268,6 +289,8 @@ iml_module(
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
         "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [
@@ -716,6 +739,8 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k2",
         "//tools/adt/idea/android/editing/documentation:intellij.android.core.editing.documentation",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
     ],
     test_srcs = ["agpIntegrationTestSrc"],
     test_tags = [],

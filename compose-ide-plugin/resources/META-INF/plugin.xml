@@ -34,6 +34,9 @@
     <module name="intellij.java.impl.refactorings" />
     <module name="intellij.java.debugger" />
     <plugin id="com.intellij.compose" />
+    <module name="intellij.platform.debugger"/>
+    <module name="intellij.platform.debugger.impl.shared"/>
+    <module name="intellij.platform.ide.colorPicker"/>
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">

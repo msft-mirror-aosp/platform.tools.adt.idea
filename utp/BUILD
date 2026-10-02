@@ -13,6 +13,7 @@ iml_module(
     deps = [
         "@intellij//:com.intellij.gradle",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.externalSystem",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/utp:libstudio.android-test-engine-result-listener-proto",
         "//tools/adt/idea/.idea/libraries:studio-proto",

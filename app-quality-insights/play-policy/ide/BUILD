@@ -24,6 +24,7 @@ iml_module(
         "//tools/adt/idea/android-lint:intellij.android.lint",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/adt/idea/server-flags:intellij.android.server-flags",
+        "@intellij//:intellij.platform.ide.updateChecker",
     ],
 )
 
@@ -64,6 +65,7 @@ iml_module(
         "//tools/vendor/google/login:google-login.tests",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/adt/idea/.idea/libraries:junit4",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/play-policy/ide:intellij.android.app-quality-insights.play-policy.ide"],
     test_srcs = ["testSrc"],

@@ -31,5 +31,7 @@ iml_module(
         "@intellij//:intellij.java.execution",
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
+        "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.platform.externalSystem.impl",
     ],
 )

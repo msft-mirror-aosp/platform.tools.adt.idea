@@ -165,6 +165,7 @@ intellij_unit_test_suite(
         "//tools/adt/idea/aswb/third_party/java/auto_value",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
+        "@intellij//:intellij.platform.ide.util.io.native",
     ],
 )
 

@@ -78,6 +78,8 @@
     <orderEntry type="module" module-name="android.sdktools.adblib.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.device-provisioner.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.layout-inspector" />
 </module>

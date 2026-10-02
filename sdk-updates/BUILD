@@ -22,6 +22,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
         "//tools/base/flags:studio.android.sdktools.flags",
+        "@intellij//:intellij.platform.ide.updateChecker",
     ],
 )
 
@@ -52,6 +53,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "@intellij//:intellij.platform.ide.updateChecker",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],

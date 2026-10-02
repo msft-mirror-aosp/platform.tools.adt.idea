@@ -9,6 +9,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger.impl.ui",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/base/flags:studio.android.sdktools.flags",
@@ -28,6 +29,9 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "@intellij//:intellij.java.execution",
+        "@intellij//:intellij.platform.vcs",
+        "@intellij//:intellij.platform.vcs.core",
+        "@intellij//:intellij.platform.vcs.shared",
     ],
 )
 
@@ -64,6 +68,8 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "@intellij//:intellij.platform.debugger.impl.ui",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

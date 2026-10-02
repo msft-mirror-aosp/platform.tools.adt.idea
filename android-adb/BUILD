@@ -13,6 +13,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.debugger.impl.ui",
         "@intellij//:com.intellij.java",
         "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/base/adblib:studio.android.sdktools.adblib",

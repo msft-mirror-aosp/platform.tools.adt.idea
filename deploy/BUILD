@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
         "@intellij//:com.intellij.java",
         "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/base/deploy/deployer:studio.android.sdktools.deployer",

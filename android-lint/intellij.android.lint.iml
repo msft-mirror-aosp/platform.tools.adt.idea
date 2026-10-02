@@ -11,6 +11,11 @@
     <orderEntry type="module" module-name="intellij.lint" />
     <orderEntry type="module" module-name="android.sdktools.common" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="module" module-name="android.sdktools.lint-checks" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />

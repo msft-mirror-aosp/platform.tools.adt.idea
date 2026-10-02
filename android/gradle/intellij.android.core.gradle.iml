@@ -47,5 +47,9 @@
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.repository.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.buildView" level="project" />
   </component>
 </module>

@@ -30,6 +30,8 @@ iml_module(
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/rendering:intellij.android.rendering",
+        "@intellij//:intellij.xml.parser",
+        "@intellij//:intellij.xml.psi",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

@@ -24,7 +24,9 @@ iml_module(
         "//tools/adt/idea/analytics",
         "@intellij//:intellij.platform.vcs.impl",
         "@intellij//:intellij.platform.vcs.dvcs",
+        "@intellij//:intellij.platform.vcs",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "@intellij//:intellij.platform.vcs.core",
     ],
 )
 
@@ -51,6 +53,7 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
+        "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",

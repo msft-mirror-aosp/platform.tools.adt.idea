@@ -24,6 +24,8 @@
     <orderEntry type="module" module-name="intellij.android.rendering" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.designer" />
 </module>

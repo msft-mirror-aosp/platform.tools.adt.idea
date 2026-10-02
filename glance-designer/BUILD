@@ -26,6 +26,7 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/adt/idea/intellij.android.compose-common",
         "@intellij//:intellij.platform.uast",
+        "@intellij//:intellij.kotlin.codeInsight.api",
     ],
 )
 

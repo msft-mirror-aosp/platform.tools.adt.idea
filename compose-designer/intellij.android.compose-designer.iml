@@ -31,6 +31,8 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.problemView.ui" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />
@@ -68,5 +70,6 @@
     <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.execution.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.execution" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.ide.colorPicker" level="project" />
   </component>
 </module>

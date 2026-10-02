@@ -11,6 +11,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.debugger.impl.shared",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
@@ -32,6 +34,7 @@ iml_module(
         "@intellij//:intellij.java.debugger.impl",
         "@intellij//:intellij.java.debugger",
         "@intellij//:intellij.java.impl",
+        "@intellij//:intellij.platform.ide.colorPicker",
     ],
 )
 
@@ -61,6 +64,9 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.debugger",
+        "@intellij//:intellij.platform.debugger.impl",
+        "@intellij//:intellij.platform.externalSystem",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin",
         "@intellij//:org.jetbrains.kotlin",

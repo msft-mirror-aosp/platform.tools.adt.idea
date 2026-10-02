@@ -86,5 +86,8 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.smRunner" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.testRunner" level="project" />
     <orderEntry type="module" module-name="android.sdktools.adblib.tests" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
   </component>
 </module>
