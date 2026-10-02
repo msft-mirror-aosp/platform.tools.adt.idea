@@ -8,8 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="memory-usage" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="memory-usage" />

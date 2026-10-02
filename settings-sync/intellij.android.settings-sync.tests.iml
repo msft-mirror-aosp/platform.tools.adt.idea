@@ -29,25 +29,12 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.settings-sync" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="google-api-client" level="project" />
-    <orderEntry type="module-library" scope="TEST">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/google/apis/google-api-services-drive/v3-rev20241027-2.0.0/google-api-services-drive-v3-rev20241027-2.0.0.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
     <orderEntry type="module" module-name="google-login" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.settingsSync.core" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.artwork-compose" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.android-annotations" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
     <orderEntry type="module" module-name="login.onboarding" scope="TEST" />

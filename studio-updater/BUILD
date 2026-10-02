@@ -47,11 +47,8 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
-        "@intellij//:updater",
         "//tools/adt/idea/studio-updater:intellij.android.updater.studio-updater",
         "//tools/base/common:studio.android.sdktools.common",
-        "//tools/analytics-library/shared:analytics-shared",
-        "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/.idea/libraries:opentest4j",
         "//tools/adt/idea/.idea/libraries:junit4",

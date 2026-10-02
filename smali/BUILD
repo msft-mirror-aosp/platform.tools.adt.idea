@@ -28,7 +28,6 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
         "//tools/adt/idea/smali:intellij.android.smali",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:mockito",

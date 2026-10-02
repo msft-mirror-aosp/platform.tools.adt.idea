@@ -10,19 +10,14 @@
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.play-policy.ide" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.app-quality-insights.ide" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.lint" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.play-client.metadata" scope="TEST" />
     <orderEntry type="module" module-name="google-login" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.lint-api" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.lint" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.sdk-common" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.server-flags" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />

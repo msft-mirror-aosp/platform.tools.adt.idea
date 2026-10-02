@@ -30,7 +30,6 @@ iml_module(
     test_deps = [
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/server-flags:intellij.android.server-flags",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/server-flags:libserver-flag-test-proto",

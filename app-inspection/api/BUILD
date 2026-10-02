@@ -30,7 +30,6 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
         "//tools/adt/idea/app-inspection/api:app-inspection.api",
         "//tools/adt/idea/android-transport:intellij.android.transport",
         "//tools/adt/idea/android-common:intellij.android.common",
@@ -38,10 +37,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
-        "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
-        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",

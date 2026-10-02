@@ -30,7 +30,6 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:play_vitals_kt_proto",
         "@intellij//:intellij.libraries.grpc",
-        "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/.idea/libraries:truth",

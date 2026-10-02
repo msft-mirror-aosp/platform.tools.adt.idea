@@ -7,30 +7,22 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.profilersAndroid" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.profilers.ui" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.profilers" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.transportDatabase" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.ddmlib-studio" scope="TEST" />
-    <orderEntry type="module" module-name="analytics-shared" scope="TEST" />
-    <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
     <orderEntry type="module" module-name="native-symbolizer" scope="TEST" />
     <orderEntry type="module" module-name="sherlock.common" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
-    <orderEntry type="module" module-name="intellij.android.deploy" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.ml-api" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.transport" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-grpc" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-proto" level="project" />
-    <orderEntry type="library" scope="TEST" name="perfetto-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.logcat" scope="TEST" />
     <orderEntry type="module-library" scope="TEST">
       <library name="traceprocessor-proto">
@@ -42,12 +34,7 @@
       </library>
     </orderEntry>
     <orderEntry type="library" scope="TEST" name="transport-proto" level="project" />
-    <orderEntry type="module" module-name="intellij.android.inspectors-common.api-ide" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.inspectors-common.ui" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.inspectors-common.api" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.render-resources" scope="TEST" />
-    <orderEntry type="module" module-name="codenavigation" scope="TEST" />
     <orderEntry type="module-library" scope="TEST">
       <library name="trace-perfetto-library">
         <CLASSES>
@@ -57,11 +44,8 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="module" module-name="app-inspection.ide" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.execution.common" scope="TEST" />
-    <orderEntry type="module" module-name="analytics" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.leakcanarylib" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.java.indexing" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.java.execution" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />

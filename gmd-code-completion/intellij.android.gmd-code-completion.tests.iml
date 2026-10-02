@@ -7,7 +7,6 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.gmd-code-completion" scope="TEST" />
     <orderEntry type="module-library" scope="TEST">
@@ -21,23 +20,9 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.sdklib" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.gradle.dsl" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.kotlin" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-org.intellij.groovy" level="project" />
-    <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" scope="TEST" />
-    <orderEntry type="module" module-name="google-login" scope="TEST" />
-    <orderEntry type="module" module-name="login.onboarding" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.render-resources" scope="TEST" />
-    <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
-    <orderEntry type="library" scope="TEST" name="cloudresourcemanager" level="project" />
-    <orderEntry type="module" module-name="firebase" scope="TEST" />
-    <orderEntry type="module" module-name="analytics" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="google-api-client" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />

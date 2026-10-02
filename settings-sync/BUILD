@@ -36,17 +36,12 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "//tools/adt/idea/settings-sync:intellij.android.settings-sync",
-        "//tools/adt/idea/.idea/libraries:google-api-client",
-        "//prebuilts/tools/common/m2:google-api-services-drive-v3-rev20241027-2.0.0",
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/vendor/google/login:google-login",
         "@intellij//:intellij.settingsSync.core",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
-        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
-        "//tools/adt/idea/artwork:intellij.android.artwork",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/vendor/google/login/onboarding:login.onboarding",

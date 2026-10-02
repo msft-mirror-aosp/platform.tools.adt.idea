@@ -7,25 +7,12 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.deploy" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.ddmlib-studio" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.deployer" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
-    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.tracer" scope="TEST" />
-    <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.buildCommon" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.adblib" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adb" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.java.debugger.impl" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.java.execution" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.java.debugger" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />

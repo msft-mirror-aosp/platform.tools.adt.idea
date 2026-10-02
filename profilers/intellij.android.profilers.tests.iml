@@ -7,56 +7,16 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="intellij.android.profilers" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.perflib" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.common" scope="TEST" />
-    <orderEntry type="module" module-name="android.sdktools.sdk-common" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.profilers.atrace" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.leakcanarylib" scope="TEST" />
     <orderEntry type="module-library" scope="TEST">
       <library name="shark-2.14">
         <CLASSES>
           <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/leakcanary/shark/2.14/shark-2.14.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library" scope="TEST">
-      <library name="shark-android-2.14">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/leakcanary/shark-android/2.14/shark-android-2.14.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library" scope="TEST">
-      <library name="shark-graph-2.14">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/leakcanary/shark-graph/2.14/shark-graph-2.14.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library" scope="TEST">
-      <library name="shark-hprof-2.14">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/leakcanary/shark-hprof/2.14/shark-hprof-2.14.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library" scope="TEST">
-      <library name="shark-log-2.14">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/com/squareup/leakcanary/shark-log/2.14/shark-log-2.14.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -79,12 +39,8 @@
     </orderEntry>
     <orderEntry type="library" scope="TEST" name="transport-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="asm-tools" level="project" />
     <orderEntry type="module" module-name="intellij.android.inspectors-common.api" scope="TEST" />
     <orderEntry type="module" module-name="codenavigation" scope="TEST" />
-    <orderEntry type="module" module-name="analytics-shared" scope="TEST" />
-    <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />

@@ -24,12 +24,7 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
-        "//tools/base/common:studio.android.sdktools.common",
-        "//tools/adt/idea/.idea/libraries:studio-proto",
-        "//tools/adt/idea/.idea/libraries:transport-proto",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/android-common:intellij.android.common",

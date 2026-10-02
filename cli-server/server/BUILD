@@ -28,15 +28,9 @@ iml_module(
     iml_files = ["cli-server.server.tests.iml"],
     # do not sort: must match IML order
     test_deps = [
-        "//tools/base/flags:studio.android.sdktools.flags",
         "@intellij//:intellij-sdk",
         "@intellij//:intellij.libraries.grpc",
         "//tools/adt/idea/cli-server/server:cli-server.server",
-        "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
-        "//tools/adt/idea/cli-server/server:studio_cli_service_kt_proto",
-        "//tools/base/common:studio.android.sdktools.common",
-        "@intellij//:intellij.libraries.grpc.netty.shaded",
-        "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/.idea/libraries:mockito",

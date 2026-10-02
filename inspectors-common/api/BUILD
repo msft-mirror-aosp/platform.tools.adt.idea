@@ -24,8 +24,6 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/inspectors-common/api:intellij.android.inspectors-common.api",
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
-        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/codenavigation",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",

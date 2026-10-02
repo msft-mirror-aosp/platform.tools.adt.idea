@@ -57,13 +57,7 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
-        "@intellij//:org.jetbrains.kotlin",
-        "//tools/base/common:studio.android.sdktools.common",
         "//tools/base/flags:studio.android.sdktools.flags",
-        "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api",
-        "//tools/base/ninepatch:studio.android.sdktools.ninepatch",
-        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/base/sdklib:studio.android.sdktools.sdklib",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/artwork:intellij.android.artwork",

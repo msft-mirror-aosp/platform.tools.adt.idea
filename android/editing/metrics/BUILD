@@ -26,7 +26,6 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/android/editing/metrics:intellij.android.core.editing.metrics",
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/analytics-library/tracker:analytics-tracker",

@@ -24,8 +24,6 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "//tools/adt/idea/memory-usage",
-        "@intellij//:com.intellij.java",
-        "@intellij//:intellij-sdk",
         "//tools/adt/idea/.idea/libraries:junit4",
     ],
     test_friends = ["//tools/adt/idea/memory-usage"],

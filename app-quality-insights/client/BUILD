@@ -24,7 +24,6 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "@intellij//:intellij-sdk",
-        "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
         "//tools/adt/idea/.idea/libraries:google-api-client",
         "@intellij//:intellij.libraries.grpc",
         "//tools/adt/idea/.idea/libraries:truth",

@@ -44,7 +44,6 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
         "//tools/adt/idea/profilers-ui:intellij.android.profilers.ui",
         "//tools/adt/idea/profilers:intellij.android.profilers",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
@@ -61,7 +60,6 @@ iml_module(
         "//tools/adt/idea/inspectors-common/api:intellij.android.inspectors-common.api",
         "//tools/adt/idea/codenavigation",
         "//tools/adt/idea/.idea/libraries:perfetto-proto",
-        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
         "//tools/base/leakcanarylib:studio.android.sdktools.leakcanarylib",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:mockito",

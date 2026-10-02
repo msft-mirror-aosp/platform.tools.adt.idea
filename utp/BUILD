@@ -27,9 +27,7 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "//tools/adt/idea/utp",
-        "@intellij//:com.intellij.gradle",
         "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
         "//tools/adt/idea/utp:libstudio.android-test-engine-result-listener-proto",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/.idea/libraries:test-result-proto",
