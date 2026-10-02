@@ -48,6 +48,19 @@ iml_module(
     ],
 )
 
+compose_gradle_test_data = [
+    "//prebuilts/studio/sdk:build-tools/latest",
+    "//prebuilts/studio/sdk:platforms/android-35",
+    "//tools/adt/idea/compose-designer/testData:simple_compose_application_test_deps",
+    "//tools/adt/idea/compose-designer/testData:test_projects",
+    "//tools/base/build-system:android_gradle_plugin.zip",
+    "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+    "//tools/base/build-system:gradle-distrib",
+    "//tools/base/build-system/integration-test:kotlin_gradle_plugin_for_compose_prebuilts",
+    "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+    "//tools/base/third_party/kotlin:kotlin-m2repository",
+]
+
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.compose-designer.tests",
@@ -55,42 +68,50 @@ iml_module(
     kotlin_use_compose = True,
     split_test_targets = {
         "gradle.fast": {
+            "data": compose_gradle_test_data,
             "tags": ["cpu:3"],
             "shard_count": 2,
             "test_filter": "com.android.tools.idea.compose.gradle.fast",
         },
         "gradle.navigation": {
+            "data": compose_gradle_test_data,
             "test_filter": "com.android.tools.idea.compose.gradle.navigation",
         },
         "gradle.preview": {
             "tags": ["cpu:3"],
             "shard_count": 3,
             "test_filter": "com.android.tools.idea.compose.gradle.preview",
-            "data": [
+            "data": compose_gradle_test_data + [
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//tools/adt/idea/compose-designer/testData:android_kotlin_multiplatform_multi_preview_deps",
                 "//tools/base/build-system:gradle-distrib-8.13",
                 "//tools/base/build-system/previous-versions:8.13.0",
             ],
         },
         "gradle.runconfiguration": {
+            "data": compose_gradle_test_data,
             "test_filter": "com.android.tools.idea.compose.gradle.preview.runconfiguration",
         },
         # Can probably be grouped into gradle-other once flakiness is fixed: b/279558854
         "AccessibilityModelUpdaterTest": {
+            "data": compose_gradle_test_data,
             "test_filter": "com.android.tools.idea.compose.gradle.preview.AccessibilityModelUpdaterTest",
         },
         # Source of many flakes. Splitting it into an individual target for better investigation.
         "ComposePreviewRepresentationGradleTest": {
+            "data": compose_gradle_test_data,
             "shard_count": 3,
             "test_filter": "com.android.tools.idea.compose.gradle.preview.ComposePreviewRepresentationGradleTest",
         },
         # Can probably be grouped into gradle-other once flakiness is fixed: b/261126651, b/272048512
         "RenderErrorTest": {
+            "data": compose_gradle_test_data,
             "shard_count": 4,
             "test_filter": "com.android.tools.idea.compose.gradle.preview.RenderErrorTest",
         },
         "gradle-other": {
+            "data": compose_gradle_test_data,
             "tags": ["cpu:3"],
             "shard_count": 8,
             "test_filter": "com.android.tools.idea.compose.gradle",
@@ -101,9 +122,6 @@ iml_module(
         },
         "runconfiguration": {
             "test_filter": "com.android.tools.idea.compose.preview.runconfiguration",
-        },
-        "fast": {
-            "test_filter": "com.android.tools.idea.compose.preview.fast",
         },
         # Source of many flakes. Splitting it into an individual target for better investigation.
         "ComposePreviewRepresentationTest": {
@@ -116,23 +134,11 @@ iml_module(
     test_data = [
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/sdk:build-tools/35.0.0",
-        "//prebuilts/studio/sdk:build-tools/latest",
-        "//prebuilts/studio/sdk:platforms/android-35",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/compose-designer/testData:classloader",
         "//tools/adt/idea/compose-designer/testData:glassespreview",
-        "//tools/adt/idea/compose-designer/testData:onboarding_auth_ibm_project_dep",
-        "//tools/adt/idea/compose-designer/testData:simple_compose_application_test_deps",
-        "//tools/adt/idea/compose-designer/testData:test_projects",
         "//tools/adt/idea/compose-ide-plugin/testData",
-        "//tools/base/build-system:android_gradle_plugin.zip",
-        "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-        "//tools/base/build-system:gradle-distrib",
-        "//tools/base/build-system/integration-test:kotlin_gradle_plugin_for_compose_prebuilts",
-        "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
-        "//tools/base/third_party/kotlin:kotlin-m2repository",
     ],
     # do not sort: must match IML order
     test_deps = [

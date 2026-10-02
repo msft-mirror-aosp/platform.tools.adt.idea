@@ -20,7 +20,10 @@ import com.android.tools.tests.IdeaTestSuiteBase
 import java.io.File
 import org.junit.runner.RunWith
 
-private const val ANDROID_KOTLIN_MULTIPLATFORM_MULTI_PREVIEW_DEPS = "tools/adt/idea/compose-designer/testData/android_kotlin_multiplatform_multi_preview_deps.manifest"
+private const val ANDROID_KOTLIN_MULTIPLATFORM_MULTI_PREVIEW_DEPS =
+  "tools/adt/idea/compose-designer/testData/android_kotlin_multiplatform_multi_preview_deps.manifest"
+private const val SIMPLE_COMPOSE_APPLICATION_TEST_DEPS =
+  "tools/adt/idea/compose-designer/testData/simple_compose_application_test_deps.manifest"
 
 @RunWith(JarTestSuiteRunner::class)
 class ComposePreviewTestSuite : IdeaTestSuiteBase() {
@@ -30,13 +33,14 @@ class ComposePreviewTestSuite : IdeaTestSuiteBase() {
         linkIntoOfflineMavenRepo(ANDROID_KOTLIN_MULTIPLATFORM_MULTI_PREVIEW_DEPS)
         linkIntoOfflineMavenRepo("tools/base/build-system/previous-versions/8.13.0.manifest")
       }
-      linkIntoOfflineMavenRepo("tools/adt/idea/compose-designer/testData/simple_compose_application_test_deps.manifest")
-      linkIntoOfflineMavenRepo("tools/adt/idea/compose-designer/testData/onboarding_auth_ibm_project_dep.manifest")
-      unzipIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin.zip")
-      linkIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin_runtime_dependencies.manifest")
-      linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_prebuilts.manifest")
-      linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_for_compose_prebuilts.manifest")
-      linkIntoOfflineMavenRepo("tools/base/third_party/kotlin/kotlin-m2repository.manifest")
+      if (File(SIMPLE_COMPOSE_APPLICATION_TEST_DEPS).exists()) {
+        linkIntoOfflineMavenRepo(SIMPLE_COMPOSE_APPLICATION_TEST_DEPS)
+        unzipIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin.zip")
+        linkIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin_runtime_dependencies.manifest")
+        linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_prebuilts.manifest")
+        linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_for_compose_prebuilts.manifest")
+        linkIntoOfflineMavenRepo("tools/base/third_party/kotlin/kotlin-m2repository.manifest")
+      }
     }
   }
 }

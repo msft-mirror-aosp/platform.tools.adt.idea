@@ -1,2 +1,0 @@
-For text 'Allow bloom to access your camera and microphone', apply text transformation so that all of this is lowercase.
-com.ibm.google.onboardingandauthentication.ui.screen.PermissionScreenKt.PermissionScreenPreview
