@@ -321,7 +321,7 @@ class WearPairingManager(
             if (wearDevice?.getCompanionAppIdForWatch() == PIXEL_COMPANION_APP_ID) {
               // The Pixel OEM app will re-connect via CloudSync even if we unpair. This will ensure
               // that the data for the Companion app is cleared forcing unpair to happen.
-              runShellCommand("pm clear com.google.android.apps.wear.companion")
+              runShellCommand("pm clear $PIXEL_COMPANION_APP_ID")
             }
           }
         }
