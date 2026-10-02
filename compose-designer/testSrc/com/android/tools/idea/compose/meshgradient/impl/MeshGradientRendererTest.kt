@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.toArgb
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,9 +64,12 @@ class MeshGradientRendererTest {
   fun smallMeshIsDrawnInASingleBatch() {
     val config = gridConfig(rows = 3, columns = 4)
 
-    val batches = tessellate(config, Size(400f, 300f))
+    val batch = tessellate(config, Size(400f, 300f)).single()
 
-    assertEquals(1, batches.size)
+    assertEquals(batch.positions.size / 2, batch.colors.size)
+    assertEquals(0, batch.indices.size % 3)
+    assertEquals(batch.colors.size - 1, batch.indices.maxOf { it.toInt() })
+    assertEquals(0, batch.indices.minOf { it.toInt() })
   }
 
   @Test
@@ -98,6 +102,120 @@ class MeshGradientRendererTest {
     }
   }
 
+  @Test
+  fun patchCornersMatchTheMeshVertices() {
+    val topLeft = Offset(0.1f, 0.05f)
+    val bottomRight = Offset(0.95f, 0.9f)
+    for (hasBicubicColor in listOf(false, true)) {
+      val config =
+        MeshGradientConfig(rows = 1, columns = 1, hasBicubicColor = hasBicubicColor).apply {
+          configure {
+            setVertex(0, 0, topLeft, Color.Red)
+            setVertex(0, 1, Offset(0.9f, 0.1f), Color.Green)
+            setVertex(1, 0, Offset(0.05f, 0.95f), Color.Blue)
+            setVertex(1, 1, bottomRight, Color.White)
+          }
+        }
+
+      val batch = tessellate(config, Size(300f, 200f)).single()
+
+      val last = batch.colors.size - 1
+      assertEquals(topLeft.x * 300f, batch.positions[0], 1e-3f)
+      assertEquals(topLeft.y * 200f, batch.positions[1], 1e-3f)
+      assertEquals(bottomRight.x * 300f, batch.positions[last * 2], 1e-3f)
+      assertEquals(bottomRight.y * 200f, batch.positions[last * 2 + 1], 1e-3f)
+      assertArgbEquals(Color.Red.toArgb(), batch.colors[0])
+      assertArgbEquals(Color.White.toArgb(), batch.colors[last])
+    }
+  }
+
+  @Test
+  fun adjacentPatchesShareTheirCommonEdge() {
+    for (hasBicubicColor in listOf(false, true)) {
+      // Two patches side by side, whose shared edge is curved.
+      val config =
+        MeshGradientConfig(rows = 1, columns = 2, hasBicubicColor = hasBicubicColor).apply {
+          configure {
+            setVertex(0, 0, Offset(0f, 0f), Color.Red)
+            setVertex(0, 1, Offset(0.5f, 0f), Color.Green, bottomControlPoint = Offset(0.2f, 0.3f))
+            setVertex(0, 2, Offset(1f, 0f), Color.Blue)
+            setVertex(1, 0, Offset(0f, 1f), Color.Yellow)
+            setVertex(1, 1, Offset(0.4f, 1f), Color.Magenta, topControlPoint = Offset(-0.2f, -0.3f))
+            setVertex(1, 2, Offset(1f, 1f), Color.Cyan)
+          }
+        }
+      val size = Size(400f, 300f)
+      val (subdivisionsU, subdivisionsV) = calculateMeshGradientSubdivisions(1, 2, config.positions, size)
+
+      val batch = tessellate(config, size).single()
+
+      val verticesPerPatch = subdivisionsU * subdivisionsV
+      for (vIndex in 0 until subdivisionsV) {
+        val leftPatchVertex = (subdivisionsU - 1) * subdivisionsV + vIndex
+        val rightPatchVertex = verticesPerPatch + vIndex
+        assertEquals(batch.positions[leftPatchVertex * 2], batch.positions[rightPatchVertex * 2], 0.01f)
+        assertEquals(batch.positions[leftPatchVertex * 2 + 1], batch.positions[rightPatchVertex * 2 + 1], 0.01f)
+        assertArgbEquals(batch.colors[leftPatchVertex], batch.colors[rightPatchVertex])
+      }
+    }
+  }
+
+  @Test
+  fun bicubicAlphaOvershootIsClamped() {
+    // Rows of vertices with alpha 0, 1, 1, 0 make the Catmull-Rom spline of the middle patch overshoot alpha = 1 along the V axis.
+    val transparent = Color.Red.copy(alpha = 0f)
+    val colors = middlePatchColorsOfBicubicColumn(listOf(transparent, Color.Red, Color.Red, transparent))
+
+    for (color in colors) {
+      assertEquals(0xFF, color ushr 24)
+    }
+  }
+
+  @Test
+  fun bicubicAlphaUndershootIsClamped() {
+    // Rows of vertices with alpha 1, 0, 0, 1 make the Catmull-Rom spline of the middle patch undershoot alpha = 0 along the V axis.
+    val transparent = Color.Red.copy(alpha = 0f)
+    val colors = middlePatchColorsOfBicubicColumn(listOf(Color.Red, transparent, transparent, Color.Red))
+
+    for (color in colors) {
+      assertEquals(0, color ushr 24)
+    }
+  }
+
+  @Test
+  fun bicubicLightnessOvershootIsClamped() {
+    // Rows of black, white, white and black vertices make the Catmull-Rom spline of the middle patch overshoot L = 1 along the V axis.
+    val colors = middlePatchColorsOfBicubicColumn(listOf(Color.Black, Color.White, Color.White, Color.Black))
+
+    for (color in colors) {
+      assertArgbEquals(Color.White.toArgb(), color)
+    }
+  }
+
+  /**
+   * Tessellates a bicubic 3x1 mesh whose vertex rows have the given colors, and returns the ARGB colors of the vertices of the middle
+   * patch.
+   */
+  private fun middlePatchColorsOfBicubicColumn(rowColors: List<Color>): List<Int> {
+    val config =
+      MeshGradientConfig(rows = 3, columns = 1, hasBicubicColor = true).apply {
+        configure {
+          for (row in 0..3) {
+            for (column in 0..1) {
+              setVertex(row, column, Offset(column.toFloat(), row / 3f), rowColors[row])
+            }
+          }
+        }
+      }
+    val size = Size(60f, 60f)
+    val (subdivisionsU, subdivisionsV) = calculateMeshGradientSubdivisions(3, 1, config.positions, size)
+    val verticesPerPatch = subdivisionsU * subdivisionsV
+
+    val colors = tessellate(config, size).single().colors
+
+    return colors.slice(verticesPerPatch until 2 * verticesPerPatch)
+  }
+
   private class Batch(val positions: FloatArray, val colors: IntArray, val indices: ShortArray)
 
   private fun tessellate(config: MeshGradientConfig, size: Size): List<Batch> {
@@ -106,6 +224,12 @@ class MeshGradientRendererTest {
       batches.add(Batch(positions.copyOf(), colors.copyOf(), indices.copyOf()))
     }
     return batches
+  }
+
+  /** Asserts that every 8-bit channel of the [actual] ARGB color is at most 1 away from the [expected] one. */
+  private fun assertArgbEquals(expected: Int, actual: Int) {
+    val matches = (0 until 32 step 8).all { shift -> abs((expected ushr shift and 0xFF) - (actual ushr shift and 0xFF)) <= 1 }
+    assertTrue("Expected ${expected.toUInt().toString(16)} but was ${actual.toUInt().toString(16)}", matches)
   }
 
   /** Creates a configuration with a regular grid of opaque vertices. */
