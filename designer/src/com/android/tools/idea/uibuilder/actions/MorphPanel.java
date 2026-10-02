@@ -30,6 +30,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.util.Consumer;
 import com.intellij.util.textCompletion.TextFieldWithCompletion;
+import com.intellij.xml.util.XmlUtil;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
@@ -48,7 +49,6 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
-import org.apache.xerces.util.XMLChar;
 import org.jetbrains.android.dom.layout.AndroidLayoutUtil;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
@@ -161,7 +161,7 @@ public class MorphPanel extends JPanel {
       @Override
       public void documentChanged(@NotNull DocumentEvent e) {
         String tagName = e.getDocument().getText();
-        if (XMLChar.isValidName(tagName)) {
+        if (isValidTagName(tagName)) {
           myOkButton.setEnabled(true);
           myOkButton.setToolTipText(null);
 
@@ -175,6 +175,22 @@ public class MorphPanel extends JPanel {
         }
       }
     };
+  }
+
+  private static boolean isValidTagName(@NotNull String name) {
+    if (name.isEmpty()) {
+      return false;
+    }
+    char first = name.charAt(0);
+    if (!Character.isLetter(first) && first != '_' && first != ':') {
+      return false;
+    }
+    for (int i = 1; i < name.length(); i++) {
+      if (!XmlUtil.isValidTagNameChar(name.charAt(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public void createUIComponents() {
