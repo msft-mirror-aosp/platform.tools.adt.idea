@@ -261,7 +261,7 @@ iml_module(
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
-        "@intellij//:org.jetbrains.idea.reposearch",
+        "@intellij//:intellij.java.aetherDependencyResolver.plugin",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",

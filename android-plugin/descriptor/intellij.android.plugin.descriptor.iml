@@ -14,10 +14,9 @@
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.groovy.scripting" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.java.aetherDependencyResolver.plugin" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.libraries.misc.plugin" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.structuralSearch.plugin" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.structureView.plugin" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.testRunner.plugin" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.todo.plugin" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.structuralSearch" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.structureView" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.platform.testRunner" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.todo" level="project" />
   </component>
 </module>

@@ -15,7 +15,6 @@ iml_module(
         "@intellij//:org.intellij.groovy",
         "@intellij//:com.intellij.groovy.scripting",
         "@intellij//:intellij.java.aetherDependencyResolver.plugin",
-        "@intellij//:intellij.libraries.misc.plugin",
         "@intellij//:intellij.structuralSearch.plugin",
         "@intellij//:intellij.structureView.plugin",
         "@intellij//:intellij.testRunner.plugin",

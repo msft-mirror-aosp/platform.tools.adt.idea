@@ -695,7 +695,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:equalsverifier",
         "@intellij//:tanvd.grazi",
         "//tools/adt/idea/.idea/libraries:google-api-client",
-        "@intellij//:org.jetbrains.idea.reposearch",
+        "@intellij//:intellij.java.aetherDependencyResolver.plugin",
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
