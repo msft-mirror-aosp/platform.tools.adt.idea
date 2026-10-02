@@ -24,10 +24,15 @@ import com.intellij.psi.PsiFile
 import com.intellij.refactoring.extractMethod.newImpl.ExtractMethodHelper.addSiblingAfter
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.expressions.expressionType
 import org.jetbrains.kotlin.analysis.api.fir.diagnostics.KaFirDiagnostic
+import org.jetbrains.kotlin.analysis.api.renderer.render
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.analysis.api.types.builtinTypes
+import org.jetbrains.kotlin.analysis.api.types.KaStandardTypeClassIds
+import org.jetbrains.kotlin.analysis.api.types.classId
 import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
 import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinQuickFixFactory
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.quickfixes.QuickFixActionBase
@@ -80,12 +85,13 @@ class ComposeCreateComposableFunctionQuickFix(
 
   companion object {
 
-    val factory =
-      KotlinQuickFixFactory.IntentionBased<KaFirDiagnostic.UnresolvedReference> { diagnostic ->
+    val factory: KotlinQuickFixFactory.IntentionBased<KaFirDiagnostic.UnresolvedReference> =
+      KotlinQuickFixFactory.IntentionBased { diagnostic: KaFirDiagnostic.UnresolvedReference ->
         listOfNotNull(createComposableFunctionQuickFixIfApplicable(diagnostic))
       }
 
-    private fun KaSession.createComposableFunctionQuickFixIfApplicable(
+    context(session: KaSession)
+    private fun createComposableFunctionQuickFixIfApplicable(
       diagnostic: KaFirDiagnostic.UnresolvedReference
     ): ComposeCreateComposableFunctionQuickFix? {
       val unresolvedCall = diagnostic.psi.parent as? KtCallExpression ?: return null
@@ -99,7 +105,7 @@ class ComposeCreateComposableFunctionQuickFix(
       val container = fullCallExpression.getExtractionContainers().firstOrNull() ?: return null
 
       val returnType = guessReturnType(fullCallExpression)
-      if (!returnType.isUnitType) return null
+      if (returnType.classId != KaStandardTypeClassIds.UNIT) return null
 
       val newFunction = buildNewComposableFunction(unresolvedCall, unresolvedName, container)
       return ComposeCreateComposableFunctionQuickFix(unresolvedCall, newFunction, parentFunction)
@@ -111,7 +117,8 @@ class ComposeCreateComposableFunctionQuickFix(
      *
      * See b/267429486.
      */
-    private fun KaSession.buildNewComposableFunction(
+    context(session: KaSession)
+    private fun buildNewComposableFunction(
       unresolvedCall: KtCallExpression,
       unresolvedName: String,
       container: KtElement,
@@ -121,7 +128,7 @@ class ComposeCreateComposableFunctionQuickFix(
           KtPsiFactory.CallableBuilder(KtPsiFactory.CallableBuilder.Target.FUNCTION)
             .apply {
               modifier("@$COMPOSABLE_ANNOTATION_NAME")
-              typeParams(unresolvedCall.typeArguments.mapIndexed { index, _ -> "T$index" })
+              typeParams(List(unresolvedCall.typeArguments.size) { index -> "T$index" })
               name(unresolvedName)
               val lastIndex = unresolvedCall.valueArguments.lastIndex
               unresolvedCall.valueArguments.forEachIndexed { index, arg ->
@@ -144,7 +151,8 @@ class ComposeCreateComposableFunctionQuickFix(
         )
 
     /** For the purpose of creating Composable functions, optimistically guesses that [expression] is of type `Unit`. */
-    private fun KaSession.guessReturnType(expression: KtExpression): KaType {
+    context(session: KaSession)
+    private fun guessReturnType(expression: KtExpression): KaType {
       return (expression.expressionType as? KaFunctionType)?.returnType ?: builtinTypes.unit
     }
   }
