@@ -38,7 +38,6 @@ iml_module(
     test_class = "com.android.tools.idea.wear.preview.WearDesignerTestSuite",
     test_data = [
         "//prebuilts/studio/sdk:platforms/latest",
-        "//prebuilts/studio/sdk:sources",
     ],
     # do not sort: must match IML order
     test_deps = [
