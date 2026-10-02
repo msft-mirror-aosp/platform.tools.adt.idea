@@ -316,6 +316,102 @@ class AndroidPropertiesSorterTest {
       .inOrder()
   }
 
+  @Test
+  fun testKotlinNamedLocalClass() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      fun main() {
+        class NamedLocalClass {
+          val b = 1
+          val a = 1
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by name)
+    val fields =
+      fields(
+        $$"FooKt$main$NamedLocalClass.a",
+        $$"FooKt$main$NamedLocalClass.b",
+      )
+
+    val sorted = sorter.sortFields(fields).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        $$"FooKt$main$NamedLocalClass#b",
+        $$"FooKt$main$NamedLocalClass#a",
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun testKotlinLocalObjectWithAssignment() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      fun main() {
+        val variable = object {
+          val b = 1
+          val a = 2
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by name)
+    val fields =
+      fields(
+        $$"FooKt$main$variable$1.a",
+        $$"FooKt$main$variable$1.b",
+      )
+
+    val sorted = sorter.sortFields(fields).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        $$"FooKt$main$variable$1#b",
+        $$"FooKt$main$variable$1#a",
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun testKotlinLocalObjectWithoutAssignment() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      fun main() {
+        object {
+          val b = 1
+          val a = 2
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by name)
+    val fields =
+      fields(
+        $$"FooKt$main$1.a",
+        $$"FooKt$main$1.b",
+      )
+
+    val sorted = sorter.sortFields(fields).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        $$"FooKt$main$1#b",
+        $$"FooKt$main$1#a",
+      )
+      .inOrder()
+  }
+
   private fun fields(vararg fields: String) = fields.map {
     val split = it.split('.')
     field(split[0], split[1])

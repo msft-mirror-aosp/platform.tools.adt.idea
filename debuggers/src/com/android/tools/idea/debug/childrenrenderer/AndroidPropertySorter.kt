@@ -19,8 +19,16 @@ import com.intellij.debugger.engine.DebuggerUtils
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.PsiTreeUtil
 import com.sun.jdi.Field
+import org.jetbrains.kotlin.asJava.toLightClass
+import org.jetbrains.kotlin.idea.testIntegration.framework.KotlinPsiBasedTestFramework.Companion.asKtNamedFunction
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
 
 /**
  * Sorts class properties (fields and getters) based on declaration order in source files
@@ -63,8 +71,81 @@ internal class AndroidPropertySorter(private val project: Project) {
     )
   }
 
-  fun getFields(typeName: String): List<String> {
-    val psiClass = DebuggerUtils.findClass(typeName, project, scope) ?: return emptyList()
-    return psiClass.fields.map { it.name }
+  private fun getFields(typeName: String): List<String> {
+    val psiClass = DebuggerUtils.findClass(typeName, project, scope) ?: findMethodLocalClass(typeName)
+    return psiClass?.findFields() ?: emptyList()
+  }
+
+  private fun findMethodLocalClass(typeName: String): PsiClass? {
+    val (containingClass, remainingSegments) = findContainingClass(typeName) ?: return null
+    if (remainingSegments.isEmpty()) {
+      return null
+    }
+
+    // TODO: Look into Class$fun$Class$Class or Class$fun$Class$fun$Class
+    val methodName = remainingSegments.first()
+    val segments = remainingSegments.drop(1)
+    val methods = containingClass.findMethodsByName(methodName, false)
+    return methods.firstNotNullOfOrNull {
+      it.asKtNamedFunction()?.findLocalClassOrObject(segments)?.toLightClass()
+    }
+  }
+
+  private fun findContainingClass(typeName: String): Pair<PsiClass, List<String>>? {
+    val segments = typeName.split('$')
+    if (segments.size < 2) {
+      return null
+    }
+
+    for (i in (segments.size - 1) downTo 1) {
+      val candidateName = segments.asSequence().take(i).joinToString("$")
+      val foundClass = DebuggerUtils.findClass(candidateName, project, scope)
+      if (foundClass != null) {
+        return foundClass to segments.drop(i)
+      }
+    }
+    return null
+  }
+
+  private fun KtNamedFunction.findLocalClassOrObject(segments: List<String>): KtClassOrObject? {
+    return when {
+      segments.isEmpty() -> null
+      segments.isAnonymousObjectWithVarName() -> findAnonymousObject(segments[segments.size - 2], segments.last().toInt())
+      segments.isAnonymousObject() -> findAnonymousObject(segments.first().toInt())
+      else -> findNamedLocalClass(segments.last().replaceFirst(Regex("^\\d+"), ""))
+    }
   }
 }
+
+private fun KtNamedFunction.findAnonymousObject(ordinal: Int): KtObjectDeclaration? {
+  return PsiTreeUtil.findChildrenOfType(this, KtObjectDeclaration::class.java)
+    .asSequence()
+    .filter { it.isObjectLiteral() }
+    .elementAtOrNull(ordinal - 1)
+}
+
+private fun KtNamedFunction.findAnonymousObject(varName: String, ordinal: Int): KtObjectDeclaration? {
+  return PsiTreeUtil.findChildrenOfType(this, KtObjectDeclaration::class.java)
+    .asSequence()
+    .filter { it.isObjectLiteral() }
+    .filter { obj ->
+      val prop = PsiTreeUtil.getParentOfType(obj, KtProperty::class.java)
+      prop?.name == varName
+    }
+    .elementAtOrNull(ordinal - 1)
+}
+
+// Named local class, e.g. ["LocalClass"]
+private fun KtNamedFunction.findNamedLocalClass(localClassName: String): KtClassOrObject? {
+  return PsiTreeUtil.findChildrenOfType(this, KtClassOrObject::class.java).firstOrNull { it.name == localClassName }
+}
+
+// Anonymous object with variable name, e.g. ["o", "1"]
+// TODO: Investigate nested declarations
+private fun List<String>.isAnonymousObjectWithVarName() =
+  (size >= 2) && last().all { it.isDigit() } // Anonymous object with variable name, e.g. ["o", "1"]
+
+// Anonymous object without variable name, e.g. ["1"]
+private fun List<String>.isAnonymousObject() = (size == 1) && first().all { it.isDigit() }
+
+private fun PsiClass.findFields() = fields.map { it.name }
