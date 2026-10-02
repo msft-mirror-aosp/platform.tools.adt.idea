@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.debug.childrenrenderer
 
-import com.intellij.debugger.ui.tree.render.ClassRenderer
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
@@ -24,10 +23,8 @@ import org.jetbrains.annotations.VisibleForTesting
  * Sorts object properties in declaration order.
  *
  * DEX'ing a class stores fiends and methods in alphabetic order which determines the way they are displayed in the debugger.
- *
- * TODO: Implement AndroidClassRenderer and use it instead of ClassRenderer
  */
-class AndroidClassRendererProvider : BaseRendererProvider(ClassRenderer()) {
+class AndroidClassRendererProvider : BaseRendererProvider(AndroidClassRenderer()) {
   @VisibleForTesting public override fun getName() = "Android Class"
 
   @VisibleForTesting public override fun getClassName() = "java.lang.Object"

@@ -16,9 +16,11 @@
 package com.android.tools.idea.debug.childrenrenderer
 
 import com.google.common.truth.Truth.assertThat
+import com.intellij.debugger.ui.tree.render.CompoundReferenceRenderer
 import com.intellij.debugger.ui.tree.render.CompoundRendererProvider
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.RuleChain
+import io.ktor.util.reflect.instanceOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,5 +48,13 @@ class AndroidClassRendererProviderTest {
     val posOfKotlinProvider = extensions.indexOfFirst { it is AndroidKotlinRendererProvider }
 
     assertThat(pos).isGreaterThan(posOfKotlinProvider)
+  }
+
+  @Test
+  fun providesAndroidClassRenderer() {
+    val renderer = AndroidClassRendererProvider().createRenderer() as CompoundReferenceRenderer
+
+    assertThat(renderer.childrenRenderer).instanceOf(AndroidClassRenderer::class)
+    assertThat(renderer.labelRenderer).isSameAs(renderer.childrenRenderer)
   }
 }
