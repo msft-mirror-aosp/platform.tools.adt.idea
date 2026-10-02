@@ -793,6 +793,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/targets/altlang.dap.targets.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/targets/altlang.dap.targets.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/languages/optional-file-type/altlang.languages.optional-file-type.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/languages/optional-file-type/altlang.languages.optional-file-type.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cmake/altlang.cmake.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cmake/altlang.cmake.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cmake/altlang.cmake.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cmake/altlang.cmake.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cmaked/altlang.cmaked.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cmaked/altlang.cmaked.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/cmaked/altlang.cmaked.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/cmaked/altlang.cmaked.tests.iml" />
     </modules>
