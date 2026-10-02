@@ -36,6 +36,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.FloatInputField
+import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.ui.resourcechooser.common.ResourcePickerSources
 import com.android.tools.idea.ui.resourcechooser.util.createAndShowColorPickerPopup
 import com.intellij.openapi.project.Project
@@ -54,8 +56,8 @@ import java.awt.Color as AwtColor
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
@@ -80,9 +82,7 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       if (isEditingExisting && state.hasDynamicOrUnresolvedValues) {
-        DynamicValuesWarningBanner(
-          "Some gradient arguments use dynamic or unresolved expressions. Their initial or default values are shown and they are kept as written; they cannot be changed in the editor."
-        )
+        DynamicValuesWarningBanner(message("gradient.editor.brush.dynamic.values.warning"))
       }
 
       // 1. Preview Canvas
@@ -93,7 +93,7 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
       Divider(orientation = Orientation.Horizontal)
 
       // 2. Colors List
-      Text("Colors", style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
+      Text(message("gradient.editor.brush.colors"), style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
       FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -103,7 +103,7 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
           ContextMenuArea(
             items = {
               if (state.colors.size > 2) {
-                listOf(ContextMenuItem("Delete") { state.removeColor(index) })
+                listOf(ContextMenuItem(message("gradient.editor.brush.delete.color")) { state.removeColor(index) })
               } else {
                 emptyList()
               }
@@ -167,7 +167,7 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
           Icon(
             key = AllIconsKeys.General.InlineAdd,
             iconClass = AllIconsKeys::class.java,
-            contentDescription = "Add Color",
+            contentDescription = message("gradient.editor.brush.add.color"),
             modifier = Modifier.size(10.dp),
           )
         }
@@ -206,13 +206,13 @@ private fun OffsetControl(
   Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     FloatInputField(
       value = offset.safeX(defaultX),
-      paramName = "X",
+      paramName = message("gradient.editor.brush.param.x"),
       onUpdate = { onUpdate(Offset(it, offset.safeY(defaultY))) },
       modifier = Modifier.width(100.dp),
     )
     FloatInputField(
       value = offset.safeY(defaultY),
-      paramName = "Y",
+      paramName = message("gradient.editor.brush.param.y"),
       onUpdate = { onUpdate(Offset(offset.safeX(defaultX), it)) },
       modifier = Modifier.width(100.dp),
     )
@@ -223,14 +223,14 @@ private fun OffsetControl(
 fun LinearControls(state: GradientEditorState) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     OffsetControl(
-      label = "Start Offset",
+      label = message("gradient.editor.brush.start"),
       offset = state.start,
       defaultX = 0f,
       defaultY = 0f,
       onUpdate = { state.start = it },
     )
     OffsetControl(
-      label = "End Offset",
+      label = message("gradient.editor.brush.end"),
       offset = state.end,
       defaultX = 1f,
       defaultY = 1f,
@@ -244,17 +244,17 @@ fun LinearControls(state: GradientEditorState) {
 fun RadialControls(state: GradientEditorState) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     OffsetControl(
-      label = "Center Offset",
+      label = message("gradient.editor.brush.center"),
       offset = state.center,
       defaultX = 0.5f,
       defaultY = 0.5f,
       onUpdate = { state.center = it },
     )
-    Text("Radius", style = JewelTheme.typography.labelTextStyle)
+    Text(message("gradient.editor.brush.radius"), style = JewelTheme.typography.labelTextStyle)
     FloatInputField(
       value = if (state.radius.isFinite()) state.radius else 0.5f,
       min = 0.001f,
-      paramName = "R",
+      paramName = message("gradient.editor.brush.param.radius"),
       onUpdate = { state.radius = it },
       modifier = Modifier.width(100.dp),
     )
@@ -266,7 +266,7 @@ fun RadialControls(state: GradientEditorState) {
 fun SweepControls(state: GradientEditorState) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     OffsetControl(
-      label = "Center Offset",
+      label = message("gradient.editor.brush.center"),
       offset = state.center,
       defaultX = 0.5f,
       defaultY = 0.5f,
@@ -275,19 +275,26 @@ fun SweepControls(state: GradientEditorState) {
   }
 }
 
+/** Tile modes offered by the editor, in display order. */
+private val TILE_MODES = listOf(TileMode.Clamp, TileMode.Repeated, TileMode.Mirror, TileMode.Decal)
+
+private fun tileModeDisplayName(tileMode: TileMode): String =
+  when (tileMode) {
+    TileMode.Repeated -> message("gradient.editor.brush.tile.mode.repeated")
+    TileMode.Mirror -> message("gradient.editor.brush.tile.mode.mirror")
+    TileMode.Decal -> message("gradient.editor.brush.tile.mode.decal")
+    else -> message("gradient.editor.brush.tile.mode.clamp")
+  }
+
 @Composable
-fun TileModeControl(value: TileMode, onUpdate: (TileMode) -> Unit) {
+private fun TileModeControl(value: TileMode, onUpdate: (TileMode) -> Unit) {
   Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-    Text("Tile Mode", style = JewelTheme.typography.labelTextStyle)
-    val modes = listOf(TileMode.Clamp, TileMode.Repeated, TileMode.Mirror, TileMode.Decal)
-    Dropdown(
-      menuContent = {
-        for (mode in modes) {
-          selectableItem(selected = value == mode, onClick = { onUpdate(mode) }) { Text(text = mode.toString()) }
-        }
-      }
-    ) {
-      Text(text = value.toString())
-    }
+    Text(message("gradient.editor.brush.tile.mode"), style = JewelTheme.typography.labelTextStyle)
+    ListComboBox(
+      items = remember { TILE_MODES.map(::tileModeDisplayName) },
+      selectedIndex = TILE_MODES.indexOf(value).coerceAtLeast(0),
+      onSelectedItemChange = { onUpdate(TILE_MODES[it]) },
+      modifier = Modifier.width(120.dp),
+    )
   }
 }
