@@ -23,18 +23,21 @@ import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.Dimension
-import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 
 private val logger = Logger.getInstance(GradientEditorDialog::class.java)
+
+private const val DIMENSION_SERVICE_KEY = "#com.android.tools.idea.compose.meshgradient.GradientEditorDialog"
 
 class GradientEditorDialog(private val project: Project, private val file: KtFile, painterCall: KtCallExpression) :
   DialogWrapper(project, true) {
@@ -187,10 +190,10 @@ class GradientEditorDialog(private val project: Project, private val file: KtFil
     val mainPanel = JPanel(BorderLayout())
 
     if (state.currentType != GradientType.MESH) {
-      val brushTypes = arrayOf(GradientType.LINEAR, GradientType.RADIAL, GradientType.SWEEP)
-      val typeSelector = JComboBox(brushTypes)
+      val typeSelector = ComboBox(arrayOf(GradientType.LINEAR, GradientType.RADIAL, GradientType.SWEEP))
+      typeSelector.renderer = SimpleListCellRenderer.create("") { it.displayName }
       typeSelector.selectedItem = state.currentType
-      typeSelector.addActionListener { state.currentType = typeSelector.selectedItem as GradientType }
+      typeSelector.addActionListener { state.currentType = typeSelector.item }
       mainPanel.add(typeSelector, BorderLayout.NORTH)
     }
 
@@ -202,10 +205,12 @@ class GradientEditorDialog(private val project: Project, private val file: KtFil
         GradientType.SWEEP -> StandardGradientEditorScreen(project, state, isEditingExisting = true)
       }
     }
-    panel.preferredSize = Dimension(460, 530)
+    panel.preferredSize = JBUI.size(460, 530)
     mainPanel.add(panel, BorderLayout.CENTER)
     return mainPanel
   }
+
+  override fun getDimensionServiceKey(): String = DIMENSION_SERVICE_KEY
 
   public override fun doOKAction() {
     val call = painterCallPointer.element?.takeIf { it.isValid } ?: return super.doOKAction()

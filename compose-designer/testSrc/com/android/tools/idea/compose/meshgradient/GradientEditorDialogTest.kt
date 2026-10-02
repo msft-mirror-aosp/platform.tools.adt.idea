@@ -359,9 +359,9 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     dialog.doOKAction()
 
     val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain first stop: $updatedText", updatedText.contains("0.0f to Color(0xFFFF0000)"))
+    assertTrue("Should contain first stop: $updatedText", updatedText.contains("0f to Color(0xFFFF0000)"))
     assertTrue("Should contain updated middle stop: $updatedText", updatedText.contains("0.5f to Color(0xFFFFFF00)"))
-    assertTrue("Should contain last stop: $updatedText", updatedText.contains("1.0f to Color(0xFF0000FF)"))
+    assertTrue("Should contain last stop: $updatedText", updatedText.contains("1f to Color(0xFF0000FF)"))
     assertTrue("Should contain Offset.Infinite end: $updatedText", updatedText.contains("end = Offset.Infinite"))
   }
 

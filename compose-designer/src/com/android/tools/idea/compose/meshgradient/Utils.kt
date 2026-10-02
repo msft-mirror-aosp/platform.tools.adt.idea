@@ -56,12 +56,13 @@ fun formatFloat(number: Float): String {
   return number.toBigDecimal().setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 }
 
+/** Generates a Kotlin `Float` literal for [value], rounded with [formatFloat]. */
 internal fun generateFloatSource(value: Float): String =
   when {
     value == Float.POSITIVE_INFINITY -> "Float.POSITIVE_INFINITY"
     value == Float.NEGATIVE_INFINITY -> "Float.NEGATIVE_INFINITY"
     value.isNaN() -> "Float.NaN"
-    else -> "${value}f"
+    else -> "${formatFloat(value)}f"
   }
 
 internal fun generateOffsetSource(offset: Offset): String =
