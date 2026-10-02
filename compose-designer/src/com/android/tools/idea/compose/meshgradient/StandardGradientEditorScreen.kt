@@ -124,7 +124,7 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
     }
 
     if (!isEditingExisting) {
-      GeneratedCodeSection(project = project, generatedCode = state.generatedCode)
+      GeneratedCodeSection(project) { state.generatedCode }
     }
   }
 }

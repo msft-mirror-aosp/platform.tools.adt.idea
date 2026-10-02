@@ -38,11 +38,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.RememberObserver
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
@@ -61,25 +66,33 @@ import com.android.tools.adtui.MaterialColorPaletteProvider
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.DimensionInputField
+import com.android.tools.idea.compose.preview.message
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.WriteIntentReadAction
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorColorsScheme
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.fileTypes.FileTypes
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.colorpicker.ColorPickerBuilder
 import com.intellij.ui.colorpicker.MaterialGraphicalColorPipetteProvider
 import java.awt.Color as AwtColor
 import java.awt.GraphicsEnvironment
 import java.awt.MouseInfo
-import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
 import javax.swing.ScrollPaneConstants
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CheckboxRow
@@ -90,6 +103,9 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
 import org.jetbrains.kotlin.idea.KotlinLanguage
+
+/** Delay between the last change to the generated code and the code viewer update, so drags don't re-highlight every frame. */
+internal val CODE_UPDATE_DEBOUNCE = 100.milliseconds
 
 @Composable
 internal fun DynamicValuesWarningBanner(message: String) {
@@ -112,50 +128,28 @@ internal fun DynamicValuesWarningBanner(message: String) {
   }
 }
 
+/**
+ * Shows the code returned by [generatedCode] in a read-only Kotlin editor with a button to copy it. [generatedCode] is only called outside
+ * of composition, so changes to the code don't recompose the caller.
+ */
+@OptIn(FlowPreview::class)
 @Composable
-internal fun ColumnScope.GeneratedCodeSection(project: Project, generatedCode: String) {
-  val document = remember { EditorFactory.getInstance().createDocument("") }
-  val editor =
-    remember(project, document) {
-      val fileType = KotlinLanguage.INSTANCE.getAssociatedFileType() ?: FileTypes.PLAIN_TEXT
-      val highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(project, fileType)
-      (EditorFactory.getInstance().createViewer(document, project) as EditorEx).apply {
-        scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-        scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-        setBorder(null)
-        this.highlighter = highlighter
-
-        val scheme = EditorColorsManager.getInstance().schemeForCurrentUITheme
-        colorsScheme = scheme
-        setBackgroundColor(scheme.defaultBackground)
-        scrollPane.background = scheme.defaultBackground
-        scrollPane.viewport.background = scheme.defaultBackground
-        component.background = scheme.defaultBackground
-        contentComponent.background = scheme.defaultBackground
-        settings.isCaretRowShown = false
+internal fun ColumnScope.GeneratedCodeSection(
+  project: Project,
+  onViewerCreated: ((GeneratedCodeViewer) -> Unit)? = null,
+  renderEditor: Boolean = true,
+  generatedCode: () -> String,
+) {
+  val currentGeneratedCode by rememberUpdatedState(generatedCode)
+  val codeViewer =
+    remember(project) {
+      GeneratedCodeViewer(project, Snapshot.withoutReadObservation { currentGeneratedCode() }).also {
+        onViewerCreated?.invoke(it)
       }
     }
 
-  DisposableEffect(editor) {
-    val connection = project.messageBus.connect()
-    connection.subscribe(
-      EditorColorsManager.TOPIC,
-      EditorColorsListener { newScheme ->
-        val scheme = newScheme ?: EditorColorsManager.getInstance().schemeForCurrentUITheme
-        WriteIntentReadAction.run {
-          editor.colorsScheme = scheme
-          editor.setBackgroundColor(scheme.defaultBackground)
-          editor.scrollPane.background = scheme.defaultBackground
-          editor.scrollPane.viewport.background = scheme.defaultBackground
-          editor.component.background = scheme.defaultBackground
-          editor.contentComponent.background = scheme.defaultBackground
-        }
-      },
-    )
-    onDispose {
-      connection.disconnect()
-      WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(editor) }
-    }
+  LaunchedEffect(codeViewer) {
+    snapshotFlow { currentGeneratedCode() }.debounce(CODE_UPDATE_DEBOUNCE).collect { codeViewer.setText(it) }
   }
 
   Divider(orientation = Orientation.Horizontal)
@@ -165,26 +159,95 @@ internal fun ColumnScope.GeneratedCodeSection(project: Project, generatedCode: S
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text("Generated Code", style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
-    DefaultButton(
-      onClick = {
-        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-        clipboard.setContents(StringSelection(generatedCode), null)
-      }
-    ) {
-      Text("Copy Code")
+    Text(message("gradient.editor.code.title"), style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
+    DefaultButton(onClick = { CopyPasteManager.getInstance().setContents(StringSelection(currentGeneratedCode())) }) {
+      Text(message("gradient.editor.code.copy"))
     }
   }
 
-  SwingPanel(
-    factory = { editor.component },
-    modifier = Modifier.fillMaxWidth().weight(1f),
-    update = {
-      if (document.text != generatedCode) {
-        WriteIntentReadAction.run { ApplicationManager.getApplication().runWriteAction { document.setText(generatedCode) } }
-      }
-    },
-  )
+  if (renderEditor) {
+    key(codeViewer) { SwingPanel(factory = { codeViewer.editor.component }, modifier = Modifier.fillMaxWidth().weight(1f)) }
+  }
+}
+
+/**
+ * Read-only Kotlin editor used to display generated code. The editor is released when this object leaves the composition, when the
+ * composition that created it is abandoned, or when [project] is disposed, whichever happens first.
+ */
+@VisibleForTesting
+internal class GeneratedCodeViewer(private val project: Project, initialText: String) : RememberObserver {
+  private val disposable = Disposer.newDisposable(project, "Gradient editor generated code viewer")
+  private val document = EditorFactory.getInstance().createDocument(initialText)
+
+  val editor: EditorEx
+
+  init {
+    try {
+      val viewer = EditorFactory.getInstance().createViewer(document, project)
+      // Releasing the editor and applying a color scheme require the write-intent lock, which Compose callbacks such as onForgotten and
+      // message bus listeners don't necessarily hold. Document changes in setText take the write lock, which also acquires it.
+      Disposer.register(disposable) { WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(viewer) } }
+      editor =
+        (viewer as EditorEx).apply {
+          val fileType = KotlinLanguage.INSTANCE.associatedFileType ?: FileTypes.PLAIN_TEXT
+          highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(project, fileType)
+          scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+          scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+          setBorder(null)
+          settings.isCaretRowShown = false
+          applyColorsScheme(EditorColorsManager.getInstance().schemeForCurrentUITheme)
+        }
+      ApplicationManager.getApplication()
+        .messageBus
+        .connect(disposable)
+        .subscribe(
+          EditorColorsManager.TOPIC,
+          EditorColorsListener { newScheme ->
+            if (project.isDisposed || editor.isDisposed) return@EditorColorsListener
+            val scheme = newScheme ?: EditorColorsManager.getInstance().schemeForCurrentUITheme
+            WriteIntentReadAction.run { editor.applyColorsScheme(scheme) }
+          },
+        )
+    } catch (t: Throwable) {
+      Disposer.dispose(disposable)
+      throw t
+    }
+  }
+
+  fun setText(text: String) {
+    if (project.isDisposed || editor.isDisposed) return
+    if (document.text == text) return
+    val app = ApplicationManager.getApplication()
+    val runnable = Runnable {
+      if (project.isDisposed || editor.isDisposed) return@Runnable
+      if (document.text == text) return@Runnable
+      WriteAction.run<Throwable> { document.setText(text) }
+    }
+    if (app.isDispatchThread) {
+      runnable.run()
+    } else {
+      app.invokeLater(runnable, project.disposed)
+    }
+  }
+
+  override fun onRemembered() {}
+
+  override fun onForgotten() {
+    Disposer.dispose(disposable)
+  }
+
+  override fun onAbandoned() {
+    Disposer.dispose(disposable)
+  }
+}
+
+private fun EditorEx.applyColorsScheme(scheme: EditorColorsScheme) {
+  colorsScheme = scheme
+  setBackgroundColor(scheme.defaultBackground)
+  scrollPane.background = scheme.defaultBackground
+  scrollPane.viewport.background = scheme.defaultBackground
+  component.background = scheme.defaultBackground
+  contentComponent.background = scheme.defaultBackground
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -346,7 +409,7 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
     }
 
     if (!isEditingExisting) {
-      GeneratedCodeSection(project = project, generatedCode = state.generatedCode)
+      GeneratedCodeSection(project) { state.generatedCode }
     }
   }
 }
