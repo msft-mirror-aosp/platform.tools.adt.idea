@@ -8,6 +8,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.facet" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.gradle" level="project" />

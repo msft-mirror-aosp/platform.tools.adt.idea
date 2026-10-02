@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",

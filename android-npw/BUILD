@@ -24,6 +24,9 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.resources",
+        "@intellij//:intellij.kotlin.gradle.codeInsight.common",
+        "@intellij//:intellij.kotlin.gradle.tooling.impl",
         "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/android:intellij.android.core",
@@ -217,6 +220,8 @@ iml_module(
         "//tools/adt/idea/observable:intellij.android.observable.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "//tools/vendor/google/ml/aiplugin/android/login:aiplugin.android.login",
+        "@intellij//:intellij.kotlin.gradle.codeInsight.common",
+        "@intellij//:intellij.kotlin.gradle.tooling.impl",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],

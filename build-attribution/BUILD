@@ -101,6 +101,7 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:intellij.kotlin.base.psi",
         "@intellij//:intellij.platform.buildView",
     ],
     test_srcs = ["testSrc"],

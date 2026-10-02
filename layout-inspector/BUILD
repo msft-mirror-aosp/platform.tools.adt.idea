@@ -26,6 +26,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.gradle.tooling.impl",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:intellij.platform.debugger",
         "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",

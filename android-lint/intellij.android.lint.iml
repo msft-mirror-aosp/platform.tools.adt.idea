@@ -11,6 +11,15 @@
     <orderEntry type="module" module-name="intellij.lint" />
     <orderEntry type="module" module-name="android.sdktools.common" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis.utils" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.facet" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.psi" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.codeInsight.shared" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.externalSystem" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />

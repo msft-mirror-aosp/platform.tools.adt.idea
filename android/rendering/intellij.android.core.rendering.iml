@@ -30,5 +30,6 @@
     <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
     <orderEntry type="module" module-name="analytics-crash" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
   </component>
 </module>

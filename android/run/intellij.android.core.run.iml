@@ -76,6 +76,8 @@
     <orderEntry type="module" module-name="android.sdktools.sdklib.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.core" />
 </module>

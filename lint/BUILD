@@ -10,6 +10,12 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.analysis",
+        "@intellij//:intellij.kotlin.base.analysis.utils",
+        "@intellij//:intellij.kotlin.base.codeInsight",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
+        "@intellij//:kotlin.fir.frontend-independent",
         "@intellij//:intellij.xml.analysis",
         "@intellij//:intellij.xml.parser",
         "@intellij//:intellij.xml.psi",

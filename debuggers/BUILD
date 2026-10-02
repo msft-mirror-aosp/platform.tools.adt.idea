@@ -16,6 +16,9 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.jvm.debugger.base.util",
+        "@intellij//:intellij.kotlin.jvm.debugger.core",
+        "@intellij//:intellij.kotlin.jvm.debugger.coroutines",
         "@intellij//:intellij.platform.debugger",
         "@intellij//:intellij.platform.debugger.impl",
         "@intellij//:com.intellij.java",

@@ -57,6 +57,9 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.ui.common" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.core" />
 </module>

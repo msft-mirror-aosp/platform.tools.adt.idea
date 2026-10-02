@@ -8,6 +8,12 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis.utils" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.analysis" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />

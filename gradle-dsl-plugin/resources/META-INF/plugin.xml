@@ -28,6 +28,7 @@
   <depends>org.toml.lang</depends>
   <dependencies>
     <module name="intellij.java.impl"/>
+    <module name="intellij.kotlin.base.psi"/>
   </dependencies>
 
   <xi:include href="/META-INF/gradle-dsl.xml"/>

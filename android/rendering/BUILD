@@ -39,6 +39,7 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/analytics-library/crash:analytics-crash",
         "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.kotlin.base.util",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

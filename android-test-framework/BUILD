@@ -10,6 +10,8 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.externalSystem",
+        "@intellij//:intellij.kotlin.base.projectStructure",
         "@intellij//:intellij.platform.externalSystem",
         "@intellij//:intellij.platform.externalSystem.impl",
         "@intellij//:intellij.xml.psi",

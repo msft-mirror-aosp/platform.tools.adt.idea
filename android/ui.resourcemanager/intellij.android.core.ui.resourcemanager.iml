@@ -29,5 +29,11 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.analysis" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.analysis.utils" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.formatter.minimal" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
   </component>
 </module>

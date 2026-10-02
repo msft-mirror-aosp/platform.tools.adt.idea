@@ -8,6 +8,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.projectStructure" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.symbol.light.classes" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />

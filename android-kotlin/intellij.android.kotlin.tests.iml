@@ -28,5 +28,10 @@
     <orderEntry type="module" module-name="intellij.android.lint" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="opentest4j" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.plugin" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.projectConfiguration" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
   </component>
 </module>

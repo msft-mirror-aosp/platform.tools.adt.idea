@@ -45,5 +45,7 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
   </component>
 </module>

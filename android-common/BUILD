@@ -20,6 +20,9 @@ iml_module(
     deps = [
         "//tools/adt/idea/studio-flags",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.facet",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
+        "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
         "@intellij//:intellij.libraries.jna",
         "@intellij//:intellij.xml.dom",
         "@intellij//:intellij.xml.parser",

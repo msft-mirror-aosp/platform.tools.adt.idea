@@ -9,6 +9,10 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.psi",
+        "@intellij//:intellij.kotlin.codeInsight.api",
+        "@intellij//:intellij.kotlin.references",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/android-common:intellij.android.common",

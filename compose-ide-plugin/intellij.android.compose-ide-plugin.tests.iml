@@ -16,6 +16,17 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.compilerConfiguration" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.psi" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.inspections" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.liveTemplates" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.shared" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.formatter.minimal" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.jvm.debugger.core" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.refactorings" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.refactorings.base" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.references" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />

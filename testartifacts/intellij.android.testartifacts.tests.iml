@@ -89,5 +89,6 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.debugger" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.gradle.gradle-java" level="project" />
   </component>
 </module>

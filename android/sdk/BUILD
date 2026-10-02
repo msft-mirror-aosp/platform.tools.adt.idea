@@ -36,6 +36,7 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "@intellij//:intellij.kotlin.base.facet",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

@@ -12,6 +12,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.util",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
@@ -70,6 +71,8 @@ iml_module(
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:kotlin.fir.frontend-independent",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "long",

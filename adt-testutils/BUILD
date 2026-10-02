@@ -23,6 +23,7 @@ iml_module(
         "@intellij//:test-framework",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "@intellij//:intellij.kotlin.base.plugin",
     ],
     test_srcs = ["src/main/java"],
     visibility = ["//visibility:public"],

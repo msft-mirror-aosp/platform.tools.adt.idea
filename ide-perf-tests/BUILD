@@ -86,6 +86,8 @@ iml_module(
         "//tools/adt/idea/android-plugin:intellij.android.plugin",
         "//tools/adt/idea/.idea/libraries:truth",
         "@intellij//:intellij.xml.psi.impl",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:kotlin.fir.frontend-independent",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "eternal",

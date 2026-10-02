@@ -15,6 +15,17 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.analysis",
+        "@intellij//:intellij.kotlin.base.analysis.utils",
+        "@intellij//:intellij.kotlin.base.codeInsight",
+        "@intellij//:intellij.kotlin.base.indices",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.kotlin.completion.impl",
+        "@intellij//:intellij.kotlin.highlighting.minimal",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api.platform.interface",
+        "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
+        "@intellij//:kotlin.fir.frontend-independent",
         "@intellij//:intellij.platform.problemView.ui",
         "@intellij//:intellij.xml.psi",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",

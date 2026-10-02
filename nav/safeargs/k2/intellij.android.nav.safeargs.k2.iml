@@ -9,6 +9,14 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis.utils" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.projectStructure" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api.platform.interface" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />

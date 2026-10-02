@@ -28,6 +28,13 @@
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.codeInsight.minimal" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.shared" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.formatter" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.formatter.minimal" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.refactorings" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />

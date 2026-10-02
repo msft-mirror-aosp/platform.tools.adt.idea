@@ -34,6 +34,7 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.util",
         "@intellij//:intellij.platform.externalSystem",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",

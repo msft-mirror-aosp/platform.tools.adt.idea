@@ -8,6 +8,11 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.indices" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.psi" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.symbol.light.classes" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -34,6 +34,12 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.kotlin.base.analysis",
+        "@intellij//:intellij.kotlin.base.analysis.utils",
+        "@intellij//:intellij.kotlin.base.codeInsight",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.kotlin.formatter.minimal",
+        "@intellij//:kotlin.fir.frontend-independent",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

@@ -15,6 +15,10 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.indices",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.kotlin.jvm.debugger.core",
+        "@intellij//:kotlin.fir.frontend-independent",
         "@intellij//:intellij.platform.problemView.ui",
         "@intellij//:intellij.xml.dom",
         "@intellij//:intellij.xml.parser",
@@ -175,6 +179,8 @@ iml_module(
         "@intellij//:intellij.platform.problemView.ui",
         "@intellij//:intellij.xml.psi",
         "@intellij//:intellij.xml.psi.impl",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.kotlin.projectWizard.core",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_resources = ["testResources"],

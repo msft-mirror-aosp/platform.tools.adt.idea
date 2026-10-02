@@ -10,6 +10,11 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.indices",
+        "@intellij//:intellij.kotlin.base.psi",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
+        "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
@@ -43,6 +48,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "@intellij//:intellij.kotlin.base.psi",
+        "@intellij//:intellij.kotlin.base.util",
     ],
     test_friends = ["//tools/adt/idea/dagger:intellij.android.dagger"],
     test_srcs = ["testSrc"],

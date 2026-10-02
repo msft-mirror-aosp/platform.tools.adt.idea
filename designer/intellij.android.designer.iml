@@ -29,6 +29,10 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.indices" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.jvm.debugger.core" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.problemView.ui" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.dom" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />

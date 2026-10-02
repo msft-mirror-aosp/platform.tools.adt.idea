@@ -26,6 +26,13 @@
   <depends>com.intellij.java</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>com.intellij.modules.json</depends>
+  <!--
+    We declare this plugin in the jetbrains namespace because it depends on v2 modules of the Kotlin plugin
+    that are marked internal (e.g. intellij.kotlin.refactorings for the ExtractFunctionDescriptorModifier
+    extension, intellij.kotlin.highlighting.minimal for Kotlin highlighting colors).
+  -->
+  <content namespace="jetbrains"/>
+
   <dependencies>
     <module name="intellij.java.impl" />
     <module name="intellij.java.debugger.impl" />
@@ -36,7 +43,32 @@
     <plugin id="com.intellij.compose" />
     <module name="intellij.platform.debugger"/>
     <module name="intellij.platform.debugger.impl.shared"/>
+    <module name="intellij.kotlin.base.analysis"/>
+    <module name="intellij.kotlin.base.analysis.utils"/>
+    <module name="intellij.kotlin.base.codeInsight"/>
+    <module name="intellij.kotlin.base.indices"/>
+    <module name="intellij.kotlin.base.projectStructure"/>
+    <module name="intellij.kotlin.base.psi"/>
+    <module name="intellij.kotlin.base.resources"/>
+    <module name="intellij.kotlin.base.util"/>
+    <module name="intellij.kotlin.codeInsight.api"/>
+    <module name="intellij.kotlin.codeInsight.liveTemplates"/>
+    <module name="intellij.kotlin.codeInsight.shared"/>
+    <module name="intellij.kotlin.codeInsight.utils"/>
+    <module name="intellij.kotlin.compilerPlugins.support.bundled"/>
+    <module name="intellij.kotlin.completion.impl"/>
+    <module name="intellij.kotlin.formatter"/>
+    <module name="intellij.kotlin.formatter.minimal"/>
+    <module name="intellij.kotlin.highlighting.minimal"/>
+    <module name="intellij.kotlin.j2k"/>
+    <module name="intellij.kotlin.jvm.debugger.core"/>
+    <module name="intellij.kotlin.refactorings"/>
+    <module name="intellij.kotlin.refactorings.base"/>
+    <module name="intellij.kotlin.references"/>
+    <module name="intellij.libraries.kotlinc.analysis.api"/>
+    <module name="intellij.libraries.kotlinc.analysis.api.k2"/>
     <module name="intellij.platform.ide.colorPicker"/>
+    <module name="kotlin.fir.frontend-independent"/>
   </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">

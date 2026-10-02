@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.projectWizard.idea",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/wizard-model:intellij.android.wizard.model",
         "//tools/adt/idea/observable:intellij.android.observable",

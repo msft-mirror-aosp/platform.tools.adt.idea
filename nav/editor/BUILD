@@ -12,6 +12,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.projectStructure",
+        "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
         "@intellij//:intellij.xml.psi",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",

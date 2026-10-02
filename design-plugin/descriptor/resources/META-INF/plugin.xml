@@ -27,6 +27,13 @@
   <depends>org.jetbrains.android</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>com.intellij.java</depends>
+  <!--
+    We declare this plugin in the jetbrains namespace because it depends on v2 modules of the Kotlin plugin
+    that are marked internal (intellij.libraries.kotlinc.analysis.api.platform.interface for Kotlin
+    modification events, intellij.kotlin.highlighting.minimal for Kotlin highlighting colors).
+  -->
+  <content namespace="jetbrains"/>
+
   <dependencies>
     <module name="intellij.spellchecker"/>
     <module name="intellij.java.indexing"/>
@@ -44,8 +51,24 @@
     <module name="intellij.xml.dom"/>
     <module name="intellij.xml.parser"/>
     <module name="intellij.xml.psi.impl"/>
+    <module name="intellij.kotlin.base.analysis"/>
+    <module name="intellij.kotlin.base.analysis.utils"/>
+    <module name="intellij.kotlin.base.codeInsight"/>
+    <module name="intellij.kotlin.base.indices"/>
+    <module name="intellij.kotlin.base.plugin"/>
+    <module name="intellij.kotlin.base.projectStructure"/>
+    <module name="intellij.kotlin.base.psi"/>
+    <module name="intellij.kotlin.base.util"/>
+    <module name="intellij.kotlin.codeInsight.api"/>
+    <module name="intellij.kotlin.completion.impl"/>
+    <module name="intellij.kotlin.highlighting.minimal"/>
+    <module name="intellij.kotlin.jvm.debugger.core"/>
+    <module name="intellij.libraries.kotlinc.analysis.api"/>
+    <module name="intellij.libraries.kotlinc.analysis.api.platform.interface"/>
+    <module name="intellij.libraries.kotlinc.symbol.light.classes"/>
     <module name="intellij.platform.ide.colorPicker"/>
     <module name="intellij.platform.ide.designer"/>
+    <module name="kotlin.fir.frontend-independent"/>
   </dependencies>
 
   <xi:include href="/META-INF/designer.xml"/>

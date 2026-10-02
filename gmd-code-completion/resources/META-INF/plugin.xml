@@ -24,6 +24,11 @@
   <depends>com.android.tools.gradle.dsl</depends>
   <depends>com.google.services.firebase</depends>
   <depends>com.intellij.java</depends>
+  <dependencies>
+    <module name="intellij.kotlin.base.psi"/>
+    <module name="intellij.kotlin.base.util"/>
+    <module name="intellij.kotlin.refactorings.base"/>
+  </dependencies>
 
   <extensions defaultExtensionNs="com.intellij">
     <completion.contributor language="any"

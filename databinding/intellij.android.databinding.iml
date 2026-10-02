@@ -8,6 +8,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.projectStructure" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.dom" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.dom.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />

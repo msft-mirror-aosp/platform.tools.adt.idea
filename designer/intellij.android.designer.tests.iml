@@ -83,6 +83,8 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.problemView.ui" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.psi.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.projectWizard.core" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.designer" />
 </module>

@@ -9,6 +9,13 @@
   <category>Android</category>
   <version>2023.1.1 Canary 6</version>
   <vendor>JetBrains, Google</vendor>
+  <!--
+    We declare this plugin in the jetbrains namespace because it depends on v2 modules of the Kotlin plugin
+    that are marked internal (e.g. intellij.kotlin.gradle.gradle and kotlin.gradle.gradle-java for Gradle sync,
+    intellij.kotlin.base.facet for Kotlin facets, kotlin.jvm-debugger.evaluation for the AndroidDexer extension).
+  -->
+  <content namespace="jetbrains"/>
+
   <dependencies>
     <plugin id="com.intellij.platform.images"/>
     <plugin id="com.intellij.modules.java"/>
@@ -84,7 +91,48 @@
     <module name="intellij.platform.ide.updateChecker"/>
     <module name="intellij.platform.vcs.shared"/>
     <module name="intellij.libraries.asm.tools"/>
+    <module name="intellij.kotlin.base.analysis"/>
+    <module name="intellij.kotlin.base.analysis.utils"/>
+    <module name="intellij.kotlin.base.codeInsight"/>
+    <module name="intellij.kotlin.base.codeInsight.minimal"/>
+    <module name="intellij.kotlin.base.externalSystem"/>
+    <module name="intellij.kotlin.base.facet"/>
+    <module name="intellij.kotlin.base.indices"/>
+    <module name="intellij.kotlin.base.plugin"/>
+    <module name="intellij.kotlin.base.projectModel"/>
+    <module name="intellij.kotlin.base.projectStructure"/>
+    <module name="intellij.kotlin.base.psi"/>
+    <module name="intellij.kotlin.base.resources"/>
+    <module name="intellij.kotlin.base.util"/>
+    <module name="intellij.kotlin.codeInsight.api"/>
+    <module name="intellij.kotlin.codeInsight.liveTemplates"/>
+    <module name="intellij.kotlin.codeInsight.shared"/>
+    <module name="intellij.kotlin.formatter.minimal"/>
+    <module name="intellij.kotlin.gradle.codeInsight.common"/>
+    <module name="intellij.kotlin.gradle.gradle"/>
+    <module name="intellij.kotlin.gradle.tooling.impl"/>
+    <module name="intellij.kotlin.highlighting.minimal"/>
+    <module name="intellij.kotlin.jvm.debugger.base.util"/>
+    <module name="intellij.kotlin.jvm.debugger.core"/>
+    <module name="intellij.kotlin.jvm.debugger.coroutines"/>
+    <module name="intellij.kotlin.preferences"/>
+    <module name="intellij.kotlin.projectConfiguration"/>
+    <module name="intellij.kotlin.projectStructure"/>
+    <module name="intellij.kotlin.projectWizard.core"/>
+    <module name="intellij.kotlin.projectWizard.idea"/>
+    <module name="intellij.kotlin.refactorings.base"/>
+    <module name="intellij.kotlin.references"/>
+    <module name="intellij.kotlin.uast.base"/>
+    <module name="intellij.libraries.kotlin.gradle.plugin.idea"/>
+    <module name="intellij.libraries.kotlinc.analysis.api"/>
+    <module name="intellij.libraries.kotlinc.analysis.api.k2"/>
+    <module name="intellij.libraries.kotlinc.analysis.api.platform.interface"/>
+    <module name="intellij.libraries.kotlinc.symbol.light.classes"/>
     <module name="intellij.libraries.stream"/>
+    <module name="kotlin.fir.frontend-independent"/>
+    <module name="kotlin.gradle.gradle-java"/>
+    <module name="kotlin.jvm-debugger.evaluation"/>
+    <module name="kotlin.scripting"/>
   </dependencies>
 
   <xi:include href="/META-INF/android-plugin.xml"/>

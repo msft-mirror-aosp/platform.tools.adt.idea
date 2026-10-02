@@ -9,6 +9,9 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="module" module-name="studio-flags" exported="" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.facet" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.symbol.light.classes" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.jna" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.dom" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.parser" level="project" />

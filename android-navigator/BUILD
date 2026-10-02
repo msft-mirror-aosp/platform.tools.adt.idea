@@ -11,6 +11,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.facet",
+        "@intellij//:intellij.kotlin.base.util",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "//tools/analytics-library/tracker:analytics-tracker",

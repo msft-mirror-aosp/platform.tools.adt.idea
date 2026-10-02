@@ -13,6 +13,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.facet",
         "@intellij//:intellij.platform.externalSystem",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
@@ -129,6 +130,8 @@ iml_module(
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:kotlin.fir.frontend-independent",
     ],
     test_srcs = ["testSrc"],
     test_tags = [

@@ -22,6 +22,8 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

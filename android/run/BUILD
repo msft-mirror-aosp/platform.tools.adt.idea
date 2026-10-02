@@ -78,6 +78,8 @@ iml_module(
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
         "@intellij//:intellij.platform.debugger",
         "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

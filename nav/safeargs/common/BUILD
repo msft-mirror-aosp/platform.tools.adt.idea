@@ -11,6 +11,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.projectStructure",
         "@intellij//:intellij.xml.psi",
         "@intellij//:intellij.xml.psi.impl",
         "@intellij//:com.intellij.java",

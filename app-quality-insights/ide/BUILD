@@ -10,6 +10,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.psi",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/base/flags:studio.android.sdktools.flags",

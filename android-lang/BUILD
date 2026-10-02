@@ -15,6 +15,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/common:studio.android.sdktools.common",
@@ -77,6 +79,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:mockito",
+        "@intellij//:intellij.kotlin.base.psi",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

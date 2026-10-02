@@ -11,6 +11,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.projectStructure",
+        "@intellij//:intellij.kotlin.base.util",
         "@intellij//:intellij.xml.dom",
         "@intellij//:intellij.xml.dom.impl",
         "@intellij//:intellij.xml.psi",
@@ -86,6 +88,7 @@ iml_module(
         "//tools/adt/idea/databinding/gradle:intellij.android.databinding.gradle",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "@intellij//:intellij.xml.psi",
+        "@intellij//:intellij.kotlin.base.util",
     ],
     test_resources = [
         "testResources",

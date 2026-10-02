@@ -10,6 +10,9 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.psi",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.kotlin.refactorings.base",
         "@intellij//:com.intellij.java",
         "//prebuilts/tools/common/m2:google_api_services_testing",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",

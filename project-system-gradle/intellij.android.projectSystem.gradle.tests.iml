@@ -87,6 +87,17 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.analysis.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.projectModel" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.inspections" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.gradle.codeInsight.common" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.gradle.tooling.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.projectConfiguration" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.projectWizard.core" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlin.gradle.plugin.idea" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.gradle.gradle-java" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.buildView" level="project" />
   </component>
 </module>

@@ -13,6 +13,10 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.kotlin.codeInsight.liveTemplates",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api.platform.interface",
         "@intellij//:intellij.xml.parser",
         "@intellij//:intellij.xml.psi",
         "@intellij//:intellij.xml.ui.common",
@@ -113,6 +117,7 @@ iml_module(
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
+        "@intellij//:intellij.kotlin.codeInsight.liveTemplates",
         "@intellij//:intellij.platform.buildView",
     ],
     test_friends = ["//tools/adt/idea/android-templates:intellij.android.templates"],

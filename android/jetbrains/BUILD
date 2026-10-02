@@ -60,6 +60,9 @@ iml_module(
         "@intellij//:intellij.xml.psi",
         "@intellij//:intellij.xml.psi.impl",
         "@intellij//:intellij.xml.ui.common",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:intellij.libraries.kotlinc.analysis.api",
+        "@intellij//:kotlin.fir.frontend-independent",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

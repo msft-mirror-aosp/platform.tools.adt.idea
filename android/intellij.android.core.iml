@@ -8,6 +8,28 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis.utils" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.codeInsight.minimal" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.facet" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.plugin" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.projectStructure" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.psi" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.resources" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.codeInsight.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.codeInsight.shared" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.formatter.minimal" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.gradle.gradle" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.projectStructure" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.references" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api.k2" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api.platform.interface" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.symbol.light.classes" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.scripting" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.jna" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.debugger" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.shared" level="project" />

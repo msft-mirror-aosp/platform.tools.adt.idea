@@ -58,6 +58,9 @@ iml_module(
         "@intellij//:intellij.platform.debugger",
         "@intellij//:intellij.platform.externalSystem",
         "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.kotlin.base.facet",
+        "@intellij//:intellij.kotlin.base.util",
+        "@intellij//:kotlin.fir.frontend-independent",
         "@intellij//:intellij.platform.buildView",
     ],
     test_jvm_flags = [

@@ -10,6 +10,17 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.analysis.utils" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.codeInsight" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.indices" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.base.util" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.completion.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.kotlin.highlighting.minimal" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.analysis.api.platform.interface" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.kotlinc.symbol.light.classes" level="project" />
+    <orderEntry type="library" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.problemView.ui" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.psi" level="project" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
