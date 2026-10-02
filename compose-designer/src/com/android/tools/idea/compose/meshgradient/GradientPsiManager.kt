@@ -372,8 +372,8 @@ class GradientPsiManager(private val project: Project) {
   }
 
   /**
-   * Analyzes [callExpr] for the gradient editor. For mesh gradients, this also collects the colors declared in scope, which may query the
-   * stub indexes, so this should not be called on the EDT.
+   * Analyzes [callExpr] for the gradient editor. This also collects the colors declared in scope, offered in the editor palette, which may
+   * query the stub indexes, so this should not be called on the EDT.
    */
   @RequiresReadLock
   internal fun analyze(callExpr: KtCallExpression): GradientEditorInput {
@@ -390,7 +390,7 @@ class GradientPsiManager(private val project: Project) {
       brush.release(project)
       return GradientEditorInput.Unsupported(message("gradient.editor.error.brush.colors"))
     }
-    return GradientEditorInput.Brush(brush)
+    return GradientEditorInput.Brush(brush, collectAvailableColors(callExpr))
   }
 
   /**

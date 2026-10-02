@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
-import androidx.compose.ui.graphics.Color
 import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.idea.compose.preview.message
 import com.google.common.annotations.VisibleForTesting
@@ -63,7 +62,7 @@ internal class GradientEditorDialog(private val project: Project, private val in
     title = message("gradient.editor.title")
     when (input) {
       is GradientEditorInput.Mesh -> loadMesh(input)
-      is GradientEditorInput.Brush -> loadBrush(input.brush.gradient)
+      is GradientEditorInput.Brush -> loadBrush(input)
     }
     initialMesh = if (input is GradientEditorInput.Mesh) state.meshValues() else null
     initialBrush = if (input is GradientEditorInput.Brush) state.brushValues() else null
@@ -78,52 +77,31 @@ internal class GradientEditorDialog(private val project: Project, private val in
     state.loadMesh(mesh.toGrid(), mesh.hasBicubicColor)
   }
 
-  private fun loadBrush(gradient: Gradient) {
+  private fun loadBrush(input: GradientEditorInput.Brush) {
+    val gradient = input.brush.gradient
+    state.addAvailableColors(input.availableColors)
     when (gradient) {
       is Gradient.LinearGradient -> {
         state.currentType = GradientType.LINEAR
-        populateBrushColorsAndStops(gradient.colors, gradient.colorStops)
+        state.loadColorStops(gradient.colors, gradient.colorStops)
         state.start = gradient.start
         state.end = gradient.end
         state.tileMode = gradient.tileMode
       }
       is Gradient.RadialGradient -> {
         state.currentType = GradientType.RADIAL
-        populateBrushColorsAndStops(gradient.colors, gradient.colorStops)
+        state.loadColorStops(gradient.colors, gradient.colorStops)
         state.center = gradient.center
         state.radius = gradient.radius
         state.tileMode = gradient.tileMode
       }
       is Gradient.SweepGradient -> {
         state.currentType = GradientType.SWEEP
-        populateBrushColorsAndStops(gradient.colors, gradient.colorStops)
+        state.loadColorStops(gradient.colors, gradient.colorStops)
         state.center = gradient.center
       }
     }
     state.hasDynamicOrUnresolvedValues = gradient.hasDynamicOrUnresolvedValues
-  }
-
-  private fun populateBrushColorsAndStops(colors: List<Color>, colorStops: List<Pair<Float, Color>>?) {
-    val rawColors = colorStops?.map { it.second }?.takeIf { it.isNotEmpty() } ?: colors
-    val initialColors =
-      when {
-        rawColors.size >= 2 -> rawColors
-        rawColors.size == 1 -> listOf(rawColors[0], Color.White)
-        else -> listOf(Color.Red, Color.Blue)
-      }
-    state.colors.clear()
-    state.colors.addAll(initialColors)
-    state.addAvailableColors(initialColors)
-    state.colorStops.clear()
-    colorStops?.let { stops ->
-      val safeStops =
-        when {
-          stops.size >= 2 -> stops
-          stops.size == 1 -> listOf(stops[0], Pair(1f, Color.White))
-          else -> emptyList()
-        }
-      state.colorStops.addAll(safeStops)
-    }
   }
 
   override fun createCenterPanel(): JComponent {

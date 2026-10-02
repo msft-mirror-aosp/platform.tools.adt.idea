@@ -353,7 +353,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     assertEquals(listOf(Color.Red, Color.Green, Color.Blue), dialog.state.colors.toList())
     assertEquals(3, dialog.state.colorStops.size)
 
-    dialog.state.updateColor(1, Color.Yellow)
+    dialog.state.updateStopColor(dialog.state.stops[1].id, Color.Yellow)
     dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }

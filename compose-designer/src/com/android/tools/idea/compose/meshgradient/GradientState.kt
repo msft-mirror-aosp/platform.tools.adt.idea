@@ -49,49 +49,54 @@ class GradientEditorState {
   var currentType by mutableStateOf(GradientType.MESH)
 
   // Linear/Radial/Sweep specific state
-  val colors = mutableStateListOf<Color>(Color.Red, Color.Blue)
-  val colorStops = mutableStateListOf<Pair<Float, Color>>()
+
+  /** Color stops of the Brush gradient. Either all stops have a fraction (`colorStops`) or none has (`colors`). */
+  internal var stops: List<ColorStop> by mutableStateOf(ColorStops.defaultStops())
+    private set
+
   var start by mutableStateOf(Offset.Zero)
   var end by mutableStateOf(Offset(1f, 1f))
   var center by mutableStateOf(Offset(0.5f, 0.5f))
   var radius by mutableFloatStateOf(0.5f)
   var tileMode by mutableStateOf(TileMode.Clamp)
 
-  fun addColor(color: Color) {
-    colors.add(color)
-    if (colorStops.isNotEmpty()) {
-      colorStops.add(Pair(1f, color))
-      redistributeStops()
-    }
+  /** Colors of [stops], in order. */
+  val colors: List<Color>
+    get() = stops.map { it.color }
+
+  /** `fraction to color` pairs of [stops], or an empty list when the stops have no explicit fractions. */
+  val colorStops: List<Pair<Float, Color>>
+    get() =
+      if (ColorStops.hasExplicitFractions(stops)) stops.mapNotNull { stop -> stop.fraction?.let { it to stop.color } } else emptyList()
+
+  /** Replaces the stops with the parsed [colors] or [colorStops] and adds their colors to [availableColors]. */
+  internal fun loadColorStops(colors: List<Color>, colorStops: List<Pair<Float, Color>>?) {
+    stops = ColorStops.fromParsed(colors, colorStops)
+    addAvailableColors(stops.map { it.color })
   }
 
-  fun removeColor(index: Int) {
-    if (colors.size <= 2) return
-    if (index in colors.indices) {
-      colors.removeAt(index)
-    }
-    if (colorStops.isNotEmpty() && index in colorStops.indices) {
-      colorStops.removeAt(index)
-      redistributeStops()
-    }
+  /** Adds a stop with the given [color] without moving existing stops, and returns its [ColorStop.id]. */
+  internal fun addColorStop(color: Color): Long {
+    val (index, fraction) = ColorStops.insertionPoint(stops)
+    val stop = ColorStop(color, fraction)
+    stops = stops.toMutableList().apply { add(index, stop) }
+    return stop.id
   }
 
-  fun updateColor(index: Int, newColor: Color) {
-    if (index in colors.indices) {
-      colors[index] = newColor
-    }
-    if (colorStops.isNotEmpty() && index in colorStops.indices) {
-      colorStops[index] = Pair(colorStops[index].first, newColor)
-    }
+  internal fun removeColorStop(id: Long) {
+    stops = ColorStops.remove(stops, id)
   }
 
-  private fun redistributeStops() {
-    val size = colorStops.size
-    if (size < 2) return
-    for (i in 0..<size) {
-      val fraction = i.toFloat() / (size - 1)
-      colorStops[i] = Pair(fraction, colorStops[i].second)
-    }
+  internal fun updateStopColor(id: Long, color: Color) {
+    stops = ColorStops.updateColor(stops, id, color)
+  }
+
+  internal fun updateStopFraction(id: Long, fraction: Float) {
+    stops = ColorStops.updateFraction(stops, id, fraction)
+  }
+
+  internal fun setExplicitFractions(explicit: Boolean) {
+    stops = ColorStops.withExplicitFractions(stops, explicit)
   }
 
   var rows by mutableIntStateOf(3)

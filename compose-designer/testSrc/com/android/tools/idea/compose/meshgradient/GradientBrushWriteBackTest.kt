@@ -86,6 +86,19 @@ class GradientBrushWriteBackTest {
   }
 
   @Test
+  fun paletteOffersTheColorsDeclaredInScope() {
+    val file =
+      projectRule.fixture.addFileToProject(
+        "src/test/Brushes.kt",
+        "package test\n\n$DEFAULT_IMPORTS\n\nval Accent = Color(0xFFFF4081)\n\nval brush = Brush.linearGradient(listOf(Color.Red, Color.Blue))\n",
+      ) as KtFile
+
+    withGradientEditorDialog(project, file.findCall("linearGradient")) { dialog ->
+      assertTrue("Should include Accent in the palette", Color(0xFFFF4081) in dialog.state.availableColors)
+    }
+  }
+
+  @Test
   fun okWithoutEditsLeavesTheSourceUntouched() {
     val file = addFile("Brush.linearGradient(colors = listOf(Color.Red,Color.Blue),  start = Offset.Zero)")
     val originalText = file.currentText()
@@ -125,7 +138,7 @@ class GradientBrushWriteBackTest {
       assertFalse("The dialog should stay open to show the error", dialog.isDisposed)
 
       dialog.state.start = initialStart
-      dialog.state.updateColor(1, Color.Green)
+      dialog.state.updateStopColor(dialog.state.stops[1].id, Color.Green)
       assertEquals(GradientWriteResult.Failed(message("gradient.editor.error.argument.unresolved", ARG_COLORS)), dialog.applyChanges())
     }
 
@@ -199,7 +212,7 @@ class GradientBrushWriteBackTest {
   fun onlyTheChangedColorIsReplaced() {
     val file = addFile("Brush.radialGradient(listOf(Color.Red, red, Color.Blue), radius = 10f)")
 
-    val result = edit(file, "radialGradient") { updateColor(2, Color(0xFF123456)) }
+    val result = edit(file, "radialGradient") { updateStopColor(stops[2].id, Color(0xFF123456)) }
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals("Brush.radialGradient(listOf(Color.Red, red, Color(0xFF123456)), radius = 10f)", file.brushText())
@@ -209,7 +222,7 @@ class GradientBrushWriteBackTest {
   fun editingThePlaceholderOfASingleColorListAddsTheColor() {
     val file = addFile("Brush.radialGradient(listOf(Color.Red), radius = 10f)")
 
-    val result = edit(file, "radialGradient") { updateColor(1, Color(0xFF123456)) }
+    val result = edit(file, "radialGradient") { updateStopColor(stops[1].id, Color(0xFF123456)) }
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals("Brush.radialGradient(listOf(Color.Red, Color(0xFF123456)), radius = 10f)", file.brushText())
@@ -345,7 +358,7 @@ class GradientBrushWriteBackTest {
   fun addingAVarargColorStopKeepsTheCallCompilable() {
     val file = addFile("Brush.linearGradient(0f to Color.Red, 1f to Color.Blue, start = Offset.Zero)")
 
-    val result = edit(file, "linearGradient") { addColor(Color.Blue) }
+    val result = edit(file, "linearGradient") { addColorStop(Color.Blue) }
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals(
@@ -358,7 +371,7 @@ class GradientBrushWriteBackTest {
   fun removingAVarargColorStopKeepsTheOtherStops() {
     val file = addFile("Brush.linearGradient(0f to Color.Red, 0.5f to Color.Green, 1f to Color.Blue, start = Offset.Zero)")
 
-    val result = edit(file, "linearGradient") { removeColor(1) }
+    val result = edit(file, "linearGradient") { removeColorStop(stops[1].id) }
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals("Brush.linearGradient(0f to Color.Red, 1f to Color.Blue, start = Offset.Zero)", file.brushText())
@@ -368,7 +381,7 @@ class GradientBrushWriteBackTest {
   fun addingANamedColorStopKeepsTheSpreadOperator() {
     val file = addFile("Brush.sweepGradient(colorStops = *arrayOf(0f to Color.Red, 1f to Color.Blue))")
 
-    val result = edit(file, "sweepGradient") { addColor(Color.Blue) }
+    val result = edit(file, "sweepGradient") { addColorStop(Color.Blue) }
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals(
@@ -381,10 +394,40 @@ class GradientBrushWriteBackTest {
   fun rebuiltArgumentListKeepsItsLayout() {
     val file = addFile("Brush.linearGradient(\n    0f to Color.Red,\n    1f to Color.Blue,\n)")
 
-    val result = edit(file, "linearGradient") { addColor(Color.Blue) }
+    val result = edit(file, "linearGradient") { addColorStop(Color.Blue) }
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals("Brush.linearGradient(\n    0f to Color.Red,\n    0.5f to Color(0xFF0000FF),\n    1f to Color.Blue,\n)", file.brushText())
+  }
+
+  @Test
+  fun enablingExplicitStopsWritesTheColorsAsStops() {
+    val file = addFile("Brush.linearGradient(colors = listOf(Color.Red, Color.Blue), start = Offset(1f, 2f))")
+
+    val result = edit(file, "linearGradient") { setExplicitFractions(true) }
+
+    assertEquals(GradientWriteResult.Written, result)
+    assertEquals("Brush.linearGradient(0f to Color(0xFFFF0000), 1f to Color(0xFF0000FF), start = Offset(1f, 2f))", file.brushText())
+  }
+
+  @Test
+  fun disablingExplicitStopsWritesAColorList() {
+    val file = addFile("Brush.linearGradient(0f to Color.Red, 1f to Color.Blue, start = Offset.Zero)")
+
+    val result = edit(file, "linearGradient") { setExplicitFractions(false) }
+
+    assertEquals(GradientWriteResult.Written, result)
+    assertEquals("Brush.linearGradient(colors = listOf(Color(0xFFFF0000), Color(0xFF0000FF)), start = Offset.Zero)", file.brushText())
+  }
+
+  @Test
+  fun stopMovedPastItsNeighbourIsWrittenInRenderedOrder() {
+    val file = addFile("Brush.linearGradient(0f to Color.Red, 0.5f to Color.Green, 1f to Color.Blue)")
+
+    val result = edit(file, "linearGradient") { updateStopFraction(stops[0].id, 0.75f) }
+
+    assertEquals(GradientWriteResult.Written, result)
+    assertEquals("Brush.linearGradient(0.5f to Color(0xFF00FF00), 0.75f to Color(0xFFFF0000), 1f to Color.Blue)", file.brushText())
   }
 
   @Test
@@ -397,8 +440,8 @@ class GradientBrushWriteBackTest {
 
     val result =
       edit(file, "linearGradient") {
-        updateColor(0, Color.Green)
-        updateColor(1, Color.Yellow)
+        updateStopColor(stops[0].id, Color.Green)
+        updateStopColor(stops[1].id, Color.Yellow)
         start = Offset(0.1f, 0.2f)
         end = Offset(0.8f, 0.9f)
         tileMode = TileMode.Repeated
@@ -446,7 +489,7 @@ class GradientBrushWriteBackTest {
 
     val result =
       edit(file, "linearGradient") {
-        updateColor(0, Color(0xFF123456))
+        updateStopColor(stops[0].id, Color(0xFF123456))
         start = Offset(1f, 2f)
       }
 

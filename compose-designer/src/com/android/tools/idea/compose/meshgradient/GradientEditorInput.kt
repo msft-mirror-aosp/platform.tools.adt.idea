@@ -45,8 +45,8 @@ internal sealed interface GradientEditorInput {
     override fun releasePointers(project: Project) = mesh.release(project)
   }
 
-  /** A `Brush` gradient call. */
-  class Brush(val brush: ParsedBrush) : Editable {
+  /** A `Brush` gradient call, plus the colors declared in scope that are offered in the editor palette. */
+  class Brush(val brush: ParsedBrush, val availableColors: List<Color>) : Editable {
     override fun releasePointers(project: Project) = brush.release(project)
   }
 }
