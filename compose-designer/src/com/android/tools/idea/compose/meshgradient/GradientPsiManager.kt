@@ -18,26 +18,42 @@ package com.android.tools.idea.compose.meshgradient
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.isSpecified
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.util.concurrency.annotations.RequiresReadLock
 import java.util.Locale
+import org.jetbrains.kotlin.psi.KtAnonymousInitializer
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtCatchClause
 import org.jetbrains.kotlin.psi.KtClassBody
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtDeclarationWithBody
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtForExpression
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtLambdaArgument
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNullableType
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtParenthesizedExpression
 import org.jetbrains.kotlin.psi.KtPrefixExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.psi.KtUserType
 import org.jetbrains.kotlin.psi.KtValueArgument
+import org.jetbrains.kotlin.psi.KtWhenExpression
 
 private const val FUN_MESH_PAINTER = "MeshGradientPainter"
 private const val FUN_SET_VERTEX = "setVertex"
@@ -105,6 +121,47 @@ private val DYNAMIC_STATE_MAP =
     "androidx.compose.runtime.mutableFloatStateOf" to "mutableFloatStateOf",
     "androidx.compose.runtime.mutableIntStateOf" to "mutableIntStateOf",
     "androidx.compose.runtime.mutableLongStateOf" to "mutableLongStateOf",
+  )
+
+private const val FQN_OFFSET = "androidx.compose.ui.geometry.Offset"
+private const val FQN_COLOR = "androidx.compose.ui.graphics.Color"
+private const val FQN_TILE_MODE = "androidx.compose.ui.graphics.TileMode"
+private const val CLASS_TILE_MODE = "TileMode"
+private const val FQN_COLOR_SPACES = "androidx.compose.ui.graphics.colorspace.ColorSpaces"
+private const val CLASS_COLOR_SPACES = "ColorSpaces"
+private const val COLOR_SPACE_SRGB = "Srgb"
+private const val ARG_COLOR_SPACE = "colorSpace"
+private const val FQN_REMEMBER = "androidx.compose.runtime.remember"
+private const val FUN_REMEMBER = "remember"
+private const val IMPLICIT_LAMBDA_PARAMETER = "it"
+
+/** Maximum nesting of evaluation steps, beyond which an expression is considered unresolvable. */
+private const val MAX_EVALUATION_DEPTH = 64
+
+/**
+ * Maximum number of evaluation steps of a single evaluation, beyond which an expression is considered unresolvable. This bounds the cost of
+ * declarations referencing others several times, e.g. `val a1 = a0 + a0; val a2 = a1 + a1; ...`.
+ */
+private const val MAX_EVALUATION_STEPS = 10_000
+
+/** Names of explicit property types that can't hold a [Color]. */
+private val NON_COLOR_TYPE_NAMES =
+  setOf("Boolean", "Byte", "Char", "Double", "Float", "Int", "Long", "Short", "String", "Dp", "TextUnit", "TextStyle", "Offset", "Brush")
+
+private val ARITHMETIC_OPERATORS = setOf("+", "-", "*", "/", "%")
+
+private val FLOAT_LITERAL_REGEX = Regex("""(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?[fF]?""")
+
+private val FLOAT_CONSTANTS = mapOf("POSITIVE_INFINITY" to Float.POSITIVE_INFINITY, "NEGATIVE_INFINITY" to Float.NEGATIVE_INFINITY)
+
+private val FLOAT_CONSTANT_RECEIVERS = setOf("", "Float", "kotlin.Float", "Float$SUFFIX_COMPANION", "kotlin.Float$SUFFIX_COMPANION")
+
+private val TILE_MODES =
+  mapOf(
+    TILE_MODE_CLAMP to TileMode.Clamp,
+    TILE_MODE_REPEATED to TileMode.Repeated,
+    TILE_MODE_MIRROR to TileMode.Mirror,
+    TILE_MODE_DECAL to TileMode.Decal,
   )
 
 /**
@@ -214,6 +271,7 @@ class GradientPsiManager(private val project: Project) {
   )
 
   /** Finds the first [KtCallExpression] for "MeshGradientPainter" in the file. */
+  @RequiresReadLock
   fun findMeshPainterCall(file: KtFile): KtCallExpression? {
     return SyntaxTraverser.psiTraverser(file).filter(KtCallExpression::class.java).firstOrNull { it.isValidMeshGradientCall() }
   }
@@ -424,8 +482,7 @@ class GradientPsiManager(private val project: Project) {
   }
 
   private fun parseColorStops(expr: KtExpression, onDynamic: (() -> Unit)? = null): List<Pair<Float, Color>>? {
-    val unwrapped = (expr as? KtPrefixExpression)?.takeIf { it.operationReference.text == "*" }?.baseExpression ?: expr
-    val resolved = resolveExpression(unwrapped, onDynamic)
+    val resolved = resolveExpression(expr, onDynamic)
     val call = getCallExpression(resolved) ?: return null
     val callee = call.calleeExpression?.text ?: return null
     if (callee != FUN_ARRAY_OF && !isCollectionListFunction(resolved, callee)) return null
@@ -492,14 +549,31 @@ class GradientPsiManager(private val project: Project) {
   }
 
   private fun parseTileMode(expr: KtExpression, onDynamic: (() -> Unit)? = null): TileMode? {
-    val text = resolveExpression(expr, onDynamic).text
-    return when {
-      text.endsWith(TILE_MODE_CLAMP) -> TileMode.Clamp
-      text.endsWith(TILE_MODE_REPEATED) -> TileMode.Repeated
-      text.endsWith(TILE_MODE_MIRROR) -> TileMode.Mirror
-      text.endsWith(TILE_MODE_DECAL) -> TileMode.Decal
-      else -> null
-    }
+    val ctx = EvalContext(onDynamic)
+    return ctx.withFrame { parseResolvedTileMode(resolveExpression(expr, ctx), ctx) }
+  }
+
+  /** Accepts `TileMode.X`, optionally fully qualified or aliased, or an `X` explicitly imported from `TileMode`. */
+  private fun parseResolvedTileMode(resolved: KtExpression, ctx: EvalContext): TileMode? {
+    val entryName =
+      when (resolved) {
+        is KtDotQualifiedExpression -> {
+          val receiver = resolved.receiverExpression.text.removeSuffix(SUFFIX_COMPANION)
+          if (receiver !in getSupportedNames(resolved, FQN_TILE_MODE, CLASS_TILE_MODE, ctx)) return null
+          (resolved.selectorExpression as? KtNameReferenceExpression)?.getReferencedName()
+        }
+        is KtNameReferenceExpression -> {
+          val file = resolved.containingFile as? KtFile ?: return null
+          val name = resolved.getReferencedName()
+          val importedFqName =
+            ctx.imports(file).firstOrNull { !it.isAllUnder && it.importedName?.asString() == name }?.importedFqName ?: return null
+          importedFqName.shortName().asString().takeIf {
+            importedFqName.parent().asString().removeSuffix(SUFFIX_COMPANION) == FQN_TILE_MODE
+          }
+        }
+        else -> null
+      }
+    return entryName?.let { TILE_MODES[it] }
   }
 
   /**
@@ -556,8 +630,8 @@ class GradientPsiManager(private val project: Project) {
     val rowsExpr = findArgumentExpression(callExpr, ARG_ROWS, 0) ?: return null
     val colsExpr = findArgumentExpression(callExpr, ARG_COLUMNS, 1) ?: return null
 
-    val rows = resolveExpression(rowsExpr, onDynamic).text.toIntOrNull() ?: return null
-    val cols = resolveExpression(colsExpr, onDynamic).text.toIntOrNull() ?: return null
+    val rows = parseInt(rowsExpr, onDynamic) ?: return null
+    val cols = parseInt(colsExpr, onDynamic) ?: return null
 
     val bicubicExpr = findArgumentExpression(callExpr, ARG_HAS_BICUBIC_COLOR, 2)
     val hasBicubicColor = bicubicExpr?.let { resolveExpression(it, onDynamic).text.toBooleanStrictOrNull() } ?: false
@@ -609,8 +683,8 @@ class GradientPsiManager(private val project: Project) {
 
       val rowExpr = findArgumentExpression(call, ARG_ROW, 0)
       val colExpr = findArgumentExpression(call, ARG_COLUMN, 1)
-      val row = rowExpr?.let { resolveExpression(it, onDynamic).text.toIntOrNull() }
-      val col = colExpr?.let { resolveExpression(it, onDynamic).text.toIntOrNull() }
+      val row = rowExpr?.let { parseInt(it, onDynamic) }
+      val col = colExpr?.let { parseInt(it, onDynamic) }
       if (row == null || col == null) {
         onDynamic()
         continue
@@ -665,15 +739,19 @@ class GradientPsiManager(private val project: Project) {
     return parseLong(text) != null
   }
 
-  private fun parseOffset(expr: KtExpression, onDynamic: (() -> Unit)? = null): Offset? {
-    val resolvedExpr = resolveExpression(expr, onDynamic)
-    if (resolvedExpr is KtParenthesizedExpression) {
-      val inner = resolvedExpr.expression ?: return null
-      return parseOffset(inner, onDynamic)
-    }
+  private fun parseOffset(expr: KtExpression, onDynamic: (() -> Unit)? = null): Offset? = parseOffset(expr, EvalContext(onDynamic))
+
+  private fun parseOffset(expr: KtExpression, ctx: EvalContext): Offset? = ctx.withFrame {
+    parseResolvedOffset(resolveExpression(expr, ctx), ctx)
+  }
+
+  private fun parseSpecifiedOffset(expr: KtExpression, ctx: EvalContext): Offset? =
+    parseOffset(expr, ctx)?.takeIf { it != Offset.Unspecified }
+
+  private fun parseResolvedOffset(resolvedExpr: KtExpression, ctx: EvalContext): Offset? {
     if (resolvedExpr is KtPrefixExpression) {
       val base = resolvedExpr.baseExpression ?: return null
-      val offset = parseOffset(base, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
+      val offset = parseSpecifiedOffset(base, ctx) ?: return null
       return when (resolvedExpr.operationReference.text) {
         "-" -> Offset(-offset.x, -offset.y)
         "+" -> offset
@@ -685,108 +763,164 @@ class GradientPsiManager(private val project: Project) {
       val right = resolvedExpr.right ?: return null
       return when (resolvedExpr.operationReference.text) {
         "+" -> {
-          val l = parseOffset(left, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
-          val r = parseOffset(right, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
+          val l = parseSpecifiedOffset(left, ctx) ?: return null
+          val r = parseSpecifiedOffset(right, ctx) ?: return null
           l + r
         }
         "-" -> {
-          val l = parseOffset(left, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
-          val r = parseOffset(right, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
+          val l = parseSpecifiedOffset(left, ctx) ?: return null
+          val r = parseSpecifiedOffset(right, ctx) ?: return null
           l - r
         }
         "*" -> {
-          val lOffset = parseOffset(left, onDynamic)?.takeIf { it != Offset.Unspecified }
+          val lOffset = parseSpecifiedOffset(left, ctx)
           if (lOffset != null) {
-            val rFloat = parseFloat(right, onDynamic) ?: return null
+            val rFloat = parseFloat(right, ctx) ?: return null
             lOffset * rFloat
           } else {
-            val lFloat = parseFloat(left, onDynamic) ?: return null
-            val rOffset = parseOffset(right, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
+            val lFloat = parseFloat(left, ctx) ?: return null
+            val rOffset = parseSpecifiedOffset(right, ctx) ?: return null
             rOffset * lFloat
           }
         }
         "/" -> {
-          val lOffset = parseOffset(left, onDynamic)?.takeIf { it != Offset.Unspecified } ?: return null
-          val rFloat = parseFloat(right, onDynamic) ?: return null
+          val lOffset = parseSpecifiedOffset(left, ctx) ?: return null
+          val rFloat = parseFloat(right, ctx) ?: return null
           if (rFloat == 0f) null else lOffset / rFloat
         }
         else -> null
       }
     }
 
+    val supportedNames = getSupportedNames(resolvedExpr, FQN_OFFSET, FUN_OFFSET, ctx)
     val call = getCallExpression(resolvedExpr)
     if (call != null) {
       val calleeText = getQualifiedCalleeText(resolvedExpr) ?: return null
-      val supportedNames = getSupportedNames(expr, "androidx.compose.ui.geometry.Offset", FUN_OFFSET)
       if (calleeText !in supportedNames) return null
 
       val xExpr = findArgumentExpression(call, ARG_X, 0) ?: return null
       val yExpr = findArgumentExpression(call, ARG_Y, 1) ?: return null
 
-      val x = parseFloat(xExpr, onDynamic) ?: return null
-      val y = parseFloat(yExpr, onDynamic) ?: return null
+      val x = parseFloat(xExpr, ctx) ?: return null
+      val y = parseFloat(yExpr, ctx) ?: return null
       return Offset(x, y)
     }
 
-    if (resolvedExpr is KtDotQualifiedExpression) {
-      val text = resolvedExpr.text
-      val supportedNames = getSupportedNames(expr, "androidx.compose.ui.geometry.Offset", FUN_OFFSET)
-      val prefix = supportedNames.firstOrNull { text.startsWith("$it.") }
-      if (prefix != null) {
-        return when (text.removePrefix("$prefix.")) {
-          "Zero" -> Offset.Zero
-          "Unspecified" -> Offset.Unspecified
-          "Infinite" -> Offset.Infinite
-          else -> null
-        }
+    if (resolvedExpr is KtDotQualifiedExpression && resolvedExpr.receiverExpression.text in supportedNames) {
+      return when ((resolvedExpr.selectorExpression as? KtNameReferenceExpression)?.getReferencedName()) {
+        "Zero" -> Offset.Zero
+        "Unspecified" -> Offset.Unspecified
+        "Infinite" -> Offset.Infinite
+        else -> null
       }
     }
 
     return null
   }
 
-  private fun parseFloat(expr: KtExpression, onDynamic: (() -> Unit)? = null): Float? {
-    val resolved = resolveExpression(expr, onDynamic)
-    if (resolved is KtParenthesizedExpression) {
-      val inner = resolved.expression ?: return null
-      return parseFloat(inner, onDynamic)
-    }
+  private fun parseFloat(expr: KtExpression, onDynamic: (() -> Unit)? = null): Float? = parseFloat(expr, EvalContext(onDynamic))
+
+  private fun parseFloat(expr: KtExpression, ctx: EvalContext): Float? = ctx.withFrame {
+    parseResolvedFloat(resolveExpression(expr, ctx), ctx)
+  }
+
+  private fun parseResolvedFloat(resolved: KtExpression, ctx: EvalContext): Float? {
     if (resolved is KtPrefixExpression) {
       val base = resolved.baseExpression ?: return null
       return when (resolved.operationReference.text) {
-        "-" -> parseFloat(base, onDynamic)?.let { -it }
-        "+" -> parseFloat(base, onDynamic)
+        "-" -> parseFloat(base, ctx)?.let { -it }
+        "+" -> parseFloat(base, ctx)
         else -> null
       }
     }
     if (resolved is KtBinaryExpression) {
-      val left = resolved.left ?: return null
-      val right = resolved.right ?: return null
-      val l = parseFloat(left, onDynamic) ?: return null
-      val r = parseFloat(right, onDynamic) ?: return null
-      return when (resolved.operationReference.text) {
+      // An operation between integers follows integer semantics (e.g. `1 / 2` is 0) even when used as a float.
+      parseResolvedInt(resolved, ctx)?.let {
+        return it.toFloat()
+      }
+      val operator = resolved.operationReference.text
+      if (operator !in ARITHMETIC_OPERATORS) return null
+      val l = resolved.left?.let { parseFloat(it, ctx) } ?: return null
+      val r = resolved.right?.let { parseFloat(it, ctx) } ?: return null
+      return when (operator) {
         "+" -> l + r
         "-" -> l - r
         "*" -> l * r
         "/" -> if (r == 0f) null else l / r
+        "%" -> if (r == 0f) null else l % r
         else -> null
       }
     }
-    if (resolved.text.endsWith("POSITIVE_INFINITY")) {
-      return Float.POSITIVE_INFINITY
-    }
-    if (resolved.text.endsWith("NEGATIVE_INFINITY")) {
-      return Float.NEGATIVE_INFINITY
-    }
-    return resolved.text.removeSuffix("f").removeSuffix("F").toFloatOrNull()
+    return parseFloatLiteral(resolved.text)
   }
 
-  private fun parseColor(expr: KtExpression, onDynamic: (() -> Unit)? = null): Color? {
-    val resolvedExpr = resolveExpression(expr, onDynamic)
+  /** Parses a decimal literal, such as `1`, `0.5f` or `1_000f`, or a `Float.POSITIVE_INFINITY`/`Float.NEGATIVE_INFINITY` constant. */
+  private fun parseFloatLiteral(text: String): Float? {
+    if (text.substringBeforeLast('.', "") in FLOAT_CONSTANT_RECEIVERS) {
+      FLOAT_CONSTANTS[text.substringAfterLast('.')]?.let {
+        return it
+      }
+    }
+    val clean = text.replace("_", "")
+    if (!FLOAT_LITERAL_REGEX.matches(clean)) return null
+    return clean.removeSuffix("f").removeSuffix("F").toFloatOrNull()
+  }
+
+  private fun parseInt(expr: KtExpression, onDynamic: (() -> Unit)? = null): Int? = parseInt(expr, EvalContext(onDynamic))
+
+  /**
+   * Evaluates [expr] as an `Int`, supporting literals, references to local or top-level `val`s, unary `+`/`-`, parentheses and the binary
+   * `+`, `-`, `*`, `/` and `%` operators with Kotlin integer semantics.
+   */
+  private fun parseInt(expr: KtExpression, ctx: EvalContext): Int? = ctx.withFrame { parseResolvedInt(resolveExpression(expr, ctx), ctx) }
+
+  private fun parseResolvedInt(resolved: KtExpression, ctx: EvalContext): Int? {
+    if (resolved is KtPrefixExpression) {
+      val base = resolved.baseExpression ?: return null
+      return when (resolved.operationReference.text) {
+        "-" -> parseInt(base, ctx)?.let { -it }
+        "+" -> parseInt(base, ctx)
+        else -> null
+      }
+    }
+    if (resolved is KtBinaryExpression) {
+      val operator = resolved.operationReference.text
+      if (operator !in ARITHMETIC_OPERATORS) return null
+      val l = resolved.left?.let { parseInt(it, ctx) } ?: return null
+      val r = resolved.right?.let { parseInt(it, ctx) } ?: return null
+      return when (operator) {
+        "+" -> l + r
+        "-" -> l - r
+        "*" -> l * r
+        "/" -> if (r == 0) null else l / r
+        "%" -> if (r == 0) null else l % r
+        else -> null
+      }
+    }
+    return parseIntLiteral(resolved.text)
+  }
+
+  /** Parses a decimal, hexadecimal (`0x`) or binary (`0b`) `Int` literal. `Long` (`L`) and unsigned (`u`) literals are rejected. */
+  private fun parseIntLiteral(text: String): Int? {
+    val clean = text.replace("_", "")
+    return when {
+      clean.startsWith("0x", ignoreCase = true) -> clean.substring(2).toIntOrNull(16)
+      clean.startsWith("0b", ignoreCase = true) -> clean.substring(2).toIntOrNull(2)
+      else -> clean.toIntOrNull()
+    }
+  }
+
+  private fun parseColor(expr: KtExpression, onDynamic: (() -> Unit)? = null): Color? = parseColor(expr, EvalContext(onDynamic))
+
+  private fun parseColor(expr: KtExpression, ctx: EvalContext): Color? = ctx.withFrame {
+    parseResolvedColor(resolveExpression(expr, ctx), ctx)
+  }
+
+  private fun parseResolvedColor(resolvedExpr: KtExpression, ctx: EvalContext): Color? {
+    val supportedNames = getSupportedNames(resolvedExpr, FQN_COLOR, FUN_COLOR, ctx)
     val call = getCallExpression(resolvedExpr)
     if (call != null) {
       val calleeText = getQualifiedCalleeText(resolvedExpr) ?: return null
-      val supportedNames = getSupportedNames(expr, "androidx.compose.ui.graphics.Color", FUN_COLOR)
       if (calleeText !in supportedNames) return null
 
       val args = call.valueArguments
@@ -794,7 +928,7 @@ class GradientPsiManager(private val project: Project) {
 
       if (args.size == 1) {
         val argExpr = args[0].getArgumentExpression() ?: return null
-        val resolvedArg = resolveExpression(argExpr, onDynamic)
+        val resolvedArg = resolveExpression(argExpr, ctx)
         val text = resolvedArg.text.removeSuffix(".toInt()").removeSuffix(".toLong()")
         val longValue = parseLong(text) ?: return null
         return Color(longValue)
@@ -804,23 +938,28 @@ class GradientPsiManager(private val project: Project) {
         val bExpr = findArgumentExpression(call, ARG_BLUE, 2) ?: return null
         val aExpr = findArgumentExpression(call, ARG_ALPHA, 3)
 
-        val r = parseColorComponent(rExpr, onDynamic) ?: return null
-        val g = parseColorComponent(gExpr, onDynamic) ?: return null
-        val b = parseColorComponent(bExpr, onDynamic) ?: return null
-        val a = if (aExpr != null) parseColorComponent(aExpr, onDynamic) ?: 1f else 1f
+        val r = parseColorComponent(rExpr, ctx) ?: return null
+        val g = parseColorComponent(gExpr, ctx) ?: return null
+        val b = parseColorComponent(bExpr, ctx) ?: return null
+        val a = aExpr?.let { parseColorComponent(it, ctx) ?: 1f.also { ctx.markDynamic() } } ?: 1f
+
+        // The components are interpreted as sRGB; any other color space can't be represented faithfully.
+        val colorSpaceExpr = findArgumentExpression(call, ARG_COLOR_SPACE, 4)
+        if (colorSpaceExpr != null && !isSrgbColorSpace(colorSpaceExpr, ctx)) ctx.markDynamic()
 
         return Color(r, g, b, a)
       }
-    } else if (resolvedExpr is KtDotQualifiedExpression) {
-      val text = resolvedExpr.text
-      val supportedNames = getSupportedNames(expr, "androidx.compose.ui.graphics.Color", FUN_COLOR)
-      val prefix = supportedNames.firstOrNull { text.startsWith("$it.") }
-      if (prefix != null) {
-        val colorName = text.removePrefix("$prefix.").uppercase()
-        return mapConstantColor(colorName)
-      }
+    } else if (resolvedExpr is KtDotQualifiedExpression && resolvedExpr.receiverExpression.text in supportedNames) {
+      val colorName = (resolvedExpr.selectorExpression as? KtNameReferenceExpression)?.getReferencedName() ?: return null
+      return mapConstantColor(colorName)
     }
     return null
+  }
+
+  private fun isSrgbColorSpace(expr: KtExpression, ctx: EvalContext): Boolean {
+    val resolved = ctx.withFrame { resolveExpression(expr, ctx) } as? KtDotQualifiedExpression ?: return false
+    return resolved.receiverExpression.text in getSupportedNames(resolved, FQN_COLOR_SPACES, CLASS_COLOR_SPACES, ctx) &&
+      (resolved.selectorExpression as? KtNameReferenceExpression)?.getReferencedName() == COLOR_SPACE_SRGB
   }
 
   private fun parseLong(text: String): Long? {
@@ -832,41 +971,28 @@ class GradientPsiManager(private val project: Project) {
     }
   }
 
-  private fun parseColorComponent(expr: KtExpression, onDynamic: (() -> Unit)? = null): Float? {
-    val resolved = resolveExpression(expr, onDynamic)
-    val rawText = resolved.text
-    val text = rawText.removeSuffix("f").removeSuffix("F")
-    return if (
-      text.contains(".") ||
-        rawText.endsWith("f") ||
-        rawText.endsWith("F") ||
-        resolved is KtBinaryExpression ||
-        resolved is KtPrefixExpression ||
-        resolved is KtParenthesizedExpression
-    ) {
-      // Float: 0f .. 1f
-      parseFloat(resolved, onDynamic)?.coerceIn(0f, 1f)
-    } else {
-      // Int: 0 .. 255
-      val intVal = text.toIntOrNull() ?: return null
-      (intVal.coerceIn(0, 255).toFloat() / 255f)
-    }
-  }
+  /**
+   * Parses a color channel normalized to `0..1`. Like `Color(red: Int, ...)`, `Int` channels keep their lowest 8 bits, while `Float`
+   * channels are clamped to `0..1`.
+   */
+  private fun parseColorComponent(expr: KtExpression, ctx: EvalContext): Float? =
+    parseInt(expr, ctx)?.let { (it and 0xFF) / 255f } ?: parseFloat(expr, ctx)?.coerceIn(0f, 1f)
 
   private fun mapConstantColor(name: String): Color? {
     return when (name) {
-      "BLACK" -> Color.Black
-      "DARKGRAY" -> Color.DarkGray
-      "GRAY" -> Color.Gray
-      "LIGHTGRAY" -> Color.LightGray
-      "WHITE" -> Color.White
-      "RED" -> Color.Red
-      "GREEN" -> Color.Green
-      "BLUE" -> Color.Blue
-      "YELLOW" -> Color.Yellow
-      "CYAN" -> Color.Cyan
-      "MAGENTA" -> Color.Magenta
-      "TRANSPARENT" -> Color.Transparent
+      "Black" -> Color.Black
+      "DarkGray" -> Color.DarkGray
+      "Gray" -> Color.Gray
+      "LightGray" -> Color.LightGray
+      "White" -> Color.White
+      "Red" -> Color.Red
+      "Green" -> Color.Green
+      "Blue" -> Color.Blue
+      "Yellow" -> Color.Yellow
+      "Cyan" -> Color.Cyan
+      "Magenta" -> Color.Magenta
+      "Transparent" -> Color.Transparent
+      "Unspecified" -> Color.Unspecified
       else -> null
     }
   }
@@ -992,79 +1118,59 @@ class GradientPsiManager(private val project: Project) {
     return null
   }
 
-  private fun getSupportedNames(expr: KtExpression, fqn: String, defaultName: String): List<String> {
+  private fun getSupportedNames(expr: KtExpression, fqn: String, defaultName: String, ctx: EvalContext): List<String> {
     val file = expr.containingFile as? KtFile ?: return listOf(defaultName, fqn)
-    val importDirective = file.importDirectives.firstOrNull { it.importedFqName?.asString() == fqn }
-    val alias = importDirective?.aliasName
-    return if (alias != null) {
-      listOf(alias, fqn)
-    } else {
-      listOf(defaultName, fqn)
-    }
+    val alias = ctx.imports(file).firstOrNull { it.importedFqName?.asString() == fqn }?.aliasName
+    return listOf(alias ?: defaultName, fqn)
   }
 
-  private fun isCollectionListFunction(expr: KtExpression, callee: String): Boolean {
+  private fun isCollectionListFunction(expr: KtExpression, callee: String, ctx: EvalContext? = null): Boolean {
     if (callee in COLLECTION_LIST_FUNCTIONS) return true
     val file = expr.containingFile as? KtFile ?: return false
-    val importDirective = file.importDirectives.firstOrNull { it.aliasName == callee } ?: return false
+    val imports = ctx?.imports(file) ?: file.importDirectives
+    val importDirective = imports.firstOrNull { it.aliasName == callee } ?: return false
     val fqn = importDirective.importedFqName?.asString() ?: return false
     return fqn in COLLECTION_LIST_MAP.keys
   }
 
   private fun resolveExpression(expr: KtExpression, onDynamic: (() -> Unit)? = null): KtExpression {
+    val ctx = EvalContext(onDynamic)
+    return ctx.withFrame { resolveExpression(expr, ctx) } ?: expr
+  }
+
+  /**
+   * Follows references, `remember`/state wrappers, parentheses and list indexing from [expr] until reaching an expression that can't be
+   * simplified any further, which is returned. Must be called within an [EvalContext.withFrame] of [ctx].
+   */
+  private fun resolveExpression(expr: KtExpression, ctx: EvalContext): KtExpression {
     var current = expr
     val visited = mutableSetOf<KtExpression>()
-    while (true) {
-      if (!visited.add(current)) {
-        break
-      }
-      if (current is KtParenthesizedExpression) {
-        val inner = current.expression
-        if (inner != null && inner != current) {
-          current = inner
-          continue
-        }
-      }
-      val unwrapped = unwrapRemember(current)
-      if (unwrapped != current) {
-        current = unwrapped
-        continue
-      }
-      val unwrappedDynamic = unwrapDynamicState(current, onDynamic)
-      if (unwrappedDynamic != current) {
-        current = unwrappedDynamic
-        continue
-      }
-      if (
-        current is KtDotQualifiedExpression && (current.selectorExpression as? KtSimpleNameExpression)?.getReferencedName() == ARG_VALUE
-      ) {
-        onDynamic?.invoke()
-        current = current.receiverExpression
-        continue
-      }
-
-      if (current is KtSimpleNameExpression) {
-        val resolved = resolveLocalVariable(current, onDynamic)
-        if (resolved != null && resolved != current) {
-          current = resolved
-          continue
-        }
-      }
-
-      if (current is KtArrayAccessExpression) {
-        val resolved = resolveArrayAccess(current, onDynamic)
-        if (resolved != null && resolved != current) {
-          current = resolved
-          continue
-        }
-      }
-
-      break
+    while (visited.add(current)) {
+      ProgressManager.checkCanceled()
+      current = resolveStep(current, ctx) ?: break
     }
     return current
   }
 
-  private fun unwrapDynamicState(expr: KtExpression, onDynamic: (() -> Unit)?): KtExpression {
+  /** Performs a single resolution step on [expr], or returns null if it can't be simplified. */
+  private fun resolveStep(expr: KtExpression, ctx: EvalContext): KtExpression? {
+    if (expr is KtParenthesizedExpression) return expr.expression
+    val unwrapped = unwrapRemember(expr, ctx)
+    if (unwrapped != expr) return unwrapped
+    val unwrappedDynamic = unwrapDynamicState(expr, ctx)
+    if (unwrappedDynamic != expr) return unwrappedDynamic
+    if (expr is KtDotQualifiedExpression && (expr.selectorExpression as? KtSimpleNameExpression)?.getReferencedName() == ARG_VALUE) {
+      ctx.markDynamic()
+      return expr.receiverExpression
+    }
+    return when (expr) {
+      is KtSimpleNameExpression -> resolveReference(expr, ctx)
+      is KtArrayAccessExpression -> resolveArrayAccess(expr, ctx)
+      else -> null
+    }
+  }
+
+  private fun unwrapDynamicState(expr: KtExpression, ctx: EvalContext): KtExpression {
     val call = getCallExpression(expr) ?: return expr
     val rawCallee = call.calleeExpression?.text ?: return expr
     val qualifiedCallee = getQualifiedCalleeText(expr)
@@ -1074,7 +1180,7 @@ class GradientPsiManager(private val project: Project) {
         ?: DYNAMIC_STATE_MAP.values.firstOrNull { it == rawCallee }
         ?: run {
           val file = expr.containingFile as? KtFile ?: return@run null
-          val importDirective = file.importDirectives.firstOrNull { it.aliasName == rawCallee } ?: return@run null
+          val importDirective = ctx.imports(file).firstOrNull { it.aliasName == rawCallee } ?: return@run null
           DYNAMIC_STATE_MAP[importDirective.importedFqName?.asString()]
         }
         ?: return expr
@@ -1092,83 +1198,147 @@ class GradientPsiManager(private val project: Project) {
         else -> null
       }
     if (extracted != null) {
-      onDynamic?.invoke()
+      ctx.markDynamic()
       return extracted
     }
     return expr
   }
 
-  private fun unwrapRemember(expr: KtExpression): KtExpression {
-    val call = getCallExpression(expr)
-    if (call != null) {
-      val calleeText = getQualifiedCalleeText(expr)
-      val supportedNames = getSupportedNames(expr, "androidx.compose.runtime.remember", "remember")
-      if (calleeText in supportedNames) {
-        val lambdaArg = call.valueArguments.lastOrNull() as? KtLambdaArgument
-        val body = lambdaArg?.getLambdaExpression()?.bodyExpression
-        if (body != null) {
-          val lastStatement = PsiTreeUtil.getChildrenOfType(body, KtExpression::class.java)?.lastOrNull()
-          if (lastStatement != null) {
-            return unwrapRemember(lastStatement)
-          }
-        }
-      }
-    }
-    return expr
+  private fun unwrapRemember(expr: KtExpression, ctx: EvalContext): KtExpression {
+    val call = getCallExpression(expr) ?: return expr
+    if (getQualifiedCalleeText(expr) !in getSupportedNames(expr, FQN_REMEMBER, FUN_REMEMBER, ctx)) return expr
+    val lambdaArg = call.valueArguments.lastOrNull() as? KtLambdaArgument
+    val lastStatement = lambdaArg?.getLambdaExpression()?.bodyExpression?.statements?.lastOrNull() ?: return expr
+    return unwrapRemember(lastStatement, ctx)
   }
 
-  private fun resolveLocalVariable(nameExpr: KtSimpleNameExpression, onDynamic: (() -> Unit)? = null): KtExpression? {
-    val targetName = nameExpr.getReferencedName()
-    var current: PsiElement? = nameExpr
-    while (current != null) {
-      if (current is KtBlockExpression) {
-        val properties = PsiTreeUtil.getChildrenOfType(current, KtProperty::class.java)
-        val property = properties?.lastOrNull { it.name == targetName && it.textRange.endOffset <= nameExpr.textOffset }
-        if (property != null) {
-          return property.initializer ?: property.delegateExpression?.also { onDynamic?.invoke() }
+  /**
+   * Resolves [nameExpr] to the initializer of the declaration it refers to by walking the enclosing scopes and then the imported and
+   * same-package top-level properties. Returns null, flagging the evaluation as dynamic, when the name is bound to a value only known at
+   * runtime (parameters, loop variables, destructured values) or when the referenced property is already being evaluated.
+   */
+  private fun resolveReference(nameExpr: KtSimpleNameExpression, ctx: EvalContext): KtExpression? {
+    val name = nameExpr.getReferencedName()
+    var child: PsiElement = nameExpr
+    var scope: PsiElement? = nameExpr.parent
+    while (scope != null) {
+      when (val binding = findBinding(scope, child, nameExpr, name)) {
+        is Binding.Value -> return evaluateProperty(binding.property, ctx)
+        Binding.Opaque -> {
+          ctx.markDynamic()
+          return null
         }
+        null -> Unit
       }
-      if (current is KtClassBody || current is KtFile) {
-        val declarations = (current as? KtClassBody)?.declarations ?: (current as? KtFile)?.declarations
-        val property = declarations?.firstOrNull { it is KtProperty && it.name == targetName } as? KtProperty
-        if (property != null) {
-          return property.initializer ?: property.delegateExpression?.also { onDynamic?.invoke() }
-        }
-      }
-      current = current.parent
+      if (scope is KtFile) break
+      child = scope
+      scope = scope.parent
     }
     val file = nameExpr.containingFile as? KtFile ?: return null
-    return resolveImportedOrSamePackageProperty(project, file, targetName)?.initializer
+    val property = resolveImportedOrSamePackageProperty(project, file, name) ?: return null
+    return evaluateProperty(property, ctx)
   }
 
-  private fun resolveArrayAccess(arrayAccess: KtArrayAccessExpression, onDynamic: (() -> Unit)? = null): KtExpression? {
-    val arrayExpr = arrayAccess.arrayExpression ?: return null
-    val indexExprs = arrayAccess.indexExpressions
-    if (indexExprs.size != 1) return null
-    val indexExpr = indexExprs[0]
-
-    val resolvedIndexExpr = resolveExpression(indexExpr, onDynamic)
-    val index = resolvedIndexExpr.text.toIntOrNull() ?: return null
-
-    val resolvedArray = resolveExpression(arrayExpr, onDynamic)
-
-    val call = getCallExpression(resolvedArray)
-    if (call != null) {
-      val callee = getQualifiedCalleeText(resolvedArray)
-      if (callee != null && isCollectionListFunction(resolvedArray, callee)) {
-        val args = call.valueArguments
-        if (index in args.indices) {
-          return args[index].getArgumentExpression()
+  /**
+   * Finds the declaration binding [name] in [scope], an ancestor of [nameExpr] reached through its direct [child], that is visible from
+   * [nameExpr].
+   */
+  private fun findBinding(scope: PsiElement, child: PsiElement, nameExpr: KtSimpleNameExpression, name: String): Binding? =
+    when (scope) {
+      is KtBlockExpression -> findBlockBinding(scope, nameExpr, name)
+      is KtFunctionLiteral ->
+        if (scope.hasParameterSpecification()) {
+          scope.valueParameters.findBinding(name)
+        } else {
+          // Without resolving the call, it's unknown whether the lambda has an implicit parameter, so `it` is conservatively assumed to
+          // refer to one.
+          Binding.Opaque.takeIf { name == IMPLICIT_LAMBDA_PARAMETER }
         }
+      is KtDeclarationWithBody -> scope.valueParameters.findBinding(name)
+      is KtForExpression ->
+        if (PsiTreeUtil.isAncestor(scope.body, nameExpr, false)) listOfNotNull(scope.loopParameter).findBinding(name) else null
+      is KtCatchClause ->
+        if (PsiTreeUtil.isAncestor(scope.catchBody, nameExpr, false)) listOfNotNull(scope.catchParameter).findBinding(name) else null
+      is KtWhenExpression ->
+        scope.subjectVariable?.takeIf { it.name == name && !PsiTreeUtil.isAncestor(it, nameExpr, false) }?.let { Binding.Value(it) }
+      is KtClassBody -> findClassBodyBinding(scope, child, nameExpr, name)
+      // The class body is handled above; other children (supertype list, primary constructor) see all the constructor parameters.
+      is KtClassOrObject -> if (child is KtClassBody) null else scope.primaryConstructorParameters.findBinding(name)
+      is KtFile -> findMemberBinding(scope.declarations.filterIsInstance<KtProperty>(), nameExpr, name)
+      else -> null
+    }
+
+  /**
+   * Finds the binding of [name] in a class [body], reached through its member [child]. Primary constructor parameters are visible, and
+   * shadow members, in property initializers and `init` blocks. Elsewhere, only those declared as properties (`val`/`var`) are visible.
+   * Members of the companion object are visible too, with a lower priority than the members of the class itself. Inherited members are not
+   * considered.
+   */
+  private fun findClassBodyBinding(body: KtClassBody, child: PsiElement, nameExpr: KtSimpleNameExpression, name: String): Binding? {
+    val classOrObject = body.parent as? KtClassOrObject
+    val constructorParameters = classOrObject?.primaryConstructorParameters.orEmpty()
+    val isInitializer =
+      child is KtAnonymousInitializer ||
+        (child is KtProperty &&
+          (PsiTreeUtil.isAncestor(child.initializer, nameExpr, false) || PsiTreeUtil.isAncestor(child.delegateExpression, nameExpr, false)))
+    if (isInitializer) {
+      constructorParameters.findBinding(name)?.let {
+        return it
       }
+    }
+    return findMemberBinding(body.properties, nameExpr, name)
+      ?: constructorParameters.filter { it.hasValOrVar() }.findBinding(name)
+      ?: classOrObject?.companionObjects.orEmpty().firstNotNullOfOrNull { companion ->
+        companion.body?.let { findMemberBinding(it.properties, nameExpr, name) }
+      }
+  }
+
+  /** Finds the last local declaration of [name] in [block] that precedes [nameExpr]. */
+  private fun findBlockBinding(block: KtBlockExpression, nameExpr: KtSimpleNameExpression, name: String): Binding? {
+    for (statement in block.statements.asReversed()) {
+      if (statement.textRange.endOffset > nameExpr.textOffset) continue
+      if (statement is KtProperty && statement.name == name) return Binding.Value(statement)
+      if (statement is KtDestructuringDeclaration && statement.entries.any { it.name == name }) return Binding.Opaque
     }
     return null
   }
 
+  private fun findMemberBinding(properties: List<KtProperty>, nameExpr: KtSimpleNameExpression, name: String): Binding? {
+    val property = properties.firstOrNull { it.name == name } ?: return null
+    // A member referencing itself from its own initializer has no value to evaluate.
+    return if (PsiTreeUtil.isAncestor(property, nameExpr, true)) Binding.Opaque else Binding.Value(property)
+  }
+
+  private fun List<KtParameter>.findBinding(name: String): Binding? =
+    Binding.Opaque.takeIf { any { it.name == name || it.destructuringDeclaration?.entries?.any { entry -> entry.name == name } == true } }
+
+  private fun evaluateProperty(property: KtProperty, ctx: EvalContext): KtExpression? {
+    if (!ctx.enter(property)) {
+      ctx.markDynamic()
+      return null
+    }
+    // A `var` may be reassigned after its declaration, so its initializer is only a best guess.
+    if (property.isVar) ctx.markDynamic()
+    return property.initializer ?: property.delegateExpression?.also { ctx.markDynamic() }
+  }
+
+  private fun resolveArrayAccess(arrayAccess: KtArrayAccessExpression, ctx: EvalContext): KtExpression? {
+    val arrayExpr = arrayAccess.arrayExpression ?: return null
+    val indexExpr = arrayAccess.indexExpressions.singleOrNull() ?: return null
+    val index = parseInt(indexExpr, ctx) ?: return null
+
+    val resolvedArray = resolveExpression(arrayExpr, ctx)
+    val call = getCallExpression(resolvedArray) ?: return null
+    val callee = getQualifiedCalleeText(resolvedArray) ?: return null
+    if (!isCollectionListFunction(resolvedArray, callee, ctx)) return null
+    return call.valueArguments.getOrNull(index)?.getArgumentExpression()
+  }
+
   /**
    * Collects all resolvable [Color] declarations in scope at [callExpr], including local variables in enclosing blocks, top-level
-   * properties in the current file, and top-level properties imported from the module.
+   * properties in the current file, and top-level properties imported from the module and its dependencies.
    */
+  @RequiresReadLock
   fun collectAvailableColors(callExpr: KtCallExpression): List<Color> {
     val properties = mutableListOf<KtProperty>()
     var current: PsiElement? = callExpr
@@ -1185,9 +1355,85 @@ class GradientPsiManager(private val project: Project) {
 
     val file = callExpr.containingFile as? KtFile
     if (file != null) {
-      properties.addAll(findImportedAndSamePackageProperties(project, file))
+      properties.addAll(findImportedAndSamePackageProperties(project, file).filter { mayHoldColor(it) })
     }
 
-    return properties.mapNotNull { prop -> prop.initializer?.let { parseColor(it) } }.distinct()
+    // Each property is a separate evaluation with its own step budget; only the import directives are shared.
+    val importsByFile = mutableMapOf<KtFile, List<KtImportDirective>>()
+    return properties
+      .mapNotNull { prop -> prop.initializer?.let { parseColor(it, EvalContext(onDynamic = null, importsByFile)) } }
+      .filter { it.isSpecified }
+      .distinct()
+  }
+
+  /**
+   * Returns false if [property] is explicitly typed with a type that can't be a [Color]. Only stub-backed data is accessed, so this can be
+   * used to discard candidates before loading their AST.
+   */
+  private fun mayHoldColor(property: KtProperty): Boolean {
+    val typeElement = property.typeReference?.typeElement ?: return true
+    val userType = ((typeElement as? KtNullableType)?.innerType ?: typeElement) as? KtUserType ?: return false
+    // Other type names may be aliases of Color, so only well-known types are discarded.
+    return userType.referencedName !in NON_COLOR_TYPE_NAMES
+  }
+
+  /** A declaration binding a name in some scope. */
+  private sealed interface Binding {
+    /** A property whose initializer can be statically evaluated. */
+    data class Value(val property: KtProperty) : Binding
+
+    /** A parameter, loop variable or destructured value whose value is only known at runtime. */
+    data object Opaque : Binding
+  }
+
+  /**
+   * State shared by all the steps of a single static evaluation.
+   *
+   * It tracks the properties whose initializers are being evaluated, so that self-referencing or mutually recursive declarations are
+   * reported as unresolved instead of recursing forever, bounds the evaluation depth and number of steps, and caches the import directives
+   * of each visited file in [importsByFile].
+   */
+  private class EvalContext(
+    private val onDynamic: (() -> Unit)?,
+    private val importsByFile: MutableMap<KtFile, List<KtImportDirective>> = mutableMapOf(),
+  ) {
+    private val activeProperties = mutableSetOf<KtProperty>()
+    private val frames = ArrayDeque<MutableList<KtProperty>>()
+    private var steps = 0
+
+    /** Flags the evaluated expression as depending on dynamic or unresolvable values. */
+    fun markDynamic() {
+      onDynamic?.invoke()
+    }
+
+    fun imports(file: KtFile): List<KtImportDirective> = importsByFile.getOrPut(file) { file.importDirectives }
+
+    /**
+     * Runs [block] as a nested evaluation step. Properties [enter]ed during the step stop being considered under evaluation once it
+     * completes. Returns null, flagging the evaluation as dynamic, if the maximum depth or number of steps is exceeded.
+     */
+    fun <T> withFrame(block: () -> T?): T? {
+      if (frames.size >= MAX_EVALUATION_DEPTH || ++steps > MAX_EVALUATION_STEPS) {
+        markDynamic()
+        return null
+      }
+      ProgressManager.checkCanceled()
+      val frame = mutableListOf<KtProperty>()
+      frames.addLast(frame)
+      try {
+        return block()
+      } finally {
+        frames.removeLast()
+        activeProperties.removeAll(frame)
+      }
+    }
+
+    /** Marks [property] as being evaluated. Returns false if it already is, which means its value depends on itself. */
+    fun enter(property: KtProperty): Boolean {
+      check(frames.isNotEmpty()) { "Properties can only be entered within a frame" }
+      if (!activeProperties.add(property)) return false
+      frames.last().add(property)
+      return true
+    }
   }
 }

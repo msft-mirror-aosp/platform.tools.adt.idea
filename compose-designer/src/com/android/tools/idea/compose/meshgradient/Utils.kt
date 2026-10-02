@@ -228,7 +228,7 @@ fun KtCallExpression.isValidBrushGradientCall(name: String): Boolean {
   val resolvedFqn =
     when (target) {
       is KtNamedFunction -> target.fqName?.asString()
-      is PsiMethod -> target.containingClass?.qualifiedName + "." + target.name
+      is PsiMethod -> target.containingClass?.qualifiedName?.let { "$it.${target.name}" }
       else -> null
     }
   return resolvedFqn == companionMethodFqn || resolvedFqn == methodFqn
