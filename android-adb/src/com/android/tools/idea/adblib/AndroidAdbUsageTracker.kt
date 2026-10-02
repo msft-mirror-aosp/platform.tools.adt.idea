@@ -16,10 +16,10 @@
 package com.android.tools.idea.adblib
 
 import com.android.adblib.AdbUsageTracker
-import com.android.ide.common.util.isMdnsAutoConnectTls
-import com.android.ide.common.util.isMdnsAutoConnectUnencrypted
 import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.analytics.UsageTracker
+import com.android.tools.analytics.isMdnsAutoConnectTls
+import com.android.tools.analytics.isMdnsAutoConnectUnencrypted
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.google.wireless.android.sdk.stats.AdbUsageEvent
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
