@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/src/test/java">
+      <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
+    </content>
+    <content url="file://$MODULE_DIR$/src/test/resources">
+      <sourceFolder url="file://$MODULE_DIR$/src/test/resources" type="java-test-resource" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.kotlin" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.common" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.layoutlib-api" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.ninepatch" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.sdk-common" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.sdklib" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.model" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.observable" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
+    <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
+    <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.platform.images" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.webp" level="project" />
+    <orderEntry type="library" scope="TEST" name="truth" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.testutils" scope="TEST" />
+  </component>
+  <component name="TestModuleProperties" production-module="intellij.android.adt.ui" />
+</module>

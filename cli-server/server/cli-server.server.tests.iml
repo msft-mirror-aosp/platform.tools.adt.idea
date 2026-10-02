@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/testSrc">
+      <sourceFolder url="file://$MODULE_DIR$/testSrc" isTestSource="true" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.grpc" level="project" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="cli-server.server" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="protobuf-kotlin" level="project" />
+    <orderEntry type="module-library" scope="TEST">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/adt/idea/cli-server/server/proto/studio_cli_service_kt_proto.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module" module-name="android.sdktools.common" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
+    <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
+    <orderEntry type="library" scope="TEST" name="truth" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito" level="project" />
+  </component>
+  <component name="TestModuleProperties" production-module="cli-server.server" />
+</module>

@@ -6,21 +6,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.app-quality-insights.api.iml"],
     resources = ["resources"],
-    test_class = "com.android.tools.idea.insights.InsightsApiTestSuite",
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "@intellij//:intellij.platform.vcs.impl",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
-        "//tools/adt/idea/.idea/libraries:kotlin-test",
-        "//tools/vendor/google/login:google-login.tests",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -39,4 +24,42 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "@intellij//:intellij.java.execution",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.app-quality-insights.api.tests",
+    iml_files = ["intellij.android.app-quality-insights.api.tests.iml"],
+    test_class = "com.android.tools.idea.insights.InsightsApiTestSuite",
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
+        "@intellij//:intellij-sdk",
+        "//tools/base/flags:studio.android.sdktools.flags",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/vendor/google/login:google-login",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api",
+        "@intellij//:intellij.platform.vcs.dvcs",
+        "@intellij//:intellij.platform.vcs.dvcs.impl",
+        "@intellij//:intellij.libraries.grpc",
+        "@intellij//:intellij.libraries.grpc.netty.shaded",
+        "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "@intellij//:intellij.java.execution",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "@intellij//:intellij.platform.vcs.impl",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
+        "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/vendor/google/login:google-login.tests",
+    ],
+    test_friends = ["//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

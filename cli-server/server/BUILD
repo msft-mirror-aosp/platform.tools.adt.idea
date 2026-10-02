@@ -7,13 +7,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["cli-server.server.iml"],
     resources = ["resources"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     exports = ["//tools/adt/idea/cli-server/server:studio_cli_service_kt_proto"],
     # do not sort: must match IML order
@@ -27,6 +20,30 @@ iml_module(
         "@intellij//:intellij.libraries.grpc.netty.shaded",
         "//tools/adt/idea/android-common:intellij.android.common",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "cli-server.server.tests",
+    iml_files = ["cli-server.server.tests.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/base/flags:studio.android.sdktools.flags",
+        "@intellij//:intellij-sdk",
+        "@intellij//:intellij.libraries.grpc",
+        "//tools/adt/idea/cli-server/server:cli-server.server",
+        "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
+        "//tools/adt/idea/cli-server/server:studio_cli_service_kt_proto",
+        "//tools/base/common:studio.android.sdktools.common",
+        "@intellij//:intellij.libraries.grpc.netty.shaded",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:mockito",
+    ],
+    test_friends = ["//tools/adt/idea/cli-server/server:cli-server.server"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )
 
 # managed by go/iml_to_build

@@ -5,17 +5,32 @@ load("//tools/base/bazel:bazel.bzl", "iml_module")
 iml_module(
     name = "memory-usage",
     srcs = ["src/main/java"],
-    enable_tests = False,
     iml_files = ["memory-usage.iml"],
     jvm_target = "8",
-    test_deps = ["//tools/adt/idea/.idea/libraries:junit4"],
-    test_srcs = ["src/test/java"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:com.intellij.java",
         "@intellij//:intellij-sdk",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "memory-usage.tests",
+    enable_tests = False,
+    iml_files = ["memory-usage.tests.iml"],
+    jvm_target = "8",
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/memory-usage",
+        "@intellij//:com.intellij.java",
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/.idea/libraries:junit4",
+    ],
+    test_friends = ["//tools/adt/idea/memory-usage"],
+    test_srcs = ["src/test/java"],
+    visibility = ["//visibility:public"],
 )
 
 java_test(
@@ -25,7 +40,7 @@ java_test(
     jvm_flags = ["-agentpath:$(location //tools/adt/idea/memory-usage/src/main/native:liblightweight_heap_traverse)"],
     test_class = "com.android.tools.memory.usage.LightweightHeapTraverseTest",
     runtime_deps = [
-        ":memory-usage_testlib",
+        ":memory-usage.tests_testlib",
         "//tools/base/annotations",
         "//tools/base/common:tools.common",
         "//tools/base/testutils:tools.testutils",

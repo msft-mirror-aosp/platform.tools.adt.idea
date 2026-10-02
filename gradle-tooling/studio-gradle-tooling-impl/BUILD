@@ -8,12 +8,6 @@ iml_module(
     jvm_target = "8",
     resources = ["resources"],
     tags = ["noci:studio-win"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:equalsverifier",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -23,4 +17,26 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:javax-inject",
         "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-api:intellij.android.gradle-tooling.api",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.gradle-tooling.impl.tests",
+    iml_files = ["intellij.android.gradle-tooling.impl.tests.iml"],
+    jvm_target = "8",
+    tags = ["noci:studio-win"],
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "@intellij//:com.intellij.gradle",
+        "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl",
+        "//tools/adt/idea/.idea/libraries:javax-inject",
+        "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-api:intellij.android.gradle-tooling.api",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:equalsverifier",
+    ],
+    test_friends = ["//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

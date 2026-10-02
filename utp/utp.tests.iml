@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/testSrc">
+      <sourceFolder url="file://$MODULE_DIR$/testSrc" isTestSource="true" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="utp" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.gradle" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
+    <orderEntry type="module-library" scope="TEST">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../bazel-bin/tools/base/android-test/android-test-engine-result-listener/libstudio.android-test-engine-result-listener-proto.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" scope="TEST" name="studio-proto" level="project" />
+    <orderEntry type="library" scope="TEST" name="test-result-proto" level="project" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito" level="project" />
+    <orderEntry type="library" scope="TEST" name="truth" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+  </component>
+  <component name="TestModuleProperties" production-module="utp" />
+</module>

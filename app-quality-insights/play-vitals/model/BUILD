@@ -7,14 +7,6 @@ iml_module(
     name = "intellij.android.app-quality-insights.play-vitals.model",
     srcs = ["src"],
     iml_files = ["intellij.android.app-quality-insights.play-vitals.model.iml"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
-        "//tools/base/studio-grpc-testutils:studio.studio-grpc-testutils",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -25,6 +17,29 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.app-quality-insights.play-vitals.model.tests",
+    iml_files = ["intellij.android.app-quality-insights.play-vitals.model.tests.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model",
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
+        "//tools/adt/idea/app-quality-insights/play-vitals/model:play_vitals_kt_proto",
+        "@intellij//:intellij.libraries.grpc",
+        "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
+        "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "//tools/base/studio-grpc-testutils:studio.studio-grpc-testutils",
+    ],
+    test_friends = ["//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )
 
 # managed by go/iml_to_build

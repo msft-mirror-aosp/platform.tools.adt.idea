@@ -18,25 +18,6 @@ iml_module(
     tags = [
         "noci:studio-win",
     ],
-    test_class = "com.android.tools.profilers.ProfilersTestSuite",
-    test_data = [
-        ":test_data",
-        "//prebuilts/tools:simpleperf",
-    ],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:kotlin-test",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/transport-database:intellij.android.transportDatabase",
-        "//tools/base/perf-logger:studio.perf-logger",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-    ],
-    test_srcs = ["testSrc"],
-    test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -72,6 +53,66 @@ iml_module(
     ],
 )
 
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.profilers.tests",
+    iml_files = ["intellij.android.profilers.tests.iml"],
+    tags = [
+        "noci:studio-win",
+    ],
+    test_class = "com.android.tools.profilers.ProfilersTestSuite",
+    test_data = [
+        ":test_data",
+        "//prebuilts/tools:simpleperf",
+    ],
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "//tools/adt/idea/profilers:intellij.android.profilers",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
+        "//tools/base/perflib:studio.android.sdktools.perflib",
+        "//tools/base/common:studio.android.sdktools.common",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/profilers-atrace:intellij.android.profilers.atrace",
+        "//tools/base/leakcanarylib:studio.android.sdktools.leakcanarylib",
+        "//prebuilts/tools/common/m2:shark-2.14",
+        "//prebuilts/tools/common/m2:shark-android-2.14",
+        "//prebuilts/tools/common/m2:shark-graph-2.14",
+        "//prebuilts/tools/common/m2:shark-hprof-2.14",
+        "//prebuilts/tools/common/m2:shark-log-2.14",
+        "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
+        "//tools/adt/idea/android-transport:intellij.android.transport",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/.idea/libraries:studio-grpc",
+        "//tools/adt/idea/.idea/libraries:studio-proto",
+        "//tools/adt/idea/.idea/libraries:perfetto-proto",
+        "//tools/adt/idea/profilers:traceprocessor-proto",
+        "//tools/adt/idea/.idea/libraries:transport-proto",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/.idea/libraries:asm-tools",
+        "//tools/adt/idea/inspectors-common/api:intellij.android.inspectors-common.api",
+        "//tools/adt/idea/codenavigation",
+        "//tools/analytics-library/shared:analytics-shared",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/transport-database:intellij.android.transportDatabase",
+        "//tools/base/perf-logger:studio.perf-logger",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+    ],
+    test_friends = ["//tools/adt/idea/profilers:intellij.android.profilers"],
+    test_srcs = ["testSrc"],
+    test_timeout = "long",
+    visibility = ["//visibility:public"],
+)
+
 kotlin_test(
     name = "intellij.android.profilers.performance",
     srcs = glob([
@@ -82,13 +123,13 @@ kotlin_test(
     test_class = "com.android.testutils.JarTestSuite",
     deps = [
         ":intellij.android.profilers",
-        ":intellij.android.profilers_testlib",
+        ":intellij.android.profilers.tests_testlib",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
-        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model_testlib",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests_testlib",
         "//tools/adt/idea/android-transport:intellij.android.transport",
-        "//tools/adt/idea/android-transport:intellij.android.transport_testlib",
+        "//tools/adt/idea/android-transport:intellij.android.transport.tests_testlib",
         "//tools/adt/idea/transport-database:intellij.android.transportDatabase",
-        "//tools/adt/idea/transport-database:intellij.android.transportDatabase_testlib",
+        "//tools/adt/idea/transport-database:intellij.android.transportDatabase.tests_testlib",
         "//tools/base/bazel:studio-grpc",
         "//tools/base/bazel:studio-proto",
         "//tools/base/perf-logger:studio.perf-logger_testlib",

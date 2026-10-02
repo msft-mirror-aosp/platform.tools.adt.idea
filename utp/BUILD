@@ -8,15 +8,6 @@ iml_module(
     iml_files = ["utp.iml"],
     lint_enabled = False,  # List can't handle addGradleAndroidTestListener.gradle from resources
     resources = ["resources"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -27,6 +18,30 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/.idea/libraries:test-result-proto",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "utp.tests",
+    iml_files = ["utp.tests.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/utp",
+        "@intellij//:com.intellij.gradle",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "//tools/adt/idea/utp:libstudio.android-test-engine-result-listener-proto",
+        "//tools/adt/idea/.idea/libraries:studio-proto",
+        "//tools/adt/idea/.idea/libraries:test-result-proto",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+    ],
+    test_friends = ["//tools/adt/idea/utp"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )
 
 # Export addGradleAndroidTestListener.gradle init script for integration tests.

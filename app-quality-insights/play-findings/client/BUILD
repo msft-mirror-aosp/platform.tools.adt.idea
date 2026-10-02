@@ -13,17 +13,6 @@ iml_module(
     name = "intellij.android.app-quality-insights.play-findings.client",
     srcs = ["src"],
     iml_files = ["intellij.android.app-quality-insights.play-findings.client.iml"],
-    test_class = "com.android.tools.idea.findings.client.PlayFindingsClientTestSuite",
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -38,4 +27,33 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:protobuf-java-util",
         "@intellij//:intellij.libraries.grpc",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.app-quality-insights.play-findings.client.tests",
+    iml_files = ["intellij.android.app-quality-insights.play-findings.client.tests.iml"],
+    test_class = "com.android.tools.idea.findings.client.PlayFindingsClientTestSuite",
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/app-quality-insights/play-findings/client:intellij.android.app-quality-insights.play-findings.client",
+        "@intellij//:intellij-sdk",
+        "//tools/base/flags:studio.android.sdktools.flags",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "//tools/adt/idea/app-quality-insights/play-findings/client:play_findings_proto",
+        "//tools/vendor/google/play-client/findings:google-play-client-findings",
+        "//tools/vendor/google/login:google-login",
+        "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
+        "//tools/adt/idea/.idea/libraries:protobuf-java-util",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+    ],
+    test_friends = ["//tools/adt/idea/app-quality-insights/play-findings/client:intellij.android.app-quality-insights.play-findings.client"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

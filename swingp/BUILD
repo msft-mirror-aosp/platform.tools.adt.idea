@@ -13,19 +13,30 @@ iml_module(
         "--add-exports",
         "java.desktop/sun.awt.image=ALL-UNNAMED",
     ],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.adt.swingp.tests",
+    iml_files = ["intellij.android.adt.swingp.tests.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "//tools/adt/idea/swingp:intellij.android.adt.swingp",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:mockito",
+    ],
+    test_friends = ["//tools/adt/idea/swingp:intellij.android.adt.swingp"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )
 
 java_binary(

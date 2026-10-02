@@ -11,9 +11,20 @@ iml_module(
     ],
     iml_files = ["intellij.android.ml-api.iml"],
     resources = ["src/resources"],
+    visibility = ["//visibility:public"],
+    # do not sort: must match IML order
+    deps = ["@intellij//:intellij-sdk"],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.ml-api.tests",
+    iml_files = ["intellij.android.ml-api.tests.iml"],
     test_class = "com.android.tools.idea.gemini.GeminiPluginApiTestSuite",
     # do not sort: must match IML order
     test_deps = [
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "@intellij//:test-framework",
         "//tools/adt/idea/.idea/libraries:truth",
@@ -24,8 +35,7 @@ iml_module(
         "@intellij//:com.intellij.platform.images",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
     ],
+    test_friends = ["//tools/adt/idea/ml-api:intellij.android.ml-api"],
     test_srcs = ["src/testSrc/kotlin"],
     visibility = ["//visibility:public"],
-    # do not sort: must match IML order
-    deps = ["@intellij//:intellij-sdk"],
 )

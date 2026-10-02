@@ -6,27 +6,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.gmd-code-completion.iml"],
     resources = ["resources"],
-    test_class = "com.android.gmdcodecompletion.GmdCodeCompletionTestSuite",
-    test_data = [
-        "//prebuilts/studio/sdk:platforms/latest-preview",
-        "//tools/adt/idea/android/testData",
-    ],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/.idea/libraries:truth",
-    ],
-    test_srcs = ["testSrc"],
-    test_tags = [
-        "block-network",
-        "noci:studio-win",
-    ],
-    test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -52,4 +31,55 @@ iml_module(
         "//tools/adt/idea/analytics",
         "//tools/adt/idea/.idea/libraries:google-api-client",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.gmd-code-completion.tests",
+    iml_files = ["intellij.android.gmd-code-completion.tests.iml"],
+    test_class = "com.android.gmdcodecompletion.GmdCodeCompletionTestSuite",
+    test_data = [
+        "//prebuilts/studio/sdk:platforms/latest-preview",
+        "//tools/adt/idea/android/testData",
+    ],
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
+        "//prebuilts/tools/common/m2:google_api_services_testing",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib",
+        "//tools/adt/idea/android:intellij.android.core",
+        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
+        "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:org.intellij.groovy",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
+        "//tools/vendor/google/login:google-login",
+        "//tools/vendor/google/login/onboarding:login.onboarding",
+        "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
+        "//tools/vendor/google/firebase",
+        "//tools/adt/idea/analytics",
+        "//tools/adt/idea/.idea/libraries:google-api-client",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/.idea/libraries:truth",
+    ],
+    test_friends = ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"],
+    test_srcs = ["testSrc"],
+    test_tags = [
+        "block-network",
+        "noci:studio-win",
+    ],
+    test_timeout = "long",
+    visibility = ["//visibility:public"],
 )

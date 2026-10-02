@@ -5,16 +5,6 @@ iml_module(
     name = "intellij.android.inspectors-common.api",
     srcs = ["src"],
     iml_files = ["intellij.android.inspectors-common.api.iml"],
-    test_class = "com.android.tools.inspectors.common.api.InspectorsCommonApiTestSuite",
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -23,4 +13,27 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/codenavigation",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.inspectors-common.api.tests",
+    iml_files = ["intellij.android.inspectors-common.api.tests.iml"],
+    test_class = "com.android.tools.inspectors.common.api.InspectorsCommonApiTestSuite",
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/inspectors-common/api:intellij.android.inspectors-common.api",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
+        "//tools/adt/idea/codenavigation",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
+    ],
+    test_friends = ["//tools/adt/idea/inspectors-common/api:intellij.android.inspectors-common.api"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

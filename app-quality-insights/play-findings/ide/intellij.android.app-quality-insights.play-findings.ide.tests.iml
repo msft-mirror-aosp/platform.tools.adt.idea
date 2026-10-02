@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/testSrc">
+      <sourceFolder url="file://$MODULE_DIR$/testSrc" isTestSource="true" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.play-findings.client" scope="TEST" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.play-findings.ide" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.java" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-org.jetbrains.kotlin" level="project" />
+    <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.api" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.ui" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.ide" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.client" scope="TEST" />
+    <orderEntry type="module" module-name="google-login" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
+    <orderEntry type="library" scope="TEST" name="truth" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.testutils" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
+  </component>
+  <component name="TestModuleProperties" production-module="intellij.android.app-quality-insights.play-findings.ide" />
+</module>
