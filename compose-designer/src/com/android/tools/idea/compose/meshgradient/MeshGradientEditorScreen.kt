@@ -221,7 +221,6 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
           hasBicubicColor = state.hasBicubicColor,
           showPoints = state.showPoints,
           constrainEdgePoints = state.constrainEdgePoints,
-          onTogglePoints = { state.showPoints = !state.showPoints },
           onPointDrag = { row, col, offset -> state.updateMeshPoint(row, col, offset) },
           onPointClick = { row, col -> showColorPickerForVertex = Pair(row, col) },
         )
