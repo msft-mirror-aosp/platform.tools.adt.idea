@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tools.idea.compose.meshgradient
+package com.android.tools.idea.compose.meshgradient.impl
 
 import androidx.annotation.IntRange
 import androidx.compose.runtime.annotation.RememberInComposition
@@ -24,13 +24,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
 
-// Taken from compose framework
+// Forked from androidx-main (commit 080d2b3e532):
+// compose/ui/ui-graphics/src/commonMain/kotlin/androidx/compose/ui/graphics/MeshGradient.kt
+// Delete this fork once the Compose version bundled with the IDE ships MeshGradientPainter.
+// Divergences from upstream: the API is internal to this module, and the dimensions are validated by MeshGradientConfig only.
+
 /**
  * A scope for configuring a mesh gradient.
  *
  * Use this scope to set the properties (position, color, and control points) of each vertex in the mesh grid.
  */
-sealed interface MeshGradientScope {
+internal sealed interface MeshGradientScope {
 
   /** The number of patches along the vertical axis. */
   val rows: Int
@@ -76,7 +80,10 @@ sealed interface MeshGradientScope {
  * control point is [Offset.Unspecified]. If a control point is [Offset.Unspecified], the renderer automatically infers a tangent based on
  * the neighboring vertices to ensure G1 continuity (smooth transitions) across patches.
  *
- * @sample androidx.compose.ui.graphics.samples.MeshGradientPainterSample
+ * **Color Interpolation:** Colors are interpolated in the Oklab color space with unpremultiplied alpha, matching the upstream Compose
+ * implementation. As a consequence, fading towards [Color.Transparent] (transparent black) darkens the color along the way; fade towards a
+ * transparent version of the same color instead to avoid dark halos.
+ *
  * @param rows The number of patches along the vertical axis. Must be at least 1.
  * @param columns The number of patches along the horizontal axis. Must be at least 1.
  * @param hasBicubicColor When true, uses Catmull-Rom interpolation for colors, resulting in smoother transitions across patch boundaries
@@ -85,7 +92,7 @@ sealed interface MeshGradientScope {
  *   is executed in a [DrawScope] and hence can observe reads to any mutable state. Any unconfigured vertex will have a default position of
  *   [Offset.Zero] and a default color of [Color.Transparent].
  */
-class MeshGradientPainter
+internal class MeshGradientPainter
 @RememberInComposition
 constructor(
   @param:IntRange(from = 1) private val rows: Int,
@@ -93,10 +100,6 @@ constructor(
   private val hasBicubicColor: Boolean = false,
   private val block: MeshGradientScope.() -> Unit,
 ) : Painter() {
-  init {
-    require(rows > 0 && columns > 0) { "Rows and Columns must be greater than 0. rows: $rows, columns: $columns" }
-  }
-
   private val gradientConfig = MeshGradientConfig(rows, columns, hasBicubicColor)
   private val gradientRenderer = MeshGradientRenderer()
 

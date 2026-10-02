@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-package com.android.tools.idea.compose.meshgradient
+package com.android.tools.idea.compose.meshgradient.impl
 
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
-// Taken from Compose framework
+// Forked from androidx-main (commit 080d2b3e532):
+// compose/ui/ui-graphics/src/commonMain/kotlin/androidx/compose/ui/graphics/MeshGradientTessellation.kt
+// Divergences from upstream: none besides documentation.
+
 private const val MinSubdivision = 4
 private const val MaxSubdivision = 64
 private const val TargetPxPerSegment = 8f
@@ -35,8 +38,11 @@ private const val TargetPxPerSegment = 8f
 internal fun meshGradientPointIndex(row: Int, col: Int, columns: Int): Int = row * (columns + 1) + col
 
 /**
- * Dynamically calculates the number of subdivisions (segments) for the mesh grid based on the physical size of the largest patch. This is
- * to avoid over tessellations when a higher LOD is not necessarily required.
+ * Dynamically calculates the tessellation level of every patch based on the physical size of the largest patch. This is to avoid over
+ * tessellations when a higher LOD is not necessarily required.
+ *
+ * The result holds the number of vertices along the horizontal (U) and vertical (V) axes of a patch, which is one more than the number of
+ * segments, each in the range [MinSubdivision]..[MaxSubdivision].
  *
  * @param rows The number of rows in the mesh.
  * @param columns The number of columns in the mesh.

@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-package com.android.tools.idea.compose.meshgradient
+package com.android.tools.idea.compose.meshgradient.impl
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import kotlin.jvm.JvmName
 
-// Taken from Compose framework
+// Forked from androidx-main (commit 080d2b3e532):
+// compose/ui/ui-graphics/src/commonMain/kotlin/androidx/compose/ui/graphics/MeshGradientConfig.kt
+// Divergences from upstream: rows and columns are validated before the vertex arrays are allocated, and inferred tangents use exactly
+// 1/3 of the distance to the neighbor instead of 0.33.
+
 /**
  * Configuration for a mesh gradient. Use [configure] to set up this MeshGradient using a [MeshGradientScope] lambda.
  *
@@ -33,7 +36,11 @@ import kotlin.jvm.JvmName
  * @see MeshGradientScope
  * @see MeshGradientRenderer
  */
-internal class MeshGradientConfig(val rows: Int, val columns: Int, @get:JvmName("hasBicubicColor") var hasBicubicColor: Boolean = false) {
+internal class MeshGradientConfig(val rows: Int, val columns: Int, val hasBicubicColor: Boolean = false) {
+
+  init {
+    require(rows > 0 && columns > 0) { "Rows and Columns must be greater than 0. rows: $rows, columns: $columns" }
+  }
 
   private val gradientScopeImpl = MeshGradientScopeImpl(rows, columns)
 
@@ -54,10 +61,6 @@ internal class MeshGradientConfig(val rows: Int, val columns: Int, @get:JvmName(
 
   val bottomBezierOffsets: FloatArray
     get() = gradientScopeImpl.bottomBezierOffsets
-
-  init {
-    require(rows > 0 && columns > 0) { "Rows and Columns must be greater than 0. rows: $rows, columns: $columns" }
-  }
 
   /**
    * Uses the provided [MeshGradientScope] to configure the mesh gradient. Any bezier offset that is [Offset.Unspecified] will be inferred
@@ -99,7 +102,7 @@ internal class MeshGradientConfig(val rows: Int, val columns: Int, @get:JvmName(
         val rightNeighborIndex = if (column < columns) (row * columnsPlusOne + column + 1) * 2 else index
         val leftNeighbor = gradientScopeImpl.positions.getOffset(leftNeighborIndex)
         val rightNeighbor = gradientScopeImpl.positions.getOffset(rightNeighborIndex)
-        val horizontalVector = (rightNeighbor - leftNeighbor).normalized() * 0.33f
+        val horizontalVector = (rightNeighbor - leftNeighbor).normalized() * (1f / 3f)
 
         val currentLeftBezierOffset = gradientScopeImpl.leftBezierOffsets.getOffset(index)
         if (currentLeftBezierOffset.isUnspecified) {
@@ -119,7 +122,7 @@ internal class MeshGradientConfig(val rows: Int, val columns: Int, @get:JvmName(
         val bottomNeighborIndex = if (row < rows) ((row + 1) * columnsPlusOne + column) * 2 else index
         val topNeighbor = gradientScopeImpl.positions.getOffset(topNeighborIndex)
         val bottomNeighbor = gradientScopeImpl.positions.getOffset(bottomNeighborIndex)
-        val verticalVector = (bottomNeighbor - topNeighbor).normalized() * 0.33f
+        val verticalVector = (bottomNeighbor - topNeighbor).normalized() * (1f / 3f)
 
         val currentTopBezierOffset = gradientScopeImpl.topBezierOffsets.getOffset(index)
 

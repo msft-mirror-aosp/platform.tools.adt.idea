@@ -14,16 +14,31 @@
  * limitations under the License.
  */
 
-package com.android.tools.idea.compose.meshgradient
+package com.android.tools.idea.compose.meshgradient.impl
 
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.skiaCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.util.lerp
 import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.skia.BlendMode
+import org.jetbrains.skia.Paint
+import org.jetbrains.skia.VertexMode
+
+// Forked from androidx-main (commit 080d2b3e532):
+// compose/ui/ui-graphics/src/commonMain/kotlin/androidx/compose/ui/graphics/BaseMeshGradientRenderer.kt,
+// DefaultMeshGradientRenderer.kt and MeshGradientRenderer.kt.
+// Divergences from upstream:
+// - A single renderer class replaces the MeshGradientRenderer interface, the BaseMeshGradientRenderer backend base class (and its
+//   Android pre-Q colors buffer hook) and DefaultMeshGradientRenderer.
+// - Triangles are drawn straight from the reused primitive buffers through the Skia canvas, instead of boxing every vertex into a new
+//   Compose Vertices object, and all patches share one buffer and draw call as far as 16-bit indices allow, instead of one per patch.
+// - A check guards that every vertex of a patch is addressable by the 16-bit indices.
+// - The vertical pass of the bicubic color interpolation clamps to the Oklab ranges, where upstream can throw from Color().
+// - Bilinear colors are interpolated in Oklab floats, instead of with nested lerp(Color, Color) that quantizes to 8-bit sRGB.
 
 /** Number of vertices that a single draw call can address with its 16-bit (signed) index buffer. */
 private const val MaxVerticesPerDraw = Short.MAX_VALUE + 1
@@ -39,15 +54,24 @@ private val OklabMaxB = ColorSpaces.Oklab.getMaxValue(2)
 private val OklabChannelMinValues = floatArrayOf(OklabMinL, OklabMinA, OklabMinB, 0f)
 private val OklabChannelMaxValues = floatArrayOf(OklabMaxL, OklabMaxA, OklabMaxB, 1f)
 
-// Taken from compose framework
 /**
- * [MeshGradientRenderer] that tessellates a mesh gradient into a triangle mesh.
+ * A renderer responsible for tessellating and drawing a 2D mesh gradient.
  *
- * All of the tessellation math (Bezier surface evaluation, Catmull-Rom / bilinear color interpolation, adaptive subdivision and buffer
- * management) lives here. The patches are tessellated into vertex and index buffers that are reused across frames, and are drawn in as few
- * [drawTriangles] calls as the 16-bit index buffer allows (a single one unless the mesh is both large and finely subdivided).
+ * A mesh gradient is defined by a grid of vertices, where each vertex has a position, color, and four optional Bezier control points
+ * (tangents) that define the curvature of the edges connecting neighboring vertices. Colors can be interpolated using either bilinear or
+ * bicubic interpolation.
+ *
+ * Each patch is tessellated into a triangle mesh (Bezier surface evaluation, Catmull-Rom / bilinear color interpolation and adaptive
+ * subdivision), which is drawn through the Skia canvas backing the Compose canvas. The renderer is stateful: it keeps its vertex, color and
+ * index buffers across frames, only reallocating them when the tessellation level or the number of patches per draw call changes, and draws
+ * all patches in as few calls as the 16-bit index buffer allows (a single one unless the mesh is both large and finely subdivided).
+ *
+ * @see MeshGradientConfig
  */
-internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
+internal class MeshGradientRenderer {
+
+  // Created lazily since Skia objects load the Skiko native library, which tessellation alone does not need.
+  private val paint by lazy(LazyThreadSafetyMode.NONE) { Paint() }
 
   private var lastSubdivisionU: Int = -1
   private var lastSubdivisionV: Int = -1
@@ -74,25 +98,22 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
   private val okLabPatchColors = FloatArray(64)
   private val controlPoints = FloatArray(32)
 
-  /**
-   * Draws a batch of the tessellated triangle mesh. This is the only part of the render pipeline that differs between backends.
-   *
-   * @param canvas The canvas to draw into.
-   * @param surfacePositions Flattened (x, y) vertex positions.
-   * @param surfaceColors Per-vertex ARGB colors, one per (x, y) pair in [surfacePositions].
-   * @param indices Triangle indices into the vertex arrays.
-   */
-  protected abstract fun drawTriangles(canvas: Canvas, surfacePositions: FloatArray, surfaceColors: IntArray, indices: ShortArray)
-
-  /**
-   * Allocates the per-vertex color buffer for [vertexCount] vertices. Backends that need a different layout (e.g. Android pre-Q) may
-   * override this.
-   */
-  protected open fun createColorsBuffer(vertexCount: Int): IntArray = IntArray(vertexCount)
-
-  override fun DrawScope.draw(config: MeshGradientConfig) {
-    val canvas = drawContext.canvas
-    tessellate(config, size) { positions, colors, indices -> drawTriangles(canvas, positions, colors, indices) }
+  /** Renders the mesh gradient defined by [config] onto this [DrawScope]. */
+  fun DrawScope.draw(config: MeshGradientConfig) {
+    if (size.isEmpty()) return
+    val canvas = drawContext.canvas.skiaCanvas
+    tessellate(config, size) { positions, colors, indices ->
+      canvas.drawVertices(
+        vertexMode = VertexMode.TRIANGLES,
+        positions = positions,
+        colors = colors,
+        texCoords = null,
+        indices = indices,
+        // Use the vertex colors as they are, ignoring the paint color.
+        blendMode = BlendMode.DST,
+        paint = paint,
+      )
+    }
   }
 
   /**
@@ -142,7 +163,7 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
     forwardDifferenceRowResultsY = FloatArray(4 * subdivisionsU)
     colorForwardDifferenceRowResults = FloatArray(4 * subdivisionsU * 4)
     positionsBuffer = FloatArray(vertexCount * 2)
-    colorsBuffer = createColorsBuffer(vertexCount)
+    colorsBuffer = IntArray(vertexCount)
     indexBuffer = buildIndexBuffer(subdivisionsU, subdivisionsV, patchesPerBatch)
     partialIndexBuffer = ShortArray(0)
     precomputeBasisArrays(subdivisionsV)

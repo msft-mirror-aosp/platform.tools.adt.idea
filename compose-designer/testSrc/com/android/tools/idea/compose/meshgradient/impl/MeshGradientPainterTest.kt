@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.compose.meshgradient
+package com.android.tools.idea.compose.meshgradient.impl
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size

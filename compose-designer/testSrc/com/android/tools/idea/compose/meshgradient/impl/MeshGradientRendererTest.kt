@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.compose.meshgradient
+package com.android.tools.idea.compose.meshgradient.impl
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -102,7 +102,7 @@ class MeshGradientRendererTest {
 
   private fun tessellate(config: MeshGradientConfig, size: Size): List<Batch> {
     val batches = mutableListOf<Batch>()
-    DefaultMeshGradientRenderer().tessellate(config, size) { positions, colors, indices ->
+    MeshGradientRenderer().tessellate(config, size) { positions, colors, indices ->
       batches.add(Batch(positions.copyOf(), colors.copyOf(), indices.copyOf()))
     }
     return batches
