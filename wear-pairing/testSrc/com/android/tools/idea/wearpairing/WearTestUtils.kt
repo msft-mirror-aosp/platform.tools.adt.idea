@@ -62,7 +62,7 @@ internal fun PairingDevice.buildIDevice(
         Futures.immediateFuture(null)
       }
     }
-    whenever(getSystemProperty(any())).thenAnswer { systemProperties[it.arguments.single()] }
+    whenever(getSystemProperty(any())).thenAnswer { Futures.immediateFuture(systemProperties[it.arguments.single()]) }
 
     addExecuteShellCommandReply(shellCommandHandler)
   }
