@@ -47,7 +47,7 @@ class DeviceSpecSyntaxHighlighter : SyntaxHighlighterBase() {
     return DeviceSpecLexer()
   }
 
-  override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> =
+  override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> =
     when (tokenType) {
       DeviceSpecTypes.ID_KEYWORD,
       DeviceSpecTypes.SPEC_KEYWORD,
