@@ -28,11 +28,11 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.intellij.diagnostic.ThreadDump;
 import com.intellij.diagnostic.ThreadDumper;
 import com.intellij.platform.diagnostic.freezeAnalyzer.FreezeAnalysisResult;
+import com.intellij.platform.diagnostic.freezeAnalyzer.FreezeAnalysisThread;
 import com.intellij.platform.diagnostic.freezeAnalyzer.FreezeAnalyzer;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginId;
-import com.intellij.ide.plugins.PluginUtilImpl;
-import com.intellij.threadDumpParser.ThreadState;
+import com.intellij.ide.plugins.PluginUtil;
 import com.intellij.util.containers.ContainerUtil;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -190,7 +190,7 @@ public class ThreadSamplingReportContributor implements DiagnosticReportContribu
     if (freezeAnalysisResult == null) {
       return null;
     }
-    List<ThreadState> freezeCausingThreads = freezeAnalysisResult.getThreads();
+    List<FreezeAnalysisThread> freezeCausingThreads = freezeAnalysisResult.getThreads();
     List<PluginId> pluginIds = ContainerUtil.mapNotNull(freezeCausingThreads, ThreadSamplingReportContributor::analyzeFreezeCausingPlugin);
 
     return pluginIds.stream()
@@ -226,7 +226,7 @@ public class ThreadSamplingReportContributor implements DiagnosticReportContribu
    */
   @SuppressWarnings("UnstableApiUsage")
   @Nullable
-  private static PluginId analyzeFreezeCausingPlugin(@NotNull ThreadState threadInfo) {
+  private static PluginId analyzeFreezeCausingPlugin(@NotNull FreezeAnalysisThread threadInfo) {
     String[] stackTraceLines = threadInfo.getStackTrace().split("\\n");
     StackTraceElement[] stackTraceElements = Arrays.stream(stackTraceLines)
       .map(ThreadSamplingReportContributor::parseStackTraceElement)
@@ -235,7 +235,7 @@ public class ThreadSamplingReportContributor implements DiagnosticReportContribu
 
     Throwable throwable = new Throwable();
     throwable.setStackTrace(stackTraceElements);
-    return PluginUtilImpl.doFindPluginId(throwable);
+    return PluginUtil.getInstance().findPluginId(throwable);
   }
 
   /**
