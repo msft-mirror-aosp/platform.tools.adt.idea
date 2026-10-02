@@ -370,6 +370,13 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
       }
     }
 
+    // Catmull-Rom splines overshoot their control values, and Color() range-checks its components, so the V pass must clamp too.
+    val minL = ColorSpaces.Oklab.getMinValue(0)
+    val maxL = ColorSpaces.Oklab.getMaxValue(0)
+    val minA = ColorSpaces.Oklab.getMinValue(1)
+    val maxA = ColorSpaces.Oklab.getMaxValue(1)
+    val minB = ColorSpaces.Oklab.getMinValue(2)
+    val maxB = ColorSpaces.Oklab.getMaxValue(2)
     val catmullRomBasis = vCatmullRomBasis!!
     for (uIndex in 0 until subdivisionsU) {
       val uBase0 = uIndex * 4
@@ -402,7 +409,15 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
             catmullRomBasis[vBasisOffset + 3] * forwardDiffColor[uBase3 + 3])
 
         outColors[uIndex * subdivisionsV + vIndex] =
-          Color(red = l, green = a, blue = b, alpha = alpha, colorSpace = ColorSpaces.Oklab).convert(ColorSpaces.Srgb).toArgb()
+          Color(
+              red = l.coerceIn(minL, maxL),
+              green = a.coerceIn(minA, maxA),
+              blue = b.coerceIn(minB, maxB),
+              alpha = alpha.coerceIn(0f, 1f),
+              colorSpace = ColorSpaces.Oklab,
+            )
+            .convert(ColorSpaces.Srgb)
+            .toArgb()
       }
     }
   }
