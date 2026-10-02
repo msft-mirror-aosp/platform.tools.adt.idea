@@ -41,6 +41,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val gradientPainter = remember {
@@ -61,6 +62,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val gradientPainter = remember {
@@ -99,6 +101,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val purple = Color(0xFFAF52DE)
@@ -130,6 +133,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
       import androidx.compose.runtime.mutableStateOf
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun AnimatedMesh() {
           val infiniteTransition = rememberInfiniteTransition(label = "meshMovement")
@@ -204,6 +208,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
       import androidx.compose.runtime.mutableStateOf
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       val shadowedX = 0.9f
 
@@ -387,6 +392,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MeshGradientComplex() {
         val purple = Color(0xFFAF52DE)
@@ -475,6 +481,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset as ComposeOffset
     import androidx.compose.ui.graphics.Color as ComposeColor
+    import androidx.compose.ui.graphics.MeshGradientPainter
     import androidx.compose.runtime.remember as rememberCompose
 
     fun MyMesh() {
@@ -539,6 +546,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val purple = remember { purple }
@@ -584,6 +592,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val yellow = Color(0xFFFFCC00)
@@ -633,6 +642,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val defaultX = 0.1f
@@ -653,6 +663,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
     import kotlin.collections.listOf as myListOf
 
     fun MyMesh() {
@@ -724,6 +735,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun MyMesh() {
           val rowCount = 1
@@ -793,6 +805,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       val color = Color.Red
 
@@ -838,6 +851,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun MyMesh() {
           val painter = MeshGradientPainter(2, 3) {
@@ -920,6 +934,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
         import androidx.compose.ui.geometry.Offset
         import androidx.compose.ui.graphics.Color
+        import androidx.compose.ui.graphics.MeshGradientPainter
         import test.ui.theme.Purple80
         import test.ui.theme.Pink80 as BrandPink
         import test.ui.palette.*

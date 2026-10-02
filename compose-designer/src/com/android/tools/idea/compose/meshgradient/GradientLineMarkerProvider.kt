@@ -23,11 +23,7 @@ import com.intellij.codeInsight.daemon.NavigateAction
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.editor.markup.MarkupEditorFilter
 import com.intellij.openapi.editor.markup.MarkupEditorFilterFactory
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
-import com.intellij.psi.SmartPointerManager
-import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import icons.StudioIcons
 import javax.swing.Icon
@@ -36,63 +32,56 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
-class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
+private val GRADIENT_GUTTER_ICON: Icon = StudioIcons.GutterIcons.PREVIEW_SETTINGS
+
+/**
+ * Adds a gutter icon to the callee of every gradient factory call (see [gradientCallKind]) that opens the gradient editor.
+ *
+ * The check runs for every identifier of the file on each daemon pass, so it relies on the syntactic, cached [gradientCallKind] and never
+ * resolves references.
+ */
+internal class GradientLineMarkerProvider : LineMarkerProviderDescriptor() {
 
   override fun getName(): String = message("gradient.editor.annotator.name")
 
-  override fun getIcon(): Icon = StudioIcons.GutterIcons.PREVIEW_SETTINGS
+  override fun getIcon(): Icon = GRADIENT_GUTTER_ICON
 
   override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-    if (!StudioFlags.COMPOSE_MESH_GRADIENT_EDITOR.get()) return null
     if (element !is LeafPsiElement) return null
+    if (!StudioFlags.COMPOSE_MESH_GRADIENT_EDITOR.get()) return null
     if (element.tokenType != KtTokens.IDENTIFIER) return null
-    if (!element.isValid) return null
-    if (!element.isPhysical) return null
 
     val nameRef = element.parent as? KtNameReferenceExpression ?: return null
     val callExpression = nameRef.parent as? KtCallExpression ?: return null
     if (callExpression.calleeExpression != nameRef) return null
 
-    val text = element.text
-    if (text != "MeshGradientPainter" && text !in BRUSH_GRADIENT_NAMES) {
-      val file = callExpression.containingFile as? KtFile ?: return null
-      if (file.importDirectives.none { it.aliasName == text }) return null
-    }
+    val kind = callExpression.gradientCallKind() ?: return null
 
-    if (!callExpression.isValidGradientCall()) return null
-
-    val callPointer = SmartPointerManager.getInstance(element.project).createSmartPsiElementPointer(callExpression)
-    val info = createInfo(element, element.textRange, element.project, callPointer)
+    val info = GradientLineMarkerInfo(element, kind)
     NavigateAction.setNavigateAction(info, message("gradient.editor.action.title"), null, icon)
     return info
   }
+}
 
-  private fun createInfo(
-    element: PsiElement,
-    textRange: TextRange,
-    project: Project,
-    callPointer: SmartPsiElementPointer<KtCallExpression>,
-  ): LineMarkerInfo<PsiElement> {
-    return object :
-      LineMarkerInfo<PsiElement>(
-        element,
-        textRange,
-        icon,
-        { message("gradient.editor.action.tooltip") },
-        { _, _ ->
-          val validCall = callPointer.element?.takeIf { it.isValid }
-          val file = validCall?.containingFile as? KtFile
-          if (validCall != null && file != null) {
-            val dialog = GradientEditorDialog(project, file, validCall)
-            dialog.show()
-          }
-        },
-        GutterIconRenderer.Alignment.LEFT,
-        { message("gradient.editor.action.tooltip") },
-      ) {
-      override fun getEditorFilter(): MarkupEditorFilter {
-        return MarkupEditorFilterFactory.createIsNotDiffFilter()
+/** The gutter icon of a gradient factory call of the given [kind], anchored on the callee identifier [element]. */
+internal class GradientLineMarkerInfo(element: PsiElement, kind: GradientCallKind) :
+  LineMarkerInfo<PsiElement>(
+    element,
+    element.textRange,
+    GRADIENT_GUTTER_ICON,
+    kind.tooltipProvider,
+    { _, elt ->
+      val validCall =
+        (elt.parent?.parent as? KtCallExpression)?.takeIf { it.calleeExpression == elt.parent && it.gradientCallKind() != null }
+      val file = validCall?.containingFile as? KtFile
+      if (validCall != null && file != null) {
+        val project = elt.project
+        val dialog = GradientEditorDialog(project, file, validCall)
+        dialog.show()
       }
-    }
-  }
+    },
+    GutterIconRenderer.Alignment.LEFT,
+    { kind.tooltip },
+  ) {
+  override fun getEditorFilter(): MarkupEditorFilter = MarkupEditorFilterFactory.createIsNotDiffFilter()
 }

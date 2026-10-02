@@ -39,6 +39,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val gradientPainter = remember {
@@ -72,6 +73,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
       import androidx.compose.animation.core.animateFloat
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun MyAnimatedMesh() {
           val infiniteTransition = rememberInfiniteTransition()
@@ -178,6 +180,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun MyMesh() {
           val gradientPainter = remember {
@@ -246,6 +249,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
         import androidx.compose.ui.geometry.Offset
         import androidx.compose.ui.graphics.Color
+        import androidx.compose.ui.graphics.MeshGradientPainter
         import test.ui.theme.*
 
         val FileAccent = Color(0xFFFF4081)

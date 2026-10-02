@@ -20,24 +20,19 @@ import androidx.compose.ui.graphics.Color
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.util.parentOfType
 import java.math.RoundingMode
 import java.util.Locale
 import kotlin.math.roundToInt
 import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
 import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelPropertyFqnNameIndex
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.psiUtil.isPrivate
 
 internal const val FUN_LINEAR_GRADIENT = "linearGradient"
@@ -46,20 +41,13 @@ internal const val FUN_SWEEP_GRADIENT = "sweepGradient"
 internal const val FUN_HORIZONTAL_GRADIENT = "horizontalGradient"
 internal const val FUN_VERTICAL_GRADIENT = "verticalGradient"
 
-private const val CLASS_BRUSH = "Brush"
-private const val SUFFIX_COMPANION = ".Companion"
-private const val FQN_BRUSH = "androidx.compose.ui.graphics.Brush"
-private const val FQN_BRUSH_COMPANION = "$FQN_BRUSH$SUFFIX_COMPANION"
-private const val FQN_MESH_GRADIENT_PAINTER = "androidx.compose.ui.graphics.MeshGradientPainter"
-
-internal val BRUSH_GRADIENT_NAMES =
-  setOf(
-    FUN_LINEAR_GRADIENT,
-    FUN_RADIAL_GRADIENT,
-    FUN_SWEEP_GRADIENT,
-    FUN_HORIZONTAL_GRADIENT,
-    FUN_VERTICAL_GRADIENT,
-  )
+internal const val CLASS_BRUSH = "Brush"
+internal const val CLASS_MESH_GRADIENT_PAINTER = "MeshGradientPainter"
+internal const val SUFFIX_COMPANION = ".Companion"
+internal const val FQN_COMPOSE_UI_GRAPHICS = "androidx.compose.ui.graphics"
+internal const val FQN_BRUSH = "$FQN_COMPOSE_UI_GRAPHICS.$CLASS_BRUSH"
+internal const val FQN_BRUSH_COMPANION = "$FQN_BRUSH$SUFFIX_COMPANION"
+internal const val FQN_MESH_GRADIENT_PAINTER = "$FQN_COMPOSE_UI_GRAPHICS.$CLASS_MESH_GRADIENT_PAINTER"
 
 fun formatFloat(number: Float): String {
   if (!number.isFinite()) return number.toString()
@@ -101,39 +89,10 @@ fun Color.toComposeHexLiteral(): String {
   return String.format(Locale.US, "0x%02X%02X%02X%02X", a, r, g, b)
 }
 
-fun KtCallExpression.isValidMeshGradientCall(expectedFqn: String = FQN_MESH_GRADIENT_PAINTER): Boolean {
-  val callee = calleeExpression as? KtNameReferenceExpression ?: return false
-  val file = containingFile as? KtFile ?: return false
-  val shortName = expectedFqn.substringAfterLast('.')
-  val packagePrefix = expectedFqn.substringBeforeLast('.', "")
-
-  val qualifiedParent = parent as? KtQualifiedExpression
-  if (qualifiedParent != null && qualifiedParent.selectorExpression == this) {
-    return callee.text == shortName && qualifiedParent.receiverExpression.text == packagePrefix
-  }
-
-  // 1. First Check: Try to find an explicit import in the file
-  val explicitImport = file.importDirectives.firstOrNull { it.importedFqName?.asString() == expectedFqn }
-  if (explicitImport != null) {
-    val expectedName = explicitImport.aliasName ?: shortName
-    return callee.text == expectedName
-  }
-
-  if (callee.text != shortName) return false
-
-  // 2. Resolve reference once (handles star-imports and test sandboxes)
-  val target = callee.references.firstNotNullOfOrNull { it.resolve() } ?: return true
-
-  val resolvedFqn =
-    when (target) {
-      is KtConstructor<*> -> target.parentOfType<KtClass>()?.fqName?.asString()
-      is KtClass -> target.fqName?.asString()
-      is PsiClass -> target.qualifiedName
-      is PsiMethod -> if (target.isConstructor) target.containingClass?.qualifiedName else null
-      else -> null
-    }
-  return resolvedFqn == expectedFqn
-}
+/**
+ * Returns whether this call constructs `androidx.compose.ui.graphics.MeshGradientPainter`. See [gradientCallKind] for the matching rules.
+ */
+internal fun KtCallExpression.isValidMeshGradientCall(): Boolean = gradientCallKind() == GradientCallKind.MESH
 
 private fun getModuleSearchScope(project: Project, file: KtFile): GlobalSearchScope {
   val module = ModuleUtilCore.findModuleForPsiElement(file)
@@ -209,6 +168,7 @@ internal fun resolveImportedOrSamePackageProperty(project: Project, file: KtFile
   return null
 }
 
+// TODO(b/527852354): replace with gradientCallKind()
 fun KtCallExpression.isValidBrushGradientCall(name: String): Boolean {
   val callee = calleeExpression as? KtNameReferenceExpression ?: return false
   val file = containingFile as? KtFile ?: return false
@@ -244,8 +204,4 @@ fun KtCallExpression.isValidBrushGradientCall(name: String): Boolean {
       else -> null
     }
   return resolvedFqn == companionMethodFqn || resolvedFqn == methodFqn
-}
-
-fun KtCallExpression.isValidGradientCall(): Boolean {
-  return isValidMeshGradientCall() || BRUSH_GRADIENT_NAMES.any { isValidBrushGradientCall(it) }
 }
