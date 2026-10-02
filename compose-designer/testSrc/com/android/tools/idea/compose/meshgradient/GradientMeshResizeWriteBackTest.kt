@@ -41,10 +41,10 @@ class GradientMeshResizeWriteBackTest {
     projectRule.fixture.addComposeGraphicsStubs()
   }
 
-  private fun addMeshFile(): KtFile =
+  private fun addMeshFile(body: String = SIMPLE_MESH): KtFile =
     projectRule.fixture.addFileToProject(
       "src/test/Mesh.kt",
-      "package test\n\n$IMPORTS\n\nfun MyMesh() {\n${SIMPLE_MESH.trimIndent().prependIndent("    ")}\n}\n",
+      "package test\n\n$IMPORTS\n\nfun MyMesh() {\n${body.trimIndent().prependIndent("    ")}\n}\n",
     ) as KtFile
 
   /** Opens the editor on the mesh of [file], applies [edit] and writes the changes back. */
@@ -62,11 +62,158 @@ class GradientMeshResizeWriteBackTest {
   private fun KtFile.meshSource(): String = runReadAction { text }.substringAfter("fun MyMesh() {\n").substringBeforeLast("\n}")
 
   @Test
-  fun addingARowWritesTheInsertedVertices() {
+  fun addingARowRenumbersTheLastRowAndAppendsTheInsertedVertices() {
     val file = addMeshFile()
 
     edit(file) { updateRows(3) }
 
+    assertEquals(
+      """
+      val painter = MeshGradientPainter(rows = 2, columns = 1) {
+          setVertex(0, 0, Offset(0f, 0f), Color.Red)
+          setVertex(0, 1, Offset(1f, 0f), Color.Blue)
+          setVertex(2, 0, Offset(0f, 1f), Color.Green)
+          setVertex(2, 1, Offset(1f, 1f), Color.Yellow)
+          setVertex(1, 0, Offset(0f, 0.5f), Color(0xFFFF0000))
+          setVertex(1, 1, Offset(1f, 0.5f), Color(0xFF0000FF))
+      }
+      """
+        .trimIndent()
+        .prependIndent("    "),
+      file.meshSource(),
+    )
+  }
+
+  @Test
+  fun addingAndRemovingAColumnOnlyRenumbersTheLastColumn() {
+    val file = addMeshFile()
+
+    edit(file) { updateCols(3) }
+
+    assertEquals(
+      """
+      val painter = MeshGradientPainter(rows = 1, columns = 2) {
+          setVertex(0, 0, Offset(0f, 0f), Color.Red)
+          setVertex(0, 2, Offset(1f, 0f), Color.Blue)
+          setVertex(1, 0, Offset(0f, 1f), Color.Green)
+          setVertex(1, 2, Offset(1f, 1f), Color.Yellow)
+          setVertex(0, 1, Offset(0.5f, 0f), Color(0xFFFF0000))
+          setVertex(1, 1, Offset(0.5f, 1f), Color(0xFF00FF00))
+      }
+      """
+        .trimIndent()
+        .prependIndent("    "),
+      file.meshSource(),
+    )
+
+    edit(file) { updateCols(2) }
+
+    assertEquals(SIMPLE_MESH.trimIndent().prependIndent("    "), file.meshSource())
+  }
+
+  @Test
+  fun everyCallSettingAMovedVertexIsRenumbered() {
+    val file =
+      addMeshFile(
+        """
+        val painter = MeshGradientPainter(rows = 1, columns = 1) {
+            setVertex(0, 1, Offset(1f, 0f), Color.Cyan)
+            setVertex(0, 0, Offset(0f, 0f), Color.Red)
+            setVertex(row = 0, column = 1, position = Offset(1f, 0f), color = Color.Blue)
+            setVertex(1, 0, Offset(0f, 1f), Color.Green)
+            setVertex(1, 1, Offset(1f, 1f), Color.Yellow)
+        }
+        """
+      )
+
+    edit(file) { updateCols(3) }
+
+    assertEquals(
+      """
+      val painter = MeshGradientPainter(rows = 1, columns = 2) {
+          setVertex(0, 2, Offset(1f, 0f), Color.Cyan)
+          setVertex(0, 0, Offset(0f, 0f), Color.Red)
+          setVertex(row = 0, column = 2, position = Offset(1f, 0f), color = Color.Blue)
+          setVertex(1, 0, Offset(0f, 1f), Color.Green)
+          setVertex(1, 2, Offset(1f, 1f), Color.Yellow)
+          setVertex(0, 1, Offset(0.5f, 0f), Color(0xFFFF0000))
+          setVertex(1, 1, Offset(0.5f, 1f), Color(0xFF00FF00))
+      }
+      """
+        .trimIndent()
+        .prependIndent("    "),
+      file.meshSource(),
+    )
+  }
+
+  @Test
+  fun removingARowDeletesItsCallsAndRenumbersTheLastRow() {
+    val file =
+      addMeshFile(
+        """
+        val painter = MeshGradientPainter(rows = 2, columns = 1) {
+            setVertex(0, 0, Offset(0f, 0f), Color.Red)
+            setVertex(0, 1, Offset(1f, 0f), Color.Blue)
+            setVertex(1, 0, Offset(0f, 0.4f), Color.Cyan)
+            setVertex(1, 1, Offset(1f, 0.6f), Color(0xFF888888))
+            setVertex(2, 0, Offset(0f, 1f), Color.Green)
+            setVertex(2, 1, Offset(1f, 1f), Color.Yellow)
+        }
+        """
+      )
+
+    edit(file) { updateRows(2) }
+
+    assertEquals(SIMPLE_MESH.trimIndent().prependIndent("    "), file.meshSource())
+  }
+
+  @Test
+  fun resizingBothAxesRenumbersTheRowAndColumnOfTheLastVertex() {
+    val file = addMeshFile()
+
+    edit(file) {
+      updateRows(3)
+      updateCols(3)
+    }
+
+    assertEquals(
+      """
+      val painter = MeshGradientPainter(rows = 2, columns = 2) {
+          setVertex(0, 0, Offset(0f, 0f), Color.Red)
+          setVertex(0, 2, Offset(1f, 0f), Color.Blue)
+          setVertex(2, 0, Offset(0f, 1f), Color.Green)
+          setVertex(2, 2, Offset(1f, 1f), Color.Yellow)
+          setVertex(0, 1, Offset(0.5f, 0f), Color(0xFFFF0000))
+          setVertex(1, 0, Offset(0f, 0.5f), Color(0xFFFF0000))
+          setVertex(1, 1, Offset(0.5f, 0.5f), Color(0xFFFF0000))
+          setVertex(1, 2, Offset(1f, 0.5f), Color(0xFF0000FF))
+          setVertex(2, 1, Offset(0.5f, 1f), Color(0xFF00FF00))
+      }
+      """
+        .trimIndent()
+        .prependIndent("    "),
+      file.meshSource(),
+    )
+  }
+
+  @Test
+  fun callsOutsideTheGridAreUpdatedInPlaceInsteadOfRenumbering() {
+    val file =
+      addMeshFile(
+        """
+        val painter = MeshGradientPainter(rows = 1, columns = 1) {
+            setVertex(0, 0, Offset(0f, 0f), Color.Red)
+            setVertex(0, 1, Offset(1f, 0f), Color.Blue)
+            setVertex(1, 0, Offset(0f, 1f), Color.Green)
+            setVertex(1, 1, Offset(1f, 1f), Color.Yellow)
+            setVertex(2, 0, Offset(0f, 2f), Color.Cyan)
+        }
+        """
+      )
+
+    edit(file) { updateRows(3) }
+
+    // Renumbering the last row to 2 would leave it overridden by the call that was outside the grid.
     assertEquals(
       """
       val painter = MeshGradientPainter(rows = 2, columns = 1) {
@@ -82,33 +229,6 @@ class GradientMeshResizeWriteBackTest {
         .prependIndent("    "),
       file.meshSource(),
     )
-  }
-
-  @Test
-  fun addingAndRemovingAColumnRestoresTheSource() {
-    val file = addMeshFile()
-
-    edit(file) { updateCols(3) }
-
-    assertEquals(
-      """
-      val painter = MeshGradientPainter(rows = 1, columns = 2) {
-          setVertex(0, 0, Offset(0f, 0f), Color.Red)
-          setVertex(0, 1, Offset(0.5f, 0f), Color(0xFFFF0000))
-          setVertex(1, 0, Offset(0f, 1f), Color.Green)
-          setVertex(1, 1, Offset(0.5f, 1f), Color(0xFF00FF00))
-          setVertex(0, 2, Offset(1f, 0f), Color.Blue)
-          setVertex(1, 2, Offset(1f, 1f), Color.Yellow)
-      }
-      """
-        .trimIndent()
-        .prependIndent("    "),
-      file.meshSource(),
-    )
-
-    edit(file) { updateCols(2) }
-
-    assertEquals(SIMPLE_MESH.trimIndent().prependIndent("    "), file.meshSource())
   }
 
   private companion object {

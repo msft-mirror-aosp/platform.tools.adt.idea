@@ -143,30 +143,64 @@ internal class GradientSourceWriter(private val project: Project) {
       vertexCalls.getOrPut(vertex.row to vertex.col) { mutableListOf() }.add(vertex to vertexCall)
     }
 
+    // Resizing in the editor moves the last row and column: their calls are renumbered rather than rewritten, and only the inserted or
+    // removed vertices add or delete calls. Calls whose indices are outside the initial grid could then set the same vertices as the
+    // renumbered calls, so the vertices are paired by index if there are any.
+    val hasCallsOutsideInitialGrid = mesh.vertices.any { it.row >= initialRows || it.col >= initialCols }
+    val (rowSources, colSources) = alignMeshGrids(initial.points, target.points, byIndexOnly = hasCallsOutsideInitialGrid)
+    val usedSources = mutableSetOf<Pair<Int, Int>>()
     val structuralEdits = mutableListOf<Edit>()
     for (r in 0 until targetRows) {
       for (c in 0 until targetCols) {
         val point = target.points[r][c]
-        val initialPoint = initial.points.getOrNull(r)?.getOrNull(c)
-        if (point == initialPoint) continue
+        val sourceRow = rowSources[r]
+        val sourceCol = colSources[c]
+        val source = if (sourceRow != null && sourceCol != null) sourceRow to sourceCol else null
+        source?.let(usedSources::add)
+        val initialPoint = source?.let { (sr, sc) -> initial.points[sr].getOrNull(sc) }
+        val isMoved = source != null && source != (r to c)
+        if (point == initialPoint && !isMoved) continue
+        // Calls whose indices are outside the initial grid don't set any vertex in it, so they can be updated in place.
+        val isOutsideInitialGrid = r >= initialRows || c >= initialCols
+        val calls =
+          when {
+            source != null -> vertexCalls[source]
+            isOutsideInitialGrid -> vertexCalls[r to c]
+            else -> null
+          }.orEmpty()
         // As at runtime, the last call that sets a vertex wins.
-        val owner = vertexCalls[r to c]?.last()
+        val owner = calls.lastOrNull()
         if (owner == null) {
           if (mesh.hasUnparsedVertices) return GradientWriteResult.Failed(message("gradient.editor.error.mesh.vertex.unresolved", r, c))
+          // New calls are appended rather than inserted in grid order, which would move the existing calls around and enlarge the diff.
           structuralEdits.add(appendStatementEdit(body, setVertexSource(r, c, point, names)))
           continue
         }
         val (vertex, vertexCall) = owner
         // Calls nested in other statements, such as conditionals, might not run or might be one of several calls setting the vertex.
         if (vertexCall.parent != body) return GradientWriteResult.Failed(message("gradient.editor.error.mesh.vertex.unresolved", r, c))
-        planVertex(vertex, vertexCall, initialPoint ?: vertex.toMeshGradientPoint(), point, names, edits)?.let {
-          return it
+        if (isMoved) {
+          for ((movedVertex, movedCall) in calls) {
+            if (movedVertex.row != r) {
+              val rowExpr = movedCall.findValueArgument(ARG_ROW, INDEX_ROW)?.getArgumentExpression() ?: return stale()
+              structuralEdits.add(replaceEdit(rowExpr, Source.generated(r.toString())))
+            }
+            if (movedVertex.col != c) {
+              val colExpr = movedCall.findValueArgument(ARG_COLUMN, INDEX_COLUMN)?.getArgumentExpression() ?: return stale()
+              structuralEdits.add(replaceEdit(colExpr, Source.generated(c.toString())))
+            }
+          }
+        }
+        if (point != initialPoint) {
+          planVertex(vertex, vertexCall, initialPoint ?: vertex.toMeshGradientPoint(), point, names, edits)?.let {
+            return it
+          }
         }
       }
     }
     for (r in 0 until initialRows) {
       for (c in 0 until initialCols) {
-        if (r < targetRows && c < targetCols) continue
+        if ((r to c) in usedSources) continue
         vertexCalls[r to c]?.forEach { (_, vertexCall) -> structuralEdits.add(Edit.DeleteStatement(vertexCall)) }
       }
     }
