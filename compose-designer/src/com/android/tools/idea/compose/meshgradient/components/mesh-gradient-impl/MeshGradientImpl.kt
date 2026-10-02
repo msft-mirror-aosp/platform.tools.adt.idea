@@ -74,13 +74,13 @@ sealed interface MeshGradientScope {
  *
  * **Bezier Tangents:** Bezier control points are provided as an [Offset] relative to the vertex position. The default value of a Bezier
  * control point is [Offset.Unspecified]. If a control point is [Offset.Unspecified], the renderer automatically infers a tangent based on
- * the neighboring vertices to ensure C1 continuity (smooth transitions) across patches.
+ * the neighboring vertices to ensure G1 continuity (smooth transitions) across patches.
  *
  * @sample androidx.compose.ui.graphics.samples.MeshGradientPainterSample
  * @param rows The number of patches along the vertical axis. Must be at least 1.
  * @param columns The number of patches along the horizontal axis. Must be at least 1.
- * @param hasBicubicColor When true, uses Catmull-Rom interpolation for colors, resulting in smoother transitions compared to simpler and
- *   slightly faster bilinear interpolation.
+ * @param hasBicubicColor When true, uses Catmull-Rom interpolation for colors, resulting in smoother transitions across patch boundaries
+ *   compared to bilinear interpolation.
  * @param block Lambda invoked to configure the mesh. Use the provided [MeshGradientScope] to set the properties of each vertex. This block
  *   is executed in a [DrawScope] and hence can observe reads to any mutable state. Any unconfigured vertex will have a default position of
  *   [Offset.Zero] and a default color of [Color.Transparent].

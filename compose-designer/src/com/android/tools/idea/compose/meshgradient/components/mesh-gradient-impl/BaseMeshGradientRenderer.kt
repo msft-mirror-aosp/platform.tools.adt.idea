@@ -21,32 +21,49 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.util.lerp
+import org.jetbrains.annotations.VisibleForTesting
+
+/** Number of vertices that a single draw call can address with its 16-bit (signed) index buffer. */
+private const val MaxVerticesPerDraw = Short.MAX_VALUE + 1
+
+private val OklabMinL = ColorSpaces.Oklab.getMinValue(0)
+private val OklabMaxL = ColorSpaces.Oklab.getMaxValue(0)
+private val OklabMinA = ColorSpaces.Oklab.getMinValue(1)
+private val OklabMaxA = ColorSpaces.Oklab.getMaxValue(1)
+private val OklabMinB = ColorSpaces.Oklab.getMinValue(2)
+private val OklabMaxB = ColorSpaces.Oklab.getMaxValue(2)
+
+/** Valid range of the L, a, b and alpha channels of an Oklab color, indexed by channel. */
+private val OklabChannelMinValues = floatArrayOf(OklabMinL, OklabMinA, OklabMinB, 0f)
+private val OklabChannelMaxValues = floatArrayOf(OklabMaxL, OklabMaxA, OklabMaxB, 1f)
 
 // Taken from compose framework
 /**
- * Platform-independent [MeshGradientRenderer] that tessellates a mesh gradient into a triangle mesh.
+ * [MeshGradientRenderer] that tessellates a mesh gradient into a triangle mesh.
  *
  * All of the tessellation math (Bezier surface evaluation, Catmull-Rom / bilinear color interpolation, adaptive subdivision and buffer
- * management) lives here and is shared by every backend.
- *
- * Subclasses might be stateful and reuse the internal buffers across frames to avoid per-frame allocations.
+ * management) lives here. The patches are tessellated into vertex and index buffers that are reused across frames, and are drawn in as few
+ * [drawTriangles] calls as the 16-bit index buffer allows (a single one unless the mesh is both large and finely subdivided).
  */
 internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
 
-  private var indexBuffer: ShortArray? = null
   private var lastSubdivisionU: Int = -1
   private var lastSubdivisionV: Int = -1
+  private var lastPatchesPerBatch: Int = -1
 
-  private var vBernsteinBasis: FloatArray? = null
-  private var vCatmullRomBasis: FloatArray? = null
-  private var forwardDifferenceRowResultsX: FloatArray? = null
-  private var forwardDifferenceRowResultsY: FloatArray? = null
-  private var colorForwardDifferenceRowResults: FloatArray? = null
+  private var indexBuffer = ShortArray(0)
+  private var partialIndexBuffer = ShortArray(0)
 
-  private var positionsBuffer: FloatArray? = null
-  private var colorsBuffer: IntArray? = null
+  private var vBernsteinBasis = FloatArray(0)
+  private var vCatmullRomBasis = FloatArray(0)
+  private var forwardDifferenceRowResultsX = FloatArray(0)
+  private var forwardDifferenceRowResultsY = FloatArray(0)
+  private var colorForwardDifferenceRowResults = FloatArray(0)
+
+  private var positionsBuffer = FloatArray(0)
+  private var colorsBuffer = IntArray(0)
 
   private val patchPositions = FloatArray(8)
   private val patchLeftBezierOffsets = FloatArray(8)
@@ -58,21 +75,14 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
   private val controlPoints = FloatArray(32)
 
   /**
-   * Draws the tessellated triangle mesh. This is the only part of the render pipeline that differs between backends.
+   * Draws a batch of the tessellated triangle mesh. This is the only part of the render pipeline that differs between backends.
    *
    * @param canvas The canvas to draw into.
-   * @param surfacePositions Flattened (x, y) vertex positions, `vertexCount * 2` floats.
-   * @param surfaceColors Per-vertex ARGB colors.
+   * @param surfacePositions Flattened (x, y) vertex positions.
+   * @param surfaceColors Per-vertex ARGB colors, one per (x, y) pair in [surfacePositions].
    * @param indices Triangle indices into the vertex arrays.
-   * @param vertexCount The number of vertices in this patch.
    */
-  protected abstract fun drawTriangles(
-    canvas: Canvas,
-    surfacePositions: FloatArray,
-    surfaceColors: IntArray,
-    indices: ShortArray,
-    vertexCount: Int,
-  )
+  protected abstract fun drawTriangles(canvas: Canvas, surfacePositions: FloatArray, surfaceColors: IntArray, indices: ShortArray)
 
   /**
    * Allocates the per-vertex color buffer for [vertexCount] vertices. Backends that need a different layout (e.g. Android pre-Q) may
@@ -81,86 +91,94 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
   protected open fun createColorsBuffer(vertexCount: Int): IntArray = IntArray(vertexCount)
 
   override fun DrawScope.draw(config: MeshGradientConfig) {
-    val rows = config.rows
-    val columns = config.columns
-    val positions = config.positions
-    val colors = config.colors
-    val leftBezierOffsets = config.leftBezierOffsets
-    val topBezierOffsets = config.topBezierOffsets
-    val rightBezierOffsets = config.rightBezierOffsets
-    val bottomBezierOffsets = config.bottomBezierOffsets
-    val hasBicubicColor = config.hasBicubicColor
+    val canvas = drawContext.canvas
+    tessellate(config, size) { positions, colors, indices -> drawTriangles(canvas, positions, colors, indices) }
+  }
 
-    val (subdivisionsU, subdivisionsV) = calculateMeshGradientSubdivisions(rows, columns, positions, size)
-    val vertexCount = subdivisionsU * subdivisionsV
+  /**
+   * Tessellates the mesh described by [config] for a drawing area of [size] and hands the resulting triangle batches to [drawBatch].
+   *
+   * Each batch consists of the flattened (x, y) vertex positions, the per-vertex ARGB colors (one per position pair) and the triangle
+   * indices into them. The arrays are owned by this renderer and are overwritten by the next batch, so [drawBatch] must not retain them.
+   * Vertices of a batch that are not referenced by its indices are leftovers from a previous batch.
+   *
+   * The patches are spread evenly over the fewest batches that 16-bit indices allow, so that a trailing batch with fewer patches does not
+   * push a mostly stale vertex buffer to the native draw call.
+   */
+  @VisibleForTesting
+  fun tessellate(
+    config: MeshGradientConfig,
+    size: Size,
+    drawBatch: (positions: FloatArray, colors: IntArray, indices: ShortArray) -> Unit,
+  ) {
+    val (subdivisionsU, subdivisionsV) = calculateMeshGradientSubdivisions(config.rows, config.columns, config.positions, size)
+    val patchCount = config.rows * config.columns
+    val verticesPerPatch = subdivisionsU * subdivisionsV
+    check(verticesPerPatch <= MaxVerticesPerDraw) { "A patch of $verticesPerPatch vertices cannot be drawn with 16-bit indices" }
+    val maxPatchesPerBatch = MaxVerticesPerDraw / verticesPerPatch
+    val batchCount = (patchCount + maxPatchesPerBatch - 1) / maxPatchesPerBatch
+    val patchesPerBatch = (patchCount + batchCount - 1) / batchCount
+    ensureBuffers(subdivisionsU, subdivisionsV, patchesPerBatch)
 
-    if (indexBuffer == null || lastSubdivisionU != subdivisionsU || lastSubdivisionV != subdivisionsV) {
-      indexBuffer = ShortArray((subdivisionsU - 1) * (subdivisionsV - 1) * 6)
-      forwardDifferenceRowResultsX = FloatArray(4 * subdivisionsU)
-      forwardDifferenceRowResultsY = FloatArray(4 * subdivisionsU)
-      colorForwardDifferenceRowResults = FloatArray(4 * subdivisionsU * 4)
-      positionsBuffer = FloatArray(vertexCount * 2)
-      colorsBuffer = createColorsBuffer(vertexCount)
-      buildIndexBuffer(subdivisionsU, subdivisionsV)
-      precomputeBasisArrays(subdivisionsV)
-      lastSubdivisionU = subdivisionsU
-      lastSubdivisionV = subdivisionsV
-    }
-
-    val indices = indexBuffer!!
-    // Holds the bezier surface vertex position data
-    val surfacePositions = positionsBuffer!!
-    // Holds the bezier surface vertex color data
-    val surfaceColors = colorsBuffer!!
-
-    for (patchIdx in 0 until rows * columns) {
-      drawPatch(
-        drawContext.canvas,
-        patchIdx,
-        rows,
-        columns,
-        hasBicubicColor,
-        positions,
-        colors,
-        leftBezierOffsets,
-        topBezierOffsets,
-        rightBezierOffsets,
-        bottomBezierOffsets,
-        size,
-        subdivisionsU,
-        subdivisionsV,
-        surfacePositions,
-        surfaceColors,
-        indices,
-      )
+    var patchesInBatch = 0
+    for (patchIdx in 0 until patchCount) {
+      tessellatePatch(config, patchIdx, size, subdivisionsU, subdivisionsV, vertexOffset = patchesInBatch * verticesPerPatch)
+      patchesInBatch++
+      if (patchesInBatch == patchesPerBatch || patchIdx == patchCount - 1) {
+        drawBatch(positionsBuffer, colorsBuffer, indicesForBatch(patchesInBatch, patchesPerBatch))
+        patchesInBatch = 0
+      }
     }
   }
 
-  private fun drawPatch(
-    canvas: Canvas,
+  /**
+   * (Re)allocates the vertex, index and scratch buffers when the tessellation level of a patch or the number of patches per batch changes,
+   * and keeps them otherwise.
+   */
+  private fun ensureBuffers(subdivisionsU: Int, subdivisionsV: Int, patchesPerBatch: Int) {
+    if (lastSubdivisionU == subdivisionsU && lastSubdivisionV == subdivisionsV && lastPatchesPerBatch == patchesPerBatch) return
+    val vertexCount = subdivisionsU * subdivisionsV * patchesPerBatch
+    forwardDifferenceRowResultsX = FloatArray(4 * subdivisionsU)
+    forwardDifferenceRowResultsY = FloatArray(4 * subdivisionsU)
+    colorForwardDifferenceRowResults = FloatArray(4 * subdivisionsU * 4)
+    positionsBuffer = FloatArray(vertexCount * 2)
+    colorsBuffer = createColorsBuffer(vertexCount)
+    indexBuffer = buildIndexBuffer(subdivisionsU, subdivisionsV, patchesPerBatch)
+    partialIndexBuffer = ShortArray(0)
+    precomputeBasisArrays(subdivisionsV)
+    lastSubdivisionU = subdivisionsU
+    lastSubdivisionV = subdivisionsV
+    lastPatchesPerBatch = patchesPerBatch
+  }
+
+  /**
+   * Returns the index buffer for a batch of [patchesInBatch] patches. Only the last batch of a frame can hold fewer than [patchesPerBatch]
+   * patches; since the native draw call uses the whole array, that batch gets an exactly sized prefix of [indexBuffer].
+   */
+  private fun indicesForBatch(patchesInBatch: Int, patchesPerBatch: Int): ShortArray {
+    if (patchesInBatch == patchesPerBatch) return indexBuffer
+    val indexCount = indexBuffer.size / patchesPerBatch * patchesInBatch
+    if (partialIndexBuffer.size != indexCount) {
+      partialIndexBuffer = indexBuffer.copyOf(indexCount)
+    }
+    return partialIndexBuffer
+  }
+
+  private fun tessellatePatch(
+    config: MeshGradientConfig,
     patchIdx: Int,
-    rows: Int,
-    columns: Int,
-    hasBicubicColor: Boolean,
-    positions: FloatArray,
-    colors: IntArray,
-    leftBezierOffsets: FloatArray?,
-    topBezierOffsets: FloatArray?,
-    rightBezierOffsets: FloatArray?,
-    bottomBezierOffsets: FloatArray?,
     size: Size,
     subdivisionsU: Int,
     subdivisionsV: Int,
-    surfacePositions: FloatArray,
-    surfaceColors: IntArray,
-    indices: ShortArray,
+    vertexOffset: Int,
   ) {
-    readPatchPositions(patchIdx, columns, positions, size, patchPositions)
-    readPatchPositions(patchIdx, columns, leftBezierOffsets, size, patchLeftBezierOffsets)
-    readPatchPositions(patchIdx, columns, rightBezierOffsets, size, patchRightBezierOffsets)
-    readPatchPositions(patchIdx, columns, topBezierOffsets, size, patchTopBezierOffsets)
-    readPatchPositions(patchIdx, columns, bottomBezierOffsets, size, patchBottomBezierOffsets)
-    readPatchColors(patchIdx, rows, columns, colors, patchColors)
+    val columns = config.columns
+    readPatchPositions(patchIdx, columns, config.positions, size, patchPositions)
+    readPatchPositions(patchIdx, columns, config.leftBezierOffsets, size, patchLeftBezierOffsets)
+    readPatchPositions(patchIdx, columns, config.rightBezierOffsets, size, patchRightBezierOffsets)
+    readPatchPositions(patchIdx, columns, config.topBezierOffsets, size, patchTopBezierOffsets)
+    readPatchPositions(patchIdx, columns, config.bottomBezierOffsets, size, patchBottomBezierOffsets)
+    readPatchColors(patchIdx, config.rows, columns, config.colors, patchColors)
 
     buildControlPointMatrix(
       patchPositions,
@@ -170,16 +188,13 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
       patchBottomBezierOffsets,
       controlPoints,
     )
-    computeBezierSurfacePoints(controlPoints, subdivisionsU, subdivisionsV, surfacePositions)
+    computeBezierSurfacePoints(controlPoints, subdivisionsU, subdivisionsV, positionsBuffer, vertexOffset)
 
-    if (hasBicubicColor) {
-      computeCatmullRomSurfaceColors(patchColors, subdivisionsU, subdivisionsV, surfaceColors)
+    if (config.hasBicubicColor) {
+      computeCatmullRomSurfaceColors(patchColors, subdivisionsU, subdivisionsV, colorsBuffer, vertexOffset)
     } else {
-      computeBilinearSurfaceColors(patchColors, subdivisionsU, subdivisionsV, surfaceColors)
+      computeBilinearSurfaceColors(patchColors, subdivisionsU, subdivisionsV, colorsBuffer, vertexOffset)
     }
-
-    val vertexCount = subdivisionsU * subdivisionsV
-    drawTriangles(canvas, surfacePositions, surfaceColors, indices, vertexCount)
   }
 
   private fun buildControlPointMatrix(
@@ -242,11 +257,18 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
    * @param controlPoints The 4x4 grid of control points (32 floats: x, y for each).
    * @param subdivisionsU The number of horizontal subdivisions.
    * @param subdivisionsV The number of vertical subdivisions.
-   * @param outPositions The output list to store the calculated [androidx.compose.ui.geometry.Offset] for each vertex.
+   * @param outPositions The output array that receives the flattened (x, y) position of each vertex.
+   * @param vertexOffset The index of the first vertex of this patch in [outPositions].
    */
-  private fun computeBezierSurfacePoints(controlPoints: FloatArray, subdivisionsU: Int, subdivisionsV: Int, outPositions: FloatArray) {
-    val forwardDiffX = forwardDifferenceRowResultsX!!
-    val forwardDiffY = forwardDifferenceRowResultsY!!
+  private fun computeBezierSurfacePoints(
+    controlPoints: FloatArray,
+    subdivisionsU: Int,
+    subdivisionsV: Int,
+    outPositions: FloatArray,
+    vertexOffset: Int,
+  ) {
+    val forwardDiffX = forwardDifferenceRowResultsX
+    val forwardDiffY = forwardDifferenceRowResultsY
     val stepSize = 1f / (subdivisionsU - 1).toFloat()
     val stepSize2 = stepSize * stepSize
     val stepSize3 = stepSize2 * stepSize
@@ -288,12 +310,12 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
       }
     }
 
-    val bernsteinBasis = vBernsteinBasis!!
+    val bernsteinBasis = vBernsteinBasis
     for (vIndex in 0 until subdivisionsV) {
       val vBase = vIndex * 4
 
       for (uIndex in 0 until subdivisionsU) {
-        val outIdx = (uIndex * subdivisionsV + vIndex) * 2
+        val outIdx = (vertexOffset + uIndex * subdivisionsV + vIndex) * 2
         outPositions[outIdx] =
           bernsteinBasis[vBase] * forwardDiffX[uIndex] +
             bernsteinBasis[vBase + 1] * forwardDiffX[subdivisionsU + uIndex] +
@@ -315,21 +337,24 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
    * This implementation uses the forward differencing algorithm to efficiently evaluate the Catmull-Rom spline across the surface
    * subdivisions.
    *
-   * @param patchColors The 4x4 grid of colors surrounding and including the patch.
+   * @param patchColors The 4x4 grid of ARGB colors surrounding and including the patch.
    * @param subdivisionsU The number of horizontal subdivisions.
    * @param subdivisionsV The number of vertical subdivisions.
-   * @param outColors The output list to store the interpolated colors for each vertex.
+   * @param outColors The output array that receives the interpolated ARGB color of each vertex.
+   * @param vertexOffset The index of the first vertex of this patch in [outColors].
    */
-  private fun computeCatmullRomSurfaceColors(patchColors: IntArray, subdivisionsU: Int, subdivisionsV: Int, outColors: IntArray) {
+  private fun computeCatmullRomSurfaceColors(
+    patchColors: IntArray,
+    subdivisionsU: Int,
+    subdivisionsV: Int,
+    outColors: IntArray,
+    vertexOffset: Int,
+  ) {
     for (i in 0 until 16) {
-      val color = Color(patchColors[i]).convert(ColorSpaces.Oklab)
-      okLabPatchColors[i * 4] = color.red
-      okLabPatchColors[i * 4 + 1] = color.green
-      okLabPatchColors[i * 4 + 2] = color.blue
-      okLabPatchColors[i * 4 + 3] = color.alpha
+      writeOklab(patchColors[i], okLabPatchColors, i * 4)
     }
 
-    val forwardDiffColor = colorForwardDifferenceRowResults!!
+    val forwardDiffColor = colorForwardDifferenceRowResults
     val stepSize = 1f / (subdivisionsU - 1).toFloat()
     val stepSize2 = stepSize * stepSize
     val stepSize3 = stepSize2 * stepSize
@@ -356,8 +381,8 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
         var currentColorValue = okLabPatchColors[rowBase + 4 + channel]
         val rowOffset = row * subdivisionsU * 4
 
-        val minValue = if (channel < 3) ColorSpaces.Oklab.getMinValue(channel) else 0f
-        val maxValue = if (channel < 3) ColorSpaces.Oklab.getMaxValue(channel) else 1f
+        val minValue = OklabChannelMinValues[channel]
+        val maxValue = OklabChannelMaxValues[channel]
 
         forwardDiffColor[rowOffset + channel] = currentColorValue.coerceIn(minValue, maxValue)
 
@@ -370,14 +395,7 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
       }
     }
 
-    // Catmull-Rom splines overshoot their control values, and Color() range-checks its components, so the V pass must clamp too.
-    val minL = ColorSpaces.Oklab.getMinValue(0)
-    val maxL = ColorSpaces.Oklab.getMaxValue(0)
-    val minA = ColorSpaces.Oklab.getMinValue(1)
-    val maxA = ColorSpaces.Oklab.getMaxValue(1)
-    val minB = ColorSpaces.Oklab.getMinValue(2)
-    val maxB = ColorSpaces.Oklab.getMaxValue(2)
-    val catmullRomBasis = vCatmullRomBasis!!
+    val catmullRomBasis = vCatmullRomBasis
     for (uIndex in 0 until subdivisionsU) {
       val uBase0 = uIndex * 4
       val uBase1 = subdivisionsU * 4 + uIndex * 4
@@ -408,49 +426,57 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
             catmullRomBasis[vBasisOffset + 2] * forwardDiffColor[uBase2 + 3] +
             catmullRomBasis[vBasisOffset + 3] * forwardDiffColor[uBase3 + 3])
 
-        outColors[uIndex * subdivisionsV + vIndex] =
-          Color(
-              red = l.coerceIn(minL, maxL),
-              green = a.coerceIn(minA, maxA),
-              blue = b.coerceIn(minB, maxB),
-              alpha = alpha.coerceIn(0f, 1f),
-              colorSpace = ColorSpaces.Oklab,
-            )
-            .convert(ColorSpaces.Srgb)
-            .toArgb()
+        outColors[vertexOffset + uIndex * subdivisionsV + vIndex] = oklabToArgb(l, a, b, alpha)
       }
     }
   }
 
   /**
-   * Computes the colors for a patch using bilinear interpolation. This is used when hasBicubicColor is false.
+   * Computes the colors for a patch using bilinear interpolation in Oklab. This is used when hasBicubicColor is false.
    *
-   * @param patchColors The 4x4 grid of colors forming the patch.
+   * The four corner colors are converted to Oklab once, and every vertex is interpolated in floating point and converted back to sRGB
+   * exactly once, so intermediate results are not quantized to 8 bits.
+   *
+   * @param patchColors The 4x4 grid of ARGB colors surrounding and including the patch.
    * @param subdivisionsU The number of horizontal subdivisions.
    * @param subdivisionsV The number of vertical subdivisions.
-   * @param outColors The output list to store the interpolated colors for each vertex.
+   * @param outColors The output array that receives the interpolated ARGB color of each vertex.
+   * @param vertexOffset The index of the first vertex of this patch in [outColors].
    */
-  private fun computeBilinearSurfaceColors(patchColors: IntArray, subdivisionsU: Int, subdivisionsV: Int, outColors: IntArray) {
+  private fun computeBilinearSurfaceColors(
+    patchColors: IntArray,
+    subdivisionsU: Int,
+    subdivisionsV: Int,
+    outColors: IntArray,
+    vertexOffset: Int,
+  ) {
     val subdivisionsUMinus1 = (subdivisionsU - 1).toFloat()
     val subdivisionsVMinus1 = (subdivisionsV - 1).toFloat()
 
     fun colorIdx(row: Int, col: Int): Int = (row * 4 + col)
 
-    // Offsets for the 4 corners of the current patch inside the 4x4 RGBA matrix.
-    // Reading them as Color type to perceptually interpolate between them by utilizing
-    // Color.lerp api which converts these sRGB colors to OkLab space before interpolating.
-    val topLeft = Color(patchColors[colorIdx(1, 1)])
-    val topRight = Color(patchColors[colorIdx(1, 2)])
-    val bottomLeft = Color(patchColors[colorIdx(2, 1)])
-    val bottomRight = Color(patchColors[colorIdx(2, 2)])
+    // The corners of the current patch are at the center of the 4x4 color grid. Store them as top-left, top-right, bottom-left and
+    // bottom-right Oklab colors in the first 16 entries of okLabPatchColors.
+    val corners = okLabPatchColors
+    writeOklab(patchColors[colorIdx(1, 1)], corners, 0)
+    writeOklab(patchColors[colorIdx(1, 2)], corners, 4)
+    writeOklab(patchColors[colorIdx(2, 1)], corners, 8)
+    writeOklab(patchColors[colorIdx(2, 2)], corners, 12)
 
     for (uIndex in 0 until subdivisionsU) {
       val u = uIndex / subdivisionsUMinus1
-      val topLR = lerp(topLeft, topRight, u)
-      val bottomLR = lerp(bottomLeft, bottomRight, u)
+      val topL = lerp(corners[0], corners[4], u)
+      val topA = lerp(corners[1], corners[5], u)
+      val topB = lerp(corners[2], corners[6], u)
+      val topAlpha = lerp(corners[3], corners[7], u)
+      val bottomL = lerp(corners[8], corners[12], u)
+      val bottomA = lerp(corners[9], corners[13], u)
+      val bottomB = lerp(corners[10], corners[14], u)
+      val bottomAlpha = lerp(corners[11], corners[15], u)
       for (vIndex in 0 until subdivisionsV) {
         val v = vIndex / subdivisionsVMinus1
-        outColors[uIndex * subdivisionsV + vIndex] = lerp(topLR, bottomLR, v).toArgb()
+        outColors[vertexOffset + uIndex * subdivisionsV + vIndex] =
+          oklabToArgb(lerp(topL, bottomL, v), lerp(topA, bottomA, v), lerp(topB, bottomB, v), lerp(topAlpha, bottomAlpha, v))
       }
     }
   }
@@ -464,13 +490,7 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
    * @param size The dimensions to scale the normalized positions by.
    * @param out The output FloatArray to store the 8 coordinates (4 * 2).
    */
-  private fun readPatchPositions(patchIdx: Int, columns: Int, inArray: FloatArray?, size: Size, out: FloatArray) {
-    if (inArray == null) {
-      for (i in out.indices) {
-        out[i] = 0f
-      }
-      return
-    }
+  private fun readPatchPositions(patchIdx: Int, columns: Int, inArray: FloatArray, size: Size, out: FloatArray) {
     val patchRow = patchIdx / columns
     val patchColumn = patchIdx % columns
     val topLeft = meshGradientPointIndex(patchRow, patchColumn, columns) * 2
@@ -493,8 +513,8 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
    * @param patchIdx The index of the patch to read.
    * @param rows The number of rows in the mesh.
    * @param columns The number of columns in the mesh.
-   * @param colors The source array containing RGBA color components for each vertex.
-   * @param out The output FloatArray to store the 64 color components (16 vertices * 4 channels).
+   * @param colors The source array containing the ARGB color of each vertex.
+   * @param out The output array to store the 16 ARGB colors.
    */
   private fun readPatchColors(patchIdx: Int, rows: Int, columns: Int, colors: IntArray, out: IntArray) {
     val patchRow = patchIdx / columns
@@ -510,24 +530,31 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
     }
   }
 
-  /** Builds the index buffer for a grid of triangles based on the number of subdivisions. */
-  private fun buildIndexBuffer(subdivisionsU: Int, subdivisionsV: Int) {
-    val indices = indexBuffer!!
+  /**
+   * Builds the index buffer for [patchCount] consecutive patches, each a grid of triangles based on the number of subdivisions. The
+   * vertices of patch `p` start at `p * subdivisionsU * subdivisionsV`.
+   */
+  private fun buildIndexBuffer(subdivisionsU: Int, subdivisionsV: Int, patchCount: Int): ShortArray {
+    val indices = ShortArray((subdivisionsU - 1) * (subdivisionsV - 1) * 6 * patchCount)
     var idx = 0
-    for (u in 0 until subdivisionsU - 1) {
-      for (v in 0 until subdivisionsV - 1) {
-        val topLeft = (u * subdivisionsV + v).toShort()
-        val bottomLeft = (u * subdivisionsV + v + 1).toShort()
-        val topRight = ((u + 1) * subdivisionsV + v).toShort()
-        val bottomRight = ((u + 1) * subdivisionsV + v + 1).toShort()
-        indices[idx++] = topLeft
-        indices[idx++] = topRight
-        indices[idx++] = bottomRight
-        indices[idx++] = topLeft
-        indices[idx++] = bottomRight
-        indices[idx++] = bottomLeft
+    for (patch in 0 until patchCount) {
+      val base = patch * subdivisionsU * subdivisionsV
+      for (u in 0 until subdivisionsU - 1) {
+        for (v in 0 until subdivisionsV - 1) {
+          val topLeft = (base + u * subdivisionsV + v).toShort()
+          val bottomLeft = (base + u * subdivisionsV + v + 1).toShort()
+          val topRight = (base + (u + 1) * subdivisionsV + v).toShort()
+          val bottomRight = (base + (u + 1) * subdivisionsV + v + 1).toShort()
+          indices[idx++] = topLeft
+          indices[idx++] = topRight
+          indices[idx++] = bottomRight
+          indices[idx++] = topLeft
+          indices[idx++] = bottomRight
+          indices[idx++] = bottomLeft
+        }
       }
     }
+    return indices
   }
 
   /**
@@ -535,10 +562,10 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
    * interpolation to avoid redundant power and multiplication operations for every vertex in every patch.
    */
   private fun precomputeBasisArrays(subdivisionsV: Int) {
-    if (vBernsteinBasis == null || vBernsteinBasis!!.size != subdivisionsV * 4) {
+    if (vBernsteinBasis.size != subdivisionsV * 4) {
       vBernsteinBasis = FloatArray(subdivisionsV * 4)
     }
-    val bernsteinBasis = vBernsteinBasis!!
+    val bernsteinBasis = vBernsteinBasis
     val subdivisionsVMinus1 = (subdivisionsV - 1).toFloat()
     for (vIndex in 0 until subdivisionsV) {
       val v = vIndex / subdivisionsVMinus1
@@ -551,10 +578,10 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
       bernsteinBasis[base + 3] = v3
     }
 
-    if (vCatmullRomBasis == null || vCatmullRomBasis!!.size != subdivisionsV * 4) {
+    if (vCatmullRomBasis.size != subdivisionsV * 4) {
       vCatmullRomBasis = FloatArray(subdivisionsV * 4)
     }
-    val vCatmullRom = vCatmullRomBasis!!
+    val vCatmullRom = vCatmullRomBasis
     for (vIndex in 0 until subdivisionsV) {
       val v = vIndex / subdivisionsVMinus1
       val v2 = v * v
@@ -567,3 +594,27 @@ internal abstract class BaseMeshGradientRenderer : MeshGradientRenderer {
     }
   }
 }
+
+/** Writes the Oklab (L, a, b, alpha) components of the [argb] sRGB color into [out], starting at [offset]. */
+private fun writeOklab(argb: Int, out: FloatArray, offset: Int) {
+  val color = Color(argb).convert(ColorSpaces.Oklab)
+  out[offset] = color.red
+  out[offset + 1] = color.green
+  out[offset + 2] = color.blue
+  out[offset + 3] = color.alpha
+}
+
+/**
+ * Converts an Oklab color to an sRGB ARGB int. Components are clamped to their valid ranges first: interpolated values can fall outside of
+ * them (Catmull-Rom splines overshoot their control values), and [Color] rejects out-of-range components.
+ */
+private fun oklabToArgb(l: Float, a: Float, b: Float, alpha: Float): Int =
+  Color(
+      red = l.coerceIn(OklabMinL, OklabMaxL),
+      green = a.coerceIn(OklabMinA, OklabMaxA),
+      blue = b.coerceIn(OklabMinB, OklabMaxB),
+      alpha = alpha.coerceIn(0f, 1f),
+      colorSpace = ColorSpaces.Oklab,
+    )
+    .convert(ColorSpaces.Srgb)
+    .toArgb()

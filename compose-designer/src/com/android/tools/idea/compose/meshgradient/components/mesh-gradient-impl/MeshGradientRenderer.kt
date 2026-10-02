@@ -26,8 +26,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
  * (tangents) that define the curvature of the edges connecting neighboring vertices. Colors can be interpolated using either bilinear or
  * bicubic interpolation.
  *
- * The renderer can be stateful (e.g. on Android) and maintain internal buffers (such as index and vertex buffers) to optimize rendering
- * performance and avoid per-frame allocations.
+ * The renderer is stateful: it keeps its vertex, color and index buffers across frames and only reallocates them when the tessellation
+ * level or the number of patches per draw call changes.
  *
  * @see MeshGradientConfig
  */

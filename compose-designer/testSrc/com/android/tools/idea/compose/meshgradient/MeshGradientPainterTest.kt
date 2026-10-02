@@ -53,6 +53,32 @@ class MeshGradientPainterTest {
     assertEquals(1f, middle.red, 0.01f)
   }
 
+  @Test
+  fun drawsVertexColorsAtTheCorners() {
+    val painter =
+      MeshGradientPainter(rows = 1, columns = 1) {
+        setVertex(0, 0, Offset(0f, 0f), Color.Red)
+        setVertex(0, 1, Offset(1f, 0f), Color.Green)
+        setVertex(1, 0, Offset(0f, 1f), Color.Blue)
+        setVertex(1, 1, Offset(1f, 1f), Color.White)
+      }
+
+    val pixels = painter.drawToBitmap(width = 100, height = 100).toPixelMap()
+
+    assertColorEquals(Color.Red, pixels[0, 0])
+    assertColorEquals(Color.Green, pixels[99, 0])
+    assertColorEquals(Color.Blue, pixels[0, 99])
+    assertColorEquals(Color.White, pixels[99, 99])
+  }
+
+  private fun assertColorEquals(expected: Color, actual: Color) {
+    val tolerance = 0.05f
+    assertEquals("alpha of $actual", expected.alpha, actual.alpha, tolerance)
+    assertEquals("red of $actual", expected.red, actual.red, tolerance)
+    assertEquals("green of $actual", expected.green, actual.green, tolerance)
+    assertEquals("blue of $actual", expected.blue, actual.blue, tolerance)
+  }
+
   private fun Painter.drawToBitmap(width: Int, height: Int): ImageBitmap {
     val bitmap = ImageBitmap(width, height)
     val size = Size(width.toFloat(), height.toFloat())

@@ -16,47 +16,32 @@
 
 package com.android.tools.idea.compose.meshgradient
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Canvas
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.VertexMode
-import androidx.compose.ui.graphics.Vertices
+import androidx.compose.ui.graphics.skiaCanvas
+import org.jetbrains.skia.BlendMode
+import org.jetbrains.skia.Paint
+import org.jetbrains.skia.VertexMode
 
 // Taken from compose framework
 
 /**
- * Fully platform-independent [BaseMeshGradientRenderer] that draws the tessellated triangle mesh through the common [Canvas.drawVertices]
- * API.
- *
- * This uses no platform-specific types, so any backend can use it as-is. Backends that can avoid the per-frame [Vertices] allocation by
- * calling their native canvas directly supply their own [BaseMeshGradientRenderer] subclass instead.
+ * [BaseMeshGradientRenderer] that draws the tessellated triangle mesh straight from the reused vertex buffers through the Skia canvas
+ * backing the Compose [Canvas]. Unlike the common [Canvas.drawVertices] API, this does not box every vertex nor allocate new `Vertices` for
+ * every draw.
  */
 internal class DefaultMeshGradientRenderer : BaseMeshGradientRenderer() {
-  private val paint = Paint()
-  private var lastIndices: ShortArray? = null
-  private var cachedVertexIndices: List<Int> = emptyList()
+  // Created lazily since Skia objects load the Skiko native library, which tessellation alone does not need.
+  private val paint by lazy(LazyThreadSafetyMode.NONE) { Paint() }
 
-  @Suppress("PrimitiveInCollection")
-  override fun drawTriangles(canvas: Canvas, surfacePositions: FloatArray, surfaceColors: IntArray, indices: ShortArray, vertexCount: Int) {
-    val vertexPositions = List(vertexCount) { i -> Offset(surfacePositions[i * 2], surfacePositions[i * 2 + 1]) }
-    val vertexColors = List(vertexCount) { i -> Color(surfaceColors[i]) }
-    if (lastIndices !== indices) {
-      cachedVertexIndices = List(indices.size) { i -> indices[i].toInt() }
-      lastIndices = indices
-    }
-
-    canvas.drawVertices(
-      vertices =
-        Vertices(
-          vertexMode = VertexMode.Triangles,
-          positions = vertexPositions,
-          textureCoordinates = vertexPositions,
-          colors = vertexColors,
-          indices = cachedVertexIndices,
-        ),
-      blendMode = BlendMode.Dst,
+  override fun drawTriangles(canvas: Canvas, surfacePositions: FloatArray, surfaceColors: IntArray, indices: ShortArray) {
+    canvas.skiaCanvas.drawVertices(
+      vertexMode = VertexMode.TRIANGLES,
+      positions = surfacePositions,
+      colors = surfaceColors,
+      texCoords = null,
+      indices = indices,
+      // Use the vertex colors as they are, ignoring the paint color.
+      blendMode = BlendMode.DST,
       paint = paint,
     )
   }
