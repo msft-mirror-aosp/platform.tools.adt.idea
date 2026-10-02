@@ -7,7 +7,9 @@ from tools.adt.idea.studio import intellij
 def check_plugin(kind, id, allow_bundled_updates, files, deps, out):
   if kind == "module":
     # This is a v2 module, not a plugin per se. See go/studio-v2-modules for details.
-    element = intellij.load_plugin_xml(files, f"{id}.xml")
+    # Module descriptors may include files from sibling modules in the same host plugin,
+    # which are not part of `files`, so we tolerate missing includes here.
+    element = intellij.load_plugin_xml(files, f"{id}.xml", allow_missing_includes=True)
   else:
     assert kind == "plugin"
     element = intellij.load_plugin_xml(files)

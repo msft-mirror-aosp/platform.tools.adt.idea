@@ -132,7 +132,7 @@ def _read_plugin_jars(ide_home: Path, product_info, platform_jars: set[str]):
   return plugins
 
 
-def _load_include(include, xpath, cwd, index):
+def _load_include(include, xpath, cwd, index, allow_missing_includes):
   href = include.get("href")
   parse = include.get("parse", "xml")
   if parse != "xml":
@@ -159,21 +159,24 @@ def _load_include(include, xpath, cwd, index):
   new_cwd = rel[0 : rel.rindex("/")] if "/" in rel else ""
 
   if rel not in index:
+    if allow_missing_includes:
+      # Content modules may include files from sibling modules in the same host plugin
+      # (e.g. the Kotlin analysis API modules), which we cannot see here.
+      return [], None
     print("Cannot find file to include %s" % href)
     sys.exit(1)
 
   res = index[rel].read(rel)
   e = ET.fromstring(res)
 
-  ret = []
   assert xpath.startswith("/")
   root, path = xpath[1:].split("/", 1)
-  if root == e.tag:
-    ret = e.findall("./" + path)
-  if not ret:
+  if root != e.tag:
     print("While including %s, the path %s," % (rel, xpath))
     print("did not produce any elements to include")
     sys.exit(1)
+  # Note: the included file is allowed to be empty (e.g. an empty <idea-plugin/>).
+  ret = e.findall("./" + path)
 
   return ret, new_cwd
 
@@ -195,7 +198,7 @@ def _xpath_for_include(include, parent):
   return xpath
 
 
-def _resolve_includes(elem, cwd, index):
+def _resolve_includes(elem, cwd, index, allow_missing_includes):
   """Resolves xincludes in the given xml element.
 
   By replacing xinclude tags like
@@ -212,10 +215,10 @@ def _resolve_includes(elem, cwd, index):
     e = elem[i]
     if e.tag == "{http://www.w3.org/2001/XInclude}include":
       xpath = _xpath_for_include(e, elem)
-      nodes, new_cwd = _load_include(e, xpath, cwd, index)
+      nodes, new_cwd = _load_include(e, xpath, cwd, index, allow_missing_includes)
       subtree = ET.Element(elem.tag)
       subtree.extend(nodes)
-      _resolve_includes(subtree, new_cwd, index)
+      _resolve_includes(subtree, new_cwd, index, allow_missing_includes)
       nodes = list(subtree)
       if nodes:
         for node in nodes[:-1]:
@@ -225,12 +228,15 @@ def _resolve_includes(elem, cwd, index):
         if e.tail:
           node.tail = (node.tail or "") + e.tail
         elem[i] = node
+      else:
+        del elem[i]
+        continue
     else:
-      _resolve_includes(e, cwd, index)
+      _resolve_includes(e, cwd, index, allow_missing_includes)
     i = i + 1
 
 
-def load_plugin_xml(files: List[Path], xml_name = "META-INF/plugin.xml"):
+def load_plugin_xml(files: List[Path], xml_name = "META-INF/plugin.xml", allow_missing_includes = False):
   xmls = {}
   index = {}
   jars = [zipfile.ZipFile(f) for f in files if f.suffix == ".jar"]
@@ -253,7 +259,7 @@ def load_plugin_xml(files: List[Path], xml_name = "META-INF/plugin.xml"):
   element = ET.fromstring(xml)
 
   # We cannot use ElementInclude because it does not support xpointer
-  _resolve_includes(element, "META-INF", index)
+  _resolve_includes(element, "META-INF", index, allow_missing_includes)
 
   for jar in jars:
     jar.close()
