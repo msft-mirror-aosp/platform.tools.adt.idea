@@ -751,6 +751,12 @@ public final class StudioFlags {
     "Support for RISC V",
     "Allow support for RISC V architecture and targeted architecture selection.");
 
+  public static final Flag<Boolean> SORT_OBJECT_PROPERTIES = new BooleanFlag(
+    RUNDEBUG,
+    "node.render.sort.properties",
+    "Sort object children nodes",
+    "When evaluating objects, sort object fields and getters according to the declaration order. DEX'ing a class results in alphabetic order.");
+
   //endregion
 
   //region Logcat

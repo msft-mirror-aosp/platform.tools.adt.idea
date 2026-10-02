@@ -36,6 +36,8 @@
     <debugger.fieldVisibilityProvider implementation="com.android.tools.idea.debug.AndroidFieldVisibilityProvider"/>
     <debugger.dexBytecodeInspector implementation="com.android.tools.idea.debug.DexBytecodeInspectorImpl"/>
     <debugger.jdiHelperClassLoader implementation="com.android.tools.idea.debug.AndroidJdiHelperClassLoader"/>
+    <debugger.compoundRendererProvider id="AndroidKotlinRendererProvider" implementation="com.android.tools.idea.debug.childrenrenderer.AndroidKotlinRendererProvider" order="before KotlinClassRendererProvider"/>
+    <debugger.compoundRendererProvider implementation="com.android.tools.idea.debug.childrenrenderer.AndroidClassRendererProvider" order="after AndroidKotlinRendererProvider"/>
 
     <debuggerClassFilterProvider implementation="com.android.tools.idea.debug.AndroidDebuggerClassesFilterProvider"/>
     <xdebugger.settings implementation="com.android.tools.idea.debug.AndroidDebuggerSettings"/>
