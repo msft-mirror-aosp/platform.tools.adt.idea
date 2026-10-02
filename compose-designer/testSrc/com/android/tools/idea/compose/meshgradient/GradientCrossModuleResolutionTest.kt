@@ -125,7 +125,7 @@ class GradientCrossModuleResolutionTest {
   fun resolvesPropertiesFromDependencyModules() {
     runReadActionBlocking {
       val psiManager = GradientPsiManager(project)
-      val call = checkNotNull(psiManager.findMeshPainterCall(appFile))
+      val call = checkNotNull(appFile.findMeshPainterCall())
 
       val mesh = checkNotNull(psiManager.parseMesh(call))
       assertEquals(BRAND_BLUE, mesh.vertices.firstOrNull { it.row == 0 && it.col == 0 }?.color)
@@ -141,7 +141,7 @@ class GradientCrossModuleResolutionTest {
   fun collectsColorsFromDependencyModules() {
     runReadActionBlocking {
       val psiManager = GradientPsiManager(project)
-      val call = checkNotNull(psiManager.findMeshPainterCall(appFile))
+      val call = checkNotNull(appFile.findMeshPainterCall())
 
       val colors = psiManager.collectAvailableColors(call)
       assertTrue("Should include explicitly imported BrandBlue", BRAND_BLUE in colors)

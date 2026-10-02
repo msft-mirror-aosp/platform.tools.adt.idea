@@ -149,14 +149,16 @@ class GradientEditorState {
     generateMeshPoints()
   }
 
-  fun loadMesh(
-    newRows: Int,
-    newCols: Int,
-    newPoints: List<List<MeshGradientPoint>>,
-    newHasBicubicColor: Boolean = false,
-  ) {
-    rows = newRows.coerceIn(2, 10)
-    cols = newCols.coerceIn(2, 10)
+  /**
+   * Loads the mesh [newPoints] in the editor. The number of rows and columns is the size of the grid, which must be rectangular and have at
+   * least two vertices on each axis.
+   */
+  fun loadMesh(newPoints: List<List<MeshGradientPoint>>, newHasBicubicColor: Boolean = false) {
+    require(newPoints.size >= 2 && newPoints[0].size >= 2 && newPoints.all { it.size == newPoints[0].size }) {
+      "The mesh must be a rectangular grid with at least 2 x 2 vertices"
+    }
+    rows = newPoints.size
+    cols = newPoints[0].size
     hasBicubicColor = newHasBicubicColor
     meshPoints.clear()
     meshPoints.addAll(newPoints)

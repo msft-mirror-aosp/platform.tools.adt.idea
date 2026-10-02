@@ -15,152 +15,92 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.idea.compose.preview.message
-import com.intellij.openapi.application.runReadActionBlocking
+import com.google.common.annotations.VisibleForTesting
+import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.debug
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.util.ThrowableComputable
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
-import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.coroutines.cancellation.CancellationException
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtFile
 
-private val logger = Logger.getInstance(GradientEditorDialog::class.java)
+private val LOG = logger<GradientEditorDialog>()
 
 private const val DIMENSION_SERVICE_KEY = "#com.android.tools.idea.compose.meshgradient.GradientEditorDialog"
 
-class GradientEditorDialog(private val project: Project, private val file: KtFile, painterCall: KtCallExpression) :
+/**
+ * Dialog to edit the gradient described by [input] and write the changes back to the source.
+ *
+ * Use [GradientEditorDialog.analyzeAndShow] to analyze a call and open the dialog.
+ */
+internal class GradientEditorDialog(private val project: Project, private val input: GradientEditorInput.Editable) :
   DialogWrapper(project, true) {
 
-  private val psiManager = GradientPsiManager(project)
   internal val state = GradientEditorState()
-  private val painterCallPointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(painterCall)
+
+  /** The values loaded in [state], used to detect and write only the changes made by the user. */
+  private val initialMesh: MeshValues?
+  private val initialBrush: BrushValues?
 
   init {
     title = message("gradient.editor.title")
-
-    runReadActionBlocking {
-      val contextColors = psiManager.collectAvailableColors(painterCall)
-      state.addAvailableColors(contextColors)
-
-      // Populate editor state by parsing the call in order of specificity:
-      // 1. Mesh gradient painter
-      // 2. Linear / Horizontal / Vertical brush gradients
-      // 3. Radial brush gradient
-      // 4. Sweep brush gradient
-      // 5. Dynamic fallback for recognized Brush gradient calls whose arguments cannot be statically parsed
-      val populated =
-        tryPopulateMesh(painterCall) ||
-          tryPopulateLinear(painterCall) ||
-          tryPopulateRadial(painterCall) ||
-          tryPopulateSweep(painterCall) ||
-          tryPopulateDynamicBrushFallback(painterCall)
-
-      if (!populated) {
-        logger.warn("Unrecognized gradient call: ${painterCall.text}")
-      }
+    when (input) {
+      is GradientEditorInput.Mesh -> loadMesh(input)
+      is GradientEditorInput.Brush -> loadBrush(input.brush.gradient)
     }
-
+    initialMesh = if (input is GradientEditorInput.Mesh) state.meshValues() else null
+    initialBrush = if (input is GradientEditorInput.Brush) state.brushValues() else null
     init()
   }
 
-  private fun tryPopulateMesh(call: KtCallExpression): Boolean {
-    val parsedMesh = psiManager.parseMesh(call) ?: return false
+  private fun loadMesh(input: GradientEditorInput.Mesh) {
+    val mesh = input.mesh
     state.currentType = GradientType.MESH
-    val grid =
-      List(parsedMesh.rows) { r ->
-        List(parsedMesh.cols) { c ->
-          val vertex = parsedMesh.vertices.firstOrNull { it.row == r && it.col == c }
-          val offset = vertex?.offset ?: Offset(c.toFloat() / (parsedMesh.cols - 1), r.toFloat() / (parsedMesh.rows - 1))
-          val color = vertex?.color ?: Color.White
-          MeshGradientPoint(
-            position = offset,
-            color = color,
-            leftBezierOffset = vertex?.leftBezierOffset ?: Offset.Unspecified,
-            topBezierOffset = vertex?.topBezierOffset ?: Offset.Unspecified,
-            rightBezierOffset = vertex?.rightBezierOffset ?: Offset.Unspecified,
-            bottomBezierOffset = vertex?.bottomBezierOffset ?: Offset.Unspecified,
-            positionExpression = vertex?.positionExpression,
-            colorExpression = vertex?.colorExpression,
-          )
-        }
-      }
-    state.hasDynamicOrUnresolvedValues = parsedMesh.hasDynamicOrUnresolvedValues
-    state.loadMesh(parsedMesh.rows, parsedMesh.cols, grid, parsedMesh.hasBicubicColor)
-    return true
+    state.addAvailableColors(input.availableColors)
+    state.hasDynamicOrUnresolvedValues = mesh.hasDynamicOrUnresolvedValues
+    state.loadMesh(mesh.toGrid(), mesh.hasBicubicColor)
   }
 
-  private fun tryPopulateLinear(call: KtCallExpression): Boolean {
-    val parsedLinear =
-      psiManager.parseLinearGradient(call)
-        ?: psiManager.parseHorizontalGradient(call)
-        ?: psiManager.parseVerticalGradient(call)
-        ?: return false
-
-    state.currentType = GradientType.LINEAR
-    populateBrushColorsAndStops(parsedLinear.colors, parsedLinear.colorStops)
-    state.start = parsedLinear.start
-    state.end = parsedLinear.end
-    state.tileMode = parsedLinear.tileMode
-    state.hasDynamicOrUnresolvedValues = parsedLinear.hasDynamicOrUnresolvedValues
-    return true
-  }
-
-  private fun tryPopulateRadial(call: KtCallExpression): Boolean {
-    val parsedRadial = psiManager.parseRadialGradient(call) ?: return false
-    state.currentType = GradientType.RADIAL
-    populateBrushColorsAndStops(parsedRadial.colors, parsedRadial.colorStops)
-    state.center = parsedRadial.center
-    state.radius = parsedRadial.radius
-    state.tileMode = parsedRadial.tileMode
-    state.hasDynamicOrUnresolvedValues = parsedRadial.hasDynamicOrUnresolvedValues
-    return true
-  }
-
-  private fun tryPopulateSweep(call: KtCallExpression): Boolean {
-    val parsedSweep = psiManager.parseSweepGradient(call) ?: return false
-    state.currentType = GradientType.SWEEP
-    populateBrushColorsAndStops(parsedSweep.colors, parsedSweep.colorStops)
-    state.center = parsedSweep.center
-    state.hasDynamicOrUnresolvedValues = parsedSweep.hasDynamicOrUnresolvedValues
-    return true
-  }
-
-  /**
-   * Fallback for recognized Brush gradient calls whose arguments could not be statically parsed (e.g. dynamic variables or function
-   * arguments). Initializes reasonable defaults and flags that dynamic values are present.
-   */
-  private fun tryPopulateDynamicBrushFallback(call: KtCallExpression): Boolean {
-    return when {
-      call.isValidBrushGradientCall(FUN_LINEAR_GRADIENT) ||
-        call.isValidBrushGradientCall(FUN_HORIZONTAL_GRADIENT) ||
-        call.isValidBrushGradientCall(FUN_VERTICAL_GRADIENT) -> {
+  private fun loadBrush(gradient: Gradient) {
+    when (gradient) {
+      is Gradient.LinearGradient -> {
         state.currentType = GradientType.LINEAR
-        state.hasDynamicOrUnresolvedValues = true
-        true
+        populateBrushColorsAndStops(gradient.colors, gradient.colorStops)
+        state.start = gradient.start
+        state.end = gradient.end
+        state.tileMode = gradient.tileMode
       }
-      call.isValidBrushGradientCall(FUN_RADIAL_GRADIENT) -> {
+      is Gradient.RadialGradient -> {
         state.currentType = GradientType.RADIAL
-        state.hasDynamicOrUnresolvedValues = true
-        true
+        populateBrushColorsAndStops(gradient.colors, gradient.colorStops)
+        state.center = gradient.center
+        state.radius = gradient.radius
+        state.tileMode = gradient.tileMode
       }
-      call.isValidBrushGradientCall(FUN_SWEEP_GRADIENT) -> {
+      is Gradient.SweepGradient -> {
         state.currentType = GradientType.SWEEP
-        state.hasDynamicOrUnresolvedValues = true
-        true
+        populateBrushColorsAndStops(gradient.colors, gradient.colorStops)
+        state.center = gradient.center
       }
-      else -> false
     }
+    state.hasDynamicOrUnresolvedValues = gradient.hasDynamicOrUnresolvedValues
   }
 
   private fun populateBrushColorsAndStops(colors: List<Color>, colorStops: List<Pair<Float, Color>>?) {
@@ -189,7 +129,7 @@ class GradientEditorDialog(private val project: Project, private val file: KtFil
   override fun createCenterPanel(): JComponent {
     val mainPanel = JPanel(BorderLayout())
 
-    if (state.currentType != GradientType.MESH) {
+    if (input is GradientEditorInput.Brush) {
       val typeSelector = ComboBox(arrayOf(GradientType.LINEAR, GradientType.RADIAL, GradientType.SWEEP))
       typeSelector.renderer = SimpleListCellRenderer.create("") { it.displayName }
       typeSelector.selectedItem = state.currentType
@@ -212,58 +152,97 @@ class GradientEditorDialog(private val project: Project, private val file: KtFil
 
   override fun getDimensionServiceKey(): String = DIMENSION_SERVICE_KEY
 
-  public override fun doOKAction() {
-    val call = painterCallPointer.element?.takeIf { it.isValid } ?: return super.doOKAction()
-
-    WriteCommandAction.runWriteCommandAction(
-      project,
-      message("gradient.editor.update.command.name"),
-      null,
-      {
-        val success =
-          when (state.currentType) {
-            GradientType.MESH -> {
-              val successArgs = psiManager.updateConstructorArguments(call, state.rows, state.cols, state.hasBicubicColor)
-              val successBody = psiManager.regenerateLambdaBody(call, state.meshPoints)
-              successArgs && successBody
-            }
-            GradientType.LINEAR,
-            GradientType.RADIAL,
-            GradientType.SWEEP -> {
-              val gradient =
-                when (state.currentType) {
-                  GradientType.LINEAR ->
-                    Gradient.LinearGradient(
-                      state.colors,
-                      if (state.colorStops.isEmpty()) null else state.colorStops,
-                      state.start,
-                      state.end,
-                      state.tileMode,
-                    )
-                  GradientType.RADIAL ->
-                    Gradient.RadialGradient(
-                      state.colors,
-                      if (state.colorStops.isEmpty()) null else state.colorStops,
-                      state.center,
-                      state.radius,
-                      state.tileMode,
-                    )
-                  GradientType.SWEEP ->
-                    Gradient.SweepGradient(state.colors, if (state.colorStops.isEmpty()) null else state.colorStops, state.center)
-                  GradientType.MESH -> throw IllegalStateException()
-                }
-              psiManager.updateGradient(call, gradient)
-            }
-          }
-        if (!success) {
-          logger.warn("Failed to update gradient for type ${state.currentType}")
-          return@runWriteCommandAction
-        }
-        CodeStyleManager.getInstance(project).reformat(if (call.isValid) call else file)
-      },
-      file,
-    )
-
+  override fun doOKAction() {
+    val result = applyChanges()
+    if (result is GradientWriteResult.Failed) {
+      setErrorText(result.message)
+      return
+    }
     super.doOKAction()
+  }
+
+  /** Triggers the OK action, as if the user pressed the OK button. */
+  @VisibleForTesting internal fun performOkAction() = doOKAction()
+
+  /**
+   * Writes the changes made in the editor to the source, in a single undoable command. Nothing is written when the values are the ones
+   * initially loaded, or when the change cannot be applied safely.
+   */
+  @VisibleForTesting
+  internal fun applyChanges(): GradientWriteResult {
+    val writer = GradientSourceWriter(project)
+    return when (input) {
+      is GradientEditorInput.Mesh -> {
+        val initial = checkNotNull(initialMesh)
+        val target = state.meshValues()
+        if (target == initial) GradientWriteResult.Unchanged
+        else runWriteCommand(input.mesh.callPointer.containingFile) { writer.updateMesh(input.mesh, initial, target) }
+      }
+      is GradientEditorInput.Brush -> {
+        val initial = checkNotNull(initialBrush)
+        val target = state.brushValues()
+        if (target == initial) GradientWriteResult.Unchanged
+        else runWriteCommand(input.brush.callPointer.containingFile) { writer.updateBrush(input.brush, initial, target) }
+      }
+    }
+  }
+
+  /**
+   * Runs [write] in an undoable command modifying [file]. Returns a failure without running [write] if [file] no longer exists or cannot be
+   * made writable.
+   */
+  private fun runWriteCommand(file: PsiFile?, write: () -> GradientWriteResult): GradientWriteResult {
+    if (file == null) return GradientWriteResult.Failed(message("gradient.editor.error.stale"))
+    return WriteCommandAction.writeCommandAction(project, file)
+      .withName(message("gradient.editor.update.command.name"))
+      .compute(
+        ThrowableComputable<GradientWriteResult, RuntimeException> {
+          val documentManager = PsiDocumentManager.getInstance(project)
+          documentManager.getDocument(file)?.let { documentManager.commitDocument(it) }
+          write()
+        }
+      ) ?: GradientWriteResult.Failed(message("gradient.editor.error.readonly"))
+  }
+
+  override fun dispose() {
+    input.releasePointers(project)
+    super.dispose()
+  }
+
+  private fun GradientEditorState.meshValues() = MeshValues(meshPoints.toList(), hasBicubicColor)
+
+  private fun GradientEditorState.brushValues() =
+    BrushValues(currentType, colors.toList(), colorStops.toList(), start, end, center, radius, tileMode)
+
+  companion object {
+    /**
+     * Analyzes the gradient [call] in a cancellable background read action, under a modal progress, and opens the editor. If the call
+     * cannot be edited, an error message explains why.
+     */
+    @RequiresEdt
+    fun analyzeAndShow(project: Project, call: KtCallExpression) {
+      val calleeName = call.calleeExpression?.text
+      val callPointer = SmartPointerManager.createPointer(call)
+      val input =
+        try {
+          PsiDocumentManager.getInstance(project).commitAllDocuments()
+          runWithModalProgressBlocking(project, message("gradient.editor.progress.title")) {
+            smartReadAction(project) { callPointer.element?.let { GradientPsiManager(project).analyze(it) } }
+          }
+        } catch (e: CancellationException) {
+          // The user cancelled the analysis.
+          return
+        } finally {
+          SmartPointerManager.getInstance(project).removePointer(callPointer)
+        }
+      when (input) {
+        null -> return
+        is GradientEditorInput.Unsupported -> {
+          LOG.debug { "The gradient editor cannot edit the call to $calleeName" }
+          Messages.showErrorDialog(project, input.reason, message("gradient.editor.title"))
+        }
+        is GradientEditorInput.Editable -> GradientEditorDialog(project, input).show()
+      }
+    }
   }
 }

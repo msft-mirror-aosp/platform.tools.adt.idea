@@ -29,7 +29,6 @@ import icons.StudioIcons
 import javax.swing.Icon
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
 private val GRADIENT_GUTTER_ICON: Icon = StudioIcons.GutterIcons.PREVIEW_SETTINGS
@@ -73,11 +72,8 @@ internal class GradientLineMarkerInfo(element: PsiElement, kind: GradientCallKin
     { _, elt ->
       val validCall =
         (elt.parent?.parent as? KtCallExpression)?.takeIf { it.calleeExpression == elt.parent && it.gradientCallKind() != null }
-      val file = validCall?.containingFile as? KtFile
-      if (validCall != null && file != null) {
-        val project = elt.project
-        val dialog = GradientEditorDialog(project, file, validCall)
-        dialog.show()
+      if (validCall != null) {
+        GradientEditorDialog.analyzeAndShow(elt.project, validCall)
       }
     },
     GutterIconRenderer.Alignment.LEFT,

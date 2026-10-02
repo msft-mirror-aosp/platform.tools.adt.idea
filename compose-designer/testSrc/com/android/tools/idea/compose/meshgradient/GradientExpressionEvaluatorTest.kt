@@ -47,7 +47,7 @@ class GradientExpressionEvaluatorTest {
 
   private fun parseMesh(code: String): GradientPsiManager.ParsedMesh? = runReadActionBlocking {
     val psiManager = GradientPsiManager(project)
-    val call = checkNotNull(psiManager.findMeshPainterCall(createFile(code))) { "Should find MeshGradientPainter call" }
+    val call = checkNotNull(createFile(code).findMeshPainterCall()) { "Should find MeshGradientPainter call" }
     psiManager.parseMesh(call)
   }
 

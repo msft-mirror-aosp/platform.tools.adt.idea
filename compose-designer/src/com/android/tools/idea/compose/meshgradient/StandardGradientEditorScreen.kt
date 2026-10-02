@@ -81,7 +81,7 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
     ) {
       if (isEditingExisting && state.hasDynamicOrUnresolvedValues) {
         DynamicValuesWarningBanner(
-          "Some gradient arguments use dynamic or unresolved expressions. Initial or default values are shown; applying changes will replace the gradient expression."
+          "Some gradient arguments use dynamic or unresolved expressions. Their initial or default values are shown and they are kept as written; they cannot be changed in the editor."
         )
       }
 

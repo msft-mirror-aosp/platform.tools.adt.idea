@@ -19,7 +19,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import com.intellij.openapi.application.runReadActionBlocking
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.testFramework.VfsTestUtil
@@ -166,7 +165,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -234,7 +233,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull(call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -258,7 +257,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -280,7 +279,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val file = psiFactory.createFile("Test.kt", aliasCodeTemplate)
     val psiManager = GradientPsiManager(project)
 
-    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    val call = runReadActionBlocking { file.findMeshPainterCall() }
     assertNotNull("Should find call even when using import alias", call)
 
     val resolvedText = runReadActionBlocking { call!!.calleeExpression?.text }
@@ -294,7 +293,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -321,7 +320,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -347,43 +346,6 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
       assertEquals(Offset(0.7f, 0.8f), v11.offset)
       assertEquals(Color.Green, v11.color)
     }
-  }
-
-  @Test
-  fun testUpdateVertexColor() {
-    val psiFactory = KtPsiFactory(project)
-    val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = GradientPsiManager(project)
-
-    WriteCommandAction.runWriteCommandAction(project) {
-      val call = psiManager.findMeshPainterCall(file)
-      assertNotNull(call)
-      val success = psiManager.updateVertexColor(call!!, 0, 1, Color(0xFF2196F3))
-      assertTrue("Should update color successfully", success)
-    }
-
-    val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain updated color in code", updatedText.contains("setVertex(0, 1, Offset(0.3333f, 0.0000f), Color(0xFF2196F3))"))
-  }
-
-  @Test
-  fun testUpdateVertexOffset() {
-    val psiFactory = KtPsiFactory(project)
-    val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = GradientPsiManager(project)
-
-    WriteCommandAction.runWriteCommandAction(project) {
-      val call = psiManager.findMeshPainterCall(file)
-      assertNotNull(call)
-      val success = psiManager.updateVertexOffset(call!!, 1, 0, Offset(0.1f, 0.6f))
-      assertTrue("Should update offset successfully", success)
-    }
-
-    val updatedText = runReadActionBlocking { file.text }
-    assertTrue(
-      "Should contain updated offset in code",
-      updatedText.contains("setVertex(1, 0, Offset(0.1000f, 0.6000f), Color(0xFF3F51B5))"),
-    )
   }
 
   private val userSnippet =
@@ -447,7 +409,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -512,7 +474,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -568,7 +530,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -616,7 +578,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -690,7 +652,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -712,7 +674,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -774,7 +736,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull(call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -830,7 +792,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
     val psiManager = GradientPsiManager(project)
 
     runReadActionBlocking {
-      val call = psiManager.findMeshPainterCall(file)
+      val call = file.findMeshPainterCall()
       assertNotNull(call)
       val parsedMesh = psiManager.parseMesh(call!!)
       assertNotNull(parsedMesh)
@@ -841,41 +803,6 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
       val v01 = parsedMesh.vertices.first { it.row == 0 && it.col == 1 }
       assertEquals(Color.Blue, v01.color)
     }
-  }
-
-  @Test
-  fun testUpdateConstructorArgumentsAppendsMissingHasBicubicColor() {
-    val code =
-      """
-      package test
-
-      import androidx.compose.ui.geometry.Offset
-      import androidx.compose.ui.graphics.Color
-      import androidx.compose.ui.graphics.MeshGradientPainter
-
-      fun MyMesh() {
-          val painter = MeshGradientPainter(2, 3) {
-              setVertex(0, 0, Offset(0f, 0f), Color.Red)
-          }
-      }
-      """
-        .trimIndent()
-
-    val psiFactory = KtPsiFactory(project)
-    val file = psiFactory.createFile("Test.kt", code)
-    val psiManager = GradientPsiManager(project)
-
-    WriteCommandAction.runWriteCommandAction(project) {
-      val call = psiManager.findMeshPainterCall(file)
-      assertNotNull(call)
-      val updated = psiManager.updateConstructorArguments(call!!, newRows = 3, newCols = 4, hasBicubicColor = true)
-      assertTrue(updated)
-    }
-
-    val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain updated rows", updatedText.contains("2"))
-    assertTrue("Should contain updated columns", updatedText.contains("3"))
-    assertTrue("Should append hasBicubicColor = true", updatedText.contains("hasBicubicColor = true"))
   }
 
   @Test
@@ -963,7 +890,7 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
 
     runReadActionBlocking {
       val mainFile = this.psiManager.findFile(mainVFile) as KtFile
-      val call = psiManager.findMeshPainterCall(mainFile)
+      val call = mainFile.findMeshPainterCall()
       assertNotNull("Should find MeshGradientPainter call", call)
 
       val parsedMesh = psiManager.parseMesh(call!!)
@@ -1323,62 +1250,6 @@ class GradientPsiManagerTest : LightPlatformTestCase() {
       assertEquals(listOf(Color.Red, Color.Blue), parsed!!.colors)
       assertTrue(parsed.hasDynamicOrUnresolvedValues)
     }
-  }
-
-  @Test
-  fun testUpdateLinearGradient() {
-    val psiFactory = KtPsiFactory(project)
-    val file = psiFactory.createFile("Test.kt", linearGradientCode)
-    val psiManager = GradientPsiManager(project)
-
-    val newGradient =
-      Gradient.LinearGradient(
-        colors = listOf(Color.Green, Color.Yellow),
-        start = Offset(0.1f, 0.2f),
-        end = Offset(0.8f, 0.9f),
-        tileMode = TileMode.Repeated,
-      )
-
-    WriteCommandAction.runWriteCommandAction(project) {
-      val call =
-        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "linearGradient" }
-      assertNotNull(call)
-      val success = psiManager.updateGradient(call!!, newGradient)
-      assertTrue("Should update gradient successfully", success)
-    }
-
-    val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain updated colors", updatedText.contains("colors = listOf(Color(0xFF00FF00), Color(0xFFFFFF00))"))
-    assertTrue("Should contain updated start", updatedText.contains("start = Offset(0.1f, 0.2f)"))
-    assertTrue("Should contain updated end", updatedText.contains("end = Offset(0.8f, 0.9f)"))
-    assertTrue("Should contain updated tileMode", updatedText.contains("tileMode = TileMode.Repeated"))
-  }
-
-  @Test
-  fun testUpdateRadialGradientWithSpecialValues() {
-    val psiFactory = KtPsiFactory(project)
-    val file = psiFactory.createFile("Test.kt", radialGradientCode)
-    val psiManager = GradientPsiManager(project)
-
-    val newGradient =
-      Gradient.RadialGradient(
-        colors = listOf(Color.Red, Color.Blue),
-        center = Offset.Unspecified,
-        radius = Float.POSITIVE_INFINITY,
-        tileMode = TileMode.Clamp,
-      )
-
-    WriteCommandAction.runWriteCommandAction(project) {
-      val call =
-        PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java).firstOrNull { it.calleeExpression?.text == "radialGradient" }
-      assertNotNull(call)
-      val success = psiManager.updateGradient(call!!, newGradient)
-      assertTrue("Should update gradient successfully", success)
-    }
-
-    val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain Offset.Unspecified", updatedText.contains("center = Offset.Unspecified"))
-    assertTrue("Should contain Float.POSITIVE_INFINITY", updatedText.contains("radius = Float.POSITIVE_INFINITY"))
   }
 
   @Test

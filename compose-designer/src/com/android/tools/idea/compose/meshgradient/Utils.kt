@@ -65,11 +65,12 @@ internal fun generateFloatSource(value: Float): String =
     else -> "${formatFloat(value)}f"
   }
 
-internal fun generateOffsetSource(offset: Offset): String =
+/** Generates the source for [offset], referencing the Compose `Offset` class as [offsetName]. */
+internal fun generateOffsetSource(offset: Offset, offsetName: String = "Offset"): String =
   when (offset) {
-    Offset.Unspecified -> "Offset.Unspecified"
-    Offset.Infinite -> "Offset.Infinite"
-    else -> "Offset(${generateFloatSource(offset.x)}, ${generateFloatSource(offset.y)})"
+    Offset.Unspecified -> "$offsetName.Unspecified"
+    Offset.Infinite -> "$offsetName.Infinite"
+    else -> "$offsetName(${generateFloatSource(offset.x)}, ${generateFloatSource(offset.y)})"
   }
 
 fun Color.toHexStringNoHash(includeAlpha: Boolean = false): String {

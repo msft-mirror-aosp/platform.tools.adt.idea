@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
+import androidx.compose.ui.geometry.Offset
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,5 +39,13 @@ class GradientSourceFormattingTest {
     assertEquals("Float.NaN", generateFloatSource(Float.NaN))
     assertEquals("Float.POSITIVE_INFINITY", generateFloatSource(Float.POSITIVE_INFINITY))
     assertEquals("Float.NEGATIVE_INFINITY", generateFloatSource(Float.NEGATIVE_INFINITY))
+  }
+
+  @Test
+  fun offsetSourceUsesTheGivenClassName() {
+    assertEquals("Offset(0.5f, 1f)", generateOffsetSource(Offset(0.5f, 1f)))
+    assertEquals("GOffset(0.5f, 1f)", generateOffsetSource(Offset(0.5f, 1f), "GOffset"))
+    assertEquals("Offset.Unspecified", generateOffsetSource(Offset.Unspecified))
+    assertEquals("GOffset.Infinite", generateOffsetSource(Offset.Infinite, "GOffset"))
   }
 }
