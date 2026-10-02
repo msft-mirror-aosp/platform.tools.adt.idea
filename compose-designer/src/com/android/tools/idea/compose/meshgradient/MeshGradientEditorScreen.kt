@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,9 +32,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -52,20 +55,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.android.tools.adtui.LightCalloutPopup
 import com.android.tools.adtui.MaterialColorPaletteProvider
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.DimensionInputField
+import com.android.tools.idea.compose.meshgradient.components.SWATCH_SHAPE
+import com.android.tools.idea.compose.meshgradient.components.SWATCH_SIZE
+import com.android.tools.idea.compose.meshgradient.components.colorSwatchDescription
+import com.android.tools.idea.compose.meshgradient.components.toHexString
 import com.android.tools.idea.compose.preview.message
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ApplicationManager
@@ -96,10 +118,12 @@ import kotlinx.coroutines.flow.debounce
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CheckboxRow
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
+import org.jetbrains.jewel.ui.focusOutline
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -107,8 +131,14 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 /** Delay between the last change to the generated code and the code viewer update, so drags don't re-highlight every frame. */
 internal val CODE_UPDATE_DEBOUNCE = 100.milliseconds
 
+/** Maximum width of the popup listing the palette colors that can be applied to a vertex. */
+private val VERTEX_COLOR_POPUP_MAX_WIDTH = 200.dp
+
+/** Maximum height of the popup listing the palette colors that can be applied to a vertex. Larger palettes scroll. */
+private val VERTEX_COLOR_POPUP_MAX_HEIGHT = 160.dp
+
 @Composable
-internal fun DynamicValuesWarningBanner(message: String) {
+internal fun DynamicValuesWarningBanner(text: String) {
   Row(
     modifier =
       Modifier.fillMaxWidth()
@@ -121,10 +151,10 @@ internal fun DynamicValuesWarningBanner(message: String) {
     Icon(
       key = AllIconsKeys.General.Warning,
       iconClass = AllIconsKeys::class.java,
-      contentDescription = "Warning",
+      contentDescription = message("gradient.editor.warning"),
       modifier = Modifier.size(16.dp),
     )
-    Text(message)
+    Text(text)
   }
 }
 
@@ -160,7 +190,7 @@ internal fun ColumnScope.GeneratedCodeSection(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(message("gradient.editor.code.title"), style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
-    DefaultButton(onClick = { CopyPasteManager.getInstance().setContents(StringSelection(currentGeneratedCode())) }) {
+    OutlinedButton(onClick = { CopyPasteManager.getInstance().setContents(StringSelection(currentGeneratedCode())) }) {
       Text(message("gradient.editor.code.copy"))
     }
   }
@@ -250,13 +280,11 @@ private fun EditorEx.applyColorsScheme(scheme: EditorColorsScheme) {
   contentComponent.background = scheme.defaultBackground
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Suppress("UseJBColor")
 @Composable
-fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEditingExisting: Boolean = false) {
+internal fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEditingExisting: Boolean = false) {
   val scrollState = rememberScrollState()
   var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-  var showColorPickerForVertex by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+  var selectedVertex by remember { mutableStateOf<VertexIndex?>(null) }
 
   Column(
     modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground).padding(12.dp),
@@ -272,9 +300,7 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       if (isEditingExisting && state.hasDynamicOrUnresolvedValues) {
-        DynamicValuesWarningBanner(
-          "Some vertices use dynamic or unresolved expressions. Initial or default values are shown; editing a vertex will replace its expression."
-        )
+        DynamicValuesWarningBanner(message("gradient.editor.mesh.dynamic.values.warning"))
       }
 
       // 1. Canvas Preview
@@ -285,48 +311,11 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
           showPoints = state.showPoints,
           constrainEdgePoints = state.constrainEdgePoints,
           onPointDrag = { row, col, offset -> state.updateMeshPoint(row, col, offset) },
-          onPointClick = { row, col -> showColorPickerForVertex = Pair(row, col) },
+          onPointClick = { row, col -> selectedVertex = VertexIndex(row, col) },
         )
 
-        val activeVertex = showColorPickerForVertex
-        val selectedPoint = activeVertex?.let { (row, col) -> state.meshPoints.getOrNull(row)?.getOrNull(col) }
-        if (activeVertex != null && selectedPoint != null) {
-          val (row, col) = activeVertex
-          val relativeOffset = selectedPoint.position
-          val paddingPx = with(LocalDensity.current) { 16.dp.toPx() }
-          val innerWidth = (canvasSize.width - 2 * paddingPx).coerceAtLeast(0f)
-          val innerHeight = (canvasSize.height - 2 * paddingPx).coerceAtLeast(0f)
-
-          // Calculate pixel coordinates inside the Box container accounting for 16.dp canvas padding
-          val xOffset = (paddingPx + relativeOffset.x * innerWidth).toInt()
-          val yOffset = (paddingPx + relativeOffset.y * innerHeight).toInt()
-
-          Popup(
-            alignment = Alignment.TopStart,
-            offset = IntOffset(xOffset, yOffset),
-            onDismissRequest = { showColorPickerForVertex = null },
-          ) {
-            Row(
-              modifier =
-                Modifier.clip(RoundedCornerShape(6.dp))
-                  .background(JewelTheme.globalColors.panelBackground)
-                  .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
-                  .padding(6.dp),
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              state.availableColors.forEach { color ->
-                ColorSwatch(
-                  color = color,
-                  modifier =
-                    Modifier.clickable {
-                      state.updateVertexColor(row, col, color)
-                      showColorPickerForVertex = null
-                    },
-                )
-              }
-            }
-          }
+        selectedVertex?.let { vertex ->
+          VertexColorPopup(state = state, vertex = vertex, canvasSize = canvasSize, onDismiss = { selectedVertex = null })
         }
       }
 
@@ -340,77 +329,222 @@ fun MeshGradientEditorScreen(project: Project, state: GradientEditorState, isEdi
       ) {
         DimensionInputField(
           value = state.rows,
-          min = 2,
-          max = 10,
-          paramName = "Rows",
+          min = MIN_MESH_DIMENSION,
+          max = MAX_MESH_DIMENSION,
+          paramName = message("gradient.editor.mesh.rows"),
           onUpdate = {
-            showColorPickerForVertex = null
+            selectedVertex = null
             state.updateRows(it)
           },
           modifier = Modifier.width(100.dp),
         )
         DimensionInputField(
           value = state.cols,
-          min = 2,
-          max = 10,
-          paramName = "Cols",
+          min = MIN_MESH_DIMENSION,
+          max = MAX_MESH_DIMENSION,
+          paramName = message("gradient.editor.mesh.cols"),
           onUpdate = {
-            showColorPickerForVertex = null
+            selectedVertex = null
             state.updateCols(it)
           },
           modifier = Modifier.width(100.dp),
         )
         Spacer(Modifier.width(8.dp))
-        DefaultButton(onClick = { state.distributeMeshPointsEvenly() }) { Text("Reset Points") }
+        OutlinedButton(onClick = { state.distributeMeshPointsEvenly() }) { Text(message("gradient.editor.mesh.reset.points")) }
       }
 
       Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-        CheckboxRow(text = "Show points", checked = state.showPoints, onCheckedChange = { state.showPoints = it })
-        CheckboxRow(text = "Constrain edge", checked = state.constrainEdgePoints, onCheckedChange = { state.constrainEdgePoints = it })
+        CheckboxRow(
+          text = message("gradient.editor.mesh.show.points"),
+          checked = state.showPoints,
+          onCheckedChange = { state.showPoints = it },
+        )
+        CheckboxRow(
+          text = message("gradient.editor.mesh.constrain.edge"),
+          checked = state.constrainEdgePoints,
+          onCheckedChange = { state.constrainEdgePoints = it },
+        )
       }
 
       Divider(orientation = Orientation.Horizontal)
 
-      // 4. Color Palette
-      Text("Color Palette", style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
-      FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.fillMaxWidth(),
-      ) {
-        state.availableColors.forEachIndexed { index, color ->
-          ContextMenuArea(items = { listOf(ContextMenuItem("Delete") { state.removePaletteColor(index) }) }) {
-            ColorSwatch(
-              color = color,
-              Modifier.clickable { state.beginPaletteColorEdit(index)?.let { edit -> showColorPicker(color, edit::update, edit::finish) } },
-            )
-          }
-        }
-        Box(
-          contentAlignment = Alignment.Center,
-          modifier =
-            Modifier.clip(RoundedCornerShape(4.dp))
-              .size(16.dp)
-              .background(JewelTheme.globalColors.panelBackground)
-              .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(4.dp))
-              .clickable {
-                val edit = state.beginNewPaletteColor()
-                showColorPicker(Color.White, edit::update, edit::finish)
-              },
-        ) {
-          Icon(
-            key = AllIconsKeys.General.InlineAdd,
-            iconClass = AllIconsKeys::class.java,
-            contentDescription = "Add Color",
-            modifier = Modifier.size(10.dp),
-          )
-        }
-      }
+      // 3. Color Palette
+      Text(message("gradient.editor.palette.title"), style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
+      ColorPalette(state)
     }
 
     if (!isEditingExisting) {
       GeneratedCodeSection(project) { state.generatedCode }
     }
+  }
+}
+
+/**
+ * Popup anchored at [vertex] on the canvas that applies one of the palette colors to it. The popup takes the focus, starting on the first
+ * color, and is dismissed with Escape.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun VertexColorPopup(state: GradientEditorState, vertex: VertexIndex, canvasSize: IntSize, onDismiss: () -> Unit) {
+  val (row, col) = vertex
+  val point = state.meshPoints.getOrNull(row)?.getOrNull(col) ?: return
+  val paddingPx = with(LocalDensity.current) { CANVAS_PADDING.roundToPx() }
+  val innerWidth = (canvasSize.width - 2 * paddingPx).coerceAtLeast(0)
+  val innerHeight = (canvasSize.height - 2 * paddingPx).coerceAtLeast(0)
+  val xOffset = (paddingPx + point.position.x * innerWidth).toInt()
+  val yOffset = (paddingPx + point.position.y * innerHeight).toInt()
+  val applyLabel = message("gradient.editor.mesh.vertex.apply.color")
+  val firstColorFocusRequester = remember { FocusRequester() }
+
+  Popup(
+    alignment = Alignment.TopStart,
+    offset = IntOffset(xOffset, yOffset),
+    onDismissRequest = onDismiss,
+    properties = PopupProperties(focusable = true),
+  ) {
+    FlowRow(
+      modifier =
+        Modifier.onPreviewKeyEvent { event ->
+            if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
+              onDismiss()
+              true
+            } else {
+              false
+            }
+          }
+          .widthIn(max = VERTEX_COLOR_POPUP_MAX_WIDTH)
+          .heightIn(max = VERTEX_COLOR_POPUP_MAX_HEIGHT)
+          .clip(RoundedCornerShape(6.dp))
+          .background(JewelTheme.globalColors.panelBackground)
+          .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
+          .verticalScroll(rememberScrollState())
+          .padding(6.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      state.availableColors.forEachIndexed { index, color ->
+        val description = colorSwatchDescription(color)
+        var isFocused by remember { mutableStateOf(false) }
+        ColorSwatch(
+          color = color,
+          modifier =
+            Modifier.then(if (index == 0) Modifier.focusRequester(firstColorFocusRequester) else Modifier)
+              .onFocusChanged { isFocused = it.isFocused }
+              .focusOutline(showOutline = isFocused, outlineShape = SWATCH_SHAPE)
+              .semantics { contentDescription = description }
+              .clickable(
+                onClickLabel = applyLabel,
+                role = Role.Button,
+              ) {
+                state.updateVertexColor(row, col, color)
+                onDismiss()
+              },
+        )
+      }
+    }
+    if (state.availableColors.isNotEmpty()) {
+      LaunchedEffect(firstColorFocusRequester) { firstColorFocusRequester.requestFocus() }
+    }
+  }
+}
+
+/** The editable color palette, followed by a button to add a color. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun ColorPalette(state: GradientEditorState) {
+  FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(6.dp),
+    verticalArrangement = Arrangement.spacedBy(6.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    val canDelete = state.availableColors.size > 1
+    state.availableColors.forEachIndexed { index, color ->
+      PaletteSwatch(
+        color = color,
+        onEdit = { state.beginPaletteColorEdit(index)?.let { edit -> showColorPicker(color, edit::update, edit::finish) } },
+        onDelete = if (canDelete) ({ state.removePaletteColor(index) }) else null,
+      )
+    }
+    var isAddFocused by remember { mutableStateOf(false) }
+    Box(
+      contentAlignment = Alignment.Center,
+      modifier =
+        Modifier.onFocusChanged { isAddFocused = it.isFocused }
+          .focusOutline(showOutline = isAddFocused, outlineShape = SWATCH_SHAPE)
+          .clip(SWATCH_SHAPE)
+          .size(SWATCH_SIZE)
+          .background(JewelTheme.globalColors.panelBackground)
+          .border(1.dp, JewelTheme.globalColors.borders.normal, SWATCH_SHAPE)
+          .clickable(role = Role.Button) {
+            val edit = state.beginNewPaletteColor()
+            showColorPicker(Color.White, edit::update, edit::finish)
+          },
+    ) {
+      Icon(
+        key = AllIconsKeys.General.InlineAdd,
+        iconClass = AllIconsKeys::class.java,
+        contentDescription = message("gradient.editor.palette.add"),
+        modifier = Modifier.size(10.dp),
+      )
+    }
+  }
+}
+
+/**
+ * A palette entry. Clicking it calls [onEdit]. Unless [onDelete] is null, it can be deleted through its context menu, the Delete or
+ * Backspace key while focused, or the accessibility "Delete" action.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PaletteSwatch(color: Color, onEdit: () -> Unit, onDelete: (() -> Unit)?) {
+  val deleteLabel = message("gradient.editor.palette.delete")
+  val editLabel = message("gradient.editor.palette.edit")
+  val description = colorSwatchDescription(color)
+  val tooltip =
+    if (onDelete != null) {
+      message("gradient.editor.palette.swatch.tooltip", color.toHexString())
+    } else {
+      message("gradient.editor.palette.swatch.tooltip.edit.only", color.toHexString())
+    }
+  var isFocused by remember { mutableStateOf(false) }
+
+  val swatch: @Composable () -> Unit = {
+    Tooltip(tooltip = { Text(tooltip) }) {
+      ColorSwatch(
+        color = color,
+        modifier =
+          Modifier.onKeyEvent { event ->
+              val isDeleteKey = event.key == Key.Delete || event.key == Key.Backspace
+              if (onDelete != null && event.type == KeyEventType.KeyDown && isDeleteKey) {
+                onDelete()
+                true
+              } else {
+                false
+              }
+            }
+            .semantics {
+              contentDescription = description
+              if (onDelete != null) {
+                customActions =
+                  listOf(
+                    CustomAccessibilityAction(deleteLabel) {
+                      onDelete()
+                      true
+                    }
+                  )
+              }
+            }
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusOutline(showOutline = isFocused, outlineShape = SWATCH_SHAPE)
+            .clickable(onClickLabel = editLabel, role = Role.Button, onClick = onEdit),
+      )
+    }
+  }
+
+  if (onDelete != null) {
+    ContextMenuArea(items = { listOf(ContextMenuItem(deleteLabel, onDelete)) }, content = swatch)
+  } else {
+    swatch()
   }
 }
 

@@ -18,42 +18,58 @@ package com.android.tools.idea.compose.meshgradient.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.dp
+import com.android.tools.idea.compose.meshgradient.toHexStringNoHash
+import com.android.tools.idea.compose.preview.message
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 
+/** Shape of a [ColorSwatch], shared by the controls laid out next to swatches. */
+internal val SWATCH_SHAPE = RoundedCornerShape(4.dp)
+
+/** Size of a [ColorSwatch], shared by the controls laid out next to swatches. */
+internal val SWATCH_SIZE = 16.dp
+private val TRANSPARENT_MARK_WIDTH = 1.5.dp
+
+/** Returns the `#AARRGGBB` representation of this color. */
+internal fun Color.toHexString(): String = "#${toHexStringNoHash(includeAlpha = true)}"
+
+/** Returns the accessibility description of a [ColorSwatch] showing [color]. */
+internal fun colorSwatchDescription(color: Color): String = message("gradient.editor.swatch.description", color.toHexString())
+
+/**
+ * A small square preview of [color], outlined so that colors matching the panel background stay visible. Fully transparent colors are drawn
+ * as an empty swatch crossed by a diagonal line. Callers provide the content description, see [colorSwatchDescription].
+ */
 @Composable
-fun ColorSwatch(color: Color, modifier: Modifier = Modifier) {
-  Box(modifier.clip(RoundedCornerShape(4.dp)).size(16.dp)) {
-    if (color == Color.Transparent) {
-      Spacer(
-        Modifier.drawBehind {
-            drawIntoCanvas {
-              drawPath(
-                path =
-                  Path().apply {
-                    moveTo(0f, 0f)
-                    lineTo(size.width, size.height)
-                    close()
-                  },
-                color = Color.Red,
-                style = Stroke(width = 2f),
-              )
-            }
+internal fun ColorSwatch(color: Color, modifier: Modifier = Modifier) {
+  val borderColor = JewelTheme.globalColors.borders.normal
+  val transparentMarkColor = JewelTheme.globalColors.text.error
+  Box(
+    modifier
+      .size(SWATCH_SIZE)
+      .clip(SWATCH_SHAPE)
+      .then(
+        if (color.alpha == 0f) {
+          Modifier.drawBehind {
+            drawLine(
+              color = transparentMarkColor,
+              start = Offset.Zero,
+              end = Offset(size.width, size.height),
+              strokeWidth = TRANSPARENT_MARK_WIDTH.toPx(),
+            )
           }
-          .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-          .fillMaxSize()
+        } else {
+          Modifier.background(color)
+        }
       )
-    } else Spacer(Modifier.fillMaxSize().background(color))
-  }
+      .border(1.dp, borderColor, SWATCH_SHAPE)
+  )
 }

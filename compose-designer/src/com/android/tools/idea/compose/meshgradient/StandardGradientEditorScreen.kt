@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.FloatInputField
 import com.android.tools.idea.compose.meshgradient.components.OptionalFloatInputField
+import com.android.tools.idea.compose.meshgradient.components.SWATCH_SHAPE
+import com.android.tools.idea.compose.meshgradient.components.SWATCH_SIZE
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.ui.resourcechooser.util.createAndShowColorPickerPopup
 import com.intellij.openapi.project.Project
@@ -78,8 +79,6 @@ import org.jetbrains.jewel.ui.typography
 
 private val FIELD_WIDTH = 100.dp
 private val FRACTION_FIELD_WIDTH = 72.dp
-private val SWATCH_SIZE = 16.dp
-private val SWATCH_SHAPE = RoundedCornerShape(4.dp)
 private val PALETTE_MAX_WIDTH = 220.dp
 
 @Composable
