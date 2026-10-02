@@ -33,6 +33,7 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/base/flags:studio.android.sdktools.flags",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

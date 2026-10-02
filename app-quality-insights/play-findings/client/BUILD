@@ -46,6 +46,7 @@ iml_module(
         "//tools/vendor/google/login:google-login",
         "//tools/adt/idea/.idea/libraries:protobuf-kotlin",
         "//tools/adt/idea/.idea/libraries:protobuf-java-util",
+        "@intellij//:intellij.libraries.grpc",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/.idea/libraries:mockito",

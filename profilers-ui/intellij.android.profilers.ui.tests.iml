@@ -67,6 +67,10 @@
     </orderEntry>
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.model.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.profilers.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.transport.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.profilers.ui" />
 </module>

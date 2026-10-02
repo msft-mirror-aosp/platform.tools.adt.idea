@@ -202,6 +202,8 @@ iml_module(
         "//tools/base/template-engine:studio.android.sdktools.template-engine",
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle.tests",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/observable:intellij.android.observable.tests",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],

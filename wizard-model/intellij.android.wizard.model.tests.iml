@@ -14,6 +14,7 @@
     <orderEntry type="module" module-name="intellij.android.observable" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
+    <orderEntry type="module" module-name="intellij.android.observable.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.wizard.model" />
 </module>

@@ -55,6 +55,7 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/samples-browser"],
     test_srcs = ["testSrc"],

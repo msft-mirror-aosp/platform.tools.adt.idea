@@ -36,6 +36,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/base/studio-grpc-testutils:studio.studio-grpc-testutils",
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model"],
     test_srcs = ["testSrc"],

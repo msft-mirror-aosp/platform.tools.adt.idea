@@ -62,6 +62,7 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:android-core-proto",
+        "//tools/adt/idea/server-flags:intellij.android.server-flags.tests",
     ],
     test_friends = ["//tools/adt/idea/android-common:intellij.android.common"],
     test_srcs = ["test"],

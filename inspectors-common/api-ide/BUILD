@@ -43,6 +43,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/inspectors-common/api-ide:intellij.android.inspectors-common.api-ide"],
     test_srcs = ["testSrc"],

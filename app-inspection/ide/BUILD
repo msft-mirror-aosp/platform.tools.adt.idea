@@ -73,6 +73,10 @@ iml_module(
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/app-inspection/ide/gradle:app-inspection.ide.gradle",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/app-inspection/api:app-inspection.api.tests",
+        "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api.tests",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
+        "//tools/adt/idea/android-transport:intellij.android.transport.tests",
     ],
     test_resources = [
         "testResources",

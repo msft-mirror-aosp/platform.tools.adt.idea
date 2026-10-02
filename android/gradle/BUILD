@@ -51,6 +51,7 @@ iml_module(
         "@intellij//:JUnit",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/gmaven:intellij.android.gmaven",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

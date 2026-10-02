@@ -39,6 +39,7 @@ iml_module(
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "long",

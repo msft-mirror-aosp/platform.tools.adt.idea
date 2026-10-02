@@ -67,6 +67,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/vendor/google/login:google-login.tests",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/play-policy/ide:intellij.android.app-quality-insights.play-policy.ide"],
     test_srcs = ["testSrc"],

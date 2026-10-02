@@ -58,6 +58,8 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model",
         "//tools/vendor/google/login/onboarding:login.onboarding",
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
+        "//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

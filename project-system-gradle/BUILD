@@ -715,6 +715,7 @@ iml_module(
         "@intellij//:org.jetbrains.idea.reposearch",
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_jvm_flags = ["-Didea.skip.indices.initialization=true"],
     test_resources = ["testResources"],

@@ -45,5 +45,9 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" scope="TEST" />
     <orderEntry type="module" module-name="app-inspection.ide.gradle" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="module" module-name="app-inspection.api.tests" scope="TEST" />
+    <orderEntry type="module" module-name="app-inspection.inspector.api.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.model.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.transport.tests" scope="TEST" />
   </component>
 </module>

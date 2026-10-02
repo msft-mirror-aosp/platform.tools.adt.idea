@@ -76,6 +76,8 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:app-inspection.inspectors.backgroundtask.model.tests",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

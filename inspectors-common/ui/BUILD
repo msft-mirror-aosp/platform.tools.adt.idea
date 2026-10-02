@@ -39,6 +39,7 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "@intellij//:com.intellij.modules.json",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/inspectors-common/ui:intellij.android.inspectors-common.ui"],
     test_resources = ["resources"],

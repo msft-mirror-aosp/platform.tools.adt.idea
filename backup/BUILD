@@ -64,6 +64,7 @@ iml_module(
         "//tools/base/backup/bmgr-parser:studio.android.sdktools.backup.bmgr.parser",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/base/flags:studio.android.sdktools.flags",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/backup:intellij.android.backup"],
     test_srcs = ["testSrc"],

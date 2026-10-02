@@ -43,5 +43,6 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-JUnit" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.gmaven" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
   </component>
 </module>

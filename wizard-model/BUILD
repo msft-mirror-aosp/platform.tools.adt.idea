@@ -30,6 +30,7 @@ iml_module(
         "//tools/adt/idea/observable:intellij.android.observable",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/observable:intellij.android.observable.tests",
     ],
     test_friends = ["//tools/adt/idea/wizard-model:intellij.android.wizard.model"],
     test_srcs = ["testSrc"],

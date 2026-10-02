@@ -34,6 +34,7 @@
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.adb.ui" />
 </module>

@@ -24,6 +24,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

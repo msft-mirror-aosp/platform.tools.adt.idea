@@ -31,6 +31,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/observable:intellij.android.observable.tests",
     ],
     test_friends = ["//tools/adt/idea/observable-ui:intellij.android.observable.ui"],
     test_srcs = ["testSrc"],

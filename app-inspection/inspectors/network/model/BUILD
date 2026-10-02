@@ -54,6 +54,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
     ],
     test_friends = ["//tools/adt/idea/app-inspection/inspectors/network/model:app-inspection.inspectors.network.model"],
     test_srcs = ["testSrc"],

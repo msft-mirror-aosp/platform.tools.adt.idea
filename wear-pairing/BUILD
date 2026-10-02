@@ -57,6 +57,8 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/observable:intellij.android.observable.tests",
     ],
     test_friends = ["//tools/adt/idea/wear-pairing:intellij.android.wear-pairing"],
     test_srcs = ["testSrc"],
