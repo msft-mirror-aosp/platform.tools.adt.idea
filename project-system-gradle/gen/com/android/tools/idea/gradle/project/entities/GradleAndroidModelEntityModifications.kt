@@ -37,8 +37,8 @@ interface GradleAndroidModelEntityBuilder : WorkspaceEntityBuilder<GradleAndroid
 }
 
 internal object GradleAndroidModelEntityType : EntityType<GradleAndroidModelEntity, GradleAndroidModelEntityBuilder>() {
-  override val entityClass: Class<GradleAndroidModelEntity>
-    get() = GradleAndroidModelEntity::class.java
+  override val entityImplClass: Class<*>
+    get() = GradleAndroidModelEntityImpl::class.java
 
   override val entityImplBuilderClass: Class<*>
     get() = GradleAndroidModelEntityImpl.Builder::class.java

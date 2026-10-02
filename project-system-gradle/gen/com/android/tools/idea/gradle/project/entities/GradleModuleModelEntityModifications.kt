@@ -35,8 +35,8 @@ interface GradleModuleModelEntityBuilder : WorkspaceEntityBuilder<GradleModuleMo
 }
 
 internal object GradleModuleModelEntityType : EntityType<GradleModuleModelEntity, GradleModuleModelEntityBuilder>() {
-  override val entityClass: Class<GradleModuleModelEntity>
-    get() = GradleModuleModelEntity::class.java
+  override val entityImplClass: Class<*>
+    get() = GradleModuleModelEntityImpl::class.java
 
   override val entityImplBuilderClass: Class<*>
     get() = GradleModuleModelEntityImpl.Builder::class.java

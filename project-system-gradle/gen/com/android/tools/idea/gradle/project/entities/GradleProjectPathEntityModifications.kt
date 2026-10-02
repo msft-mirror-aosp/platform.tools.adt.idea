@@ -35,8 +35,8 @@ interface GradleProjectPathEntityBuilder : WorkspaceEntityBuilder<GradleProjectP
 }
 
 internal object GradleProjectPathEntityType : EntityType<GradleProjectPathEntity, GradleProjectPathEntityBuilder>() {
-  override val entityClass: Class<GradleProjectPathEntity>
-    get() = GradleProjectPathEntity::class.java
+  override val entityImplClass: Class<*>
+    get() = GradleProjectPathEntityImpl::class.java
 
   override val entityImplBuilderClass: Class<*>
     get() = GradleProjectPathEntityImpl.Builder::class.java
