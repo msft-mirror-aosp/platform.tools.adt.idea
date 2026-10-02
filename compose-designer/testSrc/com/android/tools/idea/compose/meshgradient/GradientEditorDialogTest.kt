@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import com.android.tools.idea.compose.preview.message
@@ -295,8 +296,8 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
       fun MyLinear() {
           val brush = Brush.linearGradient(
               colors = listOf(Color.Red, Color.Blue),
-              start = Offset(0.1f, 0.2f),
-              end = Offset(0.8f, 0.9f),
+              start = Offset(10f, 20f),
+              end = Offset(300f, 150f),
               tileMode = TileMode.Mirror
           )
       }
@@ -313,15 +314,17 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     val dialog = createGradientEditorDialog(project, call!!)
     assertEquals(GradientType.LINEAR, dialog.state.currentType)
     assertEquals(listOf(Color.Red, Color.Blue), dialog.state.colors.toList())
-    assertEquals(Offset(0.1f, 0.2f), dialog.state.start)
-    assertEquals(Offset(0.8f, 0.9f), dialog.state.end)
+    assertEquals(Offset(10f, 20f), dialog.state.start)
+    assertEquals(Offset(300f, 150f), dialog.state.end)
     assertEquals(TileMode.Mirror, dialog.state.tileMode)
+    assertEquals(Size(300f, 150f), dialog.state.previewSize)
 
-    dialog.state.start = Offset(0.25f, 0.35f)
+    dialog.state.start = Offset(25f, 35f)
     dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain updated start offset: $updatedText", updatedText.contains("start = Offset(0.25f, 0.35f)"))
+    assertTrue("Should contain updated start offset: $updatedText", updatedText.contains("start = Offset(25f, 35f)"))
+    assertTrue("Should keep the end offset: $updatedText", updatedText.contains("end = Offset(300f, 150f)"))
   }
 
   @Test

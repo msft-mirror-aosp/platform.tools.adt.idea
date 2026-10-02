@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.toArgb
@@ -57,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.FloatInputField
+import com.android.tools.idea.compose.meshgradient.components.OptionalFloatInputField
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.ui.resourcechooser.util.createAndShowColorPickerPopup
 import com.intellij.openapi.project.Project
@@ -73,6 +76,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
 
+private val FIELD_WIDTH = 100.dp
 private val FRACTION_FIELD_WIDTH = 72.dp
 private val SWATCH_SIZE = 16.dp
 private val SWATCH_SHAPE = RoundedCornerShape(4.dp)
@@ -100,9 +104,8 @@ fun StandardGradientEditorScreen(project: Project, state: GradientEditorState, i
       }
 
       // 1. Preview Canvas
-      Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
-        StandardGradientCanvas(state)
-      }
+      Box(modifier = Modifier.fillMaxWidth().height(220.dp)) { StandardGradientCanvas(state) }
+      PreviewSizeControl(state)
 
       Divider(orientation = Orientation.Horizontal)
 
@@ -303,50 +306,103 @@ private fun showColorPicker(initialColor: Color, onColorPicked: (Color) -> Unit)
   )
 }
 
-internal fun Offset.safeX(default: Float): Float = if (this != Offset.Unspecified && x.isFinite()) x else default
-
-internal fun Offset.safeY(default: Float): Float = if (this != Offset.Unspecified && y.isFinite()) y else default
-
 @Composable
-private fun OffsetControl(
-  label: String,
-  offset: Offset,
-  defaultX: Float,
-  defaultY: Float,
-  onUpdate: (Offset) -> Unit,
-) {
-  Text(label, style = JewelTheme.typography.labelTextStyle)
-  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun PreviewSizeControl(state: GradientEditorState) {
+  Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text(message("gradient.editor.brush.preview.size"), style = JewelTheme.typography.labelTextStyle)
     FloatInputField(
-      value = offset.safeX(defaultX),
-      paramName = message("gradient.editor.brush.param.x"),
-      onUpdate = { onUpdate(Offset(it, offset.safeY(defaultY))) },
-      modifier = Modifier.width(100.dp),
+      value = state.previewSize.width,
+      min = MIN_PREVIEW_DIMENSION,
+      max = MAX_PREVIEW_DIMENSION,
+      paramName = message("gradient.editor.brush.param.width"),
+      onUpdate = { state.previewSize = Size(it, state.previewSize.height) },
+      modifier = Modifier.width(FIELD_WIDTH),
     )
     FloatInputField(
-      value = offset.safeY(defaultY),
-      paramName = message("gradient.editor.brush.param.y"),
-      onUpdate = { onUpdate(Offset(offset.safeX(defaultX), it)) },
-      modifier = Modifier.width(100.dp),
+      value = state.previewSize.height,
+      min = MIN_PREVIEW_DIMENSION,
+      max = MAX_PREVIEW_DIMENSION,
+      paramName = message("gradient.editor.brush.param.height"),
+      onUpdate = { state.previewSize = Size(state.previewSize.width, it) },
+      modifier = Modifier.width(FIELD_WIDTH),
     )
   }
 }
 
+/**
+ * Edits a gradient point in pixels. A coordinate that is not a finite number is shown as an empty field with a placeholder describing its
+ * value, and clearing a field sets the value described by [kind].
+ *
+ * @param resolved the point resolved against the preview size, used when a single coordinate of an unspecified point is set.
+ */
 @Composable
-fun LinearControls(state: GradientEditorState) {
+private fun OffsetControl(label: String, offset: Offset, resolved: Offset, kind: PointKind, onUpdate: (Offset) -> Unit) {
+  Text(label, style = JewelTheme.typography.labelTextStyle)
+  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    CoordinateField(Axis.X, message("gradient.editor.brush.param.x"), offset, resolved, kind, onUpdate)
+    CoordinateField(Axis.Y, message("gradient.editor.brush.param.y"), offset, resolved, kind, onUpdate)
+  }
+}
+
+@Composable
+private fun CoordinateField(
+  axis: Axis,
+  paramName: String,
+  offset: Offset,
+  resolved: Offset,
+  kind: PointKind,
+  onUpdate: (Offset) -> Unit,
+) {
+  val coordinate =
+    when {
+      offset.isUnspecified -> Float.NaN
+      axis == Axis.X -> offset.x
+      else -> offset.y
+    }
+  OptionalFloatInputField(
+    value = coordinate.takeIf { it.isFinite() },
+    autoPlaceholder = valuePlaceholder(coordinate, clearedLabel = clearedCoordinateLabel(kind)),
+    paramName = paramName,
+    onUpdate = { onUpdate(offset.withCoordinate(axis, it, resolved, kind)) },
+    modifier = Modifier.width(FIELD_WIDTH),
+  )
+}
+
+/** Label of the value a coordinate of a point of the given [kind] takes when it is cleared. */
+private fun clearedCoordinateLabel(kind: PointKind): String =
+  when (kind) {
+    PointKind.START -> formatFloat(0f)
+    PointKind.END -> message("gradient.editor.brush.value.infinite")
+    PointKind.CENTER -> message("gradient.editor.brush.value.auto")
+  }
+
+/**
+ * Placeholder of an optional field. A [value] that is not a finite number is not shown in the field, so the placeholder describes it.
+ * Otherwise the placeholder is only visible while the field is empty, and shows the value that clearing the field commits ([clearedLabel]).
+ */
+private fun valuePlaceholder(value: Float, clearedLabel: String): String =
+  when {
+    value == Float.POSITIVE_INFINITY -> message("gradient.editor.brush.value.infinite")
+    value == Float.NEGATIVE_INFINITY -> message("gradient.editor.brush.value.negative.infinite")
+    value.isNaN() -> message("gradient.editor.brush.value.auto")
+    else -> clearedLabel
+  }
+
+@Composable
+private fun LinearControls(state: GradientEditorState) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     OffsetControl(
       label = message("gradient.editor.brush.start"),
       offset = state.start,
-      defaultX = 0f,
-      defaultY = 0f,
+      resolved = resolveLinearPoint(state.start, state.previewSize),
+      kind = PointKind.START,
       onUpdate = { state.start = it },
     )
     OffsetControl(
       label = message("gradient.editor.brush.end"),
       offset = state.end,
-      defaultX = 1f,
-      defaultY = 1f,
+      resolved = resolveLinearPoint(state.end, state.previewSize),
+      kind = PointKind.END,
       onUpdate = { state.end = it },
     )
     TileModeControl(value = state.tileMode, onUpdate = { state.tileMode = it })
@@ -354,38 +410,36 @@ fun LinearControls(state: GradientEditorState) {
 }
 
 @Composable
-fun RadialControls(state: GradientEditorState) {
+private fun RadialControls(state: GradientEditorState) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    OffsetControl(
-      label = message("gradient.editor.brush.center"),
-      offset = state.center,
-      defaultX = 0.5f,
-      defaultY = 0.5f,
-      onUpdate = { state.center = it },
-    )
+    CenterControl(state)
     Text(message("gradient.editor.brush.radius"), style = JewelTheme.typography.labelTextStyle)
-    FloatInputField(
-      value = if (state.radius.isFinite()) state.radius else 0.5f,
-      min = 0.001f,
+    OptionalFloatInputField(
+      value = state.radius.takeIf { it.isFinite() },
+      autoPlaceholder = valuePlaceholder(state.radius, clearedLabel = message("gradient.editor.brush.value.infinite")),
+      min = MIN_RADIUS,
       paramName = message("gradient.editor.brush.param.radius"),
-      onUpdate = { state.radius = it },
-      modifier = Modifier.width(100.dp),
+      onUpdate = { state.radius = it ?: Float.POSITIVE_INFINITY },
+      modifier = Modifier.width(FIELD_WIDTH),
     )
     TileModeControl(value = state.tileMode, onUpdate = { state.tileMode = it })
   }
 }
 
 @Composable
-fun SweepControls(state: GradientEditorState) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    OffsetControl(
-      label = message("gradient.editor.brush.center"),
-      offset = state.center,
-      defaultX = 0.5f,
-      defaultY = 0.5f,
-      onUpdate = { state.center = it },
-    )
-  }
+private fun SweepControls(state: GradientEditorState) {
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { CenterControl(state) }
+}
+
+@Composable
+private fun CenterControl(state: GradientEditorState) {
+  OffsetControl(
+    label = message("gradient.editor.brush.center"),
+    offset = state.center,
+    resolved = resolveCenter(state.center, state.previewSize),
+    kind = PointKind.CENTER,
+    onUpdate = { state.center = it },
+  )
 }
 
 /** Tile modes offered by the editor, in display order. */
@@ -407,7 +461,7 @@ private fun TileModeControl(value: TileMode, onUpdate: (TileMode) -> Unit) {
       items = remember { TILE_MODES.map(::tileModeDisplayName) },
       selectedIndex = TILE_MODES.indexOf(value).coerceAtLeast(0),
       onSelectedItemChange = { onUpdate(TILE_MODES[it]) },
-      modifier = Modifier.width(120.dp),
+      modifier = Modifier.width(FIELD_WIDTH + 20.dp),
     )
   }
 }

@@ -376,3 +376,31 @@ internal fun FloatInputField(
     commitWhileEditing = commitWhileEditing,
   )
 }
+
+/**
+ * A [NumericInputField] for a float in `min..max` that can also take an automatic value (`null`), displayed as [autoPlaceholder]. Clearing
+ * the field commits the automatic value when editing ends; valid values are committed as they are typed.
+ */
+@Composable
+internal fun OptionalFloatInputField(
+  value: Float?,
+  autoPlaceholder: String,
+  modifier: Modifier = Modifier,
+  min: Float? = null,
+  max: Float? = null,
+  enabled: Boolean = true,
+  paramName: String? = null,
+  onUpdate: (Float?) -> Unit,
+) {
+  val format = remember(min, max) { floatFormat(min, max) }
+  NumericInputField(
+    value = value,
+    format = format,
+    onUpdate = onUpdate,
+    modifier = modifier,
+    enabled = enabled,
+    paramName = paramName,
+    autoPlaceholder = autoPlaceholder,
+    commitWhileEditing = true,
+  )
+}

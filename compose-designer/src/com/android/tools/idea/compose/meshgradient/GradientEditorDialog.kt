@@ -102,6 +102,7 @@ internal class GradientEditorDialog(private val project: Project, private val in
       }
     }
     state.hasDynamicOrUnresolvedValues = gradient.hasDynamicOrUnresolvedValues
+    state.fitPreviewSizeToBrush()
   }
 
   override fun createCenterPanel(): JComponent {

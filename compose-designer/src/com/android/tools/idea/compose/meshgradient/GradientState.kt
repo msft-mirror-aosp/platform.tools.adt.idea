@@ -22,7 +22,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import com.android.tools.idea.compose.preview.message
@@ -48,17 +47,21 @@ enum class GradientType {
 class GradientEditorState {
   var currentType by mutableStateOf(GradientType.MESH)
 
-  // Linear/Radial/Sweep specific state
+  // Linear/Radial/Sweep specific state. Offsets and radius are in pixels, as written in code; see BrushGeometry.kt for the meaning of
+  // infinite and unspecified values. The defaults are the Compose defaults, which adapt to any size.
 
   /** Color stops of the Brush gradient. Either all stops have a fraction (`colorStops`) or none has (`colors`). */
   internal var stops: List<ColorStop> by mutableStateOf(ColorStops.defaultStops())
     private set
 
   var start by mutableStateOf(Offset.Zero)
-  var end by mutableStateOf(Offset(1f, 1f))
-  var center by mutableStateOf(Offset(0.5f, 0.5f))
-  var radius by mutableFloatStateOf(0.5f)
+  var end by mutableStateOf(Offset.Infinite)
+  var center by mutableStateOf(Offset.Unspecified)
+  var radius by mutableFloatStateOf(Float.POSITIVE_INFINITY)
   var tileMode by mutableStateOf(TileMode.Clamp)
+
+  /** Reference size, in pixels, of the area the Brush gradient is previewed in. Only used to preview and drag; never written to code. */
+  internal var previewSize by mutableStateOf(DEFAULT_PREVIEW_SIZE)
 
   /** Colors of [stops], in order. */
   val colors: List<Color>
@@ -97,6 +100,22 @@ class GradientEditorState {
 
   internal fun setExplicitFractions(explicit: Boolean) {
     stops = ColorStops.withExplicitFractions(stops, explicit)
+  }
+
+  /** Sets [previewSize] to the smallest size containing the current Brush gradient geometry. */
+  internal fun fitPreviewSizeToBrush() {
+    previewSize = inferPreviewSize(currentType, start, end, center, radius)
+  }
+
+  /** Returns the current Brush gradient, or `null` when editing a mesh gradient. */
+  internal fun toBrushGradient(): Gradient? {
+    val explicitStops = colorStops.takeIf { it.isNotEmpty() }
+    return when (currentType) {
+      GradientType.LINEAR -> Gradient.LinearGradient(colors, explicitStops, start, end, tileMode)
+      GradientType.RADIAL -> Gradient.RadialGradient(colors, explicitStops, center, radius, tileMode)
+      GradientType.SWEEP -> Gradient.SweepGradient(colors, explicitStops, center)
+      GradientType.MESH -> null
+    }
   }
 
   var rows by mutableIntStateOf(3)
@@ -266,9 +285,9 @@ class GradientEditorState {
   private fun generateCode(): String {
     return when (currentType) {
       GradientType.MESH -> generateMeshCode()
-      GradientType.LINEAR -> generateLinearCode()
-      GradientType.RADIAL -> generateRadialCode()
-      GradientType.SWEEP -> generateSweepCode()
+      GradientType.LINEAR,
+      GradientType.RADIAL,
+      GradientType.SWEEP -> generateBrushCode()
     }
   }
 
@@ -299,129 +318,8 @@ class GradientEditorState {
     return sb.toString()
   }
 
-  private fun generateColorsOrStopsCode(): String {
-    return if (colorStops.size >= 2) {
-      "colorStops = arrayOf(${colorStops.joinToString { "${generateFloatSource(it.first)} to Color(${it.second.toComposeHexLiteral()})" }})"
-    } else {
-      val safeColors =
-        when {
-          colors.size >= 2 -> colors.toList()
-          colors.size == 1 -> listOf(colors[0], colors[0])
-          else -> listOf(Color.Red, Color.Blue)
-        }
-      "colors = listOf(${safeColors.joinToString { "Color(${it.toComposeHexLiteral()})" }})"
-    }
-  }
-
-  private fun generateLinearCode(): String {
-    val colorsStr = generateColorsOrStopsCode()
-    return """
-        val gradientBrush = remember {
-            Brush.linearGradient(
-                $colorsStr,
-                start = ${generateOffsetSource(start)},
-                end = ${generateOffsetSource(end)},
-                tileMode = TileMode.$tileMode
-            )
-        }
-    """
-      .trimIndent()
-  }
-
-  private fun generateRadialCode(): String {
-    val colorsStr = generateColorsOrStopsCode()
-    return """
-        val gradientBrush = remember {
-            Brush.radialGradient(
-                $colorsStr,
-                center = ${generateOffsetSource(center)},
-                radius = ${generateFloatSource(radius)},
-                tileMode = TileMode.$tileMode
-            )
-        }
-    """
-      .trimIndent()
-  }
-
-  private fun generateSweepCode(): String {
-    val colorsStr = generateColorsOrStopsCode()
-    return """
-        val gradientBrush = remember {
-            Brush.sweepGradient(
-                $colorsStr,
-                center = ${generateOffsetSource(center)}
-            )
-        }
-    """
-      .trimIndent()
-  }
-}
-
-private fun resolveCanvasOffset(offset: Offset, width: Float, height: Float, defaultNormX: Float, defaultNormY: Float): Offset {
-  if (offset == Offset.Unspecified) {
-    return Offset(defaultNormX * width, defaultNormY * height)
-  }
-  val x =
-    when {
-      !offset.x.isFinite() -> defaultNormX * width
-      offset.x in 0f..1f && width > 1f -> offset.x * width
-      else -> offset.x
-    }
-  val y =
-    when {
-      !offset.y.isFinite() -> defaultNormY * height
-      offset.y in 0f..1f && height > 1f -> offset.y * height
-      else -> offset.y
-    }
-  return Offset(x, y)
-}
-
-fun createPreviewBrush(state: GradientEditorState, width: Float = 1f, height: Float = 1f): Brush {
-  val colorStops = state.colorStops.toList()
-  val safeColors =
-    when {
-      state.colors.size >= 2 -> state.colors.toList()
-      state.colors.size == 1 -> listOf(state.colors[0], state.colors[0])
-      else -> listOf(Color.Red, Color.Blue)
-    }
-  return when (state.currentType) {
-    GradientType.LINEAR -> {
-      val resolvedStart = resolveCanvasOffset(state.start, width, height, 0f, 0f)
-      val resolvedEnd = resolveCanvasOffset(state.end, width, height, 1f, 1f)
-      if (colorStops.size >= 2) {
-        Brush.linearGradient(colorStops = colorStops.toTypedArray(), start = resolvedStart, end = resolvedEnd, tileMode = state.tileMode)
-      } else {
-        Brush.linearGradient(colors = safeColors, start = resolvedStart, end = resolvedEnd, tileMode = state.tileMode)
-      }
-    }
-    GradientType.RADIAL -> {
-      val resolvedCenter = resolveCanvasOffset(state.center, width, height, 0.5f, 0.5f)
-      val minDim = minOf(width, height).coerceAtLeast(1f)
-      val resolvedRadius =
-        when {
-          !state.radius.isFinite() -> minDim * 0.5f
-          state.radius in 0f..1f && minDim > 1f -> (state.radius * minDim).coerceAtLeast(0.001f)
-          else -> state.radius.coerceAtLeast(0.001f)
-        }
-      if (colorStops.size >= 2) {
-        Brush.radialGradient(
-          colorStops = colorStops.toTypedArray(),
-          center = resolvedCenter,
-          radius = resolvedRadius,
-          tileMode = state.tileMode,
-        )
-      } else {
-        Brush.radialGradient(colors = safeColors, center = resolvedCenter, radius = resolvedRadius, tileMode = state.tileMode)
-      }
-    }
-    GradientType.SWEEP -> {
-      val resolvedCenter = resolveCanvasOffset(state.center, width, height, 0.5f, 0.5f)
-      if (colorStops.size >= 2) {
-        Brush.sweepGradient(colorStops = colorStops.toTypedArray(), center = resolvedCenter)
-      } else {
-        Brush.sweepGradient(colors = safeColors, center = resolvedCenter)
-      }
-    }
-    else -> Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+  private fun generateBrushCode(): String {
+    val expression = toBrushGradient()?.let(BrushSourceGenerator::generate) ?: return ""
+    return "val gradientBrush = remember {\n${expression.prependIndent("    ")}\n}"
   }
 }

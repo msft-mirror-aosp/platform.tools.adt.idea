@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import com.android.tools.idea.compose.preview.message
@@ -428,6 +429,52 @@ class GradientBrushWriteBackTest {
 
     assertEquals(GradientWriteResult.Written, result)
     assertEquals("Brush.linearGradient(0.5f to Color(0xFF00FF00), 0.75f to Color(0xFFFF0000), 1f to Color.Blue)", file.brushText())
+  }
+
+  @Test
+  fun editedPixelCoordinateAndStopAreTheOnlyChanges() {
+    val file = addFile("Brush.linearGradient(0f to Color.Red, 1f to Color.Blue, start = Offset(10f, 20f), end = Offset(300f, 150f))")
+
+    withGradientEditorDialog(project, file.findCall("linearGradient")) { dialog ->
+      assertEquals(Size(300f, 150f), dialog.state.previewSize)
+      dialog.state.start = Offset(25.5f, 20f)
+      dialog.state.updateStopColor(dialog.state.stops[1].id, Color.Green)
+      dialog.performOkAction()
+      assertTrue("The dialog should close", dialog.isDisposed)
+    }
+
+    assertEquals(
+      "Brush.linearGradient(0f to Color.Red, 1f to Color(0xFF00FF00), start = Offset(25.5f, 20f), end = Offset(300f, 150f))",
+      file.brushText(),
+    )
+    projectRule.fixture.assertNoErrors(file)
+  }
+
+  @Test
+  fun defaultGeometryIsNotWrittenWhenOnlyAStopChanges() {
+    val file = addFile("Brush.radialGradient(colors = listOf(Color.Red, Color.Blue))")
+
+    val result = edit(file, "radialGradient") { updateStopColor(stops[0].id, Color.Green) }
+
+    assertEquals(GradientWriteResult.Written, result)
+    assertEquals("Brush.radialGradient(colors = listOf(Color(0xFF00FF00), Color.Blue))", file.brushText())
+  }
+
+  @Test
+  fun switchingTypeAndBackKeepsThePixelGeometry() {
+    val file = addFile("Brush.linearGradient(colors = listOf(Color.Red, Color.Blue), start = Offset(10f, 20f), end = Offset(300f, 150f))")
+    val originalText = file.currentText()
+
+    val result =
+      edit(file, "linearGradient") {
+        val loadedPreviewSize = previewSize
+        currentType = GradientType.RADIAL
+        assertEquals("Switching type does not refit the preview", loadedPreviewSize, previewSize)
+        currentType = GradientType.LINEAR
+      }
+
+    assertEquals(GradientWriteResult.Unchanged, result)
+    assertEquals(originalText, file.currentText())
   }
 
   @Test

@@ -550,15 +550,6 @@ internal class GradientSourceWriter(private val project: Project) {
       }
     )
 
-  private fun tileModeName(tileMode: TileMode): String =
-    when (tileMode) {
-      TileMode.Clamp -> "Clamp"
-      TileMode.Repeated -> "Repeated"
-      TileMode.Mirror -> "Mirror"
-      TileMode.Decal -> "Decal"
-      else -> throw IllegalArgumentException("Unsupported tile mode: $tileMode")
-    }
-
   private fun stopSource(stop: Pair<Float, Color>, names: ComposeNames): Source =
     Source.generated(generateFloatSource(stop.first)) + " $OP_TO " + Source.generated(generateColorSource(stop.second, names.color))
 
