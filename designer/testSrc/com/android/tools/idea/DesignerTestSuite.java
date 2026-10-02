@@ -16,6 +16,7 @@
 package com.android.tools.idea;
 
 import com.android.testutils.JarTestSuiteRunner;
+import com.android.testutils.TestUtils;
 import com.android.tools.adtui.swing.IconLoaderRule;
 import com.android.tools.tests.IdeaTestSuiteBase;
 import org.junit.runner.RunWith;
@@ -26,11 +27,15 @@ import org.junit.runner.RunWith;
 })
 public class DesignerTestSuite extends IdeaTestSuiteBase {
 
+  private static final String LATEST_AGP = "tools/base/build-system/android_gradle_plugin.zip";
+
   static {
     linkIntoOfflineMavenRepo("tools/adt/idea/designer/test_deps.manifest");
-    unzipIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin.zip");
-    linkIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin_runtime_dependencies.manifest");
-    linkIntoOfflineMavenRepo("tools/base/third_party/kotlin/kotlin-m2repository.manifest");
+    if (TestUtils.workspaceFileExists(LATEST_AGP)) {
+      unzipIntoOfflineMavenRepo(LATEST_AGP);
+      linkIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin_runtime_dependencies.manifest");
+      linkIntoOfflineMavenRepo("tools/base/third_party/kotlin/kotlin-m2repository.manifest");
+    }
     IconLoaderRule.enableIconLoading();
   }
 }
