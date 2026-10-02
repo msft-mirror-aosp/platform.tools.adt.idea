@@ -27,9 +27,6 @@
       "hit": "Context Compression"
     },
     {
-      "hit": "Enable pre-bundled skills"
-    },
-    {
       "hit": "Gemini requires a signed-in Google account."
     },
     {
@@ -40,9 +37,6 @@
     },
     {
       "hit": "Sign in"
-    },
-    {
-      "hit": "Skills"
     },
     {
       "hit": "Tokens:"
