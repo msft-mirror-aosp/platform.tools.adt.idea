@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,11 @@ import com.android.tools.idea.lint.AndroidLintBundle.Companion.message
 import com.android.tools.idea.lint.common.AndroidLintInspectionBase
 import com.android.tools.lint.checks.TileProviderDetector
 
-class AndroidLintSquareAndRoundTilePreviewsInspection :
+class AndroidLintTilePreviewsInspection :
   AndroidLintInspectionBase(
-    message("android.lint.inspections.square.and.round.tile.previews"),
-    TileProviderDetector.SQUARE_AND_ROUND_TILE_PREVIEWS,
+    message("android.lint.inspections.tile.previews"),
+    TileProviderDetector.TILE_PREVIEWS,
   )
+
+@Deprecated("Use AndroidLintTilePreviewsInspection instead")
+typealias AndroidLintSquareAndRoundTilePreviewsInspection = AndroidLintTilePreviewsInspection
