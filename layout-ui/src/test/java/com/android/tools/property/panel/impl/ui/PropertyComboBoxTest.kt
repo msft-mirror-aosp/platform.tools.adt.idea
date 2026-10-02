@@ -17,6 +17,7 @@ package com.android.tools.property.panel.impl.ui
 
 import com.android.SdkConstants.ANDROID_URI
 import com.android.SdkConstants.ATTR_VISIBILITY
+import com.android.tools.adtui.model.stdui.CommonElementSelectability
 import com.android.tools.adtui.stdui.CommonComboBox
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.adtui.stdui.registerActionKey
@@ -31,6 +32,7 @@ import com.android.tools.property.panel.impl.model.util.FakeComboBoxUI
 import com.android.tools.property.panel.impl.model.util.FakeEnumSupport
 import com.android.tools.property.panel.impl.model.util.FakePropertyItem
 import com.google.common.truth.Truth.assertThat
+import com.intellij.psi.codeStyle.NameUtil
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
@@ -237,6 +239,95 @@ class PropertyComboBoxTest {
     assertThat(comboBox.editor.text).isEqualTo("invisible")
     wrapped.editor.item = enumSupport.values[2]
     assertThat(comboBox.editor.text).isEqualTo("invisible")
+  }
+
+  @Test
+  fun testSeparatorDisplayAndStringRepresentation() {
+    // EnumValue.SEPARATOR represents a visual divider between groups in a dropdown/combo box.
+    // It should have an empty display string and toString() representation so that
+    // search filters (such as IntelliJ's SpeedSearch or ComboBoxPopup.getTextFor) do not match
+    // it when searching for dots or characters in the package/class name (b/372404694).
+    assertThat(EnumValue.SEPARATOR.display).isEmpty()
+    assertThat(EnumValue.SEPARATOR.toString()).isEmpty()
+    assertThat((EnumValue.SEPARATOR as CommonElementSelectability).isSelectable).isFalse()
+  }
+
+  @Test
+  fun testHeaderEnumValueDisplayAndStringRepresentation() {
+    val headerEnumValue = EnumValue.header("Reference Devices")
+    assertThat(headerEnumValue.display).isEqualTo("Reference Devices")
+    assertThat(headerEnumValue.toString()).isEqualTo("Reference Devices")
+    assertThat((headerEnumValue as CommonElementSelectability).isSelectable).isFalse()
+  }
+
+  @Test
+  fun testSeparatorDoesNotMatchSpeedSearchPattern() {
+    // ComboBoxPopup uses SpeedSearch, which delegates matching to MinusculeMatcher via
+    // NameUtil.buildMatcher("*" + pattern, MatchingCaseSensitivity.NONE).
+    // Verify that searching for "." does not match EnumValue.SEPARATOR.
+    val dotSpeedSearchMatcher = NameUtil.buildMatcher("*.", NameUtil.MatchingCaseSensitivity.NONE)
+    assertThat(dotSpeedSearchMatcher.matches(EnumValue.SEPARATOR.toString())).isFalse()
+    assertThat(dotSpeedSearchMatcher.matches(EnumValue.SEPARATOR.display)).isFalse()
+
+    // Also verify that class/package name tokens (which previously leaked through Object.toString())
+    // do not match EnumValue.SEPARATOR.
+    val packageSpeedSearchMatcher = NameUtil.buildMatcher("*com.android", NameUtil.MatchingCaseSensitivity.NONE)
+    assertThat(packageSpeedSearchMatcher.matches(EnumValue.SEPARATOR.toString())).isFalse()
+
+    // Devices with literal decimal points in their display name (e.g., 7.6" Fold-in) should match ".".
+    val foldableDevice = EnumValue.item("7.6_fold_in", "7.6\" Fold-in with outer display")
+    assertThat(dotSpeedSearchMatcher.matches(foldableDevice.display)).isTrue()
+
+    // Standard devices without a decimal point (e.g., Pixel 7) should not match ".".
+    val phoneDevice = EnumValue.item("pixel_7", "Pixel 7")
+    assertThat(dotSpeedSearchMatcher.matches(phoneDevice.display)).isFalse()
+  }
+
+  @Test
+  fun testFilteredDropdownItemsExcludeSeparators() {
+    val items =
+      listOf(
+        EnumValue.header("Reference Devices"),
+        EnumValue.item("Medium Phone"),
+        EnumValue.item("Foldable"),
+        EnumValue.item("Medium Tablet"),
+        EnumValue.item("Desktop"),
+        EnumValue.SEPARATOR,
+        EnumValue.header("Phones"),
+        EnumValue.item("Pixel 7"),
+        EnumValue.SEPARATOR,
+        EnumValue.header("Tablets"),
+        EnumValue.item("Pixel Tablet"),
+        EnumValue.SEPARATOR,
+        EnumValue.header("Desktops"),
+        EnumValue.item("Desktop Screen"),
+        EnumValue.SEPARATOR,
+        EnumValue.header("Wear OS"),
+        EnumValue.item("Square"),
+        EnumValue.item("Round"),
+        EnumValue.SEPARATOR,
+        EnumValue.header("Foldables & Rollables"),
+        EnumValue.item("7.6\" Fold-in with outer display"),
+        EnumValue.item("7.4\" Rollable"),
+        EnumValue.item("6.7\" Horizontal Fold-in"),
+      )
+
+    val dotSpeedSearchMatcher = NameUtil.buildMatcher("*.", NameUtil.MatchingCaseSensitivity.NONE)
+
+    // With the fix: EnumValue.SEPARATOR.toString() is "" which does NOT match "*."
+    val filteredItems = items.filter { item ->
+      val text = item.toString()
+      text.isNotEmpty() && dotSpeedSearchMatcher.matches(text)
+    }
+
+    // Verify model contains only the 3 devices with fractional inches and NO separators:
+    assertThat(filteredItems.map { it.display })
+      .containsExactly(
+        "7.6\" Fold-in with outer display",
+        "7.4\" Rollable",
+        "6.7\" Horizontal Fold-in",
+      )
+      .inOrder()
   }
 
   private fun createFakeUiForComboBoxEditor(comboBox: PropertyComboBox, size: Dimension = Dimension(200, 20)): FakeUi {
