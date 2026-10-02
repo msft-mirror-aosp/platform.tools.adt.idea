@@ -25,13 +25,24 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
+import com.android.tools.idea.compose.preview.message
 import java.util.Locale
 
 enum class GradientType {
   MESH,
   LINEAR,
   RADIAL,
-  SWEEP,
+  SWEEP;
+
+  /** The localized name of the gradient type, e.g. "Linear Gradient". */
+  internal val displayName: String
+    get() =
+      when (this) {
+        MESH -> message("gradient.editor.kind.mesh")
+        LINEAR -> message("gradient.editor.kind.linear")
+        RADIAL -> message("gradient.editor.kind.radial")
+        SWEEP -> message("gradient.editor.kind.sweep")
+      }
 }
 
 class GradientEditorState {

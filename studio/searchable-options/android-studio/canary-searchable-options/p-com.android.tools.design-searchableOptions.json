@@ -129,15 +129,15 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Launch the mesh gradient editor playground",
+      "hit": "Gradient Editor...",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Launch the gradient editor playground",
       "path": "ActionManager"
     },
     {
       "hit": "Layout Editor",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Mesh Gradient Editor...",
       "path": "ActionManager"
     },
     {

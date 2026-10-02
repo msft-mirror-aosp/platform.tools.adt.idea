@@ -16,19 +16,24 @@
 package com.android.tools.idea.compose.meshgradient
 
 import com.android.tools.adtui.compose.StudioComposePanel
+import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.Dimension
-import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-class GradientEditorAction : AnAction() {
+/** Opens the gradient editor playground, which edits a new gradient that is not backed by source code. */
+internal class GradientEditorAction : AnAction(), DumbAware {
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
   override fun actionPerformed(e: AnActionEvent) {
@@ -43,21 +48,24 @@ class GradientEditorAction : AnAction() {
   }
 }
 
-class GradientEditorPlaygroundDialog(private val project: Project) : DialogWrapper(project, true) {
-  private val state = GradientEditorState()
+internal class GradientEditorPlaygroundDialog(private val project: Project) : DialogWrapper(project, true) {
+  @VisibleForTesting internal val state = GradientEditorState()
+
+  @VisibleForTesting
+  internal val typeSelector =
+    ComboBox(GradientType.entries.toTypedArray()).apply {
+      renderer = SimpleListCellRenderer.create<GradientType>("") { it.displayName }
+      item = state.currentType
+      addActionListener { item?.let { state.currentType = it } }
+    }
 
   init {
-    title = "Gradient Editor"
+    title = message("gradient.editor.title")
     init()
   }
 
   override fun createCenterPanel(): JComponent {
     val mainPanel = JPanel(BorderLayout())
-
-    val typeSelector = JComboBox(GradientType.entries.toTypedArray())
-    typeSelector.selectedItem = state.currentType
-    typeSelector.addActionListener { state.currentType = typeSelector.selectedItem as GradientType }
-
     mainPanel.add(typeSelector, BorderLayout.NORTH)
 
     val panel = StudioComposePanel {
@@ -68,7 +76,7 @@ class GradientEditorPlaygroundDialog(private val project: Project) : DialogWrapp
         GradientType.SWEEP -> StandardGradientEditorScreen(project, state, isEditingExisting = false)
       }
     }
-    panel.preferredSize = Dimension(520, 650)
+    panel.preferredSize = JBUI.size(520, 650)
     mainPanel.add(panel, BorderLayout.CENTER)
     return mainPanel
   }
