@@ -24,5 +24,25 @@ object StagingIcons {
     return IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
   }
 
+  @JvmField val BACK: Icon = load("icons/back.svg", -805846447, 2)
+
+  @JvmField val CHEVRON_DOWN: Icon = load("icons/chevron-down.svg", 1712489281, 2)
+
+  @JvmField val CHEVRON_LEFT: Icon = load("icons/chevron-left.svg", -1490775815, 2)
+
+  @JvmField val CHEVRON_RIGHT: Icon = load("icons/chevron-right.svg", -180585326, 2)
+
+  @JvmField val CHEVRON_UP: Icon = load("icons/chevron-up.svg", 92881613, 2)
+
+  @JvmField val DASHBOARD: Icon = load("icons/dashboard.svg", 1097347094, 2)
+
+  @JvmField val HOME: Icon = load("icons/home.svg", -396544875, 2)
+
+  @JvmField val LIVE_CHANNELS: Icon = load("icons/live-channels.svg", 1936007702, 2)
+
+  @JvmField val SETTINGS: Icon = load("icons/settings.svg", 1226991040, 2)
+
+  @JvmField val WATCHLIST: Icon = load("icons/watchlist.svg", 85046761, 2)
+
   @JvmField val ZOOM_FIT_VIEW: Icon = load("icons/zoom-fit-view.svg", -70700135, 2)
 }

@@ -161,6 +161,14 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
     addToCenter(panel)
   }
 
+  /** Adds the given panel below the central content panel. */
+  protected fun addBottomPanel(bottomPanel: JComponent) {
+    val panel = BorderLayoutPanel()
+    panel.addToCenter(notificationHolderPanel)
+    panel.addToBottom(bottomPanel)
+    addToCenter(panel)
+  }
+
   override fun addNotification(notificationPanel: EditorNotificationPanel) {
     findNotificationHolderPanel()?.addNotification(notificationPanel)
   }
