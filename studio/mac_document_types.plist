@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  File types that macOS can open with Android Studio, in addition to the ones in the
+  Info.plist of the IntelliJ platform. The mac_document_types attribute of android_studio
+  adds these entries to CFBundleDocumentTypes when the Info.plist is stamped.
+-->
+<plist version="1.0">
+  <array>
+    <!--
+      Perfetto traces. The Android Performance Analyzer registers the same file types with
+      rank Owner, so when both apps are installed, Finder opens them in the Analyzer and lists
+      Studio under "Open With". ".trace" is not registered because macOS Instruments also
+      uses it.
+    -->
+    <dict>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>perfetto</string>
+        <string>pftrace</string>
+        <string>perfetto-trace</string>
+      </array>
+      <key>CFBundleTypeIconFile</key>
+      <string>studio.icns</string>
+      <key>CFBundleTypeName</key>
+      <string>Perfetto Trace File</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSTypeIsPackage</key>
+      <false/>
+    </dict>
+  </array>
+</plist>

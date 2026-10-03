@@ -1,6 +1,7 @@
 import json
 import xml.etree.ElementTree as ET
 import os
+import plistlib
 import re
 import unittest
 import zipfile
@@ -162,6 +163,14 @@ class StudioTests(unittest.TestCase):
           self.assertFalse(f.external_attr == 0, "Unix attributes are missing from the entry")
           self.assertFalse(is_symlink, f.filename + " should not be a symlink")
       self.assertTrue(found, "Android Studio.*.app/Contents/jbr/Contents/MacOS/libjli.dylib not found")
+
+  def test_mac_document_types(self):
+    # Perfetto traces are registered with macOS (see studio/mac_document_types.plist).
+    for platform in ["mac", "mac_arm"]:
+      with zipfile.ZipFile(f"tools/adt/idea/studio/android-studio.{platform}.zip") as file:
+        [info_plist] = [n for n in file.namelist() if n.endswith(".app/Contents/Info.plist")]
+        doc_types = plistlib.loads(file.read(info_plist))["CFBundleDocumentTypes"]
+      self.assertIn("perfetto", doc_types[0]["CFBundleTypeExtensions"], platform)
 
   def test_all_files_writable(self):
     for platform in PLATFORMS:

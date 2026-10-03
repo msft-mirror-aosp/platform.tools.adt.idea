@@ -1051,6 +1051,7 @@ android_studio(
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
+    mac_document_types = "mac_document_types.plist",
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS,
     searchable_options_metadata = SEARCHABLE_OPTIONS,
@@ -1074,6 +1075,7 @@ android_studio(
     generate_package_metadata = False,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
+    mac_document_types = "mac_document_types.plist",
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS + [
         "//tools/vendor/google/optional-plugins:plugins",
@@ -1102,6 +1104,7 @@ android_studio(
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
+    mac_document_types = "//tools/adt/idea/studio:mac_document_types.plist",
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS + [
         "//tools/vendor/google/automation:com.android.tools.idea.automation",

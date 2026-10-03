@@ -1,6 +1,7 @@
 import json
 import os
 import io
+import plistlib
 import unittest
 import zipfile
 from tools.adt.idea.studio import stamper
@@ -434,6 +435,106 @@ FORMATTED_DATE 2025 May 05 20 54 54 Mon""",
         "  <idea-version since-build=\"1234.3333\" until-build=\"1234.3333\"/>\n" +
         "  <version>1234.3333</version>"
       }, read_zip(after))
+
+  def test_add_document_types(self):
+    stable = create_file("info.txt", "BUILD_EMBED_LABEL 3333")
+    before = create_file("Info.plist", """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>CFBundleVersion</key>
+    <string>AI-__BUILD_NUMBER__</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleTypeExtensions</key>
+        <array>
+          <string>*</string>
+        </array>
+        <key>CFBundleTypeName</key>
+        <string>All documents</string>
+      </dict>
+    </array>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+  </dict>
+</plist>""")
+    document_types = create_file("document_types.plist", """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <array>
+    <!-- A comment -->
+    <dict>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>ext</string>
+      </array>
+      <key>CFBundleTypeName</key>
+      <string>Some File for _ANDROID_STUDIO_SYSTEM_SELECTOR_</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+  </array>
+</plist>""")
+    after = get_path("res.plist")
+    stamper.main([
+        "--info_file", stable,
+        "--version_component", "1234",
+        "--replace_build_number",
+        "--replace_selector", "AndroidStudio",
+        "--add_document_types", document_types,
+        "--stamp", before, after,
+    ])
+    # The entries are added before the existing ones, placeholders in them are
+    # replaced, and the other keys keep their values and order.
+    result = plistlib.loads(read_file(after).encode("utf-8"))
+    self.assertEqual({
+        "CFBundleVersion": "AI-1234.3333",
+        "CFBundleDocumentTypes": [
+            {
+                "CFBundleTypeExtensions": ["ext"],
+                "CFBundleTypeName": "Some File for AndroidStudio",
+                "LSHandlerRank": "Alternate",
+            },
+            {
+                "CFBundleTypeExtensions": ["*"],
+                "CFBundleTypeName": "All documents",
+            },
+        ],
+        "NSHighResolutionCapable": True,
+    }, result)
+    # Dict equality ignores key order, so check the order separately.
+    self.assertEqual(["CFBundleVersion", "CFBundleDocumentTypes", "NSHighResolutionCapable"], list(result))
+
+  def test_add_document_types_needs_document_types_in_info_plist(self):
+    before = create_file("Info.plist", plistlib.dumps({"CFBundleName": "Studio"}).decode("utf-8"))
+    document_types = create_file("document_types.plist", plistlib.dumps([{"CFBundleTypeName": "Some File"}]).decode("utf-8"))
+    after = get_path("res.plist")
+    with self.assertRaises(SystemExit) as e:
+      stamper.main([
+          "--add_document_types", document_types,
+          "--stamp", before, after,
+      ])
+    self.assertEqual("ERROR: the Info.plist has no CFBundleDocumentTypes array", e.exception.code)
+
+  def test_add_document_types_needs_an_array(self):
+    before = create_file("Info.plist", plistlib.dumps({
+        "CFBundleDocumentTypes": [{"CFBundleTypeName": "All documents"}],
+    }).decode("utf-8"))
+    for name, value in [
+        ("dict", {"CFBundleTypeName": "Some File"}),
+        ("empty array", []),
+        ("array of strings", ["Some File"]),
+    ]:
+      with self.subTest(name):
+        document_types = create_file("document_types.plist", plistlib.dumps(value).decode("utf-8"))
+        after = get_path("res.plist")
+        with self.assertRaises(SystemExit) as e:
+          stamper.main([
+              "--add_document_types", document_types,
+              "--stamp", before, after,
+          ])
+        self.assertIn("must contain a non-empty array of document types", e.exception.code)
 
 
 if __name__ == "__main__":
