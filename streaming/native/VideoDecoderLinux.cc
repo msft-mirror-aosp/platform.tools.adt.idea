@@ -79,7 +79,7 @@ constexpr uint8_t AV1_OBU_REDUNDANT_FRAME_HEADER = 7;
 constexpr uint8_t AV1_OBU_TILE_LIST = 8;
 constexpr uint8_t AV1_OBU_PADDING = 15;
 
-// Prefix of FFmpeg's AVFrame struct, which has remained ABI-stable across FFmpeg 3.x - 8.x.
+// Prefix of FFmpeg's AVFrame struct, which has remained ABI-stable across FFmpeg 3.x - 9.x.
 struct AvFramePrefix {
   uint8_t* data[8];
   int linesize[8];
@@ -370,14 +370,15 @@ bool ParseVp9Packet(const uint8_t* data, size_t size, Vp9PacketInfo* info) {
   return ParseVp9SingleFrameHeader(data, size, info);
 }
 
-struct FfmpegVersionTriplet {
-  const char* avutilSoname;
-  const char* swresampleSoname;
-  const char* swscaleSoname;
-  const char* avcodecSoname;
+struct FfmpegSoNames {
+  const char* avutilSoName;
+  const char* swresampleSoName;
+  const char* swscaleSoName;
+  const char* avcodecSoName;
 };
 
-constexpr FfmpegVersionTriplet kFfmpegTriplets[] = {
+constexpr FfmpegSoNames kFfmpegSoNames[] = {
+    {"libavutil.so.61", "libswresample.so.7", "libswscale.so.10", "libavcodec.so.63"},  // FFmpeg 9.x
     {"libavutil.so.60", "libswresample.so.6", "libswscale.so.9", "libavcodec.so.62"},  // FFmpeg 8.x
     {"libavutil.so.59", "libswresample.so.5", "libswscale.so.8", "libavcodec.so.61"},  // FFmpeg 7.x
     {"libavutil.so.58", "libswresample.so.4", "libswscale.so.7", "libavcodec.so.60"},  // FFmpeg 6.x
@@ -495,13 +496,13 @@ public:
 
 private:
   SystemFfmpegApi() {
-    for (const auto& triplet : kFfmpegTriplets) {
+    for (const auto& soNames : kFfmpegSoNames) {
       for (const char* dir : kSystemLibDirs) {
         std::string prefix = std::string(dir) + "/";
-        std::string avutilPath = prefix + triplet.avutilSoname;
-        std::string swresamplePath = prefix + triplet.swresampleSoname;
-        std::string swscalePath = prefix + triplet.swscaleSoname;
-        std::string avcodecPath = prefix + triplet.avcodecSoname;
+        std::string avutilPath = prefix + soNames.avutilSoName;
+        std::string swresamplePath = prefix + soNames.swresampleSoName;
+        std::string swscalePath = prefix + soNames.swscaleSoName;
+        std::string avcodecPath = prefix + soNames.avcodecSoName;
 
         if (access(avutilPath.c_str(), R_OK) != 0 ||
             access(swscalePath.c_str(), R_OK) != 0 ||
@@ -509,14 +510,14 @@ private:
           continue;
         }
 
-        if (TryLoadTriplet(avutilPath.c_str(), swresamplePath.c_str(), swscalePath.c_str(), avcodecPath.c_str())) {
+        if (TryLoadLibraries(avutilPath.c_str(), swresamplePath.c_str(), swscalePath.c_str(), avcodecPath.c_str())) {
           return;
         }
       }
     }
   }
 
-  bool TryLoadTriplet(
+  bool TryLoadLibraries(
       const char* avutilPath, const char* swresamplePath, const char* swscalePath, const char* avcodecPath) {
     void* avutil = nullptr;
     void* swresample = nullptr;
