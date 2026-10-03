@@ -564,17 +564,6 @@
 
     <issue
         id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
-        errorLine1="      ResourceImportDialog(ResourceImportDialogViewModel(facet, emptySequence(), importersProvider = importersProvider)).show()"
-        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/ui/resourcemanager/explorer/ResourceExplorerToolbarViewModel.kt"
-            line="254"
-            column="28"/>
-    </issue>
-
-    <issue
-        id="WrongThread"
         message="Call must be from `@{Slow,WorkerThread}`, but super method `BaseRefactoringProcessor.performRefactoring(…)` is allowing `@UiThread`"
         errorLine1="          performRefactoringForLayoutFile(refactoring);"
         errorLine2="          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
