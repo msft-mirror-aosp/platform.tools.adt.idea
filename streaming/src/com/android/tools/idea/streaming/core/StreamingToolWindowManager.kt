@@ -724,6 +724,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       updateMirroringHandlesFlow()
     }
     val content = findContentBySerialNumberOfPhysicalDevice(serialNumber) ?: return
+    logger.info("Device ${content.tabName} ($serialNumber) has disconnected")
     savedUiState.remove(content.deviceId)
     content.removeAndDispose()
   }
