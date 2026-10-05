@@ -79,8 +79,8 @@ public class IdeaTestSuiteBase {
     System.setProperty("java.util.prefs.userRoot", createTmpDir("userRoot").toString());
     System.setProperty("java.util.prefs.systemRoot", createTmpDir("systemRoot").toString());
 
-    // See AndroidLocation.java for more information on this system property.
-    System.setProperty("ANDROID_PREFS_ROOT", createTmpDir(".android").toString());
+    // See AbstractAndroidLocations.kt for more information on this system property.
+    System.setProperty("ANDROID_USER_HOME", createTmpDir(".android").toString());
     System.setProperty("layoutlib.thread.timeout", "60000");
     // When running tests from the IDE, IntelliJ allows plugin descriptors to be anywhere if a plugin.xml is found in a directory.
     // On bazel we pack each directory in a jar, so we have to tell IJ explicitly that we are still "in directory mode"
