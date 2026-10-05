@@ -18,7 +18,9 @@ package com.android.tools.preview
 import java.io.StringReader
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import org.xml.sax.InputSource
@@ -136,6 +138,51 @@ $t
           )
         }
       }
+  }
+
+  @Test
+  fun testDeviceSpecIncludedInPreviewXml() {
+    val previewWithDeviceSpec =
+      SingleComposePreviewElementInstance(
+        "composableMethodName",
+        PreviewDisplaySettings(
+          name = "A name",
+          baseName = "A base name",
+          parameterName = null,
+          group = null,
+          showDecoration = false,
+          background = PreviewDisplaySettings.Background.None,
+          organizationName = "organizationName",
+          organizationGroup = "organizationGroup",
+        ),
+        null,
+        null,
+        PreviewConfiguration.cleanAndGet(device = "spec:width=411dp,height=891dp,windowPosture=flat"),
+      )
+
+    val xmlWithDeviceSpec = previewWithDeviceSpec.toPreviewXml().buildString()
+    assertTrue(xmlWithDeviceSpec.contains("tools:device=\"spec:width=411dp,height=891dp,windowPosture=flat\""))
+
+    val previewWithoutDeviceSpec =
+      SingleComposePreviewElementInstance(
+        "composableMethodName",
+        PreviewDisplaySettings(
+          name = "A name",
+          baseName = "A base name",
+          parameterName = null,
+          group = null,
+          showDecoration = false,
+          background = PreviewDisplaySettings.Background.None,
+          organizationName = "organizationName",
+          organizationGroup = "organizationGroup",
+        ),
+        null,
+        null,
+        PreviewConfiguration.cleanAndGet(),
+      )
+
+    val xmlWithoutDeviceSpec = previewWithoutDeviceSpec.toPreviewXml().buildString()
+    assertFalse(xmlWithoutDeviceSpec.contains("tools:device"))
   }
 
   @Test

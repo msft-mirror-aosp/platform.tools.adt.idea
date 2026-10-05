@@ -38,11 +38,17 @@ import com.android.tools.preview.config.Preview.DeviceSpec.OPERATOR
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_CHIN_SIZE
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_CUTOUT
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_DPI
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_HAS_CAMERA
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_HAS_MICROPHONE
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_ID
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_IS_ROUND
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_KEYBOARD_KIND
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_NAVIGATION
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_ORIENTATION
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_PARENT
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_POINTER_PRECISION
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_VIEWING_DISTANCE
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_WINDOW_POSTURE
 import com.android.tools.preview.config.Preview.DeviceSpec.SEPARATOR
 import com.android.tools.res.FrameworkOverlay
 import com.google.common.base.Objects
@@ -55,6 +61,8 @@ import kotlin.reflect.KProperty
  * used in their definitions so this patches the device id so it shows correctly in our metrics.
  *
  * Remember to update the keys in case Devices.kt is changes in future versions
+ *
+ * TODO(b/571061582): Update reference device spec keys once ui-tooling Devices.kt definitions include media query parameters.
  */
 val referenceDeviceIds =
   mapOf(
@@ -84,6 +92,12 @@ open class DeviceConfig(
   open val orientation: Orientation = DEFAULT_ORIENTATION,
   open val cutout: Cutout = DEFAULT_CUTOUT,
   open val navigation: Navigation = DEFAULT_NAVIGATION,
+  open val windowPosture: WindowPosture = WindowPosture.flat,
+  open val pointerPrecision: PointerPrecision = PointerPrecision.coarse,
+  open val keyboardKind: KeyboardKind = KeyboardKind.virtual,
+  open val hasCamera: Boolean = true,
+  open val hasMicrophone: Boolean = true,
+  open val viewingDistance: ViewingDistance = ViewingDistance.near,
   open val parentDeviceId: String? = null,
 ) {
   /**
@@ -126,9 +140,18 @@ open class DeviceConfig(
         }
     }
     if (
-      parentDeviceId != null && orientation == getDeviceDefaultOrientation() && navigation == DEFAULT_NAVIGATION && cutout == DEFAULT_CUTOUT
+      parentDeviceId != null &&
+        orientation == getDeviceDefaultOrientation() &&
+        navigation == DEFAULT_NAVIGATION &&
+        cutout == DEFAULT_CUTOUT &&
+        windowPosture == WindowPosture.flat &&
+        pointerPrecision == PointerPrecision.coarse &&
+        keyboardKind == KeyboardKind.virtual &&
+        hasCamera &&
+        hasMicrophone &&
+        viewingDistance == ViewingDistance.near
     ) {
-      // If the spec value has a parent but none of orientation, navigation and cutout are different from
+      // If the spec value has a parent but none of orientation, navigation, cutout, and media query attributes are different from
       // default value, return id:<device-id>
       return "$DEVICE_BY_ID_PREFIX$parentDeviceId"
     }
@@ -145,6 +168,30 @@ open class DeviceConfig(
       if (navigation != DEFAULT_NAVIGATION) {
         builder.appendSeparator()
         builder.appendParamValue(PARAMETER_NAVIGATION, navigation.name)
+      }
+      if (windowPosture != WindowPosture.flat) {
+        builder.appendSeparator()
+        builder.appendParamValue(PARAMETER_WINDOW_POSTURE, windowPosture.name)
+      }
+      if (pointerPrecision != PointerPrecision.coarse) {
+        builder.appendSeparator()
+        builder.appendParamValue(PARAMETER_POINTER_PRECISION, pointerPrecision.name)
+      }
+      if (keyboardKind != KeyboardKind.virtual) {
+        builder.appendSeparator()
+        builder.appendParamValue(PARAMETER_KEYBOARD_KIND, keyboardKind.name)
+      }
+      if (!hasCamera) {
+        builder.appendSeparator()
+        builder.appendParamValue(PARAMETER_HAS_CAMERA, hasCamera.toString())
+      }
+      if (!hasMicrophone) {
+        builder.appendSeparator()
+        builder.appendParamValue(PARAMETER_HAS_MICROPHONE, hasMicrophone.toString())
+      }
+      if (viewingDistance != ViewingDistance.near) {
+        builder.appendSeparator()
+        builder.appendParamValue(PARAMETER_VIEWING_DISTANCE, viewingDistance.name)
       }
       return builder.toString()
     }
@@ -174,6 +221,30 @@ open class DeviceConfig(
       builder.appendSeparator()
       builder.appendParamValue(PARAMETER_NAVIGATION, navigation.name)
     }
+    if (windowPosture != WindowPosture.flat) {
+      builder.appendSeparator()
+      builder.appendParamValue(PARAMETER_WINDOW_POSTURE, windowPosture.name)
+    }
+    if (pointerPrecision != PointerPrecision.coarse) {
+      builder.appendSeparator()
+      builder.appendParamValue(PARAMETER_POINTER_PRECISION, pointerPrecision.name)
+    }
+    if (keyboardKind != KeyboardKind.virtual) {
+      builder.appendSeparator()
+      builder.appendParamValue(PARAMETER_KEYBOARD_KIND, keyboardKind.name)
+    }
+    if (!hasCamera) {
+      builder.appendSeparator()
+      builder.appendParamValue(PARAMETER_HAS_CAMERA, hasCamera.toString())
+    }
+    if (!hasMicrophone) {
+      builder.appendSeparator()
+      builder.appendParamValue(PARAMETER_HAS_MICROPHONE, hasMicrophone.toString())
+    }
+    if (viewingDistance != ViewingDistance.near) {
+      builder.appendSeparator()
+      builder.appendParamValue(PARAMETER_VIEWING_DISTANCE, viewingDistance.name)
+    }
     return builder.toString()
   }
 
@@ -189,14 +260,47 @@ open class DeviceConfig(
   }
 
   override fun equals(other: Any?): Boolean {
-    if (other !is DeviceConfig) {
-      return false
-    }
-    return deviceSpec() == other.deviceSpec()
+    if (this === other) return true
+    if (other !is DeviceConfig) return false
+    return deviceId == other.deviceId &&
+      width == other.width &&
+      height == other.height &&
+      dimUnit == other.dimUnit &&
+      dpi == other.dpi &&
+      shape == other.shape &&
+      chinSize == other.chinSize &&
+      orientation == other.orientation &&
+      cutout == other.cutout &&
+      navigation == other.navigation &&
+      windowPosture == other.windowPosture &&
+      pointerPrecision == other.pointerPrecision &&
+      keyboardKind == other.keyboardKind &&
+      hasCamera == other.hasCamera &&
+      hasMicrophone == other.hasMicrophone &&
+      viewingDistance == other.viewingDistance &&
+      parentDeviceId == other.parentDeviceId
   }
 
   override fun hashCode(): Int {
-    return Objects.hashCode(width, height, dpi, shape, dimUnit, chinSize, isRound, orientation, cutout, navigation, parentDeviceId)
+    return Objects.hashCode(
+      deviceId,
+      width,
+      height,
+      dimUnit,
+      dpi,
+      shape,
+      chinSize,
+      orientation,
+      cutout,
+      navigation,
+      windowPosture,
+      pointerPrecision,
+      keyboardKind,
+      hasCamera,
+      hasMicrophone,
+      viewingDistance,
+      parentDeviceId,
+    )
   }
 
   private fun getDeviceDefaultOrientation(): Orientation {
@@ -285,13 +389,71 @@ open class DeviceConfig(
           null
         }
 
-      if (orientation != null || navigation != null || cutout != null) {
+      val windowPosture =
+        if (params[PARAMETER_WINDOW_POSTURE] != null) {
+          enumValueOfOrNull<WindowPosture>(params.getOrDefault(PARAMETER_WINDOW_POSTURE, "")) ?: return null
+        } else {
+          null
+        }
+
+      val pointerPrecision =
+        if (params[PARAMETER_POINTER_PRECISION] != null) {
+          enumValueOfOrNull<PointerPrecision>(params.getOrDefault(PARAMETER_POINTER_PRECISION, "")) ?: return null
+        } else {
+          null
+        }
+
+      val keyboardKind =
+        if (params[PARAMETER_KEYBOARD_KIND] != null) {
+          enumValueOfOrNull<KeyboardKind>(params.getOrDefault(PARAMETER_KEYBOARD_KIND, "")) ?: return null
+        } else {
+          null
+        }
+
+      val hasCamera =
+        if (params[PARAMETER_HAS_CAMERA] != null) {
+          params[PARAMETER_HAS_CAMERA]?.toBooleanStrictOrNull() ?: return null
+        } else {
+          null
+        }
+
+      val hasMicrophone =
+        if (params[PARAMETER_HAS_MICROPHONE] != null) {
+          params[PARAMETER_HAS_MICROPHONE]?.toBooleanStrictOrNull() ?: return null
+        } else {
+          null
+        }
+
+      val viewingDistance =
+        if (params[PARAMETER_VIEWING_DISTANCE] != null) {
+          enumValueOfOrNull<ViewingDistance>(params.getOrDefault(PARAMETER_VIEWING_DISTANCE, "")) ?: return null
+        } else {
+          null
+        }
+
+      if (
+        orientation != null ||
+          navigation != null ||
+          cutout != null ||
+          windowPosture != null ||
+          pointerPrecision != null ||
+          keyboardKind != null ||
+          hasCamera != null ||
+          hasMicrophone != null ||
+          viewingDistance != null
+      ) {
         return initialConfig
           .toMutableConfig()
           .apply {
             orientation?.let { this.orientation = it }
             navigation?.let { this.navigation = it }
             cutout?.let { this.cutout = it }
+            windowPosture?.let { this.windowPosture = it }
+            pointerPrecision?.let { this.pointerPrecision = it }
+            keyboardKind?.let { this.keyboardKind = it }
+            hasCamera?.let { this.hasCamera = it }
+            hasMicrophone?.let { this.hasMicrophone = it }
+            viewingDistance?.let { this.viewingDistance = it }
           }
           .toImmutableConfig()
       }
@@ -362,6 +524,49 @@ open class DeviceConfig(
         } else {
           DEFAULT_NAVIGATION
         }
+
+      val windowPosture =
+        if (params[PARAMETER_WINDOW_POSTURE] != null) {
+          enumValueOfOrNull<WindowPosture>(params.getOrDefault(PARAMETER_WINDOW_POSTURE, "")) ?: return null
+        } else {
+          WindowPosture.flat
+        }
+
+      val pointerPrecision =
+        if (params[PARAMETER_POINTER_PRECISION] != null) {
+          enumValueOfOrNull<PointerPrecision>(params.getOrDefault(PARAMETER_POINTER_PRECISION, "")) ?: return null
+        } else {
+          PointerPrecision.coarse
+        }
+
+      val keyboardKind =
+        if (params[PARAMETER_KEYBOARD_KIND] != null) {
+          enumValueOfOrNull<KeyboardKind>(params.getOrDefault(PARAMETER_KEYBOARD_KIND, "")) ?: return null
+        } else {
+          KeyboardKind.virtual
+        }
+
+      val hasCamera =
+        if (params[PARAMETER_HAS_CAMERA] != null) {
+          params[PARAMETER_HAS_CAMERA]?.toBooleanStrictOrNull() ?: return null
+        } else {
+          true
+        }
+
+      val hasMicrophone =
+        if (params[PARAMETER_HAS_MICROPHONE] != null) {
+          params[PARAMETER_HAS_MICROPHONE]?.toBooleanStrictOrNull() ?: return null
+        } else {
+          true
+        }
+
+      val viewingDistance =
+        if (params[PARAMETER_VIEWING_DISTANCE] != null) {
+          enumValueOfOrNull<ViewingDistance>(params.getOrDefault(PARAMETER_VIEWING_DISTANCE, "")) ?: return null
+        } else {
+          ViewingDistance.near
+        }
+
       return DeviceConfig(
         deviceId = params[PARAMETER_ID],
         width = width.value,
@@ -373,6 +578,12 @@ open class DeviceConfig(
         orientation = orientation,
         cutout = cutout,
         navigation = navigation,
+        windowPosture = windowPosture,
+        pointerPrecision = pointerPrecision,
+        keyboardKind = keyboardKind,
+        hasCamera = hasCamera,
+        hasMicrophone = hasMicrophone,
+        viewingDistance = viewingDistance,
         parentDeviceId = null, // Not supported when explicitly declaring width, height, dpi, chinSize
       )
     }
@@ -395,8 +606,33 @@ class MutableDeviceConfig(
   initialOrientation: Orientation = DEFAULT_ORIENTATION,
   initialCutout: Cutout = DEFAULT_CUTOUT,
   initialNavigation: Navigation = DEFAULT_NAVIGATION,
+  initialWindowPosture: WindowPosture = WindowPosture.flat,
+  initialPointerPrecision: PointerPrecision = PointerPrecision.coarse,
+  initialKeyboardKind: KeyboardKind = KeyboardKind.virtual,
+  initialHasCamera: Boolean = true,
+  initialHasMicrophone: Boolean = true,
+  initialViewingDistance: ViewingDistance = ViewingDistance.near,
   initialBackingDeviceId: String? = null,
-) : DeviceConfig(id, initialWidth, initialHeight, initialDimUnit, initialDpi, initialShape) {
+) :
+  DeviceConfig(
+    id,
+    initialWidth,
+    initialHeight,
+    initialDimUnit,
+    initialDpi,
+    initialShape,
+    initialChinSize,
+    initialOrientation,
+    initialCutout,
+    initialNavigation,
+    initialWindowPosture,
+    initialPointerPrecision,
+    initialKeyboardKind,
+    initialHasCamera,
+    initialHasMicrophone,
+    initialViewingDistance,
+    initialBackingDeviceId,
+  ) {
 
   /**
    * ID of the device this configuration represents, null if it's a custom device.
@@ -444,6 +680,18 @@ class MutableDeviceConfig(
 
   override var navigation: Navigation = initialNavigation
 
+  override var windowPosture: WindowPosture = initialWindowPosture
+
+  override var pointerPrecision: PointerPrecision = initialPointerPrecision
+
+  override var keyboardKind: KeyboardKind = initialKeyboardKind
+
+  override var hasCamera: Boolean = initialHasCamera
+
+  override var hasMicrophone: Boolean = initialHasMicrophone
+
+  override var viewingDistance: ViewingDistance = initialViewingDistance
+
   /** Returns a property delegate that nullifies the [parentDeviceId] whenever the property sees a different value. */
   private fun <T> invalidateIdOnPropertyChangeDelegate(initialValue: T) =
     object : ObservableProperty<T>(initialValue) {
@@ -463,9 +711,16 @@ internal fun MutableDeviceConfig.toImmutableConfig(): DeviceConfig =
     height = this.height,
     dimUnit = this.dimUnit,
     dpi = this.dpi,
+    chinSize = this.chinSize,
     orientation = this.orientation,
     cutout = this.cutout,
     navigation = this.navigation,
+    windowPosture = this.windowPosture,
+    pointerPrecision = this.pointerPrecision,
+    keyboardKind = this.keyboardKind,
+    hasCamera = this.hasCamera,
+    hasMicrophone = this.hasMicrophone,
+    viewingDistance = this.viewingDistance,
     parentDeviceId = this.parentDeviceId,
   )
 
@@ -481,6 +736,12 @@ fun DeviceConfig.toMutableConfig(): MutableDeviceConfig =
     initialOrientation = this.orientation,
     initialCutout = this.cutout,
     initialNavigation = this.navigation,
+    initialWindowPosture = this.windowPosture,
+    initialPointerPrecision = this.pointerPrecision,
+    initialKeyboardKind = this.keyboardKind,
+    initialHasCamera = this.hasCamera,
+    initialHasMicrophone = this.hasMicrophone,
+    initialViewingDistance = this.viewingDistance,
     initialBackingDeviceId = this.parentDeviceId,
   )
 
@@ -527,4 +788,29 @@ enum class Cutout(val overlay: FrameworkOverlay) {
 enum class Navigation {
   buttons,
   gesture,
+}
+
+enum class WindowPosture {
+  flat,
+  tabletop,
+  book,
+}
+
+enum class PointerPrecision {
+  coarse,
+  fine,
+  blunt,
+  none,
+}
+
+enum class KeyboardKind {
+  virtual,
+  physical,
+  none,
+}
+
+enum class ViewingDistance {
+  near,
+  medium,
+  far,
 }
