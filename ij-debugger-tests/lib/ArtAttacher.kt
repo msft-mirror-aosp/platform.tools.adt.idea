@@ -44,7 +44,6 @@ import java.io.BufferedReader
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
-import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
@@ -272,7 +271,7 @@ private fun Path.generateHash(): String {
 }
 
 private fun loadD8Compiler(): Method {
-  val classLoader = URLClassLoader(arrayOf(URL("file://${ROOT.resolve(DEX_COMPILER).pathString}")))
+  val classLoader = URLClassLoader(arrayOf(ROOT.resolve(DEX_COMPILER).toUri().toURL()), null)
   val d8 = classLoader.loadClass("com.android.tools.r8.D8")
   return d8.getDeclaredMethod("main", Array<String>::class.java)
 }
