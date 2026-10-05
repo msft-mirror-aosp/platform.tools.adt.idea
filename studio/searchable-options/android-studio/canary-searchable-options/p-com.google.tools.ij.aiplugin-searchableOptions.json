@@ -90,9 +90,6 @@
       "hit": "Configure colors..."
     },
     {
-      "hit": "Default comment action:"
-    },
-    {
       "hit": "Don't Collapse"
     },
     {
@@ -120,10 +117,16 @@
       "hit": "Next Edit Prediction"
     },
     {
+      "hit": "Primary comment action:"
+    },
+    {
       "hit": "Request delay:"
     },
     {
       "hit": "Save Draft"
+    },
+    {
+      "hit": "Secondary comment action:"
     },
     {
       "hit": "Show reviewed diff chunks in navigation"
