@@ -35,6 +35,7 @@
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" scope="TEST" />
     <orderEntry type="library" name="truth" level="project" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.streaming" />
 </module>

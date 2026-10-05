@@ -60,6 +60,7 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.play-publishing" />
 </module>

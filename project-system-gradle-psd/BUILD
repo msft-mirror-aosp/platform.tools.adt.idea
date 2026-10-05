@@ -129,6 +129,8 @@ iml_module(
         "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/gradle-declarative-lang-flags:intellij.android.gradle.declarative.lang.flags",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
     ],
     test_srcs = ["testSrc"],
     test_tags = [

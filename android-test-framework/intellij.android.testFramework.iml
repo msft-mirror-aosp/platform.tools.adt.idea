@@ -53,5 +53,6 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.smRunner" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.testRunner" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.repository.tests" scope="TEST" />
   </component>
 </module>

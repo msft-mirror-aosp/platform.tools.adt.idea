@@ -79,6 +79,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer",
         "//tools/adt/idea/layoutlib:intellij.android.layoutlib",
+        "//tools/base/resource-repository:studio.android.sdktools.resource-repository.tests",
     ],
     test_friends = ["//tools/adt/idea/render-resources:intellij.android.render-resources"],
     test_srcs = ["testSrc"],

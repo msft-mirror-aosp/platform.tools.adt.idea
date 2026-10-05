@@ -80,5 +80,6 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.observable.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
   </component>
 </module>

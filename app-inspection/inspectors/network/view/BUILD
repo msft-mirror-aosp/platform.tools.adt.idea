@@ -64,6 +64,7 @@ iml_module(
         "//tools/adt/idea/app-inspection/inspectors/network/model:app-inspection.inspectors.network.model.tests",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/app-inspection/inspectors/network/view:app-inspection.inspectors.network.view"],
     test_srcs = ["testSrc"],

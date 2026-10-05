@@ -54,6 +54,10 @@
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.device-provisioner.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.repository.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.avd" />
 </module>

@@ -53,6 +53,7 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.model.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.transport.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.transportDatabase.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.perflib.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.profilers" />
 </module>

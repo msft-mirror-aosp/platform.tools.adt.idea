@@ -75,6 +75,8 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/adt/idea/observable:intellij.android.observable.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
     ],
     test_friends = ["//tools/adt/idea/adt-ui:intellij.android.adt.ui"],
     test_resources = ["src/test/resources"],

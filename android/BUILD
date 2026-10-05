@@ -271,6 +271,11 @@ iml_module(
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
         "@intellij//:org.jetbrains.idea.reposearch",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

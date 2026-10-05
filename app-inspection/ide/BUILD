@@ -77,6 +77,7 @@ iml_module(
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api.tests",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/adt/idea/android-transport:intellij.android.transport.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_resources = [
         "testResources",

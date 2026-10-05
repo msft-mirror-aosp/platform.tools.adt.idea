@@ -51,6 +51,9 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/resource-repository:studio.android.sdktools.resource-repository.tests",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

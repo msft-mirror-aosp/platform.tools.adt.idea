@@ -49,5 +49,6 @@
     <orderEntry type="module" module-name="app-inspection.inspector.api.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.transport.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
   </component>
 </module>

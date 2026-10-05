@@ -34,5 +34,7 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.resource-repository.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.sdk-common.tests" scope="TEST" />
   </component>
 </module>

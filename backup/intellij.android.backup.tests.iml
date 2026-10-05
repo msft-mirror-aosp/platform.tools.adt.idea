@@ -34,6 +34,9 @@
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.backup.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.backup" />
 </module>

@@ -66,6 +66,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/wear-preview-elements:intellij.android.wear-preview-elements",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/wear-designer:intellij.android.wear-designer"],
     test_srcs = ["testSrc"],

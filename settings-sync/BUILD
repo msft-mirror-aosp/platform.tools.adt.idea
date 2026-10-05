@@ -58,6 +58,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "@intellij//:test-framework",
         "//tools/vendor/google/login:google-login.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/settings-sync:intellij.android.settings-sync"],
     test_srcs = ["testSrc"],

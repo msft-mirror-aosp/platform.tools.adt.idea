@@ -54,6 +54,7 @@ iml_module(
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

@@ -89,6 +89,7 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_friends = ["//tools/adt/idea/execution/common:intellij.android.execution.common"],
     test_srcs = ["testSrc"],

@@ -22,6 +22,7 @@
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="library" scope="TEST" name="layoutlib" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.sdk-common.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.rendering" />
 </module>

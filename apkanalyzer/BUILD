@@ -55,6 +55,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer.tests",
     ],
     test_friends = ["//tools/adt/idea/apkanalyzer:intellij.android.apkanalyzer"],
     test_resources = ["testSrc/resources"],

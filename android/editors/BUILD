@@ -34,6 +34,7 @@ iml_module(
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

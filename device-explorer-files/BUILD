@@ -61,6 +61,8 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

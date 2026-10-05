@@ -58,6 +58,7 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_friends = ["//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion"],
     test_srcs = ["testSrc"],

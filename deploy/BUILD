@@ -53,6 +53,8 @@ iml_module(
         "//tools/base/common:studio.android.sdktools.common",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
+        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_friends = ["//tools/adt/idea/deploy:intellij.android.deploy"],
     test_srcs = ["testSrc"],

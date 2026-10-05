@@ -72,6 +72,8 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/execution/common:intellij.android.execution.common",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_friends = ["//tools/adt/idea/debuggers:intellij.android.debuggers"],
     test_srcs = ["testSrc"],

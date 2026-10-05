@@ -129,6 +129,8 @@ iml_module(
         "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang",
         "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_srcs = ["testSrc"],
     test_tags = [],

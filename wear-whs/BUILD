@@ -56,6 +56,8 @@ iml_module(
         "//tools/adt/idea/streaming:intellij.android.streaming.testUtil",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_friends = ["//tools/adt/idea/wear-whs:intellij.android.wear-whs"],
     test_srcs = ["testSrc"],

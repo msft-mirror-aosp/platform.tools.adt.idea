@@ -59,6 +59,9 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose.tests" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.adblib.ddmlibcompatibility" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.tools.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.device-provisioner.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.adb" />
 </module>

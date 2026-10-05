@@ -166,6 +166,7 @@ iml_module(
         "//tools/adt/idea/designer:intellij.android.designer.testFramework",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_resources = ["testResources"],

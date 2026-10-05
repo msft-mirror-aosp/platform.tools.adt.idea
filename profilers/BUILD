@@ -97,6 +97,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/adt/idea/android-transport:intellij.android.transport.tests",
         "//tools/adt/idea/transport-database:intellij.android.transportDatabase.tests",
+        "//tools/base/perflib:studio.android.sdktools.perflib.tests",
     ],
     test_friends = ["//tools/adt/idea/profilers:intellij.android.profilers"],
     test_srcs = ["testSrc"],

@@ -62,6 +62,7 @@ iml_module(
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/vendor/google/login:google-login.tests",
         "//prebuilts/tools/common/m2:libktor-client-mock",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/play-publishing:intellij.android.play-publishing"],
     test_srcs = ["testSrc"],
