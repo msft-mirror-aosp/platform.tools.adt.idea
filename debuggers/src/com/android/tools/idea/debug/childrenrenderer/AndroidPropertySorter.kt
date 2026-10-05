@@ -20,10 +20,13 @@ import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.sun.jdi.Field
+import com.sun.jdi.Method
 import org.jetbrains.kotlin.asJava.toLightClass
+import org.jetbrains.kotlin.idea.debugger.core.render.GetterDescriptor
 import org.jetbrains.kotlin.idea.testIntegration.framework.KotlinPsiBasedTestFramework.Companion.asKtNamedFunction
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -55,6 +58,21 @@ internal class AndroidPropertySorter(private val project: Project) {
     }
   }
 
+  fun sortGetters(getters: List<Method>): List<Method> {
+    return runReadActionBlocking {
+      try {
+        getters
+          .groupByTo(LinkedHashMap()) { it.declaringType().name() }
+          .flatMap { (typeName, group) ->
+            sortGetters(typeName, group)
+          }
+      } catch (e: Throwable) {
+        thisLogger().error("Failed to sort getters", e)
+        getters
+      }
+    }
+  }
+
   private fun sortFields(typeName: String, fields: List<Field>): List<Field> {
     val fieldNames = getFields(typeName)
     val fieldOrder = fieldNames.mapIndexed { index, name -> name to index }.toMap()
@@ -71,9 +89,23 @@ internal class AndroidPropertySorter(private val project: Project) {
     )
   }
 
+  private fun sortGetters(typeName: String, getters: List<Method>): List<Method> {
+    val names = getGetters(typeName)
+    val order = names.mapIndexed { index, name -> name to index }.toMap()
+    return getters.sortedWith(compareBy { order[it.name()] ?: Int.MAX_VALUE })
+  }
+
   private fun getFields(typeName: String): List<String> {
     val psiClass = DebuggerUtils.findClass(typeName, project, scope) ?: findMethodLocalClass(typeName)
     return psiClass?.findFields() ?: emptyList()
+  }
+
+  fun getGetters(typeName: String): List<String> {
+    val psiClass = DebuggerUtils.findClass(typeName, project, scope)
+    return when (psiClass != null) {
+      true -> psiClass.findGetters()
+      false -> findMethodLocalClass(typeName)?.findGetters() ?: emptyList()
+    }
   }
 
   private fun findMethodLocalClass(typeName: String): PsiClass? {
@@ -149,3 +181,14 @@ private fun List<String>.isAnonymousObjectWithVarName() =
 private fun List<String>.isAnonymousObject() = (size == 1) && first().all { it.isDigit() }
 
 private fun PsiClass.findFields() = fields.map { it.name }
+
+private fun PsiClass.findGetters(): List<String> {
+  val methods = classAndInterfaces().flatMap { it.methods.asList() }
+  return methods.filter { it.isGetter() }.map { it.name }
+}
+
+private fun PsiMethod.isGetter() = GetterDescriptor.GETTER_PREFIXES.any { name.startsWith(it) } && !hasParameters()
+
+private fun PsiClass.classAndInterfaces(): List<PsiClass> {
+  return listOf(this) + interfaces.flatMapTo(LinkedHashSet()) { it.classAndInterfaces() }
+}

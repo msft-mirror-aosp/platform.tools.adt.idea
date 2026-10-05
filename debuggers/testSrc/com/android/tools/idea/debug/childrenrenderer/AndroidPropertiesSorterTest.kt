@@ -19,9 +19,12 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.debugger.mockJDI.MockVirtualMachine
 import com.intellij.debugger.mockJDI.members.MockField
+import com.intellij.debugger.mockJDI.members.MockMethod
 import com.intellij.debugger.mockJDI.types.MockClassType
 import com.sun.jdi.Field
+import com.sun.jdi.Method
 import com.sun.jdi.ReferenceType
+import com.sun.jdi.TypeComponent
 import org.junit.Rule
 import org.junit.Test
 
@@ -317,6 +320,166 @@ class AndroidPropertiesSorterTest {
   }
 
   @Test
+  fun sortGetters() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      class Foo:  {
+        val f2: Int get() = 0
+        val f1: Int get() = 0
+      }
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by name)
+    val getters =
+      getters(
+        "Foo.getF1",
+        "Foo.getF2",
+      )
+
+    val sorted = sorter.sortGetters(getters).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        "Foo#getF2",
+        "Foo#getF1",
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun sortGetters_withHierarchy() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      class A : B() {
+        override val x: Int get() = 0
+        val a2: Int get() = 0
+        val a1: Int get() = 0
+      }
+      open class B : C() {
+        override val x: Int get() = 0
+        val b2: Int get() = 0
+        val b1: Int get() = 0
+      }
+      open class C {
+        open val x: Int get() = 0
+        val c2: Int get() = 0
+        val c1: Int get() = 0
+      }
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by name)
+    val getters =
+      getters(
+        "C.getC1",
+        "C.getC2",
+        "C.getX",
+        "B.getB1",
+        "B.getB2",
+        "B.getX",
+        "A.getA1",
+        "A.getA2",
+        "A.getX",
+      )
+
+    val sorted = sorter.sortGetters(getters).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        "C#getX",
+        "C#getC2",
+        "C#getC1",
+        "B#getX",
+        "B#getB2",
+        "B#getB1",
+        "A#getX",
+        "A#getA2",
+        "A#getA1",
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun sortGetters_withInterfaceAndAbstractBase() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      interface Interface {
+        val interfaceValue get() = 0
+      }
+      abstract class AbstractClass {
+        val abstractValue get() = 0
+      }
+      class Bar : AbstractClass(), Interface {
+        val x get() = 0
+      }
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by declaring-class, name)
+    val getters =
+      getters(
+        "Bar.getInterfaceValue",
+        "Bar.getX",
+        "AbstractClass.getAbstractValue",
+      )
+
+    val sorted = sorter.sortGetters(getters).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        "Bar#getX",
+        "Bar#getInterfaceValue",
+        "AbstractClass#getAbstractValue",
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun sortGetters_withDiamondInterfaces() {
+    projectRule.fixture.addFileToProject(
+      "src/Foo.kt",
+      """
+      interface I1 {
+        val i1 get() = 1
+      }
+      interface I2 : I1 {
+        val i2 get() = 2
+      }
+      interface I3 : I1 {
+        val i3 get() = 1
+      }
+      class Diamond : I2, I3
+      """
+        .trimIndent(),
+    )
+
+    // In Dex order (sorted by declaring-class, name)
+    val getters =
+      getters(
+        "Diamond.getI1",
+        "Diamond.getI2",
+        "Diamond.getI3",
+      )
+
+    val sorted = sorter.sortGetters(getters).names()
+
+    assertThat(sorted)
+      .containsExactly(
+        "Diamond#getI2",
+        "Diamond#getI1",
+        "Diamond#getI3",
+      )
+      .inOrder()
+  }
+
+  @Test
   fun testKotlinNamedLocalClass() {
     projectRule.fixture.addFileToProject(
       "src/Foo.kt",
@@ -428,6 +591,23 @@ class AndroidPropertiesSorterTest {
       override fun declaringType(): ReferenceType = declaringRefType
     }
   }
+
+  private fun getters(vararg getters: String) = getters.map {
+    val split = it.split('.')
+    getter(split[0], split[1])
+  }
+
+  private fun getter(typeName: String, name: String): Method {
+    val declaringRefType =
+      object : MockClassType(vm, null) {
+        override fun name(): String = typeName
+      }
+    return object : MockMethod(null, vm) {
+      override fun name(): String = name
+
+      override fun declaringType(): ReferenceType = declaringRefType
+    }
+  }
 }
 
-private fun List<Field>.names() = map { "${it.declaringType().name()}#${it.name()}" }
+private fun List<TypeComponent>.names() = map { "${it.declaringType().name()}#${it.name()}" }
