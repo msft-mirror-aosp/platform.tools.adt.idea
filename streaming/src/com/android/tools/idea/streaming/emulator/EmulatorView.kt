@@ -557,6 +557,9 @@ internal class EmulatorView(
   }
 
   private fun updateConnectionState() {
+    if (isDisposed) {
+      return
+    }
     val connectionState = emulator.connectionState
     if (connectionState == ConnectionState.CONNECTED) {
       hideDisconnectedStateMessage()
