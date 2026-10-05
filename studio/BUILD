@@ -407,6 +407,7 @@ studio_plugin(
             "//tools/base/lint:studio.android.sdktools.lint-model",
             "//tools/base/manifest-parser:studio.android.sdktools.manifest-parser",
             "//tools/base/mlkit-common:studio.android.sdktools.mlkit-common",
+            "//tools/base/multipreview-asm:studio.android.sdktools.multipreview-asm",
             "//tools/base/ninepatch:studio.android.sdktools.ninepatch",
             "//tools/base/perflib:studio.android.sdktools.perflib",
             "//tools/base/process-monitor:studio.android.sdktools.process-monitor",

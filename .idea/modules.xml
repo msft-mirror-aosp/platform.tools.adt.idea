@@ -219,6 +219,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../base/manifest-parser/android.sdktools.manifest-parser.tests.iml" filepath="$PROJECT_DIR$/../../base/manifest-parser/android.sdktools.manifest-parser.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/mlkit-common/android.sdktools.mlkit-common.iml" filepath="$PROJECT_DIR$/../../base/mlkit-common/android.sdktools.mlkit-common.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/mlkit-common/android.sdktools.mlkit-common.tests.iml" filepath="$PROJECT_DIR$/../../base/mlkit-common/android.sdktools.mlkit-common.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../base/multipreview-asm/android.sdktools.multipreview-asm.iml" filepath="$PROJECT_DIR$/../../base/multipreview-asm/android.sdktools.multipreview-asm.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/ninepatch/android.sdktools.ninepatch.iml" filepath="$PROJECT_DIR$/../../base/ninepatch/android.sdktools.ninepatch.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/ninepatch/android.sdktools.ninepatch.tests.iml" filepath="$PROJECT_DIR$/../../base/ninepatch/android.sdktools.ninepatch.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/perflib/android.sdktools.perflib.iml" filepath="$PROJECT_DIR$/../../base/perflib/android.sdktools.perflib.iml" />
