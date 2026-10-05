@@ -1415,6 +1415,42 @@ class ComposePreviewRepresentationTest {
     }
   }
 
+  // Regression test for b/487104573
+  @Test
+  fun configureLayoutlibSceneManagerDoesNotSetNeedsInflationWhenOnlyQualityChanges() = runComposePreviewRepresentationTest {
+    createPreviewAndCompile()
+    val sceneManager = mainSurface.sceneManagers.first()
+    sceneManager.sceneRenderConfiguration.needsInflation.set(false)
+
+    // Reconfiguring with a different quality (as happens on zoom changes) should not force re-inflation.
+    configureLayoutlibSceneManager(
+      sceneManager = sceneManager,
+      showDecorations = false,
+      previewMode = PreviewMode.Default(),
+      requestPrivateClassLoader = false,
+      runVisualAnalysis = false,
+      quality = 0.5f,
+      disableAnimation = true,
+      useLoadViewFallbacks = false,
+    )
+
+    assertEquals(0.5f, sceneManager.sceneRenderConfiguration.quality)
+    assertFalse(sceneManager.sceneRenderConfiguration.needsInflation.get())
+
+    // Changing showDecorations should still mark needsInflation as true.
+    configureLayoutlibSceneManager(
+      sceneManager = sceneManager,
+      showDecorations = true,
+      previewMode = PreviewMode.Default(),
+      requestPrivateClassLoader = false,
+      runVisualAnalysis = false,
+      quality = 0.5f,
+      disableAnimation = true,
+      useLoadViewFallbacks = false,
+    )
+    assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
+  }
+
   private fun runComposePreviewRepresentationTest(
     previewPsiFile: PsiFile = createPreviewPsiFile(),
     mainSurface: NlDesignSurface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build(),
