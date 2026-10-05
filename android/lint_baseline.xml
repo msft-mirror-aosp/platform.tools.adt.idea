@@ -531,39 +531,6 @@
 
     <issue
         id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but super method `ToolWindowFactory.createToolWindowContent(…)` is allowing `@UiThread`"
-        errorLine1="      .runWhenResourceCacheClean("
-        errorLine2="       ^">
-        <location
-            file="src/com/android/tools/idea/ui/resourcemanager/ResourceExplorerToolFactory.kt"
-            line="61"
-            column="8"/>
-    </issue>
-
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but super method `SyncResultListener.syncEnded(…)` is allowing `@AnyThread`"
-        errorLine1="                createContent(toolWindow, project)"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/ui/resourcemanager/ResourceExplorerToolFactory.kt"
-            line="96"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but super method `SyncResultListener.syncEnded(…)` is allowing `@AnyThread`"
-        errorLine1="      createContent(toolWindow, project)"
-        errorLine2="      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/ui/resourcemanager/ResourceExplorerToolFactory.kt"
-            line="204"
-            column="7"/>
-    </issue>
-
-    <issue
-        id="WrongThread"
         message="Call must be from `@{Slow,WorkerThread}`, but super method `BaseRefactoringProcessor.performRefactoring(…)` is allowing `@UiThread`"
         errorLine1="          performRefactoringForLayoutFile(refactoring);"
         errorLine2="          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
