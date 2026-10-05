@@ -34,6 +34,7 @@ import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue
+import com.intellij.testFramework.PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -92,7 +93,7 @@ class DetachedToolWindowReshaperTest {
 
     // 1. Detached (WINDOWED) with empty space: rotating should NOT resize the window and should reset zoom.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
-    dispatchAllEventsInIdeEventQueue()
+    dispatchAllInvocationEventsInIdeEventQueue() // Wait for the asynchronous tool window size optimization triggered by the type change.
     toolWindow.decorator.size = Dimension(500, 500)
     phoneView.zoom(ZoomType.IN)
     ui.layoutAndDispatchEvents()
