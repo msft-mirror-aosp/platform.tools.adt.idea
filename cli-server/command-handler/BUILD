@@ -14,6 +14,16 @@ iml_module(
     srcs = ["src"],
     iml_files = ["cli-server.command-handler.iml"],
     resources = ["resources"],
+    test_class = "com.android.tools.idea.cli.handlers.CliCommandHandlerTestSuite",
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:test-framework",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+    ],
+    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     exports = ["//tools/adt/idea/cli-server/command-handler:cli_commands_proto"],
     # do not sort: must match IML order
