@@ -65,6 +65,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.common.base.Charsets
 import com.intellij.diff.comparison.ComparisonManager
 import com.intellij.diff.comparison.ComparisonPolicy.IGNORE_WHITESPACES
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -78,6 +79,7 @@ import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.XmlElementFactory
 import java.io.File
+import java.io.IOException
 
 /**
  * Executor support for recipe instructions.
@@ -713,8 +715,37 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
   /** Returns the absolute path to the file which will get written to. */
   private fun getTargetFile(file: File): File = if (file.isAbsolute) file else File(context.outputRoot, file.path)
 
-  private fun readTextFile(file: File): String? =
-    if (moduleTemplateData?.isNewModule != false) readTextFromDisk(file) else readTextFromDocument(project, file)
+  /**
+   * Returns the [VirtualFile] for [file], refreshing the VFS first so files that exist on disk are found. Returns null only if the file
+   * doesn't exist on disk.
+   *
+   * This is the single place that decides between VFS and NIO access: callers must use the VFS whenever a [VirtualFile] is returned and
+   * only fall back to NIO when it is null.
+   *
+   * With asynchronous VFS writes, a given file must be accessed either only through the VFS or only through direct Java file I/O (NIO).
+   * Mixing the two on the same file can observe stale contents. Because all writes in this executor go through the VFS, NIO is only
+   * ever used for files that don't exist, never for a file the VFS also manages.
+   */
+  private fun findVirtualFile(file: File): VirtualFile? = findFileByIoFile(file, true)
+
+  /**
+   * Reads [virtualFile] via its [com.intellij.openapi.editor.Document] when the project is initialized (so unsaved editor changes are
+   * respected), falling back to the VFS contents if no Document is available. Never touches the file through NIO.
+   */
+  private fun readTextFromVfs(virtualFile: VirtualFile): String? =
+    (if (project.isInitialized) readTextFromDocument(project, virtualFile) else null)
+      ?: try {
+        VfsUtilCore.loadText(virtualFile)
+      } catch (e: IOException) {
+        thisLogger().warn(e)
+        null
+      }
+
+  /** Reads [file] as text, using the VFS if [findVirtualFile] resolves it and NIO otherwise. */
+  private fun readTextFile(file: File): String? {
+    val virtualFile = findVirtualFile(file) ?: return readTextFromDisk(file)
+    return readTextFromVfs(virtualFile)
+  }
 
   /**
    * Shorten all fully qualified Layout names that belong to the same package as the manifest's package attribute value.
@@ -744,16 +775,22 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     return XML_PROLOG + root.text
   }
 
+  /**
+   * Reads the existing contents of [targetFile], or returns null if it doesn't exist.
+   *
+   * Uses the VFS if [findVirtualFile] resolves the file and NIO otherwise. When the VFS is used, the same [VirtualFile] is also used for
+   * the read-only check (performed only when the project is initialized), so the file is only ever accessed through the VFS.
+   */
   private fun readTargetText(targetFile: File): String? {
     if (!targetFile.exists()) {
       return null
     }
+    val virtualFile = findVirtualFile(targetFile) ?: return readTextFromDisk(targetFile)
     if (project.isInitialized) {
-      val toFile = findFileByIoFile(targetFile, true)
-      val status = readonlyStatusHandler.ensureFilesWritable(listOf(toFile!!))
+      val status = readonlyStatusHandler.ensureFilesWritable(listOf(virtualFile))
       check(!status.hasReadonlyFiles()) { "Attempt to update file that is readonly: ${targetFile.absolutePath}" }
     }
-    return readTextFile(targetFile)
+    return readTextFromVfs(virtualFile)
   }
 
   private fun writeTargetFile(requestor: Any, contents: String?, to: File) {
@@ -761,12 +798,30 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     referencesExecutor.addTargetFile(to)
   }
 
-  private fun VirtualFile.contentEquals(targetFile: File): Boolean =
-    if (fileType.isBinary) this.contentsToByteArray() contentEquals targetFile.readBytes()
-    else ComparisonManager.getInstance().isEquals(readTextFromDocument(project, this)!!, readTextFile(targetFile)!!, IGNORE_WHITESPACES)
+  /**
+   * Returns whether this source file has the same contents as [targetFile] (ignoring whitespace for text files).
+   *
+   * The source is always a [VirtualFile] and is read through the VFS. The target is read through the VFS if [findVirtualFile] resolves it
+   * and through NIO otherwise.
+   */
+  private fun VirtualFile.contentEquals(targetFile: File): Boolean {
+    if (fileType.isBinary) {
+      val targetBytes = findVirtualFile(targetFile)?.contentsToByteArray() ?: targetFile.readBytes()
+      return this.contentsToByteArray() contentEquals targetBytes
+    }
+    val sourceText = readTextFromVfs(this) ?: return false
+    val targetText = readTextFile(targetFile) ?: return false
+    return ComparisonManager.getInstance().isEquals(sourceText, targetText, IGNORE_WHITESPACES)
+  }
 
-  private infix fun File.contentEquals(content: String): Boolean =
-    ComparisonManager.getInstance().isEquals(content, readTextFile(this)!!, IGNORE_WHITESPACES)
+  /**
+   * Returns whether this file's contents equal [content] (ignoring whitespace). The file is read with [readTextFile], so it is accessed
+   * through the VFS if [findVirtualFile] resolves it and through NIO otherwise.
+   */
+  private infix fun File.contentEquals(content: String): Boolean {
+    val fileText = readTextFile(this) ?: return false
+    return ComparisonManager.getInstance().isEquals(content, fileText, IGNORE_WHITESPACES)
+  }
 
   private fun addFileAlreadyExistWarning(targetFile: File) =
     context.warnings.add("The following file could not be created since it already exists: ${targetFile.path}")
