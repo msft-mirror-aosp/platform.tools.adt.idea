@@ -50,7 +50,7 @@ import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.seconds
 
 /** Simulates some UI functionality in headless tests. */
-class FakeUi private constructor(val root: Component, parentDisposable: Disposable?, unused: Int) {
+class FakeUi private constructor(parentDisposable: Disposable?, val root: Component) {
 
   /**
    * Creates a `FakeUI` object wrapping [root].
@@ -58,10 +58,10 @@ class FakeUi private constructor(val root: Component, parentDisposable: Disposab
    * @param root the top-level component
    * @param parentDisposable used to trigger cleanup
    */
-  constructor(root: Component, parentDisposable: Disposable) : this(root, parentDisposable, 0)
+  constructor(root: Component, parentDisposable: Disposable) : this(parentDisposable, root)
 
   /** `FakeUi` created using this constructor supports only a subset of functionality. Prefer `FakeUi(root, parentDisposable)`. */
-  constructor(root: Component) : this(root, null, 0)
+  constructor(root: Component) : this(null, root)
 
   @JvmField val keyboard: FakeKeyboard = FakeKeyboard()
 
@@ -96,11 +96,10 @@ class FakeUi private constructor(val root: Component, parentDisposable: Disposab
     // Use an exact class comparison so that the check fails if the TestWindowManager class stops
     // being final in future and a subclass is introduced.
     @Suppress("UnstableApiUsage")
-    if (application != null && WindowManager.getInstance()?.javaClass == TestWindowManager::class.java) {
+    if (application != null && WindowManager.getInstance().javaClass == TestWindowManager::class.java) {
       // Replace TestWindowManager with a more lenient version.
       application.registerServiceInstance(WindowManager::class.java, FakeUiWindowManager())
     }
-    checkNotNull(parentDisposable) { "FakeUi parent disposable is required when createFakeWindow=true" }
     createFakeWindow<Window>(rootPane, parentDisposable)
     return rootPane
   }
