@@ -125,7 +125,7 @@ class StudioPatchUpdaterIntegrationTest {
   @Test
   fun patchApplicationSmokeTest() {
     val analyticsHome = createAnalyticsHome()
-    val env = mapOf(AbstractAndroidLocations.ANDROID_PREFS_ROOT to analyticsHome.toString())
+    val env = mapOf(AbstractAndroidLocations.ANDROID_USER_HOME to analyticsHome.toString())
 
     // When V1 to V2 patch applied to V1
     val dir = ExampleDirectory.V1.createExampleDir(myTempDirectory)
