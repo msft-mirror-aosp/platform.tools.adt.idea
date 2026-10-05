@@ -54,14 +54,17 @@ abstract class UpdateReferenceImagesBaseAction(
     val context = ConfigurationContext.getFromEvent(e)
     val project = context.project ?: return
 
-    // Use Manager to prevent multiple dialogs/runs
-    val dialog = UpdateReferenceImagesDialogManager.getInstance(project).showOrGetDialog() ?: return
-
     val validateRunconfigSettings =
       context
         .createConfigurationsFromContext()
         ?.firstOrNull { it.configurationSettings.name.startsWith("Screenshot Tests") }
         ?.configurationSettings ?: return
+    val executor = ExecutorRegistry.getInstance().getExecutorById(DefaultRunExecutor.EXECUTOR_ID) ?: return
+
+    // Use Manager to prevent multiple dialogs/runs. Only request the dialog once all early-return
+    // checks have passed, so that it is always shown (and later disposed) once created.
+    val dialog = UpdateReferenceImagesDialogManager.getInstance(project).showOrGetDialog() ?: return
+
     val updateRunconfigSettings =
       RunManagerImpl.getInstanceImpl(project)
         .createConfiguration(
@@ -73,8 +76,6 @@ abstract class UpdateReferenceImagesBaseAction(
 
     updateRunconfigSettings.isTemporary = true
     updateRunconfigSettings.isActivateToolWindowBeforeRun = false
-
-    val executor = ExecutorRegistry.getInstance().getExecutorById(DefaultRunExecutor.EXECUTOR_ID) ?: return
 
     val connection = project.messageBus.connect(dialog.disposable)
     connection.subscribe(
