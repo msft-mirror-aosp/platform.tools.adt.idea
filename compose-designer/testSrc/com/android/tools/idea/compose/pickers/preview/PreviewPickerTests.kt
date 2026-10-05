@@ -161,6 +161,82 @@ class PreviewPickerTests {
         .trimIndent()
 
     assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotation)
+
+    // Avoid duplicate `()` if parentheses already exist but are empty, e.g. `@Preview()`.
+    val emptyAnnotationWithParentheses =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview()
+      fun PreviewNoParameters() {
+      }
+      """
+        .trimIndent()
+
+    assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotationWithParentheses)
+
+    // Case when we have spaces within the parentheses
+    @Language("kotlin")
+    val emptyAnnotationWithWhitespaceInParentheses =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview(   )
+      fun PreviewNoParameters() {
+      }
+      """
+        .trimIndent()
+
+    assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotationWithWhitespaceInParentheses)
+  }
+
+  @Test
+  fun `updating empty parentheses annotation does not add duplicate parentheses`() = runBlocking {
+    // Start with an annotation that already has empty parentheses @Preview() (b/414544459)
+    @Language("kotlin")
+    val emptyParenthesesPreviewContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview()
+      fun PreviewWithEmptyParentheses() {
+      }
+      """
+        .trimIndent()
+
+    val propertiesModel = getFirstModel(emptyParenthesesPreviewContent)
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          fixture.project,
+          fixture.findFileInTempDir("Test.kt"),
+        )
+        .first()
+
+    // Setting "name" triggers PsiCallParameterPropertyItem.writeNewValue it must reuse the existing "()" rather than appending a second
+    // "()".
+    runModificationInEdtWaitAndDispatch {
+      propertiesModel.properties["", "name"].value = "MyPreview"
+    }
+    assertEquals("@Preview(name = \"MyPreview\")", previewElement.annotationText())
+
+    // Clear the parameters by setting "name" to null it should delete the now-empty KtValueArgumentList "()" from the PSI tree.
+    runModificationInEdtWaitAndDispatch {
+      propertiesModel.properties["", "name"].value = null
+    }
+    assertEquals("@Preview", previewElement.annotationText())
+
+    // Re-add the parameter now that @Preview has no parentheses by setting "name" again triggers KtCallElement.addNewValueArgument when
+    // valueArgumentList == null.
+    runModificationInEdtWaitAndDispatch {
+      propertiesModel.properties["", "name"].value = "MyPreview"
+    }
+    assertEquals("@Preview(name = \"MyPreview\")", previewElement.annotationText())
   }
 
   @Test
