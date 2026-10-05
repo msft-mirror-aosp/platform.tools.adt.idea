@@ -21,7 +21,6 @@ import com.android.emulator.control.KeyboardEvent.KeyEventType
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.createCoroutineScope
-import com.android.tools.idea.streaming.StagingIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
@@ -31,6 +30,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
 import com.intellij.util.IconUtil
 import com.intellij.util.ui.JBUI
+import icons.StudioIcons
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -76,33 +76,33 @@ internal class TvRemotePanel(
     addCommandButton(
       tooltip = "Watchlist",
       refButtonShape = createCircle(-80.0, -128.0, SMALL_BUTTON_RADIUS),
-      icon = StagingIcons.WATCHLIST,
+      icon = StudioIcons.Emulator.TV.WATCHLIST,
       command = "input keyevent KEYCODE_BOOKMARK",
     )
     addCommandButton(
       tooltip = "Toggle Dashboard",
       refButtonShape = createCircle(0.0, -152.0, SMALL_BUTTON_RADIUS),
-      icon = StagingIcons.DASHBOARD,
+      icon = StudioIcons.Emulator.TV.DASHBOARD,
       command = "input keyevent KEYCODE_NOTIFICATION",
     )
     addCommandButton(
       tooltip = "Open Settings",
       refButtonShape = createCircle(80.0, -128.0, SMALL_BUTTON_RADIUS),
-      icon = StagingIcons.SETTINGS,
+      icon = StudioIcons.Emulator.TV.SETTINGS,
       command = "am start -n com.android.tv.settings/com.android.tv.settings.MainSettings",
     )
 
     addKeyButton(
       tooltip = "Up",
       refButtonShape = createDpadSector(-PI / 2),
-      icon = StagingIcons.CHEVRON_UP,
+      icon = StudioIcons.Emulator.TV.CHEVRON_UP,
       keyName = "ArrowUp",
       refIconCenter = createDpadIconCenter(-PI / 2),
     )
     addKeyButton(
       tooltip = "Left",
       refButtonShape = createDpadSector(PI),
-      icon = StagingIcons.CHEVRON_LEFT,
+      icon = StudioIcons.Emulator.TV.CHEVRON_LEFT,
       keyName = "ArrowLeft",
       refIconCenter = createDpadIconCenter(PI),
     )
@@ -115,14 +115,14 @@ internal class TvRemotePanel(
     addKeyButton(
       tooltip = "Right",
       refButtonShape = createDpadSector(0.0),
-      icon = StagingIcons.CHEVRON_RIGHT,
+      icon = StudioIcons.Emulator.TV.CHEVRON_RIGHT,
       keyName = "ArrowRight",
       refIconCenter = createDpadIconCenter(0.0),
     )
     addKeyButton(
       tooltip = "Down",
       refButtonShape = createDpadSector(PI / 2),
-      icon = StagingIcons.CHEVRON_DOWN,
+      icon = StudioIcons.Emulator.TV.CHEVRON_DOWN,
       keyName = "ArrowDown",
       refIconCenter = createDpadIconCenter(PI / 2),
     )
@@ -130,13 +130,13 @@ internal class TvRemotePanel(
     addKeyButton(
       tooltip = "Back",
       refButtonShape = createCircle(-80.0, 128.0, SMALL_BUTTON_RADIUS),
-      icon = StagingIcons.BACK,
+      icon = StudioIcons.Emulator.TV.BACK,
       keyName = "GoBack",
     )
     addKeyButton(
       tooltip = "Home",
       refButtonShape = createCircle(0.0, 152.0, SMALL_BUTTON_RADIUS),
-      icon = StagingIcons.HOME,
+      icon = StudioIcons.Emulator.TV.HOME,
       keyName = "GoHome",
     )
     val liveChannelsCommand =
@@ -148,7 +148,7 @@ internal class TvRemotePanel(
     addCommandButton(
       tooltip = "Open Live Channels",
       refButtonShape = createCircle(80.0, 128.0, SMALL_BUTTON_RADIUS),
-      icon = StagingIcons.LIVE_CHANNELS,
+      icon = StudioIcons.Emulator.TV.LIVE_CHANNELS,
       command = liveChannelsCommand,
     )
   }

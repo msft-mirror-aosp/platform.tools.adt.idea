@@ -308,6 +308,19 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon VOLUME_UP = load("studio/icons/emulator/toolbar/volume-up.svg", 637066512, 2);
     }
 
+    public static final class TV {
+      /** 16x16 */ public static final @NotNull Icon BACK = load("studio/icons/emulator/tv/back.svg", -805846447, 2);
+      /** 16x16 */ public static final @NotNull Icon CHEVRON_DOWN = load("studio/icons/emulator/tv/chevron-down.svg", 1712489281, 2);
+      /** 16x16 */ public static final @NotNull Icon CHEVRON_LEFT = load("studio/icons/emulator/tv/chevron-left.svg", -1490775815, 2);
+      /** 16x16 */ public static final @NotNull Icon CHEVRON_RIGHT = load("studio/icons/emulator/tv/chevron-right.svg", -180585326, 2);
+      /** 16x16 */ public static final @NotNull Icon CHEVRON_UP = load("studio/icons/emulator/tv/chevron-up.svg", 92881613, 2);
+      /** 16x16 */ public static final @NotNull Icon DASHBOARD = load("studio/icons/emulator/tv/dashboard.svg", 1097347094, 2);
+      /** 16x16 */ public static final @NotNull Icon HOME = load("studio/icons/emulator/tv/home.svg", -396544875, 2);
+      /** 16x16 */ public static final @NotNull Icon LIVE_CHANNELS = load("studio/icons/emulator/tv/live-channels.svg", 1936007702, 2);
+      /** 16x16 */ public static final @NotNull Icon SETTINGS = load("studio/icons/emulator/tv/settings.svg", 1226991040, 2);
+      /** 16x16 */ public static final @NotNull Icon WATCHLIST = load("studio/icons/emulator/tv/watchlist.svg", 85046761, 2);
+    }
+
     public static final class Wear {
       /** 16x16 */ public static final @NotNull Icon BUTTON_1 = load("studio/icons/emulator/wear/button-1.svg", -484127797, 2);
       /** 16x16 */ public static final @NotNull Icon BUTTON_2 = load("studio/icons/emulator/wear/button-2.svg", 1133594206, 2);
