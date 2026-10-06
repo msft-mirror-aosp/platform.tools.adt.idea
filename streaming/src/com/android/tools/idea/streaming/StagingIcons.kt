@@ -23,6 +23,4 @@ object StagingIcons {
   private fun load(path: String, cacheKey: Int, flags: Int): Icon {
     return IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
   }
-
-  @JvmField val ZOOM_FIT_VIEW: Icon = load("icons/zoom-fit-view.svg", -70700135, 2)
 }

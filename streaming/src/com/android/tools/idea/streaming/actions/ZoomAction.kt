@@ -15,13 +15,13 @@
  */
 package com.android.tools.idea.streaming.actions
 
-import com.android.tools.idea.streaming.StagingIcons
 import com.android.tools.idea.streaming.core.ZOOMABLE_KEY
 import com.android.tools.idea.streaming.core.ZoomType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAware
+import icons.StudioIcons
 
 internal sealed class ZoomAction(val zoomType: ZoomType) : AnAction(), DumbAware {
 
@@ -50,7 +50,7 @@ internal sealed class ZoomAction(val zoomType: ZoomType) : AnAction(), DumbAware
       val presentation = event.presentation
       presentation.isEnabled = zoomable?.canZoom(zoomType) ?: false
       if (zoomable?.hasInnerPart == true) {
-        presentation.icon = StagingIcons.ZOOM_FIT_VIEW // TODO: Replace with a proper icon when available.
+        presentation.icon = StudioIcons.Common.ZOOM_FIT_VIEW
       }
     }
   }

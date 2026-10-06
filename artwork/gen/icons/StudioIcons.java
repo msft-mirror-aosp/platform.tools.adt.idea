@@ -149,6 +149,7 @@ public final class StudioIcons {
     /** 16x16 */ public static final @NotNull Icon WARNING = load("studio/icons/common/warning.svg", 380376254, 2);
     /** 16x16 */ public static final @NotNull Icon WEAK_WARNING_STACK = load("studio/icons/common/weak-warning-stack.svg", 1180255861, 2);
     /** 16x16 */ public static final @NotNull Icon ZOOM_ACTUAL = load("studio/icons/common/zoom-actual.svg", 1854794165, 2);
+    /** 16x16 */ public static final @NotNull Icon ZOOM_FIT_VIEW = load("studio/icons/common/zoom-fit-view.svg", -70700135, 2);
     /** 16x16 */ public static final @NotNull Icon ZOOM_IN = load("studio/icons/common/zoom-in.svg", -1240981685, 2);
     /** 16x16 */ public static final @NotNull Icon ZOOM_OUT = load("studio/icons/common/zoom-out.svg", 908470321, 2);
     /** 16x16 */ public static final @NotNull Icon ZOOM_SELECT = load("studio/icons/common/zoom-select.svg", 2074582188, 2);
