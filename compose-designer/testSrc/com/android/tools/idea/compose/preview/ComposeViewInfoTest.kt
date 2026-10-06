@@ -266,4 +266,14 @@ class ComposeViewInfoTest {
     assertTrue(testBounds.containsPoint(20, 30))
     assertEquals(2100, testBounds.area())
   }
+
+  @Test
+  fun checkAllChildrenPreOrderTraversal() {
+    val leaf1 = ComposeViewInfo(TestSourceLocation("leaf1"), PxBounds(0, 0, 10, 10), children = emptyList(), name = "leaf1")
+    val leaf2 = ComposeViewInfo(TestSourceLocation("leaf2"), PxBounds(0, 0, 10, 10), children = emptyList(), name = "leaf2")
+    val mid = ComposeViewInfo(TestSourceLocation("mid"), PxBounds(0, 0, 20, 20), children = listOf(leaf1, leaf2), name = "mid")
+    val root = ComposeViewInfo(TestSourceLocation("root"), PxBounds(0, 0, 30, 30), children = listOf(mid), name = "root")
+
+    assertEquals(listOf("root", "mid", "leaf1", "leaf2"), root.allChildren().map { it.name })
+  }
 }
