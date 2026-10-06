@@ -452,4 +452,15 @@
             column="7"/>
     </issue>
 
+    <issue
+        id="WrongThread"
+        message="Call must be from `@{Slow,WorkerThread}`, but super method `AnAction.actionPerformed(…)` is allowing `@UiThread`"
+        errorLine1="      .forEach(configuration -> {"
+        errorLine2="       ^">
+        <location
+            file="src/com/android/tools/idea/common/actions/ToggleDeviceOrientationAction.java"
+            line="62"
+            column="8"/>
+    </issue>
+
 </issues>
