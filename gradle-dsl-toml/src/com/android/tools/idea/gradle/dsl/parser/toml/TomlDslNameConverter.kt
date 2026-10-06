@@ -19,6 +19,7 @@ import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
+import com.intellij.openapi.application.runReadAction
 import com.intellij.psi.PsiElement
 import org.toml.lang.psi.TomlKey
 import org.toml.lang.psi.TomlKeySegment
@@ -43,7 +44,7 @@ interface TomlDslNameConverter : GradleDslNameConverter {
       else -> GradleNameElement.escape(element.text)
     }
 
-  override fun convertReferenceText(context: GradleDslElement, referenceText: String): String {
+  override fun convertReferenceText(context: GradleDslElement, referenceText: String): String = runReadAction {
     val literal =
       try {
         TomlPsiFactory(context.dslFile.project, true).createLiteral(referenceText)
@@ -56,6 +57,6 @@ interface TomlDslNameConverter : GradleDslNameConverter {
         else -> referenceText
       }
 
-    return "$name"
+    "$name"
   }
 }
