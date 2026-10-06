@@ -29,10 +29,26 @@ internal enum class DeviceSpecRule(
         LanguageParameterRule.dpi,
         LanguageParameterRule.cutout,
         LanguageParameterRule.navigation,
+        LanguageParameterRule.windowPosture,
+        LanguageParameterRule.pointerPrecision,
+        LanguageParameterRule.keyboardKind,
+        LanguageParameterRule.hasCamera,
+        LanguageParameterRule.hasMicrophone,
+        LanguageParameterRule.viewingDistance,
       ),
   ),
   LanguageWithParentId(
     requiredParameters = listOf(LanguageParameterRule.parent),
-    optionalParameters = listOf(LanguageParameterRule.orientation, LanguageParameterRule.navigation),
+    optionalParameters =
+      listOf(
+        LanguageParameterRule.orientation,
+        LanguageParameterRule.navigation,
+        LanguageParameterRule.windowPosture,
+        LanguageParameterRule.pointerPrecision,
+        LanguageParameterRule.keyboardKind,
+        LanguageParameterRule.hasCamera,
+        LanguageParameterRule.hasMicrophone,
+        LanguageParameterRule.viewingDistance,
+      ),
   ),
 }

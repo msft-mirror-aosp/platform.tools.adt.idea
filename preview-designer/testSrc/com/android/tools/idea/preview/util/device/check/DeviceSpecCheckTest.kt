@@ -434,6 +434,20 @@ internal class DeviceSpecCheckTest {
       )
     assertEquals(0, result.issues.size)
 
+    // Correct parent ID with MediaQuery parameters
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:parent=pixel_4,windowPosture=tabletop,pointerPrecision=fine,keyboardKind=physical,hasCamera=false,hasMicrophone=false,viewingDistance=far")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(0, result.issues.size)
+
     // Correct parent ID, orientation and unknown
     result =
       addKotlinFileAndCheckPreviewAnnotation(
@@ -589,6 +603,40 @@ internal class DeviceSpecCheckTest {
     assertNotNull(fixedAnnotation)
     val hasIssues = runReadAction { fixedAnnotation.hasIssues() }
     assertFalse(hasIssues)
+  }
+
+  @Test
+  fun testMediaQueryParametersValid() {
+    val result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,windowPosture=tabletop,pointerPrecision=fine,keyboardKind=physical,hasCamera=false,hasMicrophone=false,viewingDistance=far")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertTrue(result.issues.isEmpty())
+  }
+
+  @Test
+  fun testMediaQueryParametersInvalid() {
+    val result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,windowPosture=invalid_posture,hasCamera=invalid_bool")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(2, result.issues.size)
+    assertEquals(listOf(BadType::class, BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,windowPosture=flat,hasCamera=true", result.proposedFix)
   }
 
   /** Adds file with the given [fileContents] and runs [DeviceSpecCheck.checkDeviceSpec] on the first Preview annotation found. */
