@@ -19,6 +19,7 @@ package com.android.tools.idea.compose.preview.interactive
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +46,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.preview.BackNavigationEdge
@@ -302,21 +305,25 @@ private fun BackStackItem(
   val borderColors = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.borders.normal
   val backGroundColor = if (isCurrentActiveNavigationItem) activeAccent.copy(alpha = 0.12f) else JewelTheme.globalColors.panelBackground
   val textColor = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.text.normal
+  val itemShape = RoundedCornerShape(8.dp)
 
+  // If the item is not currently shown in the Preview, clicking anywhere on it navigates back to this state.
   Row(
     modifier =
-      Modifier.border(width = 1.dp, color = borderColors, shape = RoundedCornerShape(8.dp))
-        .background(color = backGroundColor, shape = RoundedCornerShape(8.dp))
+      Modifier.clip(itemShape)
+        .border(width = 1.dp, color = borderColors, shape = itemShape)
+        .background(color = backGroundColor, shape = itemShape)
+        .clickable(role = Role.Button, enabled = !isCurrentActiveNavigationItem) { onItemClick(navigationInfoItem) }
         .padding(12.dp)
         .fillMaxWidth()
         .widthIn(max = 500.dp),
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    // In adaptive layouts on larger screens (such as foldables, tablets, or desktop displaying two-pane or list-detail
+    // scenes), a single back stack entry can contain multiple active navigation keys displayed side by side.
+    // We render each navigation key on its own line for clarity.
     Column(modifier = Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-      // In adaptive layouts on larger screens (such as foldables, tablets, or desktop displaying two-pane or list-detail
-      // scenes), a single back stack entry can contain multiple active navigation keys displayed side by side.
-      // We render each navigation key on its own line for clarity.
       navKeys.forEach { (navKey) ->
         Text(text = navKey, fontWeight = FontWeight.Bold, color = textColor)
       }
@@ -331,14 +338,6 @@ private fun BackStackItem(
           fontWeight = FontWeight.Bold,
           color = activeAccent,
         )
-      }
-    } else {
-      // If the item is not currently shown in the Preview, clicking it navigates back to this state.
-      OutlinedButton(
-        onClick = { onItemClick(navigationInfoItem) },
-        modifier = Modifier.padding(start = 8.dp),
-      ) {
-        Text(message("action.navigate.back.stack.navigate"))
       }
     }
   }

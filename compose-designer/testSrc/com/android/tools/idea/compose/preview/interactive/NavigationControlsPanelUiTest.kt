@@ -454,11 +454,13 @@ class NavigationControlsPanelUiTest {
       )
     }
 
-    // Top item (Screen2) is the current active item
+    // Top item (Screen2) is the current active item and clicking it is a no-op
     composeTestRule.onNodeWithText(message("action.navigate.back.stack.current")).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Screen2").assertIsDisplayed().performClick()
+    assertEquals(null, backToStateTarget)
 
-    // Previous item (Screen1) displays Navigate button
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.navigate")).assertIsDisplayed().performClick()
+    // Clicking a previous item (Screen1) navigates back to that state
+    composeTestRule.onNodeWithText("Screen1").assertIsDisplayed().performClick()
     assertEquals("Screen1", backToStateTarget)
   }
 
