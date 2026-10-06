@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.debug.childrenrenderer
 
+import com.android.tools.idea.flags.StudioFlags
 import com.intellij.debugger.engine.evaluation.EvaluationContext
 import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
 import com.intellij.debugger.ui.tree.DebuggerTreeNode
@@ -41,6 +42,7 @@ internal class AndroidKotlinClassRenderer : KotlinClassRenderer() {
     nodeDescriptorFactory: NodeDescriptorFactory,
     objRef: ObjectReference,
   ): CompletableFuture<List<DebuggerTreeNode>> {
+    StudioFlags.SORT_OBJECT_PROPERTIES.override(true)
     val fields = AndroidPropertySorter(evaluationContext.project).sortFields(fields)
     return super.createNodesToShow(fields, evaluationContext, parentDescriptor, nodeManager, nodeDescriptorFactory, objRef)
   }

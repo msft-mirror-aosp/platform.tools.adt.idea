@@ -19,6 +19,8 @@ package com.google.android.tools.debugger.test.lib
 import com.android.tools.idea.debug.AndroidFieldVisibilityProvider
 import com.android.tools.idea.debug.AndroidJdiHelperClassLoader
 import com.android.tools.idea.debug.DexFinder
+import com.android.tools.idea.debug.childrenrenderer.AndroidKotlinRendererProvider
+import com.android.tools.idea.flags.StudioFlags
 import com.intellij.core.CoreApplicationEnvironment
 import com.intellij.debugger.engine.FieldVisibilityProvider
 import com.intellij.debugger.engine.RemoteStateState
@@ -26,6 +28,7 @@ import com.intellij.debugger.impl.DebuggerSession
 import com.intellij.debugger.impl.JdiHelperClassLoader
 import com.intellij.debugger.impl.RemoteConnectionBuilder
 import com.intellij.debugger.settings.DebuggerSettings
+import com.intellij.debugger.ui.tree.render.CompoundRendererProvider
 import com.intellij.execution.configurations.JavaParameters
 import com.intellij.execution.configurations.RemoteConnection
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -33,6 +36,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ComponentManager
 import com.intellij.openapi.extensions.ExtensionPointName
+import com.intellij.openapi.extensions.LoadingOrder
 import com.intellij.openapi.observable.util.whenDisposed
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.toNioPathOrNull
@@ -108,6 +112,7 @@ internal class ArtAttacher : VmAttacher {
         ClassFilter("libcore.*"),
         ClassFilter("dalvik.*"),
       )
+    StudioFlags.SORT_OBJECT_PROPERTIES.override(true)
   }
 
   override fun tearDown() {
@@ -127,6 +132,12 @@ internal class ArtAttacher : VmAttacher {
     project.registerExtension(AndroidDexer.extensionPointName, AndroidDexerImpl(project), disposable)
     application.registerExtension(FIELD_VISIBILITY_PROVIDER_EP, AndroidFieldVisibilityProvider(), disposable)
     application.registerExtension(JDI_HELPER_CLASS_LOADER_EP, AndroidJdiHelperClassLoader(), disposable)
+    application.registerExtension(
+      CompoundRendererProvider.EP_NAME,
+      AndroidKotlinRendererProvider(),
+      disposable,
+      LoadingOrder.before("KotlinClassRendererProvider"),
+    )
 
     val remoteConnection = getRemoteConnection(testCase, javaParameters)
     val remoteState = RemoteStateState(project, remoteConnection)
@@ -277,9 +288,14 @@ private fun loadD8Compiler(): Method {
 }
 
 @Suppress("SameParameterValue")
-private inline fun <reified T : Any> ComponentManager.registerExtension(ep: ExtensionPointName<T>, extension: T, disposable: Disposable) {
+private inline fun <reified T : Any> ComponentManager.registerExtension(
+  ep: ExtensionPointName<T>,
+  extension: T,
+  disposable: Disposable,
+  order: LoadingOrder = LoadingOrder.ANY,
+) {
   @Suppress("UnstableApiUsage") CoreApplicationEnvironment.registerExtensionPoint(extensionArea, ep, T::class.java)
-  extensionArea.getExtensionPoint(ep).registerExtension(extension, disposable)
+  extensionArea.getExtensionPoint(ep).registerExtension(extension, order, disposable)
 }
 
 fun logArtOutput(stdout: BufferedReader, stderr: BufferedReader) {
