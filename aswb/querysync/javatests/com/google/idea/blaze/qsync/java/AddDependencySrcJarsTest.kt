@@ -60,8 +60,12 @@ class AddDependencySrcJarsTest {
   private lateinit var mockExperimentService: MockExperimentService
   private lateinit var original: QuerySyncProjectSnapshot
 
-  private fun createJavaArtifactInfo(label: Label, srcJars: Set<ProjectPath> = emptySet()): JavaArtifactInfo {
-    return JavaArtifactInfo.empty(label).copy(srcJars = srcJars)
+  private fun createJavaArtifactInfo(
+    label: Label,
+    isExternalDependency: Boolean,
+    srcJars: Set<ProjectPath> = emptySet(),
+  ): JavaArtifactInfo {
+    return JavaArtifactInfo.empty(label).copy(isExternalDependency = isExternalDependency, srcJars = srcJars)
   }
 
   @Before
@@ -102,6 +106,7 @@ class AddDependencySrcJarsTest {
     val addSrcJars = AddDependencySrcJars(original.projectDefinition, pathResolver!!, SrcJarInnerPathFinder(PackageStatementParser()))
     external_srcjar_added(
       addSrcJars,
+      of("//java/com/google/common/collect:collect"),
       ProjectProto.Library(
         name = Label.of("//java/com/google/common/collect:collect"),
         classesJarList = emptyList(),
@@ -118,6 +123,7 @@ class AddDependencySrcJarsTest {
       AddDependencySrcJars(original.projectDefinition, pathResolver!!, SrcJarInnerPathFinder(PackageStatementParser()), { false })
     external_srcjar_added(
       addSrcJars,
+      of("//java/com/google/common/collect:collect"),
       ProjectProto.Library(
         name = Label.of("//java/com/google/common/collect:collect"),
         classesJarList = emptyList(),
@@ -127,8 +133,48 @@ class AddDependencySrcJarsTest {
     )
   }
 
+  @Test
   @Throws(Exception::class)
-  private fun external_srcjar_added(addSrcJars: AddDependencySrcJars, vararg libraries: ProjectProto.Library?) {
+  fun in_project_external_srcjar_added() {
+    val label = TestData.JAVA_LIBRARY_EXTERNAL_DEP_QUERY.assumedOnlyLabel
+    val addSrcJars = AddDependencySrcJars(original.projectDefinition, pathResolver!!, SrcJarInnerPathFinder(PackageStatementParser()))
+    external_srcjar_added(
+      addSrcJars,
+      label,
+      ProjectProto.Library(
+        name = label,
+        classesJarList = emptyList(),
+        sourcesList =
+          listOf(ProjectPath.workspaceRelativeForTests(Path.of("source/path/external.srcjar")).withInnerJarPath(Path.of("root"))),
+      ),
+    )
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun non_external_srcjar_ignored() {
+    val addSrcJars = AddDependencySrcJars(original.projectDefinition, pathResolver!!, SrcJarInnerPathFinder(PackageStatementParser()))
+    val artifactState =
+      ArtifactTracker.State.forJavaArtifacts(
+        DependencyBuildContext.NONE,
+        createJavaArtifactInfo(
+          label = TestData.JAVA_LIBRARY_EXTERNAL_DEP_QUERY.assumedOnlyLabel,
+          isExternalDependency = false,
+          srcJars = setOf(ProjectPath.workspaceRelativeForTests(Path.of("source/path/project.srcjar"))),
+        ),
+      )
+
+    val update = ProjectProtoUpdate(original.project)
+
+    addSrcJars.update(update, artifactState, NoopContext(), ProjectPath.ExternalRepositoryFinder.createEmptyForTests())
+
+    val newProject = update.build()
+
+    Truth.assertThat(newProject.libraries).isEqualTo(original.project.libraries)
+  }
+
+  @Throws(Exception::class)
+  private fun external_srcjar_added(addSrcJars: AddDependencySrcJars, label: Label, vararg libraries: ProjectProto.Library?) {
     ZipOutputStream(FileOutputStream(Files.createDirectories(workspaceRoot.resolve("source/path")).resolve("external.srcjar").toFile()))
       .use { zos ->
         zos.putNextEntry(ZipEntry("root/com/pkg/Class.java"))
@@ -138,7 +184,8 @@ class AddDependencySrcJarsTest {
       ArtifactTracker.State.forJavaArtifacts(
         DependencyBuildContext.NONE,
         createJavaArtifactInfo(
-          label = of("//java/com/google/common/collect:collect"),
+          label = label,
+          isExternalDependency = true,
           srcJars = setOf(ProjectPath.workspaceRelativeForTests(Path.of("source/path/external.srcjar"))),
         ),
       )
