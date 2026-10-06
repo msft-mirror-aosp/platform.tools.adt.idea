@@ -65,6 +65,17 @@ class DeviceSpecSyntaxHighlighter : SyntaxHighlighterBase() {
       DeviceSpecTypes.CUTOUT_TALL_KEYWORD,
       DeviceSpecTypes.NAV_BUTTONS_KEYWORD,
       DeviceSpecTypes.NAV_GESTURE_KEYWORD,
+      DeviceSpecTypes.POSTURE_FLAT_KEYWORD,
+      DeviceSpecTypes.POSTURE_TABLETOP_KEYWORD,
+      DeviceSpecTypes.POSTURE_BOOK_KEYWORD,
+      DeviceSpecTypes.POINTER_COARSE_KEYWORD,
+      DeviceSpecTypes.POINTER_FINE_KEYWORD,
+      DeviceSpecTypes.POINTER_BLUNT_KEYWORD,
+      DeviceSpecTypes.KEYBOARD_VIRTUAL_KEYWORD,
+      DeviceSpecTypes.KEYBOARD_PHYSICAL_KEYWORD,
+      DeviceSpecTypes.DISTANCE_NEAR_KEYWORD,
+      DeviceSpecTypes.DISTANCE_MEDIUM_KEYWORD,
+      DeviceSpecTypes.DISTANCE_FAR_KEYWORD,
       DeviceSpecTypes.STRING_T -> string
       DeviceSpecTypes.PX,
       DeviceSpecTypes.DP -> unit
@@ -78,7 +89,13 @@ class DeviceSpecSyntaxHighlighter : SyntaxHighlighterBase() {
       DeviceSpecTypes.CHIN_SIZE_KEYWORD,
       DeviceSpecTypes.CUTOUT_KEYWORD,
       DeviceSpecTypes.NAVIGATION_KEYWORD,
-      DeviceSpecTypes.ORIENTATION_KEYWORD -> paramName
+      DeviceSpecTypes.ORIENTATION_KEYWORD,
+      DeviceSpecTypes.WINDOW_POSTURE_KEYWORD,
+      DeviceSpecTypes.POINTER_PRECISION_KEYWORD,
+      DeviceSpecTypes.KEYBOARD_KIND_KEYWORD,
+      DeviceSpecTypes.HAS_CAMERA_KEYWORD,
+      DeviceSpecTypes.HAS_MICROPHONE_KEYWORD,
+      DeviceSpecTypes.VIEWING_DISTANCE_KEYWORD -> paramName
       else -> emptyArray()
     }
 }

@@ -259,4 +259,54 @@ class DeviceSpecParserTest : ParsingTestCase("no_data_path_needed", "", DeviceSp
       toParseTreeText("spec:width=e 1080px e"),
     )
   }
+
+  fun testMediaQuerySpec() {
+    assertEquals(
+      """
+      FILE
+        PsiElement(spec)('spec')
+        PsiElement(:)(':')
+        DeviceSpecSpecImpl(SPEC)
+          DeviceSpecWindowPostureParamImpl(WINDOW_POSTURE_PARAM)
+            PsiElement(windowPosture)('windowPosture')
+            PsiElement(=)('=')
+            DeviceSpecWindowPostureTImpl(WINDOW_POSTURE_T)
+              PsiElement(tabletop)('tabletop')
+          PsiElement(,)(',')
+          DeviceSpecPointerPrecisionParamImpl(POINTER_PRECISION_PARAM)
+            PsiElement(pointerPrecision)('pointerPrecision')
+            PsiElement(=)('=')
+            DeviceSpecPointerPrecisionTImpl(POINTER_PRECISION_T)
+              PsiElement(blunt)('blunt')
+          PsiElement(,)(',')
+          DeviceSpecKeyboardKindParamImpl(KEYBOARD_KIND_PARAM)
+            PsiElement(keyboardKind)('keyboardKind')
+            PsiElement(=)('=')
+            DeviceSpecKeyboardKindTImpl(KEYBOARD_KIND_T)
+              PsiElement(physical)('physical')
+          PsiElement(,)(',')
+          DeviceSpecHasCameraParamImpl(HAS_CAMERA_PARAM)
+            PsiElement(hasCamera)('hasCamera')
+            PsiElement(=)('=')
+            DeviceSpecBooleanTImpl(BOOLEAN_T)
+              PsiElement(true)('true')
+          PsiElement(,)(',')
+          DeviceSpecHasMicrophoneParamImpl(HAS_MICROPHONE_PARAM)
+            PsiElement(hasMicrophone)('hasMicrophone')
+            PsiElement(=)('=')
+            DeviceSpecBooleanTImpl(BOOLEAN_T)
+              PsiElement(false)('false')
+          PsiElement(,)(',')
+          DeviceSpecViewingDistanceParamImpl(VIEWING_DISTANCE_PARAM)
+            PsiElement(viewingDistance)('viewingDistance')
+            PsiElement(=)('=')
+            DeviceSpecViewingDistanceTImpl(VIEWING_DISTANCE_T)
+              PsiElement(medium)('medium')
+      """
+        .trimIndent(),
+      toParseTreeText(
+        "spec:windowPosture=tabletop,pointerPrecision=blunt,keyboardKind=physical,hasCamera=true,hasMicrophone=false,viewingDistance=medium"
+      ),
+    )
+  }
 }
