@@ -63,7 +63,6 @@ private const val ONBOARDING_REQUIRED = "onboarding_required"
 
 private const val RESOURCE_EXHAUSTED_MESSAGE =
   "Quota exceeded for quota metric 'Duet Task API requests' and limit 'Duet Task API requests per day per user'"
-private const val TEMPORARY_KILL_SWITCH_MESSAGE = "Cannot process request for disabled experience"
 
 @VisibleForTesting const val GEMINI_NOT_AVAILABLE = "Gemini is not available"
 
@@ -242,21 +241,6 @@ class InsightContentPanel(
                   clear()
                   appendText("Insights data is not available.")
                 }
-              }
-              showEmptyCard()
-            }
-            is LoadingState.UnknownFailure -> {
-              val detailsMessage = aiInsight.status?.detailsList?.firstOrNull()?.value?.toStringUtf8() ?: ""
-              val message =
-                if (detailsMessage.contains(TEMPORARY_KILL_SWITCH_MESSAGE)) {
-                  "Insights feature is temporarily unavailable, check back later."
-                } else {
-                  aiInsight.getCauseMessageOrDefault()
-                }
-              emptyStateText.apply {
-                clear()
-                appendText("Failed to generate insight", EMPTY_STATE_TITLE_FORMAT)
-                appendLine(message, EMPTY_STATE_TEXT_FORMAT, null)
               }
               showEmptyCard()
             }

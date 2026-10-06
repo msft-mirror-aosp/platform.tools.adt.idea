@@ -42,9 +42,6 @@ import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
-import com.google.protobuf.Any
-import com.google.protobuf.ByteString
-import com.google.rpc.Status
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.GenerateInsightsAction.Action
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.testFramework.EdtRule
@@ -198,7 +195,7 @@ class InsightContentPanelTest {
 
     val fakeUi = FakeUi(insightContentPanel)
 
-    val statusTexts = fakeUi.findAllComponents<kotlin.Any> { it.javaClass.name.contains("StatusText\$Fragment") }.map { it.toString() }
+    val statusTexts = fakeUi.findAllComponents<Any> { it.javaClass.name.contains("StatusText\$Fragment") }.map { it.toString() }
 
     assertThat(statusTexts.size).isEqualTo(2)
     assertThat(statusTexts[0]).isEqualTo("Insights require Gemini")
@@ -257,25 +254,6 @@ class InsightContentPanelTest {
 
     assertThat(errorText).isEqualTo("No insight available")
     assertThat(secondaryText).isEqualTo("Some message")
-  }
-
-  @Test
-  fun `test temporary kill switch message`() = runBlocking {
-    val status =
-      Status.newBuilder()
-        .apply {
-          val message = "SomeException: Cannot process request for disabled experience at\nsome stacktrace"
-          val any = Any.newBuilder().setValue(ByteString.copyFrom(message.toByteArray()))
-          addDetails(any)
-        }
-        .build()
-    currentInsightFlow.update { LoadingState.UnknownFailure("Some message", null, status) }
-
-    FakeUi(insightContentPanel)
-    delayUntilStatusTextVisible()
-
-    assertThat(errorText).isEqualTo("Failed to generate insight")
-    assertThat(secondaryText).isEqualTo("Insights feature is temporarily unavailable, check back later.")
   }
 
   @Test
