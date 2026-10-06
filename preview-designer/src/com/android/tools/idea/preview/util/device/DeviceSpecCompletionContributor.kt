@@ -30,13 +30,17 @@ import com.android.tools.preview.config.DEFAULT_DEVICE_ID
 import com.android.tools.preview.config.DEVICE_BY_ID_PREFIX
 import com.android.tools.preview.config.DEVICE_BY_SPEC_PREFIX
 import com.android.tools.preview.config.DimUnit
+import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
+import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview.DeviceSpec
 import com.android.tools.preview.config.ReferenceDesktopConfig
 import com.android.tools.preview.config.ReferenceFoldableConfig
 import com.android.tools.preview.config.ReferencePhoneConfig
 import com.android.tools.preview.config.ReferenceTabletConfig
+import com.android.tools.preview.config.ViewingDistance
+import com.android.tools.preview.config.WindowPosture
 import com.android.tools.preview.config.getDefaultPreviewDevice
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -108,6 +112,66 @@ class DeviceSpecCompletionContributor : CompletionContributor() {
     )
     extend(
       CompletionType.BASIC,
+      // Completion for `windowPosture=<flat|tabletop|book>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.WINDOW_POSTURE_KEYWORD),
+        ),
+      WindowPostureValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
+      // Completion for `pointerPrecision=<coarse|fine|blunt|none>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.POINTER_PRECISION_KEYWORD),
+        ),
+      PointerPrecisionValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
+      // Completion for `keyboardKind=<virtual|physical|none>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.KEYBOARD_KIND_KEYWORD),
+        ),
+      KeyboardKindValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
+      // Completion for `hasCamera=<true|false>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.HAS_CAMERA_KEYWORD),
+        ),
+      BooleanValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
+      // Completion for `hasMicrophone=<true|false>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.HAS_MICROPHONE_KEYWORD),
+        ),
+      BooleanValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
+      // Completion for `viewingDistance=<near|medium|far>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.VIEWING_DISTANCE_KEYWORD),
+        ),
+      ViewingDistanceValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
       // Completion for spec/id prefix.
       PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T) // String token
         // The initial prefix for the device definition is always the first element of the file, and
@@ -160,6 +224,12 @@ private val customSpecParamsToDefaultValues: Map<String, String> by
       DeviceSpec.PARAMETER_ORIENTATION to DeviceSpec.DEFAULT_ORIENTATION.name,
       DeviceSpec.PARAMETER_CUTOUT to DeviceSpec.DEFAULT_CUTOUT.name,
       DeviceSpec.PARAMETER_NAVIGATION to DeviceSpec.DEFAULT_NAVIGATION.name,
+      DeviceSpec.PARAMETER_WINDOW_POSTURE to WindowPosture.flat.name,
+      DeviceSpec.PARAMETER_POINTER_PRECISION to PointerPrecision.coarse.name,
+      DeviceSpec.PARAMETER_KEYBOARD_KIND to KeyboardKind.virtual.name,
+      DeviceSpec.PARAMETER_HAS_CAMERA to true.toString(),
+      DeviceSpec.PARAMETER_HAS_MICROPHONE to true.toString(),
+      DeviceSpec.PARAMETER_VIEWING_DISTANCE to ViewingDistance.near.name,
     )
   }
 
@@ -170,6 +240,12 @@ private val parentBasedSpecParamsToDefaultValues: Map<String, String> by
       DeviceSpec.PARAMETER_PARENT to DEFAULT_DEVICE_ID,
       DeviceSpec.PARAMETER_ORIENTATION to DeviceSpec.DEFAULT_ORIENTATION.name,
       DeviceSpec.PARAMETER_NAVIGATION to DeviceSpec.DEFAULT_NAVIGATION.name,
+      DeviceSpec.PARAMETER_WINDOW_POSTURE to WindowPosture.flat.name,
+      DeviceSpec.PARAMETER_POINTER_PRECISION to PointerPrecision.coarse.name,
+      DeviceSpec.PARAMETER_KEYBOARD_KIND to KeyboardKind.virtual.name,
+      DeviceSpec.PARAMETER_HAS_CAMERA to true.toString(),
+      DeviceSpec.PARAMETER_HAS_MICROPHONE to true.toString(),
+      DeviceSpec.PARAMETER_VIEWING_DISTANCE to ViewingDistance.near.name,
     )
   }
 
@@ -186,6 +262,12 @@ private val allSpecParamsToDefaultValues: Map<String, String> by
       DeviceSpec.PARAMETER_PARENT to DEFAULT_DEVICE_ID,
       DeviceSpec.PARAMETER_CUTOUT to DeviceSpec.DEFAULT_CUTOUT.name,
       DeviceSpec.PARAMETER_NAVIGATION to DeviceSpec.DEFAULT_NAVIGATION.name,
+      DeviceSpec.PARAMETER_WINDOW_POSTURE to WindowPosture.flat.name,
+      DeviceSpec.PARAMETER_POINTER_PRECISION to PointerPrecision.coarse.name,
+      DeviceSpec.PARAMETER_KEYBOARD_KIND to KeyboardKind.virtual.name,
+      DeviceSpec.PARAMETER_HAS_CAMERA to true.toString(),
+      DeviceSpec.PARAMETER_HAS_MICROPHONE to true.toString(),
+      DeviceSpec.PARAMETER_VIEWING_DISTANCE to ViewingDistance.near.name,
     )
   }
 
@@ -352,4 +434,35 @@ private fun DeviceSpecSpecImpl.getFirstValidUnit(): DimUnit? {
     }
   }
   return null
+}
+
+private object WindowPostureValueProvider : CompletionProvider<CompletionParameters>() {
+  override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+    WindowPosture.entries.forEach { result.addLookupElement(lookupString = it.name) }
+  }
+}
+
+private object PointerPrecisionValueProvider : CompletionProvider<CompletionParameters>() {
+  override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+    PointerPrecision.entries.forEach { result.addLookupElement(lookupString = it.name) }
+  }
+}
+
+private object KeyboardKindValueProvider : CompletionProvider<CompletionParameters>() {
+  override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+    KeyboardKind.entries.forEach { result.addLookupElement(lookupString = it.name) }
+  }
+}
+
+private object ViewingDistanceValueProvider : CompletionProvider<CompletionParameters>() {
+  override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+    ViewingDistance.entries.forEach { result.addLookupElement(lookupString = it.name) }
+  }
+}
+
+private object BooleanValueProvider : CompletionProvider<CompletionParameters>() {
+  override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+    result.addLookupElement(lookupString = true.toString())
+    result.addLookupElement(lookupString = false.toString())
+  }
 }

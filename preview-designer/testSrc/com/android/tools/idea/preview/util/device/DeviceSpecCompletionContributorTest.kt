@@ -106,6 +106,65 @@ internal class DeviceSpecCompletionContributorTest {
   }
 
   @Test
+  fun providedWindowPostureValues() {
+    fixture.completeDeviceSpec("spec:windowPosture=$caret")
+
+    assertEquals(3, fixture.lookupElementStrings!!.size)
+    assertEquals("book", fixture.lookupElementStrings!![0])
+    assertEquals("flat", fixture.lookupElementStrings!![1])
+    assertEquals("tabletop", fixture.lookupElementStrings!![2])
+  }
+
+  @Test
+  fun providedPointerPrecisionValues() {
+    fixture.completeDeviceSpec("spec:pointerPrecision=$caret")
+
+    assertEquals(4, fixture.lookupElementStrings!!.size)
+    assertEquals("blunt", fixture.lookupElementStrings!![0])
+    assertEquals("coarse", fixture.lookupElementStrings!![1])
+    assertEquals("fine", fixture.lookupElementStrings!![2])
+    assertEquals("none", fixture.lookupElementStrings!![3])
+  }
+
+  @Test
+  fun providedKeyboardKindValues() {
+    fixture.completeDeviceSpec("spec:keyboardKind=$caret")
+
+    assertEquals(3, fixture.lookupElementStrings!!.size)
+    assertEquals("none", fixture.lookupElementStrings!![0])
+    assertEquals("physical", fixture.lookupElementStrings!![1])
+    assertEquals("virtual", fixture.lookupElementStrings!![2])
+  }
+
+  @Test
+  fun providedViewingDistanceValues() {
+    fixture.completeDeviceSpec("spec:viewingDistance=$caret")
+
+    assertEquals(3, fixture.lookupElementStrings!!.size)
+    assertEquals("far", fixture.lookupElementStrings!![0])
+    assertEquals("medium", fixture.lookupElementStrings!![1])
+    assertEquals("near", fixture.lookupElementStrings!![2])
+  }
+
+  @Test
+  fun providedHasCameraValues() {
+    fixture.completeDeviceSpec("spec:hasCamera=$caret")
+
+    assertEquals(2, fixture.lookupElementStrings!!.size)
+    assertEquals("false", fixture.lookupElementStrings!![0])
+    assertEquals("true", fixture.lookupElementStrings!![1])
+  }
+
+  @Test
+  fun providedHasMicrophoneValues() {
+    fixture.completeDeviceSpec("spec:hasMicrophone=$caret")
+
+    assertEquals(2, fixture.lookupElementStrings!!.size)
+    assertEquals("false", fixture.lookupElementStrings!![0])
+    assertEquals("true", fixture.lookupElementStrings!![1])
+  }
+
+  @Test
   fun nothingProvided() {
     // Currently, not supported in name
     fixture.completeDeviceSpec("name:Nexus 7$caret")
@@ -165,42 +224,66 @@ internal class DeviceSpecCompletionContributorTest {
   @Test
   fun parameterCompletion() {
     fixture.completeDeviceSpec("spec:$caret")
-    assertEquals(9, fixture.lookupElementStrings!!.size)
+    assertEquals(15, fixture.lookupElementStrings!!.size)
     assertEquals("chinSize", fixture.lookupElementStrings!![0])
     assertEquals("cutout", fixture.lookupElementStrings!![1])
     assertEquals("dpi", fixture.lookupElementStrings!![2])
-    assertEquals("height", fixture.lookupElementStrings!![3])
-    assertEquals("isRound", fixture.lookupElementStrings!![4])
-    assertEquals("navigation", fixture.lookupElementStrings!![5])
-    assertEquals("orientation", fixture.lookupElementStrings!![6])
-    assertEquals("parent", fixture.lookupElementStrings!![7])
-    assertEquals("width", fixture.lookupElementStrings!![8])
+    assertEquals("hasCamera", fixture.lookupElementStrings!![3])
+    assertEquals("hasMicrophone", fixture.lookupElementStrings!![4])
+    assertEquals("height", fixture.lookupElementStrings!![5])
+    assertEquals("isRound", fixture.lookupElementStrings!![6])
+    assertEquals("keyboardKind", fixture.lookupElementStrings!![7])
+    assertEquals("navigation", fixture.lookupElementStrings!![8])
+    assertEquals("orientation", fixture.lookupElementStrings!![9])
+    assertEquals("parent", fixture.lookupElementStrings!![10])
+    assertEquals("pointerPrecision", fixture.lookupElementStrings!![11])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![12])
+    assertEquals("width", fixture.lookupElementStrings!![13])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![14])
 
     fixture.completeDeviceSpec("spec:orientation=portrait,$caret")
-    assertEquals(8, fixture.lookupElementStrings!!.size)
+    assertEquals(14, fixture.lookupElementStrings!!.size)
     assertEquals("chinSize", fixture.lookupElementStrings!![0])
     assertEquals("cutout", fixture.lookupElementStrings!![1])
     assertEquals("dpi", fixture.lookupElementStrings!![2])
-    assertEquals("height", fixture.lookupElementStrings!![3])
-    assertEquals("isRound", fixture.lookupElementStrings!![4])
-    assertEquals("navigation", fixture.lookupElementStrings!![5])
-    assertEquals("parent", fixture.lookupElementStrings!![6])
-    assertEquals("width", fixture.lookupElementStrings!![7])
+    assertEquals("hasCamera", fixture.lookupElementStrings!![3])
+    assertEquals("hasMicrophone", fixture.lookupElementStrings!![4])
+    assertEquals("height", fixture.lookupElementStrings!![5])
+    assertEquals("isRound", fixture.lookupElementStrings!![6])
+    assertEquals("keyboardKind", fixture.lookupElementStrings!![7])
+    assertEquals("navigation", fixture.lookupElementStrings!![8])
+    assertEquals("parent", fixture.lookupElementStrings!![9])
+    assertEquals("pointerPrecision", fixture.lookupElementStrings!![10])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![11])
+    assertEquals("width", fixture.lookupElementStrings!![12])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![13])
 
     fixture.completeDeviceSpec("spec:parent=pixel_5,$caret")
-    assertEquals(2, fixture.lookupElementStrings!!.size)
-    assertEquals("navigation", fixture.lookupElementStrings!![0])
-    assertEquals("orientation", fixture.lookupElementStrings!![1])
+    assertEquals(8, fixture.lookupElementStrings!!.size)
+    assertEquals("hasCamera", fixture.lookupElementStrings!![0])
+    assertEquals("hasMicrophone", fixture.lookupElementStrings!![1])
+    assertEquals("keyboardKind", fixture.lookupElementStrings!![2])
+    assertEquals("navigation", fixture.lookupElementStrings!![3])
+    assertEquals("orientation", fixture.lookupElementStrings!![4])
+    assertEquals("pointerPrecision", fixture.lookupElementStrings!![5])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![6])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![7])
 
     fixture.completeDeviceSpec("spec:width=1080px,$caret")
-    assertEquals(7, fixture.lookupElementStrings!!.size)
+    assertEquals(13, fixture.lookupElementStrings!!.size)
     assertEquals("chinSize", fixture.lookupElementStrings!![0])
     assertEquals("cutout", fixture.lookupElementStrings!![1])
     assertEquals("dpi", fixture.lookupElementStrings!![2])
-    assertEquals("height", fixture.lookupElementStrings!![3])
-    assertEquals("isRound", fixture.lookupElementStrings!![4])
-    assertEquals("navigation", fixture.lookupElementStrings!![5])
-    assertEquals("orientation", fixture.lookupElementStrings!![6])
+    assertEquals("hasCamera", fixture.lookupElementStrings!![3])
+    assertEquals("hasMicrophone", fixture.lookupElementStrings!![4])
+    assertEquals("height", fixture.lookupElementStrings!![5])
+    assertEquals("isRound", fixture.lookupElementStrings!![6])
+    assertEquals("keyboardKind", fixture.lookupElementStrings!![7])
+    assertEquals("navigation", fixture.lookupElementStrings!![8])
+    assertEquals("orientation", fixture.lookupElementStrings!![9])
+    assertEquals("pointerPrecision", fixture.lookupElementStrings!![10])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![11])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![12])
 
     fixture.completeDeviceSpec("spec:width=1080px,heigh$caret")
     fixture.checkResult("spec:width=1080px,height=891px")
@@ -226,9 +309,31 @@ internal class DeviceSpecCompletionContributorTest {
     fixture.completeDeviceSpec("spec:orientation=portrait,par$caret")
     fixture.checkResult("spec:orientation=portrait,parent=pixel_5")
 
+    fixture.completeDeviceSpec("spec:width=1080dp,windowPostur$caret")
+    fixture.checkResult("spec:width=1080dp,windowPosture=flat")
+
+    fixture.completeDeviceSpec("spec:width=1080dp,pointerPrecisio$caret")
+    fixture.checkResult("spec:width=1080dp,pointerPrecision=coarse")
+
+    fixture.completeDeviceSpec("spec:width=1080dp,keyboardKin$caret")
+    fixture.checkResult("spec:width=1080dp,keyboardKind=virtual")
+
+    fixture.completeDeviceSpec("spec:width=1080dp,hasCamer$caret")
+    fixture.checkResult("spec:width=1080dp,hasCamera=true")
+
+    fixture.completeDeviceSpec("spec:width=1080dp,hasMicrophon$caret")
+    fixture.checkResult("spec:width=1080dp,hasMicrophone=true")
+
+    fixture.completeDeviceSpec("spec:width=1080dp,viewingDistanc$caret")
+    fixture.checkResult("spec:width=1080dp,viewingDistance=near")
+
     // Nothing else to complete when using `parent`
-    fixture.completeDeviceSpec("spec:orientation=portrait,navigation=gesture,parent=pixel_5,$caret")
-    fixture.checkResult("spec:orientation=portrait,navigation=gesture,parent=pixel_5,")
+    fixture.completeDeviceSpec(
+      "spec:orientation=portrait,navigation=gesture,parent=pixel_5,windowPosture=flat,pointerPrecision=coarse,keyboardKind=virtual,hasCamera=true,hasMicrophone=true,viewingDistance=near,$caret"
+    )
+    fixture.checkResult(
+      "spec:orientation=portrait,navigation=gesture,parent=pixel_5,windowPosture=flat,pointerPrecision=coarse,keyboardKind=virtual,hasCamera=true,hasMicrophone=true,viewingDistance=near,"
+    )
     assertEquals(0, fixture.lookupElementStrings!!.size)
 
     // No parameters starting with 'spe'
