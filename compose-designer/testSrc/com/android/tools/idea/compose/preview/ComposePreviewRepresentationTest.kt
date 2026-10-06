@@ -15,10 +15,18 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.resources.Density
+import com.android.resources.ScreenOrientation
+import com.android.sdklib.devices.Device
+import com.android.sdklib.devices.Hardware
+import com.android.sdklib.devices.Screen
+import com.android.sdklib.devices.Software
+import com.android.sdklib.devices.State
 import com.android.testutils.delayUntilCondition
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.analytics.AnalyticsSettings
+import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
 import com.android.tools.idea.common.error.IssueProviderListener
 import com.android.tools.idea.common.error.SharedIssuePanelProvider
@@ -107,6 +115,7 @@ import com.intellij.testFramework.runInEdtAndWait
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFails
 import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
@@ -950,6 +959,151 @@ class ComposePreviewRepresentationTest {
       assertThat(resizePanel2.getCurrentPreviewElementForTest()).isEqualTo(singleElement)
     }
   }
+
+  // Regression test for b/488754133
+  @Test
+  fun testDeviceSelectionPreservedAcrossRefreshesInFocusMode() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    return runComposePreviewRepresentationTest(testFile) {
+      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+      val previewRep = createPreviewAndCompile(expectedModelCount = 1)
+
+      val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
+      assertThat(mainSurface.models.size).isEqualTo(1)
+      val singleElement = previewElements.single()
+
+      setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = false) { composeView.focusMode != null }
+
+      val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      assertThat(resizePanel.getCurrentPreviewElementForTest()).isEqualTo(singleElement)
+
+      val initialDeviceId = mainSurface.models.single().configuration.cachedDevice?.id
+      val newDevice = createTestDesktopDevice()
+
+      resizePanel.selectDeviceForTest(newDevice)
+
+      assertEquals(newDevice.id, mainSurface.models.single().configuration.cachedDevice?.id)
+      assertTrue(resizePanel.hasBeenResized)
+
+      val refreshDone = AtomicBoolean(false)
+      composeView.refreshCompletedListeners.add { refreshDone.set(true) }
+      previewRep.invalidate()
+      previewRep.requestRefreshForTest()
+      delayUntilCondition(250, timeout = 10.seconds) { refreshDone.get() }
+      delayWhileRefreshingOrDumb(previewRep)
+      waitForAllRefreshesToFinish(30.seconds)
+
+      val currentModel = mainSurface.models.single()
+      assertEquals(newDevice.id, currentModel.configuration.cachedDevice?.id)
+      val currentResizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      assertTrue(currentResizePanel.hasBeenResized)
+
+      // Revert after the invalidated refresh and verify the device is back to the annotation default
+      withContext(Dispatchers.EDT) {
+        currentResizePanel.RevertAction().actionPerformed(TestActionEvent.createTestEvent())
+      }
+      waitForAllRefreshesToFinish(30.seconds)
+      assertEquals(initialDeviceId, currentModel.configuration.cachedDevice?.id)
+      assertFalse(currentResizePanel.hasBeenResized)
+    }
+  }
+
+  @Test
+  fun testQualityRefreshWhileResizedDoesNotSendDeviceChangeEvent() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    return runComposePreviewRepresentationTest(testFile) {
+      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+      val previewRep = createPreviewAndCompile(expectedModelCount = 1)
+
+      val singleElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
+      setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = false) { composeView.focusMode != null }
+
+      val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      val newDevice = createTestDesktopDevice()
+
+      resizePanel.selectDeviceForTest(newDevice)
+      assertTrue(resizePanel.hasBeenResized)
+
+      val currentModel = mainSurface.models.single()
+      val deviceChangeFired = AtomicBoolean(false)
+      val listener = ConfigurationListener { flags ->
+        if ((flags and ConfigurationListener.CFG_DEVICE) != 0) {
+          deviceChangeFired.set(true)
+        }
+        true
+      }
+      currentModel.configuration.addListener(listener)
+
+      val refreshDone = AtomicBoolean(false)
+      composeView.refreshCompletedListeners.add { refreshDone.set(true) }
+      // Without invalidate(), requestRefreshForTest takes the existing-previews refresh path.
+      previewRep.requestRefreshForTest()
+      delayUntilCondition(250, timeout = 10.seconds) { refreshDone.get() }
+      delayWhileRefreshingOrDumb(previewRep)
+      waitForAllRefreshesToFinish(30.seconds)
+
+      assertFalse("Quality/existing refresh should not fire CFG_DEVICE", deviceChangeFired.get())
+    }
+  }
+
+  private fun createTestDesktopDevice(): Device =
+    Device.Builder()
+      .apply {
+        setTagId("")
+        setName("Test Desktop")
+        setId("test_desktop")
+        setManufacturer("Google")
+        addSoftware(Software())
+        addState(
+          State().apply {
+            name = "default"
+            isDefaultState = true
+            orientation = ScreenOrientation.LANDSCAPE
+            hardware =
+              Hardware().apply {
+                screen =
+                  Screen().apply {
+                    xDimension = 1920
+                    yDimension = 1080
+                    pixelDensity = Density.MEDIUM
+                  }
+              }
+          }
+        )
+      }
+      .build()
 
   @Test
   fun testEnterFocusModeDoesRefreshWhenNeeded() {

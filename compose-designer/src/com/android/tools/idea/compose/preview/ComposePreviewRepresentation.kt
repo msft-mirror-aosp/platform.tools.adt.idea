@@ -125,7 +125,6 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.UI
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -859,7 +858,7 @@ constructor(
    * This panel allows modifying the device configuration for the focused preview element. It is `null` when not in Focus mode and its
    * lifecycle (creation/disposal) is tied to entering and exiting [PreviewMode.Focus].
    */
-  private var activeResizePanelInFocusMode: ResizePanel? = null
+  @Volatile private var activeResizePanelInFocusMode: ResizePanel? = null
 
   init {
     Disposer.register(this, navigationHandler)
@@ -1092,8 +1091,9 @@ constructor(
   private fun configureLayoutlibSceneManagerForPreviewElement(
     displaySettings: PreviewDisplaySettings,
     layoutlibSceneManager: LayoutlibSceneManager,
-  ) =
-    configureLayoutlibSceneManager(
+  ): LayoutlibSceneManager {
+    activeResizePanelInFocusMode?.applyOverrides(layoutlibSceneManager)
+    return configureLayoutlibSceneManager(
       layoutlibSceneManager,
       showDecorations = displaySettings.showDecoration,
       previewMode = mode.value,
@@ -1103,6 +1103,7 @@ constructor(
       disableAnimation = mode.value.isNormal,
       useLoadViewFallbacks = useLoadViewFallbacks,
     )
+  }
 
   private fun onAfterRender(previewsCount: Int) {
     composeWorkBench.hasRendered = true
@@ -1200,50 +1201,58 @@ constructor(
 
     hidePanelsBeforeRender()
 
-    val showingPreviewElements =
-      surface.updatePreviewsAndRefresh(
-        reinflate = !quickRefresh,
-        filteredPreviews,
-        log,
-        psiFile,
-        parentDisposable = this,
-        progressIndicator,
-        previewElementModelAdapter,
-        if (mode.value is PreviewMode.UiCheck) accessibilityModelUpdater else defaultModelUpdater,
-        navigationHandler,
-        this::configureLayoutlibSceneManagerForPreviewElement,
-        refreshEventBuilder,
-      )
+    try {
+      val showingPreviewElements =
+        surface.updatePreviewsAndRefresh(
+          reinflate = !quickRefresh,
+          filteredPreviews,
+          log,
+          psiFile,
+          parentDisposable = this,
+          progressIndicator,
+          previewElementModelAdapter,
+          if (mode.value is PreviewMode.UiCheck) accessibilityModelUpdater else defaultModelUpdater,
+          navigationHandler,
+          this::configureLayoutlibSceneManagerForPreviewElement,
+          refreshEventBuilder,
+        )
 
-    onAfterRender(showingPreviewElements.size)
+      onAfterRender(showingPreviewElements.size)
 
-    if (previewModeManager.mode.value.isFocus) {
-      // We need to get rid of the flickering when switching tabs in focus tabs b/287484743
-      withContext(Dispatchers.EDT) { surface.zoomController.zoomToFit() }
+      if (previewModeManager.mode.value.isFocus) {
+        // We need to get rid of the flickering when switching tabs in focus tabs b/287484743
+        withContext(Dispatchers.EDT) { surface.zoomController.zoomToFit() }
+      }
+
+      composePreviewFlowManager.updateRenderedPreviews(showingPreviewElements)
+      if (showingPreviewElements.size < numberOfPreviewsToRender) {
+        // Some preview elements did not result in model creations. This could be because of failed
+        // PreviewElements instantiation.
+        // TODO(b/160300892): Add better error handling for failed instantiations.
+        log.warn("Some preview elements have failed")
+      }
+    } finally {
+      // Restoring the surface visibility after render as it may have been hidden in focus mode.
+      withContext(Dispatchers.EDT) {
+        surface.interactionPane.isVisible = true
+        activeResizePanelInFocusMode?.onAfterRenderCompleted()
+      }
     }
-
-    composePreviewFlowManager.updateRenderedPreviews(showingPreviewElements)
-    if (showingPreviewElements.size < numberOfPreviewsToRender) {
-      // Some preview elements did not result in model creations. This could be because of failed
-      // PreviewElements instantiation.
-      // TODO(b/160300892): Add better error handling for failed instantiations.
-      log.warn("Some preview elements have failed")
-    }
-    // Restoring the surface visibility after render as it may have been hidden in focus mode.
-    withContext(Dispatchers.UI) { surface.interactionPane.isVisible = true }
   }
 
   /**
    * Hides the panels before rendering.
    *
-   * We need to hide the interaction panel if in focus mode to avoid the flickering b/287484743. Also, we need to clear the resize panel
-   * before rendering otherwise it will be shown during rendering as configuration can be updated.
+   * We need to hide the interaction panel if in focus mode to avoid the flickering b/287484743. Also, we notify the resize panel before
+   * rendering to detach listeners and disable inputs so edits cannot occur while rendering.
    */
-  private fun hidePanelsBeforeRender() {
-    if (previewModeManager.mode.value.isFocus) {
-      surface.interactionPane.isVisible = false
+  private suspend fun hidePanelsBeforeRender() {
+    withContext(Dispatchers.EDT) {
+      if (previewModeManager.mode.value.isFocus) {
+        surface.interactionPane.isVisible = false
+      }
+      activeResizePanelInFocusMode?.onBeforeRender()
     }
-    activeResizePanelInFocusMode?.clear()
   }
 
   private fun requestRefresh(

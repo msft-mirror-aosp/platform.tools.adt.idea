@@ -22,17 +22,21 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.PopupRule
 import com.android.tools.configurations.Configuration
+import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.deviceSizeDp
 import com.android.tools.idea.actions.SetDeviceAction
 import com.android.tools.idea.common.fixtures.ComponentDescriptor
+import com.android.tools.idea.common.model.NlDataProvider
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.compose.preview.PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.configurations.isReferenceDevice
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.android.tools.preview.MAX_DIMENSION_DP
+import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.ide.ui.laf.darcula.ui.DarculaTextFieldUI
@@ -89,6 +93,11 @@ class ResizePanelTest {
   fun setUp() = runBlocking {
     model =
       NlModelBuilderUtil.model(projectRule, "layout", "layout.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
+    val previewElement = SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod")
+    model.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
     configuration = model.configuration
 
     surface = NlSurfaceBuilder.builder(projectRule.project, projectRule.testRootDisposable).build()
@@ -763,5 +772,162 @@ class ResizePanelTest {
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.fullConfig.uiModeQualifier?.value)
     assertFalse(resizePanel.hasBeenResized)
+  }
+
+  @Test
+  fun `onBeforeRender disables panel but preserves resized state`() = runInEdtAndGet {
+    val initialDevice = configuration.device!!
+    setupAndShowPanel()
+    val newDevice = setDifferentDevice(initialDevice)
+    assertTrue(resizePanel.hasBeenResized)
+    assertTrue(resizePanel.isEnabled)
+
+    resizePanel.onBeforeRender()
+
+    assertFalse(resizePanel.isEnabled)
+    assertTrue(resizePanel.hasBeenResized)
+    assertEquals(newDevice.id, configuration.device!!.id)
+  }
+
+  @Test
+  fun `onAfterRenderCompleted does not enable panel if currentConfiguration is null`() = runInEdtAndGet {
+    val unconfiguredPanel = ResizePanel(projectRule.testRootDisposable)
+    assertFalse(unconfiguredPanel.isEnabled)
+
+    unconfiguredPanel.onAfterRenderCompleted()
+    assertFalse(unconfiguredPanel.isEnabled)
+
+    // Also verify after clear()
+    setupAndShowPanel()
+    assertTrue(resizePanel.isEnabled)
+    resizePanel.clear()
+    assertFalse(resizePanel.isEnabled)
+
+    resizePanel.onAfterRenderCompleted()
+    assertFalse(resizePanel.isEnabled)
+  }
+
+  @Test
+  fun `updateBaselineFromConfiguration and applyToConfiguration preserve user overrides`() = runInEdtAndGet {
+    val initialDevice = configuration.device!!
+    setupAndShowPanel()
+    val newDevice = setDifferentDevice(initialDevice)
+    configuration.cutoutOverlay = com.android.tools.res.FrameworkOverlay.CUTOUT_NONE
+    configuration.uiMode = com.android.resources.UiMode.TELEVISION
+    configuration.setTheme("@style/MyTestTheme")
+    assertTrue(resizePanel.hasBeenResized)
+
+    val previewElement = SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod")
+    val newModel =
+      NlModelBuilderUtil.model(projectRule, "layout", "layout2.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
+    newModel.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+    val newConfiguration = newModel.configuration
+    val baselineDevice = newConfiguration.device!!
+    val baselineTheme = newConfiguration.theme
+
+    resizePanel.updateBaselineFromConfiguration(newConfiguration)
+    resizePanel.applyToConfiguration(newConfiguration)
+
+    assertEquals(newDevice.id, newConfiguration.device!!.id)
+    assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_NONE, newConfiguration.cutoutOverlay)
+    assertEquals(com.android.resources.UiMode.TELEVISION, newConfiguration.uiMode)
+    assertEquals("@style/MyTestTheme", newConfiguration.theme)
+
+    val newSceneManager = surface.addModelsWithoutRender(listOf(newModel)).single()
+    resizePanel.setSceneManager(newSceneManager)
+
+    assertTrue(resizePanel.hasBeenResized)
+    assertEquals(newDevice.id, newConfiguration.device!!.id)
+    assertEquals(com.android.tools.res.FrameworkOverlay.CUTOUT_NONE, newConfiguration.cutoutOverlay)
+    assertEquals(com.android.resources.UiMode.TELEVISION, newConfiguration.uiMode)
+    assertEquals("@style/MyTestTheme", newConfiguration.theme)
+
+    revert()
+    assertFalse(resizePanel.hasBeenResized)
+    assertEquals(baselineDevice.id, newConfiguration.device!!.id)
+    assertEquals(baselineTheme, newConfiguration.theme)
+  }
+
+  @Test
+  fun `setSceneManager clears state when preview element differs`() = runInEdtAndGet {
+    val initialDevice = configuration.device!!
+    setupAndShowPanel()
+    setDifferentDevice(initialDevice)
+    assertTrue(resizePanel.hasBeenResized)
+
+    val differentElement = SingleComposePreviewElementInstance.forTesting<Unit>("DifferentMethod")
+    val newModel =
+      NlModelBuilderUtil.model(projectRule, "layout", "layout3.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
+    newModel.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String) = differentElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+    val newSceneManager = surface.addModelsWithoutRender(listOf(newModel)).single()
+    resizePanel.setSceneManager(newSceneManager)
+
+    assertFalse(resizePanel.hasBeenResized)
+  }
+
+  @Test
+  fun `updateBaselineFromConfiguration and applyToConfiguration return early when same instance`() = runInEdtAndGet {
+    setupAndShowPanel()
+    setDifferentDevice()
+    assertTrue(resizePanel.hasBeenResized)
+
+    var deviceChangeFired = false
+    val listener = ConfigurationListener { flags ->
+      if ((flags and ConfigurationListener.CFG_DEVICE) != 0) {
+        deviceChangeFired = true
+      }
+      true
+    }
+    configuration.addListener(listener)
+
+    resizePanel.updateBaselineFromConfiguration(configuration)
+    resizePanel.applyToConfiguration(configuration)
+
+    assertFalse("Should return early on same configuration instance and not fire CFG_DEVICE", deviceChangeFired)
+  }
+
+  @Test
+  fun `revert action is disabled when panel is not enabled`() = runInEdtAndGet {
+    setupAndShowPanel()
+    setDifferentDevice()
+    assertTrue(resizePanel.hasBeenResized)
+
+    val revertAction = resizePanel.RevertAction()
+    val event = TestActionEvent.createTestEvent(DataManager.getInstance().getDataContext(resizePanel))
+    revertAction.update(event)
+    assertTrue(event.presentation.isEnabledAndVisible)
+
+    resizePanel.onBeforeRender()
+    revertAction.update(event)
+    assertFalse(event.presentation.isEnabled)
+  }
+
+  @Test
+  fun `applyOverrides applies user overrides and sets needsInflation when device changed`() = runInEdtAndGet {
+    val initialDevice = configuration.device!!
+    setupAndShowPanel()
+    val newDevice = setDifferentDevice(initialDevice)
+    assertTrue(resizePanel.hasBeenResized)
+
+    val previewElement = SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod")
+    val refreshedModel =
+      NlModelBuilderUtil.model(projectRule, "layout", "layout4.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
+    refreshedModel.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+    val refreshedSceneManager = surface.addModelsWithoutRender(listOf(refreshedModel)).single()
+    refreshedSceneManager.sceneRenderConfiguration.needsInflation.set(false)
+
+    resizePanel.applyOverrides(refreshedSceneManager)
+
+    assertEquals(newDevice.id, refreshedSceneManager.model.configuration.cachedDevice?.id)
+    assertTrue(refreshedSceneManager.sceneRenderConfiguration.needsInflation.get())
   }
 }
