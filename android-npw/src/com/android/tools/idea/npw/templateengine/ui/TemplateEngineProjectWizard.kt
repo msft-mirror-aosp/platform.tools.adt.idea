@@ -113,7 +113,7 @@ fun WizardPageScope.TemplateEngineChooseProjectPage(project: Project?) {
       if (canProceed && selectedEntry != null) {
         if (selectedEntry is TemplateEngineTemplateGridProjectEntry) {
           when (val selectedItem = selectedEntry.selectedItem) {
-            is TemplateGalleryItem.Standard ->
+            is TemplateGalleryItem.Renderable ->
               createConfigurePageAction(project, selectedItem.definition, selectedEntry.formFactor, selectedEntry)
             is TemplateGalleryItem.Promotion -> WizardAction { selectedItem.spec.onClickAction(emptyMap()) }
             else -> WizardAction.Disabled

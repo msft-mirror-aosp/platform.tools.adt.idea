@@ -36,6 +36,7 @@ import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.extensions.PluginId
@@ -44,6 +45,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
@@ -69,6 +71,8 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
 
   @GuardedBy("lock") private var currentSdkPath: Path? = null
 
+  @GuardedBy("lock") private var externalTemplates: List<ExternalTemplate> = emptyList()
+
   private val localChangeListener = RepoManager.RepoLoadedListener {
     logger.debug("SDK packages changed, reloading templates")
     coroutineScope.launch(Dispatchers.IO) { loadTemplatesAndResources() }
@@ -77,6 +81,10 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
   private val sdkPathFlow = MutableSharedFlow<Path>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
   init {
+    TemplateEngineProjectWizardContributor.EP_NAME.addChangeListener(coroutineScope) {
+      logger.debug("Template contributors changed, reloading external templates")
+      coroutineScope.launch(Dispatchers.IO) { loadExternalTemplates() }
+    }
     coroutineScope.launch {
       val initialSdkPath = IdeSdks.getInstance().androidSdkPath?.toPath()
       if (initialSdkPath != null) {
@@ -112,13 +120,12 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
 
   fun getTemplateDefinitions(): List<TemplateDefinition> = synchronized(lock) { templateList.templates }
 
+  fun getContributorExternalTemplates(): List<ExternalTemplate> = synchronized(lock) { externalTemplates }
+
   fun getPromotionCards(): List<PromotionCardSpec> =
     WizardPluginPromotionTemplateProvider.getAllPromotionTemplates()
       .filterNot { PluginManagerCore.isPluginInstalled(PluginId.getId(it.pluginId)) }
       .map { it.toPromotionCardSpec() }
-
-  fun getContributorExternalTemplates(): List<ExternalTemplateSpec> =
-    TemplateEngineProjectWizardContributor.EP_NAME.extensionList.sortedByDescending { it.priority }.flatMap { it.getExternalTemplates() }
 
   fun getLastErrorMessage(): String? = synchronized(lock) { lastErrorMessage }
 
@@ -146,9 +153,45 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
         templateList = TemplateList(emptyList())
       }
     }
+    loadExternalTemplates()
   }
 
-  private fun loadTemplatesFromZip(zipPath: Path): TemplateList {
+  fun loadExternalTemplates() {
+    val loaded = mutableListOf<ExternalTemplate>()
+
+    for (contributor in TemplateEngineProjectWizardContributor.EP_NAME.extensionList.sortedByDescending { it.priority }) {
+      val sources =
+        try {
+          contributor.getExternalTemplates()
+        } catch (e: Exception) {
+          if (e is ControlFlowException || e is CancellationException) throw e
+          logger.warn("Template contributor '${contributor.id}' failed to provide external templates", e)
+          continue
+        } catch (e: LinkageError) {
+          logger.warn("Template contributor '${contributor.id}' is incompatible with this version of Android Studio", e)
+          continue
+        }
+
+      for (source in sources) {
+        val definitions =
+          try {
+            when (source) {
+              is ExternalTemplateSpec.ZipFile ->
+                loadTemplatesFromZip(source.path, createMessageSink(reportErrorsAsWarnings = true)).templates
+            }
+          } catch (e: Exception) {
+            if (e is ControlFlowException || e is CancellationException) throw e
+            logger.warn("Failed to load templates from $source contributed by '${contributor.id}'", e)
+            continue
+          }
+        definitions.mapTo(loaded) { ExternalTemplate(it, contributor.id, contributor.priority) }
+      }
+    }
+
+    synchronized(lock) { externalTemplates = loaded.toList() }
+  }
+
+  private fun loadTemplatesFromZip(zipPath: Path, messageSink: TemplateMessageSink = TemplateRegistryService.messageSink): TemplateList {
     val factory = TemplateEngineFactory.createDefault { template ->
       // Currently loading only Gradle templates
       template.metadata.tags.any { it.startsWith("agp") || it.startsWith("gradle") }
@@ -166,14 +209,16 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
   }
 
   companion object {
-    val messageSink =
+    val messageSink = createMessageSink(reportErrorsAsWarnings = false)
+
+    private fun createMessageSink(reportErrorsAsWarnings: Boolean): DefaultTemplateMessageSink =
       object : DefaultTemplateMessageSink(TemplateMessageSink.Severity.Verbose) {
         private val sinkLogger = Logger.getInstance("TemplateEngine")
 
         override fun onMessage(entry: MessageEntry) {
           val msg = entry.message
           when (entry.severity) {
-            TemplateMessageSink.Severity.Error -> sinkLogger.error(msg)
+            TemplateMessageSink.Severity.Error -> if (reportErrorsAsWarnings) sinkLogger.warn(msg) else sinkLogger.error(msg)
             TemplateMessageSink.Severity.Warn -> sinkLogger.warn(msg)
             TemplateMessageSink.Severity.Info -> sinkLogger.info(msg)
             TemplateMessageSink.Severity.Verbose,
@@ -197,6 +242,8 @@ class TemplateRegistrySdkEventListener : IdeSdks.AndroidSdkEventListener {
     TemplateRegistryService.getInstance().onSdkPathChanged(sdkPath.toPath())
   }
 }
+
+data class ExternalTemplate(val definition: TemplateDefinition, val contributorId: String, val contributorPriority: Int)
 
 private fun getDefaultZipPath(sdkPath: Path?): Path {
   val path = sdkPath ?: throw IllegalStateException("Android SDK path is not configured")

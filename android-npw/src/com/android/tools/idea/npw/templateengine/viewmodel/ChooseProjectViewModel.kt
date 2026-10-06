@@ -49,7 +49,7 @@ class ChooseProjectViewModel(private val registry: TemplateRegistryService) {
       standardEntries.forEach { entry ->
         if (entry.formFactor == promotedTemplate.formFactor.toWizardFormFactor()) {
           val match =
-            entry.items.filterIsInstance<TemplateGalleryItem.Standard>().firstOrNull {
+            entry.items.filterIsInstance<TemplateGalleryItem.Renderable>().firstOrNull {
               it.definition.name == promotedTemplate.name || it.definition.shortName == promotedTemplate.name
             }
               ?: entry.items.filterIsInstance<TemplateGalleryItem.Promotion>().firstOrNull {
