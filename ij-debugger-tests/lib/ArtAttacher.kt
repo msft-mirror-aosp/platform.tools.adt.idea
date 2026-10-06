@@ -71,7 +71,7 @@ private const val TIMEOUT_MILLIS_PROPERTY = "intellij.debugger.tests.timeout.mil
 private const val DEX_CACHE_ENV = "INTELLIJ_DEBUGGER_TESTS_DEX_CACHE"
 private const val DEX_CACHE_PROPERTY = "intellij.debugger.tests.dex.cache"
 
-private const val DEX_COMPILER = "prebuilts/r8/r8.jar"
+private const val DEX_COMPILER = "prebuilts/tools/common/m2/r8.jar"
 private const val ART_ROOT = "prebuilts/tools/linux-x86_64/art"
 private const val LIB_ART = "framework/core-libart-hostdex.jar"
 private const val OJ = "framework/core-oj-hostdex.jar"
