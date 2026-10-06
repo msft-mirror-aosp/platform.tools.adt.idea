@@ -79,13 +79,16 @@ class LeakCanaryAiHandler(private val project: Project, private val scope: Corou
       }
     }
 
-    /** Fetches a background stream of AI diagnostic insights for the LeakCanary inline side panel. */
+    /**
+     * Fetches a background stream of AI diagnostic insights for the LeakCanary inline side panel.
+     * Uses the [LlmModelSlot.CHAT] slot so the insight follows the model the user selects in the Gemini chat window.
+     */
     @JvmStatic
     fun fetchLeakInsight(project: Project, rawTrace: String): Flow<String> = flow {
       val prompt = buildInsightPrompt(project, rawTrace)
       val api = GeminiPluginApiV2.getInstance()
       if (api.isAvailable()) {
-        val response = api.generate(project, prompt, LlmModelSlot.THINKING)
+        val response = api.generate(project, prompt, LlmModelSlot.CHAT)
         if (!response.isNullOrEmpty()) {
           emit(response)
         } else {
