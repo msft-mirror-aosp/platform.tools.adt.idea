@@ -167,7 +167,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test failure shows failure message if available`() = runBlocking {
-    currentInsightFlow.update { LoadingState.ServerFailure("Some failure", SocketTimeoutException()) }
+    currentInsightFlow.update { LoadingState.UnknownFailure("Some failure", SocketTimeoutException()) }
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
@@ -178,7 +178,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test failure shows generic failure message when message unavailable`() = runBlocking {
-    currentInsightFlow.update { LoadingState.ServerFailure(null) }
+    currentInsightFlow.update { LoadingState.UnknownFailure(null) }
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()

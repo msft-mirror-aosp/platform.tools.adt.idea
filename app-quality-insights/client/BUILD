@@ -11,7 +11,6 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
-        "//tools/adt/idea/.idea/libraries:google-api-client",
         "@intellij//:intellij.libraries.grpc",
     ],
 )
@@ -24,10 +23,8 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "@intellij//:intellij-sdk",
-        "//tools/adt/idea/.idea/libraries:google-api-client",
         "@intellij//:intellij.libraries.grpc",
         "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client"],
     test_srcs = ["testSrc"],
@@ -44,7 +41,6 @@ kotlin_library(
     visibility = ["//visibility:public"],
     deps = [
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
-        "@maven//:com.google.api-client.google-api-client",
         "@maven//:io.grpc.grpc-protobuf",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core",
     ],
