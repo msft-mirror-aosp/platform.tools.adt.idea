@@ -27,6 +27,12 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_IS_ROUND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_CAMERA
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_KEYBOARD
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_MIC
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_POINTER
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_WINDOW_POSTURE
 import com.android.tools.property.panel.api.EditorProvider
 import com.android.tools.property.panel.api.InspectorPanel
 import com.android.tools.property.panel.api.PropertyEditorModel
@@ -83,6 +89,13 @@ internal fun addHardwareView(
   addSinglePropertyLine(PARAMETER_HARDWARE_CUTOUT)
 
   addSinglePropertyLine(PARAMETER_HARDWARE_NAVIGATION)
+
+  addSinglePropertyLine(PARAMETER_MEDIA_QUERY_WINDOW_POSTURE)
+  addSinglePropertyLine(PARAMETER_MEDIA_QUERY_POINTER)
+  addSinglePropertyLine(PARAMETER_MEDIA_QUERY_KEYBOARD)
+  addSinglePropertyLine(PARAMETER_MEDIA_QUERY_DISTANCE)
+  addSinglePropertyLine(PARAMETER_MEDIA_QUERY_CAMERA)
+  addSinglePropertyLine(PARAMETER_MEDIA_QUERY_MIC)
 
   inspector.addComponent(panelBuilder.build()).addValueChangedListener {
     // Refresh the added editors on value changes

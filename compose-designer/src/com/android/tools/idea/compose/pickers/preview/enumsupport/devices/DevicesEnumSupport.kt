@@ -24,10 +24,14 @@ import com.android.tools.idea.compose.pickers.preview.enumsupport.Device
 import com.android.tools.preview.config.Cutout
 import com.android.tools.preview.config.Densities
 import com.android.tools.preview.config.DimUnit
+import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
+import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview
+import com.android.tools.preview.config.ViewingDistance
+import com.android.tools.preview.config.WindowPosture
 import com.android.tools.property.panel.api.EnumSupport
 import com.android.tools.property.panel.api.EnumValue
 import com.intellij.util.text.nullize
@@ -115,5 +119,41 @@ internal object NavigationEnumSupport : EnumSupport {
   override fun createValue(stringValue: String): EnumValue {
     val navigation = enumValueOfOrDefault(stringValue, Navigation.gesture)
     return EnumValue.item(navigation.name)
+  }
+}
+
+internal object WindowPostureEnumSupport : EnumSupport {
+  override val values: List<EnumValue> = WindowPosture.entries.map { posture -> EnumValue.item(posture.name) }
+
+  override fun createValue(stringValue: String): EnumValue {
+    val posture = enumValueOfOrDefault(stringValue, WindowPosture.flat)
+    return EnumValue.item(posture.name)
+  }
+}
+
+internal object PointerPrecisionEnumSupport : EnumSupport {
+  override val values: List<EnumValue> = PointerPrecision.entries.map { precision -> EnumValue.item(precision.name) }
+
+  override fun createValue(stringValue: String): EnumValue {
+    val precision = enumValueOfOrDefault(stringValue, PointerPrecision.coarse)
+    return EnumValue.item(precision.name)
+  }
+}
+
+internal object KeyboardKindEnumSupport : EnumSupport {
+  override val values: List<EnumValue> = KeyboardKind.entries.map { kind -> EnumValue.item(kind.name) }
+
+  override fun createValue(stringValue: String): EnumValue {
+    val kind = enumValueOfOrDefault(stringValue, KeyboardKind.virtual)
+    return EnumValue.item(kind.name)
+  }
+}
+
+internal object ViewingDistanceEnumSupport : EnumSupport {
+  override val values: List<EnumValue> = ViewingDistance.entries.map { distance -> EnumValue.item(distance.name) }
+
+  override fun createValue(stringValue: String): EnumValue {
+    val distance = enumValueOfOrDefault(stringValue, ViewingDistance.near)
+    return EnumValue.item(distance.name)
   }
 }

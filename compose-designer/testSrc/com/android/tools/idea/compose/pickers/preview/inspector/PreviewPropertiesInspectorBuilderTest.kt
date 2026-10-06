@@ -33,6 +33,12 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
 import com.android.tools.preview.config.PARAMETER_LOCALE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_CAMERA
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_KEYBOARD
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_MIC
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_POINTER
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_WINDOW_POSTURE
 import com.android.tools.preview.config.PARAMETER_NAME
 import com.android.tools.preview.config.PARAMETER_SHOW_BACKGROUND
 import com.android.tools.preview.config.PARAMETER_SHOW_SYSTEM_UI
@@ -143,6 +149,12 @@ class PreviewPropertiesInspectorBuilderTest {
         put(TestPsiPropertyItem(PARAMETER_HARDWARE_CHIN_SIZE, "14dp"))
         put(TestPsiPropertyItem(PARAMETER_HARDWARE_CUTOUT, "none"))
         put(TestPsiPropertyItem(PARAMETER_HARDWARE_NAVIGATION, "gesture"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_WINDOW_POSTURE, "tabletop"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_POINTER, "fine"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_KEYBOARD, "physical"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_DISTANCE, "far"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_CAMERA, "false"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_MIC, "false"))
         // Display Region
         put(TestPsiPropertyItem(PARAMETER_API_LEVEL, "16"))
         put(TestPsiPropertyItem(PARAMETER_LOCALE, "Default (en-US)"))
@@ -204,8 +216,8 @@ class PreviewPropertiesInspectorBuilderTest {
 
   /** Covers [HardwarePanelHelper] test cases. */
   private fun testHardwarePanelComponents(hardwarePanelComponents: Array<out Component>) {
-    // Panel has exactly 16 components
-    assertEquals(16, hardwarePanelComponents.size)
+    // Panel has exactly 28 components
+    assertEquals(28, hardwarePanelComponents.size)
 
     // Check if all the items are correctly added in the Hardware region.
     assertEquals("Device", (hardwarePanelComponents[0] as JLabel).text)
@@ -246,6 +258,32 @@ class PreviewPropertiesInspectorBuilderTest {
     // Check navigation line.
     assertEquals("Navigation", (hardwarePanelComponents[14] as JLabel).text)
     assertEquals("gesture", hardwarePanelComponents[15].getDisplayNameFromDropDown())
+
+    // Check window posture line.
+    assertEquals("WindowPosture", (hardwarePanelComponents[16] as JLabel).text)
+    assertEquals("tabletop", hardwarePanelComponents[17].getDisplayNameFromDropDown())
+
+    // Check pointer precision line.
+    assertEquals("PointerPrecision", (hardwarePanelComponents[18] as JLabel).text)
+    assertEquals("fine", hardwarePanelComponents[19].getDisplayNameFromDropDown())
+
+    // Check keyboard kind line.
+    assertEquals("KeyboardKind", (hardwarePanelComponents[20] as JLabel).text)
+    assertEquals("physical", hardwarePanelComponents[21].getDisplayNameFromDropDown())
+
+    // Check viewing distance line.
+    assertEquals("ViewingDistance", (hardwarePanelComponents[22] as JLabel).text)
+    assertEquals("far", hardwarePanelComponents[23].getDisplayNameFromDropDown())
+
+    // Check has camera line.
+    assertEquals("HasCamera", (hardwarePanelComponents[24] as JLabel).text)
+    val hasCameraCheckTextField = (hardwarePanelComponents[25] as PropertyCheckBox).components[1] as PropertyTextField
+    assertEquals("false", hasCameraCheckTextField.text)
+
+    // Check has microphone line.
+    assertEquals("HasMicrophone", (hardwarePanelComponents[26] as JLabel).text)
+    val hasMicrophoneCheckTextField = (hardwarePanelComponents[27] as PropertyCheckBox).components[1] as PropertyTextField
+    assertEquals("false", hasMicrophoneCheckTextField.text)
   }
 
   /**

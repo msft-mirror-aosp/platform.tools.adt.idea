@@ -31,6 +31,7 @@ import com.android.tools.idea.preview.util.AvailableDevicesKey
 import com.android.tools.preview.config.Cutout
 import com.android.tools.preview.config.DeviceConfig
 import com.android.tools.preview.config.DimUnit
+import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.MutableDeviceConfig
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
@@ -44,6 +45,13 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_IS_ROUND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_CAMERA
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_KEYBOARD
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_MIC
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_POINTER
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_WINDOW_POSTURE
+import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_CUTOUT
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_DPI
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_HEIGHT_DP
@@ -53,6 +61,8 @@ import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_UNIT
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_WIDTH_DP
 import com.android.tools.preview.config.Preview.DeviceSpec.MAX_CHIN_SIZE
 import com.android.tools.preview.config.Shape
+import com.android.tools.preview.config.ViewingDistance
+import com.android.tools.preview.config.WindowPosture
 import com.android.tools.preview.config.findByIdOrName
 import com.android.tools.preview.config.getDefaultPreviewDevice
 import com.android.tools.preview.config.toDeviceConfig
@@ -205,6 +215,74 @@ internal class DeviceParameterPropertyItem(
         newNavigation?.let {
           config.navigation = newNavigation
           newNavigation.trackableValue
+        } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+      },
+      DevicePropertyItem(
+        name = PARAMETER_MEDIA_QUERY_WINDOW_POSTURE,
+        defaultValue = defaultDeviceValues.windowPosture.name,
+        getter = { it.windowPosture.name },
+      ) { config, newValue ->
+        val newPosture = enumValueOfOrNull<WindowPosture>(newValue)
+        newPosture?.let {
+          config.windowPosture = newPosture
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+      },
+      DevicePropertyItem(
+        name = PARAMETER_MEDIA_QUERY_POINTER,
+        defaultValue = defaultDeviceValues.pointerPrecision.name,
+        getter = { it.pointerPrecision.name },
+      ) { config, newValue ->
+        val newPointer = enumValueOfOrNull<PointerPrecision>(newValue)
+        newPointer?.let {
+          config.pointerPrecision = newPointer
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+      },
+      DevicePropertyItem(
+        name = PARAMETER_MEDIA_QUERY_KEYBOARD,
+        defaultValue = defaultDeviceValues.keyboardKind.name,
+        getter = { it.keyboardKind.name },
+      ) { config, newValue ->
+        val newKeyboard = enumValueOfOrNull<KeyboardKind>(newValue)
+        newKeyboard?.let {
+          config.keyboardKind = newKeyboard
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+      },
+      DevicePropertyItem(
+        name = PARAMETER_MEDIA_QUERY_CAMERA,
+        defaultValue = defaultDeviceValues.hasCamera.toString(),
+        inputValidation = BooleanValidator,
+        getter = { it.hasCamera.toString() },
+      ) { config, newValue ->
+        val newHasCamera = newValue.toBooleanStrictOrNull()
+        newHasCamera?.let {
+          config.hasCamera = it
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+      },
+      DevicePropertyItem(
+        name = PARAMETER_MEDIA_QUERY_MIC,
+        defaultValue = defaultDeviceValues.hasMicrophone.toString(),
+        inputValidation = BooleanValidator,
+        getter = { it.hasMicrophone.toString() },
+      ) { config, newValue ->
+        val newHasMic = newValue.toBooleanStrictOrNull()
+        newHasMic?.let {
+          config.hasMicrophone = it
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+      },
+      DevicePropertyItem(
+        name = PARAMETER_MEDIA_QUERY_DISTANCE,
+        defaultValue = defaultDeviceValues.viewingDistance.name,
+        getter = { it.viewingDistance.name },
+      ) { config, newValue ->
+        val newDistance = enumValueOfOrNull<ViewingDistance>(newValue)
+        newDistance?.let {
+          config.viewingDistance = newDistance
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
         } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
       },
     )

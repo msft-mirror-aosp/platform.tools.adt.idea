@@ -19,14 +19,18 @@ import com.android.tools.idea.compose.pickers.preview.enumsupport.Device
 import com.android.tools.preview.config.Cutout
 import com.android.tools.preview.config.DeviceConfig
 import com.android.tools.preview.config.DimUnit
+import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.MutableDeviceConfig
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
+import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.REFERENCE_DESKTOP_SPEC
 import com.android.tools.preview.config.REFERENCE_FOLDABLE_SPEC
 import com.android.tools.preview.config.REFERENCE_PHONE_SPEC
 import com.android.tools.preview.config.REFERENCE_TABLET_SPEC
 import com.android.tools.preview.config.Shape
+import com.android.tools.preview.config.ViewingDistance
+import com.android.tools.preview.config.WindowPosture
 import com.android.tools.preview.config.toMutableConfig
 import kotlin.test.assertNotNull
 import org.junit.Assert.assertEquals
@@ -250,6 +254,23 @@ internal class DeviceConfigTest {
       )
     assertEquals("spec:width=100dp,height=200dp", config.deviceSpec())
 
+    // MediaQuery parameters are reflected in deviceSpec if not default
+    config =
+      DeviceConfig(
+        width = 100f,
+        height = 200f,
+        windowPosture = WindowPosture.tabletop,
+        pointerPrecision = PointerPrecision.fine,
+        keyboardKind = KeyboardKind.physical,
+        hasCamera = false,
+        hasMicrophone = false,
+        viewingDistance = ViewingDistance.far,
+      )
+    assertEquals(
+      "spec:width=100dp,height=200dp,windowPosture=tabletop,pointerPrecision=fine,keyboardKind=physical,hasCamera=false,hasMicrophone=false,viewingDistance=far",
+      config.deviceSpec(),
+    )
+
     // For DeviceSpec Language, one decimal for floating point supported
     assertEquals("spec:width=123.5dp,height=567.9dp", DeviceConfig(width = 123.45f, height = 567.89f).deviceSpec())
   }
@@ -281,6 +302,10 @@ internal class DeviceConfigTest {
         orientation = Orientation.landscape,
       )
     assertEquals("spec:parent=${Device.NEXUS_7.display},orientation=landscape,navigation=buttons", config.deviceSpec())
+
+    // If parentDevice is defined with non-default MediaQuery parameters, show them
+    config = DeviceConfig(deviceId = null, parentDeviceId = Device.NEXUS_7.display, windowPosture = WindowPosture.tabletop)
+    assertEquals("spec:parent=${Device.NEXUS_7.display},windowPosture=tabletop", config.deviceSpec())
   }
 
   @Test
