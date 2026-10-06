@@ -145,7 +145,8 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
                 ?.let { helper.addRepositoryFor(version, it)?.let { file -> changedFiles.storeOriginalFileContent(file) } }
         }
         if (file.project.isAndroidx()) {
-            val ktxCoreVersion = IdeGoogleMavenRepository.findVersion(ANDROIDX_CORE_KTX.mavenGroupId, ANDROIDX_CORE_KTX.mavenArtifactId)
+            val ktxCoreVersion =
+                IdeGoogleMavenRepository.getInstance().findVersion(ANDROIDX_CORE_KTX.mavenGroupId, ANDROIDX_CORE_KTX.mavenArtifactId)
             val richVersion = ktxCoreVersion?.let { RichVersion.require(it) } ?: RichVersion.parse("+")
             (addDependency(projectBuildModel, moduleBuildModel, ANDROIDX_CORE_KTX, richVersion) +
                     addKtxDependenciesFromMap(projectBuildModel, module, moduleBuildModel, androidxKtxLibraryMap))

@@ -23,6 +23,8 @@ import com.android.tools.idea.ui.GuiTestingService
 import com.google.common.collect.Maps
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import java.io.InputStream
 import java.nio.file.Path
@@ -33,7 +35,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.future.asCompletableFuture
 
-object IdeGoogleMavenRepository : IdeGoogleMavenRepositoryBase(getCacheDir())
+@Service(Service.Level.APP)
+class IdeGoogleMavenRepository @JvmOverloads constructor(cacheDir: Path? = getCacheDir()) : IdeGoogleMavenRepositoryBase(cacheDir) {
+
+  companion object {
+    @JvmStatic fun getInstance(): IdeGoogleMavenRepository = ApplicationManager.getApplication().service<IdeGoogleMavenRepository>()
+  }
+}
 
 /** A [GoogleMavenRepository] that uses IDE mechanisms (including proxy config) to download data. */
 abstract class IdeGoogleMavenRepositoryBase(cacheDir: Path?) : GoogleMavenRepository(cacheDir) {

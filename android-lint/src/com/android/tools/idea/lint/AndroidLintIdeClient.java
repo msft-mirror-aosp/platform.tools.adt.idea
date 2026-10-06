@@ -283,7 +283,7 @@ public class AndroidLintIdeClient extends LintIdeClient {
   public File getCacheDir(@Nullable String name, boolean create) {
     if (MAVEN_GOOGLE_CACHE_DIR_KEY.equals(name)) {
       // Share network cache with existing implementation
-      Path cacheDir = IdeGoogleMavenRepository.INSTANCE.getCacheDir();
+      Path cacheDir = IdeGoogleMavenRepository.getInstance().getCacheDir();
       return cacheDir == null ? null : cacheDir.toFile();
     }
 

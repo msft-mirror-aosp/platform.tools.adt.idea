@@ -32,7 +32,7 @@ class AssistantInvokerImpl : AssistantInvoker {
     info.pluginVersion?.let { currentAgpVersion ->
       val latestKnown = AgpVersions.latestKnown
       executeOnPooledThread {
-        val published = IdeGoogleMavenRepository.getAgpVersions()
+        val published = IdeGoogleMavenRepository.getInstance().getAgpVersions()
         if (shouldForcePluginUpgrade(project, currentAgpVersion, latestKnown, published)) {
           performForcedPluginUpgrade(project, currentAgpVersion)
         } else {

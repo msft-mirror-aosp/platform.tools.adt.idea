@@ -21,10 +21,16 @@ import com.google.wireless.android.sdk.stats.PSDEvent.PSDRepositoryUsage.PSDRepo
 import com.intellij.util.text.nullize
 import java.util.concurrent.CompletableFuture
 
-object GoogleRepository : GoogleRepositoryBase(IdeGoogleMavenRepository)
+object GoogleRepository : GoogleRepositoryBase({ IdeGoogleMavenRepository.getInstance() })
 
-open class GoogleRepositoryBase(val repository: IdeGoogleMavenRepositoryBase) :
+open class GoogleRepositoryBase(private val repositoryProvider: () -> IdeGoogleMavenRepositoryBase) :
   ArtifactRepository(PROJECT_STRUCTURE_DIALOG_REPOSITORY_GOOGLE) {
+
+  constructor(repository: IdeGoogleMavenRepositoryBase) : this({ repository })
+
+  val repository: IdeGoogleMavenRepositoryBase
+    get() = repositoryProvider()
+
   override val name: String = "Google"
   override val isRemote: Boolean = true
 
