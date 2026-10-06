@@ -205,6 +205,7 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/adt/idea/observable:intellij.android.observable.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/vendor/google/ml/aiplugin/android/login:aiplugin.android.login",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],

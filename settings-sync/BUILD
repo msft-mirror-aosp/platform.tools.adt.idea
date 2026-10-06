@@ -59,6 +59,7 @@ iml_module(
         "@intellij//:test-framework",
         "//tools/vendor/google/login:google-login.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/vendor/google/login/onboarding:login.onboarding.tests",
     ],
     test_friends = ["//tools/adt/idea/settings-sync:intellij.android.settings-sync"],
     test_srcs = ["testSrc"],
