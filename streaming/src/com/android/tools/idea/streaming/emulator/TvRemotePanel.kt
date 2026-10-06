@@ -21,13 +21,16 @@ import com.android.emulator.control.KeyboardEvent.KeyEventType
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.createCoroutineScope
+import com.intellij.ide.setToolTipText
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.IdeBorderFactory
 import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.IconUtil
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
@@ -198,10 +201,7 @@ internal class TvRemotePanel(
   }
 
   private fun addCommandButton(tooltip: String, refButtonShape: Shape, icon: Icon, command: String) {
-    val button =
-      RemoteButton(tooltip, refButtonShape, icon).apply {
-        addActionListener { executeShellCommand(command) }
-      }
+    val button = RemoteButton(tooltip, refButtonShape, icon).apply { addActionListener { executeShellCommand(command) } }
     buttons.add(button)
     add(button)
   }
@@ -220,7 +220,7 @@ internal class TvRemotePanel(
   }
 
   override fun getPreferredSize(): Dimension {
-    val scale = JBUI.scale(1f) * DEFAULT_SCALE
+    val scale = JBUIScale.scale(DEFAULT_SCALE).toDouble()
     val insets = insets
     val width = (REF_WIDTH * scale).roundToInt() + insets.left + insets.right
     val height = (REF_HEIGHT * scale).roundToInt() + insets.top + insets.bottom
@@ -233,7 +233,7 @@ internal class TvRemotePanel(
     val availHeight = (height - insets.top - insets.bottom).coerceAtLeast(0)
     val centerX = insets.left + availWidth / 2.0
     val centerY = insets.top + availHeight / 2.0
-    val maxScale = JBUI.scale(1f) * DEFAULT_SCALE
+    val maxScale = JBUIScale.scale(DEFAULT_SCALE).toDouble()
     val scale = minOf(maxScale, availWidth / REF_WIDTH, availHeight / REF_HEIGHT).coerceAtLeast(0.1)
     for (button in buttons) {
       button.updateLayout(centerX, centerY, scale, maxScale)
@@ -256,7 +256,7 @@ internal class TvRemotePanel(
 
     init {
       name = tooltip
-      toolTipText = tooltip
+      setToolTipText(HtmlChunk.text(tooltip))
       isOpaque = false
       isContentAreaFilled = false
       isBorderPainted = false
@@ -301,7 +301,7 @@ internal class TvRemotePanel(
 
 private const val REF_WIDTH = 208.0
 private const val REF_HEIGHT = 352.0
-private const val DEFAULT_SCALE = 0.5
+private const val DEFAULT_SCALE = 0.5f
 private const val SMALL_BUTTON_RADIUS = 24.0
 private const val SELECT_BUTTON_RADIUS = 40.0
 private const val DPAD_INNER_RADIUS = 48.0
