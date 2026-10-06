@@ -26,6 +26,7 @@ import com.android.tools.idea.device.explorer.mocks.MockDeviceExplorerTabControl
 import com.android.tools.idea.device.explorer.mocks.MockDeviceExplorerView
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import java.util.concurrent.TimeUnit
@@ -52,9 +53,11 @@ class DeviceExplorerControllerTest {
 
   @Before
   fun setUp() {
-    model = DeviceExplorerModel(deviceProvisionerRule.deviceProvisioner)
-    view = MockDeviceExplorerView(project, model)
-    tabController = MockDeviceExplorerTabController()
+    ApplicationManager.getApplication().invokeAndWait {
+      model = DeviceExplorerModel(deviceProvisionerRule.deviceProvisioner)
+      view = MockDeviceExplorerView(project, model)
+      tabController = MockDeviceExplorerTabController()
+    }
   }
 
   @After
