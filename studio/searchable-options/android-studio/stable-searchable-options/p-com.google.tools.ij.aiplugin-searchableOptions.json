@@ -75,7 +75,19 @@
       "hit": "AI next edit prediction"
     },
     {
+      "hit": "Add custom instructions to review prompt"
+    },
+    {
+      "hit": "Automatically collapse diff chunks below:"
+    },
+    {
+      "hit": "Change Review"
+    },
+    {
       "hit": "Configure colors..."
+    },
+    {
+      "hit": "Don't Collapse"
     },
     {
       "hit": "Editor"
@@ -87,13 +99,25 @@
       "hit": "Enable AI smart rename suggestions"
     },
     {
+      "hit": "Major"
+    },
+    {
+      "hit": "Minor"
+    },
+    {
       "hit": "Model:"
+    },
+    {
+      "hit": "Moderate"
     },
     {
       "hit": "Next Edit Prediction"
     },
     {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Show reviewed diff chunks in navigation"
     },
     {
       "hit": "Smart Rename"
