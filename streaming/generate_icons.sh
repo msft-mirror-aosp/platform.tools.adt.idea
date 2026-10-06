@@ -1,6 +1,14 @@
 #!/bin/bash -ex
 
 readonly PROG_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly ICONS_DIR="${PROG_DIR}/resources/icons"
+readonly KT_FILE="${PROG_DIR}/src/com/android/tools/idea/streaming/StagingIcons.kt"
+
+if [ ! -d "$ICONS_DIR" ] || [ -z "$(find "$ICONS_DIR" -type f \( -name '*.svg' -o -name '*.png' \) 2>/dev/null)" ]; then
+  rm -f "$KT_FILE"
+  exit 0
+fi
+
 readonly IDEA_DIR="$(cd "${PROG_DIR}/../../../idea" && pwd)"
 readonly ADT_DIR="$(cd "${PROG_DIR}/.." && pwd)"
 
@@ -21,7 +29,6 @@ unlink "${IDEA_DIR}/android" || true
 
 # Extract icon definitions from the generated Java file and rewrite StagingIcons.kt
 readonly JAVA_FILE="${PROG_DIR}/src/com/intellij/android/streaming/icons/AndroidStreamingIcons.java"
-readonly KT_FILE="${PROG_DIR}/src/com/android/tools/idea/streaming/StagingIcons.kt"
 
 cat << 'EOF' > "$KT_FILE"
 /*
@@ -47,6 +54,7 @@ import javax.swing.Icon
 /** NOTE THIS FILE IS AUTO-GENERATED. DO NOT EDIT IT BY HAND, run "tools/adt/idea/streaming/generate_icons.sh" to update. */
 object StagingIcons {
   private fun load(path: String, cacheKey: Int, flags: Int): Icon {
+    @Suppress("UnstableApiUsage")
     return IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
   }
 EOF
