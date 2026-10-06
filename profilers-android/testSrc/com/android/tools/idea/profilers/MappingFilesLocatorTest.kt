@@ -49,37 +49,21 @@ class MappingFilesLocatorTest {
   }
 
   @Test
-  fun getMappingsHandlesNullApplicationId() {
-    val map = temporaryFolder.newFile("global_mapping.txt")
-
-    val dynamicSource = DynamicR8MappingSource().add(text = map.toPath(), applicationId = null)
-
-    val locator = MappingFilesLocator(dynamicSource)
-    val mappings = locator.getMappings()
-
-    assertThat(mappings).hasSize(1)
-    assertThat(mappings[""]).isEqualTo(map.absolutePath)
-  }
-
-  @Test
-  fun getMappingsPrioritizesSelectedVariantWhenMultipleExistForSamePackage() {
-    val releaseMap = temporaryFolder.newFile("release_mapping.txt")
-    val customMap = temporaryFolder.newFile("custom_mapping.txt")
+  fun getMappingsIgnoresNullOrEmptyApplicationId() {
+    val map1 = temporaryFolder.newFile("global_mapping.txt")
+    val map2 = temporaryFolder.newFile("empty_id_mapping.txt")
 
     val dynamicSource =
-      DynamicR8MappingSource()
-        .add(text = releaseMap.toPath(), applicationId = "com.example.app", isSelected = false)
-        .add(text = customMap.toPath(), applicationId = "com.example.app", isSelected = true)
+      DynamicR8MappingSource().add(text = map1.toPath(), applicationId = null).add(text = map2.toPath(), applicationId = "")
 
     val locator = MappingFilesLocator(dynamicSource)
     val mappings = locator.getMappings()
 
-    assertThat(mappings).hasSize(1)
-    assertThat(mappings["com.example.app"]).isEqualTo(customMap.absolutePath)
+    assertThat(mappings).isEmpty()
   }
 
   @Test
-  fun getMappingsPicksMostRecentlyModifiedWhenNoneIsSelected() {
+  fun getMappingsPicksMostRecentlyModifiedForSamePackage() {
     val olderMap = temporaryFolder.newFile("older_mapping.txt")
     val newerMap = temporaryFolder.newFile("newer_mapping.txt")
 
@@ -88,31 +72,14 @@ class MappingFilesLocatorTest {
 
     val dynamicSource =
       DynamicR8MappingSource()
-        .add(text = olderMap.toPath(), applicationId = "com.example.app", isSelected = false)
-        .add(text = newerMap.toPath(), applicationId = "com.example.app", isSelected = false)
+        .add(text = olderMap.toPath(), applicationId = "com.example.app")
+        .add(text = newerMap.toPath(), applicationId = "com.example.app")
 
     val locator = MappingFilesLocator(dynamicSource)
     val mappings = locator.getMappings()
 
     assertThat(mappings).hasSize(1)
     assertThat(mappings["com.example.app"]).isEqualTo(newerMap.absolutePath)
-  }
-
-  @Test
-  fun getMappingsWhenSelectedVariantFileDoesNotExistFallsBackToExistingVariant() {
-    val releaseMap = temporaryFolder.newFile("release_mapping.txt")
-    val nonExistentDebugMap = temporaryFolder.root.toPath().resolve("debug_mapping.txt")
-
-    val dynamicSource =
-      DynamicR8MappingSource()
-        .add(text = nonExistentDebugMap, applicationId = "com.example.app", isSelected = true)
-        .add(text = releaseMap.toPath(), applicationId = "com.example.app", isSelected = false)
-
-    val locator = MappingFilesLocator(dynamicSource)
-    val mappings = locator.getMappings()
-
-    assertThat(mappings).hasSize(1)
-    assertThat(mappings["com.example.app"]).isEqualTo(releaseMap.absolutePath)
   }
 
   @Test
@@ -131,9 +98,8 @@ class MappingFilesLocatorTest {
     fun add(
       text: Path,
       applicationId: String? = null,
-      isSelected: Boolean = false,
     ): DynamicR8MappingSource {
-      mappings.add(ProfilerR8MappingToken.R8Mapping(text, applicationId, isSelected))
+      mappings.add(ProfilerR8MappingToken.R8Mapping(text, applicationId))
       return this
     }
 

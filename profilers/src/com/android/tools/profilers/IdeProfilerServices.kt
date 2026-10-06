@@ -254,8 +254,11 @@ interface IdeProfilerServices {
    */
   fun fetchLeakInsight(rawTrace: String): Flow<String> = emptyFlow()
 
-  /** Maps package names (or empty string) to Proguard/R8 mapping file paths. */
-  fun getProguardMappings(): Map<String, String> = emptyMap()
+  /**
+   * Returns the Proguard/R8 mapping file path for [packageName] on [deviceSerial] if the app was deployed by Android Studio with a
+   * minify-enabled build variant, or null otherwise (including when not deployed by Studio or deployed without minification).
+   */
+  fun getProguardMappingForApp(deviceSerial: String, packageName: String): String? = null
 
   /** Shows the onboarding dialog for AI / Gemini features. */
   fun showAiOnboarding() {}

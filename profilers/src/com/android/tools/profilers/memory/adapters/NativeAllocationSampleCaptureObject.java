@@ -89,6 +89,11 @@ public final class NativeAllocationSampleCaptureObject implements CaptureObject 
     return "Recorded Native Allocations";
   }
 
+  @NotNull
+  public String getAppName() {
+    return myInfo.getConfiguration().getAppName();
+  }
+
   @Override
   public boolean isExportable() {
     return true;

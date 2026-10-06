@@ -27,7 +27,7 @@ import com.intellij.util.concurrency.annotations.RequiresReadLock
 class ProfilerR8MappingGradleToken : ProfilerR8MappingToken<GradleProjectSystem>, GradleToken {
   @RequiresReadLock
   override fun getR8Mappings(projectSystem: GradleProjectSystem): List<R8Mapping> =
-    projectSystem.getAppModels().flatMap { it.getR8Mappings() }.distinct().toList()
+    projectSystem.getAppModels().mapNotNull { it.getSelectedVariantR8Mapping() }.distinct().toList()
 
   /** Returns all Android application modules in the project. */
   @RequiresReadLock
@@ -40,19 +40,20 @@ class ProfilerR8MappingGradleToken : ProfilerR8MappingToken<GradleProjectSystem>
       .filter { it.androidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_APP }
       .filter { it.features.isBuildOutputFileSupported }
 
-  /** Finds mapping files (mapping.txt) for each build variant of this module, marking the currently selected variant. */
-  private fun GradleAndroidModel.getR8Mappings(): List<R8Mapping> {
-    val selectedVariant = selectedVariantName
-    return androidProject.coreVariants.mapNotNull { variant ->
-      val textFile = variant.mainArtifact.mappingR8TextFile ?: return@mapNotNull null
-      R8Mapping(
-        text = textFile.toPath(),
-        applicationId =
-          variant.mainArtifact.applicationId?.takeUnless {
-            it.isEmpty() || it == AndroidModel.UNINITIALIZED_APPLICATION_ID
-          },
-        isSelected = (variant.name == selectedVariant),
-      )
-    }
+  /**
+   * Returns the mapping file (mapping.txt) for the currently selected build variant of this module, or null if the variant has no R8
+   * mapping configured.
+   */
+  private fun GradleAndroidModel.getSelectedVariantR8Mapping(): R8Mapping? {
+    val mainArtifact = selectedVariant.mainArtifact
+    val textFile = mainArtifact.mappingR8TextFile ?: return null
+    val appId =
+      mainArtifact.applicationId?.takeUnless {
+        it.isEmpty() || it == AndroidModel.UNINITIALIZED_APPLICATION_ID
+      } ?: return null
+    return R8Mapping(
+      text = textFile.toPath(),
+      applicationId = appId,
+    )
   }
 }

@@ -75,6 +75,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public static final String FAKE_SYMBOL_DIR = "/fake/sym/dir/";
 
+  public static final String FAKE_BUNDLED_TRACE = "bundled trace";
+
   public static final ProfilingConfiguration ART_SAMPLED_CONFIG = new ArtSampledConfigurationLegacy(FAKE_ART_SAMPLED_NAME);
   public static final ProfilingConfiguration ART_INSTRUMENTED_CONFIG = new ArtInstrumentedConfigurationLegacy(FAKE_ART_INSTRUMENTED_NAME);
   public static final ProfilingConfiguration SIMPLEPERF_CONFIG = new SimpleperfConfiguration(FAKE_SIMPLEPERF_NAME);
@@ -581,12 +583,6 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myNativeSymbolsDirectories = dirs;
   }
 
-  @NotNull
-  @Override
-  public Map<String, String> getProguardMappings() {
-    return myProguardMappings;
-  }
-
   public void setProguardMappings(@NotNull Map<String, String> mappings) {
     myProguardMappings = mappings;
   }
@@ -726,9 +722,43 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   private boolean myTraceSymbolizedAndDeobfuscated = false;
   private boolean mySymbolizeAndDeobfuscateFails = false;
+  private boolean myIsAppDeployedByStudio = true;
+  @Nullable private String myLastRequestedProguardMappingDeviceSerial = null;
+  @Nullable private String myLastRequestedProguardMappingPackageName = null;
+  @NotNull private Map<String, String> myLastBundledProguardMaps = Collections.emptyMap();
 
   public void setSymbolizeAndDeobfuscateFails(boolean fails) {
     mySymbolizeAndDeobfuscateFails = fails;
+  }
+
+  public void setAppDeployedByStudio(boolean isAppDeployedByStudio) {
+    myIsAppDeployedByStudio = isAppDeployedByStudio;
+  }
+
+  @Nullable
+  public String getLastRequestedProguardMappingDeviceSerial() {
+    return myLastRequestedProguardMappingDeviceSerial;
+  }
+
+  @Nullable
+  public String getLastRequestedProguardMappingPackageName() {
+    return myLastRequestedProguardMappingPackageName;
+  }
+
+  @Nullable
+  @Override
+  public String getProguardMappingForApp(@NotNull String deviceSerial, @NotNull String packageName) {
+    myLastRequestedProguardMappingDeviceSerial = deviceSerial;
+    myLastRequestedProguardMappingPackageName = packageName;
+    if (!myIsAppDeployedByStudio || deviceSerial.isEmpty()) {
+      return null;
+    }
+    return myProguardMappings.get(packageName);
+  }
+
+  @NotNull
+  public Map<String, String> getLastBundledProguardMaps() {
+    return myLastBundledProguardMaps;
   }
 
   @Nullable
@@ -737,12 +767,13 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
                                           @NotNull List<String> symbolDirs,
                                           @NotNull Map<String, String> proguardMaps) {
     myTraceSymbolizedAndDeobfuscated = true;
+    myLastBundledProguardMaps = proguardMaps;
     if (mySymbolizeAndDeobfuscateFails) {
       return null;
     }
     try {
       File bundledFile = FileUtil.createTempFile("bundled", ".heapprofd", true);
-      FileUtil.writeToFile(bundledFile, "bundled trace".getBytes(StandardCharsets.UTF_8));
+      FileUtil.writeToFile(bundledFile, FAKE_BUNDLED_TRACE.getBytes(StandardCharsets.UTF_8));
       return bundledFile;
     }
     catch (IOException e) {

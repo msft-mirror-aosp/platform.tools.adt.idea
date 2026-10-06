@@ -59,6 +59,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -707,6 +708,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         if (!getCaptureSelection().selectCaptureEntry(durationData.getCaptureEntry())) {
           return;
         }
+        String deviceSerial = getSelectedDeviceSerial();
         profilers.getIdeServices().getPoolExecutor().execute(() -> {
           CaptureObject capture = durationData.getCaptureEntry().getCaptureObject();
           String extension = capture.getExportableExtension() != null ? capture.getExportableExtension() : "alloc";
@@ -723,7 +725,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
               File processedFile = originalFile;
               if (capture instanceof NativeAllocationSampleCaptureObject &&
                   profilers.getIdeServices().getFeatureConfig().isDeobfuscationForNativeAllocationsEnabled()) {
-                processedFile = deobfuscateNativeAllocationTrace(originalFile);
+                processedFile = deobfuscateNativeAllocationTrace(
+                  originalFile, ((NativeAllocationSampleCaptureObject)capture).getAppName(), deviceSerial);
               }
               file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, traceFileName);
               if (file == null) {
@@ -772,14 +775,42 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   }
 
   @NotNull
-  private File deobfuscateNativeAllocationTrace(@NotNull File originalFile) {
+  private File deobfuscateNativeAllocationTrace(@NotNull File originalFile,
+                                                @NotNull String appName,
+                                                @NotNull String deviceSerial) {
     List<String> symbolDirs = getStudioProfilers().getIdeServices().getNativeSymbolsDirectories();
-    Map<String, String> proguardMaps = getStudioProfilers().getIdeServices().getProguardMappings();
+    Map<String, String> proguardMaps = resolveProguardMapForApp(appName, deviceSerial);
     if (symbolDirs.isEmpty() && proguardMaps.isEmpty()) {
       return originalFile;
     }
     File bundledFile = getStudioProfilers().getIdeServices().symbolizeAndDeobfuscateTrace(originalFile, symbolDirs, proguardMaps);
     return bundledFile != null ? bundledFile : originalFile;
+  }
+
+  /**
+   * Resolves the Proguard/R8 mapping file for the given process name. The prefix before ':' is
+   * used as the package name, so lookups for custom (global) process names or apps not deployed by
+   * Android Studio with minification enabled will miss and return an empty map.
+   */
+  @NotNull
+  private Map<String, String> resolveProguardMapForApp(@NotNull String appName, @NotNull String deviceSerial) {
+    String packageName = appName.split(":", 2)[0];
+    if (!packageName.isEmpty() && !deviceSerial.isEmpty()) {
+      String mappingPath =
+        getStudioProfilers().getIdeServices().getProguardMappingForApp(deviceSerial, packageName);
+      if (mappingPath != null) {
+        return Collections.singletonMap(packageName, mappingPath);
+      }
+      getLogger().info(
+        "Skipping R8 deobfuscation for " + packageName + " on device '" + deviceSerial + "': no Studio-deployed obfuscated mapping found.");
+    }
+    return Collections.emptyMap();
+  }
+
+  @NotNull
+  private String getSelectedDeviceSerial() {
+    Common.Stream stream = getStudioProfilers().getStream(getStudioProfilers().getSession().getStreamId());
+    return stream.getType() == Common.Stream.Type.DEVICE ? stream.getDevice().getSerial() : "";
   }
 
   private void updateAllocationTrackingStatus() {
