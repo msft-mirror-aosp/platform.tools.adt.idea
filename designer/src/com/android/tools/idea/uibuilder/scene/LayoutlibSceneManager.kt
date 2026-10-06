@@ -47,13 +47,14 @@ import com.android.tools.rendering.RenderResult
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadActionBlocking
-import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.ui.UIUtil
 import java.awt.event.KeyEvent
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
@@ -81,7 +82,13 @@ open class LayoutlibSceneManager(
   listenToResourceChanges: Boolean = true,
   notificationExecutorServiceProvider: (Disposable) -> ExecutorService = ::defaultNotificationExecutorService,
 ) :
-  SceneManager(model, designSurface, sceneComponentProvider, listenToResourceChanges, notificationExecutorServiceProvider),
+  SceneManager(
+    model,
+    designSurface,
+    sceneComponentProvider,
+    listenToResourceChanges,
+    notificationExecutorServiceProvider,
+  ),
   InteractiveSceneManager {
   private var areListenersRegistered = false
 
@@ -103,7 +110,13 @@ open class LayoutlibSceneManager(
   // TODO(b/335424569): add a better explanation after moving more responsibilities to
   // LayoutlibSceneRenderer
   private val layoutlibSceneRenderer: LayoutlibSceneRenderer =
-    LayoutlibSceneRenderer(this, renderTaskDisposerExecutor, model, designSurface as NlDesignSurface, layoutScannerConfig)
+    LayoutlibSceneRenderer(
+      this,
+      renderTaskDisposerExecutor,
+      model,
+      designSurface as NlDesignSurface,
+      layoutScannerConfig,
+    )
 
   /** The configuration to use when inflating and rendering. */
   val sceneRenderConfiguration: LayoutlibSceneRenderConfiguration
@@ -204,7 +217,10 @@ open class LayoutlibSceneManager(
 
             // Selection change listener should run in UI thread not in the layoublib rendering
             // thread. This avoids race condition.
-            selectionChangeListener.selectionChanged(surface.selectionModel, surface.selectionModel.selection)
+            selectionChangeListener.selectionChanged(
+              surface.selectionModel,
+              surface.selectionModel.selection,
+            )
           },
           EdtExecutorService.getInstance(),
         )
@@ -253,7 +269,7 @@ open class LayoutlibSceneManager(
         scene.root = it
         updateTargets()
         scene.isAnimated = previous
-      } ?: Logger.getInstance(LayoutlibSceneManager::class.java).warn("No root component")
+      } ?: LOG.warn("No root component")
     }
     model.addListener(modelChangeListener)
     areListenersRegistered = true
@@ -265,7 +281,7 @@ open class LayoutlibSceneManager(
 
   private fun onBeforeRender(): Boolean {
     if (isDisposed()) {
-      Logger.getInstance(LayoutlibSceneManager::class.java).warn("tried to render after LayoutlibSceneManager has been disposed")
+      LOG.warn("tried to render after LayoutlibSceneManager has been disposed")
       return false
     }
     logConfigurationChange(designSurface)
@@ -294,7 +310,7 @@ open class LayoutlibSceneManager(
 
   override fun requestLayoutAsync(animate: Boolean): CompletableFuture<Void> {
     if (isDisposed()) {
-      Logger.getInstance(LayoutlibSceneManager::class.java).warn("requestLayout after LayoutlibSceneManager has been disposed")
+      LOG.warn("requestLayout after LayoutlibSceneManager has been disposed")
     }
     val currentTask = layoutlibSceneRenderer.renderTask ?: return CompletableFuture.completedFuture(null)
     return currentTask.layout().thenAccept { result: RenderResult? ->
@@ -316,7 +332,11 @@ open class LayoutlibSceneManager(
    *   [RenderAsyncActionExecutor])
    * @param timeUnit the [TimeUnit] of the given timeout.
    */
-  open fun executeInRenderSessionAsync(block: Runnable, timeout: Long, timeUnit: TimeUnit): CompletableFuture<Void> {
+  open fun executeInRenderSessionAsync(
+    block: Runnable,
+    timeout: Long,
+    timeUnit: TimeUnit,
+  ): CompletableFuture<Void> {
     val currentTask = layoutlibSceneRenderer.renderTask ?: return CompletableFuture.completedFuture(null)
     return currentTask.runAsyncRenderActionWithSession(block, timeout, timeUnit)
   }
@@ -387,6 +407,82 @@ open class LayoutlibSceneManager(
 
   private fun currentTimeNanos(): Long = layoutlibSceneRenderer.sessionClock?.timeNanos ?: 0
 
+  private fun findRootView(): android.view.View? =
+    ((renderResult?.systemRootViews?.lastOrNull() ?: renderResult?.rootViews?.firstOrNull())?.viewObject as? android.view.View)?.rootView
+
+  private fun isFocusNavigationKey(keyCode: Int): Boolean =
+    keyCode == KeyEvent.VK_TAB ||
+      keyCode == KeyEvent.VK_UP ||
+      keyCode == KeyEvent.VK_DOWN ||
+      keyCode == KeyEvent.VK_LEFT ||
+      keyCode == KeyEvent.VK_RIGHT
+
+  private val focusConsumedKeyCodes: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+  /**
+   * Dispatches a mouse hover motion event (`ACTION_HOVER_ENTER`, `ACTION_HOVER_MOVE`, or `ACTION_HOVER_EXIT`) to LayoutLib asynchronously
+   * on the render executor.
+   *
+   * @param action the [android.view.MotionEvent] hover action to dispatch
+   * @param x horizontal android coordinate of the hover event
+   * @param y vertical android coordinate of the hover event
+   * @return a [CompletableFuture] completed once LayoutLib processes the hover event
+   */
+  fun triggerHoverEventAsync(
+    action: Int,
+    @AndroidCoordinate x: Int,
+    @AndroidCoordinate y: Int,
+  ): CompletableFuture<Void> {
+    if (isDisposed()) {
+      LOG.warn("triggerHoverEventAsync after LayoutlibSceneManager has been disposed")
+      return CompletableFuture.completedFuture(null)
+    }
+    val task = layoutlibSceneRenderer.renderTask ?: return CompletableFuture.completedFuture(null)
+    interactiveEventsCount++
+    val eventTimeMs = currentTimeNanos() / 1_000_000L
+    return task.runAsyncRenderActionWithSession(
+      {
+        val rootView = findRootView() ?: return@runAsyncRenderActionWithSession
+        val pointerProperties =
+          android.view.MotionEvent.PointerProperties().apply {
+            id = 0
+            toolType = android.view.MotionEvent.TOOL_TYPE_MOUSE
+          }
+        val pointerCoords =
+          android.view.MotionEvent.PointerCoords().apply {
+            this.x = x.toFloat()
+            this.y = y.toFloat()
+            pressure = 1.0f
+            size = 1.0f
+          }
+        val motionEvent =
+          android.view.MotionEvent.obtain(
+            eventTimeMs,
+            eventTimeMs,
+            action,
+            1,
+            arrayOf(pointerProperties),
+            arrayOf(pointerCoords),
+            0,
+            0,
+            1.0f,
+            1.0f,
+            0,
+            0,
+            android.view.InputDevice.SOURCE_MOUSE,
+            0,
+          )
+        try {
+          rootView.dispatchGenericMotionEvent(motionEvent)
+        } finally {
+          motionEvent.recycle()
+        }
+      },
+      0,
+      TimeUnit.SECONDS,
+    )
+  }
+
   /**
    * Informs layoutlib that there was a (mouse) touch event detected of a particular type at a particular point
    *
@@ -395,9 +491,13 @@ open class LayoutlibSceneManager(
    * @param y vertical android coordinate of the detected touch event
    * @return a future that is completed when layoutlib handled the touch event
    */
-  fun triggerTouchEventAsync(type: TouchEventType, @AndroidCoordinate x: Int, @AndroidCoordinate y: Int) {
+  fun triggerTouchEventAsync(
+    type: TouchEventType,
+    @AndroidCoordinate x: Int,
+    @AndroidCoordinate y: Int,
+  ) {
     if (isDisposed()) {
-      Logger.getInstance(LayoutlibSceneManager::class.java).warn("triggerTouchEventAsync after LayoutlibSceneManager has been disposed")
+      LOG.warn("triggerTouchEventAsync after LayoutlibSceneManager has been disposed")
       return
     }
     layoutlibSceneRenderer.renderTask?.let {
@@ -407,19 +507,54 @@ open class LayoutlibSceneManager(
   }
 
   /**
-   * Passes an AWT KeyEvent from the surface to layoutlib.
+   * Dispatches an AWT [KeyEvent] from the surface to LayoutLib asynchronously.
    *
-   * @return a future that is completed when layoutlib handled the key event
+   * Reads the root view on the LayoutLib render session executor, ensures window focus, and restores default view focus on initial
+   * focus-navigation key presses when no view in the hierarchy currently holds focus, suppressing the matching `KEY_RELEASED` event when
+   * `KEY_PRESSED` was consumed to restore focus.
+   *
+   * @return a [CompletableFuture] completed once LayoutLib processes the key event
    */
-  fun triggerKeyEventAsync(event: KeyEvent) {
+  fun triggerKeyEventAsync(event: KeyEvent): CompletableFuture<Void> {
     if (isDisposed()) {
-      Logger.getInstance(LayoutlibSceneManager::class.java).warn("triggerKeyEventAsync after LayoutlibSceneManager has been disposed")
-      return
+      LOG.warn("triggerKeyEventAsync after LayoutlibSceneManager has been disposed")
+      return CompletableFuture.completedFuture(null)
     }
-    layoutlibSceneRenderer.renderTask?.let {
-      interactiveEventsCount++
-      it.triggerKeyEvent(event, currentTimeNanos())
+    val task = layoutlibSceneRenderer.renderTask ?: return CompletableFuture.completedFuture(null)
+    interactiveEventsCount++
+    if (event.id == KeyEvent.KEY_RELEASED && focusConsumedKeyCodes.remove(event.keyCode)) {
+      return CompletableFuture.completedFuture(null)
     }
+    val timeNanos = currentTimeNanos()
+    if (event.id == KeyEvent.KEY_PRESSED) {
+      val shouldDispatchKey = java.util.concurrent.atomic.AtomicBoolean(true)
+      return task
+        .runAsyncRenderActionWithSession(
+          {
+            val rootView = findRootView()
+            if (rootView != null) {
+              android.view.AttachInfo_Accessor.setHasWindowFocus(rootView, true)
+              if (!rootView.hasFocus()) {
+                val focused = rootView.restoreDefaultFocus()
+                if (focused && isFocusNavigationKey(event.keyCode)) {
+                  focusConsumedKeyCodes.add(event.keyCode)
+                  shouldDispatchKey.set(false)
+                }
+              }
+            }
+          },
+          0,
+          TimeUnit.SECONDS,
+        )
+        .thenCompose {
+          if (shouldDispatchKey.get()) {
+            task.triggerKeyEvent(event, timeNanos).thenRun {}
+          } else {
+            CompletableFuture.completedFuture(null)
+          }
+        }
+    }
+    return task.triggerKeyEvent(event, timeNanos).thenRun {}
   }
 
   /** Executes the given [Runnable] callback synchronously with a 30ms timeout. */
@@ -441,5 +576,9 @@ open class LayoutlibSceneManager(
   /** Resets the counter of user events received by this scene to 0. */
   override fun resetInteractiveEventsCounter() {
     interactiveEventsCount = 0
+  }
+
+  companion object {
+    private val LOG = logger<LayoutlibSceneManager>()
   }
 }

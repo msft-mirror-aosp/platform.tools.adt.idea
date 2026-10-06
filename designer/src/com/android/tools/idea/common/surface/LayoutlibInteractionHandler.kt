@@ -15,8 +15,11 @@
  */
 package com.android.tools.idea.common.surface
 
+import android.view.MotionEvent
 import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.actions.ZoomType
+import com.android.tools.idea.common.model.Coordinates
+import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.interaction.PanInteraction
 import java.awt.Cursor
 import java.awt.dnd.DropTargetDragEvent
@@ -31,7 +34,13 @@ class LayoutlibInteractionHandler(
   private val isBackGestureInProgress: () -> Boolean = { false },
   private val onInteractionStart: () -> Unit = {},
 ) : InteractionHandler {
-  override fun createInteractionOnPressed(mouseX: Int, mouseY: Int, modifiersEx: Int): Interaction? {
+  private var lastHoveredView: SceneView? = null
+
+  override fun createInteractionOnPressed(
+    mouseX: Int,
+    mouseY: Int,
+    modifiersEx: Int,
+  ): Interaction? {
     if (isBackGestureInProgress()) {
       onInteractionStart()
       return null
@@ -56,7 +65,45 @@ class LayoutlibInteractionHandler(
     surface.zoomController.zoom(type, mouseX, mouseY)
   }
 
-  override fun hoverWhenNoInteraction(mouseX: Int, mouseY: Int, modifiersEx: Int) {}
+  /**
+   * Dispatches hover enter, move, and exit motion events to [LayoutlibSceneManager] as the pointer moves across [SceneView]s on the EDT.
+   *
+   * When the pointer transitions between [SceneView]s, sends `ACTION_HOVER_EXIT` to the previously hovered view before updating
+   * [lastHoveredView] and sending `ACTION_HOVER_ENTER` to the new view. Hover event dispatch is offloaded asynchronously to the LayoutLib
+   * render executor so the EDT never blocks.
+   */
+  override fun hoverWhenNoInteraction(mouseX: Int, mouseY: Int, modifiersEx: Int) {
+    surface.onHover(mouseX, mouseY)
+    if (isBackGestureInProgress()) {
+      return
+    }
+    val view = surface.getSceneViewAt(mouseX, mouseY)
+    if (view != lastHoveredView) {
+      (lastHoveredView?.sceneManager as? LayoutlibSceneManager)?.triggerHoverEventAsync(
+        MotionEvent.ACTION_HOVER_EXIT,
+        -1,
+        -1,
+      )
+      lastHoveredView = view
+      if (view != null) {
+        val androidX = Coordinates.getAndroidX(view, mouseX)
+        val androidY = Coordinates.getAndroidY(view, mouseY)
+        (view.sceneManager as? LayoutlibSceneManager)?.triggerHoverEventAsync(
+          MotionEvent.ACTION_HOVER_ENTER,
+          androidX,
+          androidY,
+        )
+      }
+    } else if (view != null) {
+      val androidX = Coordinates.getAndroidX(view, mouseX)
+      val androidY = Coordinates.getAndroidY(view, mouseY)
+      (view.sceneManager as? LayoutlibSceneManager)?.triggerHoverEventAsync(
+        MotionEvent.ACTION_HOVER_MOVE,
+        androidX,
+        androidY,
+      )
+    }
+  }
 
   override fun stayHovering(mouseX: Int, mouseY: Int) {
     surface.onHover(mouseX, mouseY)
@@ -83,5 +130,18 @@ class LayoutlibInteractionHandler(
 
   override fun keyReleasedWithoutInteraction(keyEvent: KeyEvent) {}
 
-  override fun mouseExited() {}
+  /**
+   * Sends a closing `ACTION_HOVER_EXIT` event and clears [lastHoveredView] when the cursor exits the surface or interactive mode stops on
+   * the EDT.
+   */
+  override fun mouseExited() {
+    if (lastHoveredView != null) {
+      (lastHoveredView?.sceneManager as? LayoutlibSceneManager)?.triggerHoverEventAsync(
+        MotionEvent.ACTION_HOVER_EXIT,
+        -1,
+        -1,
+      )
+      lastHoveredView = null
+    }
+  }
 }

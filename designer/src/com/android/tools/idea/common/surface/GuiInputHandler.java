@@ -341,7 +341,9 @@ public class GuiInputHandler implements Disposable {
       }
       myCurrentInteraction = null;
       myLastModifiersEx = 0;
-      myInteractionHandler.hoverWhenNoInteraction(myLastMouseX, myLastMouseY, myLastModifiersEx);
+      if (!(event instanceof KeyReleasedEvent)) {
+        myInteractionHandler.hoverWhenNoInteraction(myLastMouseX, myLastMouseY, myLastModifiersEx);
+      }
       updateCursor();
       myInteractable.repaintComponent();
     }
@@ -633,6 +635,10 @@ public class GuiInputHandler implements Disposable {
           // TODO (b/142953949): this should be handled by PanInteraction itself.
           setPanning(new KeyReleasedEvent(event, getInteractionInformation()), false);
           updateCursor();
+        }
+        else if (myCurrentInteraction instanceof LayoutlibInteraction layoutlibInteraction
+                 && !layoutlibInteraction.isPointerInteraction()) {
+          finishInteraction(new KeyReleasedEvent(event, getInteractionInformation()), false);
         }
         else {
           myCurrentInteraction.update(new KeyReleasedEvent(event, getInteractionInformation()));
