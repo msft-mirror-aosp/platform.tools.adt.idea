@@ -20,8 +20,22 @@ import com.intellij.platform.util.progress.RawProgressReporter
 class RawProgressReporterAdapter(val reporter: RawProgressReporter, cls: Class<*> = RawProgressReporterAdapter::class.java) :
   StudioLoggerProgressIndicator(cls) {
 
+  @Volatile private var canceled: Boolean = false
+  @Volatile private var cancellable: Boolean = true
   private var fraction: Double = 0.0
   private var indeterminate: Boolean = false
+
+  override fun isCanceled(): Boolean = canceled
+
+  override fun cancel() {
+    canceled = true
+  }
+
+  override fun isCancellable(): Boolean = cancellable
+
+  override fun setCancellable(cancellable: Boolean) {
+    this.cancellable = cancellable
+  }
 
   override fun getFraction(): Double = fraction
 

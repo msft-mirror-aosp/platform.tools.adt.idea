@@ -35,9 +35,11 @@ import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
+import com.android.tools.idea.progress.StudioProgressIndicatorAdapter
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.model.ModelWizard.WizardListener
 import com.android.tools.idea.wizard.model.ModelWizard.WizardResult
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.Disposer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -46,6 +48,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito
 import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when` as whenever
 
@@ -247,6 +250,46 @@ class InstallTaskTest : AndroidTestCase() {
     verify(installer).complete(any())
     // This would normally be done by the wizard frame
     Disposer.dispose(wizard)
+  }
+
+  fun testCancelWizardCancelsInstall() {
+    val factory = mock<InstallerFactory>()
+    whenever(factory.createInstaller(eq(available1), any(), any())).thenReturn(installer)
+
+    val installStep =
+      InstallSelectedPackagesStep(
+        installRequests = listOf(UpdatablePackage(available1)),
+        sdkHandler = sdkHandler,
+        backgroundable = true,
+        factory = factory,
+      )
+    val prepareStarted = CompletableFuture<Boolean>()
+    val sawCancellation = CompletableFuture<Boolean>()
+    whenever(installer.prepare(any())).thenAnswer { invocation ->
+      // StudioDownloader wraps the indicator in a StudioProgressIndicatorAdapter and polls checkCanceled() as bytes arrive.
+      val progress = StudioProgressIndicatorAdapter(invocation.arguments[0] as ProgressIndicator)
+      prepareStarted.complete(true)
+      val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+      try {
+        while (System.nanoTime() < deadline) {
+          progress.checkCanceled()
+          Thread.sleep(10)
+        }
+      } catch (e: ProcessCanceledException) {
+        sawCancellation.complete(true)
+        throw e
+      }
+      false
+    }
+
+    val wizard = ModelWizard.Builder().addStep(installStep).build()
+    pumpEventsAndWaitForFuture(prepareStarted, 5, TimeUnit.SECONDS)
+
+    wizard.cancel()
+    Disposer.dispose(wizard)
+
+    pumpEventsAndWaitForFuture(sawCancellation, 10, TimeUnit.SECONDS)
+    verify(installer, never()).complete(any())
   }
 
   fun testProgressWithBackgrounding() {

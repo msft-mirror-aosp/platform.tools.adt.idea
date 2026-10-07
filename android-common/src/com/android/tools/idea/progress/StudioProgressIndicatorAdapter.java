@@ -136,7 +136,7 @@ public class StudioProgressIndicatorAdapter implements ProgressIndicator {
   @Override
   public void checkCanceled() throws ProcessCanceledException {
     ProgressManager.checkCanceled();
-    if (myWrapped.isCanceled() && myWrapped.isCancellable()) {
+    if (myWrapped.isCanceled()) {
       throw new ProcessCanceledException();
     }
   }
