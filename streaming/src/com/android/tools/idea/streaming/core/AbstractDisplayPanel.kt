@@ -21,6 +21,7 @@ import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ZoomLevelIndicator
 import com.android.tools.idea.ui.DISPLAY_ID_KEY
 import com.intellij.ide.ActivityTracker
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
@@ -29,11 +30,13 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBScrollBar
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.util.preferredWidth
+import com.intellij.util.messages.Topic
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Adjustable
@@ -44,6 +47,7 @@ import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Insets
 import java.awt.LayoutManager
+import java.util.EventListener
 import javax.swing.JComponent
 import javax.swing.JLayeredPane
 import javax.swing.JPanel
@@ -63,8 +67,8 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
   private val scrollPane: JScrollPane
   private val floatingToolbarLayerPane: JComponent
   protected val notificationLayerPane: JComponent
-  private var zoomToolbar: JComponent? = null
-  private var xrNavigationToolbar: JComponent? = null
+  private var zoomToolbar: FloatingToolbarContainer? = null
+  private var xrNavigationToolbar: FloatingToolbarContainer? = null
   protected val loadingPanel: StreamingLoadingPanel
   private var _displayView: T? = null
   var displayView: T
@@ -88,17 +92,31 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
   init {
     Disposer.register(disposableParent, this)
 
-    ApplicationManager.getApplication()
-      .messageBus
-      .connect(this)
-      .subscribe(
-        FloatingXrToolbarState.Listener.TOPIC,
-        object : FloatingXrToolbarState.Listener {
-          override fun floatingXrToolbarStateChanged(enabled: Boolean) {
-            xrNavigationToolbar?.isVisible = enabled
+    val messageBusConnection = ApplicationManager.getApplication().messageBus.connect(this)
+    messageBusConnection.subscribe(
+      FloatingXrToolbarState.Listener.TOPIC,
+      object : FloatingXrToolbarState.Listener {
+        override fun floatingXrToolbarStateChanged(enabled: Boolean) {
+          xrNavigationToolbar?.isVisible = enabled
+        }
+      },
+    )
+    messageBusConnection.subscribe(
+      FloatingToolbarState.Listener.TOPIC,
+      object : FloatingToolbarState.Listener {
+        override fun zoomToolbarOrientationChanged(horizontal: Boolean) {
+          if (_displayView != null && deviceType != DeviceType.XR_HEADSET) {
+            createFloatingToolbar()
           }
-        },
-      )
+        }
+
+        override fun xrToolbarOrientationChanged(horizontal: Boolean) {
+          if (_displayView != null && deviceType == DeviceType.XR_HEADSET) {
+            createFloatingToolbar()
+          }
+        }
+      },
+    )
 
     background = primaryPanelBackground
 
@@ -147,14 +165,24 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
   }
 
   protected fun createFloatingToolbar() {
+    val wasActive = (zoomToolbar ?: xrNavigationToolbar)?.isActive
     floatingToolbarLayerPane.removeAll()
+    val horizontal =
+      if (deviceType == DeviceType.XR_HEADSET) {
+        FloatingToolbarState.getInstance().xrToolbarHorizontal
+      } else {
+        FloatingToolbarState.getInstance().zoomToolbarHorizontal
+      }
+    floatingToolbarLayerPane.layout = createFloatingToolbarLayerLayout(horizontal)
     when (deviceType) {
-      DeviceType.XR_HEADSET -> createXrNavigationToolbar()
-      else -> createZoomToolbar()
+      DeviceType.XR_HEADSET -> createXrNavigationToolbar(horizontal, initiallyActive = wasActive ?: true)
+      else -> createZoomToolbar(horizontal, initiallyActive = wasActive ?: false)
     }
+    floatingToolbarLayerPane.revalidate()
+    floatingToolbarLayerPane.repaint()
   }
 
-  private fun createZoomToolbar() {
+  private fun createZoomToolbar(horizontal: Boolean, initiallyActive: Boolean) {
     val actionManager = ActionManager.getInstance()
     val zoomGroup =
       DefaultActionGroup().apply {
@@ -165,10 +193,19 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
         add(actionManager.getAction("android.streaming.zoom.fit.inner"))
         add(Separator())
         add(ZoomLevelIndicator())
-        add(FloatingToolbarContainer.CollapserAction(horizontal = false))
+        add(
+          FloatingToolbarContainer.CollapserAction(horizontal = horizontal) {
+            FloatingToolbarState.getInstance().zoomToolbarHorizontal = it
+          }
+        )
       }
     val toolbar =
-      FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.8, collapsedStateSelector = { it.action is ZoomLevelIndicator })
+      FloatingToolbarContainer(
+          horizontal = horizontal,
+          inactiveAlpha = 0.8,
+          collapsedStateSelector = { it.action is ZoomLevelIndicator },
+          initiallyActive = initiallyActive,
+        )
         .apply {
           addToolbar("ZoomToolbar", zoomGroup)
           isVisible = zoomToolbarVisible
@@ -178,29 +215,45 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     zoomToolbar = toolbar
   }
 
-  private fun createXrNavigationToolbar() {
+  private fun createXrNavigationToolbar(horizontal: Boolean, initiallyActive: Boolean) {
     val toolbar =
-      FloatingToolbarContainer(false, inactiveAlpha = 0.8, collapsedStateSelector = { it.isSelected }, initiallyActive = true).apply {
-        val group = DefaultActionGroup()
-        val actionManager = ActionManager.getInstance()
-        val inputModeGroup = actionManager.getAction("android.streaming.xr.input.mode.group") as? ActionGroup
-        if (inputModeGroup != null) {
-          group.add(inputModeGroup)
+      FloatingToolbarContainer(
+          horizontal = horizontal,
+          inactiveAlpha = 0.8,
+          collapsedStateSelector = { it.isSelected },
+          initiallyActive = initiallyActive,
+        )
+        .apply {
+          val group = DefaultActionGroup()
+          val actionManager = ActionManager.getInstance()
+          val inputModeGroup = actionManager.getAction("android.streaming.xr.input.mode.group") as? ActionGroup
+          if (inputModeGroup != null) {
+            group.add(inputModeGroup)
+          }
+          group.add(Separator.getInstance())
+          val recenterGroup = actionManager.getAction("android.streaming.xr.recenter.group") as? ActionGroup
+          if (recenterGroup != null) {
+            group.add(recenterGroup)
+          }
+          group.add(
+            FloatingToolbarContainer.CollapserAction(horizontal = horizontal) {
+              FloatingToolbarState.getInstance().xrToolbarHorizontal = it
+            }
+          )
+          addToolbar("XrNavigationToolbar", group)
         }
-        group.add(Separator.getInstance())
-        val recenterGroup = actionManager.getAction("android.streaming.xr.recenter.group") as? ActionGroup
-        if (recenterGroup != null) {
-          group.add(recenterGroup)
-        }
-        group.add(FloatingToolbarContainer.CollapserAction(horizontal = false))
-        addToolbar("XrNavigationToolbar", group)
-      }
 
     toolbar.setTargetComponent(displayView)
     toolbar.isVisible = service<FloatingXrToolbarState>().floatingXrToolbarEnabled
     floatingToolbarLayerPane.add(toolbar)
     xrNavigationToolbar = toolbar
   }
+
+  private fun createFloatingToolbarLayerLayout(horizontal: Boolean): LayoutManager =
+    DirectionalFlowLayout(
+      if (horizontal) DirectionalFlowLayout.Direction.BOTTOM_TO_TOP else DirectionalFlowLayout.Direction.RIGHT_TO_LEFT,
+      gap = JBUI.scale(6),
+    )
 
   final override fun dispose() {}
 
@@ -312,3 +365,44 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     override fun getBlockIncrement(direction: Int): Int = 1
   }
 }
+
+@Service
+internal class FloatingToolbarState {
+
+  private val appProperties = PropertiesComponent.getInstance()
+
+  var zoomToolbarHorizontal: Boolean
+    get() = appProperties.getBoolean(ZOOM_TOOLBAR_HORIZONTAL_PROPERTY, ZOOM_TOOLBAR_HORIZONTAL_DEFAULT)
+    set(value) {
+      appProperties.setValue(ZOOM_TOOLBAR_HORIZONTAL_PROPERTY, value, ZOOM_TOOLBAR_HORIZONTAL_DEFAULT)
+      ActivityTracker.getInstance().inc()
+      ApplicationManager.getApplication().messageBus.syncPublisher(Listener.TOPIC).zoomToolbarOrientationChanged(value)
+    }
+
+  var xrToolbarHorizontal: Boolean
+    get() = appProperties.getBoolean(XR_TOOLBAR_HORIZONTAL_PROPERTY, XR_TOOLBAR_HORIZONTAL_DEFAULT)
+    set(value) {
+      appProperties.setValue(XR_TOOLBAR_HORIZONTAL_PROPERTY, value, XR_TOOLBAR_HORIZONTAL_DEFAULT)
+      ActivityTracker.getInstance().inc()
+      ApplicationManager.getApplication().messageBus.syncPublisher(Listener.TOPIC).xrToolbarOrientationChanged(value)
+    }
+
+  interface Listener : EventListener {
+    companion object {
+      val TOPIC = Topic.create("Floating Toolbar orientation change", Listener::class.java)
+    }
+
+    fun zoomToolbarOrientationChanged(horizontal: Boolean) {}
+
+    fun xrToolbarOrientationChanged(horizontal: Boolean) {}
+  }
+
+  companion object {
+    @JvmStatic fun getInstance(): FloatingToolbarState = service<FloatingToolbarState>()
+  }
+}
+
+private const val ZOOM_TOOLBAR_HORIZONTAL_PROPERTY = "com.android.tools.idea.streaming.zoom.toolbar.horizontal"
+private const val ZOOM_TOOLBAR_HORIZONTAL_DEFAULT = false
+private const val XR_TOOLBAR_HORIZONTAL_PROPERTY = "com.android.tools.idea.streaming.xr.toolbar.horizontal"
+private const val XR_TOOLBAR_HORIZONTAL_DEFAULT = false
