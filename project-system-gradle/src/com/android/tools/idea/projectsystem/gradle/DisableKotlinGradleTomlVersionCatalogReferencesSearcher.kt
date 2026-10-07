@@ -17,16 +17,29 @@ package com.android.tools.idea.projectsystem.gradle
 
 import com.android.tools.idea.gradle.navigation.GradleKtsVersionCatalogReferencesSearcher
 import com.intellij.ide.ApplicationInitializedListener
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.psi.search.searches.ReferencesSearch
 
 /**
- * Disable [KotlinGradleTomlVersionCatalogReferencesSearcher] since studio has its own implementation for gradle KTS files using version
+ * Disable `KotlinGradleTomlVersionCatalogReferencesSearcher` since studio has its own implementation for gradle KTS files using version
  * catalog called [GradleKtsVersionCatalogReferencesSearcher]
  */
 class DisableKotlinGradleTomlVersionCatalogReferencesSearcher : ApplicationInitializedListener {
   override suspend fun execute() {
-    @Suppress("INVISIBLE_REFERENCE") // KotlinGradleTomlVersionCatalogReferencesSearcher is marked internal in IntelliJ 2025.1+.
-    val extension = org.jetbrains.kotlin.idea.gradle.versionCatalog.toml.KotlinGradleTomlVersionCatalogReferencesSearcher::class.java
-    ReferencesSearch.EP_NAME.point.unregisterExtension(extension)
+    // The extension is matched by class name: the class is internal, and its module (intellij.kotlin.gradle.codeInsight.toml) has
+    // private visibility, so it cannot be depended on from outside the Kotlin plugin.
+    val unregistered = ReferencesSearch.EP_NAME.point.unregisterExtensions(
+      { className, _ -> className != KOTLIN_SEARCHER_CLASS_NAME },
+      /* stopAfterFirstMatch = */ true,
+    )
+    if (!unregistered) {
+      // An error, not a warning, so that tests fail if the class is renamed or moved upstream.
+      thisLogger().error("$KOTLIN_SEARCHER_CLASS_NAME is not registered; it may have been renamed")
+    }
+  }
+
+  private companion object {
+    const val KOTLIN_SEARCHER_CLASS_NAME =
+      "org.jetbrains.kotlin.idea.gradle.versionCatalog.toml.KotlinGradleTomlVersionCatalogReferencesSearcher"
   }
 }
