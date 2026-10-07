@@ -43,7 +43,7 @@ internal class DetachedToolWindowReshaper(displayView: ZoomablePanel) : ToolWind
     }
     val toolWindow =
       DataManager.getInstance().getDataContext(displayView).getData(PlatformDataKeys.TOOL_WINDOW) as? ToolWindowEx ?: return false
-    if (!toolWindow.isDetached) {
+    if (!toolWindow.isDetached || isLayoutInspectorActive(toolWindow)) {
       return false
     }
     val scrollPane = (displayView.parent as? JViewport)?.parent as? JScrollPane

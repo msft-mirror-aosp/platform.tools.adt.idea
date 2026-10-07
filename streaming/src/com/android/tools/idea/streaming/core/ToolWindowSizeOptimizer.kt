@@ -35,6 +35,9 @@ internal class ToolWindowSizeOptimizer(displayView: ZoomablePanel) : ToolWindowR
 
   fun resizeToolWindowToRemoveEmptySpace() {
     val toolWindow = DataManager.getInstance().getDataContext(displayView).getData(PlatformDataKeys.TOOL_WINDOW) as? ToolWindowEx ?: return
+    if (isLayoutInspectorActive(toolWindow)) {
+      return
+    }
     val currentScale = displayView.scale
     val scrollPane = (displayView.parent as? JViewport)?.parent as? JScrollPane
     if (currentScale <= 1.0) {
@@ -393,6 +396,9 @@ internal class ToolWindowSizeOptimizer(displayView: ZoomablePanel) : ToolWindowR
   companion object {
     /** Optimizes the size of [toolWindow] and its split panes to remove or minimize empty space around all visible device displays. */
     fun optimizeSize(toolWindow: ToolWindowEx, preDetachedSize: Dimension? = null) {
+      if (isLayoutInspectorActive(toolWindow)) {
+        return
+      }
       val contentManager = toolWindow.contentManagerIfCreated ?: return
       val displayViews =
         contentManager.contentsRecursively

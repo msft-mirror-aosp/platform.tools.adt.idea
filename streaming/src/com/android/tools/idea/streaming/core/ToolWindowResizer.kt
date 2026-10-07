@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.core
 import com.android.tools.adtui.util.scaled
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.openapi.wm.impl.InternalDecorator
 import com.intellij.ui.ClientProperty
@@ -409,5 +410,13 @@ internal abstract class ToolWindowResizer(protected val displayView: ZoomablePan
       val bounds = decoratorClass.getMethod("getVisibleWindowBounds").invoke(externalDecorator) as Rectangle
       decoratorClass.getMethod("setVisibleWindowBounds", Rectangle::class.java).invoke(externalDecorator, bounds)
     } catch (_: ReflectiveOperationException) {}
+  }
+
+  companion object {
+    internal fun isLayoutInspectorActive(toolWindow: ToolWindow): Boolean {
+      return toolWindow.contentManagerIfCreated?.contentsRecursively?.any {
+        it.isSelected && (it.component as? AbstractDevicePanel<*>)?.isLayoutInspectorActive == true
+      } == true
+    }
   }
 }

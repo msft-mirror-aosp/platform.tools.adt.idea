@@ -30,6 +30,7 @@ import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.testing.ui.FakeToolWindow
 import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ide.DataManager
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowAnchor
@@ -852,6 +853,41 @@ class ToolWindowSizeOptimizerTest {
 
     FakeToolWindow.unsplit(foldableContent.manager!!, null)
     dispatchAllEventsInIdeEventQueue()
+  }
+
+  @Test
+  fun testNoResizeWhenLayoutInspectorActive() {
+    val (_, phoneView, ui) = startPhone()
+    toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+
+    val devicePanel = phoneView.findAncestor<AbstractDevicePanel<*>>()!!
+    assertThat(devicePanel.isLayoutInspectorActive).isFalse()
+
+    // Simulate Embedded Layout Inspector wrapping the streaming content panel.
+    val streamingContentPanel = DataManager.getInstance().getDataContext(devicePanel).getData(STREAMING_CONTENT_PANEL_KEY)!!
+    val originalParent = streamingContentPanel.parent
+    val wrapper = JPanel(BorderLayout())
+    originalParent.remove(streamingContentPanel)
+    wrapper.add(streamingContentPanel, BorderLayout.CENTER)
+    originalParent.add(wrapper, BorderLayout.CENTER)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    assertThat(devicePanel.isLayoutInspectorActive).isTrue()
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.size).isEqualTo(Dimension(500, 500))
+
+    // Unwrap the content panel (simulating disabling Layout Inspector) and verify resizing works again.
+    originalParent.remove(wrapper)
+    originalParent.add(streamingContentPanel, BorderLayout.CENTER)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    assertThat(devicePanel.isLayoutInspectorActive).isFalse()
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.width).isLessThan(500)
+    assertMatchesAspectRatio(phoneView)
   }
 
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, displayView: AbstractDisplayView): UInt {

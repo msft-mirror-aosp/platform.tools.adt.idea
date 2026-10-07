@@ -94,6 +94,18 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   protected val secondaryToolbar: ActionToolbar
   protected val centerPanel = BorderLayoutPanel()
   protected val notificationHolderPanel = NotificationHolderPanel(centerPanel)
+
+  /**
+   * Indicates whether the embedded Layout Inspector is currently active on this panel.
+   *
+   * [NotificationHolderPanel] places [centerPanel] inside an internal `BorderLayoutPanel` child, so when Layout Inspector is inactive,
+   * `centerPanel.parent.parent` is [notificationHolderPanel]. When the embedded Layout Inspector is enabled on this tab, it retrieves
+   * [centerPanel] via [STREAMING_CONTENT_PANEL_KEY] and wraps it inside its own container (`LayoutInspectorRootPanel`) within that parent
+   * panel, restoring [centerPanel] to its original parent when disabled or disposed.
+   */
+  internal val isLayoutInspectorActive: Boolean
+    get() = centerPanel.parent?.parent !== notificationHolderPanel
+
   private val displayPanelsMap = Int2ObjectRBTreeMap<T>()
   internal val displayPanels: Collection<T>
     get() = displayPanelsMap.values
