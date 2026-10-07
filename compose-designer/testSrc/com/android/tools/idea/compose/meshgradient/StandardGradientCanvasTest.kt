@@ -23,7 +23,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -31,6 +34,7 @@ import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.compose.meshgradient.components.GRADIENT_HANDLE_SIZE
 import com.android.tools.idea.compose.preview.message
 import com.intellij.testFramework.ApplicationRule
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -138,5 +142,39 @@ class StandardGradientCanvasTest {
 
     // The whole movement is applied with the latest scale, which a restarted gesture would not do.
     assertEquals(draggedPoint(initialStart, initialStart, Offset(60f, 0f), newScale), state.start)
+  }
+
+  @Test
+  fun automaticBrushValuesAreResolvedAgainstPreviewSize() {
+    val renderedState =
+      GradientEditorState().apply {
+        currentType = GradientType.SWEEP
+        previewSize = Size(400f, 200f)
+      }
+    setCanvas(renderedState)
+
+    fun capturePixels(): IntArray {
+      composeTestRule.waitForIdle()
+      return composeTestRule.onRoot().captureToImage().toPixelMap().buffer
+    }
+
+    val autoSweep = capturePixels()
+    renderedState.center = Offset(200f, 100f)
+    assertArrayEquals(autoSweep, capturePixels())
+
+    renderedState.currentType = GradientType.RADIAL
+    renderedState.center = Offset.Unspecified
+    renderedState.radius = Float.POSITIVE_INFINITY
+    val autoRadial = capturePixels()
+    renderedState.center = Offset(200f, 100f)
+    renderedState.radius = 100f
+    assertArrayEquals(autoRadial, capturePixels())
+
+    renderedState.currentType = GradientType.LINEAR
+    renderedState.start = Offset.Zero
+    renderedState.end = Offset.Infinite
+    val autoLinear = capturePixels()
+    renderedState.end = Offset(400f, 200f)
+    assertArrayEquals(autoLinear, capturePixels())
   }
 }

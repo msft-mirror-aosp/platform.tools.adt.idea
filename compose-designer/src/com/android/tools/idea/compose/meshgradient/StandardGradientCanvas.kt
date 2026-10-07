@@ -100,7 +100,13 @@ internal fun StandardGradientCanvas(state: GradientEditorState, modifier: Modifi
             val brush = state.toBrushGradient()?.let(::createPreviewBrush)
             onDrawBehind {
               if (brush != null) {
-                scale(size.width / brushSize.width, pivot = Offset.Zero) { drawRect(brush, size = brushSize) }
+                // DrawScope.drawRect resolves automatic brush values (Offset.Unspecified, Float.POSITIVE_INFINITY) against
+                // drawContext.size rather than its size argument, and scale only transforms the canvas matrix. Setting
+                // drawContext.size here makes the brush resolve against brushSize; scale (via withTransform) restores it afterwards.
+                scale(size.width / brushSize.width, size.height / brushSize.height, pivot = Offset.Zero) {
+                  drawContext.size = brushSize
+                  drawRect(brush)
+                }
               }
             }
           }
