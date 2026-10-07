@@ -16,8 +16,10 @@
 package com.android.tools.idea.welcome.install
 
 import com.android.SdkConstants
+import com.android.sdklib.internal.avd.EmulatorPackage
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.avdmanager.HardwareAccelerationCheck.isChromeOSAndIsNotHWAccelerated
+import com.android.tools.idea.flags.StudioFlags
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.SetupWizardEvent
 
@@ -39,6 +41,7 @@ class AndroidSdkComponentTreeNode(installUpdates: Boolean) :
   @VisibleForTesting
   fun getRequiredSdkPackages(isChromeOSAndIsNotHWAccelerated: Boolean): Collection<String> = sequence {
     yield(SdkConstants.FD_EMULATOR.takeIf { !isChromeOSAndIsNotHWAccelerated })
+    yield(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH.takeIf { StudioFlags.EMULATOR_PREVIEW_REQUIRED.get() })
     yield(SdkConstants.FD_PLATFORM_TOOLS)
   }
     .filterNotNull()
