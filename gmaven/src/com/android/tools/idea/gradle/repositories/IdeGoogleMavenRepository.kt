@@ -40,6 +40,8 @@ class IdeGoogleMavenRepository @JvmOverloads constructor(cacheDir: Path? = getCa
 
   companion object {
     @JvmStatic fun getInstance(): IdeGoogleMavenRepository = ApplicationManager.getApplication().service<IdeGoogleMavenRepository>()
+
+    @JvmStatic fun getProductionCacheDir(): Path = Paths.get(PathManager.getSystemPath()).normalize().resolve(MAVEN_GOOGLE_CACHE_DIR_KEY)
   }
 }
 
@@ -109,5 +111,5 @@ private fun getCacheDir(): Path? {
   if (ApplicationManager.getApplication().isUnitTestMode || GuiTestingService.getInstance().isGuiTestingMode) {
     return null
   }
-  return Paths.get(PathManager.getSystemPath()).normalize().resolve(MAVEN_GOOGLE_CACHE_DIR_KEY)
+  return IdeGoogleMavenRepository.getProductionCacheDir()
 }
