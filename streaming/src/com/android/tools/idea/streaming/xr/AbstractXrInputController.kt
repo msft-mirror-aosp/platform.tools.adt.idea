@@ -122,6 +122,7 @@ internal abstract class AbstractXrInputController(
           lastAppInteractionMode = value
         }
         hardwareInputStateStorage.setHardwareInputEnabled(deviceId, value == XrInputMode.MOUSE)
+        firePropertyChange(INPUT_MODE_PROPERTY, oldValue, value)
       }
     }
 
