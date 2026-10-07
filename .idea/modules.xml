@@ -779,6 +779,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-dap-kit/altlang.dap.lldb-dap-kit.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/lldb-kit/altlang.dap.lldb-kit.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/plugin/altlang.dap.plugin.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/plugin/altlang.dap.plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/run-kit/altlang.dap.run-kit.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/rust/altlang.dap.rust.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/rust/altlang.dap.rust.iml" />
