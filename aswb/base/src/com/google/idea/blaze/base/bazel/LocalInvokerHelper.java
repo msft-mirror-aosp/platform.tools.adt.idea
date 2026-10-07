@@ -21,6 +21,7 @@ import com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.run.processhandler.LineProcessingProcessAdapter;
 import com.google.idea.blaze.base.run.processhandler.ScopedBlazeProcessHandler;
+import com.google.idea.blaze.base.run.processhandler.ScopedBlazeProcessHandler.ProcessTerminator;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.scopes.IdeaLogScope;
 import com.google.idea.blaze.base.scope.scopes.ProblemsViewScope;
@@ -38,43 +39,48 @@ public class LocalInvokerHelper {
   private LocalInvokerHelper() {}
 
   public static ProcessHandler getScopedProcessHandler(
-    Project project, List<String> command, WorkspaceRoot workspaceRoot, Map<String, String> environment, final Runnable onExitOrFailureToStart)
-    throws ExecutionException {
+      Project project,
+      List<String> command,
+      WorkspaceRoot workspaceRoot,
+      Map<String, String> environment,
+      ProcessTerminator processTerminator,
+      final Runnable onExitOrFailureToStart)
+      throws ExecutionException {
     return new ScopedBlazeProcessHandler(
-      project,
-      command,
-      workspaceRoot,
-      environment,
-      new ScopedBlazeProcessHandler.ScopedProcessHandlerDelegate() {
-        @Override
-        public void onBlazeContextStart(BlazeContext context) {
-          context
-            .push(
-              new ProblemsViewScope(
-                project, BlazeUserSettings.getInstance().getShowProblemsViewOnRun()))
-            .push(new IdeaLogScope());
-        }
+        project,
+        command,
+        workspaceRoot,
+        environment,
+        new ScopedBlazeProcessHandler.ScopedProcessHandlerDelegate() {
+          @Override
+          public void onBlazeContextStart(BlazeContext context) {
+            context
+                .push(
+                    new ProblemsViewScope(
+                        project, BlazeUserSettings.getInstance().getShowProblemsViewOnRun()))
+                .push(new IdeaLogScope());
+          }
 
-        @Override
-        public ImmutableList<ProcessListener> createProcessListeners(BlazeContext context) {
-          LineProcessingOutputStream outputStream =
-            LineProcessingOutputStream.of(
-              BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context));
-          return ImmutableList.of(
-            new LineProcessingProcessAdapter(outputStream),
-            new ProcessListener() {
-              @Override
-              public void processTerminated(@NotNull ProcessEvent event) {
-                onExitOrFailureToStart.run();
-              }
+          @Override
+          public ImmutableList<ProcessListener> createProcessListeners(BlazeContext context) {
+            LineProcessingOutputStream outputStream =
+                LineProcessingOutputStream.of(
+                    BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context));
+            return ImmutableList.of(
+                new LineProcessingProcessAdapter(outputStream),
+                new ProcessListener() {
+                  @Override
+                  public void processTerminated(@NotNull ProcessEvent event) {
+                    onExitOrFailureToStart.run();
+                  }
 
-              @Override
-              public void processNotStarted() {
-                onExitOrFailureToStart.run();
-              }
-            }
-          );
-        }
-      });
+                  @Override
+                  public void processNotStarted() {
+                    onExitOrFailureToStart.run();
+                  }
+                });
+          }
+        },
+        processTerminator);
   }
 }

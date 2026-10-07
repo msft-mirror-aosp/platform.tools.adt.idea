@@ -43,6 +43,7 @@ constructor(
   workspaceRoot: WorkspaceRoot,
   environment: Map<String, String>,
   private val scopedProcessHandlerDelegate: ScopedProcessHandlerDelegate,
+  private val processTerminator: ProcessTerminator,
 ) :
   KillableColoredProcessHandler(
     ProcessGroupUtil.newProcessGroupFor(
@@ -52,6 +53,30 @@ constructor(
         .withRedirectErrorStream(true)
     )
   ) {
+  /**
+   * Strategy for graceful (1st Stop) and forced (2nd Stop) process termination.
+   *
+   * Enables invokers that launch remote processes via a local wrapper script to signal the remote process group before falling back to or
+   * completing with local process tree termination via [destroyLocalProcessGracefully] and [killLocalProcess].
+   */
+  interface ProcessTerminator {
+    /** Performs graceful process termination (1st Stop). */
+    fun destroyProcessGracefully(processHandler: ScopedBlazeProcessHandler): Boolean
+
+    /** Performs forced process termination (2nd Stop). */
+    fun killProcess(processHandler: ScopedBlazeProcessHandler)
+
+    /** Standard termination strategy that signals the local OS process tree directly. */
+    object Local : ProcessTerminator {
+      override fun destroyProcessGracefully(processHandler: ScopedBlazeProcessHandler): Boolean =
+        processHandler.destroyLocalProcessGracefully()
+
+      override fun killProcess(processHandler: ScopedBlazeProcessHandler) {
+        processHandler.killLocalProcess()
+      }
+    }
+  }
+
   /** Methods to give the caller of [ScopedBlazeProcessHandler] hooks after the context is created. */
   interface ScopedProcessHandlerDelegate {
     /** This method is called when the process starts. Any context setup (like pushing scopes on the context) should be done here. */
@@ -71,6 +96,20 @@ constructor(
       addProcessListener(processListener)
     }
     addProcessListener(ScopedProcessHandlerListener())
+  }
+
+  override fun destroyProcessGracefully(): Boolean = processTerminator.destroyProcessGracefully(this)
+
+  override fun killProcess() {
+    processTerminator.killProcess(this)
+  }
+
+  /** Sends SIGINT to the local OS process tree. */
+  fun destroyLocalProcessGracefully(): Boolean = super.destroyProcessGracefully()
+
+  /** Sends SIGKILL to the local OS process tree. */
+  fun killLocalProcess() {
+    super.killProcess()
   }
 
   /**

@@ -39,6 +39,7 @@ import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.ExecutorType;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner;
+import com.google.idea.blaze.base.run.processhandler.ScopedBlazeProcessHandler.ProcessTerminator;
 import com.google.idea.blaze.base.run.smrunner.BlazeTestEventsHandler;
 import com.google.idea.blaze.base.run.smrunner.SmRunnerUtils;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
@@ -171,7 +172,12 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
       commandBuilder.add("--singlejar");
     }
     return getScopedProcessHandler(
-        project, commandBuilder.build(), workspaceRoot, ImmutableMap.of(), () -> {});
+        project,
+        commandBuilder.build(),
+        workspaceRoot,
+        ImmutableMap.of(),
+        ProcessTerminator.Local.INSTANCE,
+        () -> {});
   }
 
   private ProcessHandler startProcessBazelCliCase(
