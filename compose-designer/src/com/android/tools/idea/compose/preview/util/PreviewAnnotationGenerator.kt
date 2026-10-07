@@ -51,6 +51,7 @@ import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_CHIN_SIZE_ZER
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_DPI
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_ORIENTATION
 import com.android.tools.preview.config.toDeviceConfig
+import com.intellij.openapi.util.text.StringUtil
 import java.util.Locale as JavaUtilLocale
 
 /** A set of device IDs corresponding to `ReferenceDevice`s. These devices are for tooling and should not be saved by their ID. */
@@ -198,9 +199,14 @@ internal fun toPreviewAnnotationText(previewElement: ComposePreviewElementInstan
 
     val params = mutableListOf<String>()
 
-    params.add("$PARAMETER_NAME = \"$name\"")
-    if (!displaySettings.group.isNullOrBlank()) {
-      params.add("$PARAMETER_GROUP = \"${displaySettings.group}\"")
+    // Escape special characters (such as double quotes in generic device names like '8" Fold-out')
+    // so the generated @Preview annotation is valid Kotlin syntax.
+    val escapedName = StringUtil.escapeStringCharacters(name)
+    params.add("$PARAMETER_NAME = \"$escapedName\"")
+    val groupName = displaySettings.group
+    if (!groupName.isNullOrBlank()) {
+      val escapedGroupName = StringUtil.escapeStringCharacters(groupName)
+      params.add("$PARAMETER_GROUP = \"$escapedGroupName\"")
     }
 
     when (val background = displaySettings.background) {

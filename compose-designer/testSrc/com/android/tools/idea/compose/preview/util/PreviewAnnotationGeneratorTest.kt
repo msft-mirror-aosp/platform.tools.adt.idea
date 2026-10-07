@@ -38,7 +38,10 @@ import com.android.tools.preview.UNSET_UI_MODE_VALUE
 import com.android.tools.preview.config.DEFAULT_DEVICE_ID
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.TruthJUnit.assume
+import com.intellij.openapi.application.readAction
+import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.test.runTest
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -577,5 +580,56 @@ class PreviewAnnotationGeneratorTest {
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun `toPreviewAnnotationText escapes double quotes in name and group for generic foldable device`() = runTest {
+    // Load the real Generic "8\" Fold-out" device (id = "8in Foldable") from SDK devices.
+    val foldableDeviceId = "8in Foldable"
+    val targetConfiguration = createConfigurationForDevice(foldableDeviceId)
+    val deviceDisplayName = targetConfiguration.device!!.displayName
+    assertThat(deviceDisplayName).isEqualTo("8\" Fold-out")
+
+    // Create a preview element with double quotes in both name and group.
+    val previewElement =
+      createPreviewElement(
+        name = deviceDisplayName,
+        group = "Foldable \"8 inch\" Group",
+      )
+
+    // Generate the @Preview annotation text and verify double quotes are properly escaped.
+    val generatedAnnotationText = toPreviewAnnotationText(previewElement, targetConfiguration, deviceDisplayName)
+
+    assertThat(generatedAnnotationText)
+      .isEqualTo(
+        """
+        @androidx.compose.ui.tooling.preview.Preview(
+            name = "8\" Fold-out",
+            group = "Foldable \"8 inch\" Group",
+            device = "id:8in Foldable"
+        )
+        """
+          .trimIndent()
+      )
+
+    // Verify that the generated annotation parses into a valid Kotlin PSI tree with no syntax errors.
+    readAction {
+      val parsedAnnotationEntry = KtPsiFactory(projectRule.project).createAnnotationEntry(generatedAnnotationText)
+      assertThat(PsiTreeUtil.hasErrorElements(parsedAnnotationEntry)).isFalse()
+    }
+
+    // Verify every SDK device whose displayName contains double quotes generates valid Kotlin PSI.
+    val configurationManager = ConfigurationManager.getOrCreateInstance(projectRule.fixture.module)
+    val devicesWithQuotesInName = configurationManager.devices.filter { sdkDevice -> sdkDevice.displayName.contains("\"") }
+    assertThat(devicesWithQuotesInName).isNotEmpty()
+    for (sdkDevice in devicesWithQuotesInName) {
+      val deviceConfiguration = createConfigurationForDevice(sdkDevice.id)
+      val devicePreviewElement = createPreviewElement(name = sdkDevice.displayName)
+      val annotationTextForDevice = toPreviewAnnotationText(devicePreviewElement, deviceConfiguration, sdkDevice.displayName)
+      readAction {
+        val annotationEntryForDevice = KtPsiFactory(projectRule.project).createAnnotationEntry(annotationTextForDevice)
+        assertThat(PsiTreeUtil.hasErrorElements(annotationEntryForDevice)).isFalse()
+      }
+    }
   }
 }
