@@ -344,6 +344,30 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myStage.getCaptureSelection().getSelectedCapture()).isEqualTo(capture2);
     assertThat(myStage.getCaptureSelection().getSelectedHeapSet()).isNotNull();
     assertThat(myStage.getCaptureSelection().getSelectedHeapSet().getName()).isEqualTo("app");
+
+    // The app heap is listed but has no objects, e.g. a Perfetto heap dump without heap types, which puts every object in the default heap.
+    FakeCaptureObject capture3 = new FakeCaptureObject.Builder().setHeapIdToNameMap(ImmutableMap.of(0, "default", 1, "app"))
+      .setListEmptyHeaps(true).build();
+    instanceObject = new FakeInstanceObject.Builder(capture3, 1, fakeClassName1).setHeapId(0).build();
+    capture3.addInstanceObjects(ImmutableSet.of(instanceObject));
+
+    myStage.selectCaptureDuration(new CaptureDurationData<>(1, false, false, new CaptureEntry<CaptureObject>(new Object(), () -> capture3)),
+                                  null);
+    assertThat(myStage.getCaptureSelection().getSelectedCapture()).isEqualTo(capture3);
+    assertThat(capture3.getHeapSets()).hasSize(2);
+    assertThat(myStage.getCaptureSelection().getSelectedHeapSet()).isNotNull();
+    assertThat(myStage.getCaptureSelection().getSelectedHeapSet().getName()).isEqualTo("default");
+
+    // The app and default heaps are both listed but empty, so the app heap stays selected.
+    FakeCaptureObject capture4 = new FakeCaptureObject.Builder().setHeapIdToNameMap(ImmutableMap.of(0, "default", 1, "app"))
+      .setListEmptyHeaps(true).build();
+
+    myStage.selectCaptureDuration(new CaptureDurationData<>(1, false, false, new CaptureEntry<CaptureObject>(new Object(), () -> capture4)),
+                                  null);
+    assertThat(myStage.getCaptureSelection().getSelectedCapture()).isEqualTo(capture4);
+    assertThat(capture4.getHeapSets()).hasSize(2);
+    assertThat(myStage.getCaptureSelection().getSelectedHeapSet()).isNotNull();
+    assertThat(myStage.getCaptureSelection().getSelectedHeapSet().getName()).isEqualTo("app");
   }
 
   @Test

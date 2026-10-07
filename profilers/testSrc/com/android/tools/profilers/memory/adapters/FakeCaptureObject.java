@@ -48,6 +48,7 @@ public final class FakeCaptureObject implements CaptureObject {
   private final boolean myIsError;
   private final String myInfoMessage;
   private final boolean myCanSafelyLoad;
+  private final boolean myListEmptyHeaps;
 
   private FakeCaptureObject(@NotNull String captureName,
                             @NotNull List<ClassifierAttribute> classifierAttributes,
@@ -59,7 +60,8 @@ public final class FakeCaptureObject implements CaptureObject {
                             boolean isDoneLoading,
                             boolean isError,
                             String infoMessage,
-                            boolean canSafelyLoad) {
+                            boolean canSafelyLoad,
+                            boolean listEmptyHeaps) {
     myCaptureName = captureName;
     myClassifierAttributes = classifierAttributes;
     myInstanceAttributes = instanceAttributes;
@@ -71,6 +73,8 @@ public final class FakeCaptureObject implements CaptureObject {
     myIsError = isError;
     myInfoMessage = infoMessage;
     myCanSafelyLoad = canSafelyLoad;
+    myListEmptyHeaps = listEmptyHeaps;
+    resetHeapSets();
   }
 
   @NotNull
@@ -118,13 +122,20 @@ public final class FakeCaptureObject implements CaptureObject {
 
   public void addInstanceObjects(@NotNull Set<InstanceObject> instanceObjects) {
     myInstanceObjects.addAll(instanceObjects);
-    myHeapSets.clear();
+    resetHeapSets();
     for (InstanceObject instanceObject : myInstanceObjects) {
       HeapSet set = myHeapSets.computeIfAbsent(instanceObject.getHeapId(), id -> {
         String heapName = myHeapIdToName.containsKey(id) ? myHeapIdToName.get(id) : INVALID_HEAP_NAME;
         return new HeapSet(this, heapName, id);
       });
       set.addDeltaInstanceObject(instanceObject);
+    }
+  }
+
+  private void resetHeapSets() {
+    myHeapSets.clear();
+    if (myListEmptyHeaps) {
+      myHeapIdToName.forEach((id, name) -> myHeapSets.put(id, new HeapSet(this, name, id)));
     }
   }
 
@@ -207,6 +218,7 @@ public final class FakeCaptureObject implements CaptureObject {
     private boolean myIsError = false;
     private String myInfoMessage = null;
     private boolean myCanSafelyLoad = true;
+    private boolean myListEmptyHeaps = false;
 
     @NotNull
     public Builder setCaptureName(@NotNull String captureName) {
@@ -274,6 +286,16 @@ public final class FakeCaptureObject implements CaptureObject {
       return this;
     }
 
+    /**
+     * Lists every heap in the heap ID to name map, even ones without instances, the way a heap dump loaded through Trace Processor does.
+     * By default, only heaps with instances are listed.
+     */
+    @NotNull
+    public Builder setListEmptyHeaps(boolean listEmptyHeaps) {
+      myListEmptyHeaps = listEmptyHeaps;
+      return this;
+    }
+
     @NotNull
     public Builder removeClassifierAttribute(ClassifierAttribute attr) {
       myClassifierAttributes = myClassifierAttributes.stream().filter(a -> !a.equals(attr)).collect(Collectors.toList());
@@ -283,7 +305,7 @@ public final class FakeCaptureObject implements CaptureObject {
     @NotNull
     public FakeCaptureObject build() {
       return new FakeCaptureObject(myCaptureName, myClassifierAttributes, myInstanceAttributes, myHeapIdToNameMap, myStartTime, myEndTime,
-                                   myIsLoadSuccessful, myIsDoneLoading, myIsError, myInfoMessage, myCanSafelyLoad);
+                                   myIsLoadSuccessful, myIsDoneLoading, myIsError, myInfoMessage, myCanSafelyLoad, myListEmptyHeaps);
     }
   }
 }

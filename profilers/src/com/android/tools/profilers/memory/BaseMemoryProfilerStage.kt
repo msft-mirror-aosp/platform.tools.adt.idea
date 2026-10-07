@@ -163,5 +163,13 @@ abstract class BaseMemoryProfilerStage(
   }
 }
 
-private fun Collection<HeapSet>.getDefault(): HeapSet? =
-  find { it.name == "app" } ?: find { it.name == "default" } ?: if (!isEmpty()) toTypedArray()[0] else null
+/**
+ * Returns the heap to select once a capture loads: the app heap, unless it has no objects and the default heap does. Perfetto heap dumps
+ * from older ART versions (e.g. Android 11 and 12) have no heap types, so all their objects are in the default heap.
+ */
+private fun Collection<HeapSet>.getDefault(): HeapSet? {
+  val appHeap = find { it.name == CaptureObject.APP_HEAP_NAME }
+  val defaultHeap = find { it.name == CaptureObject.DEFAULT_HEAP_NAME }
+  if (appHeap != null && appHeap.isEmpty && defaultHeap != null && !defaultHeap.isEmpty) return defaultHeap
+  return appHeap ?: defaultHeap ?: firstOrNull()
+}
