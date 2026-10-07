@@ -38,7 +38,9 @@ import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.io.File
 import java.util.concurrent.TimeUnit
+import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.LayoutFocusTraversalPolicy
 import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -63,6 +65,10 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
       delegate != null -> component.add(delegate.component, BorderLayout.CENTER)
       file is ProfilerVirtualFile -> initializeLiveTaskEditor()
       else -> initializeOfflineSessionEditor()
+    }
+
+    if (delegate == null) {
+      installFocusTraversalPolicy()
     }
 
     if (file !is ProfilerVirtualFile) {
@@ -140,9 +146,27 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     }
   }
 
+  /**
+   * Makes [component] its own focus cycle root, so that Tab / Shift+Tab move between the profiler's panels (e.g. a Heap Dump's class list,
+   * instance list and fields) in layout order, as they do in the Profiler tool window.
+   *
+   * Without this, an offline capture's nearest focus cycle root is the platform's editor composite panel, whose traversal policy resolves
+   * every Tab / Shift+Tab to [getPreferredFocusedComponent], trapping focus on a single component.
+   */
+  private fun installFocusTraversalPolicy() {
+    component.isFocusCycleRoot = true
+    component.isFocusTraversalPolicyProvider = true
+    component.focusTraversalPolicy = LayoutFocusTraversalPolicy()
+  }
+
   override fun getComponent() = component
 
-  override fun getPreferredFocusedComponent() = delegate?.preferredFocusedComponent ?: component
+  override fun getPreferredFocusedComponent(): JComponent {
+    if (delegate != null) return delegate.preferredFocusedComponent ?: component
+    // Prefer a focusable descendant over the root panel: the editor composite panel resolves Tab on the root panel back to this component,
+    // so returning the root panel would trap focus there. Falls back to the root panel while the content is still loading.
+    return component.focusTraversalPolicy?.getDefaultComponent(component) as? JComponent ?: component
+  }
 
   @Nls(capitalization = Nls.Capitalization.Title)
   override fun getName() = if (file is ProfilerVirtualFile) file.name else "Profiler Capture"
