@@ -407,6 +407,139 @@ class ConfigurationResizeListenerTest {
     Disposer.dispose(sceneManager)
   }
 
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit when preview is only moderately larger than viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+
+    // Required scale 0.8 (preview is 1.25x viewport, not more than double).
+    whenever(zoomController.getFitScale()).thenReturn(0.8)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit during canvas resizing even if scale differs significantly`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = true)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 0.1 (much smaller than current scale 1.0).
+    whenever(zoomController.getFitScale()).thenReturn(0.1)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener triggers zoom-to-fit when preview is more than double the viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 0.45 (current scale 1.0 > 0.45 * 2.0 = 0.9, preview is >2x viewport)
+    whenever(zoomController.getFitScale()).thenReturn(0.45)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, times(1)).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener triggers zoom-to-fit when preview is less than half the viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 2.5 (required scale 2.5 > 1.0 * 2.0 = 2.0, preview is <0.5x viewport)
+    whenever(zoomController.getFitScale()).thenReturn(2.5)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, times(1)).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit when preview is moderately smaller than viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 1.8 (within 0.5x to 2.0x range)
+    whenever(zoomController.getFitScale()).thenReturn(1.8)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit when requiredScale is invalid`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Scale 0.0 is considered invalid
+    whenever(zoomController.getFitScale()).thenReturn(0.0)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
   // Helper function to create a Configuration
   private fun createConfiguration(width: Int, height: Int): Configuration {
     val configuration = Configuration.create(configurationSettings, FolderConfiguration.createDefault())

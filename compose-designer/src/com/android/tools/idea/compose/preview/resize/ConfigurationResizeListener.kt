@@ -115,8 +115,12 @@ class ConfigurationResizeListener(
         val requiredScale = surface.zoomController.getFitScale()
         val currentScale = surface.zoomController.scale
         if (
-          currentScale > requiredScale || // Preview is larger than the viewport
-            requiredScale > currentScale * ZOOM_TO_FIT_RESCALE_THRESHOLD // Preview is too small
+          requiredScale > 0.0 &&
+            currentScale > 0.0 &&
+            !requiredScale.isNaN() &&
+            !requiredScale.isInfinite() &&
+            (currentScale > requiredScale * ZOOM_TO_FIT_RESCALE_THRESHOLD || // Preview is more than double the viewport
+              requiredScale > currentScale * ZOOM_TO_FIT_RESCALE_THRESHOLD) // Preview is too small
         ) {
           // Since the preview has been resized, we reset the zoom-to-fit settings to reopen the mask
           // without waiting for another design surface layout creation or resize event.
