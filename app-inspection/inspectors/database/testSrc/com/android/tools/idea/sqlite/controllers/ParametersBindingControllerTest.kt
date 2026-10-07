@@ -43,7 +43,7 @@ class ParametersBindingControllerTest {
   private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
 
-  @get:Rule val rule = RuleChain(projectRule, disposableRule, EdtRule())
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
 
   private val project
     get() = projectRule.project

@@ -526,7 +526,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("c1"))
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act

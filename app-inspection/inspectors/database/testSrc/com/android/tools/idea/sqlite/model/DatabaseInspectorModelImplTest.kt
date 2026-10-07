@@ -26,6 +26,7 @@ import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,11 +39,16 @@ class DatabaseInspectorModelImplTest {
 
   @get:Rule val rule = RuleChain(ApplicationRule(), EdtRule())
 
-  private val model = DatabaseInspectorModelImpl()
+  private lateinit var model: DatabaseInspectorModelImpl
   private val listener = Listener()
   private val liveDb = fromLiveDatabase("/data/live.db", 1) as SqliteDatabaseId.LiveSqliteDatabaseId
   private val fileDb = fromFileDatabase(DatabaseFileData(MockVirtualFile("/data/file.db")))
   private val schema = SqliteSchema(emptyList())
+
+  @Before
+  fun setUp() {
+    model = DatabaseInspectorModelImpl()
+  }
 
   @Test
   fun addDatabaseSchema_callsOnDatabasesChanged() {
