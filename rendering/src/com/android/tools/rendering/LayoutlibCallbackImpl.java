@@ -57,6 +57,7 @@ import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.resources.ResourceVisitor;
 import com.android.ide.common.resources.ResourcesUtil;
 import com.android.ide.common.util.PathString;
+import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
 import com.android.support.AndroidxName;
 import com.android.tools.fonts.DownloadableFontCacheService;
@@ -450,25 +451,28 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
 
   @Nullable
   private ILayoutPullParser getParser(@NotNull String layoutName, @NotNull ResourceNamespace namespace, @NotNull PathString xml) {
-    if (myParserFiles != null && myParserFiles.contains(xml)) {
-      if (myParserCount > MAX_PARSER_INCLUDES) {
-        // Unlikely large number of includes. Look for cyclic dependencies in the available files.
-        if (findCycles()) {
-          throw new RuntimeException(
-            String.format("Cycle found (count=%3$d) evaluating '%1$s' with path '%2$s' (parserFiles=%4$s)",
-                          layoutName, xml.toDebugString(), myParserCount, StringUtil.join(myParserFiles, ", ")));
-        }
+    String parentName = xml.getParentFileName();
+    if (parentName != null && ResourceFolderType.getFolderType(parentName) == ResourceFolderType.LAYOUT) {
+      if (myParserFiles != null && myParserFiles.contains(xml)) {
+        if (myParserCount > MAX_PARSER_INCLUDES) {
+          // Unlikely large number of includes. Look for cyclic dependencies in the available files.
+          if (findCycles()) {
+            throw new RuntimeException(
+              String.format("Cycle found (count=%3$d) evaluating '%1$s' with path '%2$s' (parserFiles=%4$s)",
+                            layoutName, xml.toDebugString(), myParserCount, StringUtil.join(myParserFiles, ", ")));
+          }
 
-        // Also reset counter to 0 so we don't check on every subsequent iteration.
-        myParserCount = 0;
+          // Also reset counter to 0 so we don't check on every subsequent iteration.
+          myParserCount = 0;
+        }
+      } else {
+        if (myParserFiles == null) {
+          myParserFiles = new HashSet<>();
+        }
+        myParserFiles.add(xml);
       }
-    } else {
-      if (myParserFiles == null) {
-        myParserFiles = new HashSet<>();
-      }
-      myParserFiles.add(xml);
+      myParserCount++;
     }
-    myParserCount++;
 
     if (myLayoutPullParserFactory != null) {
       ILayoutPullParser parser = myLayoutPullParserFactory.create(
@@ -498,7 +502,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
         myLayoutCounterForSampleData.put(layoutName, sampleDataCounter);
       }
 
-      String parentName = xml.getParentFileName();
       String path = xml.getRawPath();
       // No need to generate a PSI-based parser (which can read edited/unsaved contents) for files in build outputs or
       // layoutlib built-in directories.

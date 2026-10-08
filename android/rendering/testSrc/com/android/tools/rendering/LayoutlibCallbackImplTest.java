@@ -33,6 +33,7 @@ import com.android.ide.common.fonts.FontType;
 import com.android.ide.common.fonts.MutableFontDetail;
 import com.android.ide.common.rendering.api.ILayoutPullParser;
 import com.android.ide.common.rendering.api.ResourceNamespace;
+import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.ResourceValueImpl;
 import com.android.resources.ResourceType;
 import com.android.tools.configurations.Configuration;
@@ -48,6 +49,7 @@ import com.android.tools.idea.rendering.StudioModuleRenderContext;
 import com.android.tools.idea.rendering.StudioRenderServiceKt;
 import com.android.tools.rendering.api.RenderModelModule;
 import com.android.tools.rendering.classloading.ModuleClassLoaderManagerKt;
+import com.android.tools.rendering.parsers.ILayoutPullParserFactory;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -67,11 +69,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import kotlin.Unit;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget;
 import org.jetbrains.android.uipreview.StudioModuleClassLoaderManager;
+import org.jetbrains.annotations.Nullable;
 import org.mockito.ArgumentMatchers;
 
 public class LayoutlibCallbackImplTest extends AndroidTestCase {
@@ -254,6 +258,81 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
 
         return Unit.INSTANCE;
       });
+    });
+  }
+
+  private void withLayoutlibCallback(@Nullable ILayoutPullParserFactory parserFactory, Consumer<LayoutlibCallbackImpl> consumer) {
+    @Language("XML") final String main = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                                         "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+                                         "    android:layout_width=\"wrap_content\"\n" +
+                                         "    android:layout_height=\"wrap_content\">\n" +
+                                         "</LinearLayout>";
+    PsiFile psiFile = myFixture.addFileToProject("res/layout/main.xml", main);
+
+    Configuration configuration = RenderTestUtil.getConfiguration(myModule, psiFile.getVirtualFile());
+    RenderLogger logger = mock(RenderLogger.class);
+    RenderTestUtil.withRenderTask(myFacet, psiFile.getVirtualFile(), configuration, logger, task -> {
+      LayoutLibrary layoutlib = StudioRenderServiceKt.getLayoutLibrary(myModule, StudioEmbeddedRenderTarget.getCompatibilityTarget(
+        ConfigurationManager.getOrCreateInstance(myModule).getHighestApiTarget()));
+
+      StudioModuleRenderContext renderContext = StudioModuleRenderContext.forBuildTargetReference(myBuildTarget.getBuildTarget());
+      ModuleClassLoaderManagerKt.useWithClassLoader(StudioModuleClassLoaderManager.get().getShared(layoutlib.getClassLoader(), renderContext), classLoader -> {
+        RenderModelModule module = new AndroidFacetRenderModelModule(myBuildTarget);
+        LayoutlibCallbackImpl layoutlibCallback =
+          new LayoutlibCallbackImpl(task, layoutlib, module, IRenderLogger.NULL_LOGGER, null, null, parserFactory, classLoader, true, true);
+
+        consumer.accept(layoutlibCallback);
+        return Unit.INSTANCE;
+      });
+    });
+  }
+
+  public void testNonLayoutXmlDoesNotTriggerCycleCheck() {
+    ILayoutPullParser mockParser = mock(ILayoutPullParser.class);
+    ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback, resourceRepositoryManager) -> mockParser;
+
+    withLayoutlibCallback(parserFactory, layoutlibCallback -> {
+      ResourceValue drawableResource =
+        new ResourceValueImpl(
+          ResourceNamespace.RES_AUTO,
+          ResourceType.DRAWABLE,
+          "my_vector",
+          "file:///path/to/project/res/drawable/my_vector.xml"
+        );
+
+      // Requesting a non-layout XML resource (e.g. vector drawable) more than MAX_PARSER_INCLUDES (50) times
+      // should not trigger cycle detection or throw a "Cycle found" exception.
+      for (int i = 0; i < 55; i++) {
+        ILayoutPullParser parser = layoutlibCallback.getParser(drawableResource);
+        assertNotNull(parser);
+      }
+    });
+  }
+
+  public void testLayoutXmlTriggersCycleCheckWhenRepeated() {
+    ILayoutPullParser mockParser = mock(ILayoutPullParser.class);
+    ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback, resourceRepositoryManager) -> mockParser;
+
+    withLayoutlibCallback(parserFactory, layoutlibCallback -> {
+      ResourceValue layoutResource =
+        new ResourceValueImpl(
+          ResourceNamespace.RES_AUTO,
+          ResourceType.LAYOUT,
+          "my_layout",
+          "file:///path/to/project/res/layout/my_layout.xml"
+        );
+
+      // Requesting the same layout XML resource more than MAX_PARSER_INCLUDES (50) times
+      // should trigger cycle detection and detect the single-file cycle.
+      try {
+        for (int i = 0; i < 55; i++) {
+          layoutlibCallback.getParser(layoutResource);
+        }
+        fail("Expected RuntimeException for cycle found");
+      }
+      catch (RuntimeException ex) {
+        assertTrue(ex.getMessage().contains("Cycle found"));
+      }
     });
   }
 
