@@ -20,6 +20,8 @@ import com.android.testutils.concurrency.OnDemandExecutorService
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.google.common.truth.Truth
 import com.google.common.util.concurrent.MoreExecutors
+import com.intellij.util.ref.GCUtil
+import java.lang.ref.WeakReference
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
@@ -30,6 +32,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -57,6 +60,8 @@ private class TestSingleThreadExecutorService(private val delegate: ExecutorServ
   override fun stackTrace(): Array<StackTraceElement> = emptyArray()
 
   override fun interrupt() {}
+
+  override fun remove(runnable: Runnable): Boolean = (delegate as? ThreadPoolExecutor)?.remove(runnable) ?: false
 
   override fun execute(command: Runnable) = delegate.execute(command)
 
@@ -607,6 +612,84 @@ class RenderExecutorTest {
       fail("Expected ExecutionException caused by RejectedExecutionException")
     } catch (e: ExecutionException) {
       assertTrue(e.cause is RejectedExecutionException)
+    }
+  }
+
+  @Test
+  fun testCompletedActionsReleaseCallableReferencesWhileRenderThreadBlocked() {
+    val executor = RenderExecutor.create()
+    val firstActionStarted = CountDownLatch(1)
+    val unblockFirstAction = CountDownLatch(1)
+
+    try {
+      // Block the render thread so queued actions remain in the executor queue unless removed.
+      executor.runAsyncActionWithTimeout(
+        queueingTimeout = 0,
+        queueingTimeoutUnit = TimeUnit.SECONDS,
+        actionTimeout = 30,
+        actionTimeoutUnit = TimeUnit.SECONDS,
+        renderingTopic = RenderingTopic.CLEAN,
+      ) {
+        firstActionStarted.countDown()
+        unblockFirstAction.await(30, TimeUnit.SECONDS)
+      }
+      assertTrue(firstActionStarted.await(5, TimeUnit.SECONDS))
+
+      fun enqueueCapturingObject(
+        topic: RenderingTopic,
+        queueingTimeoutMs: Long = 10_000,
+      ): Pair<CompletableFuture<*>, WeakReference<Any>> {
+        val captured = Any()
+        val future =
+          executor.runAsyncActionWithTimeout(
+            queueingTimeout = queueingTimeoutMs,
+            queueingTimeoutUnit = TimeUnit.MILLISECONDS,
+            actionTimeout = 10,
+            actionTimeoutUnit = TimeUnit.SECONDS,
+            renderingTopic = topic,
+            callable = Callable { captured.hashCode() },
+          )
+        return future to WeakReference(captured)
+      }
+
+      // 1. Cancelled by topic
+      val (_, cancelledByTopicRef) = enqueueCapturingObject(getLowPriorityRenderingTopicForTest())
+      assertEquals(1, executor.cancelActionsByTopic(listOf(getLowPriorityRenderingTopicForTest()), false))
+      assertEquals(0, executor.numPendingActions)
+
+      // 2. Cancelled directly via Future.cancel
+      val (directCancelFuture, directCancelRef) = enqueueCapturingObject(RenderingTopic.NOT_SPECIFIED)
+      assertTrue(directCancelFuture.cancel(false))
+      assertEquals(0, executor.numPendingActions)
+
+      // 3. Timed out in queue
+      val (timedOutFuture, timedOutRef) = enqueueCapturingObject(RenderingTopic.NOT_SPECIFIED, queueingTimeoutMs = 20)
+      try {
+        timedOutFuture.get(5, TimeUnit.SECONDS)
+        fail("Expected TimeoutException")
+      } catch (e: ExecutionException) {
+        assertTrue(e.cause is TimeoutException)
+      }
+      assertEquals(0, executor.numPendingActions)
+
+      // 4. Evicted due to soft queue limit (50)
+      val (_, evictedRef) = enqueueCapturingObject(getLowPriorityRenderingTopicForTest())
+      val fillerFutures = (1..50).map { executor.runAsyncActionWithTestDefault(topic = RenderingTopic.NOT_SPECIFIED) {} }
+      assertEquals(50, executor.numPendingActions)
+
+      GCUtil.tryGcSoftlyReachableObjects()
+      System.gc()
+
+      assertTrue("Cancelled-by-topic callable should be GC'd", cancelledByTopicRef.get() == null)
+      assertTrue("Directly-cancelled callable should be GC'd", directCancelRef.get() == null)
+      assertTrue("Queue-timed-out callable should be GC'd", timedOutRef.get() == null)
+      assertTrue("Evicted callable should be GC'd", evictedRef.get() == null)
+
+      fillerFutures.forEach { it.cancel(false) }
+      assertEquals(0, executor.numPendingActions)
+    } finally {
+      unblockFirstAction.countDown()
+      executor.shutdown(5)
     }
   }
 }

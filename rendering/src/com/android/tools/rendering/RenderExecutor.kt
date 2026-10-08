@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.LongAdder
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
@@ -175,72 +176,81 @@ private constructor(
       }
     val evictedTasks = mutableListOf<Pair<PriorityCompletableFuture<*>, EvictedException>>()
     pendingActionsQueueLock.withLock {
-      allPendingActionsQueue.add(future)
-      pendingActionsQueueByTopic.getOrPut(renderingTopic) { PriorityQueue() }.add(future)
-      // We have reached the maximum (soft or hard), evict overflow.
-      // Clean actions are only evicted if hard limit is reached
-      while (tasksQueueSoftLimitExceeded() || tasksQueueHardLimitExceeded()) {
-        val evictedException = if (tasksQueueHardLimitExceeded()) createHardLimitExceededException() else createSoftLimitExceededException()
-        allPendingActionsQueue.remove().let {
-          pendingActionsQueueByTopic[it.renderingTopic]?.remove(it)
-          evictedTasks.add(it to evictedException)
+      if (!future.isDone) {
+        allPendingActionsQueue.add(future)
+        pendingActionsQueueByTopic.getOrPut(renderingTopic) { PriorityQueue() }.add(future)
+        // We have reached the maximum (soft or hard), evict overflow.
+        // Clean actions are only evicted if hard limit is reached
+        while (tasksQueueSoftLimitExceeded() || tasksQueueHardLimitExceeded()) {
+          val evictedException =
+            if (tasksQueueHardLimitExceeded()) createHardLimitExceededException() else createSoftLimitExceededException()
+          allPendingActionsQueue.remove().let {
+            pendingActionsQueueByTopic[it.renderingTopic]?.remove(it)
+            evictedTasks.add(it to evictedException)
+          }
         }
       }
     }
     evictedTasks.forEach { (task, exception) -> task.completeExceptionally(exception) }
-    try {
-      renderingExecutorService.execute(
-        PriorityRunnable(renderingTopic) {
-          runningRenderLock.withLock { runningRender = future }
-          try {
-            executedRenderActions.increment()
-            // Clear the interrupted state
-            Thread.interrupted()
-            queueTimeoutFuture?.cancel(false)
-            val isPending = pendingActionsQueueLock.withLock {
-              pendingActionsQueueByTopic[renderingTopic]?.remove(future)
-              allPendingActionsQueue.remove(future)
-            }
-
-            if (!isPending || future.isDone) return@PriorityRunnable
-
-            val actionTimeoutFuture =
-              scheduleTimeoutAction(actionTimeout, actionTimeoutUnit) {
-                if (!future.isDone) {
-                  interrupt()
-                }
-                future.completeExceptionally(
-                  createRenderTimeoutException("The render action was too slow to execute (${actionTimeoutUnit.toMillis(actionTimeout)}ms)")
-                )
-              }
-            future.whenComplete { _, _ -> actionTimeoutFuture.cancel(false) }
-
-            // The request got called, so reset the timeout counter.
-            accumulatedTimeoutExceptions.set(0)
-            try {
-              val result = callable.call()
-              if (!future.complete(result)) {
-                if (result is Disposable) {
-                  Disposer.dispose(result)
-                }
-              }
-            } catch (t: Throwable) {
-              future.completeExceptionally(t)
-            }
-          } finally {
-            runningRenderLock.withLock { runningRender = null }
+    val priorityRunnable =
+      PriorityRunnable(renderingTopic) {
+        runningRenderLock.withLock { runningRender = future }
+        try {
+          executedRenderActions.increment()
+          // Clear the interrupted state
+          Thread.interrupted()
+          queueTimeoutFuture?.cancel(false)
+          val isPending = pendingActionsQueueLock.withLock {
+            pendingActionsQueueByTopic[renderingTopic]?.remove(future)
+            allPendingActionsQueue.remove(future)
           }
+
+          if (!isPending || future.isDone) return@PriorityRunnable
+
+          val actionTimeoutFuture =
+            scheduleTimeoutAction(actionTimeout, actionTimeoutUnit) {
+              if (!future.isDone) {
+                interrupt()
+              }
+              future.completeExceptionally(
+                createRenderTimeoutException("The render action was too slow to execute (${actionTimeoutUnit.toMillis(actionTimeout)}ms)")
+              )
+            }
+          future.whenComplete { _, _ -> actionTimeoutFuture.cancel(false) }
+
+          // The request got called, so reset the timeout counter.
+          accumulatedTimeoutExceptions.set(0)
+          try {
+            val result = callable.call()
+            if (!future.complete(result)) {
+              if (result is Disposable) {
+                Disposer.dispose(result)
+              }
+            }
+          } catch (t: Throwable) {
+            future.completeExceptionally(t)
+          }
+        } finally {
+          runningRenderLock.withLock { runningRender = null }
         }
-      )
-    } catch (e: RejectedExecutionException) {
+      }
+    if (!future.isDone) {
+      try {
+        renderingExecutorService.execute(priorityRunnable)
+      } catch (e: RejectedExecutionException) {
+        future.completeExceptionally(e)
+      }
+    }
+    future.whenComplete { _, _ ->
+      queueTimeoutFuture?.cancel(true)
+      if (priorityRunnable.clear()) {
+        renderingExecutorService.remove(priorityRunnable)
+      }
       pendingActionsQueueLock.withLock {
         pendingActionsQueueByTopic[renderingTopic]?.remove(future)
         allPendingActionsQueue.remove(future)
       }
-      queueTimeoutFuture?.cancel(false)
-      future.completeExceptionally(e)
     }
-    future.whenComplete { _, _ -> queueTimeoutFuture?.cancel(true) }
     return future
   }
 
@@ -285,7 +295,7 @@ private constructor(
 
   @get:TestOnly
   val numPendingActions: Int
-    get() = allPendingActionsQueue.size
+    get() = pendingActionsQueueLock.withLock { allPendingActionsQueue.size }
 
   /** Returns true if the render thread is busy running some code, false otherwise. */
   fun isBusy() = renderingExecutorService.isBusy
@@ -334,12 +344,15 @@ private constructor(
    * This is to be used in the priority queue of the [RenderExecutor], so that the executor will execute first the runnable with the highest
    * priority.
    */
-  private class PriorityRunnable(val renderingTopic: RenderingTopic, val runnable: Runnable) : Runnable, Comparable<PriorityRunnable> {
+  private class PriorityRunnable(val renderingTopic: RenderingTopic, runnable: Runnable) : Runnable, Comparable<PriorityRunnable> {
 
+    private val runnableRef = AtomicReference<Runnable?>(runnable)
     private val sequenceNumber = sequenceCounter.getAndIncrement()
 
+    fun clear(): Boolean = runnableRef.getAndSet(null) != null
+
     override fun run() {
-      runnable.run()
+      runnableRef.getAndSet(null)?.run()
     }
 
     override fun compareTo(other: PriorityRunnable): Int {

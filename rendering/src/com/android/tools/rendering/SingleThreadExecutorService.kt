@@ -69,6 +69,9 @@ interface SingleThreadExecutorService : ExecutorService {
   /** Sends an interrupt to the thread and returns immediately. */
   fun interrupt()
 
+  /** Removes the given [runnable] from the execution queue if it is present and has not started yet. */
+  fun remove(runnable: Runnable): Boolean
+
   companion object {
     /**
      * Creates a new single thread [ExecutorService] with optional profiling. The [threadName] will name the thread used by this executor.
@@ -146,6 +149,8 @@ private class ProfilingSingleThreadExecutorImpl(threadName: String, private val 
   override fun interrupt() {
     theThread.get()?.interrupt()
   }
+
+  override fun remove(runnable: Runnable): Boolean = threadPoolExecutor.remove(runnable)
 
   override fun execute(command: Runnable) {
     threadPoolExecutor.execute(command)
