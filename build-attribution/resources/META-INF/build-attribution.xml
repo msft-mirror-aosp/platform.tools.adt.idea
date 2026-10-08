@@ -50,11 +50,6 @@
             description = "Open Build Analyzer (requires successful build to show report).">
       <add-to-group group-id="BuildMenu" anchor="last"/>
     </action>
-    <action id = "com.android.build.attribution.ui.OpenBuildAnalyzerResultsAction"
-            class="com.android.build.attribution.ui.OpenBuildAnalyzerResultsAction"
-            description = "Open Build Analyzer on a past build's results">
-      <add-to-group group-id="BuildMenu" anchor="last"/>
-    </action>
   </actions>
   <projectListeners>
     <listener

@@ -113,22 +113,6 @@ class BuildAnalyzerStorageManagerImpl(val project: Project) : BuildAnalyzerStora
     this.buildResults = buildResults
     cachedCheckJetifierResultData = analyzersProxy.jetifierUsageAnalyzer.checkJetifierResultData
     notifyDataListeners()
-    if (StudioFlags.BUILD_ANALYZER_HISTORY.get()) {
-      descriptors.add(
-        BuildDescriptorImpl(buildResults.getBuildSessionID(), buildResults.getBuildFinishedTimestamp(), buildResults.getTotalBuildTimeMs())
-      )
-      updateDescriptor()
-      inMemoryResults[buildResults.getBuildSessionID()] = buildResults
-      val onBackground: () -> BuildAnalysisResults = {
-        workingWithDiskLock.withLock {
-          fileManager.storeBuildResultsInFile(buildResults)
-          inMemoryResults.remove(buildResults.getBuildSessionID())
-        }
-        deleteOldRecords().get()
-        buildResults
-      }
-      return ApplicationManager.getApplication().executeOnPooledThread(onBackground)
-    }
     return CompletableFuture.completedFuture(buildResults)
   }
 

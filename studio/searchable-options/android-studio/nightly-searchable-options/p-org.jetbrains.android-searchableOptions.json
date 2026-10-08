@@ -1287,10 +1287,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Open Build Analyzer on a past build's results",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Open Project Actions",
       "path": "ActionManager"
     },
@@ -1628,10 +1624,6 @@
     },
     {
       "hit": "Show Logcat",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Show Results Analysis of Previous Builds",
       "path": "ActionManager"
     },
     {

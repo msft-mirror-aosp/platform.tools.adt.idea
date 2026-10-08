@@ -80,35 +80,6 @@ private class BuildAnalyzerConfigurable(val project: Project) :
   }
 
   override fun createPanel(): DialogPanel = panel {
-    if (StudioFlags.BUILD_ANALYZER_HISTORY.get()) {
-      row {
-        text("")
-          .bindIntText(BuildAnalyzerStorageManager.getInstance(project).getStorageDescriptor().numberOfBuildResultsStored)
-          .label("Number of build results stored: ")
-
-        text("").bindText(fileSizeFormatted).label("File size taken up by stored build results: ")
-      }
-
-      row {
-        text("Maximum number of build results stored")
-        intTextField(IntRange(0, 100))
-          .bindIntText(
-            getter = { buildAnalyzerSettings.settingsState.maxNumberOfBuildsStored },
-            setter = { buildAnalyzerSettings.settingsState.maxNumberOfBuildsStored = it },
-          )
-      }
-
-      row {
-        text("Maximum storage capacity in kilobytes")
-        intTextField(IntRange(0, 100000))
-          .bindIntText(
-            getter = { buildAnalyzerSettings.settingsState.maxStorageSpaceKilobytes },
-            setter = { buildAnalyzerSettings.settingsState.maxStorageSpaceKilobytes = it },
-          )
-      }
-
-      row { button("Clear Build Results Data", ClearBuildResultsAction(::reset)) }
-    }
   }
 }
 
