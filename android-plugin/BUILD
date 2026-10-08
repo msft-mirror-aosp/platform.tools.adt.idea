@@ -4,18 +4,6 @@ load("//tools/base/bazel:bazel.bzl", "iml_module")
 iml_module(
     name = "intellij.android.plugin",
     iml_files = ["intellij.android.plugin.iml"],
-    test_class = "org.jetbrains.android.AndroidPluginTestSuite",
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-    ],
-    test_srcs = ["testSrc"],
-    test_tags = [
-        "block-network",
-        "cpu:3",
-    ],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
