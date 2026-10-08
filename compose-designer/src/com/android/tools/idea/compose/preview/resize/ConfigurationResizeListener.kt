@@ -19,9 +19,7 @@ import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.DeviceSize
 import com.android.tools.configurations.deviceSizePx
-import com.android.tools.idea.common.util.updateLayoutParams
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
-import com.android.tools.idea.uibuilder.scene.executeInRenderSession
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
@@ -87,23 +85,7 @@ class ConfigurationResizeListener(
   }
 
   private suspend fun requestRender(newDeviceSize: Dimension) {
-    if (!sceneManager.sceneRenderConfiguration.showDecorations) {
-      // Updating the LayoutParams is best effort: there may be no view (e.g. the last render failed) or no render session.
-      // Still request the render below, otherwise the preview stays at the old size while the configuration has the new one.
-      val viewObj = sceneManager.viewObject
-      // If the preview has never been rendered there is nothing showing the old size, and its first render will already use the new
-      // configuration, so don't trigger a render from here.
-      if (viewObj == null && sceneManager.renderResult == null) return
-      if (viewObj != null) {
-        try {
-          sceneManager.executeInRenderSession(false) { updateLayoutParams(viewObj, newDeviceSize.width, newDeviceSize.height) }
-        } catch (e: CancellationException) {
-          throw e
-        } catch (e: Exception) {
-          logger.warn("Unable to update the LayoutParams before rendering the new size", e)
-        }
-      }
-    }
+    sceneManager.sceneRenderConfiguration.needsInflation?.set(true)
     sceneManager.requestRenderWithNewSize(newDeviceSize.width, newDeviceSize.height)
 
     val surface = sceneManager.designSurface

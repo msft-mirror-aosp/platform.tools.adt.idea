@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.compose.preview.resize
 
-import android.view.View
-import android.view.ViewGroup
 import com.android.ide.common.resources.Locale
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.Density
@@ -39,21 +37,17 @@ import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneRenderConfiguration
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.rendering.RenderResult
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
-import java.util.concurrent.CompletableFuture
-import kotlin.test.assertEquals
-import kotlinx.coroutines.CompletableDeferred
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -73,7 +67,9 @@ class ConfigurationResizeListenerTest {
   @get:Rule val edtRule = EdtRule()
   @get:Rule val applicationRule = ApplicationRule()
 
-  private val layoutlibSceneManagerConfiguration = mock<LayoutlibSceneRenderConfiguration>()
+  private val needsInflation = AtomicBoolean(false)
+  private val layoutlibSceneManagerConfiguration =
+    mock<LayoutlibSceneRenderConfiguration>().also { whenever(it.needsInflation).thenReturn(needsInflation) }
   val configurationSettings = TestConfigurationSettingsImpl()
 
   private var showDecoration = false
@@ -92,13 +88,13 @@ class ConfigurationResizeListenerTest {
     listener.changed(CFG_NIGHT_MODE or CFG_ACTIVITY) // No CFG_DEVICE
     advanceUntilIdle()
 
-    verify(sceneManager, never()).viewObject
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
     Disposer.dispose(sceneManager)
   }
 
   private fun createSceneManager(showDecorations: Boolean, isCanvasResizing: Boolean = true): LayoutlibSceneManager {
     this.showDecoration = showDecorations
+    needsInflation.set(false)
     return mock<LayoutlibSceneManager>().also {
       whenever(it.sceneRenderConfiguration).thenReturn(layoutlibSceneManagerConfiguration)
       val surface = mock<NlDesignSurface>()
@@ -121,6 +117,7 @@ class ConfigurationResizeListenerTest {
     configuration.updateScreenSize(700, 800)
     advanceUntilIdle()
 
+    assertTrue(needsInflation.get())
     verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
     Disposer.dispose(sceneManager)
   }
@@ -161,19 +158,9 @@ class ConfigurationResizeListenerTest {
   }
 
   @Test
-  fun `listener modifies LayoutParams and triggers render with showDecoration false`() = runTest {
+  fun `listener triggers render with showDecoration false`() = runTest {
     val sceneManager = createSceneManager(false)
     val configuration = createConfiguration(500, 600)
-    val testView = mock<View>()
-    val layoutParams = ViewGroup.LayoutParams(500, 600)
-    whenever(testView.layoutParams).thenReturn(layoutParams)
-
-    whenever(sceneManager.viewObject).thenReturn(testView)
-    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any())).then {
-      val callback = it.getArgument(0, Runnable::class.java)
-      callback.run()
-      CompletableFuture.completedFuture(null)
-    }
 
     val listener =
       ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
@@ -183,109 +170,8 @@ class ConfigurationResizeListenerTest {
     configuration.updateScreenSize(700, 800)
     advanceUntilIdle()
 
+    assertTrue(needsInflation.get())
     verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
-    assertEquals(700, testView.layoutParams.width) // Check width changed by reflection
-    assertEquals(800, testView.layoutParams.height) // Check height changed by reflection
-    Disposer.dispose(sceneManager)
-  }
-
-  @Test
-  fun `listener still renders when viewObject is null after a previous render`() = runTest {
-    val sceneManager = createSceneManager(false)
-    val configuration = createConfiguration(500, 600)
-
-    whenever(sceneManager.viewObject).thenReturn(null) // e.g. the last render failed
-    whenever(sceneManager.renderResult).thenReturn(mock<RenderResult>())
-
-    val listener =
-      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
-    configuration.addListener(listener)
-    configuration.updateScreenSize(700, 800)
-
-    advanceUntilIdle()
-
-    verify(sceneManager, times(1)).viewObject
-    verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
-    verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
-    Disposer.dispose(sceneManager)
-  }
-
-  @Test
-  fun `listener does not render when the preview has never been rendered`() = runTest {
-    val sceneManager = createSceneManager(false)
-    val configuration = createConfiguration(500, 600)
-
-    whenever(sceneManager.viewObject).thenReturn(null)
-    whenever(sceneManager.renderResult).thenReturn(null)
-
-    val listener =
-      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
-    configuration.addListener(listener)
-    configuration.updateScreenSize(700, 800)
-
-    advanceUntilIdle()
-
-    verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
-    verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
-    Disposer.dispose(sceneManager)
-  }
-
-  @Test
-  fun `listener still renders when updating the LayoutParams fails`() = runTest {
-    val sceneManager = createSceneManager(false)
-    val configuration = createConfiguration(500, 600)
-    whenever(sceneManager.viewObject).thenReturn(mock<View>())
-    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any()))
-      .thenReturn(CompletableFuture.failedFuture(IllegalStateException("No render session")))
-
-    val listener =
-      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
-    configuration.addListener(listener)
-    configuration.updateScreenSize(700, 800)
-
-    advanceUntilIdle()
-
-    verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
-    Disposer.dispose(sceneManager)
-  }
-
-  @Test
-  fun `executeInRenderSession cancels on rapid updates test`() = runTest {
-    val sceneManager = createSceneManager(false)
-    val configuration = createConfiguration(500, 600)
-    val testView = mock<View>()
-    val layoutParams = ViewGroup.LayoutParams(500, 600)
-    whenever(testView.layoutParams).thenReturn(layoutParams)
-    val firstRenderBlockStarted = CompletableDeferred<Unit>()
-    val allowFirstRenderToComplete = CompletableDeferred<Unit>()
-
-    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any())).thenAnswer {
-      val callback = it.getArgument<Runnable>(0)
-      if (!firstRenderBlockStarted.isCompleted) {
-        firstRenderBlockStarted.complete(Unit) // Signal that the block has started.
-      }
-      callback.run()
-      allowFirstRenderToComplete.asCompletableFuture()
-    }
-
-    whenever(sceneManager.viewObject).thenReturn(testView)
-
-    val listener =
-      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
-
-    configuration.addListener(listener)
-
-    // Simulate multiple, rapid device changes.
-    configuration.updateScreenSize(700, 800)
-    runCurrent()
-    firstRenderBlockStarted.await()
-    configuration.updateScreenSize(900, 1000)
-    allowFirstRenderToComplete.complete(Unit)
-    advanceUntilIdle()
-
-    verify(sceneManager, times(2)).executeInRenderSessionAsync(any(), any(), any())
-    verify(sceneManager, never()).requestRenderWithNewSize(700, 800)
-    verify(sceneManager, times(1)).requestRenderWithNewSize(900, 1000)
     Disposer.dispose(sceneManager)
   }
 
@@ -324,7 +210,6 @@ class ConfigurationResizeListenerTest {
     Disposer.dispose(sceneManager) // Simulate disposal
     configuration.updateScreenSize(12, 12)
     advanceUntilIdle()
-    verify(sceneManager, never()).viewObject
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
     Disposer.dispose(sceneManager)
   }
