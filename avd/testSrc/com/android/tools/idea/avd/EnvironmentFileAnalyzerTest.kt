@@ -69,6 +69,26 @@ class EnvironmentFileAnalyzerTest {
   }
 
   @Test
+  fun testScanEnvironments() {
+    val tempDir = Files.createTempDirectory("scan_test")
+    val file1 = tempDir.resolve("env1.jpg")
+    val file2 = tempDir.resolve("env2.jpg")
+    val ignored = tempDir.resolve("ignored.jpg")
+    val nonImage = tempDir.resolve("notes.txt")
+
+    Files.write(file1, createMockJpegWithXmp("Env 1", isDefault = false))
+    Files.write(file2, createMockJpegWithXmp("Env 2", isDefault = true))
+    Files.write(ignored, createMockJpegWithXmp("Ignored", isDefault = false))
+    Files.write(nonImage, "some text".toByteArray(UTF_8))
+
+    val allEnvs = EnvironmentFileAnalyzer.scanEnvironments(tempDir)
+    assertThat(allEnvs.map { it.title }).containsExactly("Env 1", "Env 2", "Ignored")
+
+    val filteredEnvs = EnvironmentFileAnalyzer.scanEnvironments(tempDir) { it.fileName.toString() != "ignored.jpg" }
+    assertThat(filteredEnvs.map { it.title }).containsExactly("Env 1", "Env 2")
+  }
+
+  @Test
   fun testIs360Image_withProjectionTypeElement() {
     val xml =
       """
@@ -184,48 +204,50 @@ class EnvironmentFileAnalyzerTest {
     return jpeg
   }
 
-  private fun createMockJpegWithXmp(title: String, isDefault: Boolean): ByteArray {
-    val androidemulatorAttribute = if (isDefault) " xmlns:androidemulator=\"urn:androidemulator:metadata:private:1.0\"" else ""
-    val defaultTag = if (isDefault) "\n         <androidemulator:isDefault>true</androidemulator:isDefault>" else ""
+  companion object {
+    internal fun createMockJpegWithXmp(title: String, isDefault: Boolean): ByteArray {
+      val androidemulatorAttribute = if (isDefault) " xmlns:androidemulator=\"urn:androidemulator:metadata:private:1.0\"" else ""
+      val defaultTag = if (isDefault) "\n         <androidemulator:isDefault>true</androidemulator:isDefault>" else ""
 
-    val xml =
+      val xml =
+        """
+        <x:xmpmeta xmlns:x="adobe:ns:meta/">
+         <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+          <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"$androidemulatorAttribute>
+           <dc:title>
+            <rdf:Alt>
+             <rdf:li xml:lang="x-default">$title</rdf:li>
+            </rdf:Alt>
+           </dc:title>$defaultTag
+          </rdf:Description>
+         </rdf:RDF>
+        </x:xmpmeta>
       """
-      <x:xmpmeta xmlns:x="adobe:ns:meta/">
-       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-        <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"$androidemulatorAttribute>
-         <dc:title>
-          <rdf:Alt>
-           <rdf:li xml:lang="x-default">$title</rdf:li>
-          </rdf:Alt>
-         </dc:title>$defaultTag
-        </rdf:Description>
-       </rdf:RDF>
-      </x:xmpmeta>
-    """
-        .trimIndent()
+          .trimIndent()
 
-    val xmlBytes = xml.toByteArray(UTF_8)
-    val xmpHeader = "http://ns.adobe.com/xap/1.0/\u0000".toByteArray(UTF_8)
-    val payloadLength = xmpHeader.size + xmlBytes.size
-    val totalLength = payloadLength + 2
+      val xmlBytes = xml.toByteArray(UTF_8)
+      val xmpHeader = "http://ns.adobe.com/xap/1.0/\u0000".toByteArray(UTF_8)
+      val payloadLength = xmpHeader.size + xmlBytes.size
+      val totalLength = payloadLength + 2
 
-    val jpeg = ByteArray(2 + 4 + payloadLength + 2)
-    jpeg[0] = 0xFF.toByte()
-    jpeg[1] = 0xD8.toByte() // SOI
+      val jpeg = ByteArray(2 + 4 + payloadLength + 2)
+      jpeg[0] = 0xFF.toByte()
+      jpeg[1] = 0xD8.toByte() // SOI
 
-    jpeg[2] = 0xFF.toByte()
-    jpeg[3] = 0xE1.toByte() // APP1
-    jpeg[4] = ((totalLength shr 8) and 0xFF).toByte()
-    jpeg[5] = (totalLength and 0xFF).toByte()
+      jpeg[2] = 0xFF.toByte()
+      jpeg[3] = 0xE1.toByte() // APP1
+      jpeg[4] = ((totalLength shr 8) and 0xFF).toByte()
+      jpeg[5] = (totalLength and 0xFF).toByte()
 
-    System.arraycopy(xmpHeader, 0, jpeg, 6, xmpHeader.size)
-    System.arraycopy(xmlBytes, 0, jpeg, 6 + xmpHeader.size, xmlBytes.size)
+      System.arraycopy(xmpHeader, 0, jpeg, 6, xmpHeader.size)
+      System.arraycopy(xmlBytes, 0, jpeg, 6 + xmpHeader.size, xmlBytes.size)
 
-    val eoiIdx = 6 + payloadLength
-    jpeg[eoiIdx] = 0xFF.toByte()
-    jpeg[eoiIdx + 1] = 0xD9.toByte() // EOI
+      val eoiIdx = 6 + payloadLength
+      jpeg[eoiIdx] = 0xFF.toByte()
+      jpeg[eoiIdx + 1] = 0xD9.toByte() // EOI
 
-    return jpeg
+      return jpeg
+    }
   }
 
   @Test

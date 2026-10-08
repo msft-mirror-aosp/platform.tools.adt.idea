@@ -39,14 +39,14 @@ object EnvironmentFileAnalyzer {
    * Scans the specified directory for image files, parses their XMP metadata, and returns a list of [EnvironmentImage] records for files
    * that have a valid XMP title.
    */
-  internal fun scanEnvironments(dir: Path): List<EnvironmentImage> {
+  internal fun scanEnvironments(dir: Path, fileFilter: (Path) -> Boolean = { true }): List<EnvironmentImage> {
     if (!Files.exists(dir)) return emptyList()
     val result = mutableListOf<EnvironmentImage>()
     Files.list(dir).use { stream ->
       stream
         // The emulator supports PNG environment images (e.g. for custom environments), so isImageFile
         // returns true for PNGs, even though built-in environments are currently only JPEGs.
-        .filter { Files.isRegularFile(it) && isImageFile(it) }
+        .filter { fileFilter(it) && Files.isRegularFile(it) && isImageFile(it) }
         .forEach { file ->
           val metadata = readXmpMetadata(file)
           if (metadata != null) {

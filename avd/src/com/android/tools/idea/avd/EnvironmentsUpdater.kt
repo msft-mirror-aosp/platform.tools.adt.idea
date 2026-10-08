@@ -27,6 +27,8 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
+import kotlin.streams.asSequence
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -52,13 +54,16 @@ class EnvironmentsUpdater : Disposable {
 
     environments =
       createCoroutineScope().async(Dispatchers.IO) {
+        val updatedFiles =
+          try {
+            updateDirectory(sourceDir, destinationDir)
+          } catch (e: Exception) {
+            thisLogger().warn("Error updating environment images in $destinationDir", e)
+            emptyList()
+          }
         try {
-          updateDirectory(sourceDir, destinationDir)
-        } catch (e: Exception) {
-          thisLogger().warn("Error updating environment images in $destinationDir", e)
-        }
-        try {
-          val list = EnvironmentFileAnalyzer.scanEnvironments(destinationDir)
+          // Only include environments that are present in the source directory.
+          val list = EnvironmentFileAnalyzer.scanEnvironments(destinationDir) { it in updatedFiles }
           environmentsList = list
           list
         } catch (e: Exception) {
@@ -81,16 +86,21 @@ class EnvironmentsUpdater : Disposable {
 
 /**
  * Copies files from [sourceDir] and its subdirectories to [destinationDir]. Only files that don't exist in [destinationDir] or are older
- * than the corresponding files in [sourceDir] are copied.
+ * than the corresponding files in [sourceDir] are copied. Returns the set of destination files corresponding to the files in [sourceDir]
+ * that were either copied or already up to date.
  */
-fun updateDirectory(sourceDir: Path, destinationDir: Path) {
+fun updateDirectory(sourceDir: Path, destinationDir: Path): Set<Path> {
   require(!destinationDir.startsWith(sourceDir)) { "Copying into itself is not allowed" }
   if (!Files.exists(sourceDir)) {
-    return
+    return emptySet()
   }
 
-  Files.walk(sourceDir).use { stream ->
-    stream.filter { Files.isRegularFile(it) }.forEach { source -> updateFile(sourceDir, destinationDir, sourceDir.relativize(source)) }
+  return Files.walk(sourceDir).use { stream ->
+    stream
+      .filter { Files.isRegularFile(it) }
+      .map { source -> updateFile(sourceDir, destinationDir, sourceDir.relativize(source)) }
+      .asSequence()
+      .toSet()
   }
 }
 
@@ -102,9 +112,7 @@ private fun updateFile(sourceDir: Path, destinationDir: Path, relativePath: Path
   val source = sourceDir.resolve(relativePath)
   val destination = destinationDir.resolve(relativePath.toString())
   val sourceTimestamp = Files.getLastModifiedTime(source)
-  if (
-    !Files.exists(destination) || Files.getLastModifiedTime(destination) < sourceTimestamp || Files.size(destination) != Files.size(source)
-  ) {
+  if (destination.needsUpdate(source, sourceTimestamp)) {
     Files.createDirectories(destination.parent!!)
     FileUtils.copyFile(source, destination)
     if (System.getProperty("os.name").lowercase().contains("windows")) { // FileUtils.copyFile doesn't preserve timestamp on Windows.
@@ -113,3 +121,6 @@ private fun updateFile(sourceDir: Path, destinationDir: Path, relativePath: Path
   }
   return destination
 }
+
+private fun Path.needsUpdate(source: Path, sourceTimestamp: FileTime): Boolean =
+  !Files.exists(this) || Files.getLastModifiedTime(this) < sourceTimestamp || Files.size(this) != Files.size(source)
