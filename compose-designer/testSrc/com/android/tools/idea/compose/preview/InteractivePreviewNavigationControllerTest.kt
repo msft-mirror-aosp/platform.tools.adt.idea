@@ -321,4 +321,28 @@ class InteractivePreviewNavigationControllerTest {
     controller.backPressCancelled()
     assertThat(evilOwner.cancelledCalled).isFalse()
   }
+
+  @Test
+  fun testHideNavigationControlsClearsDispatcherOwnerAndMethods() {
+    val controller = createController()
+    val composeViewAdapterObjFake =
+      TestComposeViewAdapterViewObj(
+        canBackPress = true,
+        onBackPressProgressCallback = { _, _ -> },
+        onBackPressCompletedCallback = {},
+        history = listOf("Screen1", "Screen2"),
+      )
+    controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = true)
+    assertThat(controller.canBackPress()).isTrue()
+    assertThat(controller.canPerformBackNavigation()).isTrue()
+    assertThat(controller.canShowNavigationPanel()).isTrue()
+    assertThat(controller.getNavigationHistory()).isNotEmpty()
+
+    runInEdtAndWait { controller.hideNavigationControls() }
+
+    assertThat(controller.canBackPress()).isFalse()
+    assertThat(controller.canPerformBackNavigation()).isFalse()
+    assertThat(controller.canShowNavigationPanel()).isFalse()
+    assertThat(controller.getNavigationHistory()).isEmpty()
+  }
 }

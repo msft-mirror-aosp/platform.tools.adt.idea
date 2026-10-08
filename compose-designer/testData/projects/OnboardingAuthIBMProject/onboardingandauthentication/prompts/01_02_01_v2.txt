@@ -1,2 +1,0 @@
-Increase font size of 'Welcome to bloom' by 10sp
-com.ibm.google.onboardingandauthentication.ui.screen.SignUpScreenKt.SignUpScreenPreview

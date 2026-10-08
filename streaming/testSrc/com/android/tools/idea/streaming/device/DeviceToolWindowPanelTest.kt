@@ -26,6 +26,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.findDescendant
+import com.android.tools.adtui.swing.popup.ActionPopupMenuRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
@@ -36,6 +37,7 @@ import com.android.tools.idea.streaming.core.DeviceDisplayListener
 import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.core.DisplayView
 import com.android.tools.idea.streaming.core.FloatingToolbarContainer
+import com.android.tools.idea.streaming.core.FloatingToolbarState
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.expandFloatingToolbar
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
@@ -133,6 +135,7 @@ class DeviceToolWindowPanelTest {
   }
 
   private val agentRule = FakeScreenSharingAgentRule()
+  private val popupRule = ActionPopupMenuRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/DeviceToolWindowPanelTest/golden")
 
   @get:Rule
@@ -141,6 +144,7 @@ class DeviceToolWindowPanelTest {
       ApplicationRule(),
       ClipboardSynchronizationDisablementRule(),
       agentRule,
+      popupRule,
       PortableUiFontRule(),
       goldenImageRule,
       EdtRule(),
@@ -760,6 +764,9 @@ class DeviceToolWindowPanelTest {
 
   @Test
   fun testFloatingToolbarOrientation() {
+    val toolbarState = FloatingToolbarState.getInstance()
+    toolbarState::zoomToolbarHorizontal.override(false, testRootDisposable)
+    toolbarState::xrToolbarHorizontal.override(false, testRootDisposable)
     device = agentRule.connectDevice("Pixel 4", 31, Dimension(1080, 2280))
     panel.createContent(false)
     fakeUi.layoutAndDispatchEvents()
@@ -767,26 +774,41 @@ class DeviceToolWindowPanelTest {
     waitForFrame()
     fakeUi.layoutAndDispatchEvents()
 
-    val zoomToolbarDefault = fakeUi.getComponent<FloatingToolbarContainer>()
-    assertThat(zoomToolbarDefault).isNotNull()
-    assertThat(zoomToolbarDefault.width).isLessThan(zoomToolbarDefault.height)
-
-    val panelWithFlag = createToolWindowPanel()
-    val fakeUiWithFlag = FakeUi(panelWithFlag, parentDisposable = testRootDisposable)
-    panelWithFlag.createContent(false)
-    fakeUiWithFlag.layoutAndDispatchEvents()
-    waitForCondition(10.seconds) { device.agent.isRunning && panelWithFlag.isConnected }
-    waitForCondition(5.seconds) {
-      fakeUiWithFlag.render()
-      panelWithFlag.isConnected &&
-        device.agent.getFrameNumber(PRIMARY_DISPLAY_ID) >= 1u &&
-        panelWithFlag.findDisplayView(PRIMARY_DISPLAY_ID)!!.frameNumber == device.agent.getFrameNumber(PRIMARY_DISPLAY_ID)
-    }
-    fakeUiWithFlag.layoutAndDispatchEvents()
-
-    val zoomToolbarVertical = fakeUiWithFlag.getComponent<FloatingToolbarContainer>()
+    val zoomToolbarVertical = fakeUi.getComponent<FloatingToolbarContainer>()
     assertThat(zoomToolbarVertical).isNotNull()
-    assertThat(zoomToolbarVertical.height).isGreaterThan(zoomToolbarVertical.width)
+    assertThat(zoomToolbarVertical.width).isLessThan(zoomToolbarVertical.height)
+
+    // Expand the toolbar and right-click on the collapser button to switch to horizontal orientation.
+    fakeUi.expandFloatingToolbar()
+    val collapserButtonVertical = fakeUi.getComponent<ActionButton> { it.action is FloatingToolbarContainer.CollapserAction }
+    val posVertical = fakeUi.getPosition(collapserButtonVertical)
+    fakeUi.mouse.rightClick(posVertical.x, posVertical.y)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val popupActions = popupRule.lastPopupActions
+    assertThat(popupActions.map { it.templateText }).containsExactly("Vertical", "Horizontal").inOrder()
+
+    executeAction(popupActions.first { it.templateText == "Horizontal" }, collapserButtonVertical)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(toolbarState.zoomToolbarHorizontal).isTrue()
+    assertThat(toolbarState.xrToolbarHorizontal).isFalse()
+
+    val zoomToolbarHorizontal = fakeUi.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarHorizontal.width).isGreaterThan(zoomToolbarHorizontal.height)
+    assertThat(zoomToolbarHorizontal.isActive).isTrue()
+
+    // Right-click on the collapser button again and switch back to vertical orientation.
+    val collapserButtonHorizontal = fakeUi.getComponent<ActionButton> { it.action is FloatingToolbarContainer.CollapserAction }
+    val posHorizontal = fakeUi.getPosition(collapserButtonHorizontal)
+    fakeUi.mouse.rightClick(posHorizontal.x, posHorizontal.y)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    executeAction(popupRule.lastPopupActions.first { it.templateText == "Vertical" }, collapserButtonHorizontal)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(toolbarState.zoomToolbarHorizontal).isFalse()
+
+    val zoomToolbarBackToVertical = fakeUi.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarBackToVertical.height).isGreaterThan(zoomToolbarBackToVertical.width)
   }
 
   private fun FakeUi.mousePressOn(component: Component) {

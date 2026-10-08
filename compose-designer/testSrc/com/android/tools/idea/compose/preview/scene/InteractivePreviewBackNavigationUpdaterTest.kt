@@ -183,4 +183,38 @@ class InteractivePreviewBackNavigationUpdaterTest {
       whenever(viewObject).thenReturn(fakeComposeViewAdapter)
       whenever(renderResult).thenReturn(renderResultMock)
     }
+
+  @Test
+  fun `setNavigationEventDispatcherOwner is cleared when not in interactive mode`() {
+    val dispatcher = Any()
+    InteractivePreviewBackNavigationUpdater.setNavigationEventDispatcherOwner(dispatcher)
+    assertThat(InteractivePreviewBackNavigationUpdater.currentNavigationEventDispatcherOwner).isSameAs(dispatcher)
+
+    val previewManager = TestComposePreviewManager().apply { setMode(PreviewMode.Default()) }
+    val layoutlibSceneManagerMock = mock<LayoutlibSceneManager>().apply { whenever(viewObject).thenReturn(FakeComposeViewAdapter()) }
+    InteractivePreviewBackNavigationUpdater.update(
+      previewManager = previewManager,
+      layoutlibSceneManager = layoutlibSceneManagerMock,
+      interactivePreviewNavigationController = myInteractivePreviewNavigationController,
+    )
+
+    assertThat(InteractivePreviewBackNavigationUpdater.currentNavigationEventDispatcherOwner).isNull()
+  }
+
+  @Test
+  fun `setNavigationEventDispatcherOwner is cleared when viewObject is null`() {
+    val dispatcher = Any()
+    InteractivePreviewBackNavigationUpdater.setNavigationEventDispatcherOwner(dispatcher)
+    assertThat(InteractivePreviewBackNavigationUpdater.currentNavigationEventDispatcherOwner).isSameAs(dispatcher)
+
+    val previewManager = TestComposePreviewManager().apply { setMode(PreviewMode.Interactive(composable)) }
+    val layoutlibSceneManagerMock = mock<LayoutlibSceneManager>().apply { whenever(viewObject).thenReturn(null) }
+    InteractivePreviewBackNavigationUpdater.update(
+      previewManager = previewManager,
+      layoutlibSceneManager = layoutlibSceneManagerMock,
+      interactivePreviewNavigationController = myInteractivePreviewNavigationController,
+    )
+
+    assertThat(InteractivePreviewBackNavigationUpdater.currentNavigationEventDispatcherOwner).isNull()
+  }
 }

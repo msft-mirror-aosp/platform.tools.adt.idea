@@ -19,8 +19,6 @@ package com.android.tools.analytics
 
 import com.android.AndroidProjectTypes
 import com.android.ddmlib.IDevice
-import com.android.ide.common.util.isMdnsAutoConnectTls
-import com.android.ide.common.util.isMdnsAutoConnectUnencrypted
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
@@ -112,6 +110,38 @@ fun deviceToDeviceInfo(device: IDevice): DeviceInfo {
     .addAllCharacteristics(device.hardwareCharacteristics)
     .setModel(device.getProperty(IDevice.PROP_DEVICE_MODEL) ?: "")
     .build()
+}
+
+private val MDNS_AUTO_CONNECT_TLS_REGEX = Regex("adb-(.*)-.*\\._adb-tls-connect\\._tcp\\.?")
+
+private const val MDNS_UNENCRYPTED_SUFFIX = "_adb._tcp"
+
+/**
+ * Returns `true` if the device is using mDNS auto-connect and TLS
+ *
+ * Example: `adb-xxxxxxxx-vWgJpq._adb-tls-connect._tcp.`
+ *
+ * See [ADB_MDNS_AUTO_CONNECT](https://android.googlesource.com/platform/system/core/+/master/adb/client/commandline.cpp#244)
+ */
+val IDevice.isMdnsAutoConnectTls: Boolean
+  get() = isMdnsAutoConnectTls(this.serialNumber)
+
+/**
+ * Returns `true` if the device is using mDNS auto-connect clear.
+ *
+ * Example: `adb-xxxxxxxx-vWgJpq._adb._tcp.`
+ *
+ * See [ADB_MDNS_AUTO_CONNECT](https://android.googlesource.com/platform/system/core/+/master/adb/client/commandline.cpp#244)
+ */
+val IDevice.isMdnsAutoConnectUnencrypted: Boolean
+  get() = isMdnsAutoConnectUnencrypted(this.serialNumber)
+
+fun isMdnsAutoConnectTls(serialNumber: String): Boolean {
+  return MDNS_AUTO_CONNECT_TLS_REGEX.matches(serialNumber)
+}
+
+fun isMdnsAutoConnectUnencrypted(serialNumber: String): Boolean {
+  return serialNumber.endsWith(MDNS_UNENCRYPTED_SUFFIX)
 }
 
 private val LOG = logger<AndroidStudioEvent>()

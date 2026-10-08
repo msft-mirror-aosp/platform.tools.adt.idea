@@ -192,7 +192,7 @@ class AndroidLintIdeSupport : LintIdeSupport() {
   override fun recommendedAgpVersion(project: Project): AgpVersion? {
     val current = project.findPluginInfo()?.pluginVersion ?: return null
     val latestKnown = AgpVersions.latestKnown
-    val published = IdeGoogleMavenRepository.getAgpVersions()
+    val published = IdeGoogleMavenRepository.getInstance().getAgpVersions()
     val state = computeGradlePluginUpgradeState(current, latestKnown, published)
     return when (state.importance) {
       RECOMMEND,

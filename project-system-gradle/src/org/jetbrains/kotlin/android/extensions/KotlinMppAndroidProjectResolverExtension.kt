@@ -276,7 +276,8 @@ class KotlinMppAndroidProjectResolverExtension : KotlinMppGradleProjectResolverE
       androidTarget.flags.booleanFlagValuesList.firstOrNull { it.flag == BooleanFlag.BUILD_FEATURE_ANDROID_RESOURCES }?.value
 
     if (androidResourcesEnabled == true) {
-      val allResources = sourceSet.getResSourceDirectories() + sourceSet.getAssetsSourceDirectories()
+      val allResources =
+        sourceSet.getResSourceDirectories(sourceSetInfo.sourceProvider) + sourceSet.getAssetsSourceDirectories(sourceSetInfo.sourceProvider)
 
       allResources
         .distinctBy { it.absolutePath }

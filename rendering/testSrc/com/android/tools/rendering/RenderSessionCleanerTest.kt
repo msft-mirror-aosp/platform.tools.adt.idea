@@ -296,4 +296,71 @@ class RenderSessionCleanerTest {
 
     assertEquals(1, recyclerViewsList.size)
   }
+
+  @Test
+  fun testDisposeClearsWindowManagerGlobalListenerGroupLastValue() {
+    val windowManagerGlobalFqn = "android.view.WindowManagerGlobal"
+    val windowManagerGlobalCompanionFqn = "android.view.WindowManagerGlobal" + '$' + "Companion"
+    val listenerGroupFqn = "android.util.ListenerGroup"
+
+    val definedClasses =
+      createTestDefinedClasses(
+        mapOf(
+          windowManagerGlobalFqn to FakeWindowManagerGlobal::class.java,
+          windowManagerGlobalCompanionFqn to FakeWindowManagerGlobal.Companion::class.java,
+          listenerGroupFqn to FakeListenerGroup::class.java,
+        )
+      )
+
+    val parentClassLoader = DelegatingClassLoader(null, StaticLoader(definedClasses))
+    val moduleClassLoader =
+      TestModuleClassLoader(
+        parentClassLoader,
+        emptyMap(),
+        setOf(windowManagerGlobalFqn, windowManagerGlobalCompanionFqn, listenerGroupFqn),
+      )
+
+    val wmGlobalClass = moduleClassLoader.loadClass(windowManagerGlobalFqn)
+    val wmGlobalInstance = wmGlobalClass.getDeclaredConstructor().newInstance()
+    val defaultWmField = wmGlobalClass.getDeclaredField("sDefaultWindowManager").apply { isAccessible = true }
+    defaultWmField.set(null, wmGlobalInstance)
+
+    val viewsField = wmGlobalClass.getDeclaredField("mViews").apply { isAccessible = true }
+    @Suppress("UNCHECKED_CAST") val viewsList = viewsField.get(wmGlobalInstance) as MutableList<Any>
+    val activeView = "activeDecorView"
+    val disposedView = "disposedDecorView"
+    // Simulate RenderSession.dispose() having removed disposedView from mViews while mLastValue
+    // still holds both activeView and disposedView because ListenerGroup.accept() posted to a
+    // disposed HandlerMessageQueue.
+    viewsList.add(activeView)
+
+    val listenerGroupField = wmGlobalClass.getDeclaredField("mWindowViewsListenerGroup").apply { isAccessible = true }
+    val listenerGroupInstance = listenerGroupField.get(wmGlobalInstance)!!
+    val lastValueField = listenerGroupInstance.javaClass.getDeclaredField("mLastValue").apply { isAccessible = true }
+    val staleLastValueList = arrayListOf<Any>(activeView, disposedView)
+    lastValueField.set(listenerGroupInstance, staleLastValueList)
+
+    val dummySession = object : RenderSession() {}
+    dummySession.dispose(moduleClassLoader).get()
+
+    @Suppress("UNCHECKED_CAST") val updatedLastValue = lastValueField.get(listenerGroupInstance) as List<Any>
+    assertEquals(listOf<Any>(activeView), updatedLastValue)
+    assertEquals(listOf<Any>(activeView), staleLastValueList)
+  }
+}
+
+@Suppress("unused")
+class FakeListenerGroup {
+  @JvmField var mLastValue: Any? = ArrayList<Any>()
+}
+
+@Suppress("unused")
+class FakeWindowManagerGlobal {
+  @JvmField val mLock: Any = Any()
+  @JvmField val mViews: ArrayList<Any> = ArrayList()
+  @JvmField val mWindowViewsListenerGroup: FakeListenerGroup = FakeListenerGroup()
+
+  companion object {
+    @JvmField var sDefaultWindowManager: FakeWindowManagerGlobal? = null
+  }
 }

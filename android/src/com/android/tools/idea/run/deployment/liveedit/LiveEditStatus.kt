@@ -63,18 +63,20 @@ open class LiveEditStatus(
     // A LiveEdit error that is not recoverable.
     @JvmStatic
     fun createErrorStatus(message: String): LiveEditStatus {
-      return LiveEditStatus(AllIcons.General.Error, "Error", message, UNRECOVERABLE_ERROR, notificationText = message)
+      val sanitized = escapePreservingLineBreaks(message)
+      return LiveEditStatus(AllIcons.General.Error, "Error", sanitized, UNRECOVERABLE_ERROR, notificationText = sanitized)
     }
 
     // A LiveEdit error that can be resolved by rerunning.
     @JvmStatic
     fun createRerunnableErrorStatus(message: String): LiveEditStatus {
+      val sanitized = escapePreservingLineBreaks(message)
       return LiveEditStatus(
         null,
         message("le.status.out_of_date.title"),
-        message,
+        sanitized,
         UNRECOVERABLE_ERROR,
-        notificationText = message,
+        notificationText = sanitized,
         redeployMode = RedeployMode.RERUN,
         actionId = "Run",
       )
@@ -114,19 +116,24 @@ open class LiveEditStatus(
 
     @JvmStatic
     fun createComposeVersionError(message: String): LiveEditStatus {
+      val sanitized = escapePreservingLineBreaks(message)
       return LiveEditStatus(
         AllIcons.General.Warning,
         "Compose Version Error",
-        message,
+        sanitized,
         UNRECOVERABLE_ERROR,
-        notificationText = "Live Edit: $message",
+        notificationText = "Live Edit: $sanitized",
       )
     }
 
     @JvmStatic
     fun createPausedStatus(message: String): LiveEditStatus {
-      return LiveEditStatus(AllIcons.General.InspectionsPause, "Paused", message, RECOVERABLE_ERROR)
+      val sanitized = escapePreservingLineBreaks(message)
+      return LiveEditStatus(AllIcons.General.InspectionsPause, "Paused", sanitized, RECOVERABLE_ERROR)
     }
+
+    private fun escapePreservingLineBreaks(str: String): String =
+      str.split(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)).joinToString("<br>") { escapeXmlEntities(it) }
   }
 
   object Disabled : LiveEditStatus(AllIcons.General.Warning, "Live Edit disabled", "Live Edit is disabled.", DISABLED)

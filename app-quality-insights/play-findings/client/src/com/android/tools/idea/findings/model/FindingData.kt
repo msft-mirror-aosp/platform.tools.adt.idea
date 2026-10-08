@@ -22,6 +22,21 @@ package com.android.tools.idea.findings.model
  */
 sealed interface FindingData {
   /**
+   * Payload for an Edge-to-Edge compatibility issue.
+   *
+   * @property manualReviewMessage Optional message from manual review.
+   * @property versionCode The affected version code, if known.
+   * @property xmlFiles Layout XML files related to this finding.
+   * @property invocations Code invocations related to this finding.
+   */
+  data class EdgeToEdge(
+    val manualReviewMessage: String,
+    val versionCode: String? = null,
+    val xmlFiles: List<String> = emptyList(),
+    val invocations: List<String> = emptyList(),
+  ) : FindingData
+
+  /**
    * Payload for a DRM (Digital Rights Management) SDK compatibility issue.
    *
    * Indicates that the app is using a version of an SDK that has known issues on Google Play.
@@ -38,6 +53,29 @@ sealed interface FindingData {
     val drmVersion: String,
     val recommendedDrmVersion: String?,
     val learnMoreUrl: String?,
+  ) : FindingData
+
+  /** Payload for Vitals Anomaly findings. */
+  data class VitalsAnomaly(
+    val metric: String,
+    val metricValue: Double,
+    val isHourly: Boolean = false,
+  ) : FindingData
+
+  /** Payload for Vitals Bad Behavior findings. */
+  data class VitalsBadBehavior(
+    val metric: String,
+    val threshold: Double,
+    val metricValue: Double,
+  ) : FindingData
+
+  /** Payload for Vitals Device Bad Behavior findings. */
+  data class VitalsDeviceBadBehavior(
+    val metric: String,
+    val threshold: Double,
+    val affectedDeviceModelsCount: Int,
+    val isEmerging: Boolean = false,
+    val affectedInstallsRatio: Double? = null,
   ) : FindingData
 
   /** Represents a finding type that has no extra structured data payload. */

@@ -27,7 +27,6 @@ import com.intellij.diagnostic.logs.LogLevelConfigurationManager
 import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import java.lang.Integer.min
 import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.util.Arrays
@@ -41,6 +40,8 @@ import java.util.logging.LogManager
 import java.util.logging.LogRecord
 import java.util.stream.Collectors
 import java.util.stream.Stream
+import kotlin.math.max
+import kotlin.math.min
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.idea.gradle.diagnostic.CompilerInternalError
 
@@ -84,10 +85,25 @@ class ExceptionDataCollection {
 
     private val regex = Regex("""(.*)\$[0-9]+""")
 
+    /** Calculates the legacy signature for an exception by hashing at most 6 stack frames. Matches existing crash reporting behavior. */
     fun calculateSignature(t: Throwable): String {
+      return calculateSignatureInternal(t, useDynamicStudioFrames = false)
+    }
+
+    /**
+     * Calculates dynamic signature:
+     * - If a Studio-owned frame is found at index `blameIndex`, hashes frames from `max(1, blameIndex - 1)` until `min(stackTrace.size,
+     *   blameIndex + 6)`.
+     * - If no Studio-owned frame is found, falls back to hashing the first frames from index 1 until `min(6, stackTrace.size)`.
+     */
+    fun calculateDynamicSignature(t: Throwable): String {
+      return calculateSignatureInternal(t, useDynamicStudioFrames = true)
+    }
+
+    private fun calculateSignatureInternal(t: Throwable, useDynamicStudioFrames: Boolean): String {
       val digest = MessageDigest.getInstance("SHA-1")
 
-      var rootCause = StudioExceptionReport.getRootCause(t)
+      val rootCause = StudioExceptionReport.getRootCause(t)
       val originalStackTrace = rootCause.stackTrace
 
       if (originalStackTrace.isEmpty()) {
@@ -96,7 +112,22 @@ class ExceptionDataCollection {
       val stackTrace = removeLoggerErrorFrames(originalStackTrace)
       val isLoggerError = originalStackTrace.size != stackTrace.size
       val sb = StringBuilder()
-      stackTrace.slice(1 until min(6, stackTrace.size)).joinTo(sb, "") {
+
+      val frameRangeToHash: IntRange =
+        if (useDynamicStudioFrames) {
+          val blameIndex = stackTrace.indices.firstOrNull { isStudioOwned(stackTrace[it].className) }
+          if (blameIndex != null) {
+            val start = max(1, blameIndex - 1)
+            val end = min(stackTrace.size, blameIndex + 6)
+            start until end
+          } else {
+            1 until min(6, stackTrace.size)
+          }
+        } else {
+          1 until min(6, stackTrace.size)
+        }
+
+      stackTrace.slice(frameRangeToHash).joinTo(sb, "") {
         var methodName = it.methodName
         val matchResult = regex.matchEntire(methodName)
 
@@ -120,6 +151,48 @@ class ExceptionDataCollection {
       val hashBytes = digest.digest(sb.toString().toByteArray(Charset.forName("UTF-8")))
       val hash = hashBytes.joinToString("") { it.toInt().and(0xff).toString(16).padStart(2, '0') }.substring(0, 8)
       return "$signaturePrefix-$hash"
+    }
+
+    private val STUDIO_OWNED_PREFIXES =
+      listOf(
+        "com.android.", // Covers tools, build, adblib, layoutlib, profilers, etc.
+        "org.jetbrains.android.", // Core AS plugin for IntelliJ
+        "org.jetbrains.kotlin.android.", // Android-specific Kotlin plugin
+        "com.google.devtools.intellij.", // ASwB / Blaze support
+        "com.google.idea.blaze.", // Blaze support
+        "com.google.services.firebase.", // Bundled Firebase plugin
+        "com.google.cloud.tools.", // Bundled Cloud plugin
+        "com.google.tools.aiplugin.", // Gemini / Studio Bot
+        "com.google.aiplugin",
+        "com.google.tools.intellij.aiplugin",
+        "com.google.targetsdkversionassistant",
+        "intellij.android.gradle",
+        "com.studio.updater.", // Studio Updater
+        "android.databinding.", // Data Binding
+        "androidx.", // Layoutlib / rendering support
+      )
+
+    private val EXCLUDED_PREFIXES =
+      arrayOf(
+        "java.",
+        "javax.",
+        "jdk.",
+        "kotlin.",
+        "kotlinx.",
+        "org.jetbrains.concurrency.",
+        "com.intellij.util.",
+        "com.android.tools.idea.instrumentation.threading.ThreadingCheckerHookImpl.recordViolation",
+        "com.android.tools.idea.instrumentation.threading.ThreadingCheckerHookImpl.verifyOnUiThread",
+        "com.android.tools.instrumentation.threading.agent.callback.ThreadingCheckerTrampoline.verifyOnUiThread",
+        "com.intellij.util.concurrency.ThreadingAssertions.createThreadAccessException",
+        "com.intellij.util.concurrency.ThreadingAssertions.softAssertReadAccess",
+        "com.intellij.openapi.application.impl.ApplicationImpl.assertReadAccessAllowed",
+      )
+
+    private fun isStudioOwned(className: String?): Boolean {
+      if (className == null) return false
+      if (EXCLUDED_PREFIXES.any { className.startsWith(it) }) return false
+      return STUDIO_OWNED_PREFIXES.any { className.startsWith(it) }
     }
   }
 

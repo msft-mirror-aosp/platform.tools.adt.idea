@@ -25,19 +25,22 @@ import com.intellij.util.concurrency.annotations.RequiresReadLock
 import java.nio.file.Path
 
 interface ProfilerR8MappingToken<P : AndroidProjectSystem> : Token {
+  /**
+   * Returns the R8 mappings for the currently selected build variant of each module in the project. Returned mapping files may not exist on
+   * disk yet if the selected variant has not been built.
+   */
   @RequiresReadLock fun getR8Mappings(projectSystem: P): List<R8Mapping>
 
   data class R8Mapping(
     val text: Path,
     val applicationId: String? = null,
-    val isSelected: Boolean = false,
   )
 
   companion object {
     val EP_NAME =
       ExtensionPointName<ProfilerR8MappingToken<AndroidProjectSystem>>("com.android.tools.idea.profilers.profilerR8MappingToken")
 
-    /** Return list of R8 mappings for the given project. Some files may not exist if user did not build corresponding variant. */
+    /** Convenience helper to fetch R8 mappings for the given [project], or an empty list if unavailable. */
     @RequiresReadLock
     @JvmStatic
     fun getR8Mappings(project: Project): List<R8Mapping> {

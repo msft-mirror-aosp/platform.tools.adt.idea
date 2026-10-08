@@ -3,6 +3,10 @@ syntax = "proto3";
 package google.play.androidpublisher.v3;
 
 import "drm_app_compat_finding_data.proto";
+import "edge_to_edge_compat_finding_data.proto";
+import "vitals_anomaly_finding_data.proto";
+import "vitals_bad_behavior_finding_data.proto";
+import "vitals_device_bad_behavior_finding_data.proto";
 
 option java_package = "com.google.play.androidpublisher.v3";
 option java_multiple_files = true;
@@ -22,5 +26,21 @@ message FindingData {
     // [Finding.Type.DRM_APP_COMPAT][google.play.androidpublisher.v3.Finding.Type.DRM_APP_COMPAT]).
     //
     DrmAppCompatFindingData drm_app_compat = 1;
+
+    // Data for Edge-to-Edge display compatibility findings
+    // [Finding.Type.EDGE_TO_EDGE_COMPAT][google.play.androidpublisher.v3.Finding.Type.EDGE_TO_EDGE_COMPAT].
+    EdgeToEdgeCompatFindingData edge_to_edge_compat = 2;
+
+    // Data for Vitals Anomaly findings
+    // [Finding.Type.VITALS_ANOMALY][google.play.androidpublisher.v3.Finding.Type.VITALS_ANOMALY].
+    VitalsAnomalyFindingData vitals_anomaly = 3;
+
+    // Data for Vitals Bad Behavior findings
+    // [Finding.Type.VITALS_BAD_BEHAVIOR][google.play.androidpublisher.v3.Finding.Type.VITALS_BAD_BEHAVIOR].
+    VitalsBadBehaviorFindingData vitals_bad_behavior = 4;
+
+    // Data for Vitals Device Bad Behavior findings
+    // [Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR][google.play.androidpublisher.v3.Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR].
+    VitalsDeviceBadBehaviorFindingData vitals_device_bad_behavior = 5;
   }
 }

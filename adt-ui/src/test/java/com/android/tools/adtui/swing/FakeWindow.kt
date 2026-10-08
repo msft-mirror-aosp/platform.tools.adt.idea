@@ -21,6 +21,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ReflectionUtil
+import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
@@ -63,6 +64,7 @@ private fun wrapInFakeWindow(mockWindow: Window, root: JComponent, parentDisposa
   whenever(mockWindow.isLightweight).thenReturn(true)
   whenever(mockWindow.isFocusableWindow).thenReturn(true)
   whenever(mockWindow.locationOnScreen).thenReturn(Point(0, 0))
+  whenever(mockWindow.insets).thenReturn(JBUI.emptyInsets())
   whenever(mockWindow.size).thenAnswer { root.size }
   whenever(mockWindow.width).thenAnswer { root.width }
   whenever(mockWindow.height).thenAnswer { root.height }

@@ -15,14 +15,20 @@
  */
 package com.android.tools.profilers.taskbased.tabs.task.leakcanary.insight
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.profilers.leakcanary.AiInsight
 import com.android.tools.profilers.leakcanary.LoadingState
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import kotlinx.coroutines.Dispatchers
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -119,5 +125,47 @@ class LeakInsightPanelTest {
     }
 
     composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_SELECT_LEAK_FOR_INSIGHT).assertIsDisplayed()
+  }
+
+  @Test
+  fun testAutoGenDisabledLinksStayOnSameLineWhenWide() {
+    setAutoGenDisabledEmptyStateContent(panelWidth = 600.dp)
+
+    val generateBounds = composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_GENERATE_INSIGHT_LINK).getUnclippedBoundsInRoot()
+    val enableBounds = composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_ENABLE_AUTO_GEN_LINK).getUnclippedBoundsInRoot()
+
+    assertEquals("Links should share the same line when there is enough width", generateBounds.top, enableBounds.top)
+    assertTrue("Enable link should be to the right of the Generate link", enableBounds.left >= generateBounds.right)
+  }
+
+  @Test
+  fun testAutoGenDisabledLinksWrapToNextLineWhenNarrow() {
+    setAutoGenDisabledEmptyStateContent(panelWidth = 200.dp)
+
+    val generateLink = composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_GENERATE_INSIGHT_LINK).assertIsDisplayed()
+    val enableLink = composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_ENABLE_AUTO_GEN_LINK).assertIsDisplayed()
+    val generateBounds = generateLink.getUnclippedBoundsInRoot()
+    val enableBounds = enableLink.getUnclippedBoundsInRoot()
+
+    // The second link moves to its own line below the first instead of being clipped.
+    assertTrue("Enable link should wrap below the Generate link when the pane is narrow", enableBounds.top >= generateBounds.bottom)
+    assertEquals("Wrapped link should be start-aligned with the first link", generateBounds.left, enableBounds.left)
+  }
+
+  private fun setAutoGenDisabledEmptyStateContent(panelWidth: Dp) {
+    composeTestRule.setContent {
+      LeakInsightPanel(
+        insightState = LoadingState.Ready(null),
+        isLeakSelected = true,
+        autoGenerateEnabled = false,
+        onAutoGenerateChange = {},
+        onClose = {},
+        onFeedback = {},
+        onGenerateFix = {},
+        onCopy = {},
+        onRefresh = {},
+        modifier = Modifier.width(panelWidth),
+      )
+    }
   }
 }

@@ -267,7 +267,7 @@ public class RenderTask {
     myModuleClassLoaderReference = renderContextModule.getClassLoaderProvider(privateClassLoader)
       .getClassLoader(myLayoutLib.getClassLoader(), additionalProjectTransform, additionalNonProjectTransform, onNewModuleClassLoader);
     ModuleClassLoader moduleClassLoader = myModuleClassLoaderReference.getClassLoader();
-    ClassLoaderPreloaderKt.preload(moduleClassLoader, moduleClassLoader::isDisposed, classesToPreload);
+    ClassLoaderPreloaderKt.preload(moduleClassLoader, () -> !moduleClassLoader.isDisposed(), classesToPreload);
     try {
       myLayoutlibCallback =
         new LayoutlibCallbackExDelegate(renderContextModule.getParentDisposable(),

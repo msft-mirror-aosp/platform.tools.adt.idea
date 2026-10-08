@@ -98,9 +98,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
   init {
     val symbolSource: SymbolSource = ProjectSymbolSource(project)
     val symbolLocator = SymbolFilesLocator(symbolSource)
-    val mappingSource: R8MappingSource = ProjectR8MappingSource(project)
-    val mappingLocator = MappingFilesLocator(mappingSource)
-    ideProfilerServices = IntellijProfilerServices(project, symbolLocator, mappingLocator)
+    ideProfilerServices = IntellijProfilerServices(project, symbolLocator)
     Disposer.register(this, ideProfilerServices)
 
     // Ensures the transport service is initialized.

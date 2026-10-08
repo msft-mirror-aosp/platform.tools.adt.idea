@@ -66,19 +66,20 @@ import org.jspecify.annotations.NonNull;
  * returns null from the {@link #getFocusedComponent(Window)} method instead of throwing
  * an UnsupportedOperationException.
  */
+@SuppressWarnings("UnstableApiUsage")
 public final class FakeUiWindowManager extends WindowManagerEx {
   private static final Key<StatusBar> STATUS_BAR = Key.create("STATUS_BAR");
 
   @Override
-  public final void doNotSuggestAsParent(Window window) {}
+  public void doNotSuggestAsParent(Window window) {}
 
   @Override
-  public final Window suggestParentWindow(@Nullable Project project) {
+  public Window suggestParentWindow(@Nullable Project project) {
     return null;
   }
 
   @Override
-  public final StatusBar getStatusBar(@NotNull Project project) {
+  public StatusBar getStatusBar(@NotNull Project project) {
     synchronized (STATUS_BAR) {
       StatusBar statusBar = project.getUserData(STATUS_BAR);
       if (statusBar == null) {
@@ -115,7 +116,7 @@ public final class FakeUiWindowManager extends WindowManagerEx {
   public void resetWindow(Window window) {}
 
   @Override
-  public ProjectFrameHelper[] getAllProjectFrames() {
+  public @NotNull ProjectFrameHelper @NotNull [] getAllProjectFrames() {
     return new ProjectFrameHelper[0];
   }
 
@@ -125,22 +126,22 @@ public final class FakeUiWindowManager extends WindowManagerEx {
   }
 
   @Override
-  public final @Nullable IdeFrameImpl getFrame(Project project) {
+  public @Nullable IdeFrameImpl getFrame(Project project) {
     return null;
   }
 
   @Override
-  public final Component getFocusedComponent(@NotNull Window window) {
+  public Component getFocusedComponent(@NotNull Window window) {
     return KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
   }
 
   @Override
-  public final Component getFocusedComponent(Project project) {
+  public Component getFocusedComponent(Project project) {
     return null;
   }
 
   @Override
-  public final Window getMostRecentFocusedWindow() {
+  public Window getMostRecentFocusedWindow() {
     return null;
   }
 
@@ -150,37 +151,37 @@ public final class FakeUiWindowManager extends WindowManagerEx {
   }
 
   @Override
-  public final void dispatchComponentEvent(ComponentEvent e) {
+  public void dispatchComponentEvent(ComponentEvent e) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public final @NotNull Rectangle getScreenBounds() {
+  public @NotNull Rectangle getScreenBounds() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public final boolean isInsideScreenBounds(int x, int y, int width) {
+  public boolean isInsideScreenBounds(int x, int y, int width) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public final boolean isAlphaModeSupported() {
+  public boolean isAlphaModeSupported() {
     return false;
   }
 
   @Override
-  public final void setAlphaModeRatio(Window window, float ratio) {
+  public void setAlphaModeRatio(Window window, float ratio) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public final boolean isAlphaModeEnabled(Window window) {
+  public boolean isAlphaModeEnabled(Window window) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public final void setAlphaModeEnabled(Window window, boolean state) {
+  public void setAlphaModeEnabled(Window window, boolean state) {
     throw new UnsupportedOperationException();
   }
 
@@ -194,7 +195,7 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     return false;
   }
 
-  private static final class DummyStatusBar implements StatusBarEx {
+  private static class DummyStatusBar implements StatusBarEx {
     private final Map<String, StatusBarWidget> myWidgetMap = new HashMap<>();
 
     @Override
@@ -220,7 +221,7 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     }
 
     @Override
-    public StatusBar findChild(Component c) {
+    public StatusBar findChild(@NotNull Component c) {
       return null;
     }
 
@@ -271,7 +272,7 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     public void updateWidget(@NotNull String id) {}
 
     @Override
-    public StatusBarWidget getWidget(String id) {
+    public StatusBarWidget getWidget(@NotNull String id) {
       return myWidgetMap.get(id);
     }
 
@@ -287,12 +288,12 @@ public final class FakeUiWindowManager extends WindowManagerEx {
     }
 
     @Override
-    public final String getInfo() {
+    public String getInfo() {
       return null;
     }
 
     @Override
-    public final void setInfo(String s) {}
+    public void setInfo(String s) {}
 
     @Override
     public void startRefreshIndication(String tooltipText) {}

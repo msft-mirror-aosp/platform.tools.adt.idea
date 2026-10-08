@@ -146,10 +146,7 @@ class GradleTestResultAdapter(
         when (it.label.label) {
           "icebox.info" -> testCase.retentionInfo = File(it.sourcePath.path)
           "icebox.snapshot" -> testCase.retentionSnapshot = File(it.sourcePath.path)
-          "logcat" -> {
-            val logcatFile = File(it.sourcePath.path)
-            testCase.logcat = if (logcatFile.exists()) logcatFile.readText() else ""
-          }
+          "logcat" -> testCase.logcatFile = File(it.sourcePath.path)
         }
       }
     setBenchmarkContextAndPrepareFiles(testCaseResult, testCase)

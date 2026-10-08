@@ -20,11 +20,16 @@ import com.android.ide.common.rendering.api.AttrResourceValue
 import com.android.ide.common.rendering.api.PluralsResourceValue
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceReference
+import com.android.ide.common.rendering.api.ResourceValue
 import com.android.ide.common.rendering.api.StyleResourceValue
+import com.android.ide.common.resources.ResourceResolver
+import com.android.ide.common.resources.configuration.FolderConfiguration
+import com.android.ide.common.resources.getConfiguredResources
 import com.android.resources.ResourceType
 import com.android.testutils.TestUtils
 import com.android.tools.res.ids.apk.ApkResourceIdManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -147,5 +152,90 @@ class ApkResourceRepositoryTest {
 
     val themeItem = themeRes.resourceValue as StyleResourceValue
     assertEquals("Theme.MaterialComponents.DayNight.DarkActionBar", themeItem.parentStyleName)
+  }
+
+  @Test
+  fun testBagTypeResourcesDeclaredAsItems() {
+    val path = TestUtils.resolveWorkspacePath(TEST_DATA_DIR + "apk-resource-aliases.ap_")
+    val idManager = ApkResourceIdManager().apply { this.loadApkResources(path.toString()) }
+    val apkRes = ApkResourceRepository(path.toString()) { idManager.findById(it) }
+
+    fun valueOf(type: ResourceType, name: String): ResourceValue? =
+      apkRes.getResources(ResourceReference(ResourceNamespace.RES_AUTO, type, name)).single().resourceValue
+
+    // Regular bag resources are still loaded as bags.
+    assertTrue(valueOf(ResourceType.ATTR, "realAttr") is AttrResourceValue)
+    val baseStyle = valueOf(ResourceType.STYLE, "Base") as StyleResourceValue
+    assertEquals("@style/aliasStyle", baseStyle.definedItems.single().value)
+    assertEquals(listOf("first", "second"), (valueOf(ResourceType.ARRAY, "baseArray") as ArrayResourceValue).toList())
+    assertEquals(2, (valueOf(ResourceType.PLURALS, "basePlurals") as PluralsResourceValue).pluralsCount)
+
+    // <item type="..." name="..."/> of a bag type is a simple entry referencing @null.
+    for (type in listOf(ResourceType.ATTR, ResourceType.ARRAY, ResourceType.PLURALS)) {
+      val value = valueOf(type, "empty${type.name.lowercase().replaceFirstChar { it.uppercase() }}")!!
+      assertEquals("$type", type, value.resourceType)
+      assertEquals("$type", "@null", value.value)
+      assertFalse(
+        "$type",
+        value is AttrResourceValue || value is StyleResourceValue || value is ArrayResourceValue || value is PluralsResourceValue,
+      )
+    }
+    // Except for an empty style (@null or @empty), which is loaded as a style without parent and items, like an empty <style> tag.
+    for (name in listOf("emptyStyle", "emptyValueStyle")) {
+      val emptyStyle = valueOf(ResourceType.STYLE, name) as StyleResourceValue
+      assertEquals(name, "", emptyStyle.parentStyleName)
+      assertTrue(name, emptyStyle.definedItems.isEmpty())
+    }
+
+    // Resource aliases are simple entries referencing the aliased resource.
+    assertEquals("@attr/realAttr", valueOf(ResourceType.ATTR, "aliasAttr")?.value)
+    assertEquals("@style/Base", valueOf(ResourceType.STYLE, "aliasStyle")?.value)
+    assertEquals("@array/baseArray", valueOf(ResourceType.ARRAY, "aliasArray")?.value)
+    assertEquals("@plurals/basePlurals", valueOf(ResourceType.PLURALS, "aliasPlurals")?.value)
+  }
+
+  @Test
+  fun testUnresolvableAttrAlias() {
+    val path = TestUtils.resolveWorkspacePath(TEST_DATA_DIR + "apk-resource-aliases.ap_")
+    val idManager = ApkResourceIdManager().apply { this.loadApkResources(path.toString()) }
+    val realAttrRef = ResourceReference.attr(ResourceNamespace.RES_AUTO, "realAttr")
+    // Simulates an alias to an attribute that the resolver does not know, e.g. a framework attribute newer than the bundled layoutlib.
+    val apkRes = ApkResourceRepository(path.toString()) { resId -> idManager.findById(resId)?.takeUnless { it == realAttrRef } }
+
+    val aliasAttr = apkRes.getResources(ResourceReference.attr(ResourceNamespace.RES_AUTO, "aliasAttr")).single().resourceValue
+    assertTrue(aliasAttr is AttrResourceValue)
+    assertTrue((aliasAttr as AttrResourceValue).attributeValues.isEmpty())
+    // The rest of the repository is loaded.
+    assertEquals(
+      "@style/Base",
+      apkRes.getResources(ResourceReference.style(ResourceNamespace.RES_AUTO, "aliasStyle")).single().resourceValue?.value,
+    )
+  }
+
+  @Test
+  fun testResourceAliasesAreResolved() {
+    val path = TestUtils.resolveWorkspacePath(TEST_DATA_DIR + "apk-resource-aliases.ap_")
+    val idManager = ApkResourceIdManager().apply { this.loadApkResources(path.toString()) }
+    val apkRes = ApkResourceRepository(path.toString()) { idManager.findById(it) }
+    val baseStyleRef = ResourceReference.style(ResourceNamespace.RES_AUTO, "Base")
+    val resolver = ResourceResolver.create(apkRes.getConfiguredResources(FolderConfiguration.createDefault()).rowMap(), baseStyleRef)
+
+    fun resolve(type: ResourceType, name: String): ResourceValue? =
+      resolver.resolveResValue(resolver.getUnresolvedResource(ResourceReference(ResourceNamespace.RES_AUTO, type, name)))
+
+    assertEquals(baseStyleRef, (resolve(ResourceType.STYLE, "aliasStyle") as StyleResourceValue).asReference())
+    assertEquals(listOf("first", "second"), (resolve(ResourceType.ARRAY, "aliasArray") as ArrayResourceValue).toList())
+    assertEquals("basePlurals", (resolve(ResourceType.PLURALS, "aliasPlurals") as PluralsResourceValue).name)
+    assertEquals("realAttr", (resolve(ResourceType.ATTR, "aliasAttr") as AttrResourceValue).name)
+
+    // A theme attribute pointing to a style alias resolves to the aliased style, like AssetManager2::ResolveReference does.
+    val styleFromThemeAttr = resolver.getStyle(ResourceReference.attr(ResourceNamespace.RES_AUTO, "realAttr"))
+    assertEquals(baseStyleRef, styleFromThemeAttr?.asReference())
+
+    // An empty style resolves to a style (layoutlib's Resources.Theme.applyStyle casts resolved style resources to StyleResourceValue).
+    val emptyStyleRef = ResourceReference.style(ResourceNamespace.RES_AUTO, "emptyStyle")
+    val emptyStyle = resolver.getResolvedResource(emptyStyleRef) as StyleResourceValue
+    assertEquals(emptyStyleRef, emptyStyle.asReference())
+    assertNull(resolver.getParent(emptyStyle))
   }
 }

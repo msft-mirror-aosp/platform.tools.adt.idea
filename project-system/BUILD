@@ -7,7 +7,6 @@ iml_module(
     iml_files = ["intellij.android.projectSystem.iml"],
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
-    test_tags = ["manual"],  # testSrc here is for related test infrastructure, not tests
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [

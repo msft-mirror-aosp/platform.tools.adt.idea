@@ -70,6 +70,8 @@ abstract class SyncedProjectTest(selfTest: Boolean = false, agpVersion: AgpVersi
 
   @Test fun testAndroidKotlinMultiplatform() = testProject(TestProject.ANDROID_KOTLIN_MULTIPLATFORM)
 
+  @Test fun testAndroidKotlinMultiplatform_variantApiRes() = testProject(TestProject.ANDROID_KOTLIN_MULTIPLATFORM_VARIANT_API_RES)
+
   @Test fun testSimpleApplication() = testProject(TestProject.SIMPLE_APPLICATION)
 
   @Test fun testSimpleApplication_noParallelSync() = testProject(TestProject.SIMPLE_APPLICATION_NO_PARALLEL_SYNC)

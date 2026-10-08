@@ -553,13 +553,24 @@
 
     <issue
         id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
-        errorLine1="          Futures.addCallback(myData.setKeyName(keyToRename, (String)value), new FutureCallback&lt;>() {"
-        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        message="Call has an unsatisfiable thread requirement, but context is allowing `@UiThread`"
+        errorLine1="    showWizard(sdkPath, sdkUpdatedCallback, sdkComponentInstaller, tracker)"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/com/android/tools/idea/editors/strings/table/StringResourceTableModel.java"
-            line="124"
-            column="38"/>
+            file="src/com/android/tools/idea/sdk/wizard/SetupSdkApplicationService.kt"
+            line="82"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="WrongThread"
+        message="Call has an unsatisfiable thread requirement, but context is allowing `@UiThread`"
+        errorLine1="      val model = FirstRunWizardModel(mode, initialSdkLocation.toPath(), installUpdates = true, sdkComponentInstaller, tracker)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/welcome/wizard/StudioFirstRunWelcomeScreen.kt"
+            line="173"
+            column="19"/>
     </issue>
 
 </issues>

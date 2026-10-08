@@ -53,6 +53,7 @@ interface AndroidTestResults {
   fun getResultStats(devices: List<AndroidDevice>): AndroidTestResultStats
 
   /** Returns the logcat message emitted during the test on a given device. */
+  // TODO(b/568516025): Update this method to return a stream of Strings to avoid keeping content in memory.
   fun getLogcat(device: AndroidDevice): String
 
   /** Returns the start time of the test on a given device. */
@@ -69,6 +70,9 @@ interface AndroidTestResults {
 
   /** Returns a benchmark test results. */
   fun getBenchmark(device: AndroidDevice): BenchmarkOutput = BenchmarkOutput("")
+
+  /** Returns the logcat artifact file from the test if available. */
+  fun getLogcatFile(device: AndroidDevice): File? = null
 
   /** Returns the retention info artifact from Android Test Retention if available. */
   fun getRetentionInfo(device: AndroidDevice): File? = null

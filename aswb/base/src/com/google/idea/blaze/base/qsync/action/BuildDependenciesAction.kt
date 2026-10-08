@@ -23,13 +23,10 @@ import com.google.idea.blaze.base.qsync.QuerySync
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.base.qsync.QuerySyncManager.TaskOrigin
 import com.google.idea.blaze.base.qsync.action.BuildDependenciesHelperSelectTargetPopup.createDisambiguateTargetPrompt
-import com.ibm.icu.lang.UCharacter
-import com.ibm.icu.text.BreakIterator
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
-import java.util.Locale
 import kotlinx.coroutines.guava.asDeferred
 
 /**
@@ -73,6 +70,7 @@ class BuildDependenciesAction : BlazeProjectAction() {
   }
 
   companion object {
-    val NAME: String = UCharacter.toTitleCase(Locale.US, QuerySync.BUILD_DEPENDENCIES_ACTION_NAME, BreakIterator.getWordInstance())
+    val NAME: String = QuerySync.BUILD_DEPENDENCIES_ACTION_NAME.split(" ")
+      .joinToString(" ") { word -> word.lowercase().replaceFirstChar(Char::titlecase) }
   }
 }

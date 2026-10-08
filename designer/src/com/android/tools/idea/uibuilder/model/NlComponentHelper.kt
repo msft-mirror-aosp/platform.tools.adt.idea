@@ -22,6 +22,7 @@ import com.android.SdkConstants.ANDROID_URI
 import com.android.SdkConstants.ANDROID_VIEW_PKG
 import com.android.SdkConstants.ANDROID_WEBKIT_PKG
 import com.android.SdkConstants.ANDROID_WIDGET_PREFIX
+import com.android.SdkConstants.ATTR_ID
 import com.android.SdkConstants.ATTR_LAYOUT_HEIGHT
 import com.android.SdkConstants.ATTR_LAYOUT_WIDTH
 import com.android.SdkConstants.CLASS_VIEWGROUP
@@ -471,8 +472,8 @@ class NlComponentMixin(component: NlComponent) : NlComponent.XmlModelComponentMi
   }
 
   override fun getAttribute(namespace: String?, attribute: String): String? {
-    // Design-time (tools) attributes cannot be defined in style resources, so skip style-based attribute resolution.
-    if (TOOLS_URI == namespace) {
+    // Design-time (tools) and id attributes cannot be defined in style resources, so skip style-based attribute resolution.
+    if (TOOLS_URI == namespace || ATTR_ID == attribute) {
       return null
     }
     val styleAttributeValue = component.getAttribute(null, "style") ?: return null

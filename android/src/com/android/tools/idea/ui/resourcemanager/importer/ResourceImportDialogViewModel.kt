@@ -24,6 +24,8 @@ import com.android.tools.idea.ui.resourcemanager.model.designAssets
 import com.android.tools.idea.ui.resourcemanager.plugin.DesignAssetRendererManager
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.ui.JBUI
 import java.awt.Image
 import java.util.Collections
@@ -80,11 +82,30 @@ class ResourceImportDialogViewModel(
   private val fileViewModels = mutableMapOf<DesignAsset, FileImportRowViewModel>()
 
   /**
-   * We use a a separate validator for duplicate because if a duplicate is found, we just want to show a warning - a user can override an
-   * existing resource.
+   * We use a separate validator for duplicates because if a duplicate is found, we just want to
+   * show a warning - a user can override an existing resource. Use [StudioResourceRepositoryManager.cachedAppResources]
+   * if already available, or initialize the validator asynchronously on a background thread (with
+   * `.exceptionally { null }` so background cancellation does not throw on the EDT when calling
+   * `getNow(null)`), invoking [updateCallback] on the EDT once initialization completes.
    */
-  private val resourceDuplicateValidator =
-    IdeResourceNameValidator.forFilename(ResourceFolderType.DRAWABLE, null, StudioResourceRepositoryManager.getAppResources(facet))
+  private val resourceDuplicateValidatorFuture: CompletableFuture<IdeResourceNameValidator?> =
+    StudioResourceRepositoryManager.getInstance(facet).cachedAppResources?.let { cached ->
+      CompletableFuture.completedFuture(
+        IdeResourceNameValidator.forFilename(ResourceFolderType.DRAWABLE, null, cached)
+      )
+    }
+      ?: CompletableFuture.supplyAsync(
+          {
+            IdeResourceNameValidator.forFilename(
+              ResourceFolderType.DRAWABLE,
+              null,
+              StudioResourceRepositoryManager.getAppResources(facet),
+            )
+          },
+          AppExecutorUtil.getAppExecutorService(),
+        )
+        .exceptionally { null }
+        .whenCompleteAsync({ _, _ -> updateCallback() }, EdtExecutorService.getInstance())
 
   /** This validator only check for the name */
   private val resourceNameValidator = IdeResourceNameValidator.forFilename(ResourceFolderType.DRAWABLE, null)
@@ -201,7 +222,8 @@ class ResourceImportDialogViewModel(
     }
   }
 
-  private fun hasDuplicate(newName: String) = resourceDuplicateValidator.doesResourceExist(newName)
+  private fun hasDuplicate(newName: String) =
+    resourceDuplicateValidatorFuture.getNow(null)?.doesResourceExist(newName) ?: false
 
   private fun createDuplicateValidationInfo(field: JTextField?) =
     ValidationInfo("A resource with this name already exists and might be overridden if the qualifiers are the same.", field).asWarning()

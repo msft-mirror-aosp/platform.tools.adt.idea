@@ -74,7 +74,6 @@ import com.intellij.psi.xml.XmlTag
 import com.intellij.ui.EditorNotifications
 import com.intellij.ui.components.Magnificator
 import com.intellij.ui.components.ZoomableViewport
-import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.containers.toArray
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
@@ -292,15 +291,16 @@ abstract class DesignSurface<T : SceneManager>(
   }
 
   /** Asks the [ScreenView]s contained in this [DesignSurface] for a re-layouts. The re-layout will not happen immediately in this call. */
-  @UiThread
   fun revalidateScrollArea() {
-    // Mark the scene view panel as invalid to force a revalidation when the scroll pane is
-    // revalidated.
-    sceneViewPanel.invalidate()
-    // Schedule a layout for later.
-    contentContainerPane.revalidate()
-    // Also schedule a repaint.
-    sceneViewPanel.repaint()
+    UIUtil.invokeLaterIfNeeded {
+      // Mark the scene view panel as invalid to force a revalidation when the scroll pane is
+      // revalidated.
+      sceneViewPanel.invalidate()
+      // Schedule a layout for later.
+      contentContainerPane.revalidate()
+      // Also schedule a repaint.
+      sceneViewPanel.repaint()
+    }
   }
 
   /** Re-layouts the ScreenViews contained in this design surface immediately. */
@@ -664,10 +664,9 @@ abstract class DesignSurface<T : SceneManager>(
    * @return whether zoom-to-fit or zoom restore has happened, which won't happen if there is no model.
    */
   @VisibleForTesting
-  @UiThread
   fun restoreZoomOrZoomToFit(): Boolean {
     if (!restorePreviousScale()) {
-      zoomController.zoomToFit()
+      UIUtil.invokeLaterIfNeeded { zoomController.zoomToFit() }
     }
     return true
   }
@@ -856,10 +855,8 @@ abstract class DesignSurface<T : SceneManager>(
    * if a model was already present in the surface, then its already associated manager is reused, and it is simply moved to the
    * corresponding position.
    *
-   * This method is expected to be called in the background thread, and it will schedule the corresponding call to
-   * [DesignSurfaceListener.modelsChanged] in EDT for later.
+   * This method will schedule the corresponding call to [DesignSurfaceListener.modelsChanged] in EDT for later.
    */
-  @RequiresBackgroundThread
   fun addModelsWithoutRender(models: List<NlModel>): List<T> {
     val modelsAndManagers = models.map { model -> model to getOrCreateSceneManager(model) }
     modelsManager.addModels(modelsAndManagers)

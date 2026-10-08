@@ -47,11 +47,6 @@ class UpdateReferenceImagesDialogManager(private val project: Project) : Disposa
       return null
     }
 
-    // Clean up dead reference if any
-    if (existingDialog != null && !existingDialog.isVisible) {
-      activeDialog = null
-    }
-
     val newDialog = dialogFactory(project)
     activeDialog = newDialog
 
@@ -68,6 +63,7 @@ class UpdateReferenceImagesDialogManager(private val project: Project) : Disposa
     return newDialog
   }
 
+  @Synchronized
   override fun dispose() {
     activeDialog = null
   }

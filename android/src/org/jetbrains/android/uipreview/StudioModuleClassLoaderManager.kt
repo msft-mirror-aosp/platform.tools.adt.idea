@@ -96,7 +96,7 @@ private class ModuleClassLoaderProjectHelperService(val project: Project) : Proj
   }
 }
 
-private val PRELOADER: Key<StudioPreloader> = Key.create(::PRELOADER.qualifiedName<StudioModuleClassLoaderManager>())
+@VisibleForTesting internal val PRELOADER: Key<StudioPreloader> = Key.create(::PRELOADER.qualifiedName<StudioModuleClassLoaderManager>())
 val HATCHERY: Key<ModuleClassLoaderHatchery> = Key.create(::HATCHERY.qualifiedName<StudioModuleClassLoaderManager>())
 
 private fun <T> UserDataHolder.getOrCreate(key: Key<T>, factory: () -> T): T {
@@ -248,24 +248,24 @@ class StudioModuleClassLoaderManager : ModuleClassLoaderManager<StudioModuleClas
   @VisibleForTesting fun createCopy(mcl: StudioModuleClassLoader): StudioModuleClassLoader? = mcl.copy(createDiagnostics())
 
   private fun clearModuleData(module: Module) {
-    module.removeUserData(PRELOADER)?.dispose()
+    module.removeUserData(PRELOADER)?.let { preloader ->
+      preloader.cancel()
+      val classLoader = preloader.getClassLoader()
+      if (module.isDisposed || module.project.isDisposed || classLoader == null || !holders.containsKey(classLoader)) {
+        preloader.dispose()
+      }
+    }
     module.getUserData(HATCHERY)?.destroy()
   }
 
   private fun clearCaches(filter: (Module) -> Boolean) {
-    val modules =
-      holders
-        .keySet()
-        .toList() // Convert to list since we will be removing elements later
-        .mapNotNull { it.module?.let { m -> m to it } }
-        .filter { it.first.isDisposed || filter(it.first) }
-        .onEach { holders.remove(it.second) }
-        .mapTo(mutableSetOf()) { it.first }
+    val modules = holders.keySet().mapNotNull { it.module }.filterTo(mutableSetOf()) { it.isDisposed || filter(it) }
     modules.forEach(::clearModuleData)
 
     // Clear entries for class loaders that are disposed or are pointing to disposed modules.
-    holders.entrySet().toList().onEach {
-      if (it.key.isDisposed || it.key.module == null) {
+    holders.entrySet().toList().forEach {
+      val module = it.key.module
+      if (it.key.isDisposed || module == null || module.isDisposed || module.project.isDisposed) {
         holders.remove(it.key)
       }
     }

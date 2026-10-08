@@ -92,7 +92,7 @@ fun KtLambdaArgument.isComposableLambdaArgument(): Boolean {
   val lambdaExpression = getLambdaExpression() ?: return false
   analyze(callExpression) {
     val call = callExpression.resolveToCall()?.singleFunctionCallOrNull() ?: return false
-    val parameterTypeForLambda = call.argumentMapping[lambdaExpression]?.returnType ?: return false
+    val parameterTypeForLambda = call.valueArgumentMapping[lambdaExpression]?.returnType ?: return false
     return parameterTypeForLambda.annotations.classIds.any { it == COMPOSABLE_CLASS_ID }
   }
 }

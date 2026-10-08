@@ -24,10 +24,16 @@ import com.android.tools.idea.insights.LoadingState
 import com.google.common.truth.Truth.assertThat
 import com.google.play.androidpublisher.v3.ComputeFindingsResponse
 import com.google.play.androidpublisher.v3.DrmAppCompatFindingData
+import com.google.play.androidpublisher.v3.EdgeToEdgeCompatFindingData
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
+import com.google.play.androidpublisher.v3.VitalsBadBehaviorFindingData
+import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData
+import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
+import com.google.type.Date
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
@@ -116,6 +122,190 @@ class StudioFindingsClientTest {
     val location2 = finding2.affectedScopes[0]
     assertThat(location2).isInstanceOf(AffectedScope.Release::class.java)
     assertThat((location2 as AffectedScope.Release).releaseName).isEqualTo("release-v2.0")
+  }
+
+  @Test
+  fun testFetchFindings_EdgeToEdgeCompat() = runBlocking {
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/e2e")
+            .setFindingType(ProtoFinding.Type.EDGE_TO_EDGE_COMPAT)
+            .setFindingSeverity(ProtoFinding.Severity.WARNING)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setEdgeToEdgeCompat(EdgeToEdgeCompatFindingData.newBuilder().setReviewMessage("Draw edge to edge"))
+            )
+            .addInAppLocations(createArtifactLocation("105"))
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(1)
+    assertThat(findings[0].type).isEqualTo(FindingType.EDGE_TO_EDGE_COMPAT)
+    assertThat(findings[0].severity).isEqualTo(FindingSeverity.WARNING)
+    assertThat(findings[0].findingData).isEqualTo(FindingData.EdgeToEdge(manualReviewMessage = "Draw edge to edge"))
+  }
+
+  @Test
+  fun testFetchFindings_VitalsAnomaly() = runBlocking {
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/anomaly-hourly")
+            .setFindingType(ProtoFinding.Type.VITALS_ANOMALY)
+            .setFindingSeverity(ProtoFinding.Severity.INFO)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setVitalsAnomaly(
+                  VitalsAnomalyFindingData.newBuilder()
+                    .setMetricSet("vitals.crashrate")
+                    .setMetric("userPerceivedCrashRate")
+                    .setHourlyTime(Timestamp.newBuilder().setSeconds(1700000000L))
+                    .setMetricValue(0.045)
+                )
+            )
+        )
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/anomaly-daily")
+            .setFindingType(ProtoFinding.Type.VITALS_ANOMALY)
+            .setFindingSeverity(ProtoFinding.Severity.INFO)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setVitalsAnomaly(
+                  VitalsAnomalyFindingData.newBuilder()
+                    .setMetricSet("vitals.anrrate")
+                    .setMetric("userPerceivedAnrRate")
+                    .setDailyDate(Date.newBuilder().setYear(2026).setMonth(10).setDay(1))
+                    .setMetricValue(0.012)
+                )
+            )
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(2)
+
+    assertThat(findings[0].type).isEqualTo(FindingType.VITALS_ANOMALY)
+    assertThat(findings[0].findingData)
+      .isEqualTo(FindingData.VitalsAnomaly(metric = "userPerceivedCrashRate", metricValue = 0.045, isHourly = true))
+
+    assertThat(findings[1].type).isEqualTo(FindingType.VITALS_ANOMALY)
+    assertThat(findings[1].findingData)
+      .isEqualTo(FindingData.VitalsAnomaly(metric = "userPerceivedAnrRate", metricValue = 0.012, isHourly = false))
+  }
+
+  @Test
+  fun testFetchFindings_VitalsBadBehavior() = runBlocking {
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/bad-behavior")
+            .setFindingType(ProtoFinding.Type.VITALS_BAD_BEHAVIOR)
+            .setFindingSeverity(ProtoFinding.Severity.SEVERE)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setVitalsBadBehavior(
+                  VitalsBadBehaviorFindingData.newBuilder()
+                    .setMetricSet("vitals.crashrate")
+                    .setMetric("userPerceivedCrashRate")
+                    .setThreshold(0.0109)
+                    .setMetricValue(0.032)
+                )
+            )
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(1)
+    assertThat(findings[0].type).isEqualTo(FindingType.VITALS_BAD_BEHAVIOR)
+    assertThat(findings[0].severity).isEqualTo(FindingSeverity.SEVERE)
+    assertThat(findings[0].findingData)
+      .isEqualTo(FindingData.VitalsBadBehavior(metric = "userPerceivedCrashRate", threshold = 0.0109, metricValue = 0.032))
+  }
+
+  @Test
+  fun testFetchFindings_VitalsDeviceBadBehavior() = runBlocking {
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/device-bad-behavior")
+            .setFindingType(ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR)
+            .setFindingSeverity(ProtoFinding.Severity.SEVERE)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setVitalsDeviceBadBehavior(
+                  VitalsDeviceBadBehaviorFindingData.newBuilder()
+                    .setMetricSet("vitals.crashrate")
+                    .setMetric("userPerceivedCrashRate")
+                    .setThreshold(0.02)
+                    .setAffectedDeviceModelCount(4)
+                    .setBadBehaviorType(VitalsDeviceBadBehaviorFindingData.Type.EMERGING_BAD_BEHAVIOR)
+                    .setAffectedInstallsRatio(0.07)
+                )
+            )
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(1)
+    assertThat(findings[0].type).isEqualTo(FindingType.VITALS_DEVICE_BAD_BEHAVIOR)
+    assertThat(findings[0].severity).isEqualTo(FindingSeverity.SEVERE)
+    assertThat(findings[0].findingData)
+      .isEqualTo(
+        FindingData.VitalsDeviceBadBehavior(
+          metric = "userPerceivedCrashRate",
+          threshold = 0.02,
+          affectedDeviceModelsCount = 4,
+          isEmerging = true,
+          affectedInstallsRatio = 0.07,
+        )
+      )
+  }
+
+  @Test
+  fun testFetchFindings_SdkHasCrashAnnotation() = runBlocking {
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/sdk-crash-annotation")
+            .setFindingType(ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION)
+            .setFindingSeverity(ProtoFinding.Severity.INFO)
+            .addInAppLocations(createReleaseLocation("release-v1.0"))
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(1)
+    assertThat(findings[0].type).isEqualTo(FindingType.SDK_HAS_CRASH_ANNOTATION)
+    assertThat(findings[0].severity).isEqualTo(FindingSeverity.INFO)
+    assertThat(findings[0].findingData).isEqualTo(FindingData.Empty)
   }
 
   @Test

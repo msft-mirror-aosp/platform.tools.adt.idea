@@ -297,9 +297,6 @@ fun configureLayoutlibSceneManager(
     config.quality = quality
     config.customContentHierarchyParser = if (runVisualAnalysis) accessibilityBasedHierarchyParser else null
     config.layoutScannerConfig.isLayoutScannerEnabled = runVisualAnalysis
-    // During configure of SceneManager, always force re-inflation. This ensures that the
-    // RenderTask is recreated, clearing any old resize data or state.
-    config.needsInflation.set(true)
     config.disableAnimation = disableAnimation
     config.useLoadViewFallbacks = useLoadViewFallbacks
   }
@@ -700,6 +697,7 @@ constructor(
   private fun onInteractivePreviewStop() {
     requestVisibilityAndNotificationsUpdate()
     interactiveManager.stop()
+    interactivePreviewNavigationController.clear()
     invalidate()
   }
 
@@ -1029,6 +1027,7 @@ constructor(
     isDisposed.set(true)
     if (mode.value is PreviewMode.Interactive) {
       interactiveManager.stop()
+      interactivePreviewNavigationController.clear()
     } else if (mode.value is PreviewMode.UiCheck) {
       uiCheckFilterFlow.value.basePreviewInstance?.let { uiCheckPanelCleanup(it.instanceId) }
     }

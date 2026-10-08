@@ -207,9 +207,11 @@ class InstallSelectedPackagesStep(
 
   private fun startSdkInstall(sdkHandler: AndroidSdkHandler) {
     val customLogger = CustomLogger()
+    // The install can outlive this step: the user can send it to the background, which closes the wizard. Keep the output so that we can
+    // still show it when the install finishes.
     val activeLogger =
       synchronized(LOGGER_LOCK) {
-        val log = if (throttleProgress) ThrottledProgressWrapper(customLogger) else customLogger
+        val log = LogCollectingProgressIndicator(if (throttleProgress) ThrottledProgressWrapper(customLogger) else customLogger)
         logger = log
         log
       }
@@ -221,27 +223,34 @@ class InstallSelectedPackagesStep(
         logger = activeLogger,
         installRequests = installRequests,
         uninstallRequests = uninstallRequests,
-        prepareCompleteCallback = { backgroundAction.isEnabled = false },
         completeCallback = { failures ->
           ModalityUiUtil.invokeLaterIfNeeded(ModalityState.any()) {
-            progressBar.value = 100
-            progressOverallLabel.text = ""
-
             for (project in ProjectManager.getInstance().openProjects) {
               project.messageBus.syncPublisher(SdkInstallListener.TOPIC).installCompleted(installRequests, uninstallRequests)
             }
 
-            if (failures.isNotEmpty()) {
-              installFailed.set(true)
-              progressBar.isEnabled = false
+            if (backgroundAction.isBackgrounded) {
+              // Our UI is gone, so this is the only place left to report the result.
+              if (failures.isNotEmpty()) {
+                SdkInstallNotifications.notifySdkInstallFailed(failures, activeLogger.log)
+              } else {
+                SdkInstallNotifications.notifySdkInstallSucceeded(installRequests.mapNotNull { it.remote }, activeLogger.log)
+              }
             } else {
-              progressDetailLabel.text = "Done"
+              progressBar.value = 100
+              progressOverallLabel.text = ""
+
+              if (failures.isNotEmpty()) {
+                installFailed.set(true)
+                progressBar.isEnabled = false
+              } else {
+                progressDetailLabel.text = "Done"
+              }
+              installationFinished.set(true)
             }
-            installationFinished.set(true)
           }
         },
       )
-    backgroundAction.task = task
 
     task.runAsync()
   }
@@ -465,11 +474,9 @@ class InstallSelectedPackagesStep(
       private set
 
     var wizard: ModelWizard.Facade? = null
-    var task: InstallTask? = null
 
     override fun actionPerformed(e: ActionEvent?) {
       isBackgrounded = true
-      task?.foregroundIndicatorClosed()
       wizard?.cancel()
     }
   }

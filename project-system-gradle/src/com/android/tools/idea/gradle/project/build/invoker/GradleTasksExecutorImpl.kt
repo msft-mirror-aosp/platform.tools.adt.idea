@@ -37,6 +37,7 @@ import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.hasCause
 import com.android.tools.idea.gradle.util.addAndroidStudioPluginVersion
 import com.android.tools.idea.projectsystem.getSyncManager
 import com.android.tools.idea.projectsystem.toReason
+import com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension.BooleanOptions.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW
 import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.tracer.Trace
 import com.google.common.base.Stopwatch
@@ -48,6 +49,7 @@ import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USE
 import com.intellij.compiler.CompilerConfiguration
 import com.intellij.compiler.CompilerManagerImpl
 import com.intellij.execution.process.ProcessOutputType
+import com.intellij.gradle.toolingExtension.util.GradleVersionUtil
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
@@ -295,6 +297,21 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             executionSettings.withVmOptions(traceJvmArgs).withArguments(commandLineArguments)
             val operation: LongRunningOperation = if (isRunBuildAction) connection.action(buildAction) else connection.newBuild()
             val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
+            // Mirrors GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which
+            // enables built-in (Tooling API) test events for Gradle 7.6+. That method is only called
+            // from GradleTaskManager.executeTasks, which Studio bypasses by routing tasks through
+            // this executor. Without it, the legacy init-script test logger is used, which does not
+            // report test events from included builds.
+            // Runs whose results are shown in AndroidTestSuiteView keep using the legacy test logger,
+            // because GradleAndroidTestsExecutionConsoleManager only processes its stdout XML events
+            // and does not handle Tooling API test events.
+            if (
+              gradleVersion != null &&
+                GradleVersionUtil.isGradleAtLeast(gradleVersion, "7.6") &&
+                executionSettings.getUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey) != true
+            ) {
+              executionSettings.isBuiltInTestEventsUsed = true
+            }
             GradleTaskManager.configureTasks(myRequest.rootProjectPath.path, myRequest.taskId, executionSettings, gradleVersion)
             GradleExecutionHelper.prepareForExecution(operation, context)
             if (enableBuildAttribution) {

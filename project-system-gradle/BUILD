@@ -43,7 +43,7 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
         # AI Plugin access to Gradle Project System functionality
         "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
-        "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle_tests",
+        "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle.tests_tests",
         # TODO(b/427148033), MigrateToCatalogProcessor
         "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         # TODO(xof): investigate
@@ -715,6 +715,10 @@ iml_module(
         "@intellij//:org.jetbrains.idea.reposearch",
         "@intellij//:intellij.platform.smRunner",
         "@intellij//:intellij.platform.testRunner",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
     ],
     test_jvm_flags = ["-Didea.skip.indices.initialization=true"],
     test_resources = ["testResources"],

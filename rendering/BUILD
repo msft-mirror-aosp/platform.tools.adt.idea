@@ -47,6 +47,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:layoutlib",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
     ],
     test_friends = ["//tools/adt/idea/rendering:intellij.android.rendering"],
     test_srcs = ["testSrc"],

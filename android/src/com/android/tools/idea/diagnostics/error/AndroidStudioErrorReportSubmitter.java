@@ -238,6 +238,9 @@ public class AndroidStudioErrorReportSubmitter extends ErrorReportSubmitter {
     }
 
     mapBuilder.put("sessionId", UsageTracker.getSessionId());
+    if (exceptionEvent != null && exceptionEvent.getDynamicSignature() != null) {
+      mapBuilder.put("dynamicSignature", exceptionEvent.getDynamicSignature());
+    }
 
     ImmutableMap<String, String> productData = mapBuilder.buildKeepingLast();
     StudioExceptionReport exceptionReport =
@@ -262,8 +265,10 @@ public class AndroidStudioErrorReportSubmitter extends ErrorReportSubmitter {
               .setCrashReportId(reportId);
 
           String signature = "[missing signature]";
+          String dynamicSignature = null;
           if (exceptionEvent != null) {
             signature = exceptionEvent.getSignature();
+            dynamicSignature = exceptionEvent.getDynamicSignature();
             exceptionBuilder
               .setExceptionIndex(exceptionEvent.getExceptionIndex())
               .setSignatureIndex(exceptionEvent.getSignatureIndex())
@@ -278,7 +283,11 @@ public class AndroidStudioErrorReportSubmitter extends ErrorReportSubmitter {
                   .setException(exceptionBuilder)
               );
           UsageTracker.log(timeMs, event);
-          LOG.info("Exception signature: %s, report ID: %s".formatted(signature, reportId));
+          if (dynamicSignature != null) {
+            LOG.info("Exception signature: %s, dynamic signature: %s, report ID: %s".formatted(signature, dynamicSignature, reportId));
+          } else {
+            LOG.info("Exception signature: %s, report ID: %s".formatted(signature, reportId));
+          }
         });
   }
 

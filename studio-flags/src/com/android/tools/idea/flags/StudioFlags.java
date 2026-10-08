@@ -751,6 +751,12 @@ public final class StudioFlags {
     "Support for RISC V",
     "Allow support for RISC V architecture and targeted architecture selection.");
 
+  public static final Flag<Boolean> SORT_OBJECT_PROPERTIES = new BooleanFlag(
+    RUNDEBUG,
+    "node.render.sort.properties",
+    "Sort object children nodes",
+    "When evaluating objects, sort object fields and getters according to the declaration order. DEX'ing a class results in alphabetic order.");
+
   //endregion
 
   //region Logcat
@@ -2509,6 +2515,11 @@ public final class StudioFlags {
                     "Enable the replace text tool",
                     "When enabled, adds the replace text tool to a set of default tools");
 
+  public static final Flag<Boolean> STUDIOBOT_INTERACTIVE_SHELL_TOOL_ENABLED =
+    new BooleanFlag(STUDIOBOT, "interactive.shell.tool.enabled",
+                    "Enable the interactive shell tool",
+                    "When enabled, replaces the standard RunShellCommandTool with InteractiveRunShellCommandTool and InteractShellTool");
+
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_TOOL_ENABLED =
     new BooleanFlag(STUDIOBOT, "ask.user.tool.enabled",
                     "Enable the AskUserTool",
@@ -2843,6 +2854,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "guided.planning.progress.ui.enabled",
                     "Enable Progress UI in Guided Planning Mode",
                     "When enabled, Guided Planning Mode will display a new UI to track the progress of the plan.");
+
+  public static final Flag<Boolean> STUDIOBOT_TASK_PROGRESS_UI_IN_CHAT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "task.progressui.chat.enabled",
+                    "Enable Task Progress UI in general chat",
+                    "When enabled, the Task Progress UI tool will be added for the general chat. Requires studiobot.task.progressui.enabled.");
 
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_IN_QUERY_BOX =
     new BooleanFlag(STUDIOBOT, "ask.user.in.query.box",

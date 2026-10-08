@@ -16,6 +16,8 @@ kotlin_library(
     deps = [
         "//tools/adt/idea/android-kotlin:android-dexer",
         "//tools/adt/idea/debuggers:intellij.android.debuggers",
+        "//tools/adt/idea/studio-flags",
+        "//tools/base/flags:studio.android.sdktools.flags",
         "@maven//:junit.junit",
         "@tools_idea//java/debugger/impl",
         "@tools_idea//java/debugger/openapi:java-debugger",

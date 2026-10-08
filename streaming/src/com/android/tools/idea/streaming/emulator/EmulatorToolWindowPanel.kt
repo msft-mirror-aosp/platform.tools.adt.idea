@@ -142,8 +142,10 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
   init {
     Disposer.register(disposableParent, this)
 
-    if (deviceType == DeviceType.AI_GLASSES) {
-      addTopPanel(EmulatorGlassesInputPanel(emulator, this))
+    when (deviceType) {
+      DeviceType.AI_GLASSES -> addTopPanel(EmulatorGlassesInputPanel(emulator, this))
+      DeviceType.TV -> addBottomPanel(TvRemotePanel(emulator, project, this))
+      else -> {}
     }
 
     // Start Adb ready service for context menu actions.

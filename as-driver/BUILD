@@ -63,6 +63,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/as-driver:librunfiles",
         "//tools/emulator/testlib:android.sdktools.testlib",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_srcs = ["utils/testSrc"],
     visibility = ["//visibility:public"],

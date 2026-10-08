@@ -200,6 +200,7 @@ class ProjectSetupRuleImpl(
         "tools/base/build-system/previous-versions/8.13.0.manifest".linkIfExists()
         "tools/base/build-system/integration-test/kotlin_gradle_plugin_prebuilts.manifest".linkIfExists()
         "tools/base/build-system/integration-test/latest_kotlin_gradle_plugin_prebuilts_for_sync_benchmarks.manifest".linkIfExists()
+        "tools/base/build-system/integration-test/kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks.manifest".linkIfExists()
       }
     }
 

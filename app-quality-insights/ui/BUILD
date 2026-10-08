@@ -62,6 +62,8 @@ iml_module(
         "//tools/vendor/google/login:google-login.tests",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

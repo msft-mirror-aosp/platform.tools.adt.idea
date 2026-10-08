@@ -879,7 +879,7 @@ public class ColumnTreeBuilder {
       }
       if (myTable != null && myTable.getShowVerticalLines()) {
         g.setColor(myTable.getGridColor());
-        getColumnX().forEach((Integer x) -> g.drawLine(x, 0, x, c.getHeight()));
+        getColumnX().forEach((Integer x) -> g.fillRect(x, 0, 1, c.getHeight()));
       }
       super.paint(g, c);
     }
@@ -978,7 +978,7 @@ public class ColumnTreeBuilder {
         Color gridColor = gridBackground == null ? myTable.getGridColor() :
                     AdtUiUtils.overlayColor(gridBackground.getRGB(), myTable.getGridColor().getRGB(), 0.25f);
         g.setColor(gridColor);
-        getColumnX().forEach((Integer x) -> g.drawLine(x, bounds.y, x, bounds.y + bounds.height - 1));
+        getColumnX().forEach((Integer x) -> g.fillRect(x, bounds.y, 1, bounds.height));
       }
     }
 
@@ -1035,8 +1035,7 @@ public class ColumnTreeBuilder {
       int x = 0;
       for (int i = 0; i < myTable.getColumnModel().getColumnCount() - 1; i++) {
         x += myTable.getColumnModel().getColumn(i).getWidth();
-        // -1 so that the vertical line lines up with the header column lines
-        columnX.add(x - 1);
+        columnX.add(x);
       }
       return columnX;
     }

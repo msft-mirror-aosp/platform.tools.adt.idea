@@ -18,11 +18,14 @@ package com.android.tools.idea.uibuilder.scene
 import com.android.SdkConstants
 import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.ide.common.rendering.api.Result
+import com.android.ide.common.rendering.api.ViewInfo
 import com.android.testutils.delayUntilCondition
+import com.android.tools.idea.common.SyncNlModel
 import com.android.tools.idea.common.surface.LayoutScannerConfiguration
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil.model
+import com.android.tools.idea.uibuilder.model.viewInfo
 import com.android.tools.idea.uibuilder.property.testutils.ComponentUtil.component
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.rendering.ExecuteCallbacksResult
@@ -74,6 +77,7 @@ class LayoutlibSceneRendererTest {
   private val projectRule = AndroidProjectRule.withSdk().initAndroid(true)
 
   @get:Rule val chain = RuleChain(projectRule, EdtRule())
+  private lateinit var nlModel: SyncNlModel
   private lateinit var renderer: LayoutlibSceneRenderer
   private val renderTaskBuilderMock = mock<RenderTaskBuilder>()
   private val renderTaskMock = mock<RenderTask>()
@@ -97,13 +101,20 @@ class LayoutlibSceneRendererTest {
       taskInflateCount.incrementAndGet()
       CompletableFuture.completedFuture(simulatedInflateResult)
     }
-    val model = model(projectRule, "layout", "layout.xml", component(SdkConstants.TAG_LAYOUT).withBounds(0, 0, 1000, 1000)).build()
+    nlModel =
+      model(
+          projectRule,
+          "layout",
+          "layout.xml",
+          component(SdkConstants.TAG_LAYOUT).withBounds(0, 0, 1000, 1000),
+        )
+        .build()
     renderer =
       LayoutlibSceneRenderer(
         projectRule.testRootDisposable,
         EdtExecutorService.getInstance(),
-        model,
-        model.surface as NlDesignSurface,
+        nlModel,
+        nlModel.surface as NlDesignSurface,
         LayoutScannerConfiguration.DISABLED,
       )
     whenever(renderTaskBuilderMock.build(any())).thenReturn(CompletableFuture.completedFuture(renderTaskMock))
@@ -371,6 +382,47 @@ class LayoutlibSceneRendererTest {
         .trimIndent(),
       result.logger.messages.joinToString("\n") { "${it.html}: ${it.throwable}" },
     )
+  }
+
+  // Regression test for b/566451352
+  @Test
+  fun testDeactivateClearsViewInfoAndRenderResultViews(): Unit = runBlocking {
+    val rootComponent = nlModel.treeReader.components.single()
+    val fakeViewObject = Any()
+    val fakeViewInfo = ViewInfo(SdkConstants.TAG_LAYOUT, null, 0, 0, 100, 100, fakeViewObject, null, null)
+    rootComponent.viewInfo = fakeViewInfo
+
+    val resultWithViews =
+      RenderResult(
+        { projectRule.fixture.file },
+        projectRule.project,
+        { projectRule.module },
+        RenderLogger(projectRule.project),
+        null,
+        false,
+        Result.Status.SUCCESS.createResult(),
+        ImmutableList.of(fakeViewInfo),
+        ImmutableList.of(fakeViewInfo),
+        getTestImage(),
+        ImmutableMap.of(fakeViewObject, emptyMap()),
+        ImmutableMap.of(),
+        fakeViewObject,
+        Dimension(100, 100),
+        RenderResultStats.EMPTY,
+      )
+    renderer.renderResult = resultWithViews
+    assertNotNull(rootComponent.viewInfo)
+    assertEquals(1, resultWithViews.rootViews.size)
+
+    renderer.deactivate()
+
+    assertNull(rootComponent.viewInfo)
+    assertNull(renderer.renderResult)
+    assertTrue(resultWithViews.rootViews.isEmpty())
+    assertTrue(resultWithViews.systemRootViews.isEmpty())
+    assertTrue(resultWithViews.defaultProperties.isEmpty())
+    assertTrue(resultWithViews.defaultStyles.isEmpty())
+    assertNull(resultWithViews.validatorResult)
   }
 
   private fun blockInflationAndRequestRender() = runBlocking {

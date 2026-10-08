@@ -22,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -245,7 +246,9 @@ private fun InsightEmptyState(
           color = JewelTheme.globalColors.text.normal.copy(alpha = 0.6f),
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        // FlowRow keeps both links on one line when there is room and moves the second link to the
+        // next line when the pane is too narrow, instead of clipping it.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Link(text = TaskBasedUxStrings.LEAKCANARY_GENERATE_INSIGHT_LINK, onClick = onRefresh)
           Link(text = TaskBasedUxStrings.LEAKCANARY_ENABLE_AUTO_GEN_LINK, onClick = { onAutoGenerateChange(true) })
         }

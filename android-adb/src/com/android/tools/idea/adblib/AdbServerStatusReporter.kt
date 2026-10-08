@@ -19,40 +19,56 @@ import com.android.adblib.ServerStatus
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.adb.AdbOptionsService
 import com.android.tools.idea.adb.AdbServerStatusRetriever
+import com.android.tools.idea.adb.ServerStatusState
 import com.android.tools.idea.isAndroidEnvironment
 import com.google.wireless.android.sdk.stats.AdbServerStatus
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
+import java.util.concurrent.atomic.AtomicReference
 
 /** Retrieve status of ADB Server and upload stats */
-class AdbServerStatusReporter(val statusReporter: (ServerStatus) -> Unit) : ProjectActivity {
+class AdbServerStatusReporter(val statusReporter: (AdbServerStatus) -> Unit) : ProjectActivity {
   @Suppress("unused") constructor() : this(::reportAdbStatus)
+
+  /**
+   * The last reported status, shared by all open projects: this class is registered as a `backgroundPostStartupActivity`, which is an
+   * application-level extension point, so the platform creates a single instance and calls [execute] on it for every project. This way,
+   * opening another project connected to the same adb server doesn't log a duplicate, while a changed server (e.g. restarted with a new
+   * version) is logged.
+   */
+  private val lastReportedStatus = AtomicReference<AdbServerStatus?>()
 
   override suspend fun execute(project: Project) {
     if (!isAndroidEnvironment(project)) {
       return
     }
-    val serverStatus = AdbServerStatusRetriever.getInstance(project).serverStatus.filterNotNull().first()
-    statusReporter(serverStatus)
+    AdbServerStatusRetriever.getInstance(project).serverStatusState.collect { state ->
+      val builder = AdbServerStatus.newBuilder().setIsManaged(AdbOptionsService.getInstance().optionsUpdater.useUserManagedAdb())
+      when (state) {
+        // Nothing to report until the adb server is reachable.
+        ServerStatusState.NotConnected -> return@collect
+        // adb < 35.0.2 doesn't support `server-status`: log an "unknown" version and leave the other fields unset.
+        ServerStatusState.Unsupported -> builder.setVersion(ServerStatus.UNKNOWN)
+        is ServerStatusState.Supported ->
+          builder
+            .setVersion(state.status.version)
+            .setIsUsbBackendForced(state.status.usbBackendForced)
+            .setUsbBackend(state.status.usbBackend.toProto())
+            .setMdnsBackend(state.status.mdnsBackEnd.toProto())
+            .setIsMdnsBackendForced(state.status.mdnsBackEndForced)
+      }
+      val status = builder.build()
+      if (lastReportedStatus.getAndSet(status) != status) {
+        statusReporter(status)
+      }
+    }
   }
 }
 
-private fun reportAdbStatus(serverStatus: ServerStatus) {
+private fun reportAdbStatus(adbServerStatus: AdbServerStatus) {
   UsageTracker.log(
-    AndroidStudioEvent.newBuilder()
-      .setKind(AndroidStudioEvent.EventKind.ADB_SERVER_STATUS)
-      .setAdbServerStatus(
-        AdbServerStatus.newBuilder()
-          .setIsManaged(AdbOptionsService.getInstance().optionsUpdater.useUserManagedAdb())
-          .setVersion(serverStatus.version)
-          .setIsUsbBackendForced(serverStatus.usbBackendForced)
-          .setUsbBackend(serverStatus.usbBackend.toProto())
-          .setMdnsBackend(serverStatus.mdnsBackEnd.toProto())
-          .setIsMdnsBackendForced(serverStatus.mdnsBackEndForced)
-      )
+    AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.ADB_SERVER_STATUS).setAdbServerStatus(adbServerStatus)
   )
 }
 

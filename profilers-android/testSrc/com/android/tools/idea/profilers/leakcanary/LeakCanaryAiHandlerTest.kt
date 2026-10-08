@@ -85,7 +85,7 @@ class LeakCanaryAiHandlerTest {
       ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
 
       whenever(mockGeminiApiV2.isAvailable()).thenReturn(true)
-      whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.THINKING)))
+      whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.CHAT)))
         .thenReturn("Insight chunk 1 chunk 2")
 
       val result = LeakCanaryAiHandler.fetchLeakInsight(project, "raw trace").toList()
@@ -100,7 +100,7 @@ class LeakCanaryAiHandlerTest {
       ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
 
       whenever(mockGeminiApiV2.isAvailable()).thenReturn(true)
-      whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.THINKING)))
+      whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.CHAT)))
         .thenReturn(null)
 
       try {

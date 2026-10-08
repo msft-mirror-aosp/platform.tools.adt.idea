@@ -105,6 +105,7 @@ import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEve
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType.ActivateToolWindow
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType.HideToolWindow
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType.MovedOrResized
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType.SetToolWindowType
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEventType.ShowToolWindow
 import com.intellij.openapi.wm.impl.InternalDecorator
 import com.intellij.openapi.wm.impl.content.ToolWindowContentUi
@@ -125,9 +126,11 @@ import com.intellij.util.concurrency.AppExecutorUtil.createBoundedApplicationPoo
 import com.intellij.util.containers.ContainerUtil
 import icons.StudioIcons
 import java.awt.Component
+import java.awt.Dimension
 import java.awt.EventQueue
 import java.awt.event.ContainerEvent
 import java.awt.event.ContainerListener
+import java.awt.event.HierarchyEvent
 import java.awt.event.KeyEvent
 import java.beans.PropertyChangeListener
 import java.nio.file.Path
@@ -337,42 +340,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
     // Lazily initialize content since we can only have one frame.
     val messageBusConnection = project.messageBus.connect(this)
-    messageBusConnection.subscribe(
-      ToolWindowManagerListener.TOPIC,
-      object : ToolWindowManagerListener {
-
-        @Suppress("UnstableApiUsage")
-        override fun stateChanged(toolWindowManager: ToolWindowManager, toolWindow: ToolWindow, changeType: ToolWindowManagerEventType) {
-          if (toolWindow != this@StreamingToolWindowManager.toolWindow) {
-            return
-          }
-
-          when (changeType) {
-            ActivateToolWindow,
-            ShowToolWindow,
-            HideToolWindow,
-            MovedOrResized -> {
-              toolWindowManager.invokeLater {
-                if (!toolWindow.isDisposed) {
-                  if (toolWindow.isVisible) {
-                    initialContentUpdate = true
-                    try {
-                      onToolWindowShown()
-                    } finally {
-                      initialContentUpdate = false
-                    }
-                  } else {
-                    onToolWindowHidden()
-                  }
-                }
-              }
-            }
-            else -> {}
-          }
-        }
-      },
-    )
-
+    messageBusConnection.subscribe(ToolWindowManagerListener.TOPIC, MyToolWindowManagerListener())
     messageBusConnection.subscribe(DeviceHeadsUpListener.TOPIC, MyDeviceHeadsUpListener())
   }
 
@@ -695,6 +663,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       updateMirroringHandlesFlow()
     }
     val content = findContentBySerialNumberOfPhysicalDevice(serialNumber) ?: return
+    logger.info("Device ${content.tabName} ($serialNumber) has disconnected")
     savedUiState.remove(content.deviceId)
     content.removeAndDispose()
   }
@@ -1248,6 +1217,66 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       block()
     } else {
       invokeLater(block)
+    }
+  }
+
+  @AnyThread
+  private inner class MyToolWindowManagerListener : ToolWindowManagerListener {
+
+    private var wasDetached = toolWindow.isDetached
+    private var lastDockedSize: Dimension? = null
+
+    init {
+      val decorator = toolWindow.decorator
+      decorator.addHierarchyListener { event ->
+        if (event.changeFlags and HierarchyEvent.PARENT_CHANGED.toLong() != 0L) {
+          if (!toolWindow.isDetached && decorator.width > 0 && decorator.height > 0) {
+            lastDockedSize = decorator.size
+          }
+        }
+      }
+    }
+
+    @Suppress("UnstableApiUsage")
+    override fun stateChanged(toolWindowManager: ToolWindowManager, toolWindow: ToolWindow, changeType: ToolWindowManagerEventType) {
+      if (toolWindow != this@StreamingToolWindowManager.toolWindow) {
+        return
+      }
+
+      when (changeType) {
+        ActivateToolWindow,
+        ShowToolWindow,
+        HideToolWindow,
+        MovedOrResized,
+        SetToolWindowType -> {
+          toolWindowManager.invokeLater {
+            if (!toolWindow.isDisposed) {
+              if (toolWindow.isVisible) {
+                val isDetached = toolWindow.isDetached
+                val becameDetached = isDetached && !wasDetached
+                wasDetached = isDetached
+                initialContentUpdate = true
+                try {
+                  onToolWindowShown()
+                } finally {
+                  initialContentUpdate = false
+                }
+                if (becameDetached) {
+                  val preDetachedSize = lastDockedSize
+                  lastDockedSize = null
+                  ToolWindowSizeOptimizer.optimizeSize(this@StreamingToolWindowManager.toolWindow, preDetachedSize)
+                }
+              } else {
+                if (!toolWindow.isDetached) {
+                  wasDetached = false
+                }
+                onToolWindowHidden()
+              }
+            }
+          }
+        }
+        else -> {}
+      }
     }
   }
 

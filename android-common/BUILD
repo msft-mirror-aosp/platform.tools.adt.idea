@@ -9,15 +9,6 @@ iml_module(
     # do not sort: must match IML order
     resources = ["resources"],
     tags = ["noci:studio-win"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:kotlin-test",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
-    ],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     exports = [
@@ -71,6 +62,7 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:android-core-proto",
+        "//tools/adt/idea/server-flags:intellij.android.server-flags.tests",
     ],
     test_friends = ["//tools/adt/idea/android-common:intellij.android.common"],
     test_srcs = ["test"],

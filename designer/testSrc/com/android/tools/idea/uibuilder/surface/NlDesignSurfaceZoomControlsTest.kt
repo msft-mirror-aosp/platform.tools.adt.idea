@@ -55,6 +55,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.ui.JBColor.RED
 import com.intellij.util.ui.JBUI.Borders.customLine
+import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.BorderLayout.CENTER
 import java.awt.EventQueue
@@ -202,13 +203,13 @@ class NlDesignSurfaceZoomControlsTest {
     }
 
     val event = TestActionEvent.createTestEvent(DataManager.getInstance().customizeDataContext(DataContext.EMPTY_CONTEXT, surface))
-    zoomToFitAction.actionPerformed(event)
+    UIUtil.invokeAndWaitIfNeeded { zoomToFitAction.actionPerformed(event) }
     val zoomToFitScale = surface.zoomController.scale
 
     // Verify zoom in
     run {
       val originalScale = surface.zoomController.scale
-      repeat(3) { zoomInAction.actionPerformed(event) }
+      repeat(3) { UIUtil.invokeAndWaitIfNeeded { zoomInAction.actionPerformed(event) } }
       assertTrue(surface.zoomController.scale > originalScale)
       fakeUi.updateToolbardsAndFullRefresh()
       ImageDiffUtil.assertImageSimilar(getGoldenImagePath("zoomIn"), asyncDisplayRule.renderInFakeUi(fakeUi), 0.1, 1)
@@ -216,7 +217,7 @@ class NlDesignSurfaceZoomControlsTest {
 
     // Verify zoom to fit
     run {
-      zoomToFitAction.actionPerformed(event)
+      UIUtil.invokeAndWaitIfNeeded { zoomToFitAction.actionPerformed(event) }
       assertEquals(zoomToFitScale, surface.zoomController.scale, 0.01)
       fakeUi.updateToolbardsAndFullRefresh()
       ImageDiffUtil.assertImageSimilar(getGoldenImagePath("zoomFit"), asyncDisplayRule.renderInFakeUi(fakeUi), 0.1, 1)
@@ -225,7 +226,7 @@ class NlDesignSurfaceZoomControlsTest {
     // Verify zoom out
     run {
       val originalScale = surface.zoomController.scale
-      repeat(3) { zoomOutAction.actionPerformed(event) }
+      repeat(3) { UIUtil.invokeAndWaitIfNeeded { zoomOutAction.actionPerformed(event) } }
       assertTrue(surface.zoomController.scale < originalScale)
       fakeUi.updateToolbardsAndFullRefresh()
       ImageDiffUtil.assertImageSimilar(getGoldenImagePath("zoomOut"), asyncDisplayRule.renderInFakeUi(fakeUi), 0.1, 1)

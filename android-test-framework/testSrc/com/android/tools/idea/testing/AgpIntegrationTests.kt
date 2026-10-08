@@ -28,11 +28,11 @@ import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 
 // This Gradle version is exclusively used for the Sync Comparison Benchmarks and gets updated
 // frequently. Please do not use for other purposes
-const val GRADLE_SNAPSHOT_VERSION = "9.8.0-20260921020407+0000"
+const val GRADLE_SNAPSHOT_VERSION = "9.9.0-20261005000231+0000"
 const val GRADLE_DECLARATIVE_SNAPSHOT_VERSION = "9.6.0"
 // For available versions:
 // https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
-const val KOTLIN_SNAPSHOT_VERSION = "2.5.0-dev-3375"
+const val KOTLIN_SNAPSHOT_VERSION = "2.5.0-dev-9824"
 
 /** An AGP Version definition to be used in AGP integration tests. */
 enum class AgpVersionSoftwareEnvironmentDescriptor(
@@ -65,6 +65,7 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   //   - KGP 2.1 requires AGP 7.3.1+ and Gradle 7.6.3+
   //   - KGP 2.3 requires AGP 8.2.2+
   //   - KGP 2.4 requires AGP 8.5.2+
+  //   - KGP 2.5 requires Gradle 8.14+
   AGP_70(
     agpVersion = "7.0.0",
     gradleVersion = "7.0.2",
@@ -132,14 +133,14 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   AGP_83(agpVersion = "8.3.1", kotlinVersion = "2.3.10", gradleVersion = "8.4", jdkVersion = JDK_17, compileSdk = "34"),
   AGP_84(agpVersion = "8.4.0", kotlinVersion = "2.3.10", gradleVersion = "8.6", jdkVersion = JDK_17, compileSdk = "34"),
   AGP_85(agpVersion = "8.5.0", kotlinVersion = "2.3.10", gradleVersion = "8.7", jdkVersion = JDK_17, compileSdk = "34"),
-  AGP_86(agpVersion = "8.6.0", gradleVersion = "8.7", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_87(agpVersion = "8.7.0", gradleVersion = "8.9", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_88(agpVersion = "8.8.0", gradleVersion = "8.10.2", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_89(agpVersion = "8.9.0", gradleVersion = "8.11.1", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_8_10_1(agpVersion = "8.10.1", gradleVersion = "8.11.1", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_8_11(agpVersion = "8.11.0", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_8_12(agpVersion = "8.12.0", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_8_13(agpVersion = "8.13.0", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_86(agpVersion = "8.6.0", kotlinVersion = "2.3.10", gradleVersion = "8.7", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_87(agpVersion = "8.7.0", kotlinVersion = "2.3.10", gradleVersion = "8.9", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_88(agpVersion = "8.8.0", kotlinVersion = "2.3.10", gradleVersion = "8.10.2", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_89(agpVersion = "8.9.0", kotlinVersion = "2.3.10", gradleVersion = "8.11.1", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_8_10_1(agpVersion = "8.10.1", kotlinVersion = "2.3.10", gradleVersion = "8.11.1", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_8_11(agpVersion = "8.11.0", kotlinVersion = "2.3.10", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_8_12(agpVersion = "8.12.0", kotlinVersion = "2.3.10", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_8_13(agpVersion = "8.13.0", kotlinVersion = "2.3.10", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
   AGP_9_0(agpVersion = "9.0.0", gradleVersion = "9.1.0", kotlinVersion = "2.2.10", jdkVersion = JDK_17, compileSdk = "36"),
   AGP_9_1(
     agpVersion = "9.1.0",

@@ -107,7 +107,7 @@ internal class VirtualDevice(
     rearCamera = if (deviceProfile.hasRearCamera()) AvdCamera.VIRTUAL_SCENE else AvdCamera.NONE
     orientation = deviceProfile.defaultState.orientation
     internalStorage = EmulatedProperties.defaultInternalStorage(deviceProfile).toStorageCapacity()
-    expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB))
+    expandedStorage = None
     cpuCoreCount = EmulatedProperties.defaultCpuCount(deviceProfile)
     graphicsMode = GraphicsMode.AUTO
     ram = EmulatedProperties.defaultRamSize(deviceProfile).toStorageCapacity()

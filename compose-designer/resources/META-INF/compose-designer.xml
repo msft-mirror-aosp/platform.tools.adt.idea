@@ -174,8 +174,8 @@
   <actions>
     <action id="Android.Compose.GradientEditorAction"
             class="com.android.tools.idea.compose.meshgradient.GradientEditorAction"
-            text="Mesh Gradient Editor..."
-            description="Launch the mesh gradient editor playground">
+            text="Gradient Editor..."
+            description="Launch the gradient editor playground">
       <add-to-group group-id="ToolsMenu" anchor="last"/>
     </action>
 

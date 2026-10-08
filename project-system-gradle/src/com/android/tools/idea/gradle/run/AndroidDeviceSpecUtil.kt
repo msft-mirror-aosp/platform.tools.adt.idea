@@ -17,8 +17,10 @@
 
 package com.android.tools.idea.gradle.run
 
+import com.android.ddmlib.IDevice
+import com.android.ddmlib.MultiLineReceiver
 import com.android.ide.common.repository.AgpVersion
-import com.android.ide.common.util.getLanguages
+import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.Density
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.flags.StudioFlags
@@ -34,6 +36,7 @@ import java.io.Writer
 import java.nio.file.Files
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.MILLISECONDS
 
 sealed class ProcessedDeviceSpec {
 
@@ -221,6 +224,41 @@ private fun combineDeviceLanguages(devices: List<AndroidDevice>, timeout: Long, 
   } catch (e: Exception) {
     throw RuntimeException("Error retrieving list of installed languages on device", e)
   }
+}
+
+/**
+ * Convenience method to call `am get-config` on the [IDevice] receiver.
+ *
+ * This is only valid for API 21+ devices. For earlier devices, this will return an empty Set.
+ *
+ * @param timeOut an optional timeout, default is to wait forever.
+ * @return a set of languages, or an empty set for pre-21 devices.
+ */
+private fun IDevice.getLanguages(timeOut: Duration = Duration.ZERO): Set<String> {
+  if (this.version.apiLevel < 21) {
+    return emptySet()
+  }
+
+  val receiver = Receiver()
+  this.executeShellCommand("am get-config", receiver, timeOut.toMillis(), MILLISECONDS)
+
+  return receiver.lines
+    .asSequence()
+    .filter { it.trim().startsWith("config:") }
+    .map { FolderConfiguration.getLanguageConfigFromQualifiers(it.substring("config:".length).trim()) }
+    .flatMap { it.asSequence() }
+    .toSet()
+}
+
+private class Receiver : MultiLineReceiver() {
+
+  val lines = mutableListOf<String>()
+
+  override fun processNewLines(lines: Array<out String>) {
+    this.lines.addAll(lines)
+  }
+
+  override fun isCancelled() = false
 }
 
 /**

@@ -49,6 +49,7 @@ iml_module(
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
         "//tools/adt/idea/connection-assistant",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

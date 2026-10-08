@@ -25,6 +25,21 @@ enum class FindingType {
   /** DRM App Compatibility finding. */
   DRM_APP_COMPAT,
 
+  /** Edge-to-edge display compatibility finding. */
+  EDGE_TO_EDGE_COMPAT,
+
+  /** Vitals anomalous metric spike finding. */
+  VITALS_ANOMALY,
+
+  /** Vitals bad behavior threshold exceeded finding. */
+  VITALS_BAD_BEHAVIOR,
+
+  /** Per-device vitals bad behavior threshold exceeded finding. */
+  VITALS_DEVICE_BAD_BEHAVIOR,
+
+  /** App is using one or more SDK versions that have a crash annotation. */
+  SDK_HAS_CRASH_ANNOTATION,
+
   /** Fallback for unrecognized finding types to ensure forward compatibility. */
   UNKNOWN;
 
@@ -32,6 +47,11 @@ enum class FindingType {
   fun toProto(): ProtoFinding.Type? =
     when (this) {
       DRM_APP_COMPAT -> ProtoFinding.Type.DRM_APP_COMPAT
+      EDGE_TO_EDGE_COMPAT -> ProtoFinding.Type.EDGE_TO_EDGE_COMPAT
+      VITALS_ANOMALY -> ProtoFinding.Type.VITALS_ANOMALY
+      VITALS_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_BAD_BEHAVIOR
+      VITALS_DEVICE_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR
+      SDK_HAS_CRASH_ANNOTATION -> ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION
       UNKNOWN -> null
     }
 }
@@ -40,6 +60,11 @@ enum class FindingType {
 fun ProtoFinding.Type.toDomain(): FindingType =
   when (this) {
     ProtoFinding.Type.DRM_APP_COMPAT -> FindingType.DRM_APP_COMPAT
+    ProtoFinding.Type.EDGE_TO_EDGE_COMPAT -> FindingType.EDGE_TO_EDGE_COMPAT
+    ProtoFinding.Type.VITALS_ANOMALY -> FindingType.VITALS_ANOMALY
+    ProtoFinding.Type.VITALS_BAD_BEHAVIOR -> FindingType.VITALS_BAD_BEHAVIOR
+    ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR -> FindingType.VITALS_DEVICE_BAD_BEHAVIOR
+    ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION -> FindingType.SDK_HAS_CRASH_ANNOTATION
     else -> {
       LOG.warn("Encountered unknown finding type: $this")
       FindingType.UNKNOWN

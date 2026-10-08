@@ -106,7 +106,7 @@ public class RecommendedPluginVersionUpgradeIntegrationTest extends HeavyPlatfor
 
     // Simulate user accepted upgrade.
     try (MockedStatic<AndroidPluginInfo> androidPluginInfoMock = mockStatic(AndroidPluginInfo.class)) {
-      androidPluginInfoMock.when(() -> AndroidPluginInfo.find(myProject)).thenReturn(myPluginInfo);
+      androidPluginInfoMock.when(() -> AndroidPluginInfo.findFromModel(myProject)).thenReturn(myPluginInfo);
       GradlePluginUpgrade.performRecommendedPluginUpgrade(myProject, current, recommended);
       verifyUpgradeAssistantWasInvoked();
     }

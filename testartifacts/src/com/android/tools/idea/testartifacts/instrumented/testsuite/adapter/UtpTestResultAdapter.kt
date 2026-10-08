@@ -113,7 +113,7 @@ class UtpTestResultAdapter(private val protoFile: File) {
             TestStatus.FAILED -> AndroidTestCaseResult.FAILED
             else -> AndroidTestCaseResult.SKIPPED
           },
-        logcat = artifactFileResolver.getArtifactFile(testResult, "logcat")?.readText() ?: "",
+        logcatFile = artifactFileResolver.getArtifactFile(testResult, "logcat"),
         startTimestampMillis = testCase.startTime.millis(),
         endTimestampMillis = testCase.endTime.millis(),
       )
@@ -234,8 +234,8 @@ private class ArtifactFileResolver(private val parentDir: File) {
   }
 
   /**
-   * Returns the last segment of [path] using both '/' and '\' as separators regardless of the current OS, or null if it isn't a plain
-   * file name. Unlike PathUtil.getFileName, it never returns a UNC root such as `\\host\share` as a whole.
+   * Returns the last segment of [path] using both '/' and '\' as separators regardless of the current OS, or null if it isn't a plain file
+   * name. Unlike PathUtil.getFileName, it never returns a UNC root such as `\\host\share` as a whole.
    */
   private fun getFileName(path: String): String? {
     val fileName = path.trimEnd { it.isPathSeparator() }.substringAfterLast('/').substringAfterLast('\\')

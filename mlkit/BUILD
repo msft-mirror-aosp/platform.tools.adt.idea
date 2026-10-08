@@ -83,6 +83,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/observable:intellij.android.observable",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_resources = ["testData"],
     test_srcs = ["testSrc"],

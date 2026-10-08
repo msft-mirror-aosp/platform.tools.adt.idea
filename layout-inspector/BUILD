@@ -73,11 +73,9 @@ iml_module(
     test_data = [
         "//prebuilts/studio/sdk:platforms/android-35",
         "//prebuilts/studio/sdk:platforms/latest",
-        "//tools/adt/idea/android/testData",
         "//tools/adt/idea/artwork:device-art-resources",
         "//tools/adt/idea/layout-inspector/testData",
         "//tools/adt/idea/streaming/native:libimage_converter.prebuilt",
-        "//tools/base/build-system:gradle-distrib",
     ],
     # do not sort: must match IML order
     test_deps = [
@@ -127,6 +125,14 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
         "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
+        "//tools/adt/idea/app-inspection/api:app-inspection.api.tests",
+        "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
+        "//tools/adt/idea/android-transport:intellij.android.transport.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
     test_resources = ["testResources"],
@@ -252,19 +258,6 @@ iml_module(
     srcs = ["gradle/src"],
     iml_files = ["gradle/intellij.android.layout-inspector.gradle.iml"],
     resources = ["gradle/resources"],
-    test_class = "com.android.tools.idea.layoutinspector.GradleTokenTestSuite",
-    test_data = [
-        "//prebuilts/studio/sdk:platforms/latest",
-    ],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-    ],
-    test_srcs = ["gradle/testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -282,4 +275,32 @@ iml_module(
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.layout-inspector.gradle.tests",
+    iml_files = ["gradle/intellij.android.layout-inspector.gradle.tests.iml"],
+    test_class = "com.android.tools.idea.layoutinspector.GradleTokenTestSuite",
+    test_data = [
+        "//prebuilts/studio/sdk:platforms/latest",
+    ],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector.gradle",
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+    ],
+    test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector.gradle"],
+    test_srcs = ["gradle/testSrc"],
+    visibility = ["//visibility:public"],
 )

@@ -108,20 +108,35 @@ private const val ATTR_MANY = 0x01000009
 private val PLURALS_NAMES =
   mapOf(ATTR_OTHER to "other", ATTR_ZERO to "zero", ATTR_ONE to "one", ATTR_TWO to "two", ATTR_FEW to "few", ATTR_MANY to "many")
 
+/**
+ * Converts a binary resource table entry into a [ResourceValue].
+ *
+ * The shape of the binary entry, not the resource type, determines the kind of [ResourceValue] that is created. A resource table entry is
+ * either a simple entry holding a single value, or a complex entry (a bag, flagged with FLAG_COMPLEX) holding a map of values. Resources of
+ * the bag types ([ResourceType.ATTR], [ResourceType.STYLE], [ResourceType.ARRAY] and [ResourceType.PLURALS]) are normally complex entries,
+ * but AAPT2 emits simple entries for them when they are declared with the generic `<item>` tag:
+ * * `<item type="style" name="Empty"/>` is encoded as a reference to `@null` (TYPE_REFERENCE with data 0).
+ * * `<item type="style" name="Alias">@style/Base</item>` is a resource alias, encoded as a reference to the aliased resource.
+ *
+ * Simple entries are represented as a plain [ResourceValueImpl] whose value is the (reference) value of the entry, regardless of the
+ * resource type. This matches both the runtime behavior of the framework (AssetManager2 treats such entries as values, not bags, and
+ * follows alias references during reference resolution) and how [com.android.resources.aar.AarProtoResourceRepository] represents the same
+ * entries when loading compiled resources. See [createSimpleResValue] for the exceptions to this rule.
+ */
 internal fun TypeChunk.Entry.createResValue(
   resRef: ResourceReference,
   apkPath: String,
   stringPool: StringPoolChunk,
   resLookUp: (Int) -> ResourceReference?,
 ): ResourceValue {
+  if (!this.isComplex) {
+    val binResVal = this.value() ?: throw IllegalArgumentException("Unexpected null value for ${resRef.resourceType}")
+    return createSimpleResValue(resRef, binResVal, apkPath, stringPool, resLookUp)
+  }
   return when (resRef.resourceType) {
     // Following logic in frameworks/base/tools/aapt2/format/binary/ResEntryWriter.cpp
     // MapFlattenVisitor.Visit(Attribute)
     ResourceType.ATTR -> {
-      // Normally, the simple value of an ATTR resource is expected to be null.
-      // However, AAPT2 encodes ATTR enum constants that have a value of 0 (e.g. wrap_content=0)
-      // as a TYPE_REFERENCE with a value of 0x00000000.
-      // We ignore this simple value to avoid crashing, and instead continue parsing the complex map values below.
       val attrValue = AttrResourceValueImpl(resRef, null)
       this.values()
         .filter { it.key !in SERVICE_VALS }
@@ -129,9 +144,6 @@ internal fun TypeChunk.Entry.createResValue(
       attrValue
     }
     ResourceType.STYLE -> {
-      if (this.value() != null) {
-        throw IllegalArgumentException("Unexpected [${this.value()}] value for STYLE")
-      }
       val parentStyle =
         if (this.parentEntry() != 0) {
           resLookUp(this.parentEntry())?.getQualifiedName()
@@ -147,9 +159,6 @@ internal fun TypeChunk.Entry.createResValue(
       styleValue
     }
     ResourceType.PLURALS -> {
-      if (this.value() != null) {
-        throw IllegalArgumentException("Unexpected [${this.value()}] value for PLURALS")
-      }
       val pluralsValue = PluralsResourceValueImpl(resRef, null, null)
       this.values().forEach { (i, v) ->
         val itemQuantity = PLURALS_NAMES[i] ?: throw IllegalArgumentException("Unknown quantity $i for plural")
@@ -159,9 +168,6 @@ internal fun TypeChunk.Entry.createResValue(
       pluralsValue
     }
     ResourceType.ARRAY -> {
-      if (this.value() != null) {
-        throw IllegalArgumentException("Unexpected [${this.value()}] value for ARRAY")
-      }
       val arrayValue = ArrayResourceValueImpl(resRef, null)
       this.values().forEach { (i, v) ->
         val itemVal = formatVal(v, stringPool, resLookUp)
@@ -169,12 +175,48 @@ internal fun TypeChunk.Entry.createResValue(
       }
       arrayValue
     }
-    else -> {
-      val binResVal = this.value() ?: throw IllegalArgumentException("Unexpected null value for ${resRef.resourceType}")
-      ResourceValueImpl(resRef, convertToApkRefIfNeeded(formatVal(binResVal, stringPool, resLookUp), resRef.resourceType, apkPath))
-    }
+    else -> throw IllegalArgumentException("Unexpected complex value for ${resRef.resourceType}")
   }
 }
+
+/**
+ * Converts a simple (non-complex) binary resource table entry into a [ResourceValue], with the following exceptions to representing it as a
+ * plain [ResourceValueImpl]:
+ * * An empty [ResourceType.STYLE] (`<item type="style" name="Empty"/>`, i.e. `@null` or `@empty`) is represented as a
+ *   [StyleResourceValueImpl] without parent and items. On a device, both such an entry and an empty `<style>` contribute nothing when used
+ *   as a style or a theme, while callers resolving style resource ids (e.g. layoutlib's `Resources.Theme.applyStyle`) expect a
+ *   [com.android.ide.common.rendering.api.StyleResourceValue] and would fail on a plain `@null` value.
+ * * An [ResourceType.ATTR] alias to a resource that can not be resolved (e.g. a framework attribute unknown to [resLookUp], or a resource
+ *   of another package) is represented as an empty [AttrResourceValueImpl] instead of failing the loading of the whole repository.
+ */
+private fun createSimpleResValue(
+  resRef: ResourceReference,
+  binResVal: BinaryResourceValue,
+  apkPath: String,
+  stringPool: StringPoolChunk,
+  resLookUp: (Int) -> ResourceReference?,
+): ResourceValue {
+  if (resRef.resourceType == ResourceType.STYLE && binResVal.isNullOrEmpty()) {
+    return StyleResourceValueImpl(resRef, "", null)
+  }
+  val value =
+    try {
+      formatVal(binResVal, stringPool, resLookUp)
+    } catch (e: UnresolvedResourceIdException) {
+      if (resRef.resourceType == ResourceType.ATTR) return AttrResourceValueImpl(resRef, null)
+      throw e
+    }
+  return ResourceValueImpl(resRef, convertToApkRefIfNeeded(value, resRef.resourceType, apkPath))
+}
+
+/** Whether this value is `@null` or `@empty`, see `Res_value::TYPE_NULL` and `Res_value::TYPE_REFERENCE` in ResourceTypes.h. */
+private fun BinaryResourceValue.isNullOrEmpty(): Boolean =
+  when (type()) {
+    BinaryResourceValue.Type.NULL -> true
+    BinaryResourceValue.Type.REFERENCE,
+    BinaryResourceValue.Type.DYNAMIC_REFERENCE -> data() == 0
+    else -> false
+  }
 
 internal fun extractNameAndNamespace(namespacedName: String): Pair<ResourceNamespace, String> {
   // In the namespaced case the namespace and the name are separated by $ symbol
@@ -187,9 +229,11 @@ internal fun extractNameAndNamespace(namespacedName: String): Pair<ResourceNames
   }
 }
 
+private class UnresolvedResourceIdException(resId: Int) : IllegalArgumentException("Could not resolve resource id $resId")
+
 private fun formatVal(binResVal: BinaryResourceValue, stringPool: StringPoolChunk, resLookUp: (Int) -> ResourceReference?): String {
   return BinaryXmlParser.formatValue(binResVal, stringPool) { resId ->
-    resLookUp(resId)?.resourceUrl?.toString() ?: throw IllegalArgumentException("Could not resolve resource id $resId")
+    resLookUp(resId)?.resourceUrl?.toString() ?: throw UnresolvedResourceIdException(resId)
   }
 }
 

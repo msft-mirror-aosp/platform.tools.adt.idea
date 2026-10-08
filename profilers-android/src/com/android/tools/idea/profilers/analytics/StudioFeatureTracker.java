@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.profilers.analytics;
 
-import static com.android.ide.common.util.DeviceUtils.isMdnsAutoConnectTls;
-import static com.android.ide.common.util.DeviceUtils.isMdnsAutoConnectUnencrypted;
+import static com.android.tools.analytics.UsageTrackerUtils.isMdnsAutoConnectTls;
+import static com.android.tools.analytics.UsageTrackerUtils.isMdnsAutoConnectUnencrypted;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.ShellCommandUnresponsiveException;

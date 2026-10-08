@@ -38,7 +38,6 @@ iml_module(
     test_class = "com.android.tools.idea.wear.preview.WearDesignerTestSuite",
     test_data = [
         "//prebuilts/studio/sdk:platforms/latest",
-        "//prebuilts/studio/sdk:sources",
     ],
     # do not sort: must match IML order
     test_deps = [
@@ -66,6 +65,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/wear-preview-elements:intellij.android.wear-preview-elements",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/wear-designer:intellij.android.wear-designer"],
     test_srcs = ["testSrc"],

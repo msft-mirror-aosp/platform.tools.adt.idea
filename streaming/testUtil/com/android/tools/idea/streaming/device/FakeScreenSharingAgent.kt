@@ -592,9 +592,7 @@ class FakeScreenSharingAgent(
 
   private fun loadEnvironmentImage(size: Dimension): BufferedImage {
     val environmentFile =
-      TestUtils.resolveWorkspacePathUnchecked(
-        "tools/adt/idea/artwork/resources/device-art-resources/ai_glasses_device/indoor-study-dark.jpg"
-      )
+      TestUtils.resolveWorkspacePathUnchecked("tools/adt/idea/artwork/resources/device-art-resources/ai_glasses_device/study-360.jpg")
     val image = environmentFile.readImage()
     val w = size.width
     val h = size.height

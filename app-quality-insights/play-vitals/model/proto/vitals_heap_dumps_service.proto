@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package google.play.developer.reporting.v1beta1;
+
+import "common.proto";
+import "device.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "VitalsHeapDumpsServiceProto";
+option java_package = "com.google.play.developer.reporting";
+
+service VitalsHeapDumpsService {
+  rpc GetHeapDump(GetHeapDumpRequest) returns (HeapDump) {}
+  rpc ListHeapDumps(ListHeapDumpsRequest) returns (ListHeapDumpsResponse) {}
+}
+message HeapDump {
+  string name = 1;
+  AppVersion app_version = 2;
+  OsVersion os_version = 3;
+  DeviceModelSummary device_model = 4;
+  int64 device_ram_mib = 5;
+  string process_name = 6;
+  HeapDumpMetrics metrics = 7;
+  google.protobuf.Duration process_uptime = 8;
+  google.protobuf.Timestamp collection_time = 9;
+  DeobfuscationState deobfuscation_state = 10;
+  string download_url = 11;
+  enum DeobfuscationState {
+    DEOBFUSCATION_STATE_UNSPECIFIED = 0;
+    SUCCEEDED = 1;
+    FAILED = 2;
+  }
+}
+message HeapDumpMetrics {
+  int64 anon_rss_plus_swap_kib = 1;
+  int64 total_allocated_kib = 2;
+  int64 reachable_allocated_kib = 3;
+}
+message GetHeapDumpRequest {
+  string name = 1;
+}
+message ListHeapDumpsRequest {
+  string parent = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string filter = 4;
+}
+message ListHeapDumpsResponse {
+  repeated HeapDump heap_dumps = 1;
+  string next_page_token = 2;
+}

@@ -321,9 +321,8 @@ public class WidgetConstraintModel implements SelectionListener {
 
   protected void commit() {
     if (myModification != null) {
-      ApplicationManager.getApplication().invokeLater(new Runnable() {
-        @Override
-        public void run() {
+      ApplicationManager.getApplication().invokeLater(() -> {
+        if (myModification != null) {
           myModification.commit();
           myModification = null;
         }

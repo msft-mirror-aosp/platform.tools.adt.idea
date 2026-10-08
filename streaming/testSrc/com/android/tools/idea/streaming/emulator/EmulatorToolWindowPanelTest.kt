@@ -125,7 +125,6 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.MOUSE_MOVED
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
-import javax.swing.JCheckBox
 import javax.swing.JSlider
 import javax.swing.JViewport
 import kotlin.test.fail
@@ -591,50 +590,17 @@ class EmulatorToolWindowPanelTest {
     fakeUi.mouseClickOn(environmentVisibilityButton)
     val popup = popupFactory.getNextPopup(2.seconds)
     val ui = FakeUi(popup.component)
-    val checkBox = ui.getComponent<JCheckBox>()
     val slider = ui.getComponent<JSlider>()
-    assertThat(checkBox.isSelected).isFalse()
     assertThat(slider.value).isEqualTo(0)
-    assertThat(slider.isEnabled).isFalse()
-
-    // Updates to the dimming coefficient are ignored while the slider is disabled.
-    xrInputController.dimmingCoefficient = 0.75f
-    ui.layoutAndDispatchEvents()
-    assertThat(slider.value).isEqualTo(0)
-
-    // The dimming slider becomes enabled when passthrough is enabled.
-    checkBox.isSelected = true
     assertThat(slider.isEnabled).isTrue()
-    var call = getNextGrpcCallIgnoringStreamScreenshot()
-    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setXrOptions")
-    assertThat(shortDebugString(call.request)).isEqualTo("passthrough_coefficient: 1.0")
-    waitForCondition(2.seconds) { xrInputController.passthroughCoefficient != 0f }
-    assertThat(xrInputController.passthroughCoefficient).isEqualTo(1f)
     ui.layoutAndDispatchEvents()
     slider.value = 3
     ui.layoutAndDispatchEvents()
-    call = getNextGrpcCallIgnoringStreamScreenshot()
+    val call = getNextGrpcCallIgnoringStreamScreenshot()
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setXrOptions")
     assertThat(shortDebugString(call.request)).isEqualTo("passthrough_coefficient: 1.0 dimming_value: 0.75")
     waitForCondition(2.seconds) { xrInputController.dimmingCoefficient != 0f }
     assertThat(xrInputController.dimmingCoefficient).isEqualTo(0.75f)
-
-    // Programmatic update of the passthrough coefficient triggers property change listeners to update the checkbox,
-    // but it must NOT trigger a feedback loop of setXrOptions calls to the emulator.
-    xrInputController.passthroughCoefficient = 0f
-    ui.layoutAndDispatchEvents()
-    assertThat(checkBox.isSelected).isFalse()
-    assertThat(slider.isEnabled).isFalse()
-    assertThat(emulator.grpcCallLog.any { it.methodName == "android.emulation.control.EmulatorController/setXrOptions" && it != call })
-      .isFalse()
-
-    // Programmatic update of the dimming coefficient triggers property change listeners to update the slider,
-    // but it must NOT trigger a feedback loop of setXrOptions calls to the emulator.
-    xrInputController.dimmingCoefficient = 0f
-    ui.layoutAndDispatchEvents()
-    assertThat(slider.value).isEqualTo(3) // Retains its old value because the slider is disabled
-    assertThat(emulator.grpcCallLog.any { it.methodName == "android.emulation.control.EmulatorController/setXrOptions" && it != call })
-      .isFalse()
 
     panel.destroyContent()
     assertThat(panel.primaryDisplayView).isNull()

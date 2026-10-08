@@ -80,6 +80,7 @@ iml_module(
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_srcs = ["testFramework"],
@@ -98,6 +99,13 @@ iml_module(
             "test_filter": "com.android.tools.idea.common",
         },
         "visual": {
+            "data": [
+                "//prebuilts/studio/sdk:build-tools/latest",
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/third_party/kotlin:kotlin-m2repository",
+            ],
             "test_filter": "com.android.tools.idea.uibuilder.visual",
         },
         "designer": {
@@ -110,16 +118,11 @@ iml_module(
         ":test_deps",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/annotations",
         "//tools/adt/idea/android/lib:sampleData",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/designer/testData",
-        "//tools/base/build-system:android_gradle_plugin.zip",
-        "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-        "//tools/base/build-system:gradle-distrib",
-        "//tools/base/third_party/kotlin:kotlin-m2repository",
     ],
     # do not sort: must match IML order
     test_deps = [
@@ -161,6 +164,9 @@ iml_module(
         "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
         "//tools/adt/idea/designer:intellij.android.designer.testFramework",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_resources = ["testResources"],
@@ -234,8 +240,6 @@ iml_module(
 layout_editor_data = [
     ":layout_preview_deps",
     "//prebuilts/studio/sdk:build-tools/36.0.0",
-    "//prebuilts/studio/sdk:emulator",
-    "//prebuilts/studio/sdk:platform-tools",
     "//tools/adt/idea/designer/testData:simpleApplication",
     "//tools/adt/idea/designer/testData:visualLintApplication",
     INTEGRATION_TEST_GRADLE_VERSION,

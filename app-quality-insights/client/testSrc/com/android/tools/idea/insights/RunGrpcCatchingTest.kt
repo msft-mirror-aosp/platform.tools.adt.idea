@@ -16,14 +16,10 @@
 package com.android.tools.idea.insights
 
 import com.android.tools.idea.insights.client.runGrpcCatching
-import com.google.api.client.auth.oauth2.TokenResponseException
-import com.google.api.client.googleapis.json.GoogleJsonError
-import com.google.api.client.googleapis.json.GoogleJsonResponseException
-import com.google.api.client.http.HttpHeaders
-import com.google.api.client.http.HttpResponseException
 import com.google.common.truth.Truth
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
+import io.grpc.protobuf.StatusProto
 import java.io.IOException
 import java.util.logging.Handler
 import java.util.logging.Level
@@ -32,7 +28,6 @@ import java.util.logging.Logger
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito
 
 class RunGrpcCatchingTest {
 
@@ -90,24 +85,12 @@ class RunGrpcCatchingTest {
   }
 
   @Test
-  fun `runGrpcCatching when block throws TokenResponseException should return Unauthorized`() = runBlocking {
+  fun `runGrpcCatching when block throws other grpc exception with status proto should return UnknownFailure with status`() = runBlocking {
     val ready = LoadingState.Ready("hello")
-    val result = runGrpcCatching(ready) { throw Mockito.mock<TokenResponseException>() }
-    Truth.assertThat(result).isInstanceOf(LoadingState.Unauthorized::class.java)
-  }
-
-  @Test
-  fun `runGrpcCatching when block throws GoogleJsonResponseException should return ServerFailure`() = runBlocking {
-    val ready = LoadingState.Ready("hello")
-    val httpResponseExceptionBuilder = HttpResponseException.Builder(400, "Bad Request", HttpHeaders())
-    val jsonError =
-      GoogleJsonError().apply {
-        set("status", "not found")
-        message = "resource is not found"
-      }
-    val exception = GoogleJsonResponseException(httpResponseExceptionBuilder, jsonError)
+    val statusProto = com.google.rpc.Status.newBuilder().setCode(3).setMessage("invalid argument").build()
+    val exception = StatusProto.toStatusRuntimeException(statusProto)
     val result = runGrpcCatching(ready) { throw exception }
-    Truth.assertThat(result).isEqualTo(LoadingState.ServerFailure("not found: resource is not found", exception))
+    Truth.assertThat(result).isEqualTo(LoadingState.UnknownFailure(exception.message, exception, statusProto))
   }
 
   @Test

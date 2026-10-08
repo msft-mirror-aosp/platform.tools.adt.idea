@@ -81,6 +81,7 @@ iml_module(
         "@intellij//:com.intellij.modules.json",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"],
     test_srcs = ["testSrc"],

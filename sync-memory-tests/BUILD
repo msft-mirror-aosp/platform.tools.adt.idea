@@ -6,7 +6,6 @@ load("//tools/base/bazel:kotlin.bzl", "kotlin_library")
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.sync-memory-tests",
-    srcs = ["src"],
     iml_files = ["intellij.android.sync-memory-tests.iml"],
     split_test_targets = {
         "Benchmark2000Memory": {
@@ -21,7 +20,7 @@ iml_module(
             ],
         },
         "Benchmark2000KotlinMultiplatformCpu": {
-            "test_filer": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000KotlinMultiplatformCpuTest",
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000KotlinMultiplatformCpuTest",
             "tags": [
                 "noci:studio-win",
                 "noci:studio-linux",
@@ -132,6 +131,7 @@ iml_module(
                 "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//prebuilts/studio/sdk:platforms/android-35",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks",
             ],
         },
         "Benchmark2000CpuAgp813PhasedSyncOff": {
@@ -148,6 +148,7 @@ iml_module(
                 "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//prebuilts/studio/sdk:platforms/android-35",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks",
             ],
         },
         "Benchmark2000CpuAgp813WithDependencyResolutionPhase": {
@@ -164,6 +165,7 @@ iml_module(
                 "//prebuilts/studio/sdk:build-tools/35.0.0",
                 "//prebuilts/studio/sdk:platforms/android-35",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_2_3_10_prebuilts_for_sync_benchmarks",
             ],
         },
         # Presubmit tests
@@ -302,6 +304,9 @@ iml_module(
     ],
     # do not sort: must match IML order
     test_deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/android-common:intellij.android.common",
@@ -326,17 +331,10 @@ iml_module(
     ],
     test_timeout = "eternal",
     visibility = ["//visibility:public"],
-    # do not sort: must match IML order
-    deps = [
-        "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
-        "@intellij//:com.intellij.gradle",
-    ],
 )
 
 iml_module(
     name = "intellij.android.sync-memory-tests-mac",
-    srcs = ["src"],
     iml_files = ["intellij.android.sync-memory-tests.iml"],
     split_test_targets = {
         "Benchmark2000Memory": {
@@ -367,6 +365,9 @@ iml_module(
     ],
     # do not sort: must match IML order
     test_deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+        "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/android-common:intellij.android.common",
@@ -394,12 +395,6 @@ iml_module(
     ],
     test_timeout = "eternal",
     visibility = ["//visibility:public"],
-    # do not sort: must match IML order
-    deps = [
-        "@intellij//:intellij-sdk",
-        "@intellij//:com.intellij.java",
-        "@intellij//:com.intellij.gradle",
-    ],
 )
 
 java_binary(
@@ -411,7 +406,7 @@ java_binary(
 
 kotlin_library(
     name = "benchmark_summary_lib",
-    srcs = ["src/com/android/tools/idea/gradle/project/sync/memory/BenchmarkSummaryTool.kt"],
+    srcs = ["testSrc/com/android/tools/idea/gradle/project/sync/memory/BenchmarkSummaryTool.kt"],
     deps = ["@maven//:com.google.code.gson.gson"],
 )
 
@@ -442,5 +437,5 @@ java_binary(
 
 kotlin_library(
     name = "update_benchmark_versions_lib",
-    srcs = ["src/com/android/tools/idea/gradle/project/sync/UpdateBenchmarkVersions.kt"],
+    srcs = ["testSrc/com/android/tools/idea/gradle/project/sync/UpdateBenchmarkVersions.kt"],
 )

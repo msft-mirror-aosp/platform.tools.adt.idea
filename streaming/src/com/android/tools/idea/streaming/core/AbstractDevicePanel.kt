@@ -94,8 +94,20 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   protected val secondaryToolbar: ActionToolbar
   protected val centerPanel = BorderLayoutPanel()
   protected val notificationHolderPanel = NotificationHolderPanel(centerPanel)
+
+  /**
+   * Indicates whether the embedded Layout Inspector is currently active on this panel.
+   *
+   * [NotificationHolderPanel] places [centerPanel] inside an internal `BorderLayoutPanel` child, so when Layout Inspector is inactive,
+   * `centerPanel.parent.parent` is [notificationHolderPanel]. When the embedded Layout Inspector is enabled on this tab, it retrieves
+   * [centerPanel] via [STREAMING_CONTENT_PANEL_KEY] and wraps it inside its own container (`LayoutInspectorRootPanel`) within that parent
+   * panel, restoring [centerPanel] to its original parent when disabled or disposed.
+   */
+  internal val isLayoutInspectorActive: Boolean
+    get() = centerPanel.parent?.parent !== notificationHolderPanel
+
   private val displayPanelsMap = Int2ObjectRBTreeMap<T>()
-  protected val displayPanels: Collection<T>
+  internal val displayPanels: Collection<T>
     get() = displayPanelsMap.values
 
   private val displayListeners = createLockFreeCopyOnWriteList<DeviceDisplayListener>()
@@ -127,7 +139,19 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
 
     addToCenter(notificationHolderPanel)
 
-    val toolbarPanel = BorderLayoutPanel()
+    val toolbarPanel =
+      object : BorderLayoutPanel() {
+        override fun getPreferredSize(): Dimension {
+          if (width > 0) {
+            // When AbstractDevicePanel's BorderLayout lays out this panel, it calls setSize(newWidth, oldHeight)
+            // followed immediately by getPreferredSize(). Without calling doLayout() here, mainToolbar.component.width
+            // would still hold its previous width, causing WrapLayoutStrategy.calcPreferredSize to compute the toolbar
+            // height for the stale width and leaving the toolbar at the wrong height after resizing.
+            doLayout()
+          }
+          return super.getPreferredSize()
+        }
+      }
     if (IS_TOOLBAR_HORIZONTAL) {
       toolbarPanel.add(mainToolbar.component, BorderLayout.CENTER)
       toolbarPanel.add(secondaryToolbar.component, BorderLayout.EAST)
@@ -146,6 +170,14 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
     val panel = BorderLayoutPanel()
     panel.addToTop(topPanel)
     panel.addToCenter(notificationHolderPanel)
+    addToCenter(panel)
+  }
+
+  /** Adds the given panel below the central content panel. */
+  protected fun addBottomPanel(bottomPanel: JComponent) {
+    val panel = BorderLayoutPanel()
+    panel.addToCenter(notificationHolderPanel)
+    panel.addToBottom(bottomPanel)
     addToCenter(panel)
   }
 

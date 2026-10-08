@@ -88,7 +88,6 @@ iml_module(
         ":test_deps",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/sdk:build-tools/35.0.0",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/android-35",
         "//prebuilts/studio/sdk:platforms/latest",

@@ -49,16 +49,16 @@ public class RenderResult implements Disposable {
 
   @NotNull private final Supplier<PsiFile> mySourceFileProvider;
   @NotNull private final RenderLogger myLogger;
-  @NotNull private final ImmutableList<ViewInfo> myRootViews;
-  @NotNull private final ImmutableList<ViewInfo> mySystemRootViews;
+  @NotNull private volatile ImmutableList<ViewInfo> myRootViews;
+  @NotNull private volatile ImmutableList<ViewInfo> mySystemRootViews;
   @NotNull private final RecyclableImage myImage;
   @NotNull private final Result myRenderResult;
-  @NotNull private final Map<Object, Map<ResourceReference, ResourceValue>> myDefaultProperties;
-  @NotNull private final Map<Object, ResourceReference> myDefaultStyles;
+  @NotNull private volatile Map<Object, Map<ResourceReference, ResourceValue>> myDefaultProperties;
+  @NotNull private volatile Map<Object, ResourceReference> myDefaultStyles;
   @NotNull private final IdeaModuleProvider myModule;
   @NotNull private final Project myProject;
   private final ReadWriteLock myDisposeLock = new ReentrantReadWriteLock();
-  @Nullable private final Object myValidatorResult;
+  @Nullable private volatile Object myValidatorResult;
   private final boolean myHasRequestedCustomViews;
   @Nullable private final RenderContext myRenderContext;
   private boolean isDisposed;
@@ -131,6 +131,11 @@ public class RenderResult implements Disposable {
     try {
       isDisposed = true;
       RecyclableImageDisposer.disposeImage(myImage);
+      myRootViews = ImmutableList.of();
+      mySystemRootViews = ImmutableList.of();
+      myDefaultProperties = ImmutableMap.of();
+      myDefaultStyles = ImmutableMap.of();
+      myValidatorResult = null;
     } finally {
       myDisposeLock.writeLock().unlock();
     }

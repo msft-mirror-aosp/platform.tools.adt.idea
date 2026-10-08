@@ -154,4 +154,46 @@ class StudioModuleClassLoaderManagerTest {
       executor.awaitTermination(5, TimeUnit.SECONDS)
     }
   }
+
+  @Test
+  fun testClearCacheDoesNotDisposeHeldClassLoader() {
+    val manager = StudioModuleClassLoaderManager.get()
+    val context = StudioModuleRenderContext.forModule(project.module)
+
+    val ref1 = manager.getShared(null, context)
+    val ref2 = manager.getShared(null, context)
+    val initialClassLoader = ref1.classLoader
+    assertEquals(initialClassLoader, ref2.classLoader)
+    assertFalse(initialClassLoader.isDisposed)
+
+    // Clearing the cache while references are actively held should not dispose the in-use class loader,
+    // but should detach it from the cache so subsequent getShared calls get a new instance.
+    manager.clearCache(project.module)
+    assertFalse(initialClassLoader.isDisposed)
+
+    val ref3 = manager.getShared(null, context)
+    val newClassLoader = ref3.classLoader
+    assertNotEquals(initialClassLoader, newClassLoader)
+    assertFalse(newClassLoader.isDisposed)
+
+    // Releasing only the first reference must not dispose initialClassLoader while ref2 is still held.
+    manager.release(ref1)
+    assertFalse(initialClassLoader.isDisposed)
+
+    // Releasing the last reference to initialClassLoader must dispose it without affecting newClassLoader.
+    manager.release(ref2)
+    assertTrue(initialClassLoader.isDisposed)
+    assertFalse(newClassLoader.isDisposed)
+
+    // Releasing ref3 disposes newClassLoader and places an unheld preloaded copy in PRELOADER.
+    manager.release(ref3)
+    assertTrue(newClassLoader.isDisposed)
+
+    val unheldPreloaded = project.module.getUserData(PRELOADER)?.getClassLoader()!!
+    assertFalse(unheldPreloaded.isDisposed)
+
+    // Clearing the cache when no references hold the preloaded class loader must dispose it immediately.
+    manager.clearCache(project.module)
+    assertTrue(unheldPreloaded.isDisposed)
+  }
 }

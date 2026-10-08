@@ -7,26 +7,6 @@ iml_module(
     iml_files = ["intellij.android.avd.iml"],
     kotlin_use_compose = True,
     resources = ["resources"],
-    test_class = "com.android.tools.idea.avd.AvdTestSuite",
-    test_data = [
-        "//tools/adt/idea/artwork:device-art-resources-bundle",
-    ],
-    # do not sort: must match IML order
-    test_deps = [
-        "@intellij//:test-framework",
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:kotlin-test",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/adt/idea/intellij.android.device.tests",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
-        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -51,4 +31,51 @@ iml_module(
         "//tools/adt/idea/wizard-model:intellij.android.wizard.model",
         "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.avd.tests",
+    iml_files = ["intellij.android.avd.tests.iml"],
+    kotlin_use_compose = True,
+    test_class = "com.android.tools.idea.avd.AvdTestSuite",
+    test_data = [
+        "//tools/adt/idea/artwork:device-art-resources-bundle",
+    ],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "@intellij//:intellij-sdk",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
+        "//tools/base/flags:studio.android.sdktools.flags",
+        "//tools/adt/idea/android-adb:intellij.android.adb",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/android:intellij.android.core",
+        "//tools/adt/idea/intellij.android.device",
+        "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
+        "//tools/adt/idea/avd:intellij.android.avd",
+        "@intellij//:test-framework",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/intellij.android.device.tests",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
+    ],
+    test_friends = ["//tools/adt/idea/avd:intellij.android.avd"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

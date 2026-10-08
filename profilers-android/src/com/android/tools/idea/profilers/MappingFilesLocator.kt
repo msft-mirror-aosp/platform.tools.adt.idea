@@ -39,20 +39,20 @@ class ProjectR8MappingSource(project: Project) : R8MappingSource {
 class MappingFilesLocator(private val source: R8MappingSource) {
 
   /**
-   * Returns a map of package names (or empty string) to mapping file paths.
+   * Returns a map of package names to mapping file paths for the currently selected build variant.
    *
-   * For each package, prefers the selected build variant's mapping file, falling back to the most recently modified file on disk.
+   * Only returns mappings from [source] that have a non-empty `applicationId` and exist on disk.
    */
   fun getMappings(): Map<String, String> {
-    val existingMappings = source.getMappings().filter { Files.exists(it.text) }
-    val byPackage = existingMappings.groupBy { it.applicationId ?: "" }
+    val validMappings =
+      source.getMappings().filter {
+        !it.applicationId.isNullOrEmpty() && Files.exists(it.text)
+      }
+    val byPackage = validMappings.groupBy { it.applicationId.orEmpty() }
 
     val result = mutableMapOf<String, String>()
     for ((pkg, mappings) in byPackage) {
-      val chosen =
-        mappings.filter { it.isSelected }.maxByOrNull { getFileModifiedTime(it.text) }
-          ?: mappings.maxByOrNull { getFileModifiedTime(it.text) }
-
+      val chosen = mappings.maxByOrNull { getFileModifiedTime(it.text) }
       if (chosen != null) {
         result[pkg] = chosen.text.toAbsolutePath().toString()
       }

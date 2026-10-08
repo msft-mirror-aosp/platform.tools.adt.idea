@@ -88,7 +88,7 @@ class EnvironmentsUpdaterTest {
     assertThat(list).isNotEmpty()
     val defaultEnv = list.find { it.isDefault }
     assertThat(defaultEnv).isNotNull()
-    assertThat(defaultEnv!!.path.fileName.toString()).isEqualTo("indoor-study-dark.jpg")
-    assertThat(defaultEnv.title).isEqualTo("Indoor Study Dark")
+    assertThat(defaultEnv!!.path.fileName.toString()).isEqualTo("study-360.jpg")
+    assertThat(defaultEnv.title).isEqualTo("Study 360")
   }
 }

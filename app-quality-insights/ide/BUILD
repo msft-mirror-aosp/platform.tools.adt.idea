@@ -73,6 +73,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],

@@ -124,6 +124,7 @@ fun RenderSession.dispose(classLoader: ModuleClassLoader): CompletableFuture<Voi
     toRunTrampolinedRef?.get()?.clear()
     broadcastManagerInstanceField.get()?.set(null, null)
     this@dispose.dispose()
+    clearWindowManagerGlobal(classLoader)
     clearGapWorkerCache(classLoader)
   }
 }
@@ -401,5 +402,42 @@ private fun clearStaticFields(clazz: Class<*>) {
         }
       }
     }
+  }
+}
+
+private const val WINDOW_MANAGER_GLOBAL_FQN = "android.view.WindowManagerGlobal"
+
+/**
+ * Synchronizes `WindowManagerGlobal.mWindowViewsListenerGroup.mLastValue` with `mViews` after [RenderSession.dispose].
+ *
+ * During `RenderSession.dispose()`, `WindowManagerGlobal` removes the session's views from `mViews` and calls
+ * `mWindowViewsListenerGroup.accept(getWindowViews())`. Because `ListenerGroup.accept` posts the `mLastValue` update to a `Handler` whose
+ * `HandlerMessageQueue` is immediately cleared by `SessionInteractiveData.dispose()`, `mLastValue` can remain stuck referencing the
+ * disposed `DecorView` (and its `ComposeViewAdapter` / [ModuleClassLoader]).
+ */
+private fun clearWindowManagerGlobal(classLoader: ModuleClassLoader) {
+  try {
+    val windowManagerGlobalClass = classLoader.loadClass(WINDOW_MANAGER_GLOBAL_FQN)
+    val defaultWmField =
+      windowManagerGlobalClass.getDeclaredField("sDefaultWindowManager").apply {
+        isAccessible = true
+      }
+    val global = defaultWmField.get(null) ?: return
+    val lock = windowManagerGlobalClass.getDeclaredField("mLock").apply { isAccessible = true }.get(global) ?: global
+    val viewsField = windowManagerGlobalClass.getDeclaredField("mViews").apply { isAccessible = true }
+    val listenerGroup =
+      windowManagerGlobalClass.getDeclaredField("mWindowViewsListenerGroup").apply { isAccessible = true }.get(global) ?: return
+    val lastValueField = listenerGroup.javaClass.getDeclaredField("mLastValue").apply { isAccessible = true }
+    val oldLastValue: MutableCollection<*>?
+    val currentViews: ArrayList<Any?>
+    synchronized(lock) {
+      val views = viewsField.get(global) as? Collection<*>
+      currentViews = if (views != null) ArrayList(views) else ArrayList()
+      oldLastValue = lastValueField.get(listenerGroup) as? MutableCollection<*>
+      lastValueField.set(listenerGroup, currentViews)
+    }
+    oldLastValue?.retainAll(currentViews.toSet())
+  } catch (t: Throwable) {
+    LOG.debug("Unable to clean WindowManagerGlobal.mWindowViewsListenerGroup", t)
   }
 }

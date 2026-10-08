@@ -488,7 +488,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   }
 
   private fun loadEnvironmentImage(size: Dimension): BufferedImage {
-    val environmentFile = getDeviceArtFolder().resolve("ai_glasses_device/indoor-study-dark.jpg")
+    val environmentFile = getDeviceArtFolder().resolve("ai_glasses_device/study-360.jpg")
     val image = environmentFile.readImage()
     val w = size.width
     val h = size.height

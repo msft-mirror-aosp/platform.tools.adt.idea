@@ -25,17 +25,22 @@ import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.KeepPopupOnPerform
 import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.Toggleable.SELECTED_KEY
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.IdeGlassPaneUtil
 import com.intellij.openapi.wm.impl.IdeGlassPaneEx
 import com.intellij.ui.JBColor
+import com.intellij.ui.PopupHandler
 import com.intellij.util.ui.AbstractLayoutManager
 import com.intellij.util.ui.Animator
 import com.intellij.util.ui.GraphicsUtil.disableAAPainting
@@ -552,8 +557,10 @@ internal class FloatingToolbarContainer(
    * Action that triggers collapse of the floating toolbar. The value of the [horizontal] parameter must match orientation of the containing
    * toolbar.
    */
-  class CollapserAction(private val horizontal: Boolean) :
-    DumbAwareAction(if (horizontal) AllIcons.Actions.ArrowExpand else AllIcons.Actions.FindAndShowNextMatches), CustomComponentAction {
+  class CollapserAction(
+    private val horizontal: Boolean,
+    private val onOrientationChange: ((Boolean) -> Unit)? = null,
+  ) : DumbAwareAction(if (horizontal) AllIcons.Actions.ArrowExpand else AllIcons.Actions.FindAndShowNextMatches), CustomComponentAction {
 
     override fun actionPerformed(event: AnActionEvent) {
       triggerDeactivation(event)
@@ -568,7 +575,44 @@ internal class FloatingToolbarContainer(
         } else {
           JBDimension(DEFAULT_MINIMUM_BUTTON_SIZE.width, 0, true)
         }
-      return ActionButton(this, presentation, place, minimumSize)
+      return ActionButton(this, presentation, place, minimumSize).apply {
+        if (onOrientationChange != null) {
+          addMouseListener(createPopupHandler(place))
+        }
+      }
+    }
+
+    private fun createPopupHandler(place: String): PopupHandler =
+      object : PopupHandler() {
+        override fun invokePopup(comp: Component?, x: Int, y: Int) {
+          val group =
+            DefaultActionGroup(
+              OrientationAction("Vertical", orientationHorizontal = false),
+              OrientationAction("Horizontal", orientationHorizontal = true),
+            )
+          val popupMenu = ActionManager.getInstance().createActionPopupMenu(place, group)
+          if (comp is JComponent) {
+            popupMenu.setTargetComponent(comp)
+          }
+          popupMenu.component.show(comp, x, y)
+        }
+      }
+
+    private inner class OrientationAction(text: String, private val orientationHorizontal: Boolean) : ToggleAction(text), DumbAware {
+
+      init {
+        templatePresentation.keepPopupOnPerform = KeepPopupOnPerform.Never // Don't keep the popup open after toggling.
+      }
+
+      override fun isSelected(event: AnActionEvent): Boolean = horizontal == orientationHorizontal
+
+      override fun setSelected(event: AnActionEvent, state: Boolean) {
+        if (state) {
+          onOrientationChange?.invoke(orientationHorizontal)
+        }
+      }
+
+      override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
     }
   }
 

@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.util.KotlinGradleProjectSystemUtil
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.getBuiltInKotlinVersion
+import com.android.tools.idea.testing.resolve
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -53,7 +54,9 @@ class GradleProjectSystemUtilSoftwareVersionsTest {
     preparedProject.open { project ->
       val kotlinVersionInUse = KotlinGradleProjectSystemUtil.getKotlinVersionsInUse(project, project.basePath!!)?.firstOrNull()?.toString()
       assertThat(kotlinVersionInUse).isNotNull()
-      assertThat(kotlinVersionInUse).isEqualTo(AgpVersionSoftwareEnvironmentDescriptor.selected.getBuiltInKotlinVersion())
+      // Kotlin Multiplatform test projects keep their explicit Kotlin Gradle plugin, so they use the Kotlin version of the test environment
+      // rather than the built-in Kotlin version of AGP.
+      assertThat(kotlinVersionInUse).isEqualTo(AgpVersionSoftwareEnvironmentDescriptor.selected.resolve().kotlinVersion)
     }
   }
 }

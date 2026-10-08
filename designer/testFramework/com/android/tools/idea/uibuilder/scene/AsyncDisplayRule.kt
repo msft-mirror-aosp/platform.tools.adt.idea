@@ -37,12 +37,14 @@ class AsyncDisplayRule : ExternalResource() {
   }
 
   fun renderInFakeUi(fakeUi: FakeUi): BufferedImage {
-    var render: BufferedImage
+    var render: BufferedImage? = null
     do {
-      UIUtil.invokeAndWaitIfNeeded { fakeUi.layoutAndDispatchEvents() }
-      fakeUi.render()
-      render = fakeUi.render()
+      UIUtil.invokeAndWaitIfNeeded {
+        fakeUi.layoutAndDispatchEvents()
+        fakeUi.render()
+        render = fakeUi.render()
+      }
     } while (Display.hasPendingPaints())
-    return render
+    return render!!
   }
 }

@@ -1210,6 +1210,9 @@ private class AndroidTestResultsRow(override val methodName: String, override va
   /** Returns a benchmark result for a given [device]. */
   override fun getBenchmark(device: AndroidDevice): BenchmarkOutput = BenchmarkOutput(myTestCases[device.id]?.benchmark ?: "")
 
+  /** Returns the logcat artifact file from the test if available. */
+  override fun getLogcatFile(device: AndroidDevice): File? = myTestCases[device.id]?.logcatFile
+
   /** Returns the retention info artifact from Android Test Retention if available. */
   override fun getRetentionInfo(device: AndroidDevice): File? = myTestCases[device.id]?.retentionInfo
 

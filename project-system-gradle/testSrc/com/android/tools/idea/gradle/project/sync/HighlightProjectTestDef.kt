@@ -130,13 +130,24 @@ data class HighlightProjectTestDef(
                 listOf("src/androidDeviceTest/kotlin/com/example/kmpfirstlib/test/KmpAndroidFirstLibActivityTest.kt")
             ),
         ),
+        HighlightProjectTestDef(
+          TestProject.ANDROID_KOTLIN_MULTIPLATFORM_VARIANT_API_RES,
+          checkHighlighting = ::validateNoUnresolvedReferences,
+          modulesAndFiles =
+            mapOf(
+              GradleSourceSetProjectPath("/", ":kmpFirstLib", wellKnownOrCreate("androidMain")) to
+                listOf("src/androidMain/kotlin/com/example/kmpfirstlib/VariantApiResUsage.kt")
+            ),
+        ),
       )
 
-    private fun validateNonTransitiveRClass(fixture: JavaCodeInsightTestFixture) {
+    private fun validateNoUnresolvedReferences(fixture: JavaCodeInsightTestFixture) {
       val unresolvedReferenceWarnings =
         fixture.doHighlighting(HighlightSeverity.WARNING).map { it.description }.filter { it.startsWith("[UNRESOLVED_REFERENCE]") }
       assertThat(unresolvedReferenceWarnings).isEmpty()
     }
+
+    private fun validateNonTransitiveRClass(fixture: JavaCodeInsightTestFixture) = validateNoUnresolvedReferences(fixture)
 
     private fun validateNonTransitiveRClassTrue(fixture: JavaCodeInsightTestFixture) {
       val unresolvedReferenceWarnings =

@@ -137,7 +137,6 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   }
 
   @NotNull private final SymbolFilesLocator mySymbolLocator;
-  @NotNull private final MappingFilesLocator myMappingLocator;
   private final CodeNavigator myCodeNavigator;
   @NotNull private final NativeFrameSymbolizer myNativeSymbolizer;
   private final StudioFeatureTracker myFeatureTracker;
@@ -147,13 +146,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @NotNull private final TemporaryProfilerPreferences myTemporaryPreferences;
 
   public IntellijProfilerServices(@NotNull Project project,
-                                  @NotNull SymbolFilesLocator symbolLocator,
-                                  @NotNull MappingFilesLocator mappingLocator) {
+                                  @NotNull SymbolFilesLocator symbolLocator) {
     myProject = project;
     myFeatureTracker = new StudioFeatureTracker(myProject);
 
     mySymbolLocator = symbolLocator;
-    myMappingLocator = mappingLocator;
 
     NativeSymbolizer nativeSymbolizer = NativeSymbolizerKt.createNativeSymbolizer(mySymbolLocator);
     Disposer.register(this, nativeSymbolizer::stop);
@@ -884,11 +881,10 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     return LeakCanaryAiHandler.fetchLeakInsight(myProject, rawTrace);
   }
 
-  @NotNull
+  @Nullable
   @Override
-  @Unmodifiable
-  public Map<String, String> getProguardMappings() {
-    return myMappingLocator.getMappings();
+  public String getProguardMappingForApp(@NotNull String deviceSerial, @NotNull String packageName) {
+    return ProfilerExecutionListener.getDeployedAppProguardMapping(myProject, deviceSerial, packageName);
   }
 
   @Override

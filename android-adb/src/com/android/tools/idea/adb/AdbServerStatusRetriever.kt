@@ -33,8 +33,8 @@ import kotlinx.coroutines.launch
 @Service(Service.Level.PROJECT)
 class AdbServerStatusRetriever(project: Project) {
 
-  private val _serverStatus = MutableStateFlow<ServerStatus?>(null)
-  val serverStatus: StateFlow<ServerStatus?> = _serverStatus.asStateFlow()
+  private val _serverStatusState = MutableStateFlow<ServerStatusState>(ServerStatusState.NotConnected)
+  val serverStatusState: StateFlow<ServerStatusState> = _serverStatusState.asStateFlow()
 
   private val logger = thisLogger()
 
@@ -43,20 +43,23 @@ class AdbServerStatusRetriever(project: Project) {
     adbSession.scope.launch {
       adbSession.connectionStatusTracker.connectionStatus.collect { connectionStatus ->
         if (!connectionStatus.isConnected) {
-          _serverStatus.value = null
+          _serverStatusState.value = ServerStatusState.NotConnected
           return@collect
         }
         runCatching {
           val hostServices = adbSession.hostServices
           if (hostServices.hostFeatures().contains(AdbFeatures.SERVER_STATUS)) {
             hostServices.serverStatus().let { serverStatus ->
-              _serverStatus.value = serverStatus
+              _serverStatusState.value = ServerStatusState.Supported(serverStatus)
               logger.info("ADB server logs can be found at: ${serverStatus.absoluteLogPath}")
             }
+          } else {
+            // Server is reachable (hostFeatures() succeeded), but predates `server-status` (< 35.0.2).
+            _serverStatusState.value = ServerStatusState.Unsupported
           }
         }
           .onFailure { e ->
-            _serverStatus.value = null
+            _serverStatusState.value = ServerStatusState.NotConnected
             if (e !is CancellationException) {
               logger.warn("Cannot retrieve `AdbServerStatus` due to a problem with adb server", e)
             }
@@ -68,6 +71,14 @@ class AdbServerStatusRetriever(project: Project) {
   companion object {
     @JvmStatic fun getInstance(project: Project): AdbServerStatusRetriever = project.service()
   }
+}
+
+sealed interface ServerStatusState {
+  data object NotConnected : ServerStatusState
+
+  data object Unsupported : ServerStatusState
+
+  data class Supported(val status: ServerStatus) : ServerStatusState
 }
 
 /**

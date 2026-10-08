@@ -61,12 +61,30 @@ class RepositoryUrlManager
 @NonInjectable
 @VisibleForTesting
 constructor(
-  private val googleMavenRepository: GoogleMavenRepository,
+  private val googleMavenRepositoryProvider: () -> GoogleMavenRepository,
   private val cachedGoogleMavenRepository: GoogleMavenRepository,
   private val googleMavenRepositoryV2: GoogleMavenRepositoryV2,
   private val cachedGoogleMavenRepositoryV2: GoogleMavenRepositoryV2,
   private val useEmbeddedStudioRepo: Boolean = true,
 ) {
+  @VisibleForTesting
+  constructor(
+    googleMavenRepository: GoogleMavenRepository,
+    cachedGoogleMavenRepository: GoogleMavenRepository,
+    googleMavenRepositoryV2: GoogleMavenRepositoryV2,
+    cachedGoogleMavenRepositoryV2: GoogleMavenRepositoryV2,
+    useEmbeddedStudioRepo: Boolean = true,
+  ) : this(
+    { googleMavenRepository },
+    cachedGoogleMavenRepository,
+    googleMavenRepositoryV2,
+    cachedGoogleMavenRepositoryV2,
+    useEmbeddedStudioRepo,
+  )
+
+  private val googleMavenRepository: GoogleMavenRepository
+    get() = googleMavenRepositoryProvider()
+
   private val pendingNetworkRequests: MutableSet<String> = ConcurrentHashMap.newKeySet()
   private val logger: Logger = thisLogger()
   private val useGMavenV2: Boolean = StudioFlags.ENABLE_GMAVEN_REPOSITORY_V2.get()
@@ -79,7 +97,7 @@ constructor(
 
   internal constructor() :
     this(
-      IdeGoogleMavenRepository,
+      { IdeGoogleMavenRepository.getInstance() },
       OfflineIdeGoogleMavenRepository,
       GoogleMavenRepositoryV2.create(
         object : GoogleMavenRepositoryV2Host {

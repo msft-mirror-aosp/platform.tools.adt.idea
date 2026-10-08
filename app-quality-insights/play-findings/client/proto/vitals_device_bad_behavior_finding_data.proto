@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package google.play.androidpublisher.v3;
+
+option java_package = "com.google.play.androidpublisher.v3";
+option java_multiple_files = true;
+option java_outer_classname = "VitalsDeviceBadBehaviorFindingDataProto";
+
+// Data for Vitals Device Bad Behavior findings (finding type
+// [Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR][google.play.androidpublisher.v3.Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR]).
+message VitalsDeviceBadBehaviorFindingData {
+  // The metric set as defined by the Play Developer Reporting API that contains
+  // the metric with bad behavior, for example "vitals.crashrate".
+  // See: https://developers.google.com/play/developer/reporting/metricset-intro
+  //
+  // Optional.
+  string metric_set = 1;
+
+  // The name of the metric in the metric set that contains bad behavior data.
+  // For reference, see
+  // https://developers.google.com/play/developer/reporting/metricset-intro
+  //
+  // Optional.
+  string metric = 2;
+
+  // Bad behavior threshold (e.g. a value of 0.05 means that the exceeded
+  // threshold is 5%). The value is in the range [0, 1].
+  // Always set.
+  double threshold = 3;
+
+  // Number of affected device models in the relevant period for the bad
+  // behavior.
+  // Always set.
+  int64 affected_device_model_count = 4;
+
+  // Enum representing the severity of the bad behavior.
+  // This enum is not frozen. New values may be added in the future.
+  enum Type {
+    // Fallback value, do not use.
+    TYPE_UNSPECIFIED = 0;
+
+    // Persistent bad behavior, defined as devices that miss the per-device bad
+    // behavior threshold over 28 days.
+    BAD_BEHAVIOR = 1;
+
+    // Emerging bad behavior, defined as devices that miss the per-device bad
+    // behavior threshold over 7 days.
+    EMERGING_BAD_BEHAVIOR = 2;
+  }
+
+  // Bad behavior severity type.
+  // Always set.
+  Type bad_behavior_type = 5;
+
+  // Fraction of app installs affected by the bad behavior across these device
+  // models (e.g. 0.05 means 5% of installs are affected). The value is in the
+  // range [0, 1].
+  // Optional.
+  double affected_installs_ratio = 6;
+}

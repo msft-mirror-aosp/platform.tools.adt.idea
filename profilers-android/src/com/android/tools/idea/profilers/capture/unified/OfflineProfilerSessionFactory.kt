@@ -18,9 +18,6 @@ package com.android.tools.idea.profilers.capture.unified
 import com.android.tools.adtui.common.AdtUiUtils
 import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.idea.profilers.IntellijProfilerServices
-import com.android.tools.idea.profilers.MappingFilesLocator
-import com.android.tools.idea.profilers.ProjectR8MappingSource
-import com.android.tools.idea.profilers.R8MappingSource
 import com.android.tools.nativeSymbolizer.ProjectSymbolSource
 import com.android.tools.nativeSymbolizer.SymbolFilesLocator
 import com.android.tools.nativeSymbolizer.SymbolSource
@@ -101,9 +98,7 @@ object OfflineProfilerSessionFactory {
   ) {
     val symbolSource: SymbolSource = ProjectSymbolSource(project)
     val symbolLocator = SymbolFilesLocator(symbolSource)
-    val mappingSource: R8MappingSource = ProjectR8MappingSource(project)
-    val mappingLocator = MappingFilesLocator(mappingSource)
-    val ideServices = IntellijProfilerServices(project, symbolLocator, mappingLocator)
+    val ideServices = IntellijProfilerServices(project, symbolLocator)
     Disposer.register(parentDisposable, ideServices)
 
     ideServices.poolExecutor.execute {

@@ -62,7 +62,7 @@ internal fun PairingDevice.buildIDevice(
         Futures.immediateFuture(null)
       }
     }
-    whenever(getSystemProperty(any())).thenAnswer { systemProperties[it.arguments.single()] }
+    whenever(getSystemProperty(any())).thenAnswer { Futures.immediateFuture(systemProperties[it.arguments.single()]) }
 
     addExecuteShellCommandReply(shellCommandHandler)
   }
@@ -76,6 +76,7 @@ internal fun handlePhoneAdbRequest(request: String): String? =
     request.contains("grep 'cloud network id: '") -> "cloud network id: CloudID"
     request.contains("dumpsys activity service WearableService | grep 'local: '") -> "local: phoneNodeId"
     request.startsWith("dumpsys activity") -> "Fake dumpsys activity"
+    request.startsWith("pm grant ") -> "OK"
     else -> null
   }
 

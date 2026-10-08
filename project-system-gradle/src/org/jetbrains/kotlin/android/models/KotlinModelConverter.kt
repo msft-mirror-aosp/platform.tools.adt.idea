@@ -101,9 +101,20 @@ class KotlinModelConverter {
 
     internal fun KotlinSourceSet.getJavaSourceDirectories() = sourceDirs.map { File(it.parentFile, "java") }
 
-    internal fun KotlinSourceSet.getResSourceDirectories() = sourceDirs.map { File(it.parentFile, "res") }
+    /**
+     * Returns the android res directories of this sourceSet: the conventional `res` directory next to each kotlin source directory, plus
+     * the extra res directories reported by AGP in [sourceProvider] (e.g. added with `variant.sources.res.addStaticSourceDirectory()`).
+     */
+    internal fun KotlinSourceSet.getResSourceDirectories(sourceProvider: SourceProvider?) =
+      sourceDirs.map { File(it.parentFile, "res") } + sourceProvider?.extraResDirectoriesList.orEmpty().map { File(it.absolutePath) }
 
-    internal fun KotlinSourceSet.getAssetsSourceDirectories() = sourceDirs.map { File(it.parentFile, "assets") }
+    /**
+     * Returns the android assets directories of this sourceSet: the conventional `assets` directory next to each kotlin source directory,
+     * plus the extra assets directories reported by AGP in [sourceProvider] (e.g. added with
+     * `variant.sources.assets.addStaticSourceDirectory()`).
+     */
+    internal fun KotlinSourceSet.getAssetsSourceDirectories(sourceProvider: SourceProvider?) =
+      sourceDirs.map { File(it.parentFile, "assets") } + sourceProvider?.extraAssetsDirectoriesList.orEmpty().map { File(it.absolutePath) }
   }
 
   private val interner = WeakInterner(lock = null) // No need for a lock since the resolution happens sequentially.
@@ -163,8 +174,8 @@ class KotlinModelConverter {
         } else emptyList(),
       aidlDirectories = emptyList(),
       renderscriptDirectories = emptyList(),
-      resDirectories = sourceSet.getResSourceDirectories().makeRelativeAndDeduplicate(),
-      assetsDirectories = sourceSet.getAssetsSourceDirectories().makeRelativeAndDeduplicate(),
+      resDirectories = sourceSet.getResSourceDirectories(this).makeRelativeAndDeduplicate(),
+      assetsDirectories = sourceSet.getAssetsSourceDirectories(this).makeRelativeAndDeduplicate(),
       jniLibsDirectories = emptyList(),
       shadersDirectories = emptyList(),
       mlModelsDirectories = emptyList(),

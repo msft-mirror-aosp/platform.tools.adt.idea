@@ -102,4 +102,39 @@ class LiveEditAppTest {
     val status = LiveEditStatus.createRecomposeRetrievalErrorStatus(exception)
     Truth.assertThat(status.description).doesNotContain("<img")
   }
+
+  @Test
+  fun testCreateRerunnableErrorStatusEscapesHtmlAndPreservesLineBreaks() {
+    val message =
+      "Unsupported addition of new method:<br>'Foo.<init>' in file 'Foo.kt', line 10.<br>" +
+        "<img src='http://evil.com/x.png'><br>Rerun app to apply changes."
+    val status = LiveEditStatus.createRerunnableErrorStatus(message)
+
+    Truth.assertThat(status.description).doesNotContain("<img")
+    Truth.assertThat(status.description).contains("&lt;img src=&#39;http://evil.com/x.png&#39;&gt;")
+    Truth.assertThat(status.description).contains("Foo.&lt;init&gt;")
+    Truth.assertThat(status.description).contains("<br>")
+    Truth.assertThat(status.notificationText).doesNotContain("<img")
+  }
+
+  @Test
+  fun testCreateComposeVersionErrorEscapesHtml() {
+    val message = "Error <img src='evil'> in Compose version"
+    val status = LiveEditStatus.createComposeVersionError(message)
+    Truth.assertThat(status.description).doesNotContain("<img")
+    Truth.assertThat(status.notificationText).doesNotContain("<img")
+  }
+
+  @Test
+  fun testCreateErrorStatusEscapesHtml() {
+    val status = LiveEditStatus.createErrorStatus("<img src='evil'>Some error")
+    Truth.assertThat(status.description).doesNotContain("<img")
+    Truth.assertThat(status.notificationText).doesNotContain("<img")
+  }
+
+  @Test
+  fun testCreatePausedStatusEscapesHtml() {
+    val status = LiveEditStatus.createPausedStatus("<img src='evil'>Paused error")
+    Truth.assertThat(status.description).doesNotContain("<img")
+  }
 }

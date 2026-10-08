@@ -70,6 +70,7 @@ iml_module(
         "//tools/base/common:studio.android.sdktools.common",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
         "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.profilers
 
+import com.android.ddmlib.IDevice
 import com.android.ide.common.repository.GoogleMavenArtifactId
+import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.project.AndroidNotification
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink
@@ -34,8 +36,11 @@ import com.android.tools.idea.run.profiler.CpuProfilerConfigsState
 import com.android.tools.nativeSymbolizer.SymbolFilesLocator
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.google.common.truth.Truth.assertThat
+import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
+import com.intellij.execution.process.NopProcessHandler
+import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.ide.actions.RevealFileAction
 import com.intellij.mock.MockProjectEx
 import com.intellij.mock.MockPsiManager
@@ -62,6 +67,7 @@ import org.junit.AfterClass
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
@@ -82,6 +88,8 @@ class IntellijProfilerServicesTest {
 
   @get:Rule val disposableRule = DisposableRule()
 
+  @get:Rule val temporaryFolder = TemporaryFolder()
+
   private val spiesToDispose = mutableListOf<IntellijProfilerServices>()
 
   @After
@@ -97,8 +105,7 @@ class IntellijProfilerServicesTest {
     StudioFlags.PROFILER_LEAKCANARY.override(false)
     project = Mockito.spy(MockProjectEx(disposableRule.disposable))
     mockProjectAttributes(project)
-    intellijProfilerServices =
-      IntellijProfilerServices(project, Mockito.mock(SymbolFilesLocator::class.java), Mockito.mock(MappingFilesLocator::class.java))
+    intellijProfilerServices = IntellijProfilerServices(project, Mockito.mock(SymbolFilesLocator::class.java))
     Disposer.register(disposableRule.disposable, intellijProfilerServices)
   }
 
@@ -190,8 +197,7 @@ class IntellijProfilerServicesTest {
     StudioFlags.PROFILER_TASK_BASED_UX.override(true)
     project = Mockito.spy(MockProjectEx(disposableRule.disposable))
     mockProjectAttributes(project)
-    val intellijProfilerServicesNow =
-      IntellijProfilerServices(project, Mockito.mock(SymbolFilesLocator::class.java), Mockito.mock(MappingFilesLocator::class.java))
+    val intellijProfilerServicesNow = IntellijProfilerServices(project, Mockito.mock(SymbolFilesLocator::class.java))
     Disposer.register(disposableRule.disposable, intellijProfilerServicesNow)
     try {
       val result = intellijProfilerServicesNow.getTaskCpuProfilerConfigs(9)
@@ -346,7 +352,7 @@ class IntellijProfilerServicesTest {
     whenever(module.project).thenReturn(project)
 
     // Re-create services as a spy for this test
-    val actualInstance = IntellijProfilerServices(project, mock<SymbolFilesLocator>(), mock<MappingFilesLocator>())
+    val actualInstance = IntellijProfilerServices(project, mock<SymbolFilesLocator>())
     Disposer.register(disposableRule.disposable, actualInstance)
     val servicesSpy = spy(actualInstance)
     doReturn(featureTracker).whenever(servicesSpy).featureTracker
@@ -470,13 +476,77 @@ class IntellijProfilerServicesTest {
   }
 
   @Test
-  fun testGetProguardMappingsDelegatesToMappingFilesLocator() {
+  fun testGetProguardMappingForAppReturnsNullWhenNotDeployed() {
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isNull()
+  }
+
+  @Test
+  fun testGetProguardMappingForAppUsesDeployedVariantMappingRegardlessOfDropdownChanges() {
+    val mappingPath = temporaryFolder.newFile("mapping.txt").absolutePath
     val mockLocator = mock<MappingFilesLocator>()
-    whenever(mockLocator.getMappings()).thenReturn(mapOf("com.example.app" to "/path/to/mapping.txt"))
+    val sessionInfo = createSessionInfo("device-1")
 
-    val services = IntellijProfilerServices(project, mock<SymbolFilesLocator>(), mockLocator)
-    Disposer.register(disposableRule.disposable, services)
+    // 1. Deploy "debug" (unobfuscated) -> switching dropdown to "release" without redeploying still returns null
+    whenever(mockLocator.getMappings()).thenReturn(emptyMap())
+    ProfilerExecutionListener.recordDeployment(project, sessionInfo, mockLocator)
+    whenever(mockLocator.getMappings()).thenReturn(mapOf("com.example.app" to mappingPath))
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isNull()
 
-    assertThat(services.getProguardMappings()).containsExactly("com.example.app", "/path/to/mapping.txt")
+    // 2. Deploy "release" (obfuscated) -> switching dropdown to "debug" without redeploying still returns "release" mapping
+    ProfilerExecutionListener.recordDeployment(project, sessionInfo, mockLocator)
+    whenever(mockLocator.getMappings()).thenReturn(emptyMap())
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isEqualTo(mappingPath)
+
+    // 3. Redeploy "debug" (unobfuscated) -> overwrites record to null
+    ProfilerExecutionListener.recordDeployment(project, sessionInfo, mockLocator)
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isNull()
+  }
+
+  @Test
+  fun testGetProguardMappingForAppReturnsNullWhenMappingModifiedOrDeletedAfterDeploy() {
+    val mappingFile = temporaryFolder.newFile("mapping.txt")
+    val mappingPath = mappingFile.absolutePath
+    val mockLocator = mock<MappingFilesLocator>()
+    whenever(mockLocator.getMappings()).thenReturn(mapOf("com.example.app" to mappingPath))
+    val sessionInfo = createSessionInfo("device-1")
+
+    // Rebuild without redeploying (mapping.txt modified on disk) -> returns null
+    ProfilerExecutionListener.recordDeployment(project, sessionInfo, mockLocator)
+    mappingFile.setLastModified(mappingFile.lastModified() + 10_000L)
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isNull()
+
+    // Redeploy with updated mapping, then delete mapping.txt from disk -> returns null
+    ProfilerExecutionListener.recordDeployment(project, sessionInfo, mockLocator)
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isEqualTo(mappingPath)
+    assertTrue(mappingFile.delete())
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isNull()
+  }
+
+  @Test
+  fun testGetProguardMappingForAppRecordsMultiDeviceDeployViaProcessStarted() {
+    val mappingPath = temporaryFolder.newFile("mapping.txt").absolutePath
+    val mockLocator = mock<MappingFilesLocator>()
+    whenever(mockLocator.getMappings()).thenReturn(mapOf("com.example.app" to mappingPath))
+    val handler = NopProcessHandler()
+    createSessionInfo("device-1", "device-2", handler = handler)
+    val env = mock<ExecutionEnvironment>()
+    whenever(env.project).thenReturn(project)
+
+    ProfilerExecutionListener({ mockLocator }, MoreExecutors.directExecutor()).processStarted("Run", env, handler)
+
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.example.app")).isEqualTo(mappingPath)
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-2", "com.example.app")).isEqualTo(mappingPath)
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-3", "com.example.app")).isNull()
+    assertThat(intellijProfilerServices.getProguardMappingForApp("device-1", "com.other.app")).isNull()
+  }
+
+  private fun createSessionInfo(
+    vararg deviceSerials: String,
+    handler: NopProcessHandler = NopProcessHandler(),
+  ): AndroidSessionInfo {
+    val devices = deviceSerials.map { serial ->
+      mock<IDevice>().also { whenever(it.serialNumber).thenReturn(serial) }
+    }
+    return AndroidSessionInfo.create(handler, devices, "com.example.app")
   }
 }

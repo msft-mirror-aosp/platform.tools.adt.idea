@@ -40,11 +40,13 @@ import com.android.tools.sdk.AndroidTargetData;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.util.Collections;
 import java.util.List;
@@ -568,10 +570,17 @@ public class ConfigurationManager implements Disposable, ConfigurationSettings {
         // needlessly flush the bitmap cache for the project still using it, but that just
         // means the next render will need to fetch them again; from that point on both platform
         // bitmap sets are in memory.
-        AndroidTargetData targetData = AndroidTargetData.getTargetData(myTarget, myConfigurationModule.getAndroidPlatform());
-        if (targetData != null) {
-          targetData.clearLayoutBitmapCache(myConfigurationModule.getModuleKey());
-        }
+        IAndroidTarget oldTarget = myTarget;
+        // Run the old target's bitmap cache cleanup inside a non-blocking read action bound to
+        // myModule (which is also this manager's parent Disposable) so project/module model reads
+        // hold a read lock, execution is cancelled if the module is disposed, and Mockito spies
+        // of ConfigurationManager in tests are not registered as root disposables.
+        ReadAction.nonBlocking(() -> {
+          AndroidTargetData targetData = AndroidTargetData.getTargetData(oldTarget, myConfigurationModule.getAndroidPlatform());
+          if (targetData != null) {
+            targetData.clearLayoutBitmapCache(myConfigurationModule.getModuleKey());
+          }
+        }).expireWith(myModule).submit(AppExecutorUtil.getAppExecutorService());
       }
 
       myTarget = target;

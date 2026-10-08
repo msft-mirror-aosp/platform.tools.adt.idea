@@ -51,6 +51,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jimfs",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],

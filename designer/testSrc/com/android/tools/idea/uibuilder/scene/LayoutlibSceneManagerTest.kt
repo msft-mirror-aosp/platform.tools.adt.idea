@@ -20,6 +20,7 @@ import com.android.SdkConstants.FD_RES_LAYOUT
 import com.android.SdkConstants.FD_RES_MENU
 import com.android.SdkConstants.FD_RES_XML
 import com.android.SdkConstants.FRAME_LAYOUT
+import com.android.SdkConstants.LINEAR_LAYOUT
 import com.android.SdkConstants.PreferenceTags.PREFERENCE_SCREEN
 import com.android.SdkConstants.TAG_MENU
 import com.android.SdkConstants.VIEW
@@ -133,7 +134,10 @@ class LayoutlibSceneManagerTest : SceneTest() {
     myLayoutlibSceneManager.requestRenderAndWait()
     myLayoutlibSceneManager.renderResult!!.let {
       assertFalse("broken render should have failed", it.renderResult.isSuccess)
-      assertTrue("image should be still valid because of a previous successful render", it.renderedImage.isValid)
+      assertTrue(
+        "image should be still valid because of a previous successful render",
+        it.renderedImage.isValid,
+      )
       assertEquals(768, it.rootViewDimensions.width)
       assertEquals(1280, it.rootViewDimensions.height)
     }
@@ -176,7 +180,12 @@ class LayoutlibSceneManagerTest : SceneTest() {
 
   fun testUpdateSceneViewsForMenu() {
     val menuModel =
-      model(FD_RES_MENU, "menu.xml", component(TAG_MENU).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight()).build()
+      model(
+          FD_RES_MENU,
+          "menu.xml",
+          component(TAG_MENU).withBounds(0, 0, 1000, 1000).matchParentWidth().matchParentHeight(),
+        )
+        .build()
     try {
       val sceneManager = menuModel.surface.getSceneManager(menuModel) as LayoutlibSceneManager
 
@@ -211,7 +220,8 @@ class LayoutlibSceneManagerTest : SceneTest() {
       assertEquals(100, initialResult.rootViewDimensions.width)
       assertEquals(100, initialResult.rootViewDimensions.height)
 
-      // Dynamically grow the underlying android.view.View inside the render session (simulating an animation frame)
+      // Dynamically grow the underlying android.view.View inside the render session (simulating an
+      // animation frame)
       RenderService.getRenderAsyncActionExecutor()
         .runAsyncAction {
           val rootView = sceneManager.renderResult!!.rootViews.first().viewObject as ViewGroup
@@ -252,6 +262,113 @@ class LayoutlibSceneManagerTest : SceneTest() {
       assertEquals(80, shrunkResult.rootViewDimensions.height)
     } finally {
       Disposer.dispose(shrinkModel)
+    }
+  }
+
+  fun testTriggerHoverEventUpdatesHoveredState() {
+    val hoverModel =
+      model(
+          FD_RES_LAYOUT,
+          "hover_layout.xml",
+          component(FRAME_LAYOUT)
+            .withBounds(0, 0, 200, 200)
+            .matchParentWidth()
+            .matchParentHeight()
+            .children(component("Button").withBounds(0, 0, 200, 200).width("200dp").height("200dp")),
+        )
+        .build()
+
+    try {
+      val sceneManager = hoverModel.surface.getSceneManager(hoverModel) as LayoutlibSceneManager
+      runBlocking { sceneManager.requestRenderAndWait() }
+
+      val buttonView =
+        RenderService.getRenderAsyncActionExecutor()
+          .runAsyncAction<android.view.View> {
+            val rootView = sceneManager.renderResult!!.rootViews.first().viewObject as ViewGroup
+            rootView.getChildAt(0)
+          }
+          .join()
+
+      assertFalse(buttonView.isHovered)
+
+      sceneManager.triggerHoverEventAsync(android.view.MotionEvent.ACTION_HOVER_ENTER, 50, 50).join()
+      assertTrue(buttonView.isHovered)
+
+      sceneManager.triggerHoverEventAsync(android.view.MotionEvent.ACTION_HOVER_EXIT, -1, -1).join()
+      assertFalse(buttonView.isHovered)
+    } finally {
+      Disposer.dispose(hoverModel)
+    }
+  }
+
+  fun testTriggerKeyEventRestoresDefaultFocus() {
+    val focusModel =
+      model(
+          FD_RES_LAYOUT,
+          "focus_layout.xml",
+          component(LINEAR_LAYOUT)
+            .withBounds(0, 0, 200, 200)
+            .matchParentWidth()
+            .matchParentHeight()
+            .withAttribute("android:orientation", "vertical")
+            .children(
+              component("Button")
+                .withBounds(0, 0, 200, 100)
+                .width("200dp")
+                .height("100dp")
+                .withAttribute("android:focusable", "true")
+                .withAttribute("android:focusableInTouchMode", "true"),
+              component("Button")
+                .withBounds(0, 100, 200, 100)
+                .width("200dp")
+                .height("100dp")
+                .withAttribute("android:focusable", "true")
+                .withAttribute("android:focusableInTouchMode", "true"),
+            ),
+        )
+        .build()
+
+    try {
+      val sceneManager = focusModel.surface.getSceneManager(focusModel) as LayoutlibSceneManager
+      runBlocking { sceneManager.requestRenderAndWait() }
+
+      val (firstButton, secondButton) =
+        RenderService.getRenderAsyncActionExecutor()
+          .runAsyncAction<Pair<android.view.View, android.view.View>> {
+            val rootView = sceneManager.renderResult!!.rootViews.first().viewObject as ViewGroup
+            Pair(rootView.getChildAt(0), rootView.getChildAt(1))
+          }
+          .join()
+      assertFalse(firstButton.hasWindowFocus())
+      assertFalse(secondButton.isFocused)
+
+      val sourceComponent = javax.swing.JPanel()
+      val tabPressEvent =
+        java.awt.event.KeyEvent(
+          sourceComponent,
+          java.awt.event.KeyEvent.KEY_PRESSED,
+          System.currentTimeMillis(),
+          0,
+          java.awt.event.KeyEvent.VK_TAB,
+          '\t',
+        )
+      sceneManager.triggerKeyEventAsync(tabPressEvent).join()
+      assertTrue(firstButton.hasWindowFocus())
+
+      val tabReleaseEvent =
+        java.awt.event.KeyEvent(
+          sourceComponent,
+          java.awt.event.KeyEvent.KEY_RELEASED,
+          System.currentTimeMillis(),
+          0,
+          java.awt.event.KeyEvent.VK_TAB,
+          '\t',
+        )
+      sceneManager.triggerKeyEventAsync(tabReleaseEvent).join()
+      assertTrue(firstButton.isFocused)
+    } finally {
+      Disposer.dispose(focusModel)
     }
   }
 }

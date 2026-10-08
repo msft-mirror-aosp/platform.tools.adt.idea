@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.streaming.device
 
-import com.android.ide.common.util.isMdnsAutoConnectTls
-import com.android.ide.common.util.isMdnsAutoConnectUnencrypted
 import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.tools.analytics.CommonMetricsData
+import com.android.tools.analytics.isMdnsAutoConnectTls
+import com.android.tools.analytics.isMdnsAutoConnectUnencrypted
 import com.google.wireless.android.sdk.stats.DeviceInfo
 import com.google.wireless.android.sdk.stats.DeviceInfo.DeviceType
 import com.google.wireless.android.sdk.stats.DeviceInfo.DeviceType.LOCAL_EMULATOR

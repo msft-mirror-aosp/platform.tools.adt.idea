@@ -48,6 +48,10 @@ suspend fun IDevice.runShellCommand(cmd: String): String =
     outputReceiver.output.trim()
   }
 
+suspend fun IDevice.grantPermission(applicationId: String, permission: String) {
+  runShellCommand("pm grant $applicationId $permission")
+}
+
 private suspend fun IDevice.localNodeFromPairingStatus(): String? =
   LOCAL_NODE_REGEX.find(runShellCommand(GET_PAIRING_STATUS_COMMAND))?.groupValues?.get(1)
 

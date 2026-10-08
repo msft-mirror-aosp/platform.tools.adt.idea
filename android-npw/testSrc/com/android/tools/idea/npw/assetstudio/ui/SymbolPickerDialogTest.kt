@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.npw.assetstudio.ui
 
+import com.android.ide.common.vectordrawable.VdIcon
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.material.icons.common.MaterialIconsMetadataUrlProvider
@@ -24,12 +25,13 @@ import com.android.tools.idea.material.icons.common.Symbols
 import com.android.tools.idea.material.icons.metadata.MaterialMetadataIcon
 import com.android.tools.idea.npw.assetstudio.assets.MaterialSymbolsVirtualFile
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
-import com.intellij.openapi.application.EDT
 import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.table.JBTable
@@ -55,318 +57,307 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.mock
 
+@RunsInEdt
 class SymbolPickerDialogTest {
-  @get:Rule val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
 
   @Test
-  fun testCategoriesBoxPopulated() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
-        if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
-          box.selectedIndex = 1
-          assertEquals("Category1", box.selectedItem?.toString())
-          box.selectedIndex = 2
-          assertEquals("Category2", box.selectedItem?.toString())
-          box.selectedIndex = 3
-          assertEquals("Category3", box.selectedItem?.toString())
-        }
-      }
-    }
-
-  @Test
-  fun testStylesBoxPopulated() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
-        if (Objects.requireNonNull(box.selectedItem).toString() == "Material Symbols Outlined") {
-          box.selectedIndex = 1
-          assertEquals("Material Symbols Rounded", box.selectedItem?.toString())
-          box.selectedIndex = 2
-          assertEquals("Material Symbols Sharp", box.selectedItem?.toString())
-        }
-      }
-    }
-
-  @Test
-  fun testTablePopulated() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table ->
-        assertNotNull(table)
-        assertNotNull(table.getValueAt(0, 0))
-        assertNotNull(table.getValueAt(0, 1))
-        assertNull(table.getValueAt(0, 2))
-      }
-    }
-
-  @Test
-  fun testFiltering() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
-        if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
-          box.selectedIndex = 2
-          assertEquals("Category2", box.selectedItem?.toString())
-        }
-      }
-
-      UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table ->
-        assertNotNull(table)
-        assertNotNull(table.getValueAt(0, 0))
-        assertNull(table.getValueAt(0, 1))
-      }
-    }
-
-  @Test
-  fun testSearch() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val dialog =
+  fun testCategoriesBoxPopulated() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
         SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-      val symbolsPicker = getInitializedIconPickerDialog(dialog)
+      )
 
-      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), SearchTextField::class.java).first().let { searchField ->
-        // Trailing characters are ignored
-        searchField.text = "  My    "
-        assertEquals(listOf("My Icon 1", "My Icon 2"), dialog.getCurrentSymbolNames())
+    UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
+      if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
+        box.selectedIndex = 1
+        assertEquals("Category1", box.selectedItem?.toString())
+        box.selectedIndex = 2
+        assertEquals("Category2", box.selectedItem?.toString())
+        box.selectedIndex = 3
+        assertEquals("Category3", box.selectedItem?.toString())
+      }
+    }
+  }
 
-        // One icon found.
-        searchField.text = "  1"
-        assertEquals(listOf("My Icon 1"), dialog.getCurrentSymbolNames())
+  @Test
+  fun testStylesBoxPopulated() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
 
-        // One icon found.
-        searchField.text = "2    "
-        assertEquals(listOf("My Icon 2"), dialog.getCurrentSymbolNames())
+    UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
+      if (Objects.requireNonNull(box.selectedItem).toString() == "Material Symbols Outlined") {
+        box.selectedIndex = 1
+        assertEquals("Material Symbols Rounded", box.selectedItem?.toString())
+        box.selectedIndex = 2
+        assertEquals("Material Symbols Sharp", box.selectedItem?.toString())
+      }
+    }
+  }
 
-        // No icons found.
-        searchField.text = "Day"
-        assertEquals(emptyList<String>(), dialog.getCurrentSymbolNames())
+  @Test
+  fun testTablePopulated() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
 
-        // Case is ignored.
-        searchField.text = "my icon"
-        assertEquals(listOf("My Icon 1", "My Icon 2"), dialog.getCurrentSymbolNames())
+    UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table ->
+      assertNotNull(table)
+      assertNotNull(table.getValueAt(0, 0))
+      assertNotNull(table.getValueAt(0, 1))
+      assertNull(table.getValueAt(0, 2))
+    }
+  }
+
+  @Test
+  fun testFiltering() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
+
+    UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JComboBox::class.java).forEach { box ->
+      if (Objects.requireNonNull(box.selectedItem).toString() == "All") {
+        box.selectedIndex = 2
+        assertEquals("Category2", box.selectedItem?.toString())
       }
     }
 
-  @Test
-  fun testSearchFieldConfiguredInPanelContext() =
-    runBlocking(Dispatchers.Main) {
-      HeadlessDataManager.fallbackToProductionDataManager(projectRule.fixture.testRootDisposable)
-
-      val testDirectory = createTempDirectory()
-      val dialog =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      val centerPanel = dialog.createCenterPanel()
-      val context = DataManager.getInstance().getDataContext(centerPanel)
-      val providedField = context.getData(SearchTextField.KEY)
-
-      assertThat(providedField).isNotNull()
-    }
-
-  @Test
-  fun testRefreshButtonHasTooltip() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      val refreshButton =
-        UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }
-      assertNotNull(refreshButton)
-      assertEquals("Refresh", refreshButton.toolTipText)
-    }
-
-  @Test
-  fun testResetButtonResetsSliders() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      val centerPanel = symbolsPicker.createCenterPanel()
-      val sliders = UIUtil.findComponentsOfType(centerPanel, JSlider::class.java)
-      assertEquals(3, sliders.size)
-      val weightSlider = sliders[0]
-      val gradeSlider = sliders[1]
-      val opticalSizeSlider = sliders[2]
-
-      // Initial defaults
-      assertEquals(SymbolPickerDialog.DEFAULT_WEIGHT_INDEX, weightSlider.value)
-      assertEquals(SymbolPickerDialog.DEFAULT_GRADE_INDEX, gradeSlider.value)
-      assertEquals(SymbolPickerDialog.DEFAULT_OPTICAL_SIZE_INDEX, opticalSizeSlider.value)
-
-      // Change values
-      weightSlider.value = 0
-      gradeSlider.value = 0
-      opticalSizeSlider.value = 0
-      assertEquals(0, weightSlider.value)
-      assertEquals(0, gradeSlider.value)
-      assertEquals(0, opticalSizeSlider.value)
-
-      val resetButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Reset }
-      assertNotNull(resetButton)
-      assertEquals("Reset", resetButton.toolTipText)
-
-      resetButton.doClick()
-
-      assertEquals(SymbolPickerDialog.DEFAULT_WEIGHT_INDEX, weightSlider.value)
-      assertEquals(SymbolPickerDialog.DEFAULT_GRADE_INDEX, gradeSlider.value)
-      assertEquals(SymbolPickerDialog.DEFAULT_OPTICAL_SIZE_INDEX, opticalSizeSlider.value)
-    }
-
-  @Test
-  fun testTablePadding() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
-
-      val table = UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java)
+    UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java).let { table ->
       assertNotNull(table)
-      // ICON_HEIGHT (64) + TEXT_HEIGHT (16) + PADDING_BOTTOM (8) = 88
-      assertEquals(JBUI.scale(88), table.rowHeight)
+      assertNotNull(table.getValueAt(0, 0))
+      assertNull(table.getValueAt(0, 1))
     }
+  }
 
   @Test
-  fun testRendererPadding() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
+  fun testSearch() = runTest {
+    val testDirectory = createTempDirectory()
+    val dialog =
+      SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+    val symbolsPicker = getInitializedIconPickerDialog(dialog)
 
-      val table = UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java)
-      assertNotNull(table)
-      val renderer = table.getDefaultRenderer(MaterialSymbolsVirtualFile::class.java)
-      val component = renderer.getTableCellRendererComponent(table, table.getValueAt(0, 0), false, false, 0, 0)
-      assertThat(component).isInstanceOf(JBLabel::class.java)
-      val label = component as JBLabel
-      assertEquals(JBUI.scale(8), label.insets.bottom)
+    UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), SearchTextField::class.java).first().let { searchField ->
+      // Trailing characters are ignored
+      searchField.text = "  My    "
+      assertEquals(listOf("My Icon 1", "My Icon 2"), dialog.getCurrentSymbolNames())
+
+      // One icon found.
+      searchField.text = "  1"
+      assertEquals(listOf("My Icon 1"), dialog.getCurrentSymbolNames())
+
+      // One icon found.
+      searchField.text = "2    "
+      assertEquals(listOf("My Icon 2"), dialog.getCurrentSymbolNames())
+
+      // No icons found.
+      searchField.text = "Day"
+      assertEquals(emptyList<String>(), dialog.getCurrentSymbolNames())
+
+      // Case is ignored.
+      searchField.text = "my icon"
+      assertEquals(listOf("My Icon 1", "My Icon 2"), dialog.getCurrentSymbolNames())
     }
+  }
 
   @Test
-  fun testRefreshButtonDisabledDuringRefresh() =
-    runBlocking(Dispatchers.Main) {
-      var isFetching = false
-      val slowMetadataUrlProvider =
-        object : MaterialIconsMetadataUrlProvider {
-          override fun getMetadataUrl(): URL? {
-            isFetching = true
-            // Delay for a bit to allow us to check the button state
-            Thread.sleep(500)
-            return IconPickerDialogTest::class.java.getClassLoader().getResource("images/material/icons/icons_metadata_test.txt")
-          }
+  fun testSearchFieldConfiguredInPanelContext() = runTest {
+    HeadlessDataManager.fallbackToProductionDataManager(projectRule.fixture.testRootDisposable)
+
+    val testDirectory = createTempDirectory()
+    val dialog =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
+
+    val centerPanel = dialog.createCenterPanel()
+    val context = DataManager.getInstance().getDataContext(centerPanel)
+    val providedField = context.getData(SearchTextField.KEY)
+
+    assertThat(providedField).isNotNull()
+  }
+
+  @Test
+  fun testRefreshButtonHasTooltip() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
+
+    val refreshButton =
+      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }
+    assertNotNull(refreshButton)
+    assertEquals("Refresh", refreshButton.toolTipText)
+  }
+
+  @Test
+  fun testResetButtonResetsSliders() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
+
+    val centerPanel = symbolsPicker.createCenterPanel()
+    val sliders = UIUtil.findComponentsOfType(centerPanel, JSlider::class.java)
+    assertEquals(3, sliders.size)
+    val weightSlider = sliders[0]
+    val gradeSlider = sliders[1]
+    val opticalSizeSlider = sliders[2]
+
+    // Initial defaults
+    assertEquals(SymbolPickerDialog.DEFAULT_WEIGHT_INDEX, weightSlider.value)
+    assertEquals(SymbolPickerDialog.DEFAULT_GRADE_INDEX, gradeSlider.value)
+    assertEquals(SymbolPickerDialog.DEFAULT_OPTICAL_SIZE_INDEX, opticalSizeSlider.value)
+
+    // Change values
+    weightSlider.value = 0
+    gradeSlider.value = 0
+    opticalSizeSlider.value = 0
+    assertEquals(0, weightSlider.value)
+    assertEquals(0, gradeSlider.value)
+    assertEquals(0, opticalSizeSlider.value)
+
+    val resetButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Reset }
+    assertNotNull(resetButton)
+    assertEquals("Reset", resetButton.toolTipText)
+
+    resetButton.doClick()
+
+    assertEquals(SymbolPickerDialog.DEFAULT_WEIGHT_INDEX, weightSlider.value)
+    assertEquals(SymbolPickerDialog.DEFAULT_GRADE_INDEX, gradeSlider.value)
+    assertEquals(SymbolPickerDialog.DEFAULT_OPTICAL_SIZE_INDEX, opticalSizeSlider.value)
+  }
+
+  @Test
+  fun testTablePadding() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
+
+    val table = UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java)
+    assertNotNull(table)
+    // ICON_HEIGHT (64) + TEXT_HEIGHT (16) + PADDING_BOTTOM (8) = 88
+    assertEquals(JBUI.scale(88), table.rowHeight)
+  }
+
+  @Test
+  fun testRendererPadding() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
+
+    val table = UIUtil.findComponentOfType(symbolsPicker.createCenterPanel(), JBTable::class.java)
+    assertNotNull(table)
+    val renderer = table.getDefaultRenderer(MaterialSymbolsVirtualFile::class.java)
+    val component = renderer.getTableCellRendererComponent(table, table.getValueAt(0, 0), false, false, 0, 0)
+    assertThat(component).isInstanceOf(JBLabel::class.java)
+    val label = component as JBLabel
+    assertEquals(JBUI.scale(8), label.insets.bottom)
+  }
+
+  @Test
+  fun testRefreshButtonDisabledDuringRefresh() = runTest {
+    var isFetching = false
+    val slowMetadataUrlProvider =
+      object : MaterialIconsMetadataUrlProvider {
+        override fun getMetadataUrl(): URL? {
+          isFetching = true
+          // Delay for a bit to allow us to check the button state
+          Thread.sleep(500)
+          return IconPickerDialogTest::class.java.getClassLoader().getResource("images/material/icons/icons_metadata_test.txt")
         }
+      }
 
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), slowMetadataUrlProvider)
-        )
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), slowMetadataUrlProvider)
+      )
 
-      assertThat(symbolsPicker.isRefreshButtonEnabled()).isTrue()
+    assertThat(symbolsPicker.isRefreshButtonEnabled()).isTrue()
 
-      val refreshButton =
-        UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }!!
+    val refreshButton =
+      UIUtil.findComponentsOfType(symbolsPicker.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }!!
 
-      // Click the button
-      withContext(Dispatchers.EDT) { refreshButton.doClick() }
+    // Click the button
+    isFetching = false
+    refreshButton.doClick()
 
-      // Now it should be fetching and button should be disabled
-      val wait: WaitFor =
-        object : WaitFor(3000) {
-          override fun condition(): Boolean {
-            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-            return isFetching && !symbolsPicker.isRefreshButtonEnabled()
-          }
+    // Now it should be fetching and button should be disabled
+    val wait: WaitFor =
+      object : WaitFor(3000) {
+        override fun condition(): Boolean {
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          return isFetching && !symbolsPicker.isRefreshButtonEnabled()
         }
-      assertTrue(wait.isConditionRealized, "Should be fetching and button should be disabled")
+      }
+    assertTrue(wait.isConditionRealized, "Should be fetching and button should be disabled")
 
-      // Now wait for it to finish, i.e. the button should be enabled again.
-      val finishWait: WaitFor =
-        object : WaitFor(3000) {
-          override fun condition(): Boolean {
-            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-            return symbolsPicker.isRefreshButtonEnabled()
-          }
+    // Now wait for it to finish, i.e. the button should be enabled again.
+    val finishWait: WaitFor =
+      object : WaitFor(3000) {
+        override fun condition(): Boolean {
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          return symbolsPicker.isRefreshButtonEnabled()
         }
-      assertTrue(finishWait.isConditionRealized, "Button should be enabled")
-    }
+      }
+    assertTrue(finishWait.isConditionRealized, "Button should be enabled")
+  }
 
   @Test
   // Regression test for b/500932758
-  fun testRefreshButtonFocusRestoredAfterRefresh() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val symbolsPicker =
-        getInitializedIconPickerDialog(
-          SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
-        )
+  fun testRefreshButtonFocusRestoredAfterRefresh() = runTest {
+    val testDirectory = createTempDirectory()
+    val symbolsPicker =
+      getInitializedIconPickerDialog(
+        SymbolPickerDialog(projectRule.fixture.testRootDisposable, TestSymbolsUrlProvider(testDirectory), TestSymbolsMetadataUrlProvider)
+      )
 
-      val centerPanel = symbolsPicker.createCenterPanel()
-      centerPanel.parent?.remove(centerPanel)
-      FakeUi(centerPanel, parentDisposable = projectRule.fixture.testRootDisposable)
-      val focusManager = FakeKeyboardFocusManager(projectRule.fixture.testRootDisposable)
-      focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(centerPanel))
+    val centerPanel = symbolsPicker.createCenterPanel()
+    centerPanel.parent?.remove(centerPanel)
+    FakeUi(centerPanel, parentDisposable = projectRule.fixture.testRootDisposable)
+    val focusManager = FakeKeyboardFocusManager(projectRule.fixture.testRootDisposable)
+    focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(centerPanel))
 
-      val refreshButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Refresh }!!
-      val resetButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Reset }!!
+    val refreshButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Refresh }!!
+    val resetButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Reset }!!
 
-      refreshButton.requestFocusInWindow()
-      assertThat(refreshButton.hasFocus()).isTrue()
+    refreshButton.requestFocusInWindow()
+    assertThat(refreshButton.hasFocus()).isTrue()
 
-      // Click the button to trigger refresh
-      withContext(Dispatchers.EDT) { refreshButton.doClick() }
-      assertThat(resetButton.hasFocus()).isFalse()
+    // Click the button to trigger refresh
+    refreshButton.doClick()
+    assertThat(resetButton.hasFocus()).isFalse()
 
-      val finishWait: WaitFor =
-        object : WaitFor(3000) {
-          override fun condition(): Boolean {
-            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-            return symbolsPicker.isRefreshButtonEnabled()
-          }
+    val finishWait: WaitFor =
+      object : WaitFor(3000) {
+        override fun condition(): Boolean {
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          return symbolsPicker.isRefreshButtonEnabled()
         }
-      assertTrue(finishWait.isConditionRealized, "Button should be enabled")
-      assertThat(refreshButton.hasFocus()).isTrue()
-      assertThat(resetButton.hasFocus()).isFalse()
-    }
+      }
+    assertTrue(finishWait.isConditionRealized, "Button should be enabled")
+    assertThat(refreshButton.hasFocus()).isTrue()
+    assertThat(resetButton.hasFocus()).isFalse()
+  }
 
   @Test
   fun testMaterialSymbolsVirtualFileContent() {
@@ -389,125 +380,124 @@ class SymbolPickerDialogTest {
   }
 
   @Test
-  fun testOkButtonDisabledInitiallyAndEnabledOnSelection() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val dialog =
-        SymbolPickerDialog(
-          projectRule.fixture.testRootDisposable,
-          TestSymbolsUrlProvider(testDirectory),
-          TestSymbolsMetadataUrlProvider,
-          vdIconLoader = { _, _, _, _ -> org.mockito.Mockito.mock(com.android.ide.common.vectordrawable.VdIcon::class.java) },
-        )
+  fun testOkButtonDisabledInitiallyAndEnabledOnSelection() = runTest {
+    val testDirectory = createTempDirectory()
+    val mockVdIcon = mock(VdIcon::class.java)
+    val dialog =
+      SymbolPickerDialog(
+        projectRule.fixture.testRootDisposable,
+        TestSymbolsUrlProvider(testDirectory),
+        TestSymbolsMetadataUrlProvider,
+        vdIconLoader = { _, _, _, _ -> mockVdIcon },
+      )
 
-      try {
-        assertThat(dialog.isOKActionEnabled).isFalse()
+    try {
+      assertThat(dialog.isOKActionEnabled).isFalse()
 
-        // Initialize the dialog (loads icons and populates the table)
-        getInitializedIconPickerDialog(dialog)
+      // Initialize the dialog (loads icons and populates the table)
+      getInitializedIconPickerDialog(dialog)
 
-        // Select an icon in the table
-        val table = UIUtil.findComponentOfType(dialog.createCenterPanel(), JBTable::class.java)!!
-        table.setRowSelectionInterval(0, 0)
-        table.setColumnSelectionInterval(0, 0)
+      // Select an icon in the table
+      val table = UIUtil.findComponentOfType(dialog.createCenterPanel(), JBTable::class.java)!!
+      table.setRowSelectionInterval(0, 0)
+      table.setColumnSelectionInterval(0, 0)
 
-        // Wait for the OK button to be enabled (async icon loading)
-        val waitOk =
-          object : WaitFor(3000) {
-            override fun condition(): Boolean {
-              PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-              return dialog.isOKActionEnabled
-            }
-          }
-        assertTrue(waitOk.isConditionRealized)
-
-        val refreshButton =
-          UIUtil.findComponentsOfType(dialog.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }
-        refreshButton!!.doClick()
-        val waitOkDisabled =
-          object : WaitFor(3000) {
-            override fun condition(): Boolean {
-              PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-              return !dialog.isOKActionEnabled
-            }
-          }
-        assertTrue(waitOkDisabled.isConditionRealized)
-      } finally {
-        dialog.close(0)
-      }
-    }
-
-  @Test
-  fun testOkButtonDoesNotBlinkOnSelectionChange() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      val dialog =
-        SymbolPickerDialog(
-          projectRule.fixture.testRootDisposable,
-          TestSymbolsUrlProvider(testDirectory),
-          TestSymbolsMetadataUrlProvider,
-          vdIconLoader = { _, _, _, _ -> org.mockito.Mockito.mock(com.android.ide.common.vectordrawable.VdIcon::class.java) },
-        )
-
-      try {
-        getInitializedIconPickerDialog(dialog)
-        val table = UIUtil.findComponentOfType(dialog.createCenterPanel(), JBTable::class.java)!!
-
-        // Select first icon and wait for OK to be enabled
-        table.setRowSelectionInterval(0, 0)
-        table.setColumnSelectionInterval(0, 0)
-        val waitOk =
-          object : WaitFor(3000) {
-            override fun condition(): Boolean {
-              PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-              return dialog.isOKActionEnabled
-            }
-          }
-        assertTrue(waitOk.isConditionRealized)
-
-        // Select another icon.
-        table.setColumnSelectionInterval(1, 1)
-
-        // Verify it remains enabled immediately, i.e. no blinking to false before dispatching events.
-        assertTrue(dialog.isOKActionEnabled, "OK button should not be disabled when changing selection")
-
-        // Also check the button remains enabled after dispatching events (for completeness).
-        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-        assertTrue(dialog.isOKActionEnabled)
-      } finally {
-        dialog.close(0)
-      }
-    }
-
-  @Test
-  fun testUpdateFilterDoesNotPack() =
-    runBlocking(Dispatchers.Main) {
-      val testDirectory = createTempDirectory()
-      var packCount = 0
-      val dialog =
-        object :
-          SymbolPickerDialog(
-            projectRule.fixture.testRootDisposable,
-            TestSymbolsUrlProvider(testDirectory),
-            TestSymbolsMetadataUrlProvider,
-          ) {
-          override fun pack() {
-            super.pack()
-            packCount++
+      // Wait for the OK button to be enabled (async icon loading)
+      val waitOk =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return dialog.isOKActionEnabled
           }
         }
+      assertTrue(waitOk.isConditionRealized)
 
-      getInitializedIconPickerDialog(dialog)
-      val countBeforeAction = packCount
-
-      // Change a slider
-      val sliders = UIUtil.findComponentsOfType(dialog.createCenterPanel(), JSlider::class.java)
-      val weightSlider = sliders[0]
-      weightSlider.value = (weightSlider.value + 1) % weightSlider.maximum
-      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-
-      assertThat(packCount).isEqualTo(countBeforeAction)
+      val refreshButton =
+        UIUtil.findComponentsOfType(dialog.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }
+      refreshButton!!.doClick()
+      val waitOkDisabled =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return !dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitOkDisabled.isConditionRealized)
+    } finally {
+      dialog.close(0)
     }
+  }
+
+  @Test
+  fun testOkButtonDoesNotBlinkOnSelectionChange() = runTest {
+    val testDirectory = createTempDirectory()
+    val mockVdIcon = mock(VdIcon::class.java)
+    val dialog =
+      SymbolPickerDialog(
+        projectRule.fixture.testRootDisposable,
+        TestSymbolsUrlProvider(testDirectory),
+        TestSymbolsMetadataUrlProvider,
+        vdIconLoader = { _, _, _, _ -> mockVdIcon },
+      )
+
+    try {
+      getInitializedIconPickerDialog(dialog)
+      val table = UIUtil.findComponentOfType(dialog.createCenterPanel(), JBTable::class.java)!!
+
+      // Select first icon and wait for OK to be enabled
+      table.setRowSelectionInterval(0, 0)
+      table.setColumnSelectionInterval(0, 0)
+      val waitOk =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitOk.isConditionRealized)
+
+      // Select another icon.
+      table.setColumnSelectionInterval(1, 1)
+
+      // Verify it remains enabled immediately, i.e. no blinking to false before dispatching events.
+      assertTrue(dialog.isOKActionEnabled, "OK button should not be disabled when changing selection")
+
+      // Also check the button remains enabled after dispatching events (for completeness).
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+      assertTrue(dialog.isOKActionEnabled)
+    } finally {
+      dialog.close(0)
+    }
+  }
+
+  @Test
+  fun testUpdateFilterDoesNotPack() = runTest {
+    val testDirectory = createTempDirectory()
+    var packCount = 0
+    val dialog =
+      object :
+        SymbolPickerDialog(
+          projectRule.fixture.testRootDisposable,
+          TestSymbolsUrlProvider(testDirectory),
+          TestSymbolsMetadataUrlProvider,
+        ) {
+        override fun pack() {
+          super.pack()
+          packCount++
+        }
+      }
+
+    getInitializedIconPickerDialog(dialog)
+    val countBeforeAction = packCount
+
+    // Change a slider
+    val sliders = UIUtil.findComponentsOfType(dialog.createCenterPanel(), JSlider::class.java)
+    val weightSlider = sliders[0]
+    weightSlider.value = (weightSlider.value + 1) % weightSlider.maximum
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertThat(packCount).isEqualTo(countBeforeAction)
+  }
 
   private fun getInitializedIconPickerDialog(dialog: SymbolPickerDialog): SymbolPickerDialog {
     val pickerPanel = dialog.createCenterPanel()

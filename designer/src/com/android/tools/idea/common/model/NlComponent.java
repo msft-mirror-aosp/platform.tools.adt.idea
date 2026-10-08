@@ -27,6 +27,7 @@ import static com.android.ide.common.resources.ResourcesUtil.stripPrefixFromId;
 
 import android.view.accessibility.AccessibilityNodeInfo;
 import com.android.SdkConstants;
+import com.android.annotations.concurrency.AnyThread;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.StyleItemResourceValue;
@@ -389,6 +390,8 @@ public class NlComponent implements NlAttributesHolder {
   /**
    * Returns the ID of this component
    */
+  @AnyThread
+  @SuppressWarnings("WrongThread")
   @Nullable
   public String getId() {
     String id = myCurrentTransaction != null ? myCurrentTransaction.getAndroidAttribute(ATTR_ID) : resolveAttribute(ANDROID_URI, ATTR_ID);
@@ -547,7 +550,7 @@ public class NlComponent implements NlAttributesHolder {
         return value;
       }
 
-      if (styleResolution && !TOOLS_URI.equals(namespace)) {
+      if (styleResolution && !TOOLS_URI.equals(namespace) && !ATTR_ID.equals(attribute)) {
         // Check if the component has an associated style that contains this attribute
         String style = snapshot.getAttribute(ATTR_STYLE, null);
         if (style == null) {

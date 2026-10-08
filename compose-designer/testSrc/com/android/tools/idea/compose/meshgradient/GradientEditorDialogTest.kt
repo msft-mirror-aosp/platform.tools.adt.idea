@@ -16,8 +16,10 @@
 package com.android.tools.idea.compose.meshgradient
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
+import com.android.tools.idea.compose.preview.message
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.psi.util.PsiTreeUtil
@@ -27,6 +29,7 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -39,6 +42,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
     import androidx.compose.ui.geometry.Offset
     import androidx.compose.ui.graphics.Color
+    import androidx.compose.ui.graphics.MeshGradientPainter
 
     fun MyMesh() {
         val gradientPainter = remember {
@@ -72,6 +76,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
       import androidx.compose.animation.core.animateFloat
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun MyAnimatedMesh() {
           val infiniteTransition = rememberInfiniteTransition()
@@ -94,12 +99,11 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("TestAnimatedDialog.kt", animatedCode)
-    val psiManager = GradientPsiManager(project)
 
-    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    val call = runReadActionBlocking { file.findMeshPainterCall() }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
     assertTrue("Should detect dynamic values", dialog.state.hasDynamicOrUnresolvedValues)
 
     // Modify only (0, 0) position and (0, 1) color; leave (1, 1) untouched
@@ -107,12 +111,12 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     dialog.state.updateMeshPoint(0, 0, Offset(0.05f, 0.05f))
     dialog.state.updateVertexColor(0, 1, Color(0xFF00BCD4))
 
-    dialog.doOKAction()
+    dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }
     assertTrue(
       "Updated vertex (0,0) should have new offset literal and preserve indigo variable: $updatedText",
-      updatedText.contains("setVertex(0, 0, Offset(0.0500f, 0.0500f), indigo)"),
+      updatedText.contains("setVertex(0, 0, Offset(0.05f, 0.05f), indigo)"),
     )
     assertTrue(
       "Updated vertex (0,1) should preserve points[1] and have new color literal: $updatedText",
@@ -128,12 +132,11 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
   fun testDialogInitialization() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = GradientPsiManager(project)
 
-    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    val call = runReadActionBlocking { file.findMeshPainterCall() }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
 
     assertEquals(GradientType.MESH, dialog.state.currentType)
     assertEquals(3, dialog.state.rows)
@@ -151,21 +154,20 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
   fun testDialogOkActionCommitsChanges() {
     val psiFactory = KtPsiFactory(project)
     val file = psiFactory.createFile("Test.kt", codeTemplate)
-    val psiManager = GradientPsiManager(project)
 
-    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    val call = runReadActionBlocking { file.findMeshPainterCall() }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
 
     dialog.state.updateMeshPoint(1, 1, Offset(0.4f, 0.6f))
 
-    dialog.doOKAction()
+    dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }
     assertTrue(
       "Should contain updated offset in code",
-      updatedText.contains("setVertex(1, 1, Offset(0.4000f, 0.6000f), Color(0xFF2196F3))"),
+      updatedText.contains("setVertex(1, 1, Offset(0.4f, 0.6f), Color(0xFF2196F3))"),
     )
     assertTrue("Should preserve hasBicubicColor = true", updatedText.contains("hasBicubicColor = true"))
   }
@@ -178,6 +180,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
       import androidx.compose.ui.geometry.Offset
       import androidx.compose.ui.graphics.Color
+      import androidx.compose.ui.graphics.MeshGradientPainter
 
       fun MyMesh() {
           val gradientPainter = remember {
@@ -196,16 +199,16 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     val file = psiFactory.createFile("TestBezier.kt", codeWithBezier)
     val psiManager = GradientPsiManager(project)
 
-    val call = runReadActionBlocking { psiManager.findMeshPainterCall(file) }
+    val call = runReadActionBlocking { file.findMeshPainterCall() }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
     assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
 
-    dialog.state.updatePaletteAndMeshColor(Color(0xFFF44336), Color(0xFF00BCD4))
+    dialog.state.replacePaletteColor(dialog.state.availableColors.indexOf(Color(0xFFF44336)), Color(0xFF00BCD4))
     assertEquals(Offset(0.25f, 0.1f), dialog.state.meshPoints[0][0].rightBezierOffset)
 
-    dialog.doOKAction()
+    dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }
     assertTrue("Should contain updated color: $updatedText", updatedText.contains("Color(0xFF00BCD4)"))
@@ -246,6 +249,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
         import androidx.compose.ui.geometry.Offset
         import androidx.compose.ui.graphics.Color
+        import androidx.compose.ui.graphics.MeshGradientPainter
         import test.ui.theme.*
 
         val FileAccent = Color(0xFFFF4081)
@@ -265,12 +269,11 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
           .trimIndent(),
       )
 
-    val psiManager = GradientPsiManager(project)
-    val mainFile = runReadActionBlocking { this.psiManager.findFile(mainVFile) as KtFile }
-    val call = runReadActionBlocking { psiManager.findMeshPainterCall(mainFile) }
+    val mainFile = runReadActionBlocking { psiManager.findFile(mainVFile) as KtFile }
+    val call = runReadActionBlocking { mainFile.findMeshPainterCall() }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, mainFile, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
     assertTrue("Should include localCustom in palette", Color(0xFFAA00FF) in dialog.state.availableColors)
     assertTrue("Should include FileAccent in palette", Color(0xFFFF4081) in dialog.state.availableColors)
     assertTrue("Should include star-imported ThemePrimary in palette", Color(0xFF6200EE) in dialog.state.availableColors)
@@ -293,8 +296,8 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
       fun MyLinear() {
           val brush = Brush.linearGradient(
               colors = listOf(Color.Red, Color.Blue),
-              start = Offset(0.1f, 0.2f),
-              end = Offset(0.8f, 0.9f),
+              start = Offset(10f, 20f),
+              end = Offset(300f, 150f),
               tileMode = TileMode.Mirror
           )
       }
@@ -308,18 +311,20 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
     assertEquals(GradientType.LINEAR, dialog.state.currentType)
     assertEquals(listOf(Color.Red, Color.Blue), dialog.state.colors.toList())
-    assertEquals(Offset(0.1f, 0.2f), dialog.state.start)
-    assertEquals(Offset(0.8f, 0.9f), dialog.state.end)
+    assertEquals(Offset(10f, 20f), dialog.state.start)
+    assertEquals(Offset(300f, 150f), dialog.state.end)
     assertEquals(TileMode.Mirror, dialog.state.tileMode)
+    assertEquals(Size(300f, 150f), dialog.state.previewSize)
 
-    dialog.state.start = Offset(0.25f, 0.35f)
-    dialog.doOKAction()
+    dialog.state.start = Offset(25f, 35f)
+    dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain updated start offset: $updatedText", updatedText.contains("start = Offset(0.25f, 0.35f)"))
+    assertTrue("Should contain updated start offset: $updatedText", updatedText.contains("start = Offset(25f, 35f)"))
+    assertTrue("Should keep the end offset: $updatedText", updatedText.contains("end = Offset(300f, 150f)"))
   }
 
   @Test
@@ -333,7 +338,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
 
       fun MyLinearStops() {
           val brush = Brush.linearGradient(
-              colorStops = arrayOf(0.0f to Color.Red, 0.5f to Color.Green, 1.0f to Color.Blue)
+              colorStops = *arrayOf(0.0f to Color.Red, 0.5f to Color.Green, 1.0f to Color.Blue)
           )
       }
       """
@@ -346,23 +351,24 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
+    val dialog = createGradientEditorDialog(project, call!!)
     assertEquals(GradientType.LINEAR, dialog.state.currentType)
     assertEquals(listOf(Color.Red, Color.Green, Color.Blue), dialog.state.colors.toList())
     assertEquals(3, dialog.state.colorStops.size)
 
-    dialog.state.updateColor(1, Color.Yellow)
-    dialog.doOKAction()
+    dialog.state.updateStopColor(dialog.state.stops[1].id, Color.Yellow)
+    dialog.performOkAction()
 
     val updatedText = runReadActionBlocking { file.text }
-    assertTrue("Should contain first stop: $updatedText", updatedText.contains("0.0f to Color(0xFFFF0000)"))
-    assertTrue("Should contain updated middle stop: $updatedText", updatedText.contains("0.5f to Color(0xFFFFFF00)"))
-    assertTrue("Should contain last stop: $updatedText", updatedText.contains("1.0f to Color(0xFF0000FF)"))
-    assertTrue("Should contain Offset.Infinite end: $updatedText", updatedText.contains("end = Offset.Infinite"))
+    assertTrue(
+      "Should only update the middle stop color: $updatedText",
+      updatedText.contains("colorStops = *arrayOf(0.0f to Color.Red, 0.5f to Color(0xFFFFFF00), 1.0f to Color.Blue)"),
+    )
+    assertFalse("Should not add default arguments: $updatedText", updatedText.contains("end ="))
   }
 
   @Test
-  fun testDialogFallbackForFullyDynamicBrushColors() {
+  fun testFullyDynamicBrushColorsAreNotEditable() {
     val dynamicCode =
       """
       package test
@@ -383,10 +389,7 @@ class GradientEditorDialogTest : LightPlatformTestCase() {
     }
     assertNotNull(call)
 
-    val dialog = GradientEditorDialog(project, file, call!!)
-    assertEquals(GradientType.RADIAL, dialog.state.currentType)
-    assertTrue("Should flag dynamic or unresolved values", dialog.state.hasDynamicOrUnresolvedValues)
-    assertTrue("Should maintain at least 2 fallback colors", dialog.state.colors.size >= 2)
-    dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+    val input = runReadActionBlocking { GradientPsiManager(project).analyze(call!!) }
+    assertEquals(GradientEditorInput.Unsupported(message("gradient.editor.error.brush.colors")), input)
   }
 }

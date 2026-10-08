@@ -60,7 +60,7 @@ def debugger_test(
             "INTELLIJ_DEBUGGER_TESTS_STUDIO_ROOT": ".",
         }
         data = data + [
-            "//tools/adt/idea/.idea/libraries:r8",
+            "//prebuilts/tools/common/m2:r8.jar",
             "//prebuilts/tools/linux-x86_64/art",
             "//prebuilts/tools/linux-x86_64/art:art_deps",
         ]

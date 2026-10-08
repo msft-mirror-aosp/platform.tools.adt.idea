@@ -6,20 +6,29 @@ iml_module(
     name = "intellij.android.app-quality-insights.client",
     srcs = ["src"],
     iml_files = ["intellij.android.app-quality-insights.client.iml"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
-        "//tools/adt/idea/.idea/libraries:google-api-client",
         "@intellij//:intellij.libraries.grpc",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.app-quality-insights.client.tests",
+    iml_files = ["intellij.android.app-quality-insights.client.tests.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
+        "@intellij//:intellij-sdk",
+        "@intellij//:intellij.libraries.grpc",
+        "//tools/adt/idea/.idea/libraries:truth",
+    ],
+    test_friends = ["//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )
 
 # Build the client as a standalone library to ensure that unwanted dependencies from intellij-sdk
@@ -29,9 +38,9 @@ kotlin_library(
     srcs = glob([
         "src/**/*.kt",
     ]),
+    visibility = ["//visibility:public"],
     deps = [
         "//tools/adt/idea/.idea/libraries:gradle-shared-proto",
-        "@maven//:com.google.api-client.google-api-client",
         "@maven//:io.grpc.grpc-protobuf",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core",
     ],
