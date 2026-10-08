@@ -1366,6 +1366,7 @@ public class RenderErrorContributorImpl implements RenderErrorContributor {
     String className = frame.getClassName();
     return
       className.startsWith("sun.reflect.") ||
+      className.startsWith("jdk.internal.reflect.") ||
       className.equals("android.view.BridgeInflater") ||
       className.startsWith("com.android.tools.") ||
       className.startsWith("org.jetbrains.");
@@ -1375,8 +1376,7 @@ public class RenderErrorContributorImpl implements RenderErrorContributor {
     String className = frame.getClassName();
     return !(isFramework(frame)
              || className.startsWith("org.jetbrains.")
-             || className.startsWith("com.android.")
-    );
+             || className.startsWith("com.android."));
   }
 
   private static boolean isFramework(@NotNull StackTraceElement frame) {
@@ -1385,7 +1385,9 @@ public class RenderErrorContributorImpl implements RenderErrorContributor {
             || className.startsWith("java.")
             || className.startsWith("javax.")
             //noinspection HardcodedFileSeparator
-            || className.startsWith("sun."));
+            || className.startsWith("sun.")
+            || className.startsWith("jdk.internal.")
+            || className.startsWith("com.intellij."));
   }
 
   private static boolean isVisible(@NotNull StackTraceElement frame) {

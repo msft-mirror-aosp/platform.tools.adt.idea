@@ -940,6 +940,83 @@ class RenderErrorContributorImplTest {
       )
   }
 
+  /** Regression test for b/473404663. */
+  @Test
+  fun testPluginClassLoaderNotTreatedAsInterestingFrame() {
+    val stackTraceDesc =
+      "java.lang.ClassNotFoundException: androidx.compose.ui.tooling.ComposeViewAdapter\n" +
+        "\tat com.intellij.ide.plugins.cl.PluginClassLoader.loadClass(PluginClassLoader.kt:149)\n" +
+        "\tat java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:526)\n" +
+        "\tat java.base/java.lang.Class.forName0(Native Method)\n" +
+        "\tat java.base/java.lang.Class.forName(Class.java:534)\n" +
+        "\tat java.base/java.lang.Class.forName(Class.java:513)\n" +
+        "\tat android.view.LayoutInflater.createView(LayoutInflater.java:704)\n" +
+        "\tat android.view.LayoutInflater.createViewFromTag(LayoutInflater.java:895)\n" +
+        "\tat android.view.LayoutInflater.createViewFromTag(LayoutInflater.java:850)\n" +
+        "\tat android.view.LayoutInflater.inflate(LayoutInflater.java:544)\n" +
+        "\tat android.view.LayoutInflater.inflate(LayoutInflater.java:433)\n" +
+        "\tat com.android.layoutlib.bridge.impl.RenderSessionImpl.inflate(RenderSessionImpl.java:365)\n"
+
+    // 1. When logged via RenderProblem.createHtml (as LayoutlibSceneRenderer.doInflate does for ClassNotFoundException),
+    // the internal stack trace should be hidden and replaced with the summary HTML message, without a broken open: link.
+    val inflateOperation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      val throwable = ExceptionTestUtils.createExceptionFromDesc(stackTraceDesc)
+      logger.addMessage(
+        RenderProblem.createHtml(
+          ProblemSeverity.ERROR,
+          "Error inflating the preview",
+          logger.linkManager,
+          throwable,
+          ShowFixFactory,
+        )
+      )
+    }
+
+    val inflateIssues =
+      getRenderOutput(
+        fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout.xml"),
+        inflateOperation,
+      )
+    assertSize(1, inflateIssues)
+    val inflateHtml = inflateIssues[0]!!.htmlContent
+    Truth.assertThat(inflateHtml).doesNotContain("open:com.intellij.ide.plugins.cl.PluginClassLoader")
+    Truth.assertThat(inflateHtml).doesNotContain("PluginClassLoader.kt:149")
+    assertHtmlEquals(
+      "Error inflating the preview (<A HREF=\"\">Details</A>)<BR/>",
+      inflateIssues[0]!!,
+    )
+
+    // 2. When a broken class exception stack trace is rendered directly (hideIfIrrelevant = false)
+    // and includes com.intellij.* or jdk.internal.* frames, com.intellij.* and non-reflection
+    // jdk.internal.* frames are preserved as plain text (never turned into clickable open: links),
+    // while jdk.internal.reflect.* frames are hidden like sun.reflect.*.
+    val brokenClassOperation = LogOperation { logger: RenderLogger, _: RenderResult ->
+      val throwable =
+        ExceptionTestUtils.createExceptionFromDesc(
+          "java.lang.NoClassDefFoundError: androidx/compose/ui/tooling/ComposeViewAdapter\n" +
+            "\tat com.intellij.ide.plugins.cl.PluginClassLoader.loadClass(PluginClassLoader.kt:149)\n" +
+            "\tat com.example.myapplication.MyButton.<init>(MyButton.java:14)\n" +
+            "\tat java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)\n" +
+            "\tat java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:77)\n" +
+            "\tat com.android.tools.rendering.ViewLoader.createNewInstance(ViewLoader.java:292)\n" +
+            "\tat com.android.layoutlib.bridge.impl.RenderSessionImpl.inflate(RenderSessionImpl.java:365)\n"
+        )
+      logger.addBrokenClass("com.example.myapplication.MyButton", throwable)
+    }
+
+    val brokenClassIssues =
+      getRenderOutput(
+        fixture.copyFileToProject(BASE_PATH + "layout2.xml", "res/layout/layout_broken.xml"),
+        brokenClassOperation,
+      )
+    assertSize(1, brokenClassIssues)
+    val brokenClassHtml = brokenClassIssues[0]!!.htmlContent
+    Truth.assertThat(brokenClassHtml).doesNotContain("open:com.intellij.ide.plugins.cl.PluginClassLoader")
+    Truth.assertThat(brokenClassHtml).contains("PluginClassLoader.kt:149")
+    Truth.assertThat(brokenClassHtml).doesNotContain("NativeConstructorAccessorImpl")
+    Truth.assertThat(brokenClassHtml).contains("open:com.example.myapplication.MyButton#%3Cinit%3E;MyButton.java:14")
+  }
+
   private fun stripSdkHome(html: String): String {
     var html = html
     val platform = checkNotNull(getInstance(module))
