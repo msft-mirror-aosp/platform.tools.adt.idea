@@ -16,6 +16,8 @@
 package com.android.tools.idea.material.icons.metadata
 
 import com.android.tools.idea.material.icons.metadata.MaterialIconsMetadata.Companion.EMPTY
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.isValidPathSegment
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.toDirFormat
 import com.android.utils.HashCodes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -23,6 +25,7 @@ import com.google.gson.JsonDeserializationContext
 import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement
 import com.google.gson.JsonIOException
+import com.google.gson.JsonParseException
 import com.google.gson.annotations.SerializedName
 import com.intellij.openapi.diagnostic.Logger
 import java.io.BufferedReader
@@ -195,6 +198,7 @@ data class MaterialMetadataIcon(
 
 /** [JsonDeserializer] for [MaterialIconsMetadata]. */
 private class MetadataDeserializer : JsonDeserializer<MaterialIconsMetadata?> {
+  private val log = Logger.getInstance(MetadataDeserializer::class.java)
   private val hostKey = "host"
   private val urlPatternKey = "asset_url_pattern"
   private val familiesKey = "families"
@@ -205,8 +209,34 @@ private class MetadataDeserializer : JsonDeserializer<MaterialIconsMetadata?> {
     val jsonObject = json.asJsonObject
     val host = jsonObject[hostKey].asString
     val urlPattern = jsonObject[urlPatternKey].asString
-    val families = context.deserialize<Array<String>>(jsonObject[familiesKey], Array<String>::class.java)
-    val icons = context.deserialize<Array<MaterialMetadataIcon>>(jsonObject[iconsKey], Array<MaterialMetadataIcon>::class.java)
+    val rawFamilies = context.deserialize<Array<String>>(jsonObject[familiesKey], Array<String>::class.java)
+    val rawIcons = context.deserialize<Array<MaterialMetadataIcon>>(jsonObject[iconsKey], Array<MaterialMetadataIcon>::class.java)
+    val families =
+      rawFamilies
+        .filter { family ->
+          val isValid = isValidPathSegment(family.toDirFormat())
+          if (!isValid) {
+            log.warn("Refusing to use invalid family name from metadata: $family")
+          }
+          isValid
+        }
+        .toTypedArray()
+    if (families.isEmpty() && rawFamilies.isNotEmpty()) {
+      throw JsonParseException("All family names in metadata are invalid")
+    }
+    val icons =
+      rawIcons
+        .filter { icon ->
+          val isValid = isValidPathSegment(icon.name)
+          if (!isValid) {
+            log.warn("Refusing to use invalid icon name from metadata: ${icon.name}")
+          }
+          isValid
+        }
+        .toTypedArray()
+    if (icons.isEmpty() && rawIcons.isNotEmpty()) {
+      throw JsonParseException("All icon names in metadata are invalid")
+    }
     val categories: Array<String> = icons.flatMap { it.categories.toList() }.distinct().sorted().toTypedArray()
     return MaterialIconsMetadata(host, urlPattern, families, icons, categories)
   }
