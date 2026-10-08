@@ -313,6 +313,45 @@ class PreviewPickerTests {
   }
 
   @Test
+  fun `switching dimension unit from px to dp and back to px preserves pixel dimensions`() = runBlocking {
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview(name = "Test")
+      fun PreviewNoParameters() {
+      }
+    """
+        .trimIndent()
+
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val model = getFirstModel(fileContent)
+
+    // Verify initial default pixel dimensions (pixel_5: 1080 x 2340 px at 440 dpi).
+    runInEdtAndWait {
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+    }
+
+    // Switch DimensionUnit from px to dp.
+    runModificationInEdtWaitAndDispatch { model.properties["", "DimensionUnit"].value = "dp" }
+    runInEdtAndWait {
+      assertEquals("392.7", model.properties["", "Width"].value)
+      assertEquals("850.9", model.properties["", "Height"].value)
+    }
+
+    // Switch DimensionUnit back from dp to px.
+    runModificationInEdtWaitAndDispatch { model.properties["", "DimensionUnit"].value = "px" }
+    runInEdtAndWait {
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+    }
+  }
+
+  @Test
   fun fontScaleEditing() = runBlocking {
     @Language("kotlin")
     val fileContent =

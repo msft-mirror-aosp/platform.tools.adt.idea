@@ -271,8 +271,23 @@ internal class DeviceConfigTest {
       config.deviceSpec(),
     )
 
-    // For DeviceSpec Language, one decimal for floating point supported
+    // For DeviceSpec Language, one decimal for floating point supported in dp
     assertEquals("spec:width=123.5dp,height=567.9dp", DeviceConfig(width = 123.45f, height = 567.89f).deviceSpec())
+
+    // Pixel dimensions are rounded to the nearest integer
+    val pixelConfig =
+      DeviceConfig(
+        width = 1079.925f,
+        height = 2339.975f,
+        dimUnit = DimUnit.px,
+        dpi = 440,
+        shape = Shape.Round,
+        chinSize = 19.8f,
+      )
+    assertEquals("1080", pixelConfig.widthString)
+    assertEquals("2340", pixelConfig.heightString)
+    assertEquals("20", pixelConfig.chinSizeString)
+    assertEquals("spec:width=1080px,height=2340px,dpi=440,isRound=true,chinSize=20px", pixelConfig.deviceSpec())
   }
 
   @Test

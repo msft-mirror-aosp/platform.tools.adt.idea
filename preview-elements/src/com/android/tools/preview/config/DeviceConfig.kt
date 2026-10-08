@@ -106,7 +106,7 @@ open class DeviceConfig(
    * @see convertToDeviceSpecDimension
    */
   val widthString: String
-    get() = convertToDeviceSpecDimension(width).toString()
+    get() = formatDimension(width)
 
   /**
    * String representation of the height as it is used in DeviceSpec Language.
@@ -114,7 +114,7 @@ open class DeviceConfig(
    * @see convertToDeviceSpecDimension
    */
   val heightString: String
-    get() = convertToDeviceSpecDimension(height).toString()
+    get() = formatDimension(height)
 
   /**
    * String representation of the chinSize as it is used in DeviceSpec Language.
@@ -122,7 +122,17 @@ open class DeviceConfig(
    * @see convertToDeviceSpecDimension
    */
   val chinSizeString: String
-    get() = convertToDeviceSpecDimension(chinSize).toString()
+    get() = formatDimension(chinSize)
+
+  /**
+   * Formats a dimension value for DeviceSpec strings and the Preview Configuration Picker. Pixel dimensions are rounded to the nearest
+   * integer to avoid precision loss when converting between [DimUnit.px] and [DimUnit.dp].
+   */
+  private fun formatDimension(dimensionValue: Float): String =
+    when (dimUnit) {
+      DimUnit.px -> dimensionValue.roundToInt().toString()
+      DimUnit.dp -> convertToDeviceSpecDimension(dimensionValue).toString()
+    }
 
   open val isRound: Boolean
     get() = shape == Shape.Round
