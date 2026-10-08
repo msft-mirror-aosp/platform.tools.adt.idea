@@ -73,14 +73,6 @@ interface QuerySummary {
   val packages: PackageSet
 
   /**
-   * Returns a map of .bzl file labels to BUILD file labels that include them.
-   *
-   * Note: This map contains transitive/nested includes (meaning if BUILD loads a.bzl, and a.bzl loads b.bzl, both a.bzl and b.bzl are
-   * mapped back to the BUILD file path recursively).
-   */
-  val reverseSubincludeMap: Map<Path, Collection<Path>>
-
-  /**
    * Returns the set of labels of all files included from BUILD files.
    *
    * Note: This set is transitively expanded and includes all nested/transitive `.bzl` files recursively.
@@ -120,7 +112,6 @@ interface QuerySummary {
         override fun getBuildPackage(packageLabel: Label): BuildPackage? = null
 
         override val packages: PackageSet = PackageSet.EMPTY
-        override val reverseSubincludeMap: Map<Path, Collection<Path>> = emptyMap()
         override val allBuildIncludedFiles: Set<Label> = emptySet()
         override val packagesWithErrors: Set<Path> = emptySet()
         override val packagesWithErrorsCount: Int = 0

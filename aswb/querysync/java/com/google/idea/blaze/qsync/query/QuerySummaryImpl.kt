@@ -46,7 +46,6 @@ private constructor(
   private val decodedPackages: List<BuildPackageImpl>,
   private val buildPackagesMap: Map<Label, BuildPackageImpl>,
   override val packages: PackageSet,
-  override val reverseSubincludeMap: Map<Path, Collection<Path>>,
   override val allBuildIncludedFiles: Set<Label>,
   override val packagesWithErrors: Set<Path>,
   override val packagesWithErrorsCount: Int,
@@ -108,7 +107,6 @@ private constructor(
       decodedPackages = newPackages,
       buildPackagesMap = updatedMap,
       packages = packages,
-      reverseSubincludeMap = reverseSubincludeMap,
       allBuildIncludedFiles = allBuildIncludedFiles,
       packagesWithErrors = packagesWithErrors,
       packagesWithErrorsCount = packagesWithErrorsCount,
@@ -453,14 +451,6 @@ private constructor(
       val packagesWithErrors = buildPackages.asSequence().filter { it.hasError }.map { it.packageLabel.getBuildPackagePath() }.toSet()
       val packages = PackageSet(buildPackages.map { it.packageLabel.getBuildPackagePath() }.toSet())
       val allBuildIncludedFiles = buildPackages.flatMap { it.subincludes }.toSet()
-      val reverseSubincludeMap =
-        buildPackages
-          .asSequence()
-          .flatMap { pkg ->
-            pkg.subincludes.asSequence().map { subinclude -> subinclude.toFilePath() to pkg.packageLabel.getBuildPackagePath() }
-          }
-          .groupBy({ it.first }, { it.second })
-          .mapValues { it.value.toSet() }
       val packagesWithErrorsCount = buildPackages.count { it.hasError }
       val rulesCount = buildPackages.sumOf { it.rulesMap.size }
 
@@ -469,7 +459,6 @@ private constructor(
         decodedPackages = buildPackages,
         buildPackagesMap = buildPackagesMap,
         packages = packages,
-        reverseSubincludeMap = reverseSubincludeMap,
         allBuildIncludedFiles = allBuildIncludedFiles,
         packagesWithErrors = packagesWithErrors,
         packagesWithErrorsCount = packagesWithErrorsCount,

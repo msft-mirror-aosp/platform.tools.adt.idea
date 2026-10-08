@@ -16,6 +16,7 @@
 package com.google.idea.blaze.qsync.query;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.idea.blaze.qsync.query.QuerySummaryTestUtil.createProtoForPackages;
 
@@ -138,20 +139,28 @@ public class QuerySummaryTest {
             Label.of("//tools/adt/idea/aswb/build_defs:test_data_build_defs.bzl"),
             Label.of(TestData.ROOT_PACKAGE + "/buildincludes/sub/includes:includes.bzl"),
             Label.of(TestData.ROOT_PACKAGE + "/buildincludes/sub/includes:includes2.bzl"));
-    assertThat(qs.getReverseSubincludeMap())
+    ImmutableMap<Path, ImmutableSet<Label>> subincludesByPackage =
+        qs.getBuildPackages().stream()
+            .filter(pkg -> !pkg.getSubincludes().isEmpty())
+            .collect(
+                toImmutableMap(
+                    pkg -> pkg.getPackageLabel().getBuildPackagePath(),
+                    pkg -> ImmutableSet.copyOf(pkg.getSubincludes())));
+    assertThat(subincludesByPackage)
         .containsExactly(
-            Path.of("tools/adt/idea/aswb/build_defs/test_data_build_defs.bzl"),
+            TestData.ROOT.resolve("buildincludes"),
             ImmutableSet.of(
-                TestData.ROOT.resolve("buildincludes/sub/includes"),
-                TestData.ROOT.resolve("buildincludes/sub"),
-                TestData.ROOT.resolve("buildincludes")),
-            TestData.ROOT.resolve("buildincludes/sub/includes/includes.bzl"),
+                Label.of("//tools/adt/idea/aswb/build_defs:test_data_build_defs.bzl"),
+                Label.of(TestData.ROOT_PACKAGE + "/buildincludes/sub/includes:includes.bzl"),
+                Label.of(TestData.ROOT_PACKAGE + "/buildincludes/sub/includes:includes2.bzl")),
+            TestData.ROOT.resolve("buildincludes/sub"),
             ImmutableSet.of(
-                TestData.ROOT.resolve("buildincludes/sub/includes"),
-                TestData.ROOT.resolve("buildincludes/sub"),
-                TestData.ROOT.resolve("buildincludes")),
-            TestData.ROOT.resolve("buildincludes/sub/includes/includes2.bzl"),
-            ImmutableSet.of(TestData.ROOT.resolve("buildincludes")));
+                Label.of("//tools/adt/idea/aswb/build_defs:test_data_build_defs.bzl"),
+                Label.of(TestData.ROOT_PACKAGE + "/buildincludes/sub/includes:includes.bzl")),
+            TestData.ROOT.resolve("buildincludes/sub/includes"),
+            ImmutableSet.of(
+                Label.of("//tools/adt/idea/aswb/build_defs:test_data_build_defs.bzl"),
+                Label.of(TestData.ROOT_PACKAGE + "/buildincludes/sub/includes:includes.bzl")));
   }
 
   @Test
@@ -545,7 +554,6 @@ public class QuerySummaryTest {
     // Invariant derived structures are preserved:
     assertThat(stamped.getPackages()).isSameInstanceAs(qs.getPackages());
     assertThat(stamped.getAllBuildIncludedFiles()).isSameInstanceAs(qs.getAllBuildIncludedFiles());
-    assertThat(stamped.getReverseSubincludeMap()).isSameInstanceAs(qs.getReverseSubincludeMap());
     assertThat(stamped.getRulesCount()).isEqualTo(qs.getRulesCount());
 
     // String storage is shared by reference:
