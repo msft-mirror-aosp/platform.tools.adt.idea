@@ -145,78 +145,88 @@ class SceneViewPanel(
   }
 
   /**
-   * Listen for changes in [isOrganizationEnabled] and [sceneViews] to updates [activeGroups] and the list of [components]. If [componets]
+   * Listen for changes in [isOrganizationEnabled] and [sceneViews] to update [activeGroups] and the list of [components]. If [components]
    * are created - call [componentsUpdated] to let know what layout is created.
    */
   private fun launchLayoutUpdate() {
-    scope.launch {
-      // organizationGroups are checked as SceneView is mutable, even if sceneViews is unchanged,
-      // OrganizationGroup might change
-      combine(isOrganizationEnabled, sceneViews, organizationGroups) { p1, p2, _ -> Pair(p1, p2) }
-        .collectLatest { collected ->
-          val isOrganizationEnabled = collected.first
-          val sceneViews = collected.second
-          activeGroups.value = if (isOrganizationEnabled) sceneViews.findGroups() else persistentSetOf()
+    scope
+      .launch {
+        // organizationGroups are checked as SceneView is mutable, even if sceneViews is unchanged,
+        // OrganizationGroup might change
+        combine(isOrganizationEnabled, sceneViews, organizationGroups) { p1, p2, _ -> Pair(p1, p2) }
+          .collectLatest { collected ->
+            val isOrganizationEnabled = collected.first
+            val sceneViews = collected.second
+            activeGroups.value = if (isOrganizationEnabled) sceneViews.findGroups() else persistentSetOf()
 
-          // Remove old scenes.
-          val existingScenePanels = components.filterIsInstance<SceneViewPeerPanel>()
-          val panelsToRemove = existingScenePanels.filter { panel -> !sceneViews.contains(panel.sceneView) }
-          panelsToRemove.forEach { panel ->
-            panel.scope.cancel()
-            withContext(uiThreadDispatcher) { remove(panel) }
-          }
+            // Remove old scenes.
+            val existingScenePanels = components.filterIsInstance<SceneViewPeerPanel>()
+            val panelsToRemove = existingScenePanels.filter { panel -> !sceneViews.contains(panel.sceneView) }
+            panelsToRemove.forEach { panel ->
+              panel.scope.cancel()
+              withContext(uiThreadDispatcher) { remove(panel) }
+            }
 
-          // Remove old headers
-          val existingHeaders = components.filterIsInstance<SceneViewHeader>()
-          val headerToRemove = existingHeaders.filter { !activeGroups.value.contains(it.positionableAdapter.organizationGroup) }
-          headerToRemove.forEach { header -> withContext(uiThreadDispatcher) { remove(header) } }
+            // Remove old headers
+            val existingHeaders = components.filterIsInstance<SceneViewHeader>()
+            val headerToRemove = existingHeaders.filter { !activeGroups.value.contains(it.positionableAdapter.organizationGroup) }
+            headerToRemove.forEach { header -> withContext(uiThreadDispatcher) { remove(header) } }
 
-          // Create or reuse scene panels.
-          val orderedComponents: MutableList<Component> =
-            sceneViews
-              .mapIndexed { index, sceneView ->
-                existingScenePanels.firstOrNull { it.sceneView == sceneView }
+            // Create or reuse scene panels.
+            val orderedComponents: MutableList<Component> =
+              sceneViews
+                .mapIndexed { index, sceneView ->
+                  existingScenePanels.firstOrNull { it.sceneView == sceneView }
+                    ?: withContext(uiThreadDispatcher) {
+                      createScenePanel(sceneView, index, scope.createChildScope(parentDisposable = sceneView))
+                    }
+                }
+                .toMutableList()
+
+            // Create or reuse headers.
+            activeGroups.value
+              .map { group ->
+                components.filterIsInstance<SceneViewHeader>().firstOrNull { it.positionableAdapter.organizationGroup == group }
                   ?: withContext(uiThreadDispatcher) {
-                    createScenePanel(sceneView, index, scope.createChildScope(parentDisposable = sceneView))
+                    // Previews in this organization group might not be available at all (not just
+                    // hidden in collapsed state).
+                    // For example in UI Check or in other filtering as available.
+                    // In this case header should also be filtered out.
+                    createHeader(group) {
+                      this@SceneViewPanel.sceneViews.value.any { it.sceneManager.model.organizationGroup == group && it.isVisible }
+                    }
                   }
               }
-              .toMutableList()
+              .forEach { header ->
+                orderedComponents
+                  .indexOfFirst {
+                    (it as? SceneViewPeerPanel)?.positionableAdapter?.organizationGroup == header.positionableAdapter.organizationGroup
+                  }
+                  .takeIf { index -> index >= 0 }
+                  ?.let { index -> orderedComponents.add(index, header) }
+              }
 
-          // Create or reuse headers.
-          activeGroups.value
-            .map { group ->
-              components.filterIsInstance<SceneViewHeader>().firstOrNull { it.positionableAdapter.organizationGroup == group }
-                ?: withContext(uiThreadDispatcher) {
-                  // Previews in this organization group might not be available at all (not just
-                  // hidden in collapsed state).
-                  // For example in UI Check or in other filtering as available.
-                  // In this case header should also be filtered out.
-                  val groupViews = sceneViews.filter { it.sceneManager.model.organizationGroup == group }
-                  createHeader(group) { groupViews.any { it.isVisible } }
-                }
-            }
-            .forEach { header ->
-              orderedComponents
-                .indexOfFirst {
-                  (it as? SceneViewPeerPanel)?.positionableAdapter?.organizationGroup == header.positionableAdapter.organizationGroup
-                }
-                .takeIf { index -> index >= 0 }
-                ?.let { index -> orderedComponents.add(index, header) }
+            // Set correct order to components.
+            withContext(uiThreadDispatcher) {
+              removeAll()
+              orderedComponents.forEach { this@SceneViewPanel.add(it) }
             }
 
-          // Set correct order to components.
-          withContext(uiThreadDispatcher) {
-            removeAll()
-            orderedComponents.forEach { this@SceneViewPanel.add(it) }
-          }
+            if (orderedComponents.isNotEmpty()) {
+              componentsUpdated.emit(Unit)
+            }
 
-          if (orderedComponents.isNotEmpty()) {
-            componentsUpdated.emit(Unit)
+            withContext(uiThreadDispatcher) { invalidate() }
           }
+      }
+      .invokeOnCompletion { clearComponentsAndState() }
+  }
 
-          withContext(uiThreadDispatcher) { invalidate() }
-        }
-    }
+  private fun clearComponentsAndState() {
+    sceneViews.value = emptyList()
+    organizationGroups.value = emptyList()
+    activeGroups.value = persistentSetOf()
+    CoroutineScope(uiThreadDispatcher).launch { removeAll() }
   }
 
   /**
@@ -274,12 +284,13 @@ class SceneViewPanel(
   }
 
   fun updateComponents() {
+    if (!scope.isActive) {
+      clearComponentsAndState()
+      return
+    }
     sceneViewProvider().let {
       sceneViews.value = it
       organizationGroups.value = it.map { sceneView -> sceneView.sceneManager.model.organizationGroup }
-    }
-    if (!scope.isActive) {
-      removeAll()
     }
   }
 

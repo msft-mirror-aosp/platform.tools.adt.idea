@@ -22,8 +22,8 @@ import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.event.ComponentAdapter
-import java.awt.event.ComponentEvent
+import java.awt.event.HierarchyBoundsAdapter
+import java.awt.event.HierarchyEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -70,14 +70,20 @@ class SceneViewHeader(
     }
     updateSize()
 
-    // Let component follow parent's width with offset.
-    parentContainer.addComponentListener(
-      object : ComponentAdapter() {
-        override fun componentResized(e: ComponentEvent?) {
+    // Let component follow parent's width with offset without registering a listener on
+    // parentContainer that would outlive this header when removed.
+    addHierarchyBoundsListener(
+      object : HierarchyBoundsAdapter() {
+        override fun ancestorResized(e: HierarchyEvent?) {
           updateSize()
         }
       }
     )
+    addHierarchyListener { e ->
+      if ((e.changeFlags and HierarchyEvent.PARENT_CHANGED.toLong()) != 0L && parent != null) {
+        updateSize()
+      }
+    }
   }
 
   override val positionableAdapter =

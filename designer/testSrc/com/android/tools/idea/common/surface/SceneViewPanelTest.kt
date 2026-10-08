@@ -35,6 +35,7 @@ import com.android.tools.idea.uibuilder.layout.positionable.HeaderPositionableCo
 import com.android.tools.idea.uibuilder.surface.TestSceneView
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.LeakHunter
 import com.intellij.testFramework.runInEdtAndWait
 import java.awt.Component
 import java.awt.Dimension
@@ -162,6 +163,7 @@ class SceneViewPanelTest {
     sceneViews = persistentListOf()
     scope.cancel()
     panel.updateComponents()
+    scope.runCurrent()
 
     assertEquals(0, panel.findAllDescendants<PositionablePanel>().count())
     assertEquals(0, panel.findAllDescendants<SceneViewPeerPanel>().count())
@@ -366,7 +368,10 @@ class SceneViewPanelTest {
 
   @Test
   fun panelIsDisposed() = runTest {
-    val sceneViews = (1..6).map { createSceneView() }
+    val targetGroup = OrganizationGroup("1", "1")
+    var group: OrganizationGroup? = targetGroup
+    val allSceneViews = (1..6).map { createSceneView { group } }
+    var sceneViews = allSceneViews
     val scope = TestScope()
 
     val panel =
@@ -377,7 +382,7 @@ class SceneViewPanelTest {
           interactionLayersProvider = { emptyList() },
           actionManagerProvider = { TestActionManager(Mockito.mock()) },
           shouldRenderErrorsPanel = { false },
-          layoutManager = TestLayoutManager(backgroundScope, organizationEnabled = false),
+          layoutManager = TestLayoutManager(scope, organizationEnabled = true),
         )
         .apply {
           setNoComposeHeadersForTests()
@@ -387,17 +392,32 @@ class SceneViewPanelTest {
     scope.runCurrent()
     scope.advanceUntilIdle()
     val panels = panel.findAllDescendants<SceneViewPeerPanel>()
+    assertEquals(6, panels.count())
+    assertEquals(1, panel.findAllDescendants<SceneViewHeader>().count())
     panels.forEach { assertTrue { it.scope.isActive } }
 
+    // Cancelling the scope should cancel child scopes and clear all components even before
+    // updateComponents() is called.
     scope.cancel()
     panels.forEach { assertFalse { it.scope.isActive } }
-    // There is no more SceneViewPeerPanel as panel is disposed even if provider has sceneviews
+    scope.runCurrent()
+    scope.advanceUntilIdle()
+    assertEquals(0, panel.findAllDescendants<SceneViewPeerPanel>().count())
+    assertEquals(0, panel.findAllDescendants<SceneViewHeader>().count())
+
+    // Calling updateComponents() after scope cancellation should not re-add components even if
+    // sceneViewProvider still returns scene views.
     panel.updateComponents()
     scope.runCurrent()
     scope.advanceUntilIdle()
     assertEquals(0, panel.findAllDescendants<SceneViewPeerPanel>().count())
+    assertEquals(0, panel.findAllDescendants<SceneViewHeader>().count())
 
-    sceneViews.forEach { Disposer.dispose(it.sceneManager) }
+    group = null
+    sceneViews = emptyList()
+    runInEdtAndWait { LeakHunter.checkLeak(panel, OrganizationGroup::class.java) { it === targetGroup } }
+
+    allSceneViews.forEach { Disposer.dispose(it.sceneManager) }
   }
 
   @Test
@@ -518,7 +538,20 @@ class SceneViewPanelTest {
     assertTrue { headers[0].isVisible }
     assertTrue { headers[1].isVisible }
 
-    sceneViews.forEach { Disposer.dispose(it.sceneManager) }
+    // Replace group1's SceneViews with new instances while reusing headers[0], and verify
+    // headers[0] tracks the new SceneViews rather than the old removed ones.
+    val replacementGroup1Views = listOf(createSceneView { group1 }, createSceneView { group1 })
+    sceneViews[0].isVisible = false
+    sceneViews = (replacementGroup1Views + allSceneViews.subList(2, 4)).toImmutableList()
+    panel.updateComponents()
+    runCurrent()
+    advanceUntilIdle()
+
+    assertTrue { headers[0].isVisible }
+    replacementGroup1Views.forEach { it.isVisible = false }
+    assertFalse { headers[0].isVisible }
+
+    (allSceneViews + replacementGroup1Views).forEach { Disposer.dispose(it.sceneManager) }
   }
 
   private class TestLayoutManager(scope: CoroutineScope, organizationEnabled: Boolean) :

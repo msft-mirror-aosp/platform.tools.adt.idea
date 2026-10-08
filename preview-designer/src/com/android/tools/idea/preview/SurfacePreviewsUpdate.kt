@@ -47,6 +47,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.psi.PsiFile
 import com.jetbrains.rd.util.getOrCreate
+import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.facet.AndroidFacet
@@ -143,8 +144,14 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
   refreshEventBuilder?.withPreviewsCount(elementsToReusableModels.size)
   refreshEventBuilder?.withPreviewsToRefresh(elementsToReusableModels.size)
 
+  // Avoid capturing psiFile, VirtualFile, or this NlDesignSurface in the OrganizationGroup
+  // saveState lambda, as OrganizationGroup instances can be reused across refreshes and outlive
+  // the PsiFile instance.
+  val fileUrl = psiFile.virtualFile.url
+  val projectRef = WeakReference(project)
+
   // Load organization group state.
-  val previousOrganizationState = getInstance(project).surfaceState.getOrganizationGroupState(psiFile.virtualFile)
+  val previousOrganizationState = getInstance(project).surfaceState.getOrganizationGroupState(fileUrl)
 
   // Reuse existing groups.
   val groups = elementsToReusableModels.mapNotNull { (_, model) -> model?.organizationGroup }.associateBy { it.groupId }.toMutableMap()
@@ -187,7 +194,10 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
             ) {
               // Everytime state is changed we need to save it.
               isOpened ->
-              getInstance(project).surfaceState.saveOrganizationGroupState(psiFile.virtualFile, groupId, isOpened)
+              projectRef
+                .get()
+                ?.takeIf { !it.isDisposed }
+                ?.let { proj -> getInstance(proj).surfaceState.saveOrganizationGroupState(fileUrl, groupId, isOpened) }
             }
           }
 
