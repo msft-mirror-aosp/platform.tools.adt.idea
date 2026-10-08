@@ -20,11 +20,13 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.pressKey
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
+import com.android.tools.idea.compose.meshgradient.components.AddColorButton
 import com.android.tools.idea.compose.meshgradient.components.colorSwatchDescription
 import com.android.tools.idea.compose.preview.message
 import com.intellij.testFramework.ApplicationRule
@@ -114,5 +116,39 @@ class ColorPaletteTest {
 
     assertTrue(state.availableColors.size > 1)
     assertTrue(state.availableColors.all { swatchNode(it).hasDeleteAction() })
+  }
+
+  @Test
+  fun editingSwatchAndAddingColorRestoreFocusWhenColorPickerCloses() {
+    val state = GradientEditorState()
+    val color = state.availableColors[0]
+    setPalette(state)
+
+    swatchNode(color).performSemanticsAction(SemanticsActions.OnClick)
+    composeTestRule.waitForIdle()
+    swatchNode(color).assertIsFocused()
+
+    val addButton = composeTestRule.onNodeWithContentDescription(message("gradient.editor.palette.add"))
+    addButton.performSemanticsAction(SemanticsActions.OnClick)
+    composeTestRule.waitForIdle()
+    addButton.assertIsFocused()
+  }
+
+  @Test
+  fun colorChooserWithEmptyPaletteRestoresFocusWhenColorPickerCloses() {
+    composeTestRule.setContent {
+      ColorChooser(
+        initialColor = Color.Red,
+        palette = emptyList(),
+        newPickSession = { {} },
+      ) { open, triggerModifier ->
+        AddColorButton(contentDescription = "Add Stop", onClick = open, modifier = triggerModifier)
+      }
+    }
+
+    val button = composeTestRule.onNodeWithContentDescription("Add Stop")
+    button.performSemanticsAction(SemanticsActions.OnClick)
+    composeTestRule.waitForIdle()
+    button.assertIsFocused()
   }
 }

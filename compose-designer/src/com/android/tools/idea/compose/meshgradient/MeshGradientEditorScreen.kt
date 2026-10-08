@@ -57,9 +57,7 @@ import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -79,15 +77,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.android.tools.adtui.LightCalloutPopup
-import com.android.tools.adtui.MaterialColorPaletteProvider
-import com.android.tools.adtui.stdui.KeyStrokes
+import com.android.tools.idea.compose.meshgradient.components.AddColorButton
 import com.android.tools.idea.compose.meshgradient.components.ColorSwatch
 import com.android.tools.idea.compose.meshgradient.components.DimensionInputField
-import com.android.tools.idea.compose.meshgradient.components.SWATCH_SHAPE
-import com.android.tools.idea.compose.meshgradient.components.SWATCH_SIZE
+import com.android.tools.idea.compose.meshgradient.components.PaletteSwatchGrid
 import com.android.tools.idea.compose.meshgradient.components.colorSwatchDescription
+import com.android.tools.idea.compose.meshgradient.components.showColorPicker
 import com.android.tools.idea.compose.meshgradient.components.toHexString
+import com.android.tools.idea.compose.meshgradient.components.tryRequestFocus
 import com.android.tools.idea.compose.preview.message
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ApplicationManager
@@ -103,14 +100,7 @@ import com.intellij.openapi.fileTypes.FileTypes
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.colorpicker.ColorPickerBuilder
-import com.intellij.ui.colorpicker.MaterialGraphicalColorPipetteProvider
-import java.awt.Color as AwtColor
-import java.awt.GraphicsEnvironment
-import java.awt.MouseInfo
 import java.awt.datatransfer.StringSelection
-import java.awt.event.ActionEvent
-import javax.swing.AbstractAction
 import javax.swing.ScrollPaneConstants
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.FlowPreview
@@ -123,7 +113,6 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
-import org.jetbrains.jewel.ui.focusOutline
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.typography
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -380,10 +369,9 @@ internal fun MeshGradientEditorScreen(project: Project, state: GradientEditorSta
 }
 
 /**
- * Popup anchored at [vertex] on the canvas that applies one of the palette colors to it. The popup takes the focus, starting on the first
- * color, and is dismissed with Escape.
+ * Popup anchored at [vertex] on the canvas that applies one of the palette colors to it. The popup takes the focus, starting on the
+ * vertex's current color (or the first color), and is dismissed with Escape.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VertexColorPopup(state: GradientEditorState, vertex: VertexIndex, canvasSize: IntSize, onDismiss: () -> Unit) {
   val (row, col) = vertex
@@ -394,7 +382,6 @@ private fun VertexColorPopup(state: GradientEditorState, vertex: VertexIndex, ca
   val xOffset = (paddingPx + point.position.x * innerWidth).toInt()
   val yOffset = (paddingPx + point.position.y * innerHeight).toInt()
   val applyLabel = message("gradient.editor.mesh.vertex.apply.color")
-  val firstColorFocusRequester = remember { FocusRequester() }
 
   Popup(
     alignment = Alignment.TopStart,
@@ -402,7 +389,14 @@ private fun VertexColorPopup(state: GradientEditorState, vertex: VertexIndex, ca
     onDismissRequest = onDismiss,
     properties = PopupProperties(focusable = true),
   ) {
-    FlowRow(
+    PaletteSwatchGrid(
+      palette = state.availableColors,
+      selectedColor = point.color,
+      onColorSelected = { color ->
+        state.updateVertexColor(row, col, color)
+        onDismiss()
+      },
+      onClickLabel = applyLabel,
       modifier =
         Modifier.onPreviewKeyEvent { event ->
             if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
@@ -419,32 +413,7 @@ private fun VertexColorPopup(state: GradientEditorState, vertex: VertexIndex, ca
           .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
           .verticalScroll(rememberScrollState())
           .padding(6.dp),
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
-      verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      state.availableColors.forEachIndexed { index, color ->
-        val description = colorSwatchDescription(color)
-        var isFocused by remember { mutableStateOf(false) }
-        ColorSwatch(
-          color = color,
-          modifier =
-            Modifier.then(if (index == 0) Modifier.focusRequester(firstColorFocusRequester) else Modifier)
-              .onFocusChanged { isFocused = it.isFocused }
-              .focusOutline(showOutline = isFocused, outlineShape = SWATCH_SHAPE)
-              .semantics { contentDescription = description }
-              .clickable(
-                onClickLabel = applyLabel,
-                role = Role.Button,
-              ) {
-                state.updateVertexColor(row, col, color)
-                onDismiss()
-              },
-        )
-      }
-    }
-    if (state.availableColors.isNotEmpty()) {
-      LaunchedEffect(firstColorFocusRequester) { firstColorFocusRequester.requestFocus() }
-    }
+    )
   }
 }
 
@@ -452,6 +421,7 @@ private fun VertexColorPopup(state: GradientEditorState, vertex: VertexIndex, ca
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ColorPalette(state: GradientEditorState) {
+  val addColorFocusRequester = remember { FocusRequester() }
   FlowRow(
     horizontalArrangement = Arrangement.spacedBy(6.dp),
     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -459,34 +429,32 @@ internal fun ColorPalette(state: GradientEditorState) {
   ) {
     val canDelete = state.availableColors.size > 1
     state.availableColors.forEachIndexed { index, color ->
+      val swatchFocusRequester = remember { FocusRequester() }
       PaletteSwatch(
         color = color,
-        onEdit = { state.beginPaletteColorEdit(index)?.let { edit -> showColorPicker(color, edit::update, edit::finish) } },
+        onEdit = {
+          state.beginPaletteColorEdit(index)?.let { edit ->
+            showColorPicker(color, edit::update) {
+              edit.finish()
+              swatchFocusRequester.tryRequestFocus()
+            }
+          }
+        },
         onDelete = if (canDelete) ({ state.removePaletteColor(index) }) else null,
+        modifier = Modifier.focusRequester(swatchFocusRequester),
       )
     }
-    var isAddFocused by remember { mutableStateOf(false) }
-    Box(
-      contentAlignment = Alignment.Center,
-      modifier =
-        Modifier.onFocusChanged { isAddFocused = it.isFocused }
-          .focusOutline(showOutline = isAddFocused, outlineShape = SWATCH_SHAPE)
-          .clip(SWATCH_SHAPE)
-          .size(SWATCH_SIZE)
-          .background(JewelTheme.globalColors.panelBackground)
-          .border(1.dp, JewelTheme.globalColors.borders.normal, SWATCH_SHAPE)
-          .clickable(role = Role.Button) {
-            val edit = state.beginNewPaletteColor()
-            showColorPicker(Color.White, edit::update, edit::finish)
-          },
-    ) {
-      Icon(
-        key = AllIconsKeys.General.InlineAdd,
-        iconClass = AllIconsKeys::class.java,
-        contentDescription = message("gradient.editor.palette.add"),
-        modifier = Modifier.size(10.dp),
-      )
-    }
+    AddColorButton(
+      contentDescription = message("gradient.editor.palette.add"),
+      onClick = {
+        val edit = state.beginNewPaletteColor()
+        showColorPicker(Color.White, edit::update) {
+          edit.finish()
+          addColorFocusRequester.tryRequestFocus()
+        }
+      },
+      modifier = Modifier.focusRequester(addColorFocusRequester),
+    )
   }
 }
 
@@ -496,7 +464,12 @@ internal fun ColorPalette(state: GradientEditorState) {
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PaletteSwatch(color: Color, onEdit: () -> Unit, onDelete: (() -> Unit)?) {
+private fun PaletteSwatch(
+  color: Color,
+  onEdit: () -> Unit,
+  onDelete: (() -> Unit)?,
+  modifier: Modifier = Modifier,
+) {
   val deleteLabel = message("gradient.editor.palette.delete")
   val editLabel = message("gradient.editor.palette.edit")
   val description = colorSwatchDescription(color)
@@ -506,14 +479,14 @@ private fun PaletteSwatch(color: Color, onEdit: () -> Unit, onDelete: (() -> Uni
     } else {
       message("gradient.editor.palette.swatch.tooltip.edit.only", color.toHexString())
     }
-  var isFocused by remember { mutableStateOf(false) }
 
   val swatch: @Composable () -> Unit = {
     Tooltip(tooltip = { Text(tooltip) }) {
       ColorSwatch(
         color = color,
         modifier =
-          Modifier.onKeyEvent { event ->
+          modifier
+            .onKeyEvent { event ->
               val isDeleteKey = event.key == Key.Delete || event.key == Key.Backspace
               if (onDelete != null && event.type == KeyEventType.KeyDown && isDeleteKey) {
                 onDelete()
@@ -534,8 +507,6 @@ private fun PaletteSwatch(color: Color, onEdit: () -> Unit, onDelete: (() -> Uni
                   )
               }
             }
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusOutline(showOutline = isFocused, outlineShape = SWATCH_SHAPE)
             .clickable(onClickLabel = editLabel, role = Role.Button, onClick = onEdit),
       )
     }
@@ -547,40 +518,3 @@ private fun PaletteSwatch(color: Color, onEdit: () -> Unit, onDelete: (() -> Uni
     swatch()
   }
 }
-
-/**
- * Shows a color picker popup at the mouse location, starting at [initialColor]. [onColorPicked] is called for every color picked while the
- * popup is open, and [onClosed] once the popup closes, however it is closed. In a headless environment, or if the mouse location is
- * unknown, e.g. in some remote sessions, no popup is shown and [onClosed] is called right away.
- */
-private fun showColorPicker(initialColor: Color, onColorPicked: (Color) -> Unit, onClosed: () -> Unit) {
-  // MouseInfo.getPointerInfo throws a HeadlessException in a headless environment.
-  if (GraphicsEnvironment.isHeadless()) return onClosed()
-  val location = MouseInfo.getPointerInfo()?.location ?: return onClosed()
-  val popup = LightCalloutPopup(closedCallback = onClosed, cancelCallBack = onClosed)
-  val picker =
-    ColorPickerBuilder(showAlpha = true, showAlphaAsPercent = false)
-      .setOriginalColor(initialColor.toAwtColor())
-      .addSaturationBrightnessComponent()
-      .addColorAdjustPanel(MaterialGraphicalColorPipetteProvider())
-      .addColorValuePanel()
-      .withFocus()
-      .addSeparator()
-      .addCustomComponent(MaterialColorPaletteProvider)
-      .addColorListener { color, _ -> onColorPicked(Color(color.rgb)) }
-      .focusWhenDisplay(true)
-      .setFocusCycleRoot(true)
-      .addKeyAction(
-        KeyStrokes.ESCAPE,
-        object : AbstractAction() {
-          override fun actionPerformed(event: ActionEvent) {
-            popup.close()
-          }
-        },
-      )
-      .build()
-  popup.show(picker.content, null, location)
-}
-
-@Suppress("UseJBColor") // The color picker API takes plain AWT colors.
-private fun Color.toAwtColor(): AwtColor = AwtColor(toArgb(), true)

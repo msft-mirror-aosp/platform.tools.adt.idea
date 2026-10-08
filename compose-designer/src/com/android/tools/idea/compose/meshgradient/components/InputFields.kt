@@ -42,11 +42,16 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.meshgradient.formatFloat
+import com.android.tools.idea.compose.preview.message
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.Text
@@ -54,7 +59,7 @@ import org.jetbrains.jewel.ui.component.TextField
 
 @Composable
 internal fun ParameterSwatch(text: String, modifier: Modifier = Modifier) {
-  Box(modifier = modifier.clip(RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) {
+  Box(modifier = modifier.clearAndSetSemantics {}.clip(RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) {
     Text(text, color = JewelTheme.globalColors.text.info)
   }
 }
@@ -204,12 +209,18 @@ internal class NumericFieldController<T : Any>(
   /** Value when the field gained focus, restored by [revert]. */
   private var valueAtFocus: T? = initialValue
 
+  /** Whether an explicit [commit] while focused found invalid text. Cleared when the user edits or reverts the text. */
+  private var showInvalidWhileFocused: Boolean by mutableStateOf(false)
+
   private val text: String
     get() = textState.text.toString()
 
-  /** Whether the text is not a valid value. Only reported when the field is not focused, so typing is not interrupted. */
+  /**
+   * Whether the text is not a valid value. Only reported when the field is not focused or after an explicit [commit], so typing is not
+   * interrupted.
+   */
   val isInvalid: Boolean
-    get() = !isFocused && format.commit(text, value, allowAuto) == NumericCommit.Invalid
+    get() = (!isFocused || showInvalidWhileFocused) && format.commit(text, value, allowAuto) == NumericCommit.Invalid
 
   /** Reports a new current value, updating the text unless the user is editing it. */
   fun onValueChanged(newValue: T?) {
@@ -222,6 +233,7 @@ internal class NumericFieldController<T : Any>(
 
   /** Called after every change of the text. */
   fun onTextChanged() {
+    showInvalidWhileFocused = false
     if (!commitWhileEditing || !isFocused) return
     val next = format.editCommit(text, value) ?: return
     syncedText = text
@@ -233,14 +245,16 @@ internal class NumericFieldController<T : Any>(
     if (focused == isFocused) return
     isFocused = focused
     if (focused) {
+      showInvalidWhileFocused = false
       valueAtFocus = value
     } else {
       commit()
     }
   }
 
-  /** Discards the edits made since the field gained focus. */
+  /** Discards the edits made since the field gained focus (or since the last explicit [commit]). */
   fun revert() {
+    showInvalidWhileFocused = false
     val original = if (isFocused) valueAtFocus else value
     display(original)
     if (format.format(original) != format.format(value)) {
@@ -249,12 +263,19 @@ internal class NumericFieldController<T : Any>(
     }
   }
 
-  private fun commit() {
+  /** Commits the current text, updating the baseline restored by a subsequent [revert]. */
+  fun commit() {
     when (val result = format.commit(text, value, allowAuto)) {
-      NumericCommit.Invalid -> Unit
-      NumericCommit.Unchanged -> display(value)
+      NumericCommit.Invalid -> showInvalidWhileFocused = true
+      NumericCommit.Unchanged -> {
+        showInvalidWhileFocused = false
+        display(value)
+        valueAtFocus = value
+      }
       is NumericCommit.Changed -> {
+        showInvalidWhileFocused = false
         display(result.value)
+        valueAtFocus = result.value
         onUpdate(result.value)
         focusLossCommits++
       }
@@ -271,13 +292,14 @@ internal class NumericFieldController<T : Any>(
 /**
  * A text field editing a number.
  *
- * The text is committed when the field loses focus (including through Tab or Enter); Escape discards the edits. The field displays [value]
- * and follows its changes unless the user is editing the text. Text that cannot be parsed is kept and highlighted with an error outline
- * instead of being silently reverted.
+ * The text is committed when the field loses focus or when Enter is pressed; Escape discards the edits while keeping focus on the field.
+ * The field displays [value] and follows its changes unless the user is editing the text. Text that cannot be parsed is kept and
+ * highlighted with an error outline instead of being silently reverted.
  *
  * @param value the current value, or `null` for the automatic value, which is displayed as the [autoPlaceholder].
  * @param autoPlaceholder text shown when the value is automatic. When set, clearing the field commits the automatic value.
  * @param paramName optional short label shown at the start of the field.
+ * @param contentDescription accessible label of the field for screen readers; defaults to [paramName].
  * @param commitWhileEditing whether valid values are also committed as they are typed, so their effect can be seen immediately.
  */
 @Composable
@@ -288,10 +310,10 @@ internal fun <T : Any> NumericInputField(
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
   paramName: String? = null,
+  contentDescription: String? = paramName,
   autoPlaceholder: String? = null,
   commitWhileEditing: Boolean = false,
 ) {
-  val focusManager = LocalFocusManager.current
   val controller = remember { NumericFieldController(value, format) }
   SideEffect {
     controller.format = format
@@ -302,23 +324,35 @@ internal fun <T : Any> NumericInputField(
   LaunchedEffect(value, format, controller.focusLossCommits) { controller.onValueChanged(value) }
   LaunchedEffect(controller) { snapshotFlow { controller.textState.text.toString() }.collect { controller.onTextChanged() } }
   val inputTransformation = remember(controller) { NumericInputTransformation { controller.format } }
+  val invalidMessage = message("gradient.editor.input.invalid")
+  val isShowingPlaceholder = autoPlaceholder != null && controller.textState.text.isEmpty()
 
   TextField(
     state = controller.textState,
     enabled = enabled,
     inputTransformation = inputTransformation,
     outline = if (controller.isInvalid) Outline.Error else Outline.None,
-    placeholder = autoPlaceholder?.let { placeholder -> { Text(placeholder) } },
+    placeholder = autoPlaceholder?.let { placeholder -> { Text(placeholder, modifier = Modifier.clearAndSetSemantics {}) } },
     leadingIcon = paramName?.let { name -> { ParameterSwatch(text = name, modifier = Modifier.height(16.dp).padding(end = 6.dp)) } },
     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-    onKeyboardAction = { focusManager.clearFocus() },
+    onKeyboardAction = { controller.commit() },
     modifier =
       modifier
+        .semantics {
+          if (contentDescription != null) {
+            this.contentDescription = contentDescription
+          }
+          if (isShowingPlaceholder && autoPlaceholder != null) {
+            stateDescription = autoPlaceholder
+          }
+          if (controller.isInvalid) {
+            error(invalidMessage)
+          }
+        }
         .onFocusChanged { controller.onFocusChanged(it.isFocused) }
         .onKeyEvent {
           if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
             controller.revert()
-            focusManager.clearFocus()
             true
           } else {
             false
@@ -336,6 +370,7 @@ internal fun DimensionInputField(
   max: Int? = null,
   enabled: Boolean = true,
   paramName: String,
+  contentDescription: String? = paramName,
   onUpdate: (Int) -> Unit,
 ) {
   val format = remember(min, max) { intFormat(min, max) }
@@ -346,6 +381,7 @@ internal fun DimensionInputField(
     modifier = modifier,
     enabled = enabled,
     paramName = paramName,
+    contentDescription = contentDescription,
   )
 }
 
@@ -362,6 +398,7 @@ internal fun FloatInputField(
   max: Float? = null,
   enabled: Boolean = true,
   paramName: String? = null,
+  contentDescription: String? = paramName,
   commitWhileEditing: Boolean = true,
   onUpdate: (Float) -> Unit,
 ) {
@@ -373,6 +410,7 @@ internal fun FloatInputField(
     modifier = modifier,
     enabled = enabled,
     paramName = paramName,
+    contentDescription = contentDescription,
     commitWhileEditing = commitWhileEditing,
   )
 }
@@ -390,6 +428,7 @@ internal fun OptionalFloatInputField(
   max: Float? = null,
   enabled: Boolean = true,
   paramName: String? = null,
+  contentDescription: String? = paramName,
   onUpdate: (Float?) -> Unit,
 ) {
   val format = remember(min, max) { floatFormat(min, max) }
@@ -400,6 +439,7 @@ internal fun OptionalFloatInputField(
     modifier = modifier,
     enabled = enabled,
     paramName = paramName,
+    contentDescription = contentDescription,
     autoPlaceholder = autoPlaceholder,
     commitWhileEditing = true,
   )

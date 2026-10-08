@@ -110,6 +110,7 @@ internal class GradientEditorDialog(private val project: Project, private val in
 
     if (input is GradientEditorInput.Brush) {
       val typeSelector = ComboBox(arrayOf(GradientType.LINEAR, GradientType.RADIAL, GradientType.SWEEP))
+      typeSelector.accessibleContext.accessibleName = message("gradient.editor.type.selector.description")
       typeSelector.renderer = SimpleListCellRenderer.create("") { it.displayName }
       typeSelector.selectedItem = state.currentType
       typeSelector.addActionListener { state.currentType = typeSelector.item }
