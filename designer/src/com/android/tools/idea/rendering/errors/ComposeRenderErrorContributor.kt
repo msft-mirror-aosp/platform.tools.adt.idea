@@ -277,7 +277,7 @@ object ComposeRenderErrorContributor {
     ),
     COMPOSITION_LOCAL_NOT_FOUND(
       predicate = { throwable -> isCompositionLocalThrowable(throwable) },
-      severity = HighlightSeverity.INFORMATION,
+      severity = HighlightSeverity.ERROR,
       summary = { "Failed to instantiate Composition Local" },
       htmlContentProvider = { linkManager, throwable ->
         HtmlBuilder()
@@ -294,7 +294,7 @@ object ComposeRenderErrorContributor {
     ),
     VIEW_MODEL_INSTANTIATION(
       predicate = { throwable -> isViewModelThrowable(throwable) },
-      severity = HighlightSeverity.INFORMATION,
+      severity = HighlightSeverity.ERROR,
       summary = { "Failed to instantiate a ViewModel" },
       htmlContentProvider = { linkManager, throwable ->
         HtmlBuilder()

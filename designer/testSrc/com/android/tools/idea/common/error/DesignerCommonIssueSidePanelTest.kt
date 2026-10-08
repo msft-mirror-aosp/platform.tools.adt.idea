@@ -15,12 +15,15 @@
  */
 package com.android.tools.idea.common.error
 
+import com.android.ide.common.rendering.api.ILayoutLog
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.rendering.errors.ComposeRenderErrorContributor
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.error.RenderIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
+import com.android.tools.rendering.RenderLogger
 import com.android.tools.visuallint.VisualLintErrorType
 import com.android.utils.HtmlBuilder
 import com.intellij.ide.DataManager
@@ -167,10 +170,49 @@ class DesignerCommonIssueSidePanelTest {
   }
 
   @Test
+  fun testFixWithAiButtonVisibleForComposeContributorViewModelAndCompositionLocalIssues() {
+    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
+
+    val viewModelThrowable =
+      Throwable("lateinit property okHttpClient has not been initialized").apply {
+        stackTrace = arrayOf(StackTraceElement("androidx.lifecycle.viewmodel.compose.ViewModelKt", "viewModel", "ViewModel.kt", 72))
+      }
+    val compositionLocalThrowable =
+      IllegalStateException("CompositionLocal LocalGraphicsContext not present").apply {
+        stackTrace =
+          arrayOf(
+            StackTraceElement("androidx.compose.ui.tooling.CommonPreviewUtils", "invokeComposableMethod", "CommonPreviewUtils.kt", 149)
+          )
+      }
+    val logger =
+      RenderLogger(rule.project).apply {
+        error(ILayoutLog.TAG_INFLATE, "ViewModel error", viewModelThrowable, null, null)
+        error(ILayoutLog.TAG_INFLATE, "CompositionLocal error", compositionLocalThrowable, null, null)
+      }
+    val composeIssues = ComposeRenderErrorContributor.reportComposeErrors(logger)
+    assertEquals(2, composeIssues.size)
+
+    for (issue in composeIssues) {
+      assertEquals(HighlightSeverity.ERROR, issue.severity)
+      val nlRenderIssue = RenderIssueProvider.NlRenderIssueWrapper.wrapIssue(issue, null)
+      val panel =
+        DesignerCommonIssueSidePanel(rule.project, rule.testRootDisposable) {
+          object : AnAction("Fix with AI") {
+            override fun actionPerformed(e: AnActionEvent) {}
+          }
+        }
+      panel.loadIssueNode(TestIssueNode(nlRenderIssue))
+
+      val actionToolbar = panel.findDescendant(ActionToolbar::class.java)
+      assertNotNull(actionToolbar, "Expected Fix with AI button for Compose render issue: ${issue.summary}")
+    }
+  }
+
+  @Test
   fun testFixWithAiButtonNotVisibleWhenComposeRenderErrorIsWarning() {
     StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
 
-    for (severity in listOf(HighlightSeverity.WARNING, HighlightSeverity.WEAK_WARNING)) {
+    for (severity in listOf(HighlightSeverity.WARNING, HighlightSeverity.WEAK_WARNING, HighlightSeverity.INFORMATION)) {
       val issue = MockIssueFactory.createRenderIssue(severity)
       val nlRenderIssue = RenderIssueProvider.NlRenderIssueWrapper.wrapIssue(issue, null)
       val panel =

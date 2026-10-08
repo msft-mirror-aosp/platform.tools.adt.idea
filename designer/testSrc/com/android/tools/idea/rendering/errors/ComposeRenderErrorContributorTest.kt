@@ -178,7 +178,7 @@ class ComposeRenderErrorContributorTest {
     assertTrue(isHandledByComposeContributor(throwable))
     val issues = reportComposeErrors(logger, linkManager, nopLinkHandler)
     assertEquals(1, issues.size)
-    assertEquals(HighlightSeverity.INFORMATION, issues[0].severity)
+    assertEquals(HighlightSeverity.ERROR, issues[0].severity)
     assertEquals("Failed to instantiate Composition Local", issues[0].summary)
     assertEquals(
       "This preview was unable to find a <A HREF=\"https://developer.android.com/jetpack/compose/compositionlocal\">CompositionLocal</A>. " +
@@ -278,7 +278,7 @@ class ComposeRenderErrorContributorTest {
     assertTrue(isHandledByComposeContributor(throwable))
     val issues = reportComposeErrors(logger, linkManager, nopLinkHandler)
     assertEquals(1, issues.size)
-    assertEquals(HighlightSeverity.INFORMATION, issues[0].severity)
+    assertEquals(HighlightSeverity.ERROR, issues[0].severity)
     assertEquals("Failed to instantiate a ViewModel", issues[0].summary)
     assertEquals(
       "This preview uses a <A HREF=\"https://developer.android.com/topic/libraries/architecture/viewmodel\">ViewModel</A>. " +
@@ -335,7 +335,7 @@ class ComposeRenderErrorContributorTest {
     assertTrue(isHandledByComposeContributor(throwable))
     val issues = reportComposeErrors(logger, linkManager, nopLinkHandler)
     assertEquals(1, issues.size)
-    assertEquals(HighlightSeverity.INFORMATION, issues[0].severity)
+    assertEquals(HighlightSeverity.ERROR, issues[0].severity)
     assertEquals("Failed to instantiate a ViewModel", issues[0].summary)
     assertEquals(
       "This preview uses a <A HREF=\"https://developer.android.com/topic/libraries/architecture/viewmodel\">ViewModel</A>. " +
