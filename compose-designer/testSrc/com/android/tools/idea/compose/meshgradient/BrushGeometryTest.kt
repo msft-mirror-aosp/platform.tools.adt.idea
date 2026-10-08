@@ -223,4 +223,29 @@ class BrushGeometryTest {
       createPreviewBrush(Gradient.SweepGradient(listOf(Color.Red), null, Offset.Unspecified)),
     )
   }
+
+  @Test
+  fun movedPointMovesAlongAxisClampedToPreviewAndResolvesAutomaticCenter() {
+    val size = Size(400f, 200f)
+    assertEquals(
+      Offset(390f, Float.POSITIVE_INFINITY),
+      movedPoint(original = Offset.Infinite, handleStart = Offset(400f, 200f), brushDelta = Offset(-10f, 0f), previewSize = size),
+    )
+    assertEquals(
+      Offset(210f, 100f),
+      movedPoint(original = Offset.Unspecified, handleStart = Offset(200f, 100f), brushDelta = Offset(10f, 0f), previewSize = size),
+    )
+    assertEquals(
+      Offset(0f, 200f),
+      movedPoint(original = Offset(5f, 195f), handleStart = Offset(5f, 195f), brushDelta = Offset(-20f, 20f), previewSize = size),
+    )
+    val point = Offset(10f, 20f)
+    assertEquals(point, movedPoint(original = point, handleStart = point, brushDelta = Offset(5f, 5f), previewSize = Size.Zero))
+    assertEquals(point, movedPoint(original = point, handleStart = point, brushDelta = Offset(5f, 5f), previewSize = Size(-10f, 200f)))
+    assertEquals(point, movedPoint(original = point, handleStart = point, brushDelta = Offset(5f, 5f), previewSize = Size.Unspecified))
+    assertEquals(
+      point,
+      movedPoint(original = point, handleStart = point, brushDelta = Offset(5f, 5f), previewSize = Size(Float.POSITIVE_INFINITY, 200f)),
+    )
+  }
 }

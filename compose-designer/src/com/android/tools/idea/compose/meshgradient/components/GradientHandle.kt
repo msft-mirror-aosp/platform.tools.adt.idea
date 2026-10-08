@@ -15,20 +15,32 @@
  */
 package com.android.tools.idea.compose.meshgradient.components
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
@@ -42,29 +54,74 @@ import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.focusOutline
 
 /** Diameter of a [GradientHandle]. */
 internal val GRADIENT_HANDLE_SIZE = 24.dp
+
+/** Step in brush pixels moved by a single arrow key press on a focused [GradientHandle]. */
+internal const val HANDLE_KEYBOARD_STEP = 10f
 
 /**
  * A circular handle drawn over a gradient preview, filled with [color] and showing a short [glyph].
  *
  * @param glyph short text drawn inside the handle (e.g. a letter or an index). It is purely visual: assistive technologies read
- *   [contentDescription] instead.
+ *   [contentDescription] and [stateDescription] instead.
  * @param contentDescription accessible description of the point the handle controls.
+ * @param stateDescription optional provider of the accessible description of the current coordinates of the handle.
+ * @param onMove optional callback invoked with a delta in brush pixels when the user presses an arrow key while the handle is focused.
  */
 @Composable
-internal fun GradientHandle(glyph: String, contentDescription: String, color: Color, modifier: Modifier = Modifier) {
+internal fun GradientHandle(
+  glyph: String,
+  contentDescription: String,
+  color: Color,
+  modifier: Modifier = Modifier,
+  stateDescription: (() -> String)? = null,
+  onMove: ((delta: Offset) -> Unit)? = null,
+) {
+  var isFocused by remember { mutableStateOf(false) }
   val textColor = if (color.luminance() > 0.5f) Color.Black else Color.White
   Box(
     contentAlignment = Alignment.Center,
     modifier =
       modifier
         .size(GRADIENT_HANDLE_SIZE)
-        .clearAndSetSemantics { this.contentDescription = contentDescription }
+        .focusOutline(isFocused, CircleShape)
+        .onFocusChanged { isFocused = it.isFocused }
+        .onKeyEvent { event ->
+          if (event.type != KeyEventType.KeyDown || onMove == null) return@onKeyEvent false
+          when (event.key) {
+            Key.DirectionLeft -> {
+              onMove(Offset(-HANDLE_KEYBOARD_STEP, 0f))
+              true
+            }
+            Key.DirectionRight -> {
+              onMove(Offset(HANDLE_KEYBOARD_STEP, 0f))
+              true
+            }
+            Key.DirectionUp -> {
+              onMove(Offset(0f, -HANDLE_KEYBOARD_STEP))
+              true
+            }
+            Key.DirectionDown -> {
+              onMove(Offset(0f, HANDLE_KEYBOARD_STEP))
+              true
+            }
+            else -> false
+          }
+        }
+        .focusable()
+        .clearAndSetSemantics {
+          this.contentDescription = contentDescription
+          if (stateDescription != null) {
+            this.stateDescription = stateDescription()
+          }
+        }
         .drawWithContent {
           drawCircle(color = color)
           drawCircle(color = Color.White, style = Stroke(width = 4.dp.toPx()))

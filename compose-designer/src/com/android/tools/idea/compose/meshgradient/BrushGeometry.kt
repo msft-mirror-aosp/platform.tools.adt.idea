@@ -141,6 +141,28 @@ internal fun draggedPoint(original: Offset, handleStart: Offset, canvasDelta: Of
 }
 
 /**
+ * Returns the new value of a point nudged by [brushDelta] (in brush pixels), clamped to [previewSize]. Axes with a zero delta keep their
+ * [original] value unless [original] is `Offset.Unspecified`, in which case both axes resolve from [handleStart].
+ *
+ * @param original the current value of the point, as written in code.
+ * @param handleStart the current position of the handle, in brush pixels.
+ * @param brushDelta the movement to apply, in brush pixels.
+ * @param previewSize the reference preview size, in brush pixels, used to clamp the moved coordinates.
+ */
+internal fun movedPoint(original: Offset, handleStart: Offset, brushDelta: Offset, previewSize: Size): Offset {
+  if (previewSize.width <= 0f || !previewSize.width.isFinite() || previewSize.height <= 0f || !previewSize.height.isFinite()) {
+    return original
+  }
+  val movedX = brushDelta.x != 0f
+  val movedY = brushDelta.y != 0f
+  if (!movedX && !movedY) return original
+  val x = roundToDecimals((handleStart.x + brushDelta.x).coerceIn(0f, previewSize.width), MAX_DRAG_DECIMALS)
+  val y = roundToDecimals((handleStart.y + brushDelta.y).coerceIn(0f, previewSize.height), MAX_DRAG_DECIMALS)
+  if (original.isUnspecified) return Offset(x, y)
+  return Offset(if (movedX) x else original.x, if (movedY) y else original.y)
+}
+
+/**
  * Returns this point with the coordinate on [axis] set to [value], in pixels.
  *
  * A `null` [value] clears the coordinate as described by [kind]. When this point is `Offset.Unspecified` and a single coordinate is set,

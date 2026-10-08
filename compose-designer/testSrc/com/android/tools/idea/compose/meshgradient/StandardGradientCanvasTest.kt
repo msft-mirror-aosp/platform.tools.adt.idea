@@ -24,14 +24,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.compose.meshgradient.components.GRADIENT_HANDLE_SIZE
+import com.android.tools.idea.compose.meshgradient.components.HANDLE_KEYBOARD_STEP
 import com.android.tools.idea.compose.preview.message
 import com.intellij.testFramework.ApplicationRule
 import org.junit.Assert.assertArrayEquals
@@ -176,5 +184,43 @@ class StandardGradientCanvasTest {
     val autoLinear = capturePixels()
     renderedState.end = Offset(400f, 200f)
     assertArrayEquals(autoLinear, capturePixels())
+  }
+
+  @OptIn(ExperimentalTestApi::class)
+  @Test
+  fun handleSemanticsExposeStateAndSupportArrowKeyMovement() {
+    val testState =
+      GradientEditorState().apply {
+        currentType = GradientType.LINEAR
+        previewSize = Size(400f, 200f)
+        start = Offset(100f, 50f)
+        end = Offset.Infinite
+      }
+    setCanvas(testState)
+
+    val start = startHandle()
+    val end = composeTestRule.onNodeWithContentDescription(message("gradient.editor.canvas.end"))
+    assertEquals("(100, 50)", start.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+    val inf = message("gradient.editor.brush.value.infinite")
+    assertEquals("($inf, $inf)", end.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+
+    start.performSemanticsAction(SemanticsActions.RequestFocus)
+    start.performKeyInput {
+      pressKey(Key.DirectionRight)
+      pressKey(Key.DirectionDown)
+    }
+    composeTestRule.waitForIdle()
+
+    assertEquals(Offset(100f + HANDLE_KEYBOARD_STEP, 50f + HANDLE_KEYBOARD_STEP), testState.start)
+    assertEquals("(110, 60)", start.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+
+    end.performSemanticsAction(SemanticsActions.RequestFocus)
+    end.performKeyInput { pressKey(Key.DirectionLeft) }
+    composeTestRule.waitForIdle()
+
+    // Moving left detaches X from infinity while keeping Y automatic.
+    assertEquals(400f - HANDLE_KEYBOARD_STEP, testState.end.x)
+    assertEquals(Float.POSITIVE_INFINITY, testState.end.y)
+    assertEquals("(390, $inf)", end.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
   }
 }

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -101,13 +102,17 @@ internal fun GradientCanvas(
           if (showPoints) {
             meshPoints.forEachIndexed { rowIdx, row ->
               row.forEachIndexed { colIdx, point ->
-                PointCursor(
-                  row = rowIdx,
-                  col = colIdx,
-                  color = point.color,
-                  movable = !isPinnedVertex(meshPoints, rowIdx, colIdx, constrainEdgePoints),
-                  onSelect = onPointClick?.let { onClick -> { onClick(rowIdx, colIdx) } },
-                )
+                key(rowIdx, colIdx) {
+                  PointCursor(
+                    row = rowIdx,
+                    col = colIdx,
+                    color = point.color,
+                    position = point.position,
+                    movable = !isPinnedVertex(meshPoints, rowIdx, colIdx, constrainEdgePoints),
+                    onSelect = onPointClick?.let { onClick -> { onClick(rowIdx, colIdx) } },
+                    onMove = { newOffset -> onPointDrag(rowIdx, colIdx, newOffset) },
+                  )
+                }
               }
             }
           }
