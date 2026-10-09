@@ -906,14 +906,16 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
     File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy heap dump content"));
+    myFilesToCleanUp.add(dummyFile);
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
+    myFilesToCleanUp.add(ProfilerCaptureFileUtils.getCaptureFile("capture_" + info.getStartTime() + ".hprof"));
 
     myStage.selectCaptureDuration(dataList.getFirst().value, null);
 
     // When the editor flag is enabled, it should open the file instead of transitioning the stage
     assertThat(myProfilers.getStage()).isInstanceOf(MainMemoryProfilerStage.class); // Stays on the main stage
     assertThat(myIdeProfilerServices.getOpenedFile()).isNotNull();
-    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.HEAP_DUMP);
+    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
   }
 
   @Test
@@ -938,21 +940,18 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
     File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    myFilesToCleanUp.add(dummyFile);
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
 
     File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".hprof");
-    try {
-      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+    FileUtil.delete(captureFile);
+    myFilesToCleanUp.add(captureFile);
 
-      assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
-      assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.HEAP_DUMP);
-      assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.HEAP_DUMP_CAPTURE_FAILURE);
-    }
-    finally {
-      if (captureFile.exists()) {
-        captureFile.delete();
-      }
-    }
+    myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+    assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
+    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
+    assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.HEAP_DUMP_CAPTURE_FAILURE);
   }
 
   /** Enables the in-editor and task-based UX flags; callers set deobfuscation flags themselves. */
@@ -1219,21 +1218,18 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
 
     File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.EMPTY);
+    myFilesToCleanUp.add(dummyFile);
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
 
     File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".alloc");
-    try {
-      myStage.selectCaptureDuration(dataList.getFirst().value, null);
+    FileUtil.delete(captureFile);
+    myFilesToCleanUp.add(captureFile);
 
-      assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
-      assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
-      assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.JAVA_KOTLIN_ALLOCATIONS_PARSING_FAILURE);
-    }
-    finally {
-      if (captureFile.exists()) {
-        captureFile.delete();
-      }
-    }
+    myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+    assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
+    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
+    assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.JAVA_KOTLIN_ALLOCATIONS_PARSING_FAILURE);
   }
 
   @Test
