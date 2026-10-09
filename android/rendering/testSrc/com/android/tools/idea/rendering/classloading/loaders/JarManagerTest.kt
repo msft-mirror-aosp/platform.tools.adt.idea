@@ -23,6 +23,7 @@ import com.google.common.cache.AbstractCache
 import com.google.common.cache.Cache
 import com.google.common.cache.ForwardingCache
 import com.jetbrains.rd.util.first
+import java.io.File
 import java.net.URI
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -30,7 +31,6 @@ import java.nio.file.Path
 import java.nio.file.spi.FileSystemProvider
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
-import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.util.prefixIfNot
 import org.junit.Assert
 import org.junit.Assert.assertEquals

@@ -65,13 +65,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.registerServiceInstance
 import com.intellij.util.ui.UIUtil
+import java.io.File
 import java.net.UnknownHostException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.EnumSet
 import kotlinx.coroutines.runBlocking
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UnknownCommandResponse
-import org.jetbrains.kotlin.konan.file.File
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
