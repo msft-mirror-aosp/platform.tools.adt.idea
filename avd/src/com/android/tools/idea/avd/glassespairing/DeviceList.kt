@@ -93,7 +93,7 @@ internal fun DeviceList(
       onSelectedIndexesChange = { indexes -> indexes.singleOrNull()?.let { onSelectedDeviceChange(devices[it]) } },
     ) {
       items(items = devices, key = { it.handle.id }, selectable = { it.isEnabled }) {
-        DeviceRow(row = it, isSelected = isSelected, isFocused = isActive)
+        DeviceRow(row = it, isSelected = isSelected)
       }
     }
 
@@ -105,14 +105,13 @@ internal fun DeviceList(
 }
 
 @Composable
-private fun DeviceRow(row: DeviceRow, isSelected: Boolean, isFocused: Boolean) {
+private fun DeviceRow(row: DeviceRow, isSelected: Boolean) {
   val alphaModifier = if (row.isEnabled) Modifier else Modifier.alpha(0.5f)
 
   Row(
-    Modifier.background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor())
-      .fillMaxWidth()
-      .padding(vertical = 4.dp)
-      .semantics { if (!row.isEnabled) disabled() }
+    Modifier.background(UIUtil.getListBackground(isSelected, true).toComposeColor()).fillMaxWidth().padding(vertical = 4.dp).semantics {
+      if (!row.isEnabled) disabled()
+    }
   ) {
     if (row.isConnected) {
       Icon(
