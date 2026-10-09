@@ -272,6 +272,9 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     operation(title = "Loading project", subTitle = "Initializing project structure", operationType = OperationType.SYNC) { context ->
       val result = reloadProjectIfDefinitionHasChanged(context) as? ReloadProjectResult.SnapshotRetained
       val lastProjectStructureData = scanDirectoryStructure(context)
+      // With enable_code_analysis_on_sync and nothing built yet, autoEnableCodeAnalysis builds the whole project next. Packages are queried
+      // when they're needed, so refresh every package first.
+      val buildWholeProject = userPreferences.enableCodeAnalysisOnSync && !codeAnalysisHasBeenEnabled()
       if (result == null || userPreferences.refreshQueryDataOnStartup) {
         if (userPreferences.commitProjectStructureAfterInitialScan) {
           updateProjectStructureAndSnapshot(context, lastProjectStructureData)
@@ -281,7 +284,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
             context,
             lastQuery = result?.existingPostQuerySyncData,
             lastProjectStructureData = lastProjectStructureData,
-            paths = emptyList(),
+            paths = if (buildWholeProject) null else emptyList(),
             onQueryDuration = ::setStartupBazelQueryTime,
           )
         }
@@ -295,6 +298,18 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
             result.existingVcsState,
             result.existingBazelVersion,
           )
+        }
+        // After the restore, so that the refresh notices changes made while the IDE was closed.
+        if (buildWholeProject) {
+          syncStatsScope(context) { context ->
+            runQueryAndReadProjectStructureAndApply(
+              context,
+              lastQuery = result.existingPostQuerySyncData,
+              lastProjectStructureData = lastProjectStructureData,
+              paths = null,
+              onQueryDuration = ::setStartupBazelQueryTime,
+            )
+          }
         }
       }
       val buildTriggered = autoEnableCodeAnalysis(context, startup = true)
@@ -677,11 +692,12 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       .runQueryAndComputePostQuerySyncData(context, lastQuery, vcsState, bazelVersion, projectStructureData, requestedPackages)
   }
 
+  /** Returns whether any dependencies have been built. Checks the tracker directly, as the snapshot may not have been updated yet. */
+  private fun codeAnalysisHasBeenEnabled(): Boolean = loadedProject?.artifactTracker?.stateSnapshot?.targets()?.isNotEmpty() ?: false
+
   private fun autoEnableCodeAnalysis(context: BlazeContext, startup: Boolean = false): Boolean {
     val project = loadedProject ?: return false
-    // Checking the state of the tracker directly as the snapshot has not been yet updated.
-    val codeAnalysisHasBeenEnabled = this.loadedProject?.artifactTracker?.stateSnapshot?.targets()?.isNotEmpty() ?: false
-    if (userPreferences.enableCodeAnalysisOnSync && !(codeAnalysisHasBeenEnabled && startup)) {
+    if (userPreferences.enableCodeAnalysisOnSync && !(codeAnalysisHasBeenEnabled() && startup)) {
       project.buildDependencies(context, DependencyTracker.DependencyBuildRequest.wholeProject())
       return true
     }
@@ -870,6 +886,18 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       subTitle = "Building dependencies",
       operationType = OperationType.BUILD_DEPS,
     ) { context ->
+      // The targets to build come from the graph. Packages are queried when they're needed, so it may not have every package, or may
+      // have packages that changed since they were queried. Refresh every package first: that queries the packages that were never queried
+      // or that changed, and nothing if the query data is up to date. With no query data, that's a full query.
+      val result = reloadProjectIfDefinitionHasChanged(context) as? ReloadProjectResult.SnapshotRetained
+      syncStatsScope(context) { context ->
+        runQueryAndReadProjectStructureAndApply(
+          context,
+          lastQuery = result?.existingPostQuerySyncData,
+          lastProjectStructureData = null,
+          paths = null,
+        )
+      }
       context.output(PrintOutput.output("Building project dependencies..."))
       assertProjectLoaded().buildDependencies(context, DependencyTracker.DependencyBuildRequest.wholeProject())
     }

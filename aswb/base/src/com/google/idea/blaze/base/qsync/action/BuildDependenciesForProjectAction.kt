@@ -38,14 +38,25 @@ class BuildDependenciesForProjectAction : BlazeProjectAction() {
 
   override fun querySyncSupport(): QuerySyncStatus = QuerySyncStatus.REQUIRED
 
+  override fun updateForBlazeProject(project: Project, e: AnActionEvent) {
+    e.presentation.isEnabled = !getInstance(project).operationInProgress()
+  }
+
   override fun actionPerformedInBlazeProject(project: Project, e: AnActionEvent?) {
     val syncMan = getInstance(project)
+    // Like the other Build Dependencies actions, don't start while another operation runs: this one queries the whole project first,
+    // and the two could overwrite each other's results.
+    if (syncMan.operationInProgress()) {
+      return
+    }
     val snapshot = syncMan.currentSnapshot.orElse(null)
     if (snapshot == null) {
       syncMan.notifyError("Project not loaded", "Cannot enable analysis before project is loaded.")
       return
     }
 
+    // TODO(b/581985883): The graph may only have the packages that were queried, so a large project that wasn't queried gets no warning.
+    // Check the count after the whole-project query in enableAnalysisForWholeProjectOperation instead.
     val externalDeps = snapshot.staleGraph.externalDependencyCountForStatsOnly
     logger.warn("Total external deps: $externalDeps")
     if (externalDeps > EXTERNAL_DEPS_WARNING_THRESHOLD) {
