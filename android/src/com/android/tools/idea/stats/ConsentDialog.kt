@@ -199,7 +199,8 @@ class ConsentDialog(private val consent: Consent) : DialogWrapper(null) {
         dialog.show()
 
         val result = listOf<Consent>(consent.derive(dialog.exitCode == OK_EXIT_CODE))
-        AppUIUtil.saveConsents(result)
+        // Saving consents is an IO operation that must run on a background thread.
+        application.executeOnPooledThread { AppUIUtil.saveConsents(result) }
       }
     }
   }
