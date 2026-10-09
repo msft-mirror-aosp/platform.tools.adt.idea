@@ -22,6 +22,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
 @Service(Service.Level.PROJECT)
@@ -61,6 +62,13 @@ class UpdateReferenceImagesDialogManager(private val project: Project) : Disposa
       }
     }
     return newDialog
+  }
+
+  @TestOnly
+  @Synchronized
+  fun resetForTests() {
+    activeDialog = null
+    dialogFactory = { UpdateReferenceImagesDialog(it) }
   }
 
   @Synchronized

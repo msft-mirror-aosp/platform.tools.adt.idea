@@ -23,6 +23,7 @@ import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotSame
@@ -39,6 +40,11 @@ class UpdateReferenceImagesDialogManagerTest {
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   @get:Rule val metricsTrackerRule = MetricsTrackerRule()
+
+  @After
+  fun tearDown() {
+    UpdateReferenceImagesDialogManager.getInstance(projectRule.project).resetForTests()
+  }
 
   @Test
   fun testOnlyOneDialogActiveAtATime() = runInEdtAndWait {
