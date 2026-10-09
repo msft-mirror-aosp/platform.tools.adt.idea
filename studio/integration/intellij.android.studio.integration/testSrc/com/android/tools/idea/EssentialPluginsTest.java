@@ -24,6 +24,7 @@ import com.android.tools.testlib.TestFileSystem;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -67,6 +68,12 @@ public class EssentialPluginsTest {
 
   private int countEnabledPlugins(AndroidStudioInstallation install) throws Exception {
     Matcher matcher = install.getIdeaLog().waitForMatchingLine(".*AppStarter - Loaded bundled plugins:(.*)", 10, TimeUnit.SECONDS);
-    return matcher.group(1).split(",").length;
+    // Each entry has the form "Name (id, version)".
+    Matcher pluginMatcher = Pattern.compile("[^()]+? \\([^()]*\\)(?:, |$)").matcher(matcher.group(1).strip());
+    int count = 0;
+    while (pluginMatcher.find()) {
+      count++;
+    }
+    return count;
   }
 }

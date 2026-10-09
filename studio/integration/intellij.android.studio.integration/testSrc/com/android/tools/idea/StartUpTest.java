@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -77,16 +78,17 @@ public class StartUpTest {
               .getIdeaLog()
               .waitForMatchingLine(
                   ".*AppStarter - Loaded bundled plugins:(.*)", 10, TimeUnit.SECONDS);
-      String[] plugins = matcher.group(1).split(",");
-      for (int i = 0; i < plugins.length; i++) {
-        plugins[i] = plugins[i].replaceAll(" (.*) \\(.*\\)", "$1").strip();
+      // Each entry has the form "Name (id, version)". Names may contain parentheses too, e.g. "Pseudo Terminal (PTY4J)".
+      List<String> plugins = new ArrayList<>();
+      Matcher pluginMatcher = Pattern.compile("(.+?) \\([^()]*, [^()]*\\)(?:, |$)").matcher(matcher.group(1).strip());
+      while (pluginMatcher.find()) {
+        plugins.add(pluginMatcher.group(1).strip());
       }
 
       List<String> expectedPlugins =
           new ArrayList<>(
               Arrays.asList(
-                  "Aether Dependency Resolver",
-                  "Agent Client Protocol",
+                  "Artifacts Repository Resolver",
                   "Android",
                   "Android APK Support",
                   "Android Design Tools",
@@ -95,15 +97,16 @@ public class StartUpTest {
                   "Android NDK Support",
                   "App Links Assistant",
                   "App Links Assistant AI",
-                  "Artifacts Repository Search",
-                  "Bookmarks Manager",
+                  "Bookmarks",
                   "C/C++ Language Support via Classic Engine",
                   "CIDR Base",
                   "CIDR Debugger",
                   "Clangd Support",
                   "Code Coverage for Java",
+                  "Compose UI",
                   "Configuration Script",
                   "Copyright",
+                  "Data Editor and Viewer",
                   "Eclipse Keymap",
                   "EditorConfig",
                   "Device Streaming",
@@ -119,25 +122,25 @@ public class StartUpTest {
                   "Gradle",
                   "Gradle DSL Parser Support",
                   "Gradle for Java",
-                  "Grid Core",
                   "Groovy",
                   "Groovy Live Templates",
                   "Groovy Scripting",
                   "HTML Tools",
-                  "IDEA CORE",
+                  // IntelliJ 2026.3 no longer gives the core plugin a display name, so it is logged by ID.
+                  "com.intellij",
                   "Images",
                   "JSON",
                   "Natural Languages",
-                  "Navbar",
+                  "Navigation Bar",
                   "JUnit",
                   "Java",
                   "Java Bytecode Decompiler",
                   "Java IDE Customization",
                   "Compose Multiplatform",
                   "Java Internationalization",
+                  "Java Native Access (JNA)",
                   "Jetpack Compose",
                   "Kotlin",
-                  "Library Modules: Misc",
                   "Lightbuild",
                   "Lightbuild AI Plugin",
                   "Machine Learning Code Completion",
@@ -145,14 +148,17 @@ public class StartUpTest {
                   "Mercurial",
                   "Mermaid",
                   "NetBeans Keymap",
-                  "Performance Testing",
+                  "Performance Diagnostics",
+                  "Problems View",
                   "Properties",
+                  "Pseudo Terminal (PTY4J)",
                   "Recent Files",
                   "Services View",
                   "Shell Script",
                   "Smali Support",
                   "Structural Search",
                   "Structure View",
+                  "Tasks and Contexts",
                   "Terminal",
                   "Test Recorder",
                   "Test Runner",
@@ -160,11 +166,13 @@ public class StartUpTest {
                   "TextMate Bundles",
                   "TODO Comments",
                   "Toml",
+                  "Version Control",
                   "Visual Studio Keymap",
                   "WebP",
+                  "XML and HTML",
                   "YAML"));
 
-      assertThat(plugins).asList().containsExactlyElementsIn(expectedPlugins);
+      assertThat(plugins).containsExactlyElementsIn(expectedPlugins);
 
       install.verify();
     }
