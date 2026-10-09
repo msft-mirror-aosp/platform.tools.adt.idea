@@ -18,6 +18,9 @@ package com.android.tools.idea.gemini
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
 import java.nio.file.Path
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** Defines a Blob containing data and a mimeType string (e.g., image/png). */
 data class LlmBlob(val data: ByteArray, val mimeType: String) {
@@ -87,8 +90,14 @@ enum class LlmModelSlot {
 
 /** A gateway to the V2 chat and conversation API, wrapping `ChatInteractionService`. */
 interface GeminiPluginApiV2 {
-  /** Returns whether Gemini V2 APIs are available (if any model provider is ready and has available models.). */
-  fun isAvailable(): Boolean = false
+  /** Returns whether Gemini V2 APIs are available right now. Defaults to the current value of [availability]. */
+  fun isAvailable(): Boolean = availability.value
+
+  /**
+   * Emits whether Gemini V2 APIs are available, and its later changes, for UI that must follow sign-in and sign-out. Implementations must
+   * return the same instance on every read.
+   */
+  val availability: StateFlow<Boolean>
 
   suspend fun submitQueryInEditor(
     project: Project,
@@ -132,7 +141,7 @@ interface GeminiPluginApiV2 {
 
     private val geminiUnavailable =
       object : GeminiPluginApiV2 {
-        override fun isAvailable(): Boolean = false
+        override val availability: StateFlow<Boolean> = MutableStateFlow(false).asStateFlow()
 
         override suspend fun submitQueryInEditor(
           project: Project,

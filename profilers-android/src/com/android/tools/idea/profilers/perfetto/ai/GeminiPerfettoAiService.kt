@@ -27,6 +27,7 @@ import com.intellij.openapi.project.Project
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -39,7 +40,8 @@ class GeminiPerfettoAiService(private val project: Project, private val scope: C
     private val LOG = Logger.getInstance(GeminiPerfettoAiService::class.java)
   }
 
-  override fun isAvailable(): Boolean = !project.isDisposed && GeminiPluginApiV2.getInstance().isAvailable()
+  /** Follows Gemini availability. Reports false once the project is disposed. */
+  override val availability: StateFlow<Boolean> = availabilityWhileActive(GeminiPluginApiV2.getInstance().availability, scope)
 
   /**
    * Helper method to send a query to the AI agent in the tool window for agent V2.
