@@ -43,8 +43,8 @@ fun DeviceFiltersPanel(modifier: Modifier = Modifier, content: @Composable () ->
 
 /** Holds the state of the filters for a [DeviceTable]. Can be extended to add or adjust filters for subtypes of [DeviceProfile]. */
 @Stable
-open class DeviceFilterState<in DeviceT : DeviceProfile> : RowFilter<DeviceT> {
-  val formFactorFilter = FormFactor.initialSingleSelectionFilterState("Phone")
+open class DeviceFilterState<in DeviceT : DeviceProfile>(initialFormFactor: String = FormFactors.PHONE) : RowFilter<DeviceT> {
+  val formFactorFilter = FormFactor.initialSingleSelectionFilterState(initialFormFactor)
   open val textFilter = TextFilterState<DeviceT>()
 
   override fun apply(row: DeviceT): Boolean = formFactorFilter.apply(row) && textFilter.apply(row)
