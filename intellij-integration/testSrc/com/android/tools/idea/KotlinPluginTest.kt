@@ -51,11 +51,11 @@ class KotlinPluginTest {
     val plugin = checkNotNull(PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.kotlin")))
     // test build numbers such as AI-232.9559.62.2321.SNAPSHOT
     val buildNumber = PluginManagerCore.buildNumber
-    assertThat(PluginManagerCore.checkBuildNumberCompatibility(plugin, buildNumber)).isNull()
+    assertThat(PluginManagerCore.isCompatible(plugin, buildNumber)).isTrue()
     // test build numbers such as AI-232.9559.62
     val apiVersion = ApplicationInfoEx.getInstanceEx().apiVersionAsNumber
     assertThat(apiVersion.asStringWithoutProductCode()).matches("\\d+\\.\\d+\\.\\d+")
-    assertThat(PluginManagerCore.checkBuildNumberCompatibility(plugin, apiVersion)).isNull()
+    assertThat(PluginManagerCore.isCompatible(plugin, apiVersion)).isTrue()
   }
 
   @Test
