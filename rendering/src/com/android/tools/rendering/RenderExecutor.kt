@@ -163,8 +163,8 @@ private constructor(
           This typically happens when there is an infinite loop or unbounded recursion in one of the custom views.
         """
                 .trimIndent()
-            future.completeExceptionally(createRenderTimeoutException(message))
             accumulatedTimeoutExceptions.incrementAndGet()
+            future.completeExceptionally(createRenderTimeoutException(message))
           }
         } catch (e: RejectedExecutionException) {
           return CompletableFuture.failedFuture(e)
@@ -242,7 +242,7 @@ private constructor(
       }
     }
     future.whenComplete { _, _ ->
-      queueTimeoutFuture?.cancel(true)
+      queueTimeoutFuture?.cancel(false)
       if (priorityRunnable.clear()) {
         renderingExecutorService.remove(priorityRunnable)
       }

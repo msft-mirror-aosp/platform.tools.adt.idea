@@ -617,7 +617,12 @@ class RenderExecutorTest {
 
   @Test
   fun testCompletedActionsReleaseCallableReferencesWhileRenderThreadBlocked() {
-    val executor = RenderExecutor.create()
+    val timeoutExecutorProvider = VirtualTimeScheduler()
+    val executor =
+      RenderExecutor.createForTests(
+        executorService = SingleThreadExecutorService.create("Layoutlib Render Thread", ThreadProfileSettings.disabled),
+        scheduledExecutorService = timeoutExecutorProvider,
+      )
     val firstActionStarted = CountDownLatch(1)
     val unblockFirstAction = CountDownLatch(1)
 
@@ -664,6 +669,7 @@ class RenderExecutorTest {
 
       // 3. Timed out in queue
       val (timedOutFuture, timedOutRef) = enqueueCapturingObject(RenderingTopic.NOT_SPECIFIED, queueingTimeoutMs = 20)
+      timeoutExecutorProvider.advanceBy(20, TimeUnit.MILLISECONDS)
       try {
         timedOutFuture.get(5, TimeUnit.SECONDS)
         fail("Expected TimeoutException")
