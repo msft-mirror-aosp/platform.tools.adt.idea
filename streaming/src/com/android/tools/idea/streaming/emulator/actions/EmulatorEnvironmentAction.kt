@@ -207,8 +207,8 @@ internal sealed class EmulatorEnvironmentAction :
   class RecentCustom(val filePath: Path) : EmulatorEnvironmentAction() {
 
     init {
-      val label = getEnvironmentTypeLabel(filePath)
-      templatePresentation.setText("<html>${filePath.fileName.toString().htmlEscaped()} <font color=\"gray\">$label</font></html>", false)
+      val typeLabel = getEnvironmentTypeLabel(filePath)
+      templatePresentation.setText(composeHtmlText(filePath.fileName.toString(), typeLabel), false)
       templatePresentation.description = filePath.toString()
     }
 
@@ -242,8 +242,8 @@ internal sealed class EmulatorEnvironmentAction :
   class BuiltInImage(val environmentPath: Path, val title: String) : EmulatorEnvironmentAction() {
 
     init {
-      val label = getEnvironmentTypeLabel(environmentPath)
-      templatePresentation.setText("<html>${title.htmlEscaped()} <font color=\"gray\">$label</font></html>", false)
+      val typeLabel = getEnvironmentTypeLabel(environmentPath)
+      templatePresentation.setText(composeHtmlText(title, typeLabel), false)
       templatePresentation.description = "Select $title environment"
     }
 
@@ -347,6 +347,9 @@ internal data class RecentFile(val path: String, val timestamp: Long = 0L, val s
     }
   }
 }
+
+private fun composeHtmlText(title: String, typeLabel: String): String =
+  "<html>${title.htmlEscaped()}&ensp;<font color=\"gray\">$typeLabel</font></html>"
 
 private fun getEnvironmentMode(path: Path): String {
   return when {
