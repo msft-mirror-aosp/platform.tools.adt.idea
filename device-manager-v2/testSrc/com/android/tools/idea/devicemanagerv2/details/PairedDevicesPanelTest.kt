@@ -24,11 +24,16 @@ import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.PairedGlassesInfo
+import com.android.tools.adtui.swing.popup.FakeJBPopup.ShowStyle
+import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.devicemanagerv2.DeviceRowData
 import com.android.tools.idea.devicemanagerv2.PairingStatus
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.EDT
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.TestActionEvent
+import com.intellij.ui.popup.PopupFactoryImpl.ActionItem
 import icons.StudioIcons
 import java.awt.Component
 import kotlinx.coroutines.CoroutineScope
@@ -49,12 +54,16 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PairedDevicesPanelTest {
+  @get:Rule(order = 0) val applicationRule = ApplicationRule()
+  @get:Rule(order = 1) val popupRule = JBPopupRule()
+
   @Test
   fun removeButtonEnabledStatus() = runTestWithFixture {
     val handle2 = createHandle("2")
@@ -166,6 +175,24 @@ class PairedDevicesPanelTest {
   }
 
   @Test
+  fun testSingleDelegateAddButtonInvokesDirectly() = runTest {
+    withContext(Dispatchers.EDT) {
+      val delegate = TestPairingDelegate()
+      val testScope = createChildScope()
+      val handle = FakeDeviceHandle(testScope, "phone1", deviceType = DeviceType.HANDHELD)
+      val panel = PairedDevicesPanel.create(listOf(delegate), testScope, Dispatchers.EDT, handle, emptyFlow())
+      assertThat(panel.addButton.isEnabled).isTrue()
+
+      panel.addButton.doClick()
+      yield()
+
+      assertThat(delegate.wizardShown).isTrue()
+      assertThat(popupRule.fakePopupFactory.popupCount).isEqualTo(0)
+      testScope.cancel()
+    }
+  }
+
+  @Test
   fun testMultiDelegateAddButtonPopup() = runTest {
     withContext(Dispatchers.EDT) {
       val delegate1 = TestPairingDelegate()
@@ -174,6 +201,21 @@ class PairedDevicesPanelTest {
       val handle = FakeDeviceHandle(testScope, "phone1", deviceType = DeviceType.HANDHELD)
       val panel = PairedDevicesPanel.create(listOf(delegate1, delegate2), testScope, Dispatchers.EDT, handle, emptyFlow())
       assertThat(panel.addButton.isEnabled).isTrue()
+
+      panel.addButton.doClick()
+      val popup = popupRule.fakePopupFactory.getNextListPopup<ActionItem>()
+      assertThat(popup.showStyle).isEqualTo(ShowStyle.SHOW_UNDERNEATH_OF)
+      assertThat(popup.showArgs).containsExactly(panel.addButton)
+      assertThat(popup.items.map { it.text }).containsExactly("Test Pair Device", "Pair AI Glasses...").inOrder()
+
+      popup.actions[0].actionPerformed(TestActionEvent.createTestEvent(popup.actions[0]))
+      yield()
+      assertThat(delegate1.wizardShown).isTrue()
+      assertThat(delegate2.wizardShown).isFalse()
+
+      popup.actions[1].actionPerformed(TestActionEvent.createTestEvent(popup.actions[1]))
+      yield()
+      assertThat(delegate2.wizardShown).isTrue()
       testScope.cancel()
     }
   }
@@ -400,6 +442,7 @@ class PairedDevicesPanelTest {
 
   open class TestPairingDelegate(val pairedDevicesFlow: Flow<Map<String, List<PairingStatus>>> = emptyFlow()) : PairingDelegate {
     override val addMenuItemTitle: String = "Test Pair Device"
+    var wizardShown = false
 
     override fun getPairingId(handle: DeviceHandle): String? = handle.state.properties.wearPairingId
 
@@ -409,7 +452,9 @@ class PairedDevicesPanelTest {
 
     override fun isPairDeviceWizardSupported(handle: DeviceHandle): Boolean = true
 
-    override suspend fun showPairDeviceWizard(parent: Component, handle: DeviceHandle) {}
+    override suspend fun showPairDeviceWizard(parent: Component, handle: DeviceHandle) {
+      wizardShown = true
+    }
 
     override fun getRemovePresentation(handle: DeviceHandle, pairedDevice: DeviceHandle): RemovePresentation =
       RemovePresentation(isEnabled = true, confirmationTitle = "Title", confirmationMessage = "Message")

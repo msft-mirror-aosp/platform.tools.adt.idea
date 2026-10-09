@@ -23,9 +23,12 @@ import com.android.tools.adtui.stdui.CommonButton
 import com.android.tools.idea.devicemanagerv2.PairingStatus
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.ui.JBMenuItem
-import com.intellij.openapi.ui.JBPopupMenu
+import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.MessageDialogBuilder
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBScrollPane
 import java.awt.BorderLayout
 import javax.swing.Box
@@ -73,15 +76,19 @@ private constructor(
           0 -> {}
           1 -> scope.launch(uiContext) { supportedDelegates.single().showPairDeviceWizard(this@PairedDevicesPanel, handle) }
           else -> {
-            val popup = JBPopupMenu()
-            for (delegate in supportedDelegates) {
-              val menuItem =
-                JBMenuItem(delegate.addMenuItemTitle).apply {
-                  addActionListener { scope.launch(uiContext) { delegate.showPairDeviceWizard(this@PairedDevicesPanel, handle) } }
+            val actions =
+              DefaultActionGroup(
+                supportedDelegates.map { delegate ->
+                  object : DumbAwareAction(delegate.addMenuItemTitle) {
+                    override fun actionPerformed(e: AnActionEvent) {
+                      scope.launch(uiContext) { delegate.showPairDeviceWizard(this@PairedDevicesPanel, handle) }
+                    }
+                  }
                 }
-              popup.add(menuItem)
-            }
-            popup.show(button, 0, button.height)
+              )
+            JBPopupFactory.getInstance()
+              .createActionGroupPopup(null, actions, DataManager.getInstance().getDataContext(button), false, null, 10)
+              .showUnderneathOf(button)
           }
         }
       }
