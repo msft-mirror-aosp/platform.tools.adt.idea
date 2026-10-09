@@ -14,10 +14,13 @@
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.groovy.scripting" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.java.aetherDependencyResolver.plugin" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.problemsView" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.structuralSearch" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.structureView" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.platform.testRunner" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.todo" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.platform.vcs" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.xml" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.jna" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.compose" level="project" />
   </component>
