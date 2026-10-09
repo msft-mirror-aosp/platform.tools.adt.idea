@@ -283,10 +283,15 @@
       <action id="android.streaming.hardware.input" class="com.android.tools.idea.streaming.actions.StreamingHardwareInputAction"
               icon="StudioIcons.Emulator.Toolbar.HARDWARE_INPUT"
               text="Hardware Input" description="Enable transparent forwarding of keyboard and mouse events to the device"/>
-      <action id="android.emulator.extended.controls" class="com.android.tools.idea.streaming.emulator.actions.EmulatorShowExtendedControlsAction"
-              icon="AllIcons.Actions.More" text="Extended Controls" description="Show emulator extended controls"/>
       <action id="android.streaming.ui.settings" class="com.android.tools.idea.streaming.uisettings.actions.StreamingUiSettingsAction"
               icon="StudioIcons.Emulator.Toolbar.DEVICE_SETTINGS" text="Device UI Shortcuts" description="Shortcuts to common Android settings"/>
+      <action id="android.emulator.show.extended.controls" class="com.android.tools.idea.streaming.emulator.actions.EmulatorShowExtendedControlsAction"
+              icon="AllIcons.Actions.More" text="Extended Controls" description="Show emulator extended controls"/>
+      <group id="android.emulator.extended.controls" class="com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup"
+             icon="AllIcons.Actions.More" text="Extended Controls" description="Extended emulator controls" popup="true">
+        <action id="android.emulator.cellular" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.CELLULAR" text="Cellular" description="Open cellular settings"/>
+      </group>
     </group>
 
     <group id="android.streaming.zoom">
@@ -387,6 +392,7 @@
       <reference ref="android.streaming.backup"/>
       <separator/>
       <reference ref="android.emulator.snapshots"/>
+      <reference ref="android.emulator.show.extended.controls"/>
       <reference ref="android.emulator.extended.controls"/>
     </group>
 

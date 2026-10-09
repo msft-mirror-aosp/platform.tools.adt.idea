@@ -722,6 +722,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Cellular",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Change Gradle JDK Location",
       "path": "ActionManager"
     },
@@ -951,6 +955,10 @@
     },
     {
       "hit": "Extended Controls",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Extended emulator controls",
       "path": "ActionManager"
     },
     {
@@ -1287,6 +1295,10 @@
     },
     {
       "hit": "Open Wear Health Services panel",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open cellular settings",
       "path": "ActionManager"
     },
     {

@@ -17,6 +17,8 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
+import com.android.emulation.control.incubating.CellInfo
+import com.android.emulation.control.incubating.ModemGrpc
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
@@ -186,6 +188,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile
   var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
   @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
+  @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -483,6 +486,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       .addService(ServerInterceptors.intercept(EmulatorControllerService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(EmulatorSnapshotService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(UiControllerService(executor), LoggingInterceptor()))
+      .addService(ServerInterceptors.intercept(ModemService(executor), LoggingInterceptor()))
       .build()
       .start()
   }
@@ -1063,6 +1067,22 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     override fun setUiTheme(themingStyle: ThemingStyle, responseObserver: StreamObserver<Empty>) {
       executor.execute { sendEmptyResponse(responseObserver) }
+    }
+  }
+
+  private inner class ModemService(private val executor: ExecutorService) : ModemGrpc.ModemImplBase() {
+
+    override fun setCellInfo(request: CellInfo, responseObserver: StreamObserver<CellInfo>) {
+      executor.execute {
+        cellInfo = request
+        sendResponse(responseObserver, request)
+      }
+    }
+
+    override fun getCellInfo(request: Empty, responseObserver: StreamObserver<CellInfo>) {
+      executor.execute {
+        sendResponse(responseObserver, cellInfo)
+      }
     }
   }
 

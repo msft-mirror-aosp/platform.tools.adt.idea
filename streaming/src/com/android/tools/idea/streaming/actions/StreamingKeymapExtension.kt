@@ -16,6 +16,11 @@
 package com.android.tools.idea.streaming.actions
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction
+import com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup
+import com.android.tools.idea.streaming.emulator.actions.EmulatorShowExtendedControlsAction
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionStubBase
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.keymap.KeymapExtension
 import com.intellij.openapi.keymap.KeymapGroup
@@ -29,18 +34,36 @@ private const val KEYMAP_SECTION_NAME = "Running Devices"
 /** The action group defining the contents of the Settings > Keymap > Running Devices section. */
 private const val ACTION_GROUP = "Streaming"
 
+private const val SHOW_EXTENDED_CONTROLS_ACTION_ID = "android.emulator.show.extended.controls"
+private const val EXTENDED_CONTROLS_GROUP_ID = "android.emulator.extended.controls"
+private const val CELLULAR_ACTION_ID = "android.emulator.cellular"
+
 /** Adds the Settings -> Keymap > Running Devices section. */
 class StreamingKeymapExtension : KeymapExtension {
 
   override fun createGroup(filtered: Condition<in AnAction>, project: Project?): KeymapGroup? {
     val keymapGroup = KeymapGroupFactory.getInstance().createGroup(KEYMAP_SECTION_NAME)
 
+    val actionManager = ActionManager.getInstance()
     for (action in ActionsTreeUtil.getActions(ACTION_GROUP)) {
       if (
         (action is StreamingXrInputModeAction.InteractionHand ||
           action is StreamingXrInputModeAction.InteractionEye ||
           action is StreamingXrInputModePopupGroup) && !StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.get()
       ) {
+        continue
+      }
+      val id = (action as? ActionStubBase)?.id ?: actionManager.getId(action)
+      val extendedControlsInStudio = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
+      if (
+        (action is EmulatorExtendedControlsActionGroup ||
+          action is EmulatorCellularAction ||
+          id == EXTENDED_CONTROLS_GROUP_ID ||
+          id == CELLULAR_ACTION_ID) && !extendedControlsInStudio
+      ) {
+        continue
+      }
+      if ((action is EmulatorShowExtendedControlsAction || id == SHOW_EXTENDED_CONTROLS_ACTION_ID) && extendedControlsInStudio) {
         continue
       }
       ActionsTreeUtil.addAction(keymapGroup, action, filtered)

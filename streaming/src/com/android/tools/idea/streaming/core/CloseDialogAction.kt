@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.core
 
+import com.intellij.CommonBundle
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import java.awt.Component
@@ -27,8 +28,8 @@ import javax.swing.AbstractAction
  */
 internal class CloseDialogAction(
   private val dialogPanel: DialogPanel,
-  name: String,
-  private val exitCode: Int,
+  name: String = CommonBundle.getCloseButtonText(),
+  private val exitCode: Int = DialogWrapper.CLOSE_EXIT_CODE,
   isDefault: Boolean = false,
 ) : AbstractAction(name) {
 
