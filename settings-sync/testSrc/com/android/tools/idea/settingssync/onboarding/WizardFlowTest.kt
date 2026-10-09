@@ -127,7 +127,7 @@ class WizardFlowTest {
         }
       }
     val pluginManager = PluginManager.getInstance()
-    val androidPluginId = checkNotNull(PluginId.findId("org.jetbrains.android"))
+    val androidPluginId = PluginId.getId("org.jetbrains.android")
     val androidPluginDescriptor = checkNotNull(pluginManager.findEnabledPlugin(androidPluginId))
     communicatorProviderBean.pluginDescriptor = androidPluginDescriptor
 

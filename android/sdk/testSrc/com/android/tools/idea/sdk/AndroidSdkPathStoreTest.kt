@@ -89,7 +89,7 @@ internal class AndroidSdkPathStoreTest : LightPlatformTestCase() {
     }
 
     try {
-      runBlocking { initComponent(androidSdkPathStore, null, PluginId.findId("org.jetbrains.android")!!) }
+      runBlocking { initComponent(androidSdkPathStore, null, PluginId.getId("org.jetbrains.android")) }
 
       if (initialAndroidSdkPathState != null) {
         // Save initial state and re-init component to trigger loadState method
@@ -99,7 +99,7 @@ internal class AndroidSdkPathStoreTest : LightPlatformTestCase() {
         } finally {
           unloadComponent(androidSdkPathStore)
         }
-        runBlocking { initComponent(androidSdkPathStore, null, PluginId.findId("org.jetbrains.android")!!) }
+        runBlocking { initComponent(androidSdkPathStore, null, PluginId.getId("org.jetbrains.android")) }
       }
 
       action(androidSdkPathStore)

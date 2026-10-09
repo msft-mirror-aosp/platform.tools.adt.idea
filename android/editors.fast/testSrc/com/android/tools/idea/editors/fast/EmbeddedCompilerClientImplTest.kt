@@ -56,6 +56,7 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtImplementationDetail
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -513,6 +514,7 @@ internal class EmbeddedCompilerClientImplTest {
   }
 
   @Test
+  @OptIn(KtImplementationDetail::class) // Subclasses KtFile.
   fun `compilation request succeeds when psiFile module returns null but findModuleForFile resolves module`() = runBlocking {
     val file =
       projectRule.fixture.addFileToProject(

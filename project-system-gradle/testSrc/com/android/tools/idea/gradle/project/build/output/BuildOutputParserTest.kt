@@ -111,7 +111,6 @@ abstract class BuildOutputParserTest {
       }
 
     val parser = BuildOutputInstantReaderImpl(taskId, parentEventId, progressListener, parsers)
-    parser.disableActiveReading()
     gradleOutput.lineSequence().forEach { parser.appendLine(it) }
 
     parser.closeAndGetFuture().join()

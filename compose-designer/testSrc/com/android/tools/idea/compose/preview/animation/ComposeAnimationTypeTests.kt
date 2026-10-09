@@ -156,7 +156,7 @@ class ComposeAnimationTypeTests(private val animationType: ComposeAnimationType)
         override val states = setOf("one", "two")
       }
 
-    var ui: FakeUi
+    lateinit var ui: FakeUi
     runBlocking {
       surface.sceneManagers.forEach { it.requestRenderAndWait() }
       animationPreview.addAnimation(animation).join()

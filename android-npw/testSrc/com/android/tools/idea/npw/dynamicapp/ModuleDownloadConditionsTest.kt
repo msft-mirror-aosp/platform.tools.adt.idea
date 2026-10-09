@@ -26,7 +26,6 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.HyperlinkLabel
-import java.io.File
 import java.nio.file.Path
 import org.junit.Rule
 import org.junit.Test
@@ -59,8 +58,6 @@ class ModuleDownloadConditionsTest {
     override fun open(url: String) {
       lastUrl = url
     }
-
-    override fun browse(file: File) {}
 
     override fun browse(file: Path) {}
 

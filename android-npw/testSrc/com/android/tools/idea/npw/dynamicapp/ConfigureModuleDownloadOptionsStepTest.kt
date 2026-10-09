@@ -29,7 +29,6 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.ContextHelpLabel
-import java.io.File
 import java.nio.file.Path
 import javax.swing.JEditorPane
 import javax.swing.event.HyperlinkEvent
@@ -76,8 +75,6 @@ class ConfigureModuleDownloadOptionsStepTest {
       lastUrl = url
     }
 
-    override fun browse(file: File) {}
-
     override fun browse(file: Path) {}
 
     override fun browse(url: String, browser: WebBrowser?, project: Project?) {
@@ -108,7 +105,7 @@ class ConfigureModuleDownloadOptionsStepTest {
         HelpTooltip.getTooltipFor(it)?.link != null
       } ?: error("Fusing help label not found")
     val tooltip = HelpTooltip.getTooltipFor(helpLabel)!!
-    val link = tooltip.getLink()!!
+    val link = tooltip.link!!
     link.doClick()
 
     val expectedUrl = "https://developer.android.com/r/studio-ui/dynamic-delivery/fusing"
