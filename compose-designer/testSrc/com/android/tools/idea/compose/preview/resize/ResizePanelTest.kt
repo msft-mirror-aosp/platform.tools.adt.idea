@@ -32,8 +32,10 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
+import com.android.tools.preview.MAX_DIMENSION_DP
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
+import com.intellij.ide.ui.laf.darcula.ui.DarculaTextFieldUI
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DataSink
@@ -151,6 +153,36 @@ class ResizePanelTest {
 
     assertNotEquals(oldWidth, configuration.device?.getScreenSize(configuration.deviceState!!.orientation)?.width)
     assertNotEquals(oldHeight, configuration.device?.getScreenSize(configuration.deviceState!!.orientation)?.height)
+  }
+
+  @Test
+  fun `text fields show the maximum value completely`() = runInEdtAndGet {
+    setupAndShowPanel()
+    changeWidthTextField(MAX_DIMENSION_DP)
+    changeHeightTextField(MAX_DIMENSION_DP)
+
+    for (field in listOf(widthTextField, heightTextField)) {
+      assertEquals(MAX_DIMENSION_DP.toString(), field.text)
+      // The UI of the IDE keeps text margins inside the border, unlike the Metal UI of headless tests.
+      field.setUI(DarculaTextFieldUI())
+      // The width must not depend on the text, or the toolbar would jump while resizing.
+      val widths =
+        listOf("1", "123456789", MAX_DIMENSION_DP.toString()).map { text ->
+          field.text = text
+          field.preferredSize.width
+        }
+      assertEquals("Preferred width depends on the text: $widths", 1, widths.distinct().size)
+      field.size = field.preferredSize
+      // Text positions inside the area the text field UI paints text in, i.e. without the border insets and the text margins.
+      val textStart = field.modelToView2D(0).x
+      val textEnd = field.modelToView2D(field.document.length).x
+      val insets = field.insets
+      val margin = field.margin
+      val layout = "text $textStart..$textEnd, width ${field.width}, insets $insets, margin $margin"
+      assertTrue("Start of '${field.text}' is cut off: $layout", textStart >= insets.left + margin.left)
+      // One more pixel for the caret after the last digit.
+      assertTrue("End of '${field.text}' is cut off: $layout", textEnd + 1 <= field.width - insets.right - margin.right)
+    }
   }
 
   private fun findAndPerformDeviceMenuAction(predicate: (AnAction) -> Boolean) {

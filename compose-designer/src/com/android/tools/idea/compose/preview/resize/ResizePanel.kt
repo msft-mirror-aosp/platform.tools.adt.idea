@@ -69,6 +69,7 @@ import com.intellij.ui.scale.JBUIScale.scale
 import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.UIUtil.invokeLaterIfNeeded
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.event.ActionListener
 import java.awt.event.FocusAdapter
@@ -462,7 +463,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     }
 
     private fun createDimensionTextField(valueName: String): IntegerField {
-      return IntegerField(valueName, MIN_DIMENSION_DP, MAX_DIMENSION_DP).apply {
+      return DimensionTextField(valueName).apply {
         columns = 4
         (document as? AbstractDocument)?.documentFilter =
           object : DocumentFilter() {
@@ -579,5 +580,21 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     override fun actionPerformed(e: AnActionEvent) {
       // This action is just for showing the component, it doesn't have a direct action
     }
+  }
+}
+
+/** An [IntegerField] that is wide enough to show [MAX_DIMENSION_DP] completely. */
+private class DimensionTextField(valueName: String) : IntegerField(valueName, MIN_DIMENSION_DP, MAX_DIMENSION_DP) {
+  override fun getPreferredSize(): Dimension {
+    val size = super.getPreferredSize()
+    // JTextField sizes `columns` by the width of 'm' plus the border insets only, but the IntelliJ text field UI also keeps text margins
+    // inside the border, which cut off digits. The UI includes these margins in its own preferred size (independent of the text when
+    // `columns` is set), so use the larger of both, and widen it if the digits of the largest value and the caret need more room than the
+    // columns, e.g. with a monospaced font.
+    val uiWidth = ui?.getPreferredSize(this)?.width ?: size.width
+    val fontMetrics = getFontMetrics(font)
+    val maxValueWidth = MAX_DIMENSION_DP.toString().length * ('0'..'9').maxOf { fontMetrics.charWidth(it) } + 1
+    size.width = maxOf(size.width, uiWidth) + maxOf(0, maxValueWidth - columns * fontMetrics.charWidth('m'))
+    return size
   }
 }
