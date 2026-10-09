@@ -27,6 +27,7 @@ import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.google.idea.blaze.qsync.query.Query
 import com.google.idea.blaze.qsync.query.QueryData
+import com.google.idea.blaze.qsync.query.QuerySpec
 import com.google.idea.blaze.qsync.query.QuerySummary
 import com.google.idea.blaze.qsync.query.QuerySummaryImpl
 import com.google.idea.blaze.qsync.query.rulesMapForTests
@@ -74,6 +75,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
@@ -115,6 +117,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         ImmutableSet.of(),
         /* deletedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ProjectStructureData.EMPTY,
@@ -153,6 +156,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package2")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
@@ -198,6 +202,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package2")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
@@ -246,6 +251,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package2")),
         ImmutableSet.of(),
         projectStructureData,
@@ -290,6 +296,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         projectStructureData,
@@ -328,6 +335,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(),
         /* deletedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         projectStructureData,
@@ -345,6 +353,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
@@ -380,6 +389,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         projectStructureData,
@@ -407,6 +417,7 @@ class PartialProjectRefreshTest {
       PartialProjectRefresh(
         Path.of("/workspace/root"),
         baseProject,
+        QuerySpec.QueryStrategy.PLAIN,
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,

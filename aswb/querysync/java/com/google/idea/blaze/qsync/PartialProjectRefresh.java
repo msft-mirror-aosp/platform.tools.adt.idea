@@ -42,6 +42,10 @@ class PartialProjectRefresh implements RefreshOperation {
 
   private final Path workspaceRoot;
   private final PostQuerySyncData previousState;
+
+  /** The strategy to query with, which the merged summary records. */
+  private final QuerySpec.QueryStrategy queryStrategy;
+
   @VisibleForTesting final ImmutableSet<Path> modifiedPackages;
   @VisibleForTesting final ImmutableSet<Path> deletedPackages;
   private final ProjectStructureData projectStructureData;
@@ -50,12 +54,14 @@ class PartialProjectRefresh implements RefreshOperation {
   PartialProjectRefresh(
       Path workspaceRoot,
       PostQuerySyncData previousState,
+      QuerySpec.QueryStrategy queryStrategy,
       Set<Path> modifiedPackages,
       Set<Path> deletedPackages,
       ProjectStructureData projectStructureData,
       CachingFileMtimeReader mtimeReader) {
     this.workspaceRoot = workspaceRoot;
     this.previousState = previousState;
+    this.queryStrategy = queryStrategy;
     this.modifiedPackages = ImmutableSet.copyOf(modifiedPackages);
     this.deletedPackages = ImmutableSet.copyOf(deletedPackages);
     this.projectStructureData = projectStructureData;
@@ -69,7 +75,7 @@ class PartialProjectRefresh implements RefreshOperation {
     }
     // TODO should we also consider excludes here?
     return Optional.of(
-        QuerySpec.builder(this.previousState.querySummary().getQueryStrategy())
+        QuerySpec.builder(queryStrategy)
             .includePackages(modifiedPackages)
             .supportedRuleClasses(BlazeQueryParser.getAllSupportedRuleClasses())
             .build());
@@ -107,11 +113,11 @@ class PartialProjectRefresh implements RefreshOperation {
     // 2. Add all new/modified build packages from the delta query:
     mergedPackages.addAll(partialQuery.getBuildPackages());
 
-    // 3. Build the merged summary package-by-package, preserving queryStrategy:
+    // 3. Build the merged summary package-by-package, recording the query strategy:
     QuerySummaryImpl.Builder builder =
         QuerySummaryImpl.newBuilder()
             .putAllPackages(mergedPackages)
-            .setQueryStrategy(previousState.querySummary().getQueryStrategy());
+            .setQueryStrategy(queryStrategy);
 
     for (QuerySummary.BuildPackage pkg : partialQuery.getBuildPackages()) {
       Path pkgPath = pkg.getPackageLabel().getBuildPackagePath();

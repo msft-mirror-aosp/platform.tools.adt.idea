@@ -509,6 +509,65 @@ class ProjectRefresherTest {
     Truth.assertThat(update).isInstanceOf(NoopProjectRefresh::class.java)
   }
 
+  /** Starts a refresh of `package/path`, which changed since [lastQuery], with `PLAIN_WITH_SAFE_FILTERS` configured. */
+  private fun startRefreshWithSafeFiltersConfigured(lastQuery: PostQuerySyncData): RefreshOperation {
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/path") to BuildPackage(Path.of("package/path"), emptyList(), stamp = 2L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+    val refresher =
+      ProjectRefresher(
+        Path.of("/"),
+        QuerySpec.QueryStrategy.PLAIN_WITH_SAFE_FILTERS,
+        Suppliers.ofInstance(Optional.of(QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef))),
+      )
+    return refresher.startPartialRefresh(
+      RefreshParameters(
+        lastQuery = lastQuery,
+        projectDefinition = projectDef,
+        projectStructureData = projectStructureData,
+        requestedPackages = setOf(Path.of("package/path")),
+        requireFullSync = { false },
+        mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
+      ),
+      QuerySyncTestUtils.LOGGING_CONTEXT,
+    )
+  }
+
+  @Test
+  fun testStartPartialRefresh_noEarlierQueryData_usesConfiguredStrategy() {
+    // PostQuerySyncData.EMPTY records PLAIN, but it has no packages.
+    val update = startRefreshWithSafeFiltersConfigured(lastQuery = PostQuerySyncData.EMPTY)
+
+    Truth.assertThat(update.querySpec.get().queryStrategy()).isEqualTo(QuerySpec.QueryStrategy.PLAIN_WITH_SAFE_FILTERS)
+    val queryOutput = QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
+    Truth.assertThat(update.createPostQuerySyncData(queryOutput).querySummary().queryStrategy)
+      .isEqualTo(QuerySpec.QueryStrategy.PLAIN_WITH_SAFE_FILTERS)
+  }
+
+  @Test
+  fun testStartPartialRefresh_earlierQueryData_keepsItsStrategy() {
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule")).buildPackages)
+        .putPackageStamp(Label.of("//package/path:path"), 1L)
+        .setQueryStrategy(QuerySpec.QueryStrategy.FILTERING_TO_KNOWN_AND_USED_TARGETS)
+        .build()
+    val update =
+      startRefreshWithSafeFiltersConfigured(lastQuery = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build())
+
+    Truth.assertThat(update.querySpec.get().queryStrategy()).isEqualTo(QuerySpec.QueryStrategy.FILTERING_TO_KNOWN_AND_USED_TARGETS)
+    val queryOutput = QuerySummaryImpl.create(QuerySummaryTestUtil.createProtoForPackages("//package/path:rule"))
+    Truth.assertThat(update.createPostQuerySyncData(queryOutput).querySummary().queryStrategy)
+      .isEqualTo(QuerySpec.QueryStrategy.FILTERING_TO_KNOWN_AND_USED_TARGETS)
+  }
+
   @Test
   fun testFullProjectUpdate_preservesAndUpdatesPackageStamps() {
     val projectStructureData =

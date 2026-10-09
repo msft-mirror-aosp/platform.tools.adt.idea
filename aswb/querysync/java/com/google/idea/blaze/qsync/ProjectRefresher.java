@@ -73,9 +73,15 @@ public class ProjectRefresher {
     }
     // TODO(mathewi) check affected.isIncomplete() and offer (or just do?) a full sync in that case.
 
+    // Keep the strategy of the earlier query data, so that a summary is built with one strategy.
+    // With no earlier query data, use the configured strategy, as a full update does.
+    QuerySummary lastSummary = params.lastQuery.querySummary();
+    QuerySpec.QueryStrategy strategy =
+        lastSummary.getBuildPackages().isEmpty() ? queryStrategy : lastSummary.getQueryStrategy();
     return new PartialProjectRefresh(
         workspaceRoot,
         params.lastQuery,
+        strategy,
         affected.getModifiedPackages(),
         affected.getDeletedPackages(),
         params.projectStructureData,
