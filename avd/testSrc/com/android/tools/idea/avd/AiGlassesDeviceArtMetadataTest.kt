@@ -42,7 +42,7 @@ import org.w3c.dom.Element
  *     xmlns:androidemulator="urn:androidemulator:metadata:private:1.0">
  *    <dc:title>
  *     <rdf:Alt>
- *      <rdf:li xml:lang="x-default">Study 360</rdf:li>
+ *      <rdf:li xml:lang="x-default">Study</rdf:li>
  *     </rdf:Alt>
  *    </dc:title>
  *    <GPano:ProjectionType>equirectangular</GPano:ProjectionType>
@@ -60,7 +60,7 @@ import org.w3c.dom.Element
  *     xmlns:GPano="http://ns.google.com/photos/1.0/panorama/">
  *    <dc:title>
  *     <rdf:Alt>
- *      <rdf:li xml:lang="x-default">City 360</rdf:li>
+ *      <rdf:li xml:lang="x-default">City</rdf:li>
  *     </rdf:Alt>
  *    </dc:title>
  *    <GPano:ProjectionType>equirectangular</GPano:ProjectionType>
@@ -77,7 +77,7 @@ import org.w3c.dom.Element
  *     xmlns:GPano="http://ns.google.com/photos/1.0/panorama/">
  *    <dc:title>
  *     <rdf:Alt>
- *      <rdf:li xml:lang="x-default">Kitchen 360</rdf:li>
+ *      <rdf:li xml:lang="x-default">Kitchen</rdf:li>
  *     </rdf:Alt>
  *    </dc:title>
  *    <GPano:ProjectionType>equirectangular</GPano:ProjectionType>
@@ -94,7 +94,7 @@ import org.w3c.dom.Element
  *     xmlns:GPano="http://ns.google.com/photos/1.0/panorama/">
  *    <dc:title>
  *     <rdf:Alt>
- *      <rdf:li xml:lang="x-default">Forest 360</rdf:li>
+ *      <rdf:li xml:lang="x-default">Forest</rdf:li>
  *     </rdf:Alt>
  *    </dc:title>
  *    <GPano:ProjectionType>equirectangular</GPano:ProjectionType>

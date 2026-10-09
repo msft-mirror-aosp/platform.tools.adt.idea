@@ -100,7 +100,7 @@ class EnvironmentsUpdaterTest {
     val defaultEnv = list.find { it.isDefault }
     assertThat(defaultEnv).isNotNull()
     assertThat(defaultEnv!!.path.fileName.toString()).isEqualTo("study-360.jpg")
-    assertThat(defaultEnv.title).isEqualTo("Study 360")
+    assertThat(defaultEnv.title).isEqualTo("Study")
     assertThat(list.map { it.path.fileName.toString() }).doesNotContain("indoor-study-dark.jpg")
   }
 }

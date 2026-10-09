@@ -655,8 +655,8 @@ class EmulatorEnvironmentActionTest {
     val indoorAction = children.firstOrNull() as? EmulatorEnvironmentAction.BuiltInImage
     assertThat(indoorAction).isNotNull()
     assertThat(indoorAction!!.environmentPath.fileName.toString()).isEqualTo("study-360.jpg")
-    assertThat(indoorAction.templatePresentation.text).isEqualTo("<html>Study 360 <font color=\"gray\">photo</font></html>")
-    assertThat(indoorAction.templatePresentation.description).isEqualTo("Select Study 360 environment")
+    assertThat(indoorAction.templatePresentation.text).isEqualTo("<html>Study <font color=\"gray\">photo</font></html>")
+    assertThat(indoorAction.templatePresentation.description).isEqualTo("Select Study environment")
   }
 
   @Test
