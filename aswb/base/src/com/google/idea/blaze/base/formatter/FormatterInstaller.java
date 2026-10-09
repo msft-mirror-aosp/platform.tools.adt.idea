@@ -17,12 +17,10 @@ package com.google.idea.blaze.base.formatter;
 
 import com.google.common.base.Verify;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManager;
+import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.serviceContainer.ComponentManagerImpl;
-import java.util.List;
-import java.util.Optional;
 
 /** A utility class to replace the default IntelliJ {@link CodeStyleManager}. */
 public final class FormatterInstaller {
@@ -37,18 +35,14 @@ public final class FormatterInstaller {
    */
   public static void replaceFormatter(Project project, CodeStyleManagerFactory newFormatter) {
     CodeStyleManager currentManager = CodeStyleManager.getInstance(project);
-    List<? extends IdeaPluginDescriptor> loadedPlugins = PluginManager.getLoadedPlugins();
-    Optional<? extends IdeaPluginDescriptor> platformPlugin =
-        loadedPlugins.stream()
-            .filter(descriptor -> descriptor.getName().startsWith("IDEA CORE"))
-            .findAny();
+    // Look up the platform plugin by ID: as of IntelliJ 2026.3 it no longer has the "IDEA CORE"
+    // display name.
+    IdeaPluginDescriptor platformPlugin = PluginManagerCore.getPlugin(PluginManagerCore.CORE_ID);
 
-    Verify.verify(platformPlugin.isPresent());
+    Verify.verify(platformPlugin != null);
 
     ((ComponentManagerImpl) project)
         .registerServiceInstance(
-            CodeStyleManager.class,
-            newFormatter.createFormatter(currentManager),
-            platformPlugin.get());
+            CodeStyleManager.class, newFormatter.createFormatter(currentManager), platformPlugin);
   }
 }
