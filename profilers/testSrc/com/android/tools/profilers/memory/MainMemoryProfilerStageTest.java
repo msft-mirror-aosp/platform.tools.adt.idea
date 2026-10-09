@@ -1048,6 +1048,22 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   }
 
   @Test
+  public void selectingNativeAllocation_inEditorEnabled_withDeobfuscation_emptyTraceFails() throws Exception {
+    myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+
+    CaptureFiles files = selectNativeAllocationCaptureInEditor(ByteString.EMPTY);
+
+    assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isFalse();
+    assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isNull();
+    assertThat(files.captureFile().exists()).isFalse();
+    assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
+    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.NATIVE_ALLOCATIONS);
+    assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.NATIVE_ALLOCATIONS_PARSING_FAILURE);
+  }
+
+  @Test
   public void nativeAllocationInEditorWithDeobfuscationEnabledAndOnlySymbolFiles() throws Exception {
     myIdeProfilerServices.enableDeobfuscationForNativeAllocations(true);
     myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
