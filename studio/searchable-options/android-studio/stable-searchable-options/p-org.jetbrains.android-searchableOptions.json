@@ -774,6 +774,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Code",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Collect Logs and Diagnostic Data",
       "path": "ActionManager"
     },
@@ -1182,10 +1186,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Main Menu",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Main Toolbar",
       "path": "ActionManager"
     },
@@ -1283,6 +1283,10 @@
     },
     {
       "hit": "New Project\u2026",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "New\u2026",
       "path": "ActionManager"
     },
     {
