@@ -70,6 +70,8 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij.platform.debugger.impl.ui",
+        "@intellij//:intellij.platform.vcs",
+        "@intellij//:intellij.platform.vcs.core",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

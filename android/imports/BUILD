@@ -19,6 +19,8 @@ iml_module(
     ],
     # do not sort: must match IML order
     test_deps = [
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.analysis",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/.idea/libraries:mockito",

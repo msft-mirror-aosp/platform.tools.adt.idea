@@ -108,6 +108,7 @@ iml_module(
         "@intellij//:intellij.platform.externalSystem",
         "@intellij//:intellij.platform.externalSystem.impl",
         "@intellij//:kotlin.gradle.gradle-java",
+        "@intellij//:intellij.platform.buildView",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

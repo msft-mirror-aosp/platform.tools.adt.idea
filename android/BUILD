@@ -317,6 +317,7 @@ iml_module(
         "@intellij//:intellij.kotlin.jvm.debugger.eval4j",
         "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:intellij.libraries.kotlinc.analysis.api.platform.interface",
+        "@intellij//:intellij.platform.externalSystem",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [
@@ -769,6 +770,9 @@ iml_module(
         "@intellij//:intellij.platform.externalSystem.impl",
         "@intellij//:intellij.kotlin.base.util",
         "@intellij//:kotlin.fir.frontend-independent",
+        "@intellij//:intellij.xml.dom",
+        "@intellij//:intellij.xml.analysis",
+        "@intellij//:intellij.kotlin.codeInsight.api",
     ],
     test_srcs = ["agpIntegrationTestSrc"],
     test_tags = [],

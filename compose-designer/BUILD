@@ -210,6 +210,8 @@ iml_module(
         "@intellij//:intellij.kotlin.base.util",
         "@intellij//:intellij.kotlin.codeInsight.inspections",
         "@intellij//:kotlin.fir.frontend-independent",
+        "@intellij//:intellij.kotlin.codeInsight.api",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/compose-designer:intellij.android.compose-designer"],
     test_jvm_flags = ["-Dcom.google.testing.junit.runner.shouldInstallTestSecurityManager=false"],

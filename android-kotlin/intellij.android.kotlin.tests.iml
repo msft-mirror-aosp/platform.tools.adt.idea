@@ -33,5 +33,6 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.projectConfiguration" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.gradle.codeInsight.common" level="project" />
   </component>
 </module>

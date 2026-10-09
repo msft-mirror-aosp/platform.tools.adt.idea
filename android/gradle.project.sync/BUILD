@@ -42,6 +42,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "@intellij//:intellij.platform.externalSystem",
         "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.platform.buildView",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

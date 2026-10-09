@@ -73,6 +73,8 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "@intellij//:intellij.kotlin.base.util",
         "@intellij//:kotlin.fir.frontend-independent",
+        "@intellij//:intellij.platform.externalSystem.impl",
+        "@intellij//:intellij.platform.externalSystem",
     ],
     test_srcs = ["testSrc"],
     test_timeout = "long",

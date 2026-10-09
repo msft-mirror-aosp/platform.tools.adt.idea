@@ -48,6 +48,7 @@
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-com.intellij.modules.json" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.api" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />

@@ -57,5 +57,7 @@
     <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.util" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem.impl" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
   </component>
 </module>

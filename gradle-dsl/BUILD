@@ -102,6 +102,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//prebuilts/tools/common/m2:junit-4.12",
+        "@intellij//:intellij.platform.externalSystem",
     ],
     test_srcs = ["testutils"],
     test_tags = ["manual"],

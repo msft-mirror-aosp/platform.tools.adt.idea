@@ -118,6 +118,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
         "@intellij//:intellij.kotlin.codeInsight.liveTemplates",
+        "@intellij//:intellij.kotlin.gradle.tooling.impl",
         "@intellij//:intellij.platform.buildView",
     ],
     test_friends = ["//tools/adt/idea/android-templates:intellij.android.templates"],

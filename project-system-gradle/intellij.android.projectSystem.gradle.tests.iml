@@ -98,6 +98,12 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.fir.frontend-independent" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-kotlin.gradle.gradle-java" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.dom" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.xml.analysis" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.gradle.codeInsight.toml.backend" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.buildView" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.gradle.codeInsight.backend" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.base.scripting" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.references" level="project" />
   </component>
 </module>

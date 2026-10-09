@@ -121,6 +121,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "@intellij//:com.intellij.modules.json",
+        "@intellij//:intellij.kotlin.codeInsight.api",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/base/flags:studio.android.sdktools.flags.tests",

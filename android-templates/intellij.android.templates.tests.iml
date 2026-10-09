@@ -42,6 +42,7 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.jps.model" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.codeInsight.liveTemplates" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.gradle.tooling.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.buildView" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.templates" />

@@ -153,6 +153,7 @@ iml_module(
         "@intellij//:intellij.kotlin.projectConfiguration",
         "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:kotlin.fir.frontend-independent",
+        "@intellij//:intellij.kotlin.gradle.codeInsight.common",
     ],
     test_srcs = ["idea-android/tests"],
     visibility = ["//visibility:public"],

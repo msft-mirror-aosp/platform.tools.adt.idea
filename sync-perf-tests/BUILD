@@ -54,6 +54,7 @@ iml_module(
     ],
     # do not sort: must match IML order
     test_deps = [
+        "@intellij//:intellij.platform.externalSystem",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/android-common:intellij.android.common",

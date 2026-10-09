@@ -144,6 +144,7 @@
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.kotlin.jvm.debugger.eval4j" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.kotlinc.analysis.api.platform.interface" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.externalSystem" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.core" />
 </module>

@@ -45,6 +45,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/base/flags:studio.android.sdktools.flags",
         "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:intellij.kotlin.refactorings.base",
+        "@intellij//:intellij.xml.dom.impl",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",

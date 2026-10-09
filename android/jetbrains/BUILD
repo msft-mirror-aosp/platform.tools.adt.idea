@@ -63,6 +63,8 @@ iml_module(
         "@intellij//:intellij.kotlin.base.util",
         "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:kotlin.fir.frontend-independent",
+        "@intellij//:intellij.xml.analysis",
+        "@intellij//:intellij.platform.credentialStore.impl",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

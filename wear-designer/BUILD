@@ -75,6 +75,7 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags.tests",
         "@intellij//:intellij.platform.problemView.ui",
         "@intellij//:intellij.kotlin.codeInsight.inspections",
+        "@intellij//:intellij.xml.psi",
     ],
     test_friends = ["//tools/adt/idea/wear-designer:intellij.android.wear-designer"],
     test_srcs = ["testSrc"],

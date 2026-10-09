@@ -384,6 +384,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:javax-inject",
         "//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync",
         "//tools/adt/idea/.idea/libraries:truth",
+        "@intellij//:intellij.platform.externalSystem",
     ],
     test_jvm_flags = [
         "-Didea.skip.indices.initialization=true",
