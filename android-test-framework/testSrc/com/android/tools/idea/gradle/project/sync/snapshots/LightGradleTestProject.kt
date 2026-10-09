@@ -74,7 +74,7 @@ interface LightGradleTestProject : TestProjectDefinition {
           ProjectManagerEx.getInstanceEx()
             .openProject(
               Path.of(integrationTestEnvironment.getBaseTestPath(), name).parent.resolve(name),
-              options.copy(beforeInit = { it.putUserData(GradleSyncExecutor.ALWAYS_SKIP_SYNC, true) }),
+              options.copy(beforeInitTasks = options.beforeInitTasks + listOf { project: Project -> project.putUserData(GradleSyncExecutor.ALWAYS_SKIP_SYNC, true) }),
             ) ?: error("Failed to open a test project")
         return try {
           invokeAndWaitIfNeeded { setupTestProjectFromAndroidModel(project, preparedProject.root, *modelBuilders.toTypedArray()) }

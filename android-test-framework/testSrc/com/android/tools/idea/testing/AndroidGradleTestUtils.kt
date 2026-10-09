@@ -250,7 +250,7 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
-import org.jetbrains.kotlin.idea.core.script.k2.KotlinScriptWorkspaceFileIndexContributor
+import org.jetbrains.kotlin.idea.core.script.KotlinScriptWorkspaceFileIndexContributor
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtension
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtensions
 import org.jetbrains.plugins.gradle.model.ExternalProject
@@ -2553,9 +2553,9 @@ private fun <T> openPreparedProject(
                 .withProjectToClose(null)
                 .withForceOpenInNewFrame(true)
                 .copy(
-                  beforeOpen = {
+                  beforeOpenTasks = listOf { project: Project ->
                     blockingContext {
-                      afterCreate(it)
+                      afterCreate(project)
                       true
                     }
                   }
