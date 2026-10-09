@@ -175,6 +175,7 @@ kotlin_library(
     deps = [
         "//tools/adt/idea/.idea/libraries:r8",
         "@intellij//:intellij-sdk",
+        "@intellij//:kotlin.jvm-debugger.evaluation",
         "@intellij//:org.jetbrains.kotlin",
     ],
 )
