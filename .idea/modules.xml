@@ -292,6 +292,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/aswb/integration/aswb.integration.iml" filepath="$PROJECT_DIR$/../../vendor/google/aswb/integration/aswb.integration.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/soong/parser/blueprint-parser.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/soong/parser/blueprint-parser.iml" />
       <module fileurl="file://$PROJECT_DIR$/cli-server/command-handler/cli-server.command-handler.iml" filepath="$PROJECT_DIR$/cli-server/command-handler/cli-server.command-handler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cli-server/command-handler/cli-server.command-handler.tests.iml" filepath="$PROJECT_DIR$/cli-server/command-handler/cli-server.command-handler.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/cli-server/server/cli-server.server.iml" filepath="$PROJECT_DIR$/cli-server/server/cli-server.server.iml" />
       <module fileurl="file://$PROJECT_DIR$/cli-server/server/cli-server.server.tests.iml" filepath="$PROJECT_DIR$/cli-server/server/cli-server.server.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/codenavigation/codenavigation.iml" filepath="$PROJECT_DIR$/codenavigation/codenavigation.iml" />
