@@ -37,7 +37,6 @@ filegroup(
         "build_dependencies_cc_native_provider_deps.bzl",
         "build_dependencies_cc_rules_provider_deps.bzl",
         "build_dependencies_deps.bzl",
-        "build_dependencies_iml_module_java_deps.bzl",
         "build_dependencies_java_deps.bzl",
         "build_dependencies_java_native_provider_deps.bzl",
         "build_dependencies_java_proto_deps.bzl",

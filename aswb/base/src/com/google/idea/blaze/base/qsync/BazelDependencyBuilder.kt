@@ -226,16 +226,8 @@ open class BazelDependencyBuilder(
         if (useRulesJava) "build_dependencies_java_rules_provider_deps.bzl" else "build_dependencies_java_native_provider_deps.bzl",
       )
 
-      // Aspects for Java and ImlModule support
-      addFile(
-        "build_dependencies_java_deps.bzl",
-        when {
-          buildFilePresent(STUDIO_IML_MODULE_RULE) ->
-            "build_dependencies_iml_module_java_deps.bzl"
-              .also { addFile("build_dependencies_java_deps_wrapped.bzl", "build_dependencies_java_deps.bzl") }
-          else -> "build_dependencies_java_deps.bzl"
-        },
-      )
+      // Aspects for Java support
+      addFile("build_dependencies_java_deps.bzl", "build_dependencies_java_deps.bzl")
 
       // Provider aspects for C++ support
       val useRulesCc =
@@ -398,9 +390,6 @@ open class BazelDependencyBuilder(
 
     val RULES_KOTLIN_BZL1: Label = Label.of("@@rules_kotlin~//kotlin/internal:defs.bzl")
     val RULES_KOTLIN_BZL2: Label = Label.of("@@rules_kotlin+//kotlin/internal:defs.bzl")
-
-    // The following .bzl file defines the iml_module rule used by Android Studio
-    val STUDIO_IML_MODULE_RULE: Label = Label.of("//tools/base/bazel:bazel.bzl")
   }
 }
 

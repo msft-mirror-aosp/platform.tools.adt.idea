@@ -14,8 +14,6 @@
 
 """Re-exports Java symbols from @rules_java for Bazel 9 or rules_java projects."""
 
-load("@rules_java//java/common:java_common.bzl", "java_common")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 
 JAVA_INFO = JavaInfo
-JAVA_COMMON = java_common

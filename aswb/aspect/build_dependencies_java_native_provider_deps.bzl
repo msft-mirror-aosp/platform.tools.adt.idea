@@ -15,4 +15,3 @@
 """Re-exports native Java symbols for Bazel environments without rules_java."""
 
 JAVA_INFO = JavaInfo
-JAVA_COMMON = java_common
