@@ -35,6 +35,8 @@ internal fun ProtoFinding.Type.toFindingCategory(): FindingCategory {
     ProtoFinding.Type.VITALS_BAD_BEHAVIOR,
     ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR,
     ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION,
+    ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY,
+    ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB,
     ProtoFinding.Type.LARGE_SCREENS_CRASH -> FindingCategory.TECHNICAL_QUALITY
 
     ProtoFinding.Type.EDGE_TO_EDGE_COMPAT,

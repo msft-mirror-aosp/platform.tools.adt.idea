@@ -29,6 +29,8 @@ import com.google.play.androidpublisher.v3.EdgeToEdgeCompatFindingData
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.LabCrashNoTelemetryFindingData
+import com.google.play.androidpublisher.v3.LabCrashSixteenKbFindingData
 import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
 import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
 import com.google.play.androidpublisher.v3.VitalsBadBehaviorFindingData
@@ -149,6 +151,31 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
         affectedScopes = listOf(AffectedScope.Artifact("101")),
       ),
       createFinding(
+        name = "applications/$TEST_PACKAGE_NAME/findings/5",
+        type = ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB,
+        severity = FindingSeverity.BLOCKING,
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setLabCrashSixteenKb(
+              LabCrashSixteenKbFindingData.newBuilder().setErrorMessage("dlopen failed: empty/missing DT_HASH/DT_GNU_HASH in libnative.so")
+            )
+            .build(),
+        affectedScopes = listOf(AffectedScope.Artifact("101")),
+      ),
+      createFinding(
+        name = "applications/$TEST_PACKAGE_NAME/findings/6",
+        type = ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY,
+        severity = FindingSeverity.SEVERE,
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setLabCrashNoTelemetry(
+              LabCrashNoTelemetryFindingData.newBuilder()
+                .setErrorMessage("java.lang.NullPointerException: Attempt to invoke virtual method on a null object reference")
+            )
+            .build(),
+        affectedScopes = listOf(AffectedScope.Artifact("101")),
+      ),
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/7",
         type = ProtoFinding.Type.VITALS_BAD_BEHAVIOR,
         severity = FindingSeverity.SEVERE,
@@ -247,6 +274,16 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
             )
             .build(),
         affectedScopes = emptyList(),
+      ),
+      createFinding(
+        name = "applications/$OTHER_PACKAGE_NAME/findings/6",
+        type = ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB,
+        severity = FindingSeverity.SEVERE,
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setLabCrashSixteenKb(LabCrashSixteenKbFindingData.newBuilder().setErrorMessage("dlopen failed: alignment error in libfoo.so"))
+            .build(),
+        affectedScopes = listOf(AffectedScope.Artifact("201")),
       ),
       createFinding(
         name = "applications/$OTHER_PACKAGE_NAME/findings/7",

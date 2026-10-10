@@ -4,6 +4,8 @@ package google.play.androidpublisher.v3;
 
 import "drm_app_compat_finding_data.proto";
 import "edge_to_edge_compat_finding_data.proto";
+import "lab_crash_no_telemetry_finding_data.proto";
+import "lab_crash_sixteen_kb_finding_data.proto";
 import "large_screens_finding_data.proto";
 import "vitals_anomaly_finding_data.proto";
 import "vitals_bad_behavior_finding_data.proto";
@@ -44,18 +46,29 @@ message FindingData {
     // [Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR][google.play.androidpublisher.v3.Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR].
     VitalsDeviceBadBehaviorFindingData vitals_device_bad_behavior = 5;
 
+    // (-- Field number 6 is reserved for SDK_HAS_CRASH_ANNOTATION finding data.
+    // --)
+
+    // Data for Lab Crash (no telemetry) findings
+    // [Finding.Type.LAB_CRASH_NO_TELEMETRY][google.play.androidpublisher.v3.Finding.Type.LAB_CRASH_NO_TELEMETRY].
+    LabCrashNoTelemetryFindingData lab_crash_no_telemetry = 7;
+
+    // Data for 16 KB page-size Lab Crash findings
+    // [Finding.Type.LAB_CRASH_SIXTEEN_KB][google.play.androidpublisher.v3.Finding.Type.LAB_CRASH_SIXTEEN_KB].
+    LabCrashSixteenKbFindingData lab_crash_sixteen_kb = 8;
+
     // Data for Large Screens Layout findings
     // [Finding.Type.LARGE_SCREENS_LAYOUT][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_LAYOUT].
-    LargeScreensLayoutFindingData large_screens_layout = 6;
+    LargeScreensLayoutFindingData large_screens_layout = 9;
 
     // Data for Large Screens Visual findings
     // [Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED],
     // [Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS],
     // [Finding.Type.LARGE_SCREENS_CONTINUITY][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CONTINUITY].
-    LargeScreensVisualFindingData large_screens_visual = 7;
+    LargeScreensVisualFindingData large_screens_visual = 10;
 
     // Data for Large Screens Crash findings
     // [Finding.Type.LARGE_SCREENS_CRASH][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CRASH].
-    LargeScreensCrashFindingData large_screens_crash = 8;
+    LargeScreensCrashFindingData large_screens_crash = 11;
   }
 }

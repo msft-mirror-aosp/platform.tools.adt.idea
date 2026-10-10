@@ -99,7 +99,7 @@ class FindingsProjectLevelControllerTest {
       val state = controller.state.value
       assertThat(state.packageName).isEqualTo(FakeFindingsClient.TEST_PACKAGE_NAME)
       @Suppress("UNCHECKED_CAST") val findings = (state.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-      assertThat(findings).hasSize(10)
+      assertThat(findings).hasSize(12)
     }
   }
 
@@ -146,7 +146,7 @@ class FindingsProjectLevelControllerTest {
       val stateAfter = controller.state.value
       assertThat(stateAfter.packageName).isEqualTo(FakeFindingsClient.OTHER_PACKAGE_NAME)
       @Suppress("UNCHECKED_CAST") val findingsAfter = (stateAfter.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-      assertThat(findingsAfter).hasSize(3)
+      assertThat(findingsAfter).hasSize(4)
     }
   }
 
@@ -222,7 +222,7 @@ class FindingsProjectLevelControllerTest {
     assertThat(testController.state.value.packageName).isEqualTo(FakeFindingsClient.OTHER_PACKAGE_NAME)
     @Suppress("UNCHECKED_CAST")
     val findingsAfter = (testController.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-    assertThat(findingsAfter).hasSize(3)
+    assertThat(findingsAfter).hasSize(4)
     assertThat(findingsAfter.all { it.name.contains(FakeFindingsClient.OTHER_PACKAGE_NAME) }).isTrue()
   }
 
@@ -255,7 +255,7 @@ class FindingsProjectLevelControllerTest {
     testScheduler.advanceTimeBy(100)
     assertThat(testController.state.value.currentFindings).isInstanceOf(LoadingState.Ready::class.java)
     @Suppress("UNCHECKED_CAST") val findings = (testController.state.value.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-    assertThat(findings).hasSize(3)
+    assertThat(findings).hasSize(4)
   }
 
   @Test

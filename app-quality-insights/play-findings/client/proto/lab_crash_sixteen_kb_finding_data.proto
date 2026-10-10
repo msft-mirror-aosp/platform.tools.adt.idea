@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package google.play.androidpublisher.v3;
+
+option java_package = "com.google.play.androidpublisher.v3";
+option java_multiple_files = true;
+option java_outer_classname = "LabCrashSixteenKbFindingDataProto";
+
+// Data for 16 KB page-size Lab Run Crash findings (finding type
+// [Finding.Type.LAB_CRASH_SIXTEEN_KB][google.play.androidpublisher.v3.Finding.Type.LAB_CRASH_SIXTEEN_KB]).
+//
+// Represents a crash cluster (one or more occurrences of the same crash)
+// detected on a 16 KB page-size compatible device when testing a release in the
+// Google Play device lab (pre-launch report). Developers should fix the crash
+// before it affects users, and can view the full device lab report in Play
+// Console for detailed stack traces and device run information.
+message LabCrashSixteenKbFindingData {
+  // The error message of the crash cluster. This is usually the exception
+  // message based on the stack trace. Always set.
+  string error_message = 1;
+}

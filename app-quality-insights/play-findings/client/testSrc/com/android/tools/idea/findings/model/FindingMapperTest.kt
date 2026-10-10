@@ -20,6 +20,8 @@ import com.google.play.androidpublisher.v3.DrmAppCompatFindingData
 import com.google.play.androidpublisher.v3.EdgeToEdgeCompatFindingData
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
+import com.google.play.androidpublisher.v3.LabCrashNoTelemetryFindingData
+import com.google.play.androidpublisher.v3.LabCrashSixteenKbFindingData
 import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
 import com.google.play.androidpublisher.v3.LargeScreensLayoutFindingData
 import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
@@ -241,6 +243,45 @@ class FindingMapperTest {
     assertThat(crashFinding.description)
       .isEqualTo(
         "App crashed during a configuration change: java.lang.NullPointerException: Missing view. Handle configuration changes or avoid lifecycle destruction issues."
+      )
+  }
+
+  @Test
+  fun testLabCrashDisplayNameAndDescription() {
+    val noTelemetryData =
+      ProtoFindingData.newBuilder()
+        .setLabCrashNoTelemetry(LabCrashNoTelemetryFindingData.newBuilder().setErrorMessage("java.lang.NullPointerException: crash in lab"))
+        .build()
+    val noTelemetryFinding =
+      AppFinding(
+        name = "applications/com.example.app/findings/8",
+        category = ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY.toFindingCategory(),
+        severity = FindingSeverity.SEVERE,
+        displayName = getFindingDisplayName(ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY, noTelemetryData),
+        description = getFindingDescription(ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY, noTelemetryData) ?: "",
+      )
+    assertThat(noTelemetryFinding.category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(noTelemetryFinding.displayName).isEqualTo("Lab crash detected")
+    assertThat(noTelemetryFinding.description)
+      .isEqualTo("Lab tests identified a crash without telemetry: java.lang.NullPointerException: crash in lab.")
+
+    val sixteenKbData =
+      ProtoFindingData.newBuilder()
+        .setLabCrashSixteenKb(LabCrashSixteenKbFindingData.newBuilder().setErrorMessage("dlopen failed: alignment error"))
+        .build()
+    val sixteenKbFinding =
+      AppFinding(
+        name = "applications/com.example.app/findings/9",
+        category = ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB.toFindingCategory(),
+        severity = FindingSeverity.BLOCKING,
+        displayName = getFindingDisplayName(ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB, sixteenKbData),
+        description = getFindingDescription(ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB, sixteenKbData) ?: "",
+      )
+    assertThat(sixteenKbFinding.category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(sixteenKbFinding.displayName).isEqualTo("16 KB page-size compatibility crash")
+    assertThat(sixteenKbFinding.description)
+      .isEqualTo(
+        "Lab test failed on 16 KB page size device: dlopen failed: alignment error. Recompile native libraries with 16 KB alignment support."
       )
   }
 }

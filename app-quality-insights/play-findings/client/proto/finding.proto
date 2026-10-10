@@ -55,6 +55,25 @@ message Finding {
     // Associated finding data: None.
     SDK_HAS_CRASH_ANNOTATION = 6;
 
+    // Identifies that a new crash cluster was detected in the app when testing
+    // the release in the device lab, with no prior telemetry in Android vitals.
+    // Fix this issue before it affects users.
+    //
+    // Associated finding data:
+    // [LabCrashNoTelemetryFindingData][google.play.androidpublisher.v3.LabCrashNoTelemetryFindingData].
+    LAB_CRASH_NO_TELEMETRY = 7;
+
+    // Identifies that a crash cluster was detected on a 16 KB page-size
+    // compatible device when testing the release in the device lab, indicating
+    // that the release may not support 16 KB page sizes. To prevent crashes and
+    // comply with 16 KB page-size requirements, test the app for 16 KB
+    // compatibility and fix any issues.
+    // See: https://developer.android.com/guide/practices/page-sizes
+    //
+    // Associated finding data:
+    // [LabCrashSixteenKbFindingData][google.play.androidpublisher.v3.LabCrashSixteenKbFindingData].
+    LAB_CRASH_SIXTEEN_KB = 8;
+
     // Identifies UI layout issues on large screens.
     LARGE_SCREENS_LAYOUT = 9;
 

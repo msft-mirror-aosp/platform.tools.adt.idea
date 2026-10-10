@@ -31,6 +31,8 @@ import com.google.play.androidpublisher.v3.EdgeToEdgeCompatFindingData
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.LabCrashNoTelemetryFindingData
+import com.google.play.androidpublisher.v3.LabCrashSixteenKbFindingData
 import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
 import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo as ProtoLargeScreensDeviceInfo
 import com.google.play.androidpublisher.v3.LargeScreensLayoutFindingData
@@ -306,6 +308,66 @@ class StudioFindingsClientTest {
     assertThat(findings[0].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.INFO)
     assertThat(findings[0].context).isEqualTo(FindingContext.EMPTY)
+  }
+
+  @Test
+  fun testFetchFindings_LabCrash(): Unit = runBlocking {
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/lab-crash-no-telemetry")
+            .setFindingType(ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY)
+            .setFindingSeverity(ProtoFinding.Severity.SEVERE)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setLabCrashNoTelemetry(
+                  LabCrashNoTelemetryFindingData.newBuilder().setErrorMessage("java.lang.NullPointerException: crash in lab")
+                )
+            )
+            .addInAppLocations(createArtifactLocation("101"))
+        )
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/lab-crash-16kb")
+            .setFindingType(ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB)
+            .setFindingSeverity(ProtoFinding.Severity.BLOCKING)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setLabCrashSixteenKb(
+                  LabCrashSixteenKbFindingData.newBuilder().setErrorMessage("dlopen failed: alignment error in libnative.so")
+                )
+            )
+            .addInAppLocations(createArtifactLocation("102"))
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(2)
+
+    assertThat(findings[0].name).isEqualTo("applications/com.example.app/findings/lab-crash-no-telemetry")
+    assertThat(findings[0].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[0].severity).isEqualTo(FindingSeverity.SEVERE)
+    assertThat(findings[0].displayName).isEqualTo("Lab crash detected")
+    assertThat(findings[0].description)
+      .isEqualTo("Lab tests identified a crash without telemetry: java.lang.NullPointerException: crash in lab.")
+    assertThat(findings[0].context).isEqualTo(FindingContext.EMPTY)
+    assertThat(findings[0].affectedScopes).containsExactly(AffectedScope.Artifact("101"))
+
+    assertThat(findings[1].name).isEqualTo("applications/com.example.app/findings/lab-crash-16kb")
+    assertThat(findings[1].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[1].severity).isEqualTo(FindingSeverity.BLOCKING)
+    assertThat(findings[1].displayName).isEqualTo("16 KB page-size compatibility crash")
+    assertThat(findings[1].description)
+      .isEqualTo(
+        "Lab test failed on 16 KB page size device: dlopen failed: alignment error in libnative.so. Recompile native libraries with 16 KB alignment support."
+      )
+    assertThat(findings[1].context).isEqualTo(FindingContext.EMPTY)
+    assertThat(findings[1].affectedScopes).containsExactly(AffectedScope.Artifact("102"))
   }
 
   @Test

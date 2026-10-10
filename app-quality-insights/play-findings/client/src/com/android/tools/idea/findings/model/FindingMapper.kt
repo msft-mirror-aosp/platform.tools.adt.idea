@@ -53,6 +53,8 @@ internal fun getFindingDisplayName(type: ProtoFinding.Type, data: ProtoFindingDa
       if (metric != null) "Per-device vitals bad behavior: $metric" else "Per-device vitals bad behavior"
     }
     ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION -> "Some crashes or ANRs have a note from an SDK provider"
+    ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY -> "Lab crash detected"
+    ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB -> "16 KB page-size compatibility crash"
     ProtoFinding.Type.LARGE_SCREENS_LAYOUT -> {
       val issueType = data?.takeIf { it.hasLargeScreensLayout() }?.largeScreensLayout?.layoutIssueType
       when (issueType) {
@@ -129,6 +131,24 @@ internal fun getFindingDescription(type: ProtoFinding.Type, data: ProtoFindingDa
 
     ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION -> {
       "User-perceived crashes or ANRs are occurring in a production version of your app. One of your SDK providers has additional information about this issue to help you fix it."
+    }
+
+    ProtoFinding.Type.LAB_CRASH_NO_TELEMETRY -> {
+      val errorMessage = data?.takeIf { it.hasLabCrashNoTelemetry() }?.labCrashNoTelemetry?.errorMessage?.takeIf { it.isNotEmpty() }
+      if (errorMessage != null) {
+        "Lab tests identified a crash without telemetry: $errorMessage."
+      } else {
+        "Lab testing detected crashes on pre-launch test devices."
+      }
+    }
+
+    ProtoFinding.Type.LAB_CRASH_SIXTEEN_KB -> {
+      val errorMessage = data?.takeIf { it.hasLabCrashSixteenKb() }?.labCrashSixteenKb?.errorMessage?.takeIf { it.isNotEmpty() }
+      if (errorMessage != null) {
+        "Lab test failed on 16 KB page size device: $errorMessage. Recompile native libraries with 16 KB alignment support."
+      } else {
+        "Lab test failed on 16 KB page size devices. Native libraries must be aligned to 16 KB boundaries."
+      }
     }
 
     ProtoFinding.Type.LARGE_SCREENS_LAYOUT -> {
