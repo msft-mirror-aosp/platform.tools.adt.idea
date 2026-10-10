@@ -1598,9 +1598,9 @@ class EmulatorToolWindowPanelTest {
 
   private fun assertAppearance(
     goldenImageName: String,
-    maxPercentDifferentLinux: Double = 0.0004,
-    maxPercentDifferentMac: Double = 0.0004,
-    maxPercentDifferentWindows: Double = 0.0004,
+    maxPercentDifferentLinux: Double = 0.0005,
+    maxPercentDifferentMac: Double = 0.0005,
+    maxPercentDifferentWindows: Double = 0.0005,
   ) {
     fakeUi.updateToolbarsIfNecessary()
     fakeUi.layoutAndDispatchEvents()

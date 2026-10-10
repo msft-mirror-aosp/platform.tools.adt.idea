@@ -44,7 +44,6 @@ import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
-import java.awt.FlowLayout
 import java.awt.Insets
 import java.awt.LayoutManager
 import java.util.EventListener
@@ -123,7 +122,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     scrollPane = MyScrollPane()
 
     notificationLayerPane =
-      object : JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)) {
+      object : JPanel(DirectionalFlowLayout(DirectionalFlowLayout.Direction.BOTTOM_TO_TOP, gap = JBUI.scale(6), fillOrthogonal = false)) {
           override fun contains(x: Int, y: Int): Boolean {
             return components.any { it.isVisible && it.bounds.contains(x, y) }
           }
