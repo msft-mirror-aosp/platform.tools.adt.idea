@@ -22,6 +22,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.io.FileUtil
 import java.net.URL
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 import org.jetbrains.android.AndroidTestBase
@@ -174,6 +175,34 @@ class WhatsNewBundleCreatorTest {
       assertEquals("3.3.0", bundle.version.toString())
       assertEquals("Test What's New from Class Resource", bundle.name)
     }
+  }
+
+  /**
+   * Test that a cached config containing a DOCTYPE declaration (potential XXE vector) is rejected by the parser, deleted from the local
+   * cache, and that WNA falls back to the bundled class resource.
+   */
+  @Test
+  fun parseBundleRejectsDoctypeAndFallsBackToResource() {
+    val doctypeXml =
+      """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE tutorialBundle [
+        <!ENTITY % ext SYSTEM "http://127.0.0.1:65432/test">
+        %ext;
+      ]>
+      <tutorialBundle name="Invalid Cached Bundle" version="3.3.10" stepByStep="false"/>
+      """
+        .trimIndent()
+    Files.writeString(localPath, doctypeXml)
+
+    val bundleCreator = WhatsNewBundleCreator(mockUrlProvider, studioRevision, WhatsNewConnectionOpener(), false)
+    val bundle = bundleCreator.getBundle(ProjectManager.getInstance().defaultProject)
+
+    assertNotNull(bundle)
+    assertEquals("3.3.0", bundle!!.version.toString())
+    assertEquals("Test What's New from Class Resource", bundle.name)
+    // The poisoned cache file must have been deleted by the retry handler so it cannot be re-parsed on next launch
+    assertFalse(Files.exists(localPath))
   }
 
   /**

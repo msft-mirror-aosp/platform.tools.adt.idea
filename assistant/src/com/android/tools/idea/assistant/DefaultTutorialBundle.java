@@ -39,18 +39,23 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.border.Border;
+import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.bind.ValidationEvent;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElements;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlValue;
-import javax.xml.transform.stream.StreamSource;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.sax.SAXSource;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.groovy.GroovyFileType;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
 
 /**
  * JAXB enabled POJO representing "assistant" content organized into features and tutorials.
@@ -130,12 +135,35 @@ public class DefaultTutorialBundle implements TutorialBundleData {
     Unmarshaller unmarshaller = JAXBContext.newInstance(clazz).createUnmarshaller();
     unmarshaller.setEventHandler(event -> {
       getLog().info("Found unhandled xml", event.getLinkedException());
-      return true;
+      // Tolerate schema mismatches (unknown elements/attributes) but never continue past fatal parse errors.
+      return event.getSeverity() != ValidationEvent.FATAL_ERROR;
     });
 
-    T bundleData = unmarshaller.unmarshal(new StreamSource(stream), clazz).getValue();
+    T bundleData = unmarshaller.unmarshal(new SAXSource(createSecureXmlReader(), new InputSource(stream)), clazz).getValue();
     bundleData.setBundleCreatorId(bundleCreatorId);
     return bundleData;
+  }
+
+  /**
+   * Creates an {@link XMLReader} hardened against XXE. Bundle XML may originate from the network
+   * (e.g. What's New Assistant) or a local cache, so DOCTYPE declarations, external entities and
+   * XInclude are all disabled. Legitimate assistant bundles never require any of these.
+   */
+  @NotNull
+  private static XMLReader createSecureXmlReader() throws JAXBException {
+    try {
+      SAXParserFactory spf = SAXParserFactory.newInstance();
+      spf.setNamespaceAware(true);
+      spf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+      spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+      spf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+      spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+      spf.setXIncludeAware(false);
+      return spf.newSAXParser().getXMLReader();
+    }
+    catch (Exception e) {
+      throw new JAXBException("Unable to create secure XML parser", e);
+    }
   }
 
   private static Logger getLog() {
