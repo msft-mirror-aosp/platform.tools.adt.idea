@@ -31,6 +31,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.util.preferredWidth
 import java.awt.Dimension
+import java.awt.Point
 import javax.swing.BorderFactory
 import javax.swing.JLabel
 import javax.swing.SortOrder
@@ -590,5 +591,30 @@ class CategoryTableTest {
 
     assertThat(rowPixel6.indent).isEqualTo(24)
     assertThat(rowGlassesA.indent).isEqualTo(24)
+  }
+
+  @Test
+  fun headerAccessibility() {
+    val table = CategoryTable(CategoryTableDemo.columns)
+    val scrollPane = createScrollPane(table)
+    val fakeUi = FakeUi(scrollPane, parentDisposable = disposableRule.disposable)
+    fakeUi.layout()
+
+    val accessibleHeader = table.header.accessibleContext
+    assertThat(accessibleHeader.accessibleChildrenCount).isEqualTo(5)
+    assertThat(accessibleHeader.getAccessibleChild(-1)).isNull()
+    assertThat(accessibleHeader.getAccessibleChild(5)).isNull()
+
+    val childNames =
+      (0 until accessibleHeader.accessibleChildrenCount).map { i ->
+        val childContext = accessibleHeader.getAccessibleChild(i).accessibleContext
+        assertThat(childContext.accessibleStateSet).isNotNull()
+        assertThat(childContext.accessibleComponent.bounds.width).isGreaterThan(0)
+        childContext.accessibleName
+      }
+    assertThat(childNames).containsExactly("Name", "Api", "Status", "Type", "Actions").inOrder()
+
+    val childAtPoint = accessibleHeader.accessibleComponent.getAccessibleAt(Point(10, 5))
+    assertThat(childAtPoint?.accessibleContext?.accessibleName).isEqualTo("Name")
   }
 }
