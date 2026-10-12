@@ -22,10 +22,19 @@ internal fun findComposeViewAdapter(viewObj: Any): Any? {
     return viewObj
   }
 
-  val childrenCount = viewObj.javaClass.getMethod("getChildCount").invoke(viewObj) as Int
+  val getChildCount =
+    try {
+      viewObj.javaClass.getMethod("getChildCount")
+    } catch (_: NoSuchMethodException) {
+      return null
+    }
+  val childrenCount = getChildCount.invoke(viewObj) as Int
+  val getChildAt = viewObj.javaClass.getMethod("getChildAt", Int::class.javaPrimitiveType)
   for (i in 0 until childrenCount) {
-    val child = viewObj.javaClass.getMethod("getChildAt", Int::class.javaPrimitiveType).invoke(viewObj, i)
-    return findComposeViewAdapter(child)
+    val child = getChildAt.invoke(viewObj, i) ?: continue
+    findComposeViewAdapter(child)?.let {
+      return it
+    }
   }
   return null
 }
