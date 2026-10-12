@@ -85,6 +85,10 @@ class ConfigurationResizeListener(
   }
 
   private suspend fun requestRender(newDeviceSize: Dimension) {
+    // If the preview has never been rendered there is nothing showing the old size, and its first render will already use the new
+    // configuration, so don't trigger a render from here.
+    if (sceneManager.viewObject == null && sceneManager.renderResult == null) return
+
     sceneManager.sceneRenderConfiguration.needsInflation?.set(true)
     sceneManager.requestRenderWithNewSize(newDeviceSize.width, newDeviceSize.height)
 

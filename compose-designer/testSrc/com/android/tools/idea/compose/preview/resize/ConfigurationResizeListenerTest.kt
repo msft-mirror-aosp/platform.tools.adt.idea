@@ -37,6 +37,7 @@ import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneRenderConfiguration
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.rendering.RenderResult
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
@@ -44,6 +45,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -92,7 +94,7 @@ class ConfigurationResizeListenerTest {
     Disposer.dispose(sceneManager)
   }
 
-  private fun createSceneManager(showDecorations: Boolean, isCanvasResizing: Boolean = true): LayoutlibSceneManager {
+  private fun createSceneManager(showDecorations: Boolean = true, isCanvasResizing: Boolean = true): LayoutlibSceneManager {
     this.showDecoration = showDecorations
     needsInflation.set(false)
     return mock<LayoutlibSceneManager>().also {
@@ -102,6 +104,7 @@ class ConfigurationResizeListenerTest {
       whenever(surface.zoomController).thenReturn(zoomController)
       whenever(surface.isCanvasResizing).thenReturn(isCanvasResizing)
       whenever(it.designSurface).thenReturn(surface)
+      whenever(it.renderResult).thenReturn(mock<RenderResult>())
     }
   }
 
@@ -172,6 +175,46 @@ class ConfigurationResizeListenerTest {
 
     assertTrue(needsInflation.get())
     verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
+    Disposer.dispose(sceneManager)
+  }
+
+  @Test
+  fun `listener still renders when viewObject is null after a previous render`() = runTest {
+    val sceneManager = createSceneManager(false)
+    val configuration = createConfiguration(500, 600)
+
+    whenever(sceneManager.viewObject).thenReturn(null) // e.g. the last render failed
+    whenever(sceneManager.renderResult).thenReturn(mock<RenderResult>())
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+    configuration.updateScreenSize(700, 800)
+
+    advanceUntilIdle()
+
+    assertTrue(needsInflation.get())
+    verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
+    Disposer.dispose(sceneManager)
+  }
+
+  @Test
+  fun `listener does not render when the preview has never been rendered`() = runTest {
+    val sceneManager = createSceneManager(false)
+    val configuration = createConfiguration(500, 600)
+
+    whenever(sceneManager.viewObject).thenReturn(null)
+    whenever(sceneManager.renderResult).thenReturn(null)
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+    configuration.updateScreenSize(700, 800)
+
+    advanceUntilIdle()
+
+    assertFalse(needsInflation.get())
+    verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
     Disposer.dispose(sceneManager)
   }
 
