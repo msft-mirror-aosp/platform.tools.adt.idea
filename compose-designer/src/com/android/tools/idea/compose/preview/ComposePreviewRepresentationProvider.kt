@@ -26,7 +26,6 @@ import com.android.tools.idea.compose.preview.actions.ComposeNotificationGroup
 import com.android.tools.idea.compose.preview.actions.ShowDebugBoundaries
 import com.android.tools.idea.compose.preview.actions.StopUiCheckPreviewAction
 import com.android.tools.idea.compose.preview.actions.UiCheckDropDownAction
-import com.android.tools.idea.compose.preview.actions.visibleOnlyInUiCheck
 import com.android.tools.idea.editors.sourcecode.isKotlinFileType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.PreviewViewSingleWordFilter
@@ -39,6 +38,7 @@ import com.android.tools.idea.preview.actions.StopInteractivePreviewAction
 import com.android.tools.idea.preview.actions.isPreviewRefreshing
 import com.android.tools.idea.preview.actions.visibleOnlyInDefaultPreview
 import com.android.tools.idea.preview.actions.visibleOnlyInStaticPreview
+import com.android.tools.idea.preview.actions.visibleOnlyInUiCheck
 import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
 import com.android.tools.idea.preview.modes.FOCUS_MODE_LAYOUT_OPTION
 import com.android.tools.idea.preview.representation.CommonRepresentationEditorFileType
