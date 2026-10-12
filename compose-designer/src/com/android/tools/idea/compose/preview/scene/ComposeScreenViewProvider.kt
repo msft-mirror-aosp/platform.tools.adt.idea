@@ -68,7 +68,6 @@ class ComposeScreenViewProvider(private val previewManager: ComposePreviewManage
             add(HighlightLayer(surface))
             add(
               SceneLayer(surface, it, false).apply {
-                isShowOnHover = true
                 setShowOnHoverFilter { sceneView ->
                   (previewManager.mode.value.isNormal || previewManager.mode.value is PreviewMode.UiCheck) &&
                     sceneView.isRootComponentSelected()
