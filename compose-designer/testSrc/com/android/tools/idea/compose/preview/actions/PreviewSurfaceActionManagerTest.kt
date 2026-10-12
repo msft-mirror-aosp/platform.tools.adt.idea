@@ -6,6 +6,8 @@ import com.android.tools.idea.common.util.EnableUnderConditionWrapper
 import com.android.tools.idea.common.util.ShowGroupUnderConditionWrapper
 import com.android.tools.idea.common.util.ShowUnderConditionWrapper
 import com.android.tools.idea.compose.preview.ComposeStudioBotActionFactory
+import com.android.tools.idea.compose.preview.EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS
+import com.android.tools.idea.compose.preview.EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS
 import com.android.tools.idea.compose.preview.PredictiveBackNavigationControlsAction
 import com.android.tools.idea.compose.preview.actions.glasses.GlassesBlendDropdownAction
 import com.android.tools.idea.compose.preview.util.FakeStudioBotActionFactory
@@ -60,20 +62,6 @@ import org.mockito.kotlin.whenever
 // LookaheadVisualizationAction(),
 // LookaheadLabelsAction()
 private const val EXPECTED_NUMBER_OF_ACTIONS = 10
-
-// SavePreviewInNewSize()
-// EnableUiCheckAction(),
-// AnimationInspectorAction(),
-// EnableInteractiveAction(),
-// DeployToDeviceAction()
-// in wrappers
-private const val EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS = 5
-
-// EnableUiCheckAction(),
-// EnableInteractiveAction(),
-// DeployToDeviceAction()
-// in wrappers
-private const val EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS = 3
 
 class PreviewSurfaceActionManagerTest {
 
@@ -185,11 +173,10 @@ class PreviewSurfaceActionManagerTest {
 
       assertEquals(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS, actions.size)
 
-      val visibleActions =
-        actions.filter {
-          it.update(testEvent)
-          testEvent.presentation.isVisible
-        }
+      val visibleActions = actions.filter {
+        it.update(testEvent)
+        testEvent.presentation.isVisible
+      }
 
       assertThat(visibleActions).hasSize(EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS)
 
@@ -255,11 +242,10 @@ class PreviewSurfaceActionManagerTest {
           )
         )
 
-      val visibleActions =
-        actions.filter {
-          it.update(testEvent)
-          testEvent.presentation.isVisible
-        }
+      val visibleActions = actions.filter {
+        it.update(testEvent)
+        testEvent.presentation.isVisible
+      }
 
       assertThat(visibleActions).hasSize(EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS)
 

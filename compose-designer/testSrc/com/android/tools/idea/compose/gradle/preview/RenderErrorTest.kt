@@ -29,6 +29,8 @@ import com.android.tools.idea.compose.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.SimpleComposeAppPaths
 import com.android.tools.idea.compose.activateAndWaitForRender
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
+import com.android.tools.idea.compose.preview.EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS
+import com.android.tools.idea.compose.preview.EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS
 import com.android.tools.idea.compose.preview.TestComposePreviewView
 import com.android.tools.idea.compose.preview.displayName
 import com.android.tools.idea.compose.preview.util.previewElement
@@ -89,14 +91,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-
-// SavePreviewInNewSize()
-// EnableUiCheckAction(),
-// AnimationInspectorAction(),
-// EnableInteractiveAction(),
-// DeployToDeviceAction()
-// in wrappers
-private const val EXPECTED_NUMBER_OF_ACTIONS = 5
 
 class RenderErrorTest {
 
@@ -179,7 +173,7 @@ class RenderErrorTest {
       assertFalse(visibleErrorsPanel.isVisible)
 
       val actions = sceneViewPanelWithErrors.getToolbarActions()
-      assertEquals(EXPECTED_NUMBER_OF_ACTIONS, actions.size)
+      assertEquals(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS, actions.size)
 
       // All actions should be invisible when there are render errors
       assertEquals(0, countVisibleActions(actions, sceneViewPanelWithErrors))
@@ -204,12 +198,12 @@ class RenderErrorTest {
       assertFalse(invisibleErrorsPanel.isVisible)
 
       val actions = sceneViewPanelWithoutErrors.getToolbarActions()
-      assertEquals(EXPECTED_NUMBER_OF_ACTIONS, actions.size)
+      assertEquals(EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS, actions.size)
 
       // The animation preview action shouldn't be visible because the preview being used doesn't
       // contain animations, but the interactive, ui check and deploy to device actions should be
       // visible as there are no render errors.
-      assertEquals(3, countVisibleActions(actions, sceneViewPanelWithoutErrors))
+      assertEquals(EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS, countVisibleActions(actions, sceneViewPanelWithoutErrors))
     }
 
   private suspend fun assertIssueIsGenerated(condition: (VisualLintRenderIssue) -> Boolean) =
