@@ -78,6 +78,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.KeepPopupOnPerform
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.Separator
@@ -159,6 +160,8 @@ private const val DEVICE_FRAME_VISIBLE_PROPERTY = "com.android.tools.idea.stream
 private const val DEVICE_FRAME_VISIBLE_DEFAULT = true
 private const val ZOOM_TOOLBAR_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.zoom.toolbar.visible"
 private const val ZOOM_TOOLBAR_VISIBLE_DEFAULT = true
+private const val TOOLBAR_PLACEMENT_PROPERTY = "com.android.tools.idea.streaming.toolbar.placement"
+private val TOOLBAR_PLACEMENT_DEFAULT = ToolbarPlacement.HORIZONTAL
 private const val EMULATOR_DISCOVERY_INTERVAL_MILLIS = 1000L
 
 private val CONTENT_DEVICE_ID_KEY = Key.create<StreamingDeviceId>("StreamingDeviceId")
@@ -330,6 +333,24 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       }
     }
 
+  private var toolbarPlacement: ToolbarPlacement
+    get() =
+      projectProperties.getValue(TOOLBAR_PLACEMENT_PROPERTY)?.let {
+        try {
+          ToolbarPlacement.valueOf(it)
+        } catch (_: IllegalArgumentException) {
+          null
+        }
+      } ?: TOOLBAR_PLACEMENT_DEFAULT
+    set(value) {
+      projectProperties.setValue(TOOLBAR_PLACEMENT_PROPERTY, value.name, TOOLBAR_PLACEMENT_DEFAULT.name)
+      for (contentManager in contentManagers) {
+        for (i in 0 until contentManager.contentCount) {
+          (contentManager.getContent(i)?.component as? AbstractDevicePanel<*>)?.toolbarPlacement = value
+        }
+      }
+    }
+
   init {
     FlightRecorder.initialize(10000)
     Disposer.register(toolWindow.disposable, this)
@@ -415,6 +436,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       toolWindow.setTabActions(newTabAction)
 
       val actionGroup = DefaultActionGroup()
+      actionGroup.addAction(ToolbarPlacementActionGroup())
       actionGroup.addAction(ToggleZoomToolbarAction())
       actionGroup.addAction(ToggleFloatingXrToolbarAction())
       actionGroup.addAction(ToggleDeviceFrameAction())
@@ -451,7 +473,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
     for ((client, handle) in deviceClients.values) {
       if (findContentBySerialNumberOfPhysicalDevice(client.deviceSerialNumber) == null) {
-        addPanel(DeviceToolWindowPanel(toolWindow.disposable, project, handle, client))
+        addPanel(DeviceToolWindowPanel(toolWindow.disposable, project, handle, client, toolbarPlacement))
       }
     }
 
@@ -537,7 +559,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     emulator.addConnectionStateListener(connectionStateListener)
     val avdId = emulator.emulatorId.avdId
     val contentManager = recentAvdStartRequesters.remove(avdId)
-    addPanel(EmulatorToolWindowPanel(toolWindow.disposable, project, emulator), contentManager)
+    addPanel(EmulatorToolWindowPanel(toolWindow.disposable, project, emulator, toolbarPlacement), contentManager)
   }
 
   /**
@@ -567,6 +589,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
 
     panel.zoomToolbarVisible = zoomToolbarIsVisible
+    panel.toolbarPlacement = toolbarPlacement
 
     if (findContentByDeviceId(panel.id) != null) {
       reportDuplicatePanel(content)
@@ -1017,7 +1040,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       if (contentShown) {
         updateMirroringHandlesFlow()
         deviceClient.establishAgentConnectionWithoutVideoStreamAsync(project) // Start the agent and connect to it proactively.
-        val panel = DeviceToolWindowPanel(toolWindow.disposable, project, deviceHandle, deviceClient)
+        val panel = DeviceToolWindowPanel(toolWindow.disposable, project, deviceHandle, deviceClient, toolbarPlacement)
         val content = addPanel(panel, contentManager)
         if (activation >= ActivationLevel.SELECT_TAB && content != null) {
           content.select(activation)
@@ -1385,6 +1408,33 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     private fun JComponent.isNonXrDevicePanel(): Boolean = this is AbstractDevicePanel<*> && deviceType != DeviceType.XR_HEADSET
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+  }
+
+  private inner class ToolbarPlacementActionGroup : DefaultActionGroup("Toolbar Placement", true), DumbAware {
+    init {
+      for (placement in ToolbarPlacement.values()) {
+        add(SetToolbarPlacementAction(placement))
+      }
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+  }
+
+  private inner class SetToolbarPlacementAction(val placement: ToolbarPlacement) : ToggleAction(placement.label), DumbAware {
+
+    init {
+      templatePresentation.keepPopupOnPerform = KeepPopupOnPerform.Never
+    }
+
+    override fun isSelected(event: AnActionEvent): Boolean = toolbarPlacement == placement
+
+    override fun setSelected(event: AnActionEvent, state: Boolean) {
+      if (state) {
+        toolbarPlacement = placement
+      }
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
   }
 
   private inner class PhysicalDeviceWatcher(disposableParent: Disposable) : Disposable {

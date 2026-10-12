@@ -17,6 +17,7 @@ package com.android.tools.idea.testing.ui
 
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.PlatformDataKeys
@@ -100,6 +101,9 @@ internal constructor(
   var titleActions: List<AnAction> = emptyList()
     private set
 
+  var additionalGearActions: ActionGroup? = null
+    private set
+
   var hideOnEmptyContext: Boolean = false
     private set
 
@@ -119,6 +123,10 @@ internal constructor(
 
   override fun setToHideOnEmptyContent(value: Boolean) {
     hideOnEmptyContext = value
+  }
+
+  override fun setAdditionalGearActions(additionalGearActions: ActionGroup?) {
+    this.additionalGearActions = additionalGearActions
   }
 
   override fun getId(): String = toolWindowId

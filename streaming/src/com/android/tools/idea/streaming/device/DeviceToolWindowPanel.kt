@@ -31,6 +31,7 @@ import com.android.tools.idea.streaming.core.LeafNode
 import com.android.tools.idea.streaming.core.PanelState
 import com.android.tools.idea.streaming.core.SplitNode
 import com.android.tools.idea.streaming.core.SplitPanel
+import com.android.tools.idea.streaming.core.ToolbarPlacement
 import com.android.tools.idea.streaming.core.ZoomablePanel
 import com.android.tools.idea.streaming.core.computeBestLayout
 import com.android.tools.idea.streaming.core.htmlColored
@@ -68,7 +69,8 @@ internal class DeviceToolWindowPanel(
   private val project: Project,
   val deviceHandle: DeviceHandle,
   val deviceClient: DeviceClient,
-) : AbstractDevicePanel<DeviceDisplayPanel>(deviceClient.deviceId, DEVICE_MAIN_TOOLBAR_ID) {
+  initialToolbarPlacement: ToolbarPlacement = ToolbarPlacement.HORIZONTAL,
+) : AbstractDevicePanel<DeviceDisplayPanel>(deviceClient.deviceId, DEVICE_MAIN_TOOLBAR_ID, initialToolbarPlacement) {
 
   override val deviceSerialNumber: String
     get() = deviceClient.deviceSerialNumber

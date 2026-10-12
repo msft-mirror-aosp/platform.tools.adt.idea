@@ -76,7 +76,9 @@ import com.intellij.openapi.actionSystem.AnActionEvent.createEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSnapshotProvider
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -356,7 +358,7 @@ class StreamingToolWindowManagerTest {
     var emulatorView = ui.getComponent<EmulatorView>()
     waitForCondition(2.seconds) { renderAndGetFrameNumber(ui, emulatorView) > 0u }
 
-    // 1. Verify FIT_INNER framing restoration.
+    // Verify FIT_INNER framing restoration.
     assertThat(emulatorView.hasInnerPart).isTrue()
     emulatorView.zoom(ZoomType.FIT_INNER)
     ui.layoutAndDispatchEvents()
@@ -373,7 +375,7 @@ class StreamingToolWindowManagerTest {
     assertThat(emulatorView.zoomScrollState.framing).isEqualTo(ZoomablePanel.Framing.INNER)
     assertThat(emulatorView.scale).isWithin(0.0001).of(fitInnerScale)
 
-    // 2. Verify zoom and scroll position restoration (uses Framing.OUTER).
+    // Verify zoom and scroll position restoration (uses Framing.OUTER).
     var viewport = emulatorView.parent as JViewport
     while (viewport.viewSize.height <= viewport.height) {
       emulatorView.zoom(ZoomType.IN)
@@ -1138,6 +1140,71 @@ class StreamingToolWindowManagerTest {
         assertThat(contentPhone.isSelected).isTrue()
       }
     }
+  }
+
+  @Test
+  fun testToolbarPlacementOption() {
+    toolWindow.show()
+    waitForCondition(2.seconds) { toolWindow.additionalGearActions != null }
+    val gearActions = (toolWindow.additionalGearActions as DefaultActionGroup).getChildren(null)
+    val placementGroupIndex = gearActions.indexOfFirst { it.templateText == "Toolbar Placement" }
+    val zoomControlsIndex = gearActions.indexOfFirst { it.templateText == "Show Zoom Controls" }
+    assertThat(placementGroupIndex).isAtLeast(0)
+    assertThat(zoomControlsIndex).isGreaterThan(placementGroupIndex) // Toolbar Placement is shown above Show Zoom Controls
+
+    val placementGroup = gearActions[placementGroupIndex] as DefaultActionGroup
+    assertThat(placementGroup.isPopup).isTrue()
+    val placementActions = placementGroup.getChildren(null)
+    assertThat(placementActions.map { it.templateText }).containsExactly("Horizontal", "Vertical", "No Toolbar").inOrder()
+
+    val horizontalAction = placementActions[0] as ToggleAction
+    val verticalAction = placementActions[1] as ToggleAction
+    val noToolbarAction = placementActions[2] as ToggleAction
+
+    val event = createTestEvent(toolWindow.component, project)
+    assertThat(horizontalAction.isSelected(event)).isTrue()
+    assertThat(verticalAction.isSelected(event)).isFalse()
+    assertThat(noToolbarAction.isSelected(event)).isFalse()
+
+    // Start phone AVD and verify toolbar placement
+    val tempFolder = emulatorRule.avdRoot
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
+    phone.start(standalone = false)
+    RunningEmulatorCatalog.getInstance().updateNow()
+    waitForCondition(5.seconds) { contentManager.contents.firstOrNull()?.component is EmulatorToolWindowPanel }
+    val panel = contentManager.contents[0].component as EmulatorToolWindowPanel
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.HORIZONTAL)
+    assertThat(panel.mainToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.secondaryToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.toolbarPanel.isVisible).isTrue()
+
+    // Switch to Vertical
+    verticalAction.setSelected(event, true)
+    assertThat(horizontalAction.isSelected(event)).isFalse()
+    assertThat(verticalAction.isSelected(event)).isTrue()
+    assertThat(noToolbarAction.isSelected(event)).isFalse()
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.VERTICAL)
+    assertThat(panel.mainToolbar.orientation).isEqualTo(SwingConstants.VERTICAL)
+    assertThat(panel.secondaryToolbar.orientation).isEqualTo(SwingConstants.VERTICAL)
+    assertThat(panel.toolbarPanel.isVisible).isTrue()
+
+    // Switch to No Toolbar
+    noToolbarAction.setSelected(event, true)
+    assertThat(horizontalAction.isSelected(event)).isFalse()
+    assertThat(verticalAction.isSelected(event)).isFalse()
+    assertThat(noToolbarAction.isSelected(event)).isTrue()
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.NONE)
+    assertThat(panel.toolbarPanel.isVisible).isFalse()
+
+    // Switch back to Horizontal
+    horizontalAction.setSelected(event, true)
+    assertThat(horizontalAction.isSelected(event)).isTrue()
+    assertThat(verticalAction.isSelected(event)).isFalse()
+    assertThat(noToolbarAction.isSelected(event)).isFalse()
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.HORIZONTAL)
+    assertThat(panel.mainToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.secondaryToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.toolbarPanel.isVisible).isTrue()
   }
 
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, displayView: AbstractDisplayView): UInt {

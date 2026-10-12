@@ -36,6 +36,7 @@ import com.android.tools.idea.streaming.core.PanelState
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.SplitNode
 import com.android.tools.idea.streaming.core.SplitPanel
+import com.android.tools.idea.streaming.core.ToolbarPlacement
 import com.android.tools.idea.streaming.core.ZoomablePanel
 import com.android.tools.idea.streaming.core.computeBestLayout
 import com.android.tools.idea.streaming.core.htmlColored
@@ -81,8 +82,13 @@ import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 
 /** Provides view of one AVD in the Running Devices tool window. */
-internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val project: Project, val emulator: EmulatorController) :
-  AbstractDevicePanel<EmulatorDisplayPanel>(emulator.deviceId, EMULATOR_MAIN_TOOLBAR_ID), ConnectionStateListener {
+internal class EmulatorToolWindowPanel(
+  disposableParent: Disposable,
+  private val project: Project,
+  val emulator: EmulatorController,
+  initialToolbarPlacement: ToolbarPlacement = ToolbarPlacement.HORIZONTAL,
+) :
+  AbstractDevicePanel<EmulatorDisplayPanel>(emulator.deviceId, EMULATOR_MAIN_TOOLBAR_ID, initialToolbarPlacement), ConnectionStateListener {
 
   private val log = Logger.getInstance("EmulatorToolWindowPanel: ${emulator.emulatorId.avdName}")
 

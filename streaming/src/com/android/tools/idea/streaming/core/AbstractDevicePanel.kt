@@ -64,14 +64,13 @@ import java.awt.event.ContainerListener
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JLabel
-
-private const val IS_TOOLBAR_HORIZONTAL = true
+import javax.swing.SwingConstants
 
 /** Provides view of one Android device in the Running Devices tool window. */
 internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   val id: StreamingDeviceId,
   mainToolbarId: String,
-  secondaryToolbarId: String = STREAMING_SECONDARY_TOOLBAR_ID,
+  initialToolbarPlacement: ToolbarPlacement = ToolbarPlacement.HORIZONTAL,
 ) : BorderLayoutPanel(), DevicePanel<DisplayViewContainer<*>>, UiDataProvider, DisplayOwner, Disposable {
 
   override val deviceSerialNumber: String
@@ -86,12 +85,33 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   internal abstract val preferredFocusableComponent: JComponent
 
   internal abstract var zoomToolbarVisible: Boolean
+  internal var toolbarPlacement: ToolbarPlacement = initialToolbarPlacement
+    set(value) {
+      if (field != value) {
+        field = value
+        updateToolbar()
+      }
+    }
+
   internal abstract val primaryDisplayView: AbstractDisplayView?
   internal val hasContent: Boolean
     get() = primaryDisplayView != null
 
-  protected val mainToolbar: ActionToolbar
-  protected val secondaryToolbar: ActionToolbar
+  internal val mainToolbar: ActionToolbar
+  internal val secondaryToolbar: ActionToolbar
+  internal val toolbarPanel =
+    object : BorderLayoutPanel() {
+      override fun getPreferredSize(): Dimension {
+        if (width > 0 && toolbarPlacement == ToolbarPlacement.HORIZONTAL) {
+          // When AbstractDevicePanel's BorderLayout lays out this panel, it calls setSize(newWidth, oldHeight)
+          // followed immediately by getPreferredSize(). Without calling doLayout() here, mainToolbar.component.width
+          // would still hold its previous width, causing WrapLayoutStrategy.calcPreferredSize to compute the toolbar
+          // height for the stale width and leaving the toolbar at the wrong height after resizing.
+          doLayout()
+        }
+        return super.getPreferredSize()
+      }
+    }
   protected val centerPanel = BorderLayoutPanel()
   protected val notificationHolderPanel = NotificationHolderPanel(centerPanel)
 
@@ -133,36 +153,47 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
     background = primaryPanelBackground
     val layoutStrategy =
       if (StudioFlags.RUNNING_DEVICES_WRAP_TOOLBAR.get()) ToolbarLayoutStrategy.WRAP_STRATEGY else ToolbarLayoutStrategy.AUTOLAYOUT_STRATEGY
-    mainToolbar = createToolbar(mainToolbarId, layoutStrategy, IS_TOOLBAR_HORIZONTAL)
-    secondaryToolbar = createToolbar(secondaryToolbarId, ToolbarLayoutStrategy.NOWRAP_STRATEGY, IS_TOOLBAR_HORIZONTAL)
+    mainToolbar = createToolbar(mainToolbarId, layoutStrategy, initialToolbarPlacement)
+    secondaryToolbar = createToolbar(STREAMING_SECONDARY_TOOLBAR_ID, ToolbarLayoutStrategy.NOWRAP_STRATEGY, initialToolbarPlacement)
     secondaryToolbar.isReservePlaceAutoPopupIcon = false
 
     addToCenter(notificationHolderPanel)
 
-    val toolbarPanel =
-      object : BorderLayoutPanel() {
-        override fun getPreferredSize(): Dimension {
-          if (width > 0) {
-            // When AbstractDevicePanel's BorderLayout lays out this panel, it calls setSize(newWidth, oldHeight)
-            // followed immediately by getPreferredSize(). Without calling doLayout() here, mainToolbar.component.width
-            // would still hold its previous width, causing WrapLayoutStrategy.calcPreferredSize to compute the toolbar
-            // height for the stale width and leaving the toolbar at the wrong height after resizing.
-            doLayout()
-          }
-          return super.getPreferredSize()
-        }
+    updateToolbar()
+  }
+
+  private fun updateToolbar() {
+    remove(toolbarPanel)
+    toolbarPanel.removeAll()
+    when (toolbarPlacement) {
+      ToolbarPlacement.HORIZONTAL -> {
+        mainToolbar.setOrientation(SwingConstants.HORIZONTAL)
+        mainToolbar.layoutStrategy =
+          if (StudioFlags.RUNNING_DEVICES_WRAP_TOOLBAR.get()) ToolbarLayoutStrategy.WRAP_STRATEGY
+          else ToolbarLayoutStrategy.AUTOLAYOUT_STRATEGY
+        secondaryToolbar.setOrientation(SwingConstants.HORIZONTAL)
+        toolbarPanel.add(mainToolbar.component, BorderLayout.CENTER)
+        toolbarPanel.add(secondaryToolbar.component, BorderLayout.EAST)
+        toolbarPanel.border = IdeBorderFactory.createBorder(JBColor.border(), SideBorder.BOTTOM)
+        toolbarPanel.isVisible = true
+        addToTop(toolbarPanel)
       }
-    if (IS_TOOLBAR_HORIZONTAL) {
-      toolbarPanel.add(mainToolbar.component, BorderLayout.CENTER)
-      toolbarPanel.add(secondaryToolbar.component, BorderLayout.EAST)
-      toolbarPanel.border = IdeBorderFactory.createBorder(JBColor.border(), SideBorder.BOTTOM)
-      addToTop(toolbarPanel)
-    } else {
-      toolbarPanel.add(mainToolbar.component, BorderLayout.CENTER)
-      toolbarPanel.add(secondaryToolbar.component, BorderLayout.SOUTH)
-      toolbarPanel.border = IdeBorderFactory.createBorder(JBColor.border(), SideBorder.RIGHT)
-      addToLeft(toolbarPanel)
+      ToolbarPlacement.VERTICAL -> {
+        mainToolbar.setOrientation(SwingConstants.VERTICAL)
+        mainToolbar.layoutStrategy = ToolbarLayoutStrategy.AUTOLAYOUT_STRATEGY
+        secondaryToolbar.setOrientation(SwingConstants.VERTICAL)
+        toolbarPanel.add(mainToolbar.component, BorderLayout.CENTER)
+        toolbarPanel.add(secondaryToolbar.component, BorderLayout.SOUTH)
+        toolbarPanel.border = IdeBorderFactory.createBorder(JBColor.border(), SideBorder.RIGHT)
+        toolbarPanel.isVisible = true
+        addToLeft(toolbarPanel)
+      }
+      ToolbarPlacement.NONE -> {
+        toolbarPanel.isVisible = false
+      }
     }
+    revalidate()
+    repaint()
   }
 
   /** Adds the given panel between the main toolbar and the central content panel. */
@@ -260,7 +291,7 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   protected fun showContextMenuAdvertisementIfNecessary(disposableParent: Disposable) {
     if (StudioFlags.RUNNING_DEVICES_CONTEXT_MENU.get() && !EmulatorSettings.getInstance().contextMenuAdvertisementShown) {
       EventQueue.invokeLater {
-        if (hasContent) {
+        if (hasContent && toolbarPlacement != ToolbarPlacement.NONE) {
           showContextMenuAdvertisement(disposableParent, mainToolbar.component)
         }
       }
@@ -344,9 +375,10 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   }
 
   @Suppress("SameParameterValue")
-  private fun createToolbar(toolbarId: String, strategy: ToolbarLayoutStrategy, horizontal: Boolean): ActionToolbar {
+  private fun createToolbar(toolbarId: String, strategy: ToolbarLayoutStrategy, toolbarPlacement: ToolbarPlacement): ActionToolbar {
     val actions = listOf(CustomActionsSchema.getInstance().getCorrectedAction(toolbarId)!!)
-    val toolbar = ActionManager.getInstance().createActionToolbar(toolbarId, DefaultActionGroup(actions), horizontal)
+    val toolbar =
+      ActionManager.getInstance().createActionToolbar(toolbarId, DefaultActionGroup(actions), toolbarPlacement != ToolbarPlacement.VERTICAL)
     toolbar.layoutStrategy = strategy
     toolbar.setLayoutSecondaryActions(true)
     toolbar.targetComponent = this
