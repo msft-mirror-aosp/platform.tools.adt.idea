@@ -30,7 +30,6 @@ import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider;
 import com.android.tools.idea.projectsystem.SourceProviderManager;
 import com.android.tools.idea.res.IdeResourcesUtil;
 import com.android.tools.module.AndroidModuleInfo;
-import com.android.utils.SdkUtils;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
@@ -192,7 +191,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
   public static boolean isEligibleForConversion(@Nullable VirtualFile file, @Nullable WebpConversionSettings settings) {
     if (file != null && !file.isDirectory()) {
       String name = file.getName();
-      if (name.endsWith(DOT_PNG)) {
+      if (endsWithIgnoreCase(name, DOT_PNG)) {
         if (settings != null && settings.skipNinePatches && endsWithIgnoreCase(name, DOT_9PNG)) {
           return false;
         }
@@ -207,7 +206,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
         }
         return true;
       }
-      if (endsWithIgnoreCase(name, DOT_JPG) || SdkUtils.endsWith(name, DOT_JPEG)) {
+      if (endsWithIgnoreCase(name, DOT_JPG) || endsWithIgnoreCase(name, DOT_JPEG)) {
         return true;
       }
       if (endsWithIgnoreCase(name, DOT_BMP)) {
@@ -244,7 +243,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
   }
 
   public static boolean isNinePatchFile(@NotNull VirtualFile file) {
-    return file.getName().endsWith(DOT_9PNG) && !file.isDirectory();
+    return endsWithIgnoreCase(file.getName(), DOT_9PNG) && !file.isDirectory();
   }
 
   // From OptimizePngAction

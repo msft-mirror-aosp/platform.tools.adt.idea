@@ -117,6 +117,8 @@ class ConvertToWebpActionTest : AndroidTestCase() {
     val action = ConvertToWebpAction()
     val resFolder = myFixture.findFileInTempDir("res")
     val pngFile = myFixture.addFileToProject("folder/image.png", "").virtualFile
+    val upperCasePngFile = myFixture.addFileToProject("folder/image.PNG", "").virtualFile
+    val upperCaseJpegFile = myFixture.addFileToProject("folder/image.JPEG", "").virtualFile
     val assetFolder = myFixture.copyDirectoryToProject("webp", "assets")
     val nonResFolder = myFixture.copyDirectoryToProject("webp", "folder")
     val presentation = Presentation()
@@ -131,6 +133,12 @@ class ConvertToWebpActionTest : AndroidTestCase() {
     assertTrue(presentation.isVisible)
 
     action.update(createTestEvent(arrayOf(pngFile)))
+    assertTrue(presentation.isVisible)
+
+    action.update(createTestEvent(arrayOf(upperCasePngFile)))
+    assertTrue(presentation.isVisible)
+
+    action.update(createTestEvent(arrayOf(upperCaseJpegFile)))
     assertTrue(presentation.isVisible)
 
     action.update(createTestEvent(arrayOf(assetFolder)))
