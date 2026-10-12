@@ -16,131 +16,49 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.sdklib.AndroidCoordinate
+import com.android.tools.rendering.compose.area as renderingArea
+import com.android.tools.rendering.compose.containsPoint as renderingContainsPoint
+import com.android.tools.rendering.compose.findAllHitsInFile as renderingFindAllHitsInFile
+import com.android.tools.rendering.compose.findAllHitsWithPoint as renderingFindAllHitsWithPoint
+import com.android.tools.rendering.compose.findHitWithDepth as renderingFindHitWithDepth
+import com.android.tools.rendering.compose.findSmallestHit as renderingFindSmallestHit
+import com.android.tools.rendering.compose.isEmpty as renderingIsEmpty
+import com.android.tools.rendering.compose.isInFile as renderingIsInFile
+import com.android.tools.rendering.compose.isNotEmpty as renderingIsNotEmpty
 import com.google.common.annotations.VisibleForTesting
 
-/** Information needed for creating custom scene components later. */
-data class ComposeViewInfo(
-  val sourceLocation: SourceLocation,
-  val bounds: PxBounds,
-  val children: List<ComposeViewInfo>,
-  val name: String,
-) {
-  override fun toString(): String =
-    """$sourceLocation
-      |   name=${name}
-      |   bounds=(top=${bounds.top}, left=${bounds.left}, bottom=${bounds.bottom}, right=${bounds.right})
-      |   childCount=${children.size}"""
-      .trimMargin()
+typealias ComposeViewInfo = com.android.tools.rendering.compose.ComposeViewInfo
 
-  fun allChildren(): List<ComposeViewInfo> = buildList { addSubtreeTo(this) }
-
-  private fun addSubtreeTo(destination: MutableList<ComposeViewInfo>) {
-    destination.add(this)
-    for (child in children) {
-      child.addSubtreeTo(destination)
-    }
-  }
-}
+typealias PxBounds = com.android.tools.rendering.compose.PxBounds
 
 @VisibleForTesting
-fun ComposeViewInfo.findHitWithDepth(x: Int, y: Int): Collection<Pair<Int, ComposeViewInfo>> {
-  val hitsWithDepth = mutableListOf<Pair<Int, ComposeViewInfo>>()
-  val stack = mutableListOf(Pair(0, this))
+fun ComposeViewInfo.findHitWithDepth(x: Int, y: Int): Collection<Pair<Int, ComposeViewInfo>> = renderingFindHitWithDepth(x, y)
 
-  while (stack.isNotEmpty()) {
-    val current = stack.removeLast()
-    val currentViewInfo = current.second
+fun List<ComposeViewInfo>.findHitWithDepth(x: Int, y: Int): Collection<Pair<Int, ComposeViewInfo>> = renderingFindHitWithDepth(x, y)
 
-    // Add to results if it contains point
-    if (currentViewInfo.containsPoint(x, y)) {
-      hitsWithDepth.add(current)
-    }
+fun ComposeViewInfo.findSmallestHit(
+  @AndroidCoordinate x: Int,
+  @AndroidCoordinate y: Int,
+): Collection<ComposeViewInfo> = renderingFindSmallestHit(x, y)
 
-    // Add all children to stack
-    currentViewInfo.children.forEach { child -> stack.add(Pair(current.first + 1, child)) }
-  }
-  return hitsWithDepth
-}
+fun List<ComposeViewInfo>.findSmallestHit(x: Int, y: Int): Collection<ComposeViewInfo> = renderingFindSmallestHit(x, y)
 
-/**
- * Traverses the compose view tree to compile a list of view information that contain the specified x, y coordinates, along with their
- * corresponding depth in the tree hierarchy.
- */
-fun List<ComposeViewInfo>.findHitWithDepth(x: Int, y: Int): Collection<Pair<Int, ComposeViewInfo>> {
-  return flatMap { it.findHitWithDepth(x, y) }
-}
+fun ComposeViewInfo.findAllHitsWithPoint(x: Int, y: Int): List<ComposeViewInfo> = renderingFindAllHitsWithPoint(x, y)
 
-/**
- * Traverses the compose view tree and finds all leaf hits that have the coordinates [x] and [y]. Then goes through each hit and finds the
- * smallest [ComposeViewInfo] by area and returns it in a [Collection].
- */
-fun ComposeViewInfo.findSmallestHit(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int): Collection<ComposeViewInfo> {
-  val viewInfos = findAllHitsWithPoint(x, y)
-  return viewInfos.minByOrNull { it.bounds.area() }?.let(::listOf).orEmpty()
-}
+fun List<ComposeViewInfo>.findAllHitsWithPoint(x: Int, y: Int): Collection<ComposeViewInfo> = renderingFindAllHitsWithPoint(x, y)
 
-/** Traverses the compose view tree and finds the smallest [ComposeViewInfo] by area and returns it in a [Collection]. */
-fun List<ComposeViewInfo>.findSmallestHit(x: Int, y: Int): Collection<ComposeViewInfo> {
-  return flatMap { it.findSmallestHit(x, y) }
-}
+fun ComposeViewInfo.findAllHitsInFile(fileName: String): List<ComposeViewInfo> = renderingFindAllHitsInFile(fileName)
 
-/** Traverses the compose view tree to compile a list of view information that contain the specified x, y coordinates. */
-fun ComposeViewInfo.findAllHitsWithPoint(x: Int, y: Int): List<ComposeViewInfo> {
-  val hits = mutableListOf<ComposeViewInfo>()
-  val stack = mutableListOf(this)
+fun List<ComposeViewInfo>.findAllHitsInFile(fileName: String): Collection<ComposeViewInfo> = renderingFindAllHitsInFile(fileName)
 
-  while (stack.isNotEmpty()) {
-    val currentViewInfo: ComposeViewInfo = stack.removeLast()
-    if (currentViewInfo.containsPoint(x, y)) {
-      hits.add(currentViewInfo)
-    }
-    stack.addAll(currentViewInfo.children)
-  }
-  return hits
-}
+fun ComposeViewInfo.containsPoint(x: Int, y: Int): Boolean = renderingContainsPoint(x, y)
 
-/** Traverses the compose view tree to compile a [Collection] of [ComposeViewInfo] that contain the specified x, y coordinates. */
-fun List<ComposeViewInfo>.findAllHitsWithPoint(x: Int, y: Int): Collection<ComposeViewInfo> {
-  return flatMap { it.findAllHitsWithPoint(x, y) }
-}
+fun ComposeViewInfo.isInFile(fileName: String): Boolean = renderingIsInFile(fileName)
 
-/** This function will return all ComposeViewInfo objects recursively that are in the given file. */
-fun ComposeViewInfo.findAllHitsInFile(fileName: String): List<ComposeViewInfo> {
-  val stack = mutableListOf(this)
-  val hits = mutableListOf<ComposeViewInfo>()
+@VisibleForTesting fun PxBounds.containsPoint(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int): Boolean = renderingContainsPoint(x, y)
 
-  while (stack.isNotEmpty()) {
-    val currentViewInfo: ComposeViewInfo = stack.removeLast()
-    if (currentViewInfo.isInFile(fileName)) hits.add(currentViewInfo)
-    stack.addAll(currentViewInfo.children)
-  }
-  return hits.toList()
-}
+@VisibleForTesting fun PxBounds.area(): Int = renderingArea()
 
-/** Traverses the compose view tree to compile a [Collection] of [ComposeViewInfo] that are in the [fileName] passed in. */
-fun List<ComposeViewInfo>.findAllHitsInFile(fileName: String): Collection<ComposeViewInfo> {
-  return flatMap { it.findAllHitsInFile(fileName) }
-}
+@VisibleForTesting fun PxBounds.isEmpty(): Boolean = renderingIsEmpty()
 
-fun ComposeViewInfo.containsPoint(x: Int, y: Int): Boolean {
-  return bounds.isNotEmpty() && bounds.containsPoint(x, y)
-}
-
-fun ComposeViewInfo.isInFile(fileName: String): Boolean {
-  return sourceLocation.fileName == fileName
-}
-
-/** Pixel bounds. The model closely resembles how Compose Stack is returned. */
-data class PxBounds(val left: Int, val top: Int, val right: Int, val bottom: Int) {
-  val width = right - left
-  val height = bottom - top
-}
-
-@VisibleForTesting
-fun PxBounds.containsPoint(@AndroidCoordinate x: Int, @AndroidCoordinate y: Int): Boolean = x in left..right && y in top..bottom
-
-@VisibleForTesting fun PxBounds.area(): Int = (right - left) * (bottom - top)
-
-@VisibleForTesting fun PxBounds.isEmpty(): Boolean = area() == 0
-
-@VisibleForTesting fun PxBounds.isNotEmpty(): Boolean = !isEmpty()
+@VisibleForTesting fun PxBounds.isNotEmpty(): Boolean = renderingIsNotEmpty()

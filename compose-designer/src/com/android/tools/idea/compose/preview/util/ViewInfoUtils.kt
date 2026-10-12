@@ -15,26 +15,4 @@
  */
 package com.android.tools.idea.compose.preview.util
 
-import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
-
-internal fun findComposeViewAdapter(viewObj: Any): Any? {
-  if (COMPOSE_VIEW_ADAPTER_FQN == viewObj.javaClass.name) {
-    return viewObj
-  }
-
-  val getChildCount =
-    try {
-      viewObj.javaClass.getMethod("getChildCount")
-    } catch (_: NoSuchMethodException) {
-      return null
-    }
-  val childrenCount = getChildCount.invoke(viewObj) as Int
-  val getChildAt = viewObj.javaClass.getMethod("getChildAt", Int::class.javaPrimitiveType)
-  for (i in 0 until childrenCount) {
-    val child = getChildAt.invoke(viewObj, i) ?: continue
-    findComposeViewAdapter(child)?.let {
-      return it
-    }
-  }
-  return null
-}
+internal fun findComposeViewAdapter(viewObj: Any): Any? = com.android.tools.rendering.compose.findComposeViewAdapter(viewObj)
