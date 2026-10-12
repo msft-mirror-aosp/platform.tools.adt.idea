@@ -41,36 +41,45 @@ class AndroidSdkTest {
   @Test
   fun `get required SDK packages doesn't return emulator on Chrome OS`() {
     val sdk =
-      AndroidSdkComponentTreeNode(true).apply { updateState(AndroidSdkHandler.getInstance(AndroidLocationsSingleton, TestUtils.getSdk())) }
-    val packages = sdk.getRequiredSdkPackages(true)
-    assertThat(packages).doesNotContain(SdkConstants.FD_EMULATOR)
+      AndroidSdkComponentTreeNode(true, isEmulatorSupported = false).apply {
+        updateState(AndroidSdkHandler.getInstance(AndroidLocationsSingleton, TestUtils.getSdk()))
+      }
+    StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(false)
+    assertThat(sdk.requiredSdkPackages).containsExactly(SdkConstants.FD_PLATFORM_TOOLS)
+    assertThat(sdk.optionalSdkPackages).isEmpty()
+
+    StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(true)
+    assertThat(sdk.requiredSdkPackages).containsExactly(SdkConstants.FD_PLATFORM_TOOLS)
+    assertThat(sdk.optionalSdkPackages).isEmpty()
   }
 
   @Test
   fun `get required SDK packages includes preview emulator when flag is enabled`() {
     StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(true)
     Environment.initialize(fakeEnvironment(osName = "Linux", osArch = "amd64"))
-    val sdk = AndroidSdkComponentTreeNode(false)
-    val packages = sdk.getRequiredSdkPackages(false)
-    assertThat(packages).contains(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
+    val sdk = AndroidSdkComponentTreeNode(false, isEmulatorSupported = true)
+    assertThat(sdk.requiredSdkPackages).containsExactly(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH, SdkConstants.FD_PLATFORM_TOOLS)
+    assertThat(sdk.optionalSdkPackages).containsExactly(SdkConstants.FD_EMULATOR)
   }
 
   @Test
   fun `get required SDK packages does not include preview emulator on Intel Macs`() {
     StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(true)
     Environment.initialize(fakeEnvironment(osName = "Mac OS X", osArch = "x86_64"))
-    val sdk = AndroidSdkComponentTreeNode(false)
-    val packages = sdk.getRequiredSdkPackages(false)
+    val sdk = AndroidSdkComponentTreeNode(false, isEmulatorSupported = true)
+    val packages = sdk.requiredSdkPackages
     assertThat(packages).contains(SdkConstants.FD_EMULATOR)
     assertThat(packages).doesNotContain(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
+    assertThat(sdk.optionalSdkPackages).isEmpty()
   }
 
   @Test
   fun `get required SDK packages does not include preview emulator when flag is disabled`() {
     StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(false)
-    val sdk = AndroidSdkComponentTreeNode(false)
-    val packages = sdk.getRequiredSdkPackages(false)
-    assertThat(packages).doesNotContain(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
+    val sdk = AndroidSdkComponentTreeNode(false, isEmulatorSupported = true)
+    assertThat(sdk.requiredSdkPackages).contains(SdkConstants.FD_EMULATOR)
+    assertThat(sdk.requiredSdkPackages).doesNotContain(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
+    assertThat(sdk.optionalSdkPackages).isEmpty()
   }
 
   @Test

@@ -24,7 +24,10 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.SetupWizardEvent
 
 /** Android SDK installable component. */
-class AndroidSdkComponentTreeNode(installUpdates: Boolean) :
+class AndroidSdkComponentTreeNode(
+  installUpdates: Boolean,
+  private val isEmulatorSupported: Boolean = !isChromeOSAndIsNotHWAccelerated(),
+) :
   InstallableSdkComponentTreeNode(
     "Android SDK",
     """
@@ -35,17 +38,26 @@ class AndroidSdkComponentTreeNode(installUpdates: Boolean) :
     installUpdates,
   ) {
 
-  override val requiredSdkPackages: Collection<String>
-    get() = getRequiredSdkPackages(isChromeOSAndIsNotHWAccelerated())
+  @VisibleForTesting
+  public override val requiredSdkPackages: Collection<String>
+    get() =
+      listOfNotNull(
+        when {
+          !isEmulatorSupported -> null
+          QemuNext.isRequired() -> EmulatorPackage.QEMU_NEXT_PACKAGE_PATH
+          else -> SdkConstants.FD_EMULATOR
+        },
+        SdkConstants.FD_PLATFORM_TOOLS,
+      )
 
   @VisibleForTesting
-  fun getRequiredSdkPackages(isChromeOSAndIsNotHWAccelerated: Boolean): Collection<String> = sequence {
-    yield(SdkConstants.FD_EMULATOR.takeIf { !isChromeOSAndIsNotHWAccelerated })
-    yield(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH.takeIf { QemuNext.isRequired() })
-    yield(SdkConstants.FD_PLATFORM_TOOLS)
-  }
-    .filterNotNull()
-    .toList()
+  public override val optionalSdkPackages: Collection<String>
+    get() =
+      listOfNotNull(
+        // Include the old emulator as an optional package if we're using qemu-next. Making it optional means it won't cause problems
+        // if it's unavailable (e.g. on Windows ARM).
+        SdkConstants.FD_EMULATOR.takeIf { QemuNext.isRequired() && isEmulatorSupported }
+      )
 
   override fun sdkComponentsMetricKind() = SetupWizardEvent.SdkInstallationMetrics.SdkComponentKind.ANDROID_SDK
 
