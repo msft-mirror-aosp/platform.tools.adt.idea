@@ -81,6 +81,7 @@ class HeapProfdSessionArtifactTest {
 
   @Test
   fun testExportAppendsSymbols() {
+    (profilers.ideServices as FakeIdeProfilerServices).enableDeobfuscationForNativeAllocations(false)
     val artifact = generateSessionArtifacts()[0] as HeapProfdSessionArtifact
     val stream = ByteArrayOutputStream()
     val contents = ByteString.copyFromUtf8("TestData")

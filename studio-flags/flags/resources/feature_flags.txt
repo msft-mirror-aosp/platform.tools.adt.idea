@@ -153,6 +153,7 @@ playpolicyinsights.play.policy.insights=COMPLETE:2025
 preview.essentials.mode=PREVIEW
 preview.render.sandbox.enabled=PREVIEW
 profiler.callstack.sample.trace.in.editor=PREVIEW
+profiler.deobfuscation.for.native.allocations=INTERNAL
 profiler.heap.dump.trace.in.editor=PREVIEW
 profiler.home.tab.v2=PREVIEW
 profiler.java.kotlin.allocations.in.editor=PREVIEW

@@ -192,7 +192,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   }
 
   private boolean myProfilerHomeTabV2Enabled = true;
-  private boolean myDeobfuscationForNativeAllocationsEnabled = false;
+  private boolean myDeobfuscationForNativeAllocationsEnabled = true;
 
   public void enableDeobfuscationForNativeAllocations(boolean enabled) {
     myDeobfuscationForNativeAllocationsEnabled = enabled;
