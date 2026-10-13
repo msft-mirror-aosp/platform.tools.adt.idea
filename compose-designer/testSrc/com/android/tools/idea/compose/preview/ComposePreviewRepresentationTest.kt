@@ -1659,6 +1659,25 @@ class ComposePreviewRepresentationTest {
     assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
   }
 
+  // Regression test for b/383596974
+  @Test
+  fun fullRefreshTriggeredWhenRenderedPreviewsDifferEvenIfNotInvalidated() = runComposePreviewRepresentationTest {
+    val preview = createPreviewAndCompile()
+    assertThat(preview.isInvalid()).isFalse()
+    assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).hasSize(2)
+
+    // Simulate a racing refresh having consumed the invalidated flag while rendering a stale/partial list of previews.
+    preview.composePreviewFlowManager.updateRenderedPreviews(emptyList())
+    assertThat(preview.isInvalid()).isFalse()
+    assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).isEmpty()
+
+    val refreshDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+    preview.requestRefreshForTest(completableDeferred = refreshDeferred)
+    refreshDeferred.await()
+
+    assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).hasSize(2)
+  }
+
   private fun runComposePreviewRepresentationTest(
     previewPsiFile: PsiFile = createPreviewPsiFile(),
     mainSurface: NlDesignSurface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build(),

@@ -131,7 +131,10 @@ class SceneViewPanel(
         isOpenedFlow.collect {
           // Wait for the first layoutContainerFlow before calling _organizationState.
           launch { layoutManager.layoutContainerFlow.first().apply { _organizationState.emit(Unit) } }
-          revalidate()
+          withContext(uiThreadDispatcher) {
+            revalidate()
+            repaint()
+          }
         }
       }
     }
@@ -160,15 +163,17 @@ class SceneViewPanel(
             activeGroups.value = if (isOrganizationEnabled) sceneViews.findGroups() else persistentSetOf()
 
             // Remove old scenes.
-            val existingScenePanels = components.filterIsInstance<SceneViewPeerPanel>()
+            val existingScenePanels = withContext(uiThreadDispatcher) { components.filterIsInstance<SceneViewPeerPanel>() }
             val panelsToRemove = existingScenePanels.filter { panel -> !sceneViews.contains(panel.sceneView) }
             panelsToRemove.forEach { panel ->
-              panel.scope.cancel()
-              withContext(uiThreadDispatcher) { remove(panel) }
+              withContext(uiThreadDispatcher) {
+                panel.scope.cancel()
+                remove(panel)
+              }
             }
 
             // Remove old headers
-            val existingHeaders = components.filterIsInstance<SceneViewHeader>()
+            val existingHeaders = withContext(uiThreadDispatcher) { components.filterIsInstance<SceneViewHeader>() }
             val headerToRemove = existingHeaders.filter { !activeGroups.value.contains(it.positionableAdapter.organizationGroup) }
             headerToRemove.forEach { header -> withContext(uiThreadDispatcher) { remove(header) } }
 
@@ -186,7 +191,7 @@ class SceneViewPanel(
             // Create or reuse headers.
             activeGroups.value
               .map { group ->
-                components.filterIsInstance<SceneViewHeader>().firstOrNull { it.positionableAdapter.organizationGroup == group }
+                existingHeaders.firstOrNull { it.positionableAdapter.organizationGroup == group }
                   ?: withContext(uiThreadDispatcher) {
                     // Previews in this organization group might not be available at all (not just
                     // hidden in collapsed state).
@@ -216,7 +221,10 @@ class SceneViewPanel(
               componentsUpdated.emit(Unit)
             }
 
-            withContext(uiThreadDispatcher) { invalidate() }
+            withContext(uiThreadDispatcher) {
+              revalidate()
+              repaint()
+            }
           }
       }
       .invokeOnCompletion { clearComponentsAndState() }

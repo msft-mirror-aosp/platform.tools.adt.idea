@@ -370,7 +370,9 @@ internal class ComposePreviewViewImpl(
           log.debug("Show content")
           if (hasContent) {
             workbench.hideLoading()
-            workbench.showContent()
+            if (workbench.showContent()) {
+              mainSurface.revalidateScrollArea()
+            }
           } else {
             val extraActions = listOfNotNull(createScreenshotToCodeActionData(), createGeneratePreviewsActionData())
             workbench.hideLoading()

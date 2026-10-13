@@ -285,7 +285,6 @@ iml_test(
     tags_mac = [],
     tags_windows = [
         "block-network",
-        "noci:studio-win",  # TODO(b/383596974): flaky timeouts on Windows
     ],
     test_class = "com.android.tools.idea.compose.ComposePreviewKotlin",
 )

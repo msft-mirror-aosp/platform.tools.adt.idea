@@ -1393,7 +1393,14 @@ constructor(
                 return@launchWithProgress
               }
 
-          val needsFullRefresh = refreshRequest.refreshType != ComposePreviewRefreshType.QUALITY && invalidated.getAndSet(false)
+          val renderedPreviews =
+            composePreviewFlowManager.renderedPreviewElementsFlow.value
+              .takeIf { it is FlowableCollection.Present }
+              ?.asCollection()
+              ?.toList()
+          val needsFullRefresh =
+            refreshRequest.refreshType != ComposePreviewRefreshType.QUALITY &&
+              (invalidated.getAndSet(false) || renderedPreviews != previewsToRender)
           invalidateIfCancelled = needsFullRefresh
 
           composeWorkBench.hasContent = previewsToRender.isNotEmpty() || mode.value is PreviewMode.UiCheck
