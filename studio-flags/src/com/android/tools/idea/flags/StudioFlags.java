@@ -1418,11 +1418,6 @@ public final class StudioFlags {
   //region Refactorings
   private static final FlagGroup REFACTORINGS = new FlagGroup(FLAGS, "refactor", "Refactor menu");
 
-  public static final Flag<Boolean> MIGRATE_TO_RESOURCE_NAMESPACES_REFACTORING_ENABLED = new BooleanFlag(
-    REFACTORINGS, "migrateto.resourcenamespaces.enabled", "Enable the Migrate to Resource Namespaces refactoring",
-    "If enabled, show the action in the refactoring menu");
-
-
   public static final Flag<Boolean> INFER_ANNOTATIONS_REFACTORING_ENABLED = new BooleanFlag(
     REFACTORINGS, "infer.annotations.enabled", "Enable the Infer Annotations refactoring",
     "If enabled, show the action in the refactoring menu");

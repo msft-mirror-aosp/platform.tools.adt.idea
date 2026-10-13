@@ -1174,19 +1174,11 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Migrate to Resource Namespaces...",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Migrates the project to default targetSdk to compileSdk while preserving current behavior.",
       "path": "ActionManager"
     },
     {
       "hit": "Migrates the project to use Non-Transitive R classes",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Migrates to resource namespaces",
       "path": "ActionManager"
     },
     {

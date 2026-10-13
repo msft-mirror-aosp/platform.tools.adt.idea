@@ -59,11 +59,7 @@ data class PropertiesFileUsageGroup(val flag: String) : UsageGroupBase(-1) {
   override fun compareTo(other: UsageGroup) = -1
 }
 
-/**
- * [UsageGroup] for [MigrateToNonTransitiveRClassesProcessor].
- *
- * TODO(b/78765120): Make this work for [MigrateToResourceNamespacesProcessor] as well.
- */
+/** [UsageGroup] for [MigrateToNonTransitiveRClassesProcessor]. */
 data class ResourcePackageUsageGroup(val packageName: String) : UsageGroupBase(0) {
   override fun getPresentableGroupText(): String = AndroidBundle.message("android.usageGroup.resource.references.from.package", packageName)
 
