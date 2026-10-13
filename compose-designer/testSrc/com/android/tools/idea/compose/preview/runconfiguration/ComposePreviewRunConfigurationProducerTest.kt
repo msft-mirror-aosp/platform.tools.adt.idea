@@ -264,6 +264,55 @@ class ComposePreviewRunConfigurationProducerTest : AndroidTestCase() {
     assertTrue(producer.isConfigurationFromContext(runConfiguration, context))
   }
 
+  // Regression test for b/389580538
+  fun testIsConfigurationFromContextWithDifferentParameterProviders() {
+    val file =
+      myFixture.addFileToProjectAndInvalidate(
+        "src/TestOverloadedPreview.kt",
+        // language=kotlin
+        """
+        package my.composable.app
+
+        import $COMPOSABLE_ANNOTATION_FQ_NAME
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.ui.tooling.preview.PreviewParameter
+        import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+
+        class Names1 : PreviewParameterProvider<String> {
+          override val values = sequenceOf("A")
+        }
+
+        class Names2 : PreviewParameterProvider<Int> {
+          override val values = sequenceOf(1)
+        }
+
+        @Composable
+        @Preview
+        fun Preview(@PreviewParameter(Names1::class) name: String) {
+        }
+
+        @Composable
+        @Preview
+        fun Preview(@PreviewParameter(Names2::class) count: Int) {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val functions = PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java).toList()
+    assertEquals(2, functions.size)
+    val producer = ComposePreviewRunConfigurationProducer()
+    val config1 = createConfigurationFromElement(functions[0])
+    val config2 = createConfigurationFromElement(functions[1])
+
+    assertEquals("my.composable.app.Names1", config1.providerClassFqn)
+    assertEquals("my.composable.app.Names2", config2.providerClassFqn)
+    assertTrue(producer.isConfigurationFromContext(config1, ConfigurationContext(functions[0])))
+    assertFalse(producer.isConfigurationFromContext(config1, ConfigurationContext(functions[1])))
+    assertTrue(producer.isConfigurationFromContext(config2, ConfigurationContext(functions[1])))
+    assertFalse(producer.isConfigurationFromContext(config2, ConfigurationContext(functions[0])))
+  }
+
   fun testIsConfigurationFromContextWhenEssentialsModeIsEnabled() {
     AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = true
     val producer = ComposePreviewRunConfigurationProducer()
