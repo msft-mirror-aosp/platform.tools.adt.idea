@@ -96,6 +96,37 @@ public class VectorDrawableTransformer {
                                  @Nullable Color tint,
                                  double opacity,
                                  boolean addClipPath) {
+    return transform(originalDrawable, targetSize, gravity, scaleFactor, clipRectangle, shift, tint, opacity, addClipPath, false);
+  }
+
+  /**
+   * Transforms a vector drawable to fit in a rectangle with the {@code targetSize} dimensions and optionally
+   * applies tint and opacity to it.
+   *
+   * @param originalDrawable the original drawable, preserved intact by the method
+   * @param targetSize the size of the target rectangle
+   * @param gravity determines alignment of the original image in the target rectangle
+   * @param scaleFactor a scale factor to apply
+   * @param clipRectangle an optional clip rectangle in coordinates expressed as fraction of the {@code targetSize}
+   * @param shift an optional shift vector in coordinates expressed as fraction of the {@code targetSize}
+   * @param tint an optional tint to apply to the drawable
+   * @param opacity opacity to apply to the drawable
+   * @param addClipPath add a clip path to the vector drawable
+   * @param isCropped if true, scales the drawable so it covers the target rectangle (center-crop); otherwise shrinks to fit inside
+   * @return the transformed drawable; may be the same as the original if no transformation was
+   *     required, or if the drawable is not a vector one
+   */
+  @NotNull
+  public static String transform(@NotNull String originalDrawable,
+                                 @NotNull Dimension targetSize,
+                                 @NotNull Gravity gravity,
+                                 double scaleFactor,
+                                 @Nullable Rectangle2D clipRectangle,
+                                 @Nullable Point2D shift,
+                                 @Nullable Color tint,
+                                 double opacity,
+                                 boolean addClipPath,
+                                 boolean isCropped) {
     KXmlParser parser = new KXmlParser();
 
     try {
@@ -156,28 +187,37 @@ public class VectorDrawableTransformer {
         originalViewportHeight = height;
       }
 
+      // Ratio between the original and target aspect ratios, used to preserve proportions when the root <vector> size changes.
+      double originalAspectRatio = width / height;
+      double targetAspectRatio = targetWidth / targetHeight;
+      double aspectFactor = originalAspectRatio / targetAspectRatio;
+
+      // Determine which axis governs scaling based on the trimmed content's aspect ratio relative to the target.
+      // Shrink-to-fit (!isCropped) fits the wider dimension to keep the entire drawable inside the viewport;
+      // center-crop (isCropped) fits the narrower dimension so the drawable completely covers both axes.
+      double clipWidth = clipRectangle != null ? clipRectangle.getWidth() : 1.0;
+      double clipHeight = clipRectangle != null ? clipRectangle.getHeight() : 1.0;
+      boolean scaleToTargetWidth = isCropped ? (clipWidth * aspectFactor < clipHeight) : (clipWidth * aspectFactor >= clipHeight);
+
+      // Compute the scale factor for the governing axis (expanding by 1 / clipDimension if trimmed) and adjust
+      // the orthogonal axis by aspectFactor so the original aspect ratio is preserved without distortion.
+      double scaleFactorX;
+      double scaleFactorY;
+      if (scaleToTargetWidth) {
+        scaleFactorX = clipRectangle != null ? scaleFactor / clipWidth : scaleFactor;
+        scaleFactorY = aspectFactor == 1.0 ? scaleFactorX : scaleFactorX / aspectFactor;
+      } else {
+        scaleFactorY = clipRectangle != null ? scaleFactor / clipHeight : scaleFactor;
+        scaleFactorX = aspectFactor == 1.0 ? scaleFactorY : scaleFactorY * aspectFactor;
+      }
+
       // Components of the translation vector in viewport coordinates.
       double x = 0;
       double y = 0;
       if (clipRectangle != null) {
-        // Adjust scale.
-        scaleFactor /= Math.max(clipRectangle.getWidth(), clipRectangle.getHeight());
         // Re-center the image relative to the clip rectangle.
-        x += (0.5 - clipRectangle.getCenterX()) * originalViewportWidth * scaleFactor;
-        y += (0.5 - clipRectangle.getCenterY()) * originalViewportHeight * scaleFactor;
-      }
-
-      double scaleFactorX = scaleFactor;
-      double scaleFactorY = scaleFactor;
-      double originalAspectRatio = width / height;
-      double targetAspectRatio = targetWidth / targetHeight;
-      double aspectFactor = originalAspectRatio / targetAspectRatio;
-      if (aspectFactor < 1.0) {
-        // The image was stretched horizontally, modify the scale factor to restore the original shape
-        scaleFactorX *= aspectFactor;
-      } else if (aspectFactor > 1.0) {
-        // The image was stretched vertically, modify the scale factor to restore the original shape
-        scaleFactorY /= aspectFactor;
+        x += (0.5 - clipRectangle.getCenterX()) * originalViewportWidth * scaleFactorX;
+        y += (0.5 - clipRectangle.getCenterY()) * originalViewportHeight * scaleFactorY;
       }
 
       // Recenter after scaling
