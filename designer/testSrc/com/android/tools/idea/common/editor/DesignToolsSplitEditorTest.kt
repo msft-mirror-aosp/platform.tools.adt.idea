@@ -34,11 +34,16 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.ui.UIUtil
+import java.awt.Component
 import java.awt.KeyboardFocusManager
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import javax.swing.JComponent
 import javax.swing.JLabel
+import javax.swing.JPanel
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -77,7 +82,8 @@ class DesignToolsSplitEditorTest {
 
         @UiThread
         override fun createEditorPanel(): DesignerEditorPanel =
-          DesignerEditorPanel(
+          object :
+            DesignerEditorPanel(
               this,
               project,
               file!!,
@@ -88,7 +94,11 @@ class DesignToolsSplitEditorTest {
               { _ -> listOf() },
               { _, _ -> JLabel() },
               DesignerEditorPanel.State.FULL,
-            )
+            ) {
+            override fun initNeleModel() {
+              // No-op in tests: prevent asynchronous model initialization on background thread
+            }
+          }
             .apply { Disposer.register(projectRule.testRootDisposable, this) }
       }
 
@@ -215,6 +225,47 @@ class DesignToolsSplitEditorTest {
 
     dispatcher.pressAndRelease(KeyEvent.VK_RIGHT, modifiers)
     assertThat(splitEditor.isSplitMode()).isTrue()
+  }
+
+  // Regression test for b/348688204
+  @Test
+  fun testFocusRequestedOnVisibleEditorWhenSwitchingBackFromDesignMode() {
+    var focusRequestedWhileRecursivelyVisible = false
+    val editorContentComponent =
+      object : JPanel() {
+        override fun requestFocusInWindow(): Boolean {
+          focusRequestedWhileRecursivelyVisible =
+            generateSequence<Component>(this) { it.parent }.all { it.isVisible }
+          return focusRequestedWhileRecursivelyVisible
+        }
+      }
+    val editorComponent = JPanel().apply { add(editorContentComponent) }
+    textEditor.component.apply {
+      add(editorComponent)
+      // Simulate PsiAwareTextEditorComponent updating editor.component visibility via ComponentEvents.
+      addComponentListener(
+        object : ComponentAdapter() {
+          override fun componentShown(e: ComponentEvent?) {
+            editorComponent.isVisible = true
+          }
+
+          override fun componentHidden(e: ComponentEvent?) {
+            editorComponent.isVisible = false
+          }
+        }
+      )
+    }
+    whenever(textEditor.preferredFocusedComponent).thenReturn(editorContentComponent)
+    whenever(textEditor.editor.component).thenReturn(editorComponent)
+    whenever(textEditor.editor.contentComponent).thenReturn(editorContentComponent)
+
+    splitEditor.selectDesignMode(true)
+    UIUtil.dispatchAllInvocationEvents()
+    assertThat(editorComponent.isVisible).isFalse()
+
+    focusRequestedWhileRecursivelyVisible = false
+    splitEditor.selectTextMode(true)
+    assertThat(focusRequestedWhileRecursivelyVisible).isTrue()
   }
 
   private fun IdeKeyEventDispatcher.pressAndRelease(keyCode: Int, modifiers: Int) {
