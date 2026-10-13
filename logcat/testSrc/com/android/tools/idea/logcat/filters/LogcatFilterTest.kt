@@ -44,6 +44,7 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.UsefulTestCase.assertThrows
 import com.intellij.testFramework.replaceService
+import com.intellij.testFramework.runInEdtAndWait
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -500,7 +501,7 @@ class LogcatFilterTest {
     val projectAppFilter = ProjectAppFilter(projectApplicationIdsProvider, EMPTY_RANGE)
     assertThat(projectAppFilter.displayText).isEqualTo("No project ids detected. Is the project synced?")
 
-    projectApplicationIdsProvider.setApplicationIds("app1", "app2")
+    runInEdtAndWait { projectApplicationIdsProvider.setApplicationIds("app1", "app2") }
     assertThat(projectAppFilter.displayText)
       .isEqualTo("<html>Filter logs from current project id(s):<br/>&nbsp;&nbsp;app1<br/>&nbsp;&nbsp;app2<html>")
   }

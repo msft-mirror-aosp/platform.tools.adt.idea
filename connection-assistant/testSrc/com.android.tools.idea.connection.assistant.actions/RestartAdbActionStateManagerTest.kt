@@ -25,6 +25,7 @@ import com.android.tools.idea.assistant.datamodel.DefaultActionState
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.runInEdtAndGet
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -75,11 +76,11 @@ class RestartAdbActionStateManagerTest {
 
     // Wait until background coroutine resolves device name and version and updates state display
     yieldUntil {
-      val display = stateManager.getStateDisplay(projectRule.project, unusedActionData, null)
+      val display = runInEdtAndGet { stateManager.getStateDisplay(projectRule.project, unusedActionData, null) }
       display?.body?.contains("google-pixel_8-device-1") == true && display.body?.contains("API 34") == true
     }
 
-    val stateDisplay = stateManager.getStateDisplay(projectRule.project, unusedActionData, null)
+    val stateDisplay = runInEdtAndGet { stateManager.getStateDisplay(projectRule.project, unusedActionData, null) }
     assertThat(stateDisplay).isNotNull()
     assertThat(stateDisplay!!.state).isEqualTo(CustomSuccessState)
     assertThat(stateDisplay.body).contains("google-pixel_8-device-1")

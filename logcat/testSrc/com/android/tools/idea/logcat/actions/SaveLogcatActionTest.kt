@@ -139,7 +139,7 @@ class SaveLogcatActionTest {
     fakeLogcatPresenter.device = device
     fakeLogcatPresenter.logcatFilter = "filter"
     fakeLogcatPresenter.messageBatches.add(listOf(logcatMessage(message = "message1"), logcatMessage(message = "message2")))
-    fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2")
+    runInEdtAndWait { fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2") }
     val event = createEvent(project, fakeLogcatPresenter)
 
     action.actionPerformed(event)
@@ -160,7 +160,7 @@ class SaveLogcatActionTest {
     fakeLogcatPresenter.device = device
     fakeLogcatPresenter.logcatFilter = "filter"
     fakeLogcatPresenter.messageBatches.add(listOf(logcatMessage(message = "message1"), logcatMessage(message = "message2")))
-    fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2")
+    runInEdtAndWait { fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2") }
     val event = createEvent(project, fakeLogcatPresenter)
 
     action.actionPerformed(event)
@@ -182,7 +182,7 @@ class SaveLogcatActionTest {
     fakeLogcatPresenter.device = device
     fakeLogcatPresenter.logcatFilter = "filter"
     fakeLogcatPresenter.messageBatches.add(listOf(logcatMessage(message = "message1"), logcatMessage(message = "message2")))
-    fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2")
+    runInEdtAndWait { fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2") }
     val event = createEvent(project, fakeLogcatPresenter)
     action.actionPerformed(event)
     waitForCondition { notificationRule.notifications.isNotEmpty() }
@@ -202,7 +202,7 @@ class SaveLogcatActionTest {
     fakeLogcatPresenter.device = device
     fakeLogcatPresenter.logcatFilter = "filter"
     fakeLogcatPresenter.messageBatches.add(listOf(logcatMessage(message = "message1"), logcatMessage(message = "message2")))
-    fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2")
+    runInEdtAndWait { fakeProjectApplicationIdsProvider.setApplicationIds("appId1", "appId2") }
     val event = createEvent(project, fakeLogcatPresenter)
     action.actionPerformed(event)
     waitForCondition { notificationRule.notifications.isNotEmpty() }

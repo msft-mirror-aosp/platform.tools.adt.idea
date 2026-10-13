@@ -676,8 +676,8 @@ class LogcatMainPanelTest {
     // Grab logcatServiceJob now, so we can assert that it was canceled later
     val logcatServiceJob = logcatMainPanel.logcatServiceJob!!
 
-    logcatMainPanel.pauseLogcat()
-    waitForCondition { logcatMainPanel.isLogcatPaused() }
+    runInEdtAndWait { logcatMainPanel.pauseLogcat() }
+    waitForCondition { runInEdtAndGet { logcatMainPanel.isLogcatPaused() } }
 
     assertThat(logcatServiceJob.isCancelled).isTrue()
     waitForCondition { logcatMainPanel.logcatServiceJob == null }
@@ -1049,7 +1049,7 @@ class LogcatMainPanelTest {
   fun pauseLogcat_showsBanner(): Unit = runBlocking {
     val logcatMainPanel = runInEdtAndGet(this@LogcatMainPanelTest::logcatMainPanel)
 
-    logcatMainPanel.pauseLogcat()
+    runInEdtAndWait { logcatMainPanel.pauseLogcat() }
 
     assertThat(logcatMainPanel.findBanner("Logcat is paused").isVisible).isTrue()
   }
@@ -1057,9 +1057,9 @@ class LogcatMainPanelTest {
   @Test
   fun resumeLogcat_hidesBanner(): Unit = runBlocking {
     val logcatMainPanel = runInEdtAndGet(this@LogcatMainPanelTest::logcatMainPanel)
-    logcatMainPanel.pauseLogcat()
+    runInEdtAndWait { logcatMainPanel.pauseLogcat() }
 
-    logcatMainPanel.resumeLogcat()
+    runInEdtAndWait { logcatMainPanel.resumeLogcat() }
 
     assertThat(logcatMainPanel.findBanner("Logcat is paused").isVisible).isFalse()
   }
@@ -1067,9 +1067,9 @@ class LogcatMainPanelTest {
   @Test
   fun restartLogcat_hidesBanner(): Unit = runBlocking {
     val logcatMainPanel = runInEdtAndGet(this@LogcatMainPanelTest::logcatMainPanel)
-    logcatMainPanel.pauseLogcat()
+    runInEdtAndWait { logcatMainPanel.pauseLogcat() }
 
-    logcatMainPanel.restartLogcat()
+    runInEdtAndWait { logcatMainPanel.restartLogcat() }
 
     assertThat(logcatMainPanel.findBanner("Logcat is paused").isVisible).isFalse()
   }
@@ -1079,7 +1079,7 @@ class LogcatMainPanelTest {
     deviceTracker.addDevices(device1, device2)
     val logcatMainPanel = runInEdtAndGet { logcatMainPanel().also { waitForCondition { it.getConnectedDevice() == device1 } } }
     val deviceComboBox = logcatMainPanel.headerPanel.deviceComboBox
-    logcatMainPanel.pauseLogcat()
+    runInEdtAndWait { logcatMainPanel.pauseLogcat() }
 
     waitForCondition { deviceComboBox.model.size == 2 }
     deviceComboBox.selectedIndex = 1
