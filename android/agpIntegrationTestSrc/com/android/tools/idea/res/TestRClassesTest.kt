@@ -387,16 +387,10 @@ sealed class TestRClassesTest {
         "androidx.versionedparcelable.R",
         "android.support.v7.viewpager.R",
         "com.example.projectwithappandlib.lib.test.R",
-        "com.example.projectwithappandlib.lib.test.R",
-        "com.example.projectwithappandlib.lib.R",
         "com.example.projectwithappandlib.lib.R",
         "com.example.projectwithappandlib.app.R",
-        "com.example.projectwithappandlib.app.R",
-        "com.example.projectwithappandlib.lib.R",
         "com.example.projectwithappandlib.lib.R",
         "com.example.projectwithappandlib.app.R",
-        "com.example.projectwithappandlib.app.R",
-        "com.example.projectwithappandlib.app.test.R",
         "com.example.projectwithappandlib.app.test.R",
       )
 

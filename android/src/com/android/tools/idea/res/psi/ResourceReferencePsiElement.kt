@@ -27,8 +27,6 @@ import com.android.resources.ResourceType.STYLEABLE
 import com.android.resources.ResourceUrl
 import com.android.tools.idea.res.AndroidRClassBase
 import com.android.tools.idea.res.ResourceRepositoryRClass
-import com.android.tools.idea.res.SmallAarRClass
-import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.TransitiveAarRClass
 import com.android.tools.idea.res.getFolderType
 import com.android.tools.idea.res.getResourceTypeForResourceTag
@@ -36,15 +34,12 @@ import com.android.tools.idea.res.isInResourceSubdirectoryInAnyVariant
 import com.android.tools.idea.res.isValueBased
 import com.android.tools.idea.res.resolve
 import com.android.tools.idea.res.resourceNamespace
-import com.android.tools.idea.util.androidFacet
-import com.android.tools.res.ResourceNamespacing
 import com.android.utils.HashCodes
 import com.android.utils.SdkUtils
 import com.android.utils.reflection.qualifiedName
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationHandler
 import com.intellij.find.findUsages.FindUsagesHandler
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.ElementDescriptionLocation
 import com.intellij.psi.ElementDescriptionProvider
 import com.intellij.psi.PsiElement
@@ -193,38 +188,16 @@ class ResourceReferencePsiElement(val delegate: PsiElement, val resourceReferenc
     }
 
     private fun convertStyleableAttrLightField(element: StyleableAttrLightField): ResourceReferencePsiElement? {
-      val grandClass = element.containingClass.containingClass as? AndroidRClassBase ?: return null
-      val facet = element.androidFacet
-      val namespacing = facet?.let { StudioResourceRepositoryManager.getInstance(it).namespacing }
-      val resourceNamespace =
-        if (ResourceNamespacing.REQUIRED == namespacing) {
-          ResourceNamespace.fromPackageName(StringUtil.getPackageName(grandClass.qualifiedName!!))
-        } else {
-          ResourceNamespace.RES_AUTO
-        }
-      return ResourceReferencePsiElement(element, ResourceReference(resourceNamespace, STYLEABLE, element.name))
+      if (element.containingClass.containingClass !is AndroidRClassBase) return null
+      return ResourceReferencePsiElement(element, ResourceReference(ResourceNamespace.RES_AUTO, STYLEABLE, element.name))
     }
 
     private fun convertResourceLightField(element: ResourceLightField): ResourceReferencePsiElement? {
       val grandClass = element.containingClass.containingClass as? AndroidRClassBase ?: return null
       return when (grandClass) {
-        is ResourceRepositoryRClass -> {
-          val facet = element.androidFacet
-          val namespacing = facet?.let { StudioResourceRepositoryManager.getInstance(it).namespacing }
-          val resourceNamespace =
-            if (ResourceNamespacing.REQUIRED == namespacing) {
-              ResourceNamespace.fromPackageName(StringUtil.getPackageName(grandClass.qualifiedName!!))
-            } else {
-              ResourceNamespace.RES_AUTO
-            }
-          ResourceReferencePsiElement(element, ResourceReference(resourceNamespace, element.resourceType, element.resourceName))
-        }
+        is ResourceRepositoryRClass,
         is TransitiveAarRClass -> {
           ResourceReferencePsiElement(element, ResourceReference(ResourceNamespace.RES_AUTO, element.resourceType, element.resourceName))
-        }
-        is SmallAarRClass -> {
-          val resourceNamespace = ResourceNamespace.fromPackageName(StringUtil.getPackageName(grandClass.qualifiedName!!))
-          ResourceReferencePsiElement(element, ResourceReference(resourceNamespace, element.resourceType, element.resourceName))
         }
         else -> null
       }

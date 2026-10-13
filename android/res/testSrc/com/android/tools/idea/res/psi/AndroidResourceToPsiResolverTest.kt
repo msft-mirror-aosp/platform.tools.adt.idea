@@ -33,6 +33,7 @@ import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.moveCaret
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
@@ -43,6 +44,7 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.TestFixtureBuilder
 import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.dom.resources.ResourceValue
 
 /** Class to test aspects of [AndroidResourceToPsiResolver]. */
@@ -225,7 +227,6 @@ abstract class AndroidResourceToPsiResolverTest : AndroidTestCase() {
       PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), moduleName, fixture.tempDirFixture.findOrCreateDir(moduleName))
     myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, "$moduleName/${SdkConstants.FN_ANDROID_MANIFEST_XML}")
     addAndroidFacetAndSdk(dynamicFeatureModule)
-    enableNamespacing(dynamicFeatureModule.androidFacet!!, "p1.p2.dynamic")
     val newModuleSystem =
       object : AndroidModuleSystem by DefaultModuleSystem(module) {
         override fun getDynamicFeatureModules(): List<Module> = listOf(dynamicFeatureModule)
@@ -250,7 +251,19 @@ class ResourceRepositoryToPsiResolverTest : AndroidResourceToPsiResolverTest() {
   override fun setUp() {
     super.setUp()
 
-    MAIN_MODULE_COLOR_FILE = myFixture.addFileToProject("/res/values/colors.xml", COLORS_XML).virtualFile
+    MAIN_MODULE_COLOR_FILE =
+      myFixture
+        .addFileToProject(
+          "/res/values/colors.xml",
+          // language=XML
+          """
+          <resources>
+              <color name="appTestColor">#123456</color>
+          </resources>
+          """
+            .trimIndent(),
+        )
+        .virtualFile
     MAIN_MODULE_USAGE_COLOR_FILE =
       myFixture
         .addFileToProject(
@@ -258,7 +271,7 @@ class ResourceRepositoryToPsiResolverTest : AndroidResourceToPsiResolverTest() {
           // language=XML
           """
           <resources>
-              <color name="newColor">@color/testColor</color>
+              <color name="newColor">@color/appTestColor</color>
           </resources>
           """
             .trimIndent(),
@@ -269,9 +282,12 @@ class ResourceRepositoryToPsiResolverTest : AndroidResourceToPsiResolverTest() {
     MODULE_WITHOUT_DEPENDENCY_COLOR_FILE =
       myFixture.addFileToProject(getAdditionalModulePath(MODULE_WITHOUT_DEPENDENCY) + "/res/values/colors.xml", COLORS_XML).virtualFile
 
-    enableNamespacing("p1.p2")
-    enableNamespacing(getAdditionalModuleByName(MODULE_WITH_DEPENDENCY)!!.androidFacet!!, "p1.p2.module_with_dep")
-    enableNamespacing(getAdditionalModuleByName(MODULE_WITHOUT_DEPENDENCY)!!.androidFacet!!, "p1.p2.module_without_dep")
+    runWriteCommandAction(project) {
+      Manifest.getMainManifest(getAdditionalModuleByName(MODULE_WITH_DEPENDENCY)!!.androidFacet!!)!!.`package`.value =
+        "p1.p2.module_with_dep"
+      Manifest.getMainManifest(getAdditionalModuleByName(MODULE_WITHOUT_DEPENDENCY)!!.androidFacet!!)!!.`package`.value =
+        "p1.p2.module_without_dep"
+    }
   }
 
   private val COLORS_XML =
@@ -312,11 +328,11 @@ class ResourceRepositoryToPsiResolverTest : AndroidResourceToPsiResolverTest() {
     checkScopePerModuleForOpenFile(mainModule = false, moduleWithDependency = false, moduleWithoutDependency = true)
 
     myFixture.configureFromExistingVirtualFile(MAIN_MODULE_USAGE_COLOR_FILE)
-    myFixture.moveCaret("@color/test|Color")
+    myFixture.moveCaret("@color/appTest|Color")
     checkScopePerModuleForOpenFile(mainModule = true, moduleWithDependency = false, moduleWithoutDependency = false)
 
     myFixture.configureFromExistingVirtualFile(MAIN_MODULE_COLOR_FILE)
-    myFixture.moveCaret("name=\"testCo|lor\"")
+    myFixture.moveCaret("name=\"appTestCo|lor\"")
     checkScopePerModuleForOpenFile(mainModule = true, moduleWithDependency = false, moduleWithoutDependency = false)
   }
 
