@@ -127,6 +127,7 @@ internal class VariantDiscovery(
     // Run the new resolution for V2 projects.
     val useNewResolution =
       syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution &&
+        syncOptions.flags.studioFlagPhasedSyncDependencyResolutionEnabled &&
         buildInfo.buildIdMap.keys.size == 1 &&
         inputModules.all { it is AndroidModule.V2 && it.nativeModelVersion == AndroidModule.NativeModelVersion.None }
 

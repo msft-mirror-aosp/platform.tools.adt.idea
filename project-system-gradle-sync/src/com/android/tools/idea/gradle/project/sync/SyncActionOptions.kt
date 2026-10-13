@@ -68,4 +68,5 @@ data class GradleSyncStudioFlags(
   val studioFlagUseFlatDependencyGraphModel: Boolean,
   val studioFlagFetchKotlinModelsInParallel: Boolean,
   val studioFlagUsedPhasedSyncVariantResolution: Boolean,
+  val studioFlagPhasedSyncDependencyResolutionEnabled: Boolean,
 ) : Serializable
