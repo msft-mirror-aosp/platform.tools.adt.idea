@@ -51,9 +51,11 @@ import com.google.wireless.android.play.playlog.proto.ClientAnalytics
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.GlassesPairingEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.TemporaryDirectory
+import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -62,6 +64,7 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -71,6 +74,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.testTimeSource
@@ -83,6 +87,9 @@ class GlassesPairingWizardTest {
   @get:Rule val temporaryDirectoryRule = TemporaryDirectory()
   @get:Rule val composeTestRule = createStudioComposeTestRule()
   @get:Rule val applicationRule = ApplicationRule()
+
+  /** [GlassesPairingWizard.showCore] is @UiThread and production calls it on the EDT, so run the test body there. */
+  private fun runTestOnEdt(testBody: suspend TestScope.() -> Unit) = runInEdtAndWait { runTest(testBody = testBody) }
 
   @After
   fun tearDown() {
@@ -253,18 +260,17 @@ class GlassesPairingWizardTest {
 
     glasses.activationAction!!.activate()
 
-    val duration =
-      testTimeSource.measureTime {
-        val states = launchGlassesAndPhone(glasses, phone).toList()
+    val duration = testTimeSource.measureTime {
+      val states = launchGlassesAndPhone(glasses, phone).toList()
 
-        assertThat(states)
-          .containsExactly(
-            createLaunchingState(phone = Launching, glasses = Ready),
-            createLaunchingState(phone = Booting, glasses = Ready),
-            createLaunchingState(phone = Ready, glasses = Ready),
-          )
-          .inOrder()
-      }
+      assertThat(states)
+        .containsExactly(
+          createLaunchingState(phone = Launching, glasses = Ready),
+          createLaunchingState(phone = Booting, glasses = Ready),
+          createLaunchingState(phone = Ready, glasses = Ready),
+        )
+        .inOrder()
+    }
 
     assertThat(duration).isLessThan(9.seconds)
   }
@@ -441,7 +447,7 @@ class GlassesPairingWizardTest {
   }
 
   @Test
-  fun testShowEnforcesSingleInstance() = runTest {
+  fun testShowEnforcesSingleInstance() = runTestOnEdt {
     val coroutineScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
     val devicesFlow = MutableStateFlow(emptyList<DeviceHandle>())
     val glasses =
@@ -481,7 +487,7 @@ class GlassesPairingWizardTest {
   }
 
   @Test
-  fun testShowRejectsMultipleDevices() = runTest {
+  fun testShowRejectsMultipleDevices() = runTestOnEdt {
     val coroutineScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
     val devicesFlow = MutableStateFlow(emptyList<DeviceHandle>())
     val glasses1 =
@@ -533,7 +539,7 @@ class GlassesPairingWizardTest {
   }
 
   @Test
-  fun testIsAnyWizardOpen() = runTest {
+  fun testIsAnyWizardOpen() = runTestOnEdt {
     val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
     val devicesFlow = MutableStateFlow(emptyList<DeviceHandle>())
     val glasses =
@@ -984,21 +990,25 @@ class GlassesPairingWizardTest {
           }
         }
       val controller = TestWizardController()
-      val resultDeferred = coroutineScope.async {
-        GlassesPairingWizard.showCore(
-          parent = null,
-          project = null,
-          devicesFlow = devicesFlow,
-          glassesHandle = glasses,
-          phoneHandle = phone,
-          pairer = pairer,
-          isCompatible = { true },
-        ) { _, _, _, _, _, content ->
-          val testWizard = TestComposeWizard { content() }
-          composeTestRule.setContent { testWizard.Content() }
-          controller
+      val testWizard = CompletableDeferred<TestComposeWizard>()
+      // showCore is @UiThread (production calls it on the EDT); the compose test rule is still driven from the test thread.
+      val resultDeferred =
+        coroutineScope.async(Dispatchers.EDT) {
+          GlassesPairingWizard.showCore(
+            parent = null,
+            project = null,
+            devicesFlow = devicesFlow,
+            glassesHandle = glasses,
+            phoneHandle = phone,
+            pairer = pairer,
+            isCompatible = { true },
+          ) { _, _, _, _, _, content ->
+            testWizard.complete(TestComposeWizard { content() })
+            controller
+          }
         }
-      }
+      val wizard = testWizard.await()
+      composeTestRule.setContent { wizard.Content() }
       composeTestRule.waitForIdle()
       // Simulate closing the wizard window via the titlebar X button (controller.show() returns false)
       controller.close(false)

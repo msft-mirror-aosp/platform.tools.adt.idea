@@ -68,6 +68,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -178,7 +179,7 @@ class StudioLocalEmulatorProvisionerPluginTest {
   }
 
   @Test
-  fun testPairGlassesDisabledWhenWizardOpen() = runTest {
+  fun testPairGlassesDisabledWhenWizardOpen() = runTestOnEdt {
     val handleScope = this.createChildScope()
     val handle =
       StudioLocalEmulatorDeviceHandle(
@@ -219,6 +220,9 @@ class StudioLocalEmulatorProvisionerPluginTest {
 
     handleScope.cancel()
   }
+
+  /** [GlassesPairingWizard.showCore] is @UiThread and production calls it on the EDT, so run the test body there. */
+  private fun runTestOnEdt(testBody: suspend TestScope.() -> Unit) = runInEdtAndWait { runTest(testBody = testBody) }
 
   @Test
   fun deviceWrapping(): Unit = runBlockingWithTimeout {
