@@ -220,6 +220,8 @@ class StateChart<T : Any>(
     val scaleX = width.toFloat()
     val scaleY = height.toFloat()
     val clipRect = g2d.clipBounds
+    // The clip of the area to paint. Each rectangle is clipped within it.
+    val originalClip = g2d.clip
 
     rectangleCache.forEachIndexed { seriesIndex, (rectangles, rectangleValues) ->
       fun List<Rectangle2D.Float>.searchByX(x: Float, w: Float) = binarySearch {
@@ -269,19 +271,23 @@ class StateChart<T : Any>(
 
       transformedShapes.indices.forEach {
         val rect = transformedShapes[it]
-        // the rectangles are allowed to go outside this component, so we clip it
-        g2d.clip =
+        // The rectangles are allowed to go outside this component, so clip each one to the part of it within the component, within
+        // originalClip.
+        g2d.clip = originalClip
+        g2d.clip(
           when {
             0 <= rect.x && rect.x + rect.width <= width -> rect
             else -> {
               val x = max(0f, rect.x)
-              val w = min(scaleX - x, rect.width)
+              val w = max(0f, min(scaleX, rect.x + rect.width) - x)
               Rectangle2D.Float(x, rect.y, w, rect.height)
             }
           }
+        )
         render(g2d, rect, mDefaultFontMetrics, it == hoverIndex, transformedValues[it])
       }
     }
+    g2d.clip = originalClip
 
     val drawTime = stopwatch.elapsedSinceLastDeltaNs
     addDebugInfo("XS ms: %.2fms, %.2fms", transformTime / 1000000f, scalingTime / 1000000f)

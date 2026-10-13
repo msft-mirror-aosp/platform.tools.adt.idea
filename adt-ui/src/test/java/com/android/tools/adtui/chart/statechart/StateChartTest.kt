@@ -26,6 +26,7 @@ import java.awt.FontMetrics
 import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.geom.Rectangle2D
+import java.awt.image.BufferedImage
 import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
@@ -165,6 +166,31 @@ class StateChartTest {
     Mockito.verify(fakeGraphics, Mockito.times(5))
       .drawString(ArgumentMatchers.eq("hi"), ArgumentMatchers.anyInt(), ArgumentMatchers.anyInt())
     Mockito.verify(fakeGraphics, Mockito.times(5)).fill(ArgumentMatchers.any(Rectangle2D.Float::class.java))
+  }
+
+  @Test
+  fun `chart does not paint outside of the clip it is given`() {
+    val model = StateChartModel<Long>()
+    model.addSeries(RangedSeries(Range(0.0, 10.0), DataSeries.using { listOf(SeriesData(0, 0L)) }))
+
+    fun render(g: Graphics2D, rect: Rectangle2D.Float, defaultFontMetrics: FontMetrics, hovered: Boolean, value: Long) {
+      g.color = Color.RED
+      g.fill(rect)
+    }
+
+    val stateChart = StateChart(model, ::render).apply { setSize(100, 100) }
+    val image = BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB)
+    val g = image.createGraphics()
+    // Only the left half of the chart is visible, e.g. because a viewport shows only part of it.
+    g.clipRect(0, 0, 50, 100)
+    try {
+      stateChart.paint(g)
+    } finally {
+      g.dispose()
+    }
+
+    assertThat(Color(image.getRGB(25, 50), true)).isEqualTo(Color.RED)
+    assertThat(image.getRGB(75, 50) ushr 24).isEqualTo(0) // fully transparent, i.e. not painted
   }
 }
 
