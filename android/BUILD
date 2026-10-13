@@ -464,6 +464,7 @@ filegroup(
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
         "//tools/profiler/common:sherlock-perfetto-proto",
         "//tools/profiler/common:sherlock-plugin-protos",
+        "//tools/vendor/google/alt-lang/cmaked:libcmaked",
         "//tools/vendor/google/alt-lang/soong/parser:libblueprint-lexer-parser",
         "//tools/vendor/google/asfg/g3plugins/ext:intellijext_java_grpc",
         "//tools/vendor/google/cuttlefish-plugin:libhost-orch-config-proto",
