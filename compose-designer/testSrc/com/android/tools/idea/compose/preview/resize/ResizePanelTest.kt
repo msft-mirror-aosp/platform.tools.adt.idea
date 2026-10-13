@@ -872,6 +872,73 @@ class ResizePanelTest {
   }
 
   @Test
+  fun `dimension fields are synced by the toolbar update, not by setSceneManager`() = runInEdtAndGet {
+    setupAndShowPanel()
+    val oldSize = configuration.deviceSizeDp()
+    assertEquals(oldSize.width, widthTextField.value)
+    assertEquals(oldSize.height, heightTextField.value)
+
+    // Simulate a refresh of the same preview whose new configuration has a different size.
+    val newSceneManager = createSceneManagerForSamePreviewWithDifferentSize("layout_refresh.xml")
+    val newSize = newSceneManager.model.configuration.deviceSizeDp()
+    resizePanel.onBeforeRender()
+    resizePanel.setSceneManager(newSceneManager)
+    resizePanel.onAfterRenderCompleted()
+
+    // setSceneManager does not write the text fields itself.
+    assertEquals(oldSize.width, widthTextField.value)
+    assertEquals(oldSize.height, heightTextField.value)
+
+    // The next toolbar update syncs them through DimensionInputsAction.updateCustomComponent.
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertEquals(newSize.width, widthTextField.value)
+    assertEquals(newSize.height, heightTextField.value)
+  }
+
+  @Test
+  fun `refreshing the same preview does not overwrite invalid input being edited`() = runInEdtAndGet {
+    setupAndShowPanel()
+    // Type an invalid value without committing it (no Enter, no focus lost), as if the user is still editing.
+    val invalidValue = (MAX_DIMENSION_DP + 1).toString()
+    widthTextField.text = invalidValue
+    assertNotNull(widthTextField.getClientProperty(OUTLINE_PROPERTY))
+
+    val newSceneManager = createSceneManagerForSamePreviewWithDifferentSize("layout_refresh_editing.xml")
+    resizePanel.onBeforeRender()
+    resizePanel.setSceneManager(newSceneManager)
+    resizePanel.onAfterRenderCompleted()
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertEquals(invalidValue, widthTextField.text)
+    assertNotNull(widthTextField.getClientProperty(OUTLINE_PROPERTY))
+  }
+
+  /**
+   * Creates a [LayoutlibSceneManager] for the same preview element used in [setUp] (so [ResizePanel.setSceneManager] treats it as a refresh
+   * of the focused preview) whose configuration uses a device with a different size than [configuration].
+   */
+  private fun createSceneManagerForSamePreviewWithDifferentSize(fileName: String): LayoutlibSceneManager {
+    val previewElement = SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod")
+    val newModel =
+      NlModelBuilderUtil.model(projectRule, "layout", fileName, ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
+    newModel.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+    val newConfiguration = newModel.configuration
+    val currentSize = configuration.deviceSizeDp()
+    for (device in newConfiguration.settings.devices) {
+      newConfiguration.setDevice(device, false)
+      if (newConfiguration.deviceSizeDp() != currentSize) break
+    }
+    assertNotEquals(currentSize, newConfiguration.deviceSizeDp())
+    return surface.addModelsWithoutRender(listOf(newModel)).single()
+  }
+
+  @Test
   fun `updateBaselineFromConfiguration and applyToConfiguration return early when same instance`() = runInEdtAndGet {
     setupAndShowPanel()
     setDifferentDevice()

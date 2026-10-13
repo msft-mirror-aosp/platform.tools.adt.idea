@@ -448,8 +448,9 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
         renderTriggerListener = ConfigurationResizeListener(sm, configuration).also { configuration.addListener(it) }
       }
     }
+    // The dimension text fields are synced with the new configuration by DimensionInputsAction.updateCustomComponent on the next toolbar
+    // update, which also avoids overwriting the user's input while they are editing the fields.
     updatePanelFromConfiguration()
-    invokeLaterIfNeeded { dimensionInputsAction.updateTextFieldsFromConfiguration() }
   }
 
   private fun updatePanelFromConfiguration() {
