@@ -35,8 +35,10 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.jetbrains.plugins.gradle.issue.UnresolvedDependencyIssue
 import org.jetbrains.plugins.gradle.settings.GradleSettings
+import org.junit.Ignore
 import org.junit.Test
 
+@Ignore("b/574339918")
 class MissingDependencyFailureTest : AbstractIssueCheckerIntegrationTest() {
 
   @Test

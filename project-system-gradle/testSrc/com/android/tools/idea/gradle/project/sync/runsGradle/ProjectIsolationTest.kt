@@ -37,7 +37,9 @@ class ProjectIsolationTest {
   @Test
   fun testProjectIsolationIssues() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
-    preparedProject.root.resolve(SdkConstants.FN_GRADLE_PROPERTIES).let { it.appendText("\norg.gradle.unsafe.isolated-projects=true") }
+    preparedProject.root
+      .resolve(SdkConstants.FN_GRADLE_PROPERTIES)
+      .appendText("\norg.gradle.isolated-projects=true\norg.gradle.isolated-projects.dangerously-ignore-problems=true")
 
     val stdout = StringBuilder()
     projectRule.openPreparedProject("project", OpenPreparedProjectOptions(outputHandler = { message -> stdout.append(message) })) { project
@@ -66,7 +68,9 @@ class ProjectIsolationTest {
   @Test
   fun testKmpProjectIsolationIssues() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.ANDROID_KOTLIN_MULTIPLATFORM)
-    preparedProject.root.resolve(SdkConstants.FN_GRADLE_PROPERTIES).appendText("\norg.gradle.unsafe.isolated-projects=true")
+    preparedProject.root
+      .resolve(SdkConstants.FN_GRADLE_PROPERTIES)
+      .appendText("\norg.gradle.isolated-projects=true\norg.gradle.isolated-projects.dangerously-ignore-problems=true")
 
     val stdout = StringBuilder()
     projectRule.openPreparedProject("project", OpenPreparedProjectOptions(outputHandler = { message -> stdout.append(message) })) { project
