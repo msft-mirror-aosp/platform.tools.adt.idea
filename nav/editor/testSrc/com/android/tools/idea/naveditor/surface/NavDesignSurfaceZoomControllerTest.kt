@@ -18,20 +18,27 @@ package com.android.tools.idea.naveditor.surface
 import com.android.mockito.kotlin.whenever
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.common.model.Coordinates
-import com.android.tools.idea.testing.mockStatic
-import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.awt.Dimension
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.BeforeClass
-import org.junit.ClassRule
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.MockedStatic
+import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 
+@RunsInEdt
 class NavDesignSurfaceZoomControllerTest {
+
+  @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun `test fit scale when no views are within the focus`() {
@@ -395,23 +402,23 @@ class NavDesignSurfaceZoomControllerTest {
     assertEquals(zoomTypeToTrack, ZoomType.ACTUAL)
   }
 
-  companion object {
+  private lateinit var coordinates: MockedStatic<Coordinates>
 
-    @JvmField @ClassRule val disposableRule = DisposableRule()
+  // Mockito static mocks are thread-local, so the mock is created and closed on the EDT, where the tests run.
+  @Before
+  fun setUp() {
+    coordinates = Mockito.mockStatic(Coordinates::class.java)
+    coordinates.whenever<Any> { Coordinates.getAndroidXDip(any(), any()) }.thenReturn(0)
 
-    private lateinit var coordinates: MockedStatic<Coordinates>
+    coordinates.whenever<Any> { Coordinates.getAndroidYDip(any(), any()) }.thenReturn(0)
 
-    @JvmStatic
-    @BeforeClass
-    fun setUpClass() {
-      coordinates = mockStatic(disposableRule.disposable)
-      coordinates.whenever<Any> { Coordinates.getAndroidXDip(any(), any()) }.thenReturn(0)
+    coordinates.whenever<Any> { Coordinates.getSwingXDip(any(), any<Int>()) }.thenReturn(0)
 
-      coordinates.whenever<Any> { Coordinates.getAndroidYDip(any(), any()) }.thenReturn(0)
+    coordinates.whenever<Any> { Coordinates.getSwingYDip(any(), any<Int>()) }.thenReturn(0)
+  }
 
-      coordinates.whenever<Any> { Coordinates.getSwingXDip(any(), any<Int>()) }.thenReturn(0)
-
-      coordinates.whenever<Any> { Coordinates.getSwingYDip(any(), any<Int>()) }.thenReturn(0)
-    }
+  @After
+  fun tearDown() {
+    coordinates.close()
   }
 }

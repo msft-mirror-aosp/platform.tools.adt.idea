@@ -263,8 +263,10 @@ class NavDesignSurfaceZoomControlsTest {
     // Verify zoom in
     run {
       repeat(3) {
-        zoomInAction.actionPerformed(event)
-        withContext(Dispatchers.EDT) { fakeUi.layoutAndDispatchEvents() }
+        withContext(Dispatchers.EDT) {
+          zoomInAction.actionPerformed(event)
+          fakeUi.layoutAndDispatchEvents()
+        }
       }
       Assert.assertEquals(3.0, surface.zoomController.scale, 0.01)
       delayUntilImageSimilar(fakeUi, "zoomIn")
@@ -332,8 +334,10 @@ class NavDesignSurfaceZoomControlsTest {
     // Verify zoom out
     run {
       repeat(3) {
-        zoomOutAction.actionPerformed(event)
-        withContext(Dispatchers.EDT) { fakeUi.layoutAndDispatchEvents() }
+        withContext(Dispatchers.EDT) {
+          zoomOutAction.actionPerformed(event)
+          fakeUi.layoutAndDispatchEvents()
+        }
       }
       Assert.assertEquals(1.1, surface.zoomController.scale, 0.01)
       delayUntilImageSimilar(fakeUi, "zoomOut")
@@ -388,19 +392,23 @@ class NavDesignSurfaceZoomControlsTest {
     val event = TestActionEvent.createTestEvent(DataManager.getInstance().customizeDataContext(DataContext.EMPTY_CONTEXT, surface))
 
     // Perform zoom-in action twice and make sure NavDesignSurface is not zoom-to-fit anymore.
-    zoomInAction.actionPerformed(event)
-    zoomInAction.actionPerformed(event)
+    withContext(Dispatchers.EDT) {
+      zoomInAction.actionPerformed(event)
+      zoomInAction.actionPerformed(event)
+    }
     // If we can apply zoom-to-fit we confirm NavDesignSurface is currently not zoom-to-fit.
     assertTrue(surface.zoomController.canZoomToFit())
 
     // Perform zoom to fit action
-    zoomToFitAction.actionPerformed(event)
+    withContext(Dispatchers.EDT) { zoomToFitAction.actionPerformed(event) }
     val zoomToFitScale = surface.zoomController.scale
 
     // Verify zoom to fit
     run {
-      zoomToFitAction.actionPerformed(event)
-      withContext(Dispatchers.EDT) { fakeUi.layoutAndDispatchEvents() }
+      withContext(Dispatchers.EDT) {
+        zoomToFitAction.actionPerformed(event)
+        fakeUi.layoutAndDispatchEvents()
+      }
 
       // We can't zoom-to-fit anymore because zoom-to-fit is already applied.
       assertFalse(surface.zoomController.canZoomToFit())
