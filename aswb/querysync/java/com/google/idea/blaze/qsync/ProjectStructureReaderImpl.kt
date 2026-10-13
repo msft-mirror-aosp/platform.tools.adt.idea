@@ -27,6 +27,8 @@ import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.google.idea.blaze.qsync.project.SourceSet
+import com.google.idea.blaze.qsync.project.absoluteExcludes
+import com.google.idea.blaze.qsync.project.associateWithIncludeRoot
 import com.google.idea.blaze.qsync.project.computePackageStamp
 import java.nio.file.Files
 import java.nio.file.Path
@@ -145,20 +147,26 @@ class ProjectStructureReaderImpl(
       }
     }
 
+    val startDirToIncludeRoot =
+      projectDefinition.associateWithIncludeRoot(
+        workspaceRoot,
+        scope.startDirs(workspaceRoot),
+      )
+
     val duration = measureTime {
       runBlocking {
         traverseProjectDirectories(
-          context,
-          workspaceRoot,
-          projectDefinition,
-          scope.startDirs(workspaceRoot),
+          context = context,
+          startDirs = startDirToIncludeRoot.keys,
+          excludeAbsolute = projectDefinition.absoluteExcludes(workspaceRoot),
+          supportsNestedWorkspaces = projectDefinition.supportsNestedWorkspaces,
         ) { rootDir, currentDir, contents ->
           val relativeDir = workspaceRoot.relativize(currentDir)
           if (scope.isKnownUnmodifiedPackage(relativeDir)) {
             directSubpackagesMap.recordDirectSubpackage(relativeDir, locator)
             null
           } else {
-            val includeRoot = workspaceRoot.relativize(rootDir)
+            val includeRoot = startDirToIncludeRoot.getValue(rootDir)
             val candidateFiles =
               choosePackageCandidates(
                 contents.files.map { it.path },

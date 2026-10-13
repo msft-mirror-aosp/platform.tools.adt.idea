@@ -17,8 +17,6 @@ package com.google.idea.blaze.qsync
 
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.PrintOutput
-import com.google.idea.blaze.qsync.project.ProjectDefinition
-import com.google.idea.blaze.qsync.project.existingAbsoluteIncludes
 import com.google.idea.blaze.traverser.DirectoryContents
 import com.google.idea.blaze.traverser.ScanTask
 import com.google.idea.blaze.traverser.traverseIncludedDirectories
@@ -27,7 +25,6 @@ import java.nio.file.Path
 private val WORKSPACE_FILE_NAMES = setOf("MODULE.bazel", "WORKSPACE", "WORKSPACE.bazel")
 
 fun bazelProjectFilteringProcessor(
-  workspaceRoot: Path,
   excludeAbsolute: Set<Path>,
   supportsNestedWorkspaces: Boolean,
   context: Context<*>,
@@ -45,7 +42,8 @@ fun bazelProjectFilteringProcessor(
 }
 
 /**
- * Concurrently traverses the directories included in [projectDefinition], filtering out excluded paths and nested workspaces.
+ * Concurrently traverses directories starting from [startDirs], filtering out [excludeAbsolute] paths and nested workspaces (when
+ * [supportsNestedWorkspaces] is true).
  *
  * For each valid directory, delegates to [processContents], which returns the [DirectoryContents] whose subdirectories should be traversed
  * next (or `null` to prune recursion). Note: [processContents] is invoked concurrently on `QuerySyncDispatchers.IO` and must be
@@ -53,36 +51,27 @@ fun bazelProjectFilteringProcessor(
  */
 suspend fun traverseProjectDirectories(
   context: Context<*>,
-  workspaceRoot: Path,
-  projectDefinition: ProjectDefinition,
   startDirs: Set<Path>,
+  excludeAbsolute: Set<Path>,
+  supportsNestedWorkspaces: Boolean,
   processContents: (rootDir: Path, currentDir: Path, contents: DirectoryContents) -> DirectoryContents?,
 ) {
-  val includeAbsolute = projectDefinition.existingAbsoluteIncludes(workspaceRoot)
-  if (includeAbsolute.isEmpty()) {
+  if (startDirs.isEmpty()) {
     return
   }
-  val excludeAbsolute = projectDefinition.projectExcludes.map { workspaceRoot.resolve(it) }.toSet()
 
   val processor =
     directoryProcessor(
       context,
       processContents =
         bazelProjectFilteringProcessor(
-          workspaceRoot = workspaceRoot,
           excludeAbsolute = excludeAbsolute,
-          supportsNestedWorkspaces = projectDefinition.supportsNestedWorkspaces,
+          supportsNestedWorkspaces = supportsNestedWorkspaces,
           context = context,
           processContents = processContents,
         ),
     )
 
-  val initialTasks = startDirs.mapNotNull { startDir ->
-    val rootDir = includeAbsolute.filter { startDir.startsWith(it) }.maxByOrNull { it.nameCount }
-    rootDir?.let { ScanTask(it, startDir) }
-  }
-
-  if (initialTasks.isNotEmpty()) {
-    traverseIncludedDirectories(initialTasks, processor)
-  }
+  val initialTasks = startDirs.map { ScanTask(it, it) }
+  traverseIncludedDirectories(initialTasks, processor)
 }

@@ -919,6 +919,88 @@ class ProjectStructureReaderTest {
   }
 
   @Test
+  fun read_overlappingIncludes_assignsMostSpecificIncludeRoot() {
+    createFile("a/pkg/BUILD")
+    createFile("a/pkg/Outer.java")
+    createFile("a/b/c/BUILD")
+    createFile("a/b/c/Inner.java")
+
+    val projectDefinition = createProjectDefinition(setOf("a", "a/b"))
+    val structure = reader.read(context, workspaceRoot, projectDefinition)
+
+    val expected =
+      expectedStructure(
+        roots =
+          mapOf(
+            "a" to
+              mapOf(
+                "a/pkg" to
+                  SourceSet(
+                    rootPath = Path.of("a/pkg"),
+                    javaSourceFiles = listOf(Path.of("Outer.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              ),
+            "a/b" to
+              mapOf(
+                "a/b/c" to
+                  SourceSet(
+                    rootPath = Path.of("a/b/c"),
+                    javaSourceFiles = listOf(Path.of("Inner.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              ),
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun scanDirectories_overlappingIncludes_assignsMostSpecificIncludeRoot() {
+    createFile("a/pkg/BUILD")
+    createFile("a/pkg/Outer.java")
+    createFile("a/b/c/BUILD")
+    createFile("a/b/c/Inner.java")
+
+    val projectDefinition = createProjectDefinition(setOf("a", "a/b"))
+    val readerImpl = ProjectStructureReaderImpl(FileExtensions()) { _, _ -> "" }
+    val scope =
+      ScanScope(
+        dirsToScan = setOf(Path.of("a/b/c")),
+        knownUnmodifiedPackages = emptySet(),
+      )
+    val structure =
+      readerImpl.scanDirectories(
+        context,
+        workspaceRoot,
+        projectDefinition,
+        scope,
+      )
+
+    val expected =
+      expectedStructure(
+        roots =
+          mapOf(
+            "a/b" to
+              mapOf(
+                "a/b/c" to
+                  SourceSet(
+                    rootPath = Path.of("a/b/c"),
+                    javaSourceFiles = listOf(Path.of("Inner.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              )
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
+  }
+
+  @Test
   fun scanDirectories_knownPackages_skipsTraversalAndRecordsDirectSubpackage() {
     createFile("pkg/BUILD")
     createFile("pkg/Parent.java")

@@ -17,8 +17,6 @@ package com.google.idea.blaze.qsync
 
 import com.google.common.truth.Truth.assertThat
 import com.google.idea.blaze.common.NoopContext
-import com.google.idea.blaze.qsync.project.ProjectDefinition
-import com.google.idea.blaze.qsync.project.existingAbsoluteIncludes
 import com.google.idea.blaze.traverser.DirectoryContents
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -70,7 +68,6 @@ class BazelProjectFilteringProcessorTest {
         context,
         processContents =
           bazelProjectFilteringProcessor(
-            workspaceRoot = workspaceRoot,
             excludeAbsolute = excludes,
             supportsNestedWorkspaces = true,
             context = context,
@@ -97,7 +94,6 @@ class BazelProjectFilteringProcessorTest {
         context,
         processContents =
           bazelProjectFilteringProcessor(
-            workspaceRoot = workspaceRoot,
             excludeAbsolute = excludes,
             supportsNestedWorkspaces = true,
             context = context,
@@ -121,7 +117,6 @@ class BazelProjectFilteringProcessorTest {
         context,
         processContents =
           bazelProjectFilteringProcessor(
-            workspaceRoot = workspaceRoot,
             excludeAbsolute = emptySet(),
             supportsNestedWorkspaces = true,
             context = context,
@@ -145,7 +140,6 @@ class BazelProjectFilteringProcessorTest {
         context,
         processContents =
           bazelProjectFilteringProcessor(
-            workspaceRoot = workspaceRoot,
             excludeAbsolute = emptySet(),
             supportsNestedWorkspaces = true,
             context = context,
@@ -171,7 +165,6 @@ class BazelProjectFilteringProcessorTest {
         context,
         processContents =
           bazelProjectFilteringProcessor(
-            workspaceRoot = workspaceRoot,
             excludeAbsolute = emptySet(),
             supportsNestedWorkspaces = false,
             context = context,
@@ -193,15 +186,14 @@ class BazelProjectFilteringProcessorTest {
   }
 
   @Test
-  fun testTraverseProjectDirectories_emptyIncludes() {
+  fun testTraverseProjectDirectories_emptyStartDirs() {
     runBlocking {
-      val def = ProjectDefinition.EMPTY.copy(projectIncludes = setOf(Path.of("nonexistent")))
       var callbackCalled = false
       traverseProjectDirectories(
-        context,
-        workspaceRoot,
-        def,
-        def.existingAbsoluteIncludes(workspaceRoot),
+        context = context,
+        startDirs = emptySet(),
+        excludeAbsolute = emptySet(),
+        supportsNestedWorkspaces = true,
       ) { _, _, c ->
         callbackCalled = true
         c
@@ -219,22 +211,25 @@ class BazelProjectFilteringProcessorTest {
       createFile("dir1/nested/MODULE.bazel")
       createFile("dir1/nested/file2.txt")
 
-      val def = ProjectDefinition.EMPTY.copy(projectIncludes = setOf(Path.of("dir1")), projectExcludes = setOf(Path.of("dir1/excluded")))
       val visitedDirs = ConcurrentHashMap.newKeySet<Path>()
       val visitedFiles = ConcurrentHashMap.newKeySet<Path>()
 
       traverseProjectDirectories(
-        context,
-        workspaceRoot,
-        def,
-        def.existingAbsoluteIncludes(workspaceRoot),
+        context = context,
+        startDirs = setOf(workspaceRoot.resolve("dir1")),
+        excludeAbsolute = setOf(workspaceRoot.resolve("dir1/excluded")),
+        supportsNestedWorkspaces = true,
       ) { _, currentDir, contents ->
         visitedDirs.add(currentDir)
         visitedFiles.addAll(contents.files.map { it.path })
         contents
       }
 
-      assertThat(visitedDirs).containsExactly(workspaceRoot.resolve("dir1"), workspaceRoot.resolve("dir1/validChild"))
+      assertThat(visitedDirs)
+        .containsExactly(
+          workspaceRoot.resolve("dir1"),
+          workspaceRoot.resolve("dir1/validChild"),
+        )
       assertThat(visitedFiles).containsExactly(workspaceRoot.resolve("dir1/file1.txt"))
     }
   }
@@ -247,22 +242,35 @@ class BazelProjectFilteringProcessorTest {
       createFile("b/file2.txt")
       createDirectory("c/d/e")
       createFile("c/d/e/file3.txt")
-      // An include that is not matched by startDirs
       createFile("f/file4.txt")
 
-      val def = ProjectDefinition.EMPTY.copy(projectIncludes = setOf(Path.of("a"), Path.of("b"), Path.of("c/d"), Path.of("f")))
-      val startDirs = setOf(workspaceRoot.resolve("a/sub"), workspaceRoot.resolve("b"), workspaceRoot.resolve("c/d/e"))
+      val startDirs =
+        setOf(
+          workspaceRoot.resolve("a/sub"),
+          workspaceRoot.resolve("b"),
+          workspaceRoot.resolve("c/d/e"),
+        )
 
       val visitedRootDirs = ConcurrentHashMap.newKeySet<Path>()
       val visitedDirs = ConcurrentHashMap.newKeySet<Path>()
 
-      traverseProjectDirectories(context, workspaceRoot, def, startDirs) { rootDir, currentDir, contents ->
+      traverseProjectDirectories(
+        context = context,
+        startDirs = startDirs,
+        excludeAbsolute = emptySet(),
+        supportsNestedWorkspaces = true,
+      ) { rootDir, currentDir, contents ->
         visitedRootDirs.add(rootDir)
         visitedDirs.add(currentDir)
         contents
       }
 
-      assertThat(visitedRootDirs).containsExactly(workspaceRoot.resolve("a"), workspaceRoot.resolve("b"), workspaceRoot.resolve("c/d"))
+      assertThat(visitedRootDirs)
+        .containsExactly(
+          workspaceRoot.resolve("a/sub"),
+          workspaceRoot.resolve("b"),
+          workspaceRoot.resolve("c/d/e"),
+        )
       assertThat(visitedDirs)
         .containsExactly(
           workspaceRoot.resolve("a/sub"),
@@ -274,23 +282,36 @@ class BazelProjectFilteringProcessorTest {
   }
 
   @Test
-  fun testTraverseProjectDirectories_withStartDirsMatchingOverlappingIncludes() {
+  fun testTraverseProjectDirectories_nestedStartDirUnderExclude_isSkipped() {
     runBlocking {
-      createDirectory("a/b/c")
-      createFile("a/b/c/file1.txt")
+      createFile("a/A.java")
+      createFile("a/b/B.java")
+      createFile("a/b/c/C.java")
+      createFile("a/b/c/d/e/E.java")
 
-      // Both 'a' and 'a/b' are includes. The startDir 'a/b/c' should match the most specific one ('a/b').
-      val def = ProjectDefinition.EMPTY.copy(projectIncludes = setOf(Path.of("a"), Path.of("a/b")))
-      val startDirs = setOf(workspaceRoot.resolve("a/b/c"))
+      val startDirs =
+        setOf(
+          workspaceRoot.resolve("a"),
+          workspaceRoot.resolve("a/b/c/d/e"),
+        )
+      val excludeAbsolute = setOf(workspaceRoot.resolve("a/b/c"))
+      val visitedDirs = ConcurrentHashMap.newKeySet<Path>()
 
-      val visitedRootDirs = ConcurrentHashMap.newKeySet<Path>()
-
-      traverseProjectDirectories(context, workspaceRoot, def, startDirs) { rootDir, _, contents ->
-        visitedRootDirs.add(rootDir)
+      traverseProjectDirectories(
+        context = context,
+        startDirs = startDirs,
+        excludeAbsolute = excludeAbsolute,
+        supportsNestedWorkspaces = true,
+      ) { _, currentDir, contents ->
+        visitedDirs.add(currentDir)
         contents
       }
 
-      assertThat(visitedRootDirs).containsExactly(workspaceRoot.resolve("a/b"))
+      assertThat(visitedDirs)
+        .containsExactly(
+          workspaceRoot.resolve("a"),
+          workspaceRoot.resolve("a/b"),
+        )
     }
   }
 }

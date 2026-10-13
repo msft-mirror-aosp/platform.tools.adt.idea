@@ -215,3 +215,23 @@ data class ProjectDefinition(
 /** Returns existing absolute directories for [ProjectDefinition.projectIncludes] resolved against [workspaceRoot]. */
 fun ProjectDefinition.existingAbsoluteIncludes(workspaceRoot: Path): Set<Path> =
   projectIncludes.map { workspaceRoot.resolve(it) }.filter { Files.exists(it) && Files.isDirectory(it) }.toSet()
+
+/** Returns absolute paths for [ProjectDefinition.projectExcludes]. */
+fun ProjectDefinition.absoluteExcludes(workspaceRoot: Path): Set<Path> {
+  return projectExcludes.map { workspaceRoot.resolve(it) }.toSet()
+}
+
+/** Maps each dir in [startDirs] to its closest enclosing include root. */
+fun ProjectDefinition.associateWithIncludeRoot(
+  workspaceRoot: Path,
+  startDirs: Set<Path>,
+): Map<Path, Path> {
+  val includes = existingAbsoluteIncludes(workspaceRoot)
+  return startDirs
+    .mapNotNull { dir ->
+      val matching = includes.filter { dir.startsWith(it) }
+      val closest = matching.maxByOrNull { it.nameCount }
+      closest?.let { dir to workspaceRoot.relativize(it) }
+    }
+    .toMap()
+}
