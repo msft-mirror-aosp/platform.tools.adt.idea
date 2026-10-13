@@ -31,7 +31,9 @@ import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.wizard.template.Category
 import com.android.tools.idea.wizard.template.FormFactor
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import org.junit.After
 import org.junit.Before
@@ -240,7 +242,8 @@ class ConfigureAndroidModuleStepTest {
 
     newAndroidModuleModel.apply {
       androidSdkInfo.value = VersionItem.fromStableVersion(1)
-      newAndroidModuleModel.renderer.init()
+      // renderer.init() is @WorkerThread: run it on a pooled thread and wait while dispatching EDT events.
+      PlatformTestUtil.waitForFuture(ApplicationManager.getApplication().executeOnPooledThread { newAndroidModuleModel.renderer.init() })
     }
 
     assertThat(newAndroidModuleModel.recommendedBuildSdk?.apiLevel).isEqualTo(LIB1_COMPILE_SDK)
