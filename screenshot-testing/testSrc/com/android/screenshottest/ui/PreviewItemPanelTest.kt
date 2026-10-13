@@ -577,12 +577,13 @@ class PreviewItemPanelTest {
         previewData = details,
         project = projectRule.project,
         showDetails = false,
-        thumbnailLoader = ThumbnailLoader(executor = MoreExecutors.newDirectExecutorService()),
+        // The default loader decodes on a pooled thread, as in production: decodeThumbnailIcon is @WorkerThread.
+        thumbnailLoader = ThumbnailLoader(),
       )
 
     var callbackInvoked = false
     panel.loadImage(corruptFile.absolutePath, "id") { callbackInvoked = true }
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    PlatformTestUtil.waitWithEventsDispatching("Callback was not invoked", { callbackInvoked }, 10)
 
     assertTrue("Callback should be invoked on failure to allow repaint", callbackInvoked)
     assertFalse("Corrupted image should fail to load", panel.isLoadedSuccessfully)
@@ -595,11 +596,10 @@ class PreviewItemPanelTest {
     val path = temporaryFolder.newFile("image.png").absolutePath
     val details = PreviewDetails(testId = "id1", className = "C", methodName = "m", previewName = "p", srcImagePath = path)
     var decodeCount = 0
-    val loader =
-      directThumbnailLoader {
-        decodeCount++
-        mock()
-      }
+    val loader = directThumbnailLoader {
+      decodeCount++
+      mock()
+    }
     val firstPanel = PreviewItemPanel(details, projectRule.project, showDetails = false, thumbnailLoader = loader)
     firstPanel.loadImage(path, "id1")
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
@@ -621,15 +621,12 @@ class PreviewItemPanelTest {
     val badPath = temporaryFolder.newFile("bad.png").absolutePath
     val goodPath = temporaryFolder.newFile("good.png").absolutePath
     val decodedPaths = mutableListOf<String>()
-    val loader =
-      directThumbnailLoader { path ->
-        decodedPaths.add(path)
-        if (path == goodPath) mock() else null
-      }
-    val badDetails =
-      PreviewDetails(testId = "bad", className = "C", methodName = "m", previewName = "bad", srcImagePath = badPath)
-    val goodDetails =
-      PreviewDetails(testId = "good", className = "C", methodName = "m", previewName = "good", srcImagePath = goodPath)
+    val loader = directThumbnailLoader { path ->
+      decodedPaths.add(path)
+      if (path == goodPath) mock() else null
+    }
+    val badDetails = PreviewDetails(testId = "bad", className = "C", methodName = "m", previewName = "bad", srcImagePath = badPath)
+    val goodDetails = PreviewDetails(testId = "good", className = "C", methodName = "m", previewName = "good", srcImagePath = goodPath)
     val panel = PreviewItemPanel(badDetails, projectRule.project, showDetails = false, thumbnailLoader = loader)
 
     var callbackCount = 0
@@ -676,8 +673,7 @@ class PreviewItemPanelTest {
   fun verifyReferenceViewUsesDestImageExistsFlag() = runInEdtAndWait {
     val refPath = temporaryFolder.newFile("ref.png").absolutePath
     val decodedPaths = mutableListOf<String>()
-    val details =
-      PreviewDetails(testId = "id", className = "C", methodName = "m", previewName = "p", destImagePath = refPath)
+    val details = PreviewDetails(testId = "id", className = "C", methodName = "m", previewName = "p", destImagePath = refPath)
     val panel =
       PreviewItemPanel(
         details,

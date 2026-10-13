@@ -18,6 +18,8 @@ package com.android.screenshottest.ui
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.ui.JBImageIcon
 import java.awt.image.BufferedImage
 import java.io.File
@@ -46,6 +48,9 @@ class ThumbnailLoaderTest {
 
   @get:Rule val temporaryFolder = TemporaryFolder()
 
+  // ThumbnailLoader's load/cache methods are @UiThread (production calls them on the EDT), so the tests using them are @RunsInEdt.
+  @get:Rule val edtRule = EdtRule()
+
   private val executor = ManualExecutorService()
   private val uiQueue = ArrayDeque<Runnable>()
 
@@ -57,14 +62,14 @@ class ThumbnailLoaderTest {
   }
 
   @Test
+  @RunsInEdt
   fun concurrentRequestsForSamePathShareOneDecode() {
     var decodeCount = 0
     val icon = mock<JBImageIcon>()
-    val loader =
-      createLoader {
-        decodeCount++
-        icon
-      }
+    val loader = createLoader {
+      decodeCount++
+      icon
+    }
     val results = mutableListOf<JBImageIcon?>()
 
     repeat(5) { loader.load("a.png") { results.add(it) } }
@@ -81,14 +86,14 @@ class ThumbnailLoaderTest {
   }
 
   @Test
+  @RunsInEdt
   fun cachedPathIsNotDecodedAgainAndCallbackIsAsync() {
     var decodeCount = 0
     val icon = mock<JBImageIcon>()
-    val loader =
-      createLoader {
-        decodeCount++
-        icon
-      }
+    val loader = createLoader {
+      decodeCount++
+      icon
+    }
     loader.load("a.png") {}
     executor.runAll()
     runUiQueue()
@@ -104,13 +109,13 @@ class ThumbnailLoaderTest {
   }
 
   @Test
+  @RunsInEdt
   fun failureIsRemembered() {
     var decodeCount = 0
-    val loader =
-      createLoader {
-        decodeCount++
-        null
-      }
+    val loader = createLoader {
+      decodeCount++
+      null
+    }
     loader.load("bad.png") {}
     executor.runAll()
     runUiQueue()
@@ -126,6 +131,7 @@ class ThumbnailLoaderTest {
   }
 
   @Test
+  @RunsInEdt
   fun decodeExceptionIsReportedAsFailure() {
     val loader = createLoader { throw IllegalStateException("boom") }
     var invoked = false
@@ -144,6 +150,7 @@ class ThumbnailLoaderTest {
   }
 
   @Test
+  @RunsInEdt
   fun rejectedDecodeIsReportedAsFailure() {
     val loader =
       ThumbnailLoader(
@@ -168,6 +175,7 @@ class ThumbnailLoaderTest {
   }
 
   @Test
+  @RunsInEdt
   fun leastRecentlyUsedEntryIsEvicted() {
     val decodedPaths = mutableListOf<String>()
     val loader =

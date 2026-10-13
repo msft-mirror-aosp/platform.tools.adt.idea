@@ -59,14 +59,16 @@ class ScreenshotAttributesViewTest {
   fun screenshotAttributesUi_doesNotCrash_withEmptyColorPalette() {
     val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
     val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = refFile.absolutePath,
-      newImagePath = newFile.absolutePath,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.PASSED,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = newFile.absolutePath,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.PASSED,
+        diffPercent = null,
+      )
+    }
 
     val emptyPalette =
       ThemeColorPalette(
@@ -250,14 +252,16 @@ class ScreenshotAttributesViewTest {
 
   @Test
   fun screenshotAttributesUi_withNoReferenceImage_displaysNewMatch() {
-    view.updateData(
-      refImagePath = null,
-      newImagePath = "path/to/new.png",
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.FAILED,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = null,
+        newImagePath = "path/to/new.png",
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.FAILED,
+        diffPercent = null,
+      )
+    }
 
     composeTestRule.setContent { view.ScreenshotAttributesUi(view.state) }
 
