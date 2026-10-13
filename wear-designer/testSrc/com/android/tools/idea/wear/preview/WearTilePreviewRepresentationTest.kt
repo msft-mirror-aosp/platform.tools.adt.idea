@@ -442,9 +442,9 @@ class WearTilePreviewRepresentationTest {
     Disposer.register(fixture.testRootDisposable, previewRepresentation)
     project.runWhenSmartAndSyncedOnEdt(
       callback = {
+        logger.info("compile")
+        projectRule.buildSystemServices.simulateArtifactBuild(ProjectSystemBuildManager.BuildStatus.SUCCESS)
         runBlocking(Dispatchers.IO) {
-          logger.info("compile")
-          projectRule.buildSystemServices.simulateArtifactBuild(ProjectSystemBuildManager.BuildStatus.SUCCESS)
           logger.info("activate")
           previewRepresentation.onActivate()
         }
