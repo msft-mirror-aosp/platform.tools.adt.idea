@@ -52,7 +52,7 @@ class ToggleIssueDetailActionTest {
     val action = ToggleIssueDetailAction()
     val dataContext = runInEdtAndGet { DataManager.getInstance().getDataContext(toolWindow.contentManager.selectedContent?.component) }
 
-    val sharedPanel = IssuePanelService.getDesignerCommonIssuePanel(rule.project)!!
+    val sharedPanel = runInEdtAndGet { IssuePanelService.getDesignerCommonIssuePanel(rule.project)!! }
     sharedPanel.sidePanelVisible = false
     TestActionEvent.createTestEvent(dataContext).let { event ->
       action.update(event)
@@ -94,7 +94,7 @@ class ToggleIssueDetailActionTest {
           sink[PlatformDataKeys.SELECTED_ITEM] = TestIssueNode(TestIssue())
         }
       )
-    val sharedPanel = IssuePanelService.getDesignerCommonIssuePanel(rule.project)!!
+    val sharedPanel = runInEdtAndGet { IssuePanelService.getDesignerCommonIssuePanel(rule.project)!! }
     sharedPanel.sidePanelVisible = false
     assertFalse(action.isSelected(event))
 
@@ -108,7 +108,7 @@ class ToggleIssueDetailActionTest {
     val dataContext = runInEdtAndGet { DataManager.getInstance().getDataContext(toolWindow.contentManager.selectedContent?.component) }
     val event = TestActionEvent.createTestEvent(dataContext)
 
-    val sharedPanel = IssuePanelService.getDesignerCommonIssuePanel(rule.project)!!
+    val sharedPanel = runInEdtAndGet { IssuePanelService.getDesignerCommonIssuePanel(rule.project)!! }
     action.setSelected(event, false)
     assertFalse(sharedPanel.sidePanelVisible)
 

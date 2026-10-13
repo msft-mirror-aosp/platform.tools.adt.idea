@@ -30,6 +30,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import org.intellij.lang.annotations.Language
 import org.junit.Assert.assertEquals
@@ -37,6 +38,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class NextDeviceActionTest {
 
   @JvmField @Rule val appRule = ApplicationRule()
@@ -71,6 +73,7 @@ class NextDeviceActionTest {
   }
 }
 
+@RunsInEdt
 class PreviousDeviceActionTest {
 
   @JvmField @Rule val appRule = ApplicationRule()

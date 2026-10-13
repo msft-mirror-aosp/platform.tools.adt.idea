@@ -35,7 +35,9 @@ import com.android.tools.idea.uibuilder.layout.positionable.HeaderPositionableCo
 import com.android.tools.idea.uibuilder.surface.TestSceneView
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.LeakHunter
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndWait
 import java.awt.Component
 import java.awt.Dimension
@@ -61,9 +63,12 @@ import org.junit.Test
 import org.mockito.Mockito
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunsInEdt
 class SceneViewPanelTest {
 
   @get:Rule val projectRule = ApplicationRule()
+
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun createPanelWithoutOrganization(): Unit = runTest {

@@ -96,12 +96,12 @@ class DesignToolsSplitEditorLifecycleTest {
       }
     assertFalse(
       "The surface must not be active before the editor has completed loading",
-      editor.designerEditor.component.surface.isActiveForTest(),
+      withContext(Dispatchers.EDT) { editor.designerEditor.component.surface.isActiveForTest() },
     )
-    delayedRunnable.await().run()
+    withContext(Dispatchers.EDT) { delayedRunnable.await().run() }
     assertTrue(
       "The surface must be active after the editor has completed loading",
-      editor.designerEditor.component.surface.isActiveForTest(),
+      withContext(Dispatchers.EDT) { editor.designerEditor.component.surface.isActiveForTest() },
     )
 
     // Wait for the surface to finish loading to avoid concurrent disposals while its activating

@@ -29,6 +29,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.testFramework.waitUntil
 import javax.swing.JComponent
@@ -83,10 +84,10 @@ class IssuePanelServiceTest {
     val layoutFile = rule.fixture.addFileToProject("/res/layout/layout.xml", "<FrameLayout />")
     ProblemsView.getToolWindow(rule.project)!!.show()
     runInEdtAndWait { rule.fixture.openFileInEditor(ktFile.virtualFile) }
-    assertFalse(service.isIssuePanelVisible())
+    assertFalse(runInEdtAndGet { service.isIssuePanelVisible() })
 
     runInEdtAndWait { rule.fixture.openFileInEditor(layoutFile.virtualFile) }
-    assertFalse(service.isIssuePanelVisible())
+    assertFalse(runInEdtAndGet { service.isIssuePanelVisible() })
   }
 
   @Test
@@ -101,12 +102,12 @@ class IssuePanelServiceTest {
     }
     // Force select "current file" tab.
     contentManager.setSelectedContent(contentManager.contents[0])
-    assertFalse(service.isIssuePanelVisible())
+    assertFalse(runInEdtAndGet { service.isIssuePanelVisible() })
 
     // Switching to layout file. The selected tab should still be "current file" tab.
     runInEdtAndWait { rule.fixture.openFileInEditor(layoutFile.virtualFile) }
     assertEquals(contentManager.selectedContent, contentManager.contents[0])
-    assertFalse(service.isIssuePanelVisible())
+    assertFalse(runInEdtAndGet { service.isIssuePanelVisible() })
   }
 
   @Test
@@ -221,10 +222,10 @@ class IssuePanelServiceTest {
 
   @Test
   fun testFocusingIssuePanelWhenVisible() {
-    service.showSharedIssuePanel()
+    runInEdtAndWait { service.showSharedIssuePanel() }
     assertFalse(toolWindow.isFocused())
     toolWindow.hide()
-    service.showSharedIssuePanel(true)
+    runInEdtAndWait { service.showSharedIssuePanel(true) }
     assertTrue(toolWindow.isFocused())
 
     // Hide issue panel will lose the focus because the component is no longer visible.
@@ -250,7 +251,7 @@ class IssuePanelServiceTest {
     toolWindow.hide()
     contentManager.setSelectedContent(additionalContent)
 
-    service.showSharedIssuePanel()
+    runInEdtAndWait { service.showSharedIssuePanel() }
     assertTrue(toolWindow.isVisible)
     assertTrue(ProblemsView.getSelectedTab(rule.project)?.getTabId() == SHARED_ISSUE_PANEL_TAB_ID)
   }
@@ -260,10 +261,10 @@ class IssuePanelServiceTest {
     val layoutFile = rule.fixture.addFileToProject("/res/layout/layout.xml", "<FrameLayout />")
     ProblemsView.getToolWindow(rule.project)!!.show()
     runInEdtAndWait { rule.fixture.openFileInEditor(layoutFile.virtualFile) }
-    assertFalse(service.isIssuePanelVisible())
+    assertFalse(runInEdtAndGet { service.isIssuePanelVisible() })
 
     ProblemsViewToolWindowUtils.selectTab(rule.project, HighlightingPanel.ID)
-    assertFalse(service.isIssuePanelVisible())
+    assertFalse(runInEdtAndGet { service.isIssuePanelVisible() })
   }
 }
 
