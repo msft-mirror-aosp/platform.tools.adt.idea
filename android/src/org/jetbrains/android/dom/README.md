@@ -214,5 +214,3 @@ in conjunction with `FlagConverter` and `AndroidCompletionContributor`.
 > **TODO:** Remove check for `generated.xml`, these files have a different name now and are marked as generated.  
 > **TODO:** It doesn't seem to handle `@NoSpellchecking` that we use in DOM definitions.
 
-`AndroidXmlnsImplicitUsagesProvider` understands that namespace prefixes can be used by Android resource references in XML attributes and
-marks referenced namespaces as used.

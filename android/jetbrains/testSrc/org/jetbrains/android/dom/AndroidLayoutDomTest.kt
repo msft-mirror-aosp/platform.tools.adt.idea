@@ -8,7 +8,6 @@ import com.android.resources.ResourceType
 import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.res.addAarDependency
-import com.android.tools.idea.res.addBinaryAarDependency
 import com.android.tools.idea.res.psi.ResourceReferencePsiElement
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.loadNewFile
@@ -2416,12 +2415,6 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
       resDir.resolveSibling("public.txt").writeText("string my_aar_public_string")
     }
     doTestCompletion()
-  }
-
-  fun testAarDependencyHighlightingNamespaced() {
-    enableNamespacing("myapp")
-    addBinaryAarDependency(myModule)
-    doTestHighlighting()
   }
 
   // Regression test for http://b/37128688

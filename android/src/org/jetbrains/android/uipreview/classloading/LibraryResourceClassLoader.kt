@@ -17,7 +17,6 @@ package org.jetbrains.android.uipreview.classloading
 
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.AndroidManifestPackageNameUtils
-import com.android.ide.common.resources.ResourceRepository
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.projectsystem.DependencyScopeType
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -25,7 +24,6 @@ import com.android.tools.idea.res.ResourceClassRegistry
 import com.android.tools.idea.res.StudioResourceIdManager
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
-import com.android.tools.res.ResourceNamespacing
 import com.android.tools.res.ids.ResourceIdManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -55,17 +53,9 @@ private fun ResourceClassRegistry.registerLibraryResources(
   idManager: ResourceIdManager,
   repositoryManager: StudioResourceRepositoryManager,
 ) {
-
   // Choose which resources should be in the generated R class. This is described in the JavaDoc of ResourceClassGenerator.
-  val (rClassContents: ResourceRepository, resourcesNamespace: ResourceNamespace, packageName: String?) =
-    if (repositoryManager.namespacing === ResourceNamespacing.DISABLED) {
-      val resolvedPackageName = externalLib.getResolvedPackageName() ?: return
-      Triple(repositoryManager.appResources, ResourceNamespace.RES_AUTO, resolvedPackageName)
-    } else {
-      val aarResources = repositoryManager.findLibraryResources(externalLib) ?: return
-      Triple(aarResources, aarResources.namespace, aarResources.packageName)
-    }
-  this.addLibrary(rClassContents, idManager, packageName, resourcesNamespace)
+  val resolvedPackageName = externalLib.getResolvedPackageName() ?: return
+  this.addLibrary(repositoryManager.appResources, idManager, resolvedPackageName, ResourceNamespace.RES_AUTO)
 }
 
 /** Register all the [Module] resources, including libraries and dependencies with the [ResourceClassRegistry]. */

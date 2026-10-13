@@ -81,7 +81,6 @@ import com.android.tools.idea.res.psi.ResourceReferencePsiElement
 import com.android.tools.idea.util.toVirtualFile
 import com.android.tools.lint.detector.api.computeResourceName
 import com.android.tools.lint.detector.api.stripIdPrefix
-import com.android.tools.res.ResourceNamespacing
 import com.android.utils.SdkUtils
 import com.android.utils.XmlUtils
 import com.android.utils.isBindingExpression
@@ -94,7 +93,6 @@ import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.ide.fileTemplates.FileTemplateUtil
 import com.intellij.lang.xml.XMLLanguage
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.CommandProcessor
@@ -138,7 +136,6 @@ import com.intellij.psi.xml.XmlTokenType
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.Processor
-import com.intellij.util.text.nullize
 import com.intellij.util.ui.ColorIcon
 import com.intellij.util.ui.ColorsIcon
 import com.intellij.util.xml.DomManager
@@ -801,35 +798,14 @@ fun findIdUrlsInFile(file: PsiFile): Set<ResourceUrl> {
 
 /** Returns a [ResourceNamespace.Resolver] for the specified tag. */
 fun getNamespaceResolver(element: XmlElement): ResourceNamespace.Resolver {
-  fun withTag(compute: (XmlTag) -> String?): String? {
-    return ReadAction.compute<String, RuntimeException> {
-      if (!element.isValid) {
-        null
-      } else {
-        val tag = PsiTreeUtil.getParentOfType(element, XmlTag::class.java, false)
-        tag?.let(compute).let(StringUtil::nullize)
-      }
-    }
+  if (StudioResourceRepositoryManager.getInstance(element) == null) {
+    return ResourceNamespace.Resolver.EMPTY_RESOLVER
   }
-
-  val repositoryManager = StudioResourceRepositoryManager.getInstance(element) ?: return ResourceNamespace.Resolver.EMPTY_RESOLVER
-
-  return if (repositoryManager.namespacing == ResourceNamespacing.DISABLED) {
-    // In non-namespaced projects, framework is the only namespace, but the resource merger messes
-    // with namespaces at build time, so you
-    // have to use "android" as the prefix, which is equivalent not to defining a prefix at all
-    // (since "android" is the package name of the
-    // framework). We also need to keep in mind we recognize "tools" even without the xmlns
-    // definition in non-namespaced projects.
-    ResourceNamespace.Resolver.TOOLS_ONLY
-  } else {
-    // TODO(b/72688160, namespaces): precompute this to avoid the read lock.
-    object : ResourceNamespace.Resolver {
-      override fun uriToPrefix(namespaceUri: String): String? = withTag { tag -> tag.getPrefixByNamespace(namespaceUri) }
-
-      override fun prefixToUri(namespacePrefix: String): String? = withTag { tag -> tag.getNamespaceByPrefix(namespacePrefix).nullize() }
-    }
-  }
+  // Framework is the only namespace, but the resource merger messes with namespaces at build time,
+  // so you have to use "android" as the prefix, which is equivalent to not defining a prefix at all
+  // (since "android" is the package name of the framework).
+  // We also need to keep in mind we recognize "tools" even without the xmlns definition.
+  return ResourceNamespace.Resolver.TOOLS_ONLY
 }
 
 /** Returns the text content of a given tag */
@@ -1726,7 +1702,6 @@ internal fun findOrCreateResourceFile(project: Project, resDir: VirtualFile, fil
 }
 
 fun getReferredResourceOrManifestField(
-  facet: AndroidFacet,
   exp: KtSimpleNameExpression,
   className: String?,
   localOnly: Boolean,
@@ -1758,13 +1733,12 @@ fun getReferredResourceOrManifestField(
   return if (if (fromManifest) !isManifestClass(aClass) else !isRJavaClass(aClass)) {
     null
   } else {
-    ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, getRClassNamespace(facet, qName), fromManifest)
+    ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, ResourceNamespace.RES_AUTO, fromManifest)
   }
 }
 
 @JvmOverloads
 fun getReferredResourceOrManifestField(
-  facet: AndroidFacet,
   exp: PsiReferenceExpression,
   className: String? = null,
   localOnly: Boolean,
@@ -1798,15 +1772,7 @@ fun getReferredResourceOrManifestField(
   }
   return if (if (fromManifest) !isManifestClass(psiClass) else !isRJavaClass(psiClass)) {
     null
-  } else ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, getRClassNamespace(facet, qName), fromManifest)
-}
-
-fun getRClassNamespace(facet: AndroidFacet, qName: String?): ResourceNamespace {
-  return if (StudioResourceRepositoryManager.getInstance(facet).namespacing == ResourceNamespacing.DISABLED) {
-    ResourceNamespace.RES_AUTO
-  } else {
-    ResourceNamespace.fromPackageName(StringUtil.getPackageName(qName!!))
-  }
+  } else ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, ResourceNamespace.RES_AUTO, fromManifest)
 }
 
 fun ensureFilesWritable(project: Project, files: Collection<VirtualFile>): Boolean {

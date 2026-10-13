@@ -20,19 +20,15 @@ import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.res.AndroidDependenciesCache
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.resolveResourceNamespace
-import com.android.tools.res.ResourceNamespacing
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.impl.FakePsiElement
-import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlElement
-import com.intellij.psi.xml.XmlTag
 import com.intellij.util.text.nullize
 import com.intellij.util.xml.DomUtil
 import com.intellij.util.xml.GenericDomValue
-import com.intellij.xml.XmlExtension
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.dom.resources.ResourceValue
 import org.jetbrains.kotlin.idea.base.util.module
@@ -40,7 +36,7 @@ import org.jetbrains.kotlin.idea.base.util.module
 /**
  * PSI Reference to a resource namespace, created in the namespace part of an XML resource reference (e.g. `@com.example:string/foo`).
  *
- * Resolves to the local xmlns declaration if present or a fake [ResourceNamespaceFakePsiElement] object that represents an aapt namespace.
+ * Resolves to a fake [ResourceNamespaceFakePsiElement] object that represents an aapt namespace.
  */
 class ResourceNamespaceReference(domValue: GenericDomValue<*>, private val resourceValue: ResourceValue) :
   PsiReferenceBase<XmlElement>(DomUtil.getValueElement(domValue)!!, null, true) {
@@ -49,18 +45,10 @@ class ResourceNamespaceReference(domValue: GenericDomValue<*>, private val resou
 
   override fun resolve(): PsiElement? {
     val prefix = rangeInElement.substring(element.text).nullize(nullizeSpaces = true) ?: return null
-    val prefixDeclaration = XmlExtension.getExtensionByElement(element)?.getPrefixDeclaration(element.parentOfType<XmlTag>(), prefix)
-
     val repositoryManager = StudioResourceRepositoryManager.getInstance(element) ?: return null
 
-    if (prefixDeclaration != null && repositoryManager.namespacing != ResourceNamespacing.DISABLED) {
-      // TODO(b/76409654): In non-namespaced projects, namespaced resource references cannot rely on
-      // XML namespace definitions.
-      return prefixDeclaration
-    }
-
     val resourceNamespace = element.resolveResourceNamespace(prefix) ?: return null
-    return when (element.resolveResourceNamespace(prefix)) {
+    return when (resourceNamespace) {
       ResourceNamespace.ANDROID -> ResourceNamespaceFakePsiElement(resourceNamespace, element)
       in repositoryManager.appResources.namespaces -> ResourceNamespaceFakePsiElement(resourceNamespace, element)
       else -> null

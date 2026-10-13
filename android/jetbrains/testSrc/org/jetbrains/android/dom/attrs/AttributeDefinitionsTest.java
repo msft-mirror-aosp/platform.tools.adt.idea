@@ -94,15 +94,6 @@ public class AttributeDefinitionsTest extends AndroidTestCase {
   }
 
   public void testStyleableAttributes() {
-    checkStyleableAttributes();
-  }
-
-  public void testStyleableAttributesNamespaced() {
-    enableNamespacing("p1.p2");
-    checkStyleableAttributes();
-  }
-
-  private void checkStyleableAttributes() {
     ResourceNamespace appNamespace = StudioResourceRepositoryManager.getInstance(myFacet).getNamespace();
     StyleableDefinition theme = styleableDef(ResourceReference.styleable(appNamespace, "Theme"));
     assertThat(theme).isNotNull();

@@ -27,9 +27,7 @@ import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.tools.adtui.imagediff.ImageDiffTestUtil
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.configurations.ConfigurationManager
-import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.MergedManifestModificationListener
-import com.android.tools.idea.model.TestAndroidModel.Companion.namespaced
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.util.androidFacet
@@ -248,18 +246,15 @@ class IdeResourcesUtilTest {
 
   @Test
   fun resolve() {
-    val appNs = ResourceNamespace.fromPackageName("com.example.app")
-    setProjectNamespace(appNs)
-
     val innerFileLand = fixture.addFileToProject("res/layout-land/inner.xml", "<LinearLayout/>")
     val innerFilePort = fixture.addFileToProject("res/layout-port/inner.xml", "<LinearLayout/>")
     val outerFileContent =
       """
       <?xml version="1.0" encoding="utf-8"?>
-      <FrameLayout xmlns:app="${appNs.xmlNamespaceUri}">
+      <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android">
 
           <include
-              layout="@app:layout/inner"
+              layout="@layout/inner"
               android:layout_width="wrap_content"
               android:layout_height="wrap_content" />
 
@@ -282,53 +277,16 @@ class IdeResourcesUtilTest {
 
   @RunsInEdt
   @Test
-  fun getResourceResolverFromXmlTag_namespacesEnabled() {
-    setProjectNamespace(ResourceNamespace.fromPackageName("com.example.app"))
-
-    val file = fixture.addFileToProject("res/layout/simple.xml", LAYOUT_FILE) as XmlFile
-    val layout = assertNotNull(file.rootTag)
-    val textView = assertNotNull(layout.findFirstSubTag("TextView"))
-
-    var layoutResolver = getNamespaceResolver(layout)
-    assertThat(layoutResolver.uriToPrefix(SdkConstants.TOOLS_URI)).isNull()
-    assertThat(layoutResolver.uriToPrefix(SdkConstants.ANDROID_URI)).isEqualTo("framework")
-    assertThat(layoutResolver.prefixToUri("newtools")).isNull()
-    assertThat(layoutResolver.prefixToUri("framework")).isEqualTo(SdkConstants.ANDROID_URI)
-
-    val textViewResolver = getNamespaceResolver(textView)
-    assertThat(textViewResolver.uriToPrefix(SdkConstants.TOOLS_URI)).isEqualTo("newtools")
-    assertThat(textViewResolver.uriToPrefix(SdkConstants.ANDROID_URI)).isEqualTo("framework")
-    assertThat(textViewResolver.prefixToUri("newtools")).isEqualTo(SdkConstants.TOOLS_URI)
-    assertThat(textViewResolver.prefixToUri("framework")).isEqualTo(SdkConstants.ANDROID_URI)
-  }
-
-  private fun setProjectNamespace(appNs: ResourceNamespace) {
-    application.invokeAndWait {
-      CommandProcessor.getInstance().runUndoTransparentAction {
-        application.runWriteAction {
-          AndroidModel.setForTests(facet, namespaced(facet))
-          val manifest = assertNotNull(Manifest.getMainManifest(facet))
-          manifest.getPackage().value = appNs.packageName
-        }
-      }
-    }
-  }
-
-  @RunsInEdt
-  @Test
-  fun getResourceResolverFromXmlTag_namespacesDisabled() {
+  fun getResourceResolverFromXmlTag() {
     val file = fixture.addFileToProject("res/layout/simple.xml", LAYOUT_FILE) as XmlFile
     val layout = file.rootTag
     val textview = assertNotNull(layout?.findFirstSubTag("TextView"))
 
     var resolver = getNamespaceResolver(layout)
 
-    // "tools" is implicitly defined in non-namespaced projects.
+    // "tools" is implicitly defined in projects.
     assertThat(resolver.uriToPrefix(SdkConstants.TOOLS_URI)).isEqualTo("tools")
 
-    // Proper namespacing doesn't work in non-namespaced projects, so within XML attributes, only
-    // "android" works.
-    // TODO(b/74426748)
     assertThat(resolver.uriToPrefix(SdkConstants.ANDROID_URI)).isNull()
 
     assertThat(resolver.prefixToUri("newtools")).isNull()

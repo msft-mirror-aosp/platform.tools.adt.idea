@@ -37,7 +37,7 @@ fun getCreateResourceQuickFixActions(expression: KtSimpleNameExpression): List<I
     facet.getModuleSystem().getPackageName() ?: return emptyList()
     val contextFile = expression.containingFile ?: return emptyList()
 
-    val info = getReferredResourceOrManifestField(facet, expression, null, true)
+    val info = getReferredResourceOrManifestField(expression, null, true)
     if (info == null || info.isFromManifest) return emptyList()
 
     val resourceType = ResourceType.fromClassName(info.className) ?: return emptyList()

@@ -151,19 +151,10 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
   /**
    * Verifies that the AAR generated R classes are given priority vs the build generated files. This is important in cases like support
    * library upgrades/downgrades. In those cases, the build generated file, will be outdated so it shouldn't be used by the ModuleClassLoader.
-   * By preferring the AAR geneated versions, we make sure we are always up-to-date.
+   * By preferring the AAR generated versions, we make sure we are always up-to-date.
    * See <a href="http://b.android.com/229382">229382</a>
    */
   public void testAARPriority() throws Exception {
-    doTestAARPriority();
-  }
-
-  public void testAARPriorityNamespaced() throws Exception {
-    enableNamespacing("test");
-    doTestAARPriority();
-  }
-
-  private void doTestAARPriority() throws IOException {
     Module module = myFixture.getModule();
     testResourceIdManager = TestResourceIdManager.Companion.createManagerForTest();
     ServiceContainerUtil.replaceService(module, ResourceIdManager.class, testResourceIdManager, myFixture.getTestRootDisposable());

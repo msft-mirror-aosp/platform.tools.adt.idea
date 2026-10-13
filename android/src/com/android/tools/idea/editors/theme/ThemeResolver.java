@@ -39,7 +39,6 @@ import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.editors.theme.datamodels.ConfiguredThemeEditorStyle;
 import com.android.tools.idea.res.AndroidDependenciesCache;
 import com.android.tools.idea.res.StudioResourceRepositoryManager;
-import com.android.tools.res.ResourceNamespacing;
 import com.android.tools.res.ResourceRepositoryManager;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.module.Module;
@@ -260,7 +259,7 @@ public class ThemeResolver {
   /**
    * Returns the recommended themes. These are the themes we encourage developers to use. They will be
    * displayed as an option in dropdown menu. The returned themes depend on whether the module of this
-   * ThemeResolver depends on appcompat or not, and whether namespacing is enabled or not.
+   * ThemeResolver depends on appcompat or not.
    */
   @NotNull
   public List<ResourceReference> getRecommendedThemes() {
@@ -303,10 +302,9 @@ public class ThemeResolver {
 
   @Nullable
   private static ResourceNamespace getAppCompatNamespace(@NotNull ConfigurationModelModule module) {
-    if (module.getDependencies().dependsOn(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT)) {
-      return isNamespacingEnabled(module) ? ResourceNamespace.APPCOMPAT : ResourceNamespace.RES_AUTO;
-    } else if (module.getDependencies().dependsOn(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7)) {
-      return isNamespacingEnabled(module) ? ResourceNamespace.APPCOMPAT_LEGACY : ResourceNamespace.RES_AUTO;
+    if (module.getDependencies().dependsOn(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT) ||
+        module.getDependencies().dependsOn(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7)) {
+      return ResourceNamespace.RES_AUTO;
     }
     return null;
   }
@@ -326,10 +324,5 @@ public class ThemeResolver {
         ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.NoActionBar"),
         ResourceReference.style(appcompatNamespace, "Theme.AppCompat.Light.NoActionBar"),
         ResourceReference.style(appcompatNamespace, "Theme.AppCompat.NoActionBar"));
-  }
-
-  private static boolean isNamespacingEnabled(@NotNull ConfigurationModelModule module) {
-    ResourceRepositoryManager repositoryManager = module.getResourceRepositoryManager();
-    return repositoryManager != null && repositoryManager.getNamespacing() == ResourceNamespacing.REQUIRED;
   }
 }
