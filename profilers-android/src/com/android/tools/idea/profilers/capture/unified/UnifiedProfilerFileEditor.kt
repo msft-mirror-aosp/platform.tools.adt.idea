@@ -17,6 +17,7 @@ package com.android.tools.idea.profilers.capture.unified
 
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory
 import com.android.tools.idea.profilers.IntellijProfilerComponents
+import com.android.tools.profilers.MinWidthScrollPane
 import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
@@ -34,6 +35,7 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.io.File
@@ -54,7 +56,12 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     }
 
   private var offlineProfilers: StudioProfilers? = null
+
+  /** Holds the recording's UI: the profiler views, or the component of [delegate]. */
   private val component: JPanel = JPanel(BorderLayout())
+
+  /** The component shown in the editor tab: [component], laid out at no less than [MIN_CONTENT_WIDTH] and scrolled when narrower. */
+  private val rootComponent = MinWidthScrollPane(component) { JBUI.scale(MIN_CONTENT_WIDTH) }
 
   // Strong references to prevent garbage collection of AspectObservers
   private var profilersView: StudioProfilersView? = null
@@ -159,7 +166,7 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     component.focusTraversalPolicy = LayoutFocusTraversalPolicy()
   }
 
-  override fun getComponent() = component
+  override fun getComponent(): JComponent = rootComponent
 
   override fun getPreferredFocusedComponent(): JComponent {
     if (delegate != null) return delegate.preferredFocusedComponent ?: component
@@ -251,5 +258,11 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
      * before disposing or tearing down the singleton live task panel.
      */
     @VisibleForTesting const val TAB_TRANSITION_DEBOUNCE_DELAY_MS = 500L
+
+    /**
+     * Minimum width, in unscaled pixels, at which the recording's UI is laid out. When the editor tab is narrower, it scrolls horizontally.
+     * Visible components marked with [MinWidthScrollPane.KEEP_PREFERRED_WIDTH] can raise it.
+     */
+    @VisibleForTesting const val MIN_CONTENT_WIDTH = 480
   }
 }

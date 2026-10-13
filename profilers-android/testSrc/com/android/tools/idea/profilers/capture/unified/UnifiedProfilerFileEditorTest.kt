@@ -17,16 +17,21 @@ package com.android.tools.idea.profilers.capture.unified
 
 import com.android.tools.idea.profilers.AndroidProfilerToolWindow
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory
+import com.android.tools.profilers.MinWidthScrollPane
 import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.google.common.truth.Truth.assertThat
 import com.intellij.mock.MockProjectEx
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.ui.content.ContentManager
+import com.intellij.util.ui.JBUI
+import java.awt.Dimension
 import javax.swing.JPanel
 import org.junit.After
 import org.junit.Before
@@ -52,7 +57,8 @@ class UnifiedProfilerFileEditorTest {
   @Before
   fun setUp() {
     project = spy(MockProjectEx(disposableRule.disposable))
-    mockFileEditorManager = mock(FileEditorManager::class.java)
+    // A FileEditorManagerEx, as the live task editor's delayed singleton-tab check casts to it.
+    mockFileEditorManager = mock(FileEditorManagerEx::class.java).also { whenever(it.windows).thenReturn(emptyArray()) }
     project.registerService(FileEditorManager::class.java, mockFileEditorManager)
 
     val mockToolWindowManager = mock(ToolWindowManager::class.java)
@@ -110,5 +116,18 @@ class UnifiedProfilerFileEditorTest {
     // (Mockito.after waits beyond the debounce window to allow the scheduled debounce task to execute)
     verify(mockProfilerToolWindow, after(UnifiedProfilerFileEditor.TAB_TRANSITION_DEBOUNCE_DELAY_MS + 100).never())
       .notifyEditorTabClosed(42L)
+  }
+
+  @Test
+  fun `editor component is a min-width scroll pane whose minimum width does not depend on the profiler UI`() {
+    whenever(mockProfilerToolWindow.profilersPanel).thenReturn(JPanel().apply { minimumSize = Dimension(5000, 10) })
+    val virtualFile =
+      ProfilerVirtualFile(sessionId = 42L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+    whenever(mockFileEditorManager.getAllEditors(virtualFile)).thenReturn(FileEditor.EMPTY_ARRAY)
+    val editor = UnifiedProfilerFileEditor(project, virtualFile)
+    Disposer.register(disposableRule.disposable, editor)
+
+    assertThat(editor.component).isInstanceOf(MinWidthScrollPane::class.java)
+    assertThat(editor.component.minimumSize.width).isLessThan(JBUI.scale(UnifiedProfilerFileEditor.MIN_CONTENT_WIDTH))
   }
 }

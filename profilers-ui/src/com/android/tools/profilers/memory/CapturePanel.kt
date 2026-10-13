@@ -24,6 +24,7 @@ import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.StreamingTimeline
 import com.android.tools.adtui.model.formatter.NumberFormatter
 import com.android.tools.profilers.IdeProfilerComponents
+import com.android.tools.profilers.MinWidthScrollPane.Companion.KEEP_PREFERRED_WIDTH
 import com.android.tools.profilers.ProfilerFonts
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_TRIGGER_DELAY_MS
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_WIDTH
@@ -38,6 +39,7 @@ import com.android.tools.profilers.memory.adapters.classifiers.ClassifierSet
 import com.android.tools.profilers.memory.adapters.classifiers.HeapSet
 import com.android.tools.profilers.memory.adapters.instancefilters.CaptureObjectInstanceFilter
 import com.android.tools.profilers.memory.chart.MemoryVisualizationView
+import com.intellij.ui.ClientProperty
 import com.intellij.ui.components.JBTabbedPane
 import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.JBUI
@@ -318,6 +320,9 @@ private class CapturePanelUi(
       add(totalRetainedNativeSizeLabel)
       add(totalRetainedSizeLabel)
       alignmentX = Component.LEFT_ALIGNMENT
+      // FlowLayout wraps stats that don't fit onto rows below this panel's height, where they're cut off. MinWidthScrollPane scrolls
+      // instead.
+      ClientProperty.put(this, KEEP_PREFERRED_WIDTH, true)
     }
 
   /**
