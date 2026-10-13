@@ -490,17 +490,6 @@ public class ModuleResourceRepositoryTest extends AndroidTestCase {
     assertEmpty(repository.getResources(RES_AUTO, ResourceType.ID).keySet());
   }
 
-  public void testNamespaceUpdatesReflectedInRepository() {
-    assertThat(StudioResourceRepositoryManager.getModuleResources(myFacet).getNamespaces())
-      .containsExactly(ResourceNamespace.RES_AUTO);
-
-    enableNamespacing(myFacet, "p1.p2");
-    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue();
-
-    assertThat(StudioResourceRepositoryManager.getModuleResources(myFacet).getNamespaces())
-      .containsExactly(ResourceNamespace.fromPackageName("p1.p2"));
-  }
-
   public void testStringResourceLifecycle_synchronizationFix() throws Exception {
 
     final String RESOURCE_NAME = "my_string";

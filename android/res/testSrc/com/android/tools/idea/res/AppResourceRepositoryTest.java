@@ -16,7 +16,6 @@
 package com.android.tools.idea.res;
 
 import static com.android.ide.common.rendering.api.ResourceNamespace.RES_AUTO;
-import static com.android.tools.idea.res.ResourcesTestsUtil.addBinaryAarDependency;
 import static com.android.tools.idea.res.ResourcesTestsUtil.getSingleItem;
 import static com.android.tools.idea.testing.AndroidTestUtils.waitForUpdates;
 import static com.google.common.truth.Truth.assertThat;
@@ -309,20 +308,6 @@ public class AppResourceRepositoryTest extends AndroidTestCase {
     LocalResourceRepository<?> appResources = StudioResourceRepositoryManager.getAppResources(myFacet);
 
     verify(mockToken).computeAdditionalLocalResourceDependencies(moduleSystem);
-  }
-
-  public void testLibraryResources() {
-    addBinaryAarDependency(myModule);
-    enableNamespacing("p1.p2");
-
-    LocalResourceRepository<?> appResources = StudioResourceRepositoryManager.getAppResources(myFacet);
-    Collection<SingleNamespaceResourceRepository> repositories = appResources.getLeafResourceRepositories();
-    assertThat(repositories).hasSize(4);
-
-    List<ResourceItem> items = appResources.getResources(ResourceNamespace.fromPackageName("com.example.mylibrary"),
-                                                         ResourceType.STRING, "my_aar_string");
-    assertThat(items).hasSize(1);
-    assertThat(items.get(0).getResourceValue().getValue()).isEqualTo("This string came from an AARv2");
   }
 
   private static void checkCrossNamespaceReference(ResourceRepository repo,

@@ -45,7 +45,6 @@ import java.io.File
 import java.util.function.Predicate
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
-import org.jetbrains.android.AndroidTestBase
 
 /**
  * Creates and adds an Android Module to the given project. The module file would be located under [Project.getBasePath] +
@@ -142,15 +141,6 @@ fun addAarDependency(
   createResources(resDir)
   VfsUtil.markDirtyAndRefresh(false, true, true, aarDir.toVirtualFile(refresh = true))
   IndexingTestUtil.waitUntilIndexesAreReady(module.project)
-}
-
-/**
- * Adds an AARv2 library dependency to the given module. The library uses the checked-in example res.apk file which uses
- * `com.example.mylibrary` package name and contains a single resource, `@string/my_aar_string`.
- */
-fun addBinaryAarDependency(module: Module) {
-  // See org.jetbrains.android.facet.ResourceFolderManager#isAarDependency
-  PsiTestUtil.addLibrary(module, "mylibrary.aar", "${AndroidTestBase.getTestDataPath()}/dom/layout/myaar-v2", "classes.jar", "res.apk")
 }
 
 fun getSingleItem(repository: ResourceRepository, type: ResourceType, key: String): ResourceItem {

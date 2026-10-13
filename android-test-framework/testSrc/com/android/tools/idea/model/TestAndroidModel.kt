@@ -19,7 +19,6 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.lint.detector.api.Desugaring
 import com.google.common.collect.ImmutableList
 import java.io.File
-import org.jetbrains.android.facet.AndroidFacet
 
 open class TestAndroidModel
 @JvmOverloads
@@ -37,8 +36,6 @@ constructor(
 ) : AndroidModel {
 
   companion object {
-    @JvmStatic fun namespaced(facet: AndroidFacet) = TestAndroidModel(namespacing = Namespacing.REQUIRED)
-
     @JvmStatic fun lintRuleJars(lintRuleJars: ImmutableList<File>) = TestAndroidModel(lintRuleJarsOverride = lintRuleJars)
   }
 

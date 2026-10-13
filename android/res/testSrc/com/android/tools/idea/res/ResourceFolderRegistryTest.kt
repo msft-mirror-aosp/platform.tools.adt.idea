@@ -15,10 +15,8 @@
  */
 package com.android.tools.idea.res
 
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
-import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.testing.AndroidModuleDependency
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -82,35 +80,35 @@ class ResourceFolderRegistryTest {
     val registry = ResourceFolderRegistry.getInstance(project)
 
     val appResourceFolders = ResourceFolderManager.getInstance(appFacet).folders
-    val appResourceRepositories = appResourceFolders.associateWith { registry[appFacet, it, ResourceNamespace.RES_AUTO] }
+    val appResourceRepositories = appResourceFolders.associateWith { registry[appFacet, it] }
 
     val libResourceFolders = ResourceFolderManager.getInstance(libFacet).folders
-    val libResourceRepositories = libResourceFolders.associateWith { registry[libFacet, it, ResourceNamespace.RES_AUTO] }
+    val libResourceRepositories = libResourceFolders.associateWith { registry[libFacet, it] }
 
     // Repositories should be cached.
     for ((folder, repository) in appResourceRepositories) {
-      assertThat(registry[appFacet, folder, ResourceNamespace.RES_AUTO]).isSameAs(repository)
+      assertThat(registry[appFacet, folder]).isSameAs(repository)
     }
     for ((folder, repository) in libResourceRepositories) {
-      assertThat(registry[libFacet, folder, ResourceNamespace.RES_AUTO]).isSameAs(repository)
+      assertThat(registry[libFacet, folder]).isSameAs(repository)
     }
 
     // Clearing appFacet only should clear those directories.
     registry.reset(appFacet)
-    appResourceFolders.forEach { assertThat(registry.getCached(it, Namespacing.DISABLED)).isNull() }
-    libResourceFolders.forEach { assertThat(registry.getCached(it, Namespacing.DISABLED)).isNotNull() }
+    appResourceFolders.forEach { assertThat(registry.getCached(it)).isNull() }
+    libResourceFolders.forEach { assertThat(registry.getCached(it)).isNotNull() }
 
     // Clearing libFacet finished the job.
     registry.reset(libFacet)
-    appResourceFolders.forEach { assertThat(registry.getCached(it, Namespacing.DISABLED)).isNull() }
-    libResourceFolders.forEach { assertThat(registry.getCached(it, Namespacing.DISABLED)).isNull() }
+    appResourceFolders.forEach { assertThat(registry.getCached(it)).isNull() }
+    libResourceFolders.forEach { assertThat(registry.getCached(it)).isNull() }
 
     // All repositories fetched now should be new objects.
     for ((folder, repository) in appResourceRepositories) {
-      assertThat(registry[appFacet, folder, ResourceNamespace.RES_AUTO]).isNotSameAs(repository)
+      assertThat(registry[appFacet, folder]).isNotSameAs(repository)
     }
     for ((folder, repository) in libResourceRepositories) {
-      assertThat(registry[libFacet, folder, ResourceNamespace.RES_AUTO]).isNotSameAs(repository)
+      assertThat(registry[libFacet, folder]).isNotSameAs(repository)
     }
   }
 }

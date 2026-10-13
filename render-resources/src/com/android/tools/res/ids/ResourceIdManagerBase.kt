@@ -20,7 +20,6 @@ import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceReference
 import com.android.resources.ResourceType
 import com.android.tools.idea.layoutlib.LayoutLibraryLoader
-import com.android.tools.res.ResourceNamespacing
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.SimpleModificationTracker
@@ -394,7 +393,7 @@ internal constructor(
 
   override val finalIdsUsed: Boolean
     get() {
-      return module.isAppOrFeature && module.namespacing == ResourceNamespacing.DISABLED && module.applicationRClassConstantIds
+      return module.isAppOrFeature && module.applicationRClassConstantIds
     }
 
   @Synchronized

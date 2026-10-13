@@ -224,7 +224,10 @@ private constructor(
 
       val resourceFolderRegistry = ResourceFolderRegistry.getInstance(facet.module.project)
       for (dir in resourceDirectories) {
-        delegates.add(resourceFolderRegistry[facet, dir, namespace])
+        val repository =
+          if (namespace == ResourceNamespace.RES_AUTO) resourceFolderRegistry[facet, dir]
+          else ResourceFolderRepository.create(facet, dir, namespace, null).ensureLoaded()
+        delegates.add(repository)
       }
 
       return ModuleResourceRepository(facet, parentDisposable = facet, namespace, addDynamicResources = false, delegates)

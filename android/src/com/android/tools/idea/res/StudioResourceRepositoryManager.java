@@ -27,13 +27,10 @@ import com.android.resources.aar.AarResourceRepository;
 import com.android.tools.concurrency.AndroidIoManager;
 import com.android.tools.idea.AndroidProjectModelUtils;
 import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.idea.model.Namespacing;
-import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.res.CacheableResourceRepository;
 import com.android.tools.res.FrameworkOverlay;
 import com.android.tools.res.LocalResourceRepository;
 import com.android.tools.res.LocalResourceRepository.EmptyRepository;
-import com.android.tools.res.ResourceNamespacing;
 import com.android.tools.res.ResourceRepositoryManager;
 import com.android.tools.sdk.AndroidPlatform;
 import com.android.tools.sdk.AndroidTargetData;
@@ -44,7 +41,6 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
@@ -88,13 +84,6 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
   private static final Object TEST_RESOURCES_LOCK = new Object();
 
   @NotNull private final AndroidFacet myFacet;
-  @NotNull private final ResourceNamespacing myNamespacing;
-
-  /**
-   * If the module is namespaced, this is the shared {@link ResourceNamespace} instance corresponding to the package name from the manifest.
-   */
-  @Nullable private ResourceNamespace mySharedNamespaceInstance;
-  @Nullable private ResourceNamespace mySharedTestNamespaceInstance;
 
   @GuardedBy("APP_RESOURCES_LOCK")
   private AppResourceRepository myAppResources;
@@ -132,18 +121,10 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
 
   @NotNull
   public static StudioResourceRepositoryManager getInstance(@NotNull AndroidFacet facet) {
-    ResourceNamespacing namespacing = toResourceNamespacing(AndroidProjectModelUtils.getNamespacing(facet));
     StudioResourceRepositoryManager instance = facet.getUserData(KEY);
 
-    if (instance != null && instance.myNamespacing != namespacing) {
-      if (facet.replace(KEY, instance, null)) {
-        Disposer.dispose(instance);
-      }
-      instance = null;
-    }
-
     if (instance == null) {
-      StudioResourceRepositoryManager manager = new StudioResourceRepositoryManager(facet, namespacing, facet);
+      StudioResourceRepositoryManager manager = new StudioResourceRepositoryManager(facet, facet);
       instance = facet.putUserDataIfAbsent(KEY, manager);
       if (instance == manager) {
         // Our object ended up stored in the facet.
@@ -267,19 +248,10 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     return getInstance(facet).getModuleResources();
   }
 
-  private static ResourceNamespacing toResourceNamespacing(@NotNull Namespacing namespacing) {
-    return switch (namespacing) {
-      case DISABLED -> ResourceNamespacing.DISABLED;
-      case REQUIRED -> ResourceNamespacing.REQUIRED;
-    };
-  }
-
   private StudioResourceRepositoryManager(@NotNull AndroidFacet facet,
-                                          @NotNull ResourceNamespacing namespacing,
                                           @NotNull Disposable parentDisposable) {
     Disposer.register(parentDisposable, this);
     myFacet = facet;
-    myNamespacing = namespacing;
     myLocalesAndLanguages = CachedValuesManager.getManager(getProject()).createCachedValue(this::newLocalesAndLanguagesCachedValue);
   }
 
@@ -747,55 +719,21 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     }
   }
 
-  @Override
-  @NotNull
-  public ResourceNamespacing getNamespacing() {
-    return myNamespacing;
-  }
-
   /**
    * Returns the {@link ResourceNamespace} used by the current module.
    */
   @Override
   @NotNull
   public ResourceNamespace getNamespace() {
-    if (myNamespacing == ResourceNamespacing.DISABLED) {
-      return ResourceNamespace.RES_AUTO;
-    }
-
-    String packageName = ReadAction.compute(() -> ProjectSystemUtil.getModuleSystem(myFacet).getPackageName());
-    if (packageName == null) {
-      return ResourceNamespace.RES_AUTO;
-    }
-
-    if (mySharedNamespaceInstance == null || !packageName.equals(mySharedNamespaceInstance.getPackageName())) {
-      mySharedNamespaceInstance = ResourceNamespace.fromPackageName(packageName);
-    }
-
-    return mySharedNamespaceInstance;
+    return ResourceNamespace.RES_AUTO;
   }
 
   /**
    * Returns the {@link ResourceNamespace} used by test resources of the current module.
-   * <p>
-   * TODO(namespaces): figure out semantics of test resources with namespaces.
    */
   @NotNull
   public ResourceNamespace getTestNamespace() {
-    if (myNamespacing == ResourceNamespacing.DISABLED) {
-      return ResourceNamespace.RES_AUTO;
-    }
-
-    String testPackageName = ProjectSystemUtil.getModuleSystem(myFacet).getTestPackageName();
-    if (testPackageName == null) {
-      return ResourceNamespace.RES_AUTO;
-    }
-
-    if (mySharedTestNamespaceInstance == null || !testPackageName.equals(mySharedTestNamespaceInstance.getPackageName())) {
-      mySharedTestNamespaceInstance = ResourceNamespace.fromPackageName(testPackageName);
-    }
-
-    return mySharedTestNamespaceInstance;
+    return ResourceNamespace.RES_AUTO;
   }
 
   /**
@@ -849,9 +787,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     Collection<ExternalAndroidLibrary> libraries = AndroidProjectModelUtils.findDependenciesWithResources(myFacet.getModule()).values();
 
     AarResourceRepositoryCache aarResourceRepositoryCache = AarResourceRepositoryCache.getInstance();
-    Function<ExternalAndroidLibrary, AarResourceRepository> factory = myNamespacing == ResourceNamespacing.DISABLED ?
-                                                                      aarResourceRepositoryCache::getSourceRepository :
-                                                                      aarResourceRepositoryCache::getProtoRepository;
+    Function<ExternalAndroidLibrary, AarResourceRepository> factory = aarResourceRepositoryCache::getSourceRepository;
 
     ExecutorService executor = AndroidIoManager.getInstance().getBackgroundDiskIoExecutor();
 

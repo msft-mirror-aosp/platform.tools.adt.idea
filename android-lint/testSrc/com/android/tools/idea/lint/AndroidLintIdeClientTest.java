@@ -95,7 +95,7 @@ public class AndroidLintIdeClientTest extends AndroidTestCase {
         return true;
       }
     };
-    AndroidModel.setForTests(myFacet, TestAndroidModel.namespaced(myFacet));
+    AndroidModel.setForTests(myFacet, new TestAndroidModel());
     temporaryFolder.create();
     File dir = temporaryFolder.newFolder("foo.aar");
     File expectedLintRuleJar = temporaryFolder.newFile("foo.aar/lint.jar");

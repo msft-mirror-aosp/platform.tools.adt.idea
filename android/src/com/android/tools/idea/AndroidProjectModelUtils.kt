@@ -25,8 +25,6 @@
 package com.android.tools.idea
 
 import com.android.projectmodel.ExternalAndroidLibrary
-import com.android.tools.idea.model.AndroidModel
-import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.projectsystem.DependencyScopeType
 import com.android.tools.idea.projectsystem.FindDependenciesWithResourcesToken
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -35,7 +33,6 @@ import com.android.tools.idea.projectsystem.getTokenOrNull
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
-import org.jetbrains.android.facet.AndroidFacet
 
 /**
  * Returns information about all [ExternalAndroidLibrary] dependencies that contribute resources in the project, indexed by
@@ -61,7 +58,3 @@ fun findDependenciesWithResources(module: Module): Map<String, ExternalAndroidLi
       ?: module.getModuleSystem().getAndroidLibraryDependencies(DependencyScopeType.MAIN))
     .filter { it.hasResources }
     .associateBy { library -> library.address }
-
-/** Checks namespacing of the module with the given [AndroidFacet]. */
-val AndroidFacet.namespacing: Namespacing
-  get() = AndroidModel.get(this)?.namespacing ?: Namespacing.DISABLED

@@ -17,7 +17,6 @@ package com.android.tools.idea.res
 
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.res.ResourceNamespacing
 import com.android.tools.res.ids.ResourceIdManagerModelModule
 import com.intellij.openapi.module.Module
 import org.jetbrains.android.facet.AndroidFacet
@@ -34,9 +33,6 @@ class AndroidFacetResourceIdManagerModelModule(module: Module) : ResourceIdManag
     get() {
       return androidFacet.configuration.isAppOrFeature
     }
-
-  override val namespacing: ResourceNamespacing
-    get() = StudioResourceRepositoryManager.getInstance(androidFacet).namespacing
 
   override val useRBytecodeParsing: Boolean
     get() = StudioFlags.USE_BYTECODE_R_CLASS_PARSING.get()

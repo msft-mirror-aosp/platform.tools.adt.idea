@@ -17,13 +17,11 @@ package com.android.tools.idea.res
 
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.tools.concurrency.AndroidIoManager
-import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.util.toPathString
 import com.android.utils.TraceUtils.simpleId
 import com.android.utils.concurrency.getAndUnwrap
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import com.google.common.collect.ImmutableList
 import com.google.common.collect.Sets
 import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.Disposable
@@ -60,16 +58,13 @@ import java.util.concurrent.Future
 import java.util.function.BiConsumer
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.ResourceFolderManager.Companion.getInstance
-import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * A project service that manages [ResourceFolderRepository] instances, creating them as necessary and reusing repositories for the same
- * directories when multiple modules need them. For every directory a namespaced and non-namespaced repository may be created, if needed.
+ * directories when multiple modules need them.
  */
 class ResourceFolderRegistry(val project: Project) : Disposable {
-  private val namespacedCache = buildCache()
-  private val nonNamespacedCache = buildCache()
-  private val cacheList = ImmutableList.of(namespacedCache, nonNamespacedCache)
+  private val cache = buildCache()
 
   init {
     val moduleRootListener =
@@ -90,24 +85,14 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     EditorFactory.getInstance().eventMulticaster.addDocumentListener(ResourceFolderDocumentListener(project, this), this)
   }
 
-  operator fun get(facet: AndroidFacet, dir: VirtualFile) =
-    get(facet, dir, StudioResourceRepositoryManager.getInstance(facet).namespace, true)
-
-  operator fun get(facet: AndroidFacet, dir: VirtualFile, ensureLoaded: Boolean) =
-    get(facet, dir, StudioResourceRepositoryManager.getInstance(facet).namespace, ensureLoaded)
-
-  operator fun get(facet: AndroidFacet, dir: VirtualFile, namespace: ResourceNamespace) = get(facet, dir, namespace, true)
-
-  @VisibleForTesting
+  @JvmOverloads
   operator fun get(
     facet: AndroidFacet,
     dir: VirtualFile,
-    namespace: ResourceNamespace,
     ensureLoaded: Boolean = true,
   ): ResourceFolderRepository {
-    val cache = if (namespace === ResourceNamespace.RES_AUTO) nonNamespacedCache else namespacedCache
-    val repository = cache.getAndUnwrap(dir) { createRepository(facet, dir, namespace) }
-    assert(repository.namespace == namespace)
+    val repository = cache.getAndUnwrap(dir) { createRepository(facet, dir) }
+    assert(repository.namespace == ResourceNamespace.RES_AUTO)
 
     // TODO(b/80179120): figure out why this is not always true.
     // assert repository.getFacet().equals(facet);
@@ -117,18 +102,12 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
   }
 
   /** Returns the resource repository for the given directory, or null if such repository doesn't already exist. */
-  fun getCached(dir: VirtualFile, namespacing: Namespacing): ResourceFolderRepository? {
-    val cache = if (namespacing === Namespacing.REQUIRED) namespacedCache else nonNamespacedCache
+  fun getCached(dir: VirtualFile): ResourceFolderRepository? {
     return cache.getIfPresent(dir)
   }
 
   fun reset(facet: AndroidFacet) {
     ResourceUpdateTracer.logDirect { "$simpleId.reset()" }
-    reset(namespacedCache, facet)
-    reset(nonNamespacedCache, facet)
-  }
-
-  private fun reset(cache: Cache<VirtualFile, ResourceFolderRepository>, facet: AndroidFacet) {
     val cacheAsMap = cache.asMap()
     if (cacheAsMap.isEmpty()) {
       ResourceUpdateTracer.logDirect { "$simpleId.reset: cache is empty" }
@@ -141,14 +120,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
   }
 
   private fun removeStaleEntries() {
-    // TODO(namespaces): listen to changes in modules' namespacing modes and dispose repositories
-    // which are no longer needed.
     ResourceUpdateTracer.logDirect { "$simpleId.removeStaleEntries()" }
-    removeStaleEntries(namespacedCache)
-    removeStaleEntries(nonNamespacedCache)
-  }
-
-  private fun removeStaleEntries(cache: Cache<VirtualFile, ResourceFolderRepository>) {
     val cacheAsMap = cache.asMap()
     if (cacheAsMap.isEmpty()) {
       ResourceUpdateTracer.logDirect { "$simpleId.removeStaleEntries: cache is empty" }
@@ -170,8 +142,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
   }
 
   override fun dispose() {
-    namespacedCache.invalidateAll()
-    nonNamespacedCache.invalidateAll()
+    cache.invalidateAll()
   }
 
   fun dispatchToRepositories(file: VirtualFile, handler: BiConsumer<ResourceFolderRepository, VirtualFile>) {
@@ -181,9 +152,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     ApplicationManager.getApplication().assertWriteAccessAllowed()
     var dir = if (file.isDirectory) file else file.parent
     while (dir != null) {
-      for (cache in cacheList) {
-        cache.getIfPresent(dir)?.let { handler.accept(it, file) }
-      }
+      cache.getIfPresent(dir)?.let { handler.accept(it, file) }
       dir = dir.parent
     }
   }
@@ -195,9 +164,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     ApplicationManager.getApplication().assertWriteAccessAllowed()
     var dir = if (file.isDirectory) file else file.parent
     while (dir != null) {
-      for (cache in cacheList) {
-        cache.getIfPresent(dir)?.let { invokeCallback.consume(it.psiListener) }
-      }
+      cache.getIfPresent(dir)?.let { invokeCallback.consume(it.psiListener) }
       dir = dir.parent
     }
   }
@@ -206,13 +173,13 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     return CacheBuilder.newBuilder().softValues().build()
   }
 
-  private fun createRepository(facet: AndroidFacet, dir: VirtualFile, namespace: ResourceNamespace): ResourceFolderRepository {
+  private fun createRepository(facet: AndroidFacet, dir: VirtualFile): ResourceFolderRepository {
     // Don't create a persistent cache in tests to avoid unnecessary overhead.
     val executor =
       if (ApplicationManager.getApplication().isUnitTestMode) Executor { _: Runnable? -> }
       else AndroidIoManager.getInstance().getBackgroundDiskIoExecutor()
     val cachingData = ResourceFolderRepositoryFileCacheService.get().getCachingData(facet.module.project, dir, executor)
-    return ResourceFolderRepository.create(facet, dir, namespace, cachingData)
+    return ResourceFolderRepository.create(facet, dir, ResourceNamespace.RES_AUTO, cachingData)
   }
 
   companion object {

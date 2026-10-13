@@ -45,12 +45,7 @@ interface ResourceRepositoryManager {
    */
   @get:Slow val projectResources: ResourceRepository
 
-  /**
-   * Returns the [ResourceNamespace] used by the current module.
-   *
-   * <p>This is read from the manifest, so needs to be run inside a read action.
-   */
-  val namespacing: ResourceNamespacing
+  /** Returns the [ResourceNamespace] used by the current module. */
   val namespace: ResourceNamespace
 
   /** Returns all locales of the project resources. */
@@ -88,10 +83,7 @@ interface ResourceRepositoryManager {
   }
 
   /**
-   * If namespacing is disabled, the namespace parameter is ignored and the method returns a list containing the single resource repository
-   * returned by [.getAppResources]. Otherwise the method returns a list of module, library, or sample data resource repositories for the
-   * given namespace. Usually the returned list will contain at most two resource repositories, one for a module and another for its
-   * user-defined sample data. More repositories may be returned only when there is a package name collision between modules or libraries.
+   * Returns a list containing the single resource repository returned by [appResources].
    *
    * **Note:** This method should not be called on the event dispatch thread since it may take long time, or block waiting for a read action
    * lock.
@@ -101,9 +93,6 @@ interface ResourceRepositoryManager {
    */
   @Slow
   fun getAppResourcesForNamespace(namespace: ResourceNamespace): List<ResourceRepository> {
-    val appRepository = appResources as MultiResourceRepository<*>
-    return if (namespacing === ResourceNamespacing.DISABLED) {
-      listOf(appRepository)
-    } else ImmutableList.copyOf<ResourceRepository>(appRepository.getRepositoriesForNamespace(namespace))
+    return listOf(appResources)
   }
 }

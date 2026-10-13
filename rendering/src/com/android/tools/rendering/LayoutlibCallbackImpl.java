@@ -75,7 +75,6 @@ import com.android.tools.rendering.parsers.TagSnapshot;
 import com.android.tools.rendering.security.RenderSecurityManager;
 import com.android.tools.res.FileResourceReader;
 import com.android.tools.rendering.parsers.RenderXmlFile;
-import com.android.tools.res.ResourceNamespacing;
 import com.android.tools.res.ids.ResourceIdManagerHelper;
 import com.android.utils.HtmlBuilder;
 import com.android.utils.SdkUtils;
@@ -144,7 +143,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   private final boolean myHasLegacyAppCompat;
   private final boolean myHasAndroidXAppCompat;
   private final boolean myShouldUseCustomInflater;
-  private final ResourceNamespacing myNamespacing;
   @NotNull private IRenderLogger myLogger;
   @NotNull private final ViewLoader myViewLoader;
   @Nullable private String myLayoutName;
@@ -159,7 +157,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   private final Map<String, ResourceValue> myFontFamilies;
   private ProjectFonts myProjectFonts;
   @Nullable private final ILayoutPullParserFactory myLayoutPullParserFactory;
-  @NotNull private final ResourceNamespace.Resolver myImplicitNamespaces;
   /**
    * This stores the current sample data offset for sample data to use when parsing a given layout.
    * Each time a layout that contains references to sample data is parsed, we want to use a new sample,
@@ -203,13 +200,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
     myHasLegacyAppCompat = renderModule.getDependencies().dependsOn(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7);
     myHasAndroidXAppCompat = renderModule.getDependencies().dependsOn(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT);
     myShouldUseCustomInflater = shouldUseCustomInflater;
-
-    myNamespacing = renderModule.getResourceRepositoryManager().getNamespacing();
-    if (myNamespacing == ResourceNamespacing.DISABLED) {
-      myImplicitNamespaces = ResourceNamespace.Resolver.TOOLS_ONLY;
-    } else {
-      myImplicitNamespaces = ResourceNamespace.Resolver.EMPTY_RESOLVER;
-    }
 
     myFontCacheService = renderModule.getEnvironment().getDownloadableFontCacheService();
     ImmutableMap.Builder<String, ResourceValue> fontBuilder = ImmutableMap.builder();
@@ -824,7 +814,7 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   @NotNull
   @Override
   public ResourceNamespace.Resolver getImplicitNamespaces() {
-    return myImplicitNamespaces;
+    return ResourceNamespace.Resolver.TOOLS_ONLY;
   }
 
   @Override
@@ -835,11 +825,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   @Override
   public boolean hasAndroidXAppCompat() {
     return myHasAndroidXAppCompat;
-  }
-
-  @Override
-  public boolean isResourceNamespacingRequired() {
-    return myNamespacing == ResourceNamespacing.REQUIRED;
   }
 
   @Override
