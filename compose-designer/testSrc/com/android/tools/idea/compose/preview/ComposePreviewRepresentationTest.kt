@@ -138,6 +138,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.clearInvocations
+import org.mockito.Mockito.never
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
@@ -1075,6 +1076,59 @@ class ComposePreviewRepresentationTest {
       waitForAllRefreshesToFinish(30.seconds)
 
       assertFalse("Quality/existing refresh should not fire CFG_DEVICE", deviceChangeFired.get())
+    }
+  }
+
+  @Test
+  fun testRefreshWhileResizedInFocusModeDoesNotCallZoomToFit() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    val surface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build()
+    val surfaceSpy = spy(surface)
+    Disposer.register(fixture.testRootDisposable, surfaceSpy)
+
+    val zoomControllerSpy = spy(surface.zoomController)
+    whenever(surfaceSpy.zoomController).thenReturn(zoomControllerSpy)
+
+    return runComposePreviewRepresentationTest(testFile, mainSurface = surfaceSpy) {
+      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+      val previewRep = createPreviewAndCompile(expectedModelCount = 1)
+
+      val singleElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
+      setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = false) { composeView.focusMode != null }
+
+      val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      val newDevice = createTestDesktopDevice()
+
+      resizePanel.selectDeviceForTest(newDevice)
+      assertTrue(resizePanel.hasBeenResized)
+
+      clearInvocations(zoomControllerSpy)
+
+      val refreshDone = AtomicBoolean(false)
+      composeView.refreshCompletedListeners.add { refreshDone.set(true) }
+      previewRep.invalidate()
+      previewRep.requestRefreshForTest()
+      delayUntilCondition(250, timeout = 10.seconds) { refreshDone.get() }
+      delayWhileRefreshingOrDumb(previewRep)
+      waitForAllRefreshesToFinish(30.seconds)
+
+      verify(zoomControllerSpy, never()).zoomToFit()
     }
   }
 

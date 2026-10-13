@@ -1219,7 +1219,7 @@ constructor(
 
       onAfterRender(showingPreviewElements.size)
 
-      if (previewModeManager.mode.value.isFocus) {
+      if (previewModeManager.mode.value.isFocus && activeResizePanelInFocusMode?.hasBeenResized != true) {
         // We need to get rid of the flickering when switching tabs in focus tabs b/287484743
         withContext(Dispatchers.EDT) { surface.zoomController.zoomToFit() }
       }
